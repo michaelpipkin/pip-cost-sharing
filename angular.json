@@ -72,10 +72,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "pip-cost-sharing:build:production"
+              "buildTarget": "pip-cost-sharing:build:production"
             },
             "development": {
-              "browserTarget": "pip-cost-sharing:build:development"
+              "buildTarget": "pip-cost-sharing:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -83,7 +83,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "pip-cost-sharing:build"
+            "buildTarget": "pip-cost-sharing:build"
           }
         },
         "test": {
