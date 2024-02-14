@@ -2,6 +2,7 @@ import { Expense } from './expense';
 
 export interface IGroup {
   id: string;
+  name: string;
   memberIds: string[];
   expenses: Expense[];
 }
@@ -11,6 +12,7 @@ export class Group implements IGroup {
     Object.assign(this, init);
   }
   id: string;
+  name: string;
   memberIds: string[];
   expenses: Expense[];
 }

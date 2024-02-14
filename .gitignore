@@ -36,7 +36,19 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+environments
 
 # System files
 .DS_Store
 Thumbs.db
+
+# Firestore emulators
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+seed-data
+seed-data.ts
+functions/scripts/lindy-circle-a312e1ef8d7f.json
+.firebase/hosting.*
+*.sqlite
+*.vsidx
