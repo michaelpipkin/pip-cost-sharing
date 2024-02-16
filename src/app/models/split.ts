@@ -1,7 +1,10 @@
 export interface ISplit {
   id: string;
+  expenseId: string;
+  groupId: string;
+  categoryId: string;
   amount: number;
-  userId: string;
+  memberId: string;
   paid: boolean;
 }
 
@@ -10,7 +13,10 @@ export class Split implements ISplit {
     Object.assign(this, init);
   }
   id: string;
+  expenseId: string;
+  groupId: string;
+  categoryId: string;
   amount: number;
-  userId: string;
+  memberId: string;
   paid: boolean = false;
 }

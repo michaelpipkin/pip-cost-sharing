@@ -2,7 +2,9 @@ import { Split } from './split';
 
 export interface IExpense {
   id: string;
-  paidByUserId: string;
+  groupId: string;
+  categoryId: string;
+  paidByMemberId: string;
   amount: number;
   splits: Split[];
   readonly unpaidAmount: number;
@@ -14,13 +16,15 @@ export class Expense implements IExpense {
     Object.assign(this, init);
   }
   id: string;
-  paidByUserId: string;
+  groupId: string;
+  categoryId: string;
+  paidByMemberId: string;
   amount: number;
   splits: Split[];
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
-      if (!split.paid && !(split.userId === this.paidByUserId)) {
+      if (!split.paid && !(split.memberId === this.paidByMemberId)) {
         amount += split.amount;
       }
     });

@@ -1,9 +1,10 @@
 import { Expense } from './expense';
+import { Member } from './member';
 
 export interface IGroup {
   id: string;
   name: string;
-  memberIds: string[];
+  members: Member[];
   expenses: Expense[];
 }
 
@@ -13,6 +14,6 @@ export class Group implements IGroup {
   }
   id: string;
   name: string;
-  memberIds: string[];
+  members: Member[];
   expenses: Expense[];
 }

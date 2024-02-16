@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Group } from '@models/group';
-import { from, map, Observable } from 'rxjs';
+import { Member } from '@models/member';
+import { concatMap, from, map, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -9,25 +10,57 @@ import { from, map, Observable } from 'rxjs';
 export class GroupsService {
   constructor(private db: AngularFirestore) {}
 
-  getGroupsForUser(userId: string): Observable<Group[]> {
+  getGroupById(id: string): Observable<Group> {
     return this.db
-      .collection<Group>('groups', (ref) =>
-        ref.where('memberIds', 'array-contains', userId).orderBy('name')
-      )
+      .doc<Group>(`/groups/${id}`)
       .valueChanges({ idField: 'id' })
       .pipe(
-        map((groups: Group[]) => {
-          return <Group[]>groups.map((group) => {
-            return new Group({
-              ...group,
-            });
+        map((group: Group) => {
+          return new Group({
+            ...group,
           });
         })
       );
   }
 
-  addGroup(group: Partial<Group>): Observable<any> {
-    return from(this.db.collection('groups').add(group));
+  getGroupsForUser(userId: string): Observable<Group[]> {
+    return this.db
+      .collectionGroup('members', (ref) => ref.where('userId', '==', userId))
+      .get()
+      .pipe(
+        concatMap((res) => {
+          const groupIds = <string[]>res.docs.map((snapshot) => {
+            return snapshot.ref.parent.id;
+          });
+          return this.db
+            .collection<Group>('groups', (ref) =>
+              ref.where('id', 'in', groupIds).orderBy('name')
+            )
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((groups: Group[]) => {
+                return <Group[]>groups.map((group: Group) => {
+                  return new Group({
+                    ...group,
+                  });
+                });
+              })
+            );
+        })
+      );
+  }
+
+  addGroup(group: Partial<Group>, member: Partial<Member>): Observable<any> {
+    const batch = this.db.firestore.batch();
+    group.id = this.db.createId();
+    member.id = this.db.createId();
+    const groupRef = this.db.doc(`/groups/${group.id}`).ref;
+    batch.set(groupRef, group);
+    const memberRef = this.db.doc(
+      `/groups/${group.id}/members/${member.id}`
+    ).ref;
+    batch.set(memberRef, member);
+    return from(batch.commit());
   }
 
   updateGroup(groupId: string, changes: Partial<Group>): Observable<any> {

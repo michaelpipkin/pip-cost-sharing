@@ -1,17 +1,19 @@
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { AngularFireModule } from '@angular/fire/compat';
-import {
-  MAT_DIALOG_DEFAULT_OPTIONS,
-  MatDialogConfig,
-} from '@angular/material/dialog';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { GroupDetailsComponent } from './groups/group-details/group-details.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { MaterialModule } from './material.module';
+
+import {
+  MAT_DIALOG_DEFAULT_OPTIONS,
+  MatDialogConfig,
+} from '@angular/material/dialog';
 import {
   AngularFireAuthModule,
   USE_EMULATOR as USE_AUTH_EMULATOR,
@@ -22,7 +24,7 @@ import {
 } from '@angular/fire/compat/firestore';
 
 @NgModule({
-  declarations: [AppComponent, GroupsComponent],
+  declarations: [AppComponent, GroupsComponent, GroupDetailsComponent],
   imports: [
     BrowserModule,
     AppRoutingModule,
