@@ -30,7 +30,7 @@ export class SplitsService {
     splitId: string
   ): Observable<Split> {
     return this.db
-      .doc<Split>(`groups/${groupId}/expense/${expenseId}/splits/${splitId}`)
+      .doc<Split>(`groups/${groupId}/expenses/${expenseId}/splits/${splitId}`)
       .valueChanges({ idField: 'id' })
       .pipe(
         map((split: Split) => {

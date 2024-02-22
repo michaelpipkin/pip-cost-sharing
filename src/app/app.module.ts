@@ -6,6 +6,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
 import { GroupDetailsComponent } from './groups/group-details/group-details.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { MaterialModule } from './material.module';
@@ -22,9 +23,16 @@ import {
   AngularFirestoreModule,
   USE_EMULATOR as USE_FIRESTORE_EMULATOR,
 } from '@angular/fire/compat/firestore';
+import { LoadingComponent } from './shared/loading/loading.component';
 
 @NgModule({
-  declarations: [AppComponent, GroupsComponent, GroupDetailsComponent],
+  declarations: [
+    AppComponent,
+    GroupsComponent,
+    GroupDetailsComponent,
+    AddExpenseComponent,
+    LoadingComponent,
+  ],
   imports: [
     BrowserModule,
     AppRoutingModule,
