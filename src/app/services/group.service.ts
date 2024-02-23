@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { concatMap, from, map, Observable } from 'rxjs';
+import { concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -29,8 +29,11 @@ export class GroupService {
       .get()
       .pipe(
         concatMap((res) => {
+          if (res.size === 0) {
+            return of(null);
+          }
           const groupIds = <string[]>res.docs.map((snapshot) => {
-            return snapshot.ref.parent.id;
+            return snapshot.ref.parent.parent.id;
           });
           return this.db
             .collection<Group>('groups', (ref) =>

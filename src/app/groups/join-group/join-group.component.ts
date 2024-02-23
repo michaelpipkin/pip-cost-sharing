@@ -2,29 +2,28 @@ import { Component } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import firebase from 'firebase/compat/app';
 import { catchError, tap, throwError } from 'rxjs';
 
 @Component({
-  selector: 'app-add-group',
-  templateUrl: './add-group.component.html',
-  styleUrl: './add-group.component.scss',
+  selector: 'app-join-group',
+  templateUrl: './join-group.component.html',
+  styleUrl: './join-group.component.scss',
 })
-export class AddGroupComponent {
-  newGroupForm = this.fb.group({
-    groupName: ['', Validators.required],
+export class JoinGroupComponent {
+  joinGroupForm = this.fb.group({
+    groupId: ['', Validators.required],
     displayName: ['', Validators.required],
   });
   currentUser: firebase.User;
 
   constructor(
-    private dialogRef: MatDialogRef<AddGroupComponent>,
+    private dialogRef: MatDialogRef<JoinGroupComponent>,
     private fb: FormBuilder,
-    private groupService: GroupService,
+    private memberService: MemberService,
     private snackBar: MatSnackBar,
     userService: UserService
   ) {
@@ -32,37 +31,34 @@ export class AddGroupComponent {
   }
 
   public get f() {
-    return this.newGroupForm.controls;
+    return this.joinGroupForm.controls;
   }
 
   onSubmit(): void {
-    this.newGroupForm.disable();
-    const val = this.newGroupForm.value;
-    const newGroup: Partial<Group> = {
-      name: val.groupName,
-    };
+    this.joinGroupForm.disable();
+    const val = this.joinGroupForm.value;
     const newMember: Partial<Member> = {
       userId: this.currentUser.uid,
       displayName: val.displayName,
       email: this.currentUser.email,
       active: true,
-      groupAdmin: true,
+      groupAdmin: false,
     };
-    this.groupService
-      .addGroup(newGroup, newMember)
+    this.memberService
+      .addMemberToGroup(val.groupId, newMember)
       .pipe(
         tap(() => {
           this.dialogRef.close(true);
         }),
         catchError((err: Error) => {
           this.snackBar.open(
-            'Something went wrong - could not add group.',
+            'Something went wrong - could not join group.',
             'Close',
             {
               verticalPosition: 'top',
             }
           );
-          this.newGroupForm.enable();
+          this.joinGroupForm.enable();
           return throwError(() => new Error(err.message));
         })
       )

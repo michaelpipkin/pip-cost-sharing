@@ -5,6 +5,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AuthInterceptor } from '@services/auth.interceptor';
+import { LoadingService } from '@shared/loading/loading.service';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -14,6 +15,7 @@ import { AddExpenseComponent } from './expenses/add-expense/add-expense.componen
 import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupDetailsComponent } from './groups/group-details/group-details.component';
 import { GroupsComponent } from './groups/groups/groups.component';
+import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { MaterialModule } from './material.module';
 import { LoadingComponent } from './shared/loading/loading.component';
 import {
@@ -43,6 +45,7 @@ import {
     LoginComponent,
     ProfileComponent,
     AddGroupComponent,
+    JoinGroupComponent,
   ],
   imports: [
     BrowserModule,
@@ -84,6 +87,7 @@ import {
       useClass: AuthInterceptor,
       multi: true,
     },
+    LoadingService,
   ],
   bootstrap: [AppComponent],
 })

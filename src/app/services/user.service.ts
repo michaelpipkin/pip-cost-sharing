@@ -16,6 +16,7 @@ export class UserService {
       map((user) => {
         if (!!user) {
           this.userSubject.next(user);
+          console.log(user);
           return true;
         } else {
           this.userSubject.next(null);

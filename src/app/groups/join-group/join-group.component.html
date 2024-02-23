@@ -1,0 +1,23 @@
+<h1 mat-dialog-title>Join Group</h1>
+<mat-dialog-content [formGroup]="joinGroupForm">
+    <mat-form-field appearance="fill" color="primary">
+        <mat-label>Group code</mat-label>
+        <input matInput formControlName="groupId">
+        <mat-error *ngIf="f.groupId.errors?.['required']">
+            *Required
+        </mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="fill" color="primary">
+        <mat-label>Your display name for this group</mat-label>
+        <input matInput formControlName="displayName">
+        <mat-error *ngIf="f.displayName.errors?.['required']">
+            *Required
+        </mat-error>
+    </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-raised-button color="accent" (click)="close()">Cancel</button>
+    <button mat-raised-button color="primary" [disabled]="!joinGroupForm.valid" (click)="onSubmit()">
+        Save
+    </button>
+</mat-dialog-actions>

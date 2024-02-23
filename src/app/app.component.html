@@ -1,40 +1,15 @@
 <mat-sidenav-container fullscreen>
-  <mat-sidenav #start (click)="start.close()">
-    <mat-nav-list>
-      <ng-container *ngIf="user.isLoggedIn$ | async">
-        <a mat-list-item routerLink="groups">
-          <mat-icon>groups</mat-icon>
-          <span>Members</span>
-        </a>
-        <a mat-list-item routerLink="categories">
-          <mat-icon>perm_contact_calendar</mat-icon>
-          <span>Practices</span>
-        </a>
-        <a mat-list-item routerLink="expenses">
-          <mat-icon>perm_contact_calendar</mat-icon>
-          <span>Expenses</span>
-        </a>
-        <a mat-list-item routerLink="profile">
-          <mat-icon>account_circle</mat-icon>
-          <span>Profile</span>
-        </a>
-        <a mat-list-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Log Out</span>
-        </a>
-      </ng-container>
-      <a *ngIf="!(user.isLoggedIn$ | async)" mat-list-item routerLink="login">
-        <mat-icon>login</mat-icon>
-        <span>Log In</span>
-      </a>
-    </mat-nav-list>
-  </mat-sidenav>
   <mat-toolbar color="primary">
-    <div class="toolbar-tools">
-      <button mat-icon-button (click)="start.open('mouse')">
-        <mat-icon>menu</mat-icon>
-      </button>
-      <a id="title" routerLink="groups">Cost Sharing</a>
+    <div class="toolbar-tools-left">
+      <a id="title" routerLink="groups">Home</a>
+    </div>
+    <div class="toolbar-tools-right">
+      <ng-container *ngIf="user.isLoggedIn$ | async">
+        <a (click)="logout()">Log out</a>
+      </ng-container>
+      <ng-container *ngIf="!(user.isLoggedIn$ | async)">
+        <a routerLink="login">Log in</a>
+      </ng-container>
     </div>
   </mat-toolbar>
   <loading></loading>
