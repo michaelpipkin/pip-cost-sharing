@@ -1,1 +1,23 @@
-<p>add-group works!</p>
+<h1 mat-dialog-title>Add New Group</h1>
+<mat-dialog-content [formGroup]="newGroupForm">
+    <mat-form-field appearance="fill" color="primary">
+        <mat-label>Group name</mat-label>
+        <input matInput formControlName="groupName">
+        <mat-error *ngIf="f.groupName.errors?.['required']">
+            *Required
+        </mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="fill" color="primary">
+        <mat-label>Your display name for this group</mat-label>
+        <input matInput formControlName="displayName">
+        <mat-error *ngIf="f.displayName.errors?.['required']">
+            *Required
+        </mat-error>
+    </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button mat-raised-button color="accent" (click)="close()">Cancel</button>
+    <button mat-raised-button color="primary" [disabled]="!newGroupForm.valid" (click)="onSubmit()">
+        Save
+    </button>
+</mat-dialog-actions>

@@ -6,7 +6,7 @@ import { from, map, Observable } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
-export class SplitsService {
+export class SplitService {
   constructor(private db: AngularFirestore) {}
 
   getSplitsForExpense(groupId: string, expenseId: string): Observable<Split[]> {

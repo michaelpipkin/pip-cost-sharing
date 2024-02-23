@@ -1,29 +1,26 @@
 import { Injectable } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Router } from '@angular/router';
-import { User } from '@models/user';
+import firebase from 'firebase/compat/app';
 import { BehaviorSubject, map, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService {
-  private userSubject = new BehaviorSubject<User>(null);
+  private userSubject = new BehaviorSubject<firebase.User>(null);
   isLoggedIn$: Observable<boolean>;
 
   constructor(private afAuth: AngularFireAuth, private router: Router) {
     this.isLoggedIn$ = afAuth.authState.pipe(
       map((user) => {
         if (!!user) {
-          this.userSubject.next(
-            new User({
-              id: user.uid,
-              email: user.email,
-            })
-          );
+          this.userSubject.next(user);
           return true;
+        } else {
+          this.userSubject.next(null);
+          return false;
         }
-        return false;
       })
     );
   }
@@ -32,5 +29,5 @@ export class UserService {
     this.afAuth.signOut().finally(() => this.router.navigateByUrl('/login'));
   }
 
-  getCurrentUser = (): User => this.userSubject.getValue();
+  getCurrentUser = (): firebase.User => this.userSubject.getValue();
 }

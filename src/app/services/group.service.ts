@@ -7,7 +7,7 @@ import { concatMap, from, map, Observable } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
-export class GroupsService {
+export class GroupService {
   constructor(private db: AngularFirestore) {}
 
   getGroupById(id: string): Observable<Group> {

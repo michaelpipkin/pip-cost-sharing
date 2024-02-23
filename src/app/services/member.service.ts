@@ -4,14 +4,13 @@ import { Split } from '@models/split';
 import { from, map, Observable } from 'rxjs';
 import {
   AngularFirestore,
-  QueryDocumentSnapshot,
   QuerySnapshot,
 } from '@angular/fire/compat/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
-export class MembersService {
+export class MemberService {
   constructor(private db: AngularFirestore) {}
 
   getMember(groupId: string, memberId: string): Observable<Member> {

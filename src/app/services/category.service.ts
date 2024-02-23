@@ -1,15 +1,15 @@
 import { Injectable } from '@angular/core';
+import { Category } from '@models/category';
+import { from, map, Observable } from 'rxjs';
 import {
   AngularFirestore,
   QuerySnapshot,
 } from '@angular/fire/compat/firestore';
-import { Category } from '@models/category';
-import { from, map, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CategoriesService {
+export class CategoryService {
   constructor(private db: AngularFirestore) {}
 
   getCategoriesForGroup(groupId: string): Observable<Category[]> {

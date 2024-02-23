@@ -4,9 +4,9 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { User } from '@models/user';
-import { GroupsService } from '@services/groups.service';
+import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
+import firebase from 'firebase/compat/app';
 import { catchError, tap, throwError } from 'rxjs';
 
 @Component({
@@ -19,16 +19,16 @@ export class AddGroupComponent {
     groupName: ['', Validators.required],
     displayName: ['', Validators.required],
   });
-  currentUser: User;
+  currentUser: firebase.User;
 
   constructor(
     private dialogRef: MatDialogRef<AddGroupComponent>,
     private fb: FormBuilder,
-    private groupsService: GroupsService,
-    private user: UserService,
-    private snackBar: MatSnackBar
+    private groupsService: GroupService,
+    private snackBar: MatSnackBar,
+    userService: UserService
   ) {
-    this.currentUser = user.getCurrentUser();
+    this.currentUser = userService.getCurrentUser();
   }
 
   public get f() {
@@ -42,7 +42,7 @@ export class AddGroupComponent {
       name: val.groupName,
     };
     const newMember: Partial<Member> = {
-      userId: this.currentUser.id,
+      userId: this.currentUser.uid,
       displayName: val.displayName,
       email: this.currentUser.email,
       active: true,
