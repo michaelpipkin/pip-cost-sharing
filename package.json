@@ -23,6 +23,7 @@
     "@angular/router": "^17.2.2",
     "firebase": "^10.8.0",
     "firebase-admin": "^12.0.0",
+    "firebaseui": "^6.1.0",
     "rxjs": "^7.8.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.4"
