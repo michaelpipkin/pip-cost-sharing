@@ -6,7 +6,7 @@ import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import firebase from 'firebase/compat/app';
-import { catchError, map, tap, throwError } from 'rxjs';
+import { catchError, map, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-join-group',

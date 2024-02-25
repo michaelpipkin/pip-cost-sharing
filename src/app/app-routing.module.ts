@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
-import { GroupDetailsComponent } from './groups/group-details/group-details.component';
+import { ProfileComponent } from './auth/profile/profile.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import {
   canActivate,
@@ -25,8 +25,8 @@ const routes: Routes = [
     ...canActivate(authGuard),
   },
   {
-    path: 'group-details',
-    component: GroupDetailsComponent,
+    path: 'profile',
+    component: ProfileComponent,
     ...canActivate(authGuard),
   },
   // {

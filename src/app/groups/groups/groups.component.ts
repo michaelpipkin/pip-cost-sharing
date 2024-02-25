@@ -69,4 +69,11 @@ export class GroupsComponent implements OnInit {
   }
 
   onSelectGroup(e: MatSelectChange): void {}
+
+  copyGroupCode(): void {
+    navigator.clipboard.writeText(this.selectedGroupId);
+    this.snackbar.open('Group join code copied', 'OK', {
+      duration: 2000,
+    });
+  }
 }

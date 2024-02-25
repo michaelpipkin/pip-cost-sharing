@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { from, map, Observable, of, throwError } from 'rxjs';
+import { concatMap, from, map, Observable, of, throwError } from 'rxjs';
 import {
   AngularFirestore,
   DocumentSnapshot,
@@ -45,15 +45,30 @@ export class MemberService {
 
   addMemberToGroup(groupId: string, member: Partial<Member>): Observable<any> {
     return this.db
-      .doc(`/groups/${groupId}`)
+      .collection(`groups/${groupId}/members`, (ref) =>
+        ref.where('userId', '==', member.userId)
+      )
       .get()
       .pipe(
-        map((snap: DocumentSnapshot<Group>) => {
-          if (snap.exists) {
-            return from(
-              this.db.collection(`groups/${groupId}/members`).add(member)
-            );
-          } else return new Error('Group code not found');
+        concatMap((querySnap) => {
+          if (querySnap.size > 0) {
+            return of(new Error('You are already a member of that group!'));
+          } else {
+            return this.db
+              .doc(`/groups/${groupId}`)
+              .get()
+              .pipe(
+                map((docSnap: DocumentSnapshot<Group>) => {
+                  if (docSnap.exists) {
+                    return from(
+                      this.db
+                        .collection(`groups/${groupId}/members`)
+                        .add(member)
+                    );
+                  } else return new Error('Group code not found');
+                })
+              );
+          }
         })
       );
   }
@@ -77,7 +92,11 @@ export class MemberService {
       .pipe(
         map((snap: QuerySnapshot<Split>) => {
           if (snap.size > 0) {
-            return of(null);
+            return of(
+              new Error(
+                'This member has existing splits and cannot be deleted.'
+              )
+            );
           } else {
             return from(
               this.db.doc(`/groups/${groupId}/members/${memberId}`).delete()

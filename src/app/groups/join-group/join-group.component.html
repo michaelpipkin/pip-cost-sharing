@@ -1,14 +1,14 @@
 <h1 mat-dialog-title>Join Group</h1>
 <mat-dialog-content [formGroup]="joinGroupForm">
     <mat-form-field appearance="fill" color="primary">
-        <mat-label>Group code</mat-label>
+        <mat-label>Group join code</mat-label>
         <input matInput formControlName="groupId">
         <mat-error *ngIf="f.groupId.errors?.['required']">
             *Required
         </mat-error>
     </mat-form-field>
     <mat-form-field appearance="fill" color="primary">
-        <mat-label>Your display name for group</mat-label>
+        <mat-label>Your name in the group</mat-label>
         <input matInput formControlName="displayName">
         <mat-error *ngIf="f.displayName.errors?.['required']">
             *Required

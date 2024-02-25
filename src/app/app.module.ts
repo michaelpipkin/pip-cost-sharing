@@ -2,10 +2,6 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { AngularFireModule } from '@angular/fire/compat';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import {
-  MAT_SNACK_BAR_DEFAULT_OPTIONS,
-  MatSnackBarConfig,
-} from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AuthInterceptor } from '@services/auth.interceptor';
@@ -16,12 +12,17 @@ import { AppComponent } from './app.component';
 import { LoginComponent } from './auth/login/login.component';
 import { ProfileComponent } from './auth/profile/profile.component';
 import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
+import { ExpensesComponent } from './expenses/expenses/expenses.component';
 import { AddGroupComponent } from './groups/add-group/add-group.component';
-import { GroupDetailsComponent } from './groups/group-details/group-details.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { MaterialModule } from './material.module';
+import { MembersComponent } from './members/members/members.component';
 import { LoadingComponent } from './shared/loading/loading.component';
+import {
+  MAT_SNACK_BAR_DEFAULT_OPTIONS,
+  MatSnackBarConfig,
+} from '@angular/material/snack-bar';
 import {
   MAT_DIALOG_DEFAULT_OPTIONS,
   MatDialogConfig,
@@ -43,13 +44,14 @@ import {
   declarations: [
     AppComponent,
     GroupsComponent,
-    GroupDetailsComponent,
     AddExpenseComponent,
     LoadingComponent,
     LoginComponent,
     ProfileComponent,
     AddGroupComponent,
     JoinGroupComponent,
+    MembersComponent,
+    ExpensesComponent,
   ],
   imports: [
     BrowserModule,

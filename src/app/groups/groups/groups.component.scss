@@ -2,3 +2,17 @@
   display: flex;
   justify-content: center;
 }
+
+button {
+  height: 56px;
+}
+
+#join-code {
+  display: inline-block;
+  font-weight: bold;
+  cursor: copy;
+}
+
+#group-details {
+  width: 600px;
+}

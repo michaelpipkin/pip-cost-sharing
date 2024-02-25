@@ -21,14 +21,14 @@
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link active" routerLink="groups">Home</a>
+          <a class="nav-link" routerLink="groups">Home</a>
         </li>
       </ul>
       <div class="d-flex">
         <ng-container class="nav-item" *ngIf="user.isLoggedIn$ | async">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link">Profile</a>
+              <a class="nav-link" routerLink="profile">Profile</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" (click)="logout()">Log out</a>
