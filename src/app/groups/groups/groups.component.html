@@ -1,17 +1,14 @@
 <div>
-    <div class="header mt-2">
-        <h2>Your Groups</h2>
-    </div>
-    <div>
-        <mat-form-field>
-            <mat-label>Select Group</mat-label>
-            <mat-select [(ngModel)]="selectedGroupId" name="group" (selectionChange)="onSelectGroup($event)">
-                @for (group of groups$ | async; track group) {
-                <mat-option [value]="group.id">{{group.name}}</mat-option>
-                }
-            </mat-select>
-        </mat-form-field>
-        <button class="ms-2 me-2" mat-raised-button color="primary" (click)="addGroup()">Create New Group</button>
-        <button mat-raised-button color="accent" (click)="joinGroup()">Join Group</button>
-    </div>
+    <mat-form-field>
+        <mat-label>Select Group</mat-label>
+        <mat-select [(ngModel)]="selectedGroupId" name="group" (selectionChange)="onSelectGroup($event)">
+            @for (group of groups$ | async; track group) {
+            <mat-option [value]="group.id">{{group.name}}</mat-option>
+            }
+        </mat-select>
+    </mat-form-field>
+    <button type="button" class="btn btn-primary ms-2 me-2" (click)="addGroup()">Create New
+        Group</button>
+    <button type="button" class="btn btn-secondary" (click)="joinGroup()">Join Group</button>
+    <app-group-details *ngIf="!!selectedGroupId"></app-group-details>
 </div>

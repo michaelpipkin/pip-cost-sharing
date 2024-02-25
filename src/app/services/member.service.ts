@@ -1,9 +1,11 @@
 import { Injectable } from '@angular/core';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { from, map, Observable } from 'rxjs';
+import { from, map, Observable, of, throwError } from 'rxjs';
 import {
   AngularFirestore,
+  DocumentSnapshot,
   QuerySnapshot,
 } from '@angular/fire/compat/firestore';
 
@@ -42,7 +44,18 @@ export class MemberService {
   }
 
   addMemberToGroup(groupId: string, member: Partial<Member>): Observable<any> {
-    return from(this.db.collection(`groups/${groupId}/members`).add(member));
+    return this.db
+      .doc(`/groups/${groupId}`)
+      .get()
+      .pipe(
+        map((snap: DocumentSnapshot<Group>) => {
+          if (snap.exists) {
+            return from(
+              this.db.collection(`groups/${groupId}/members`).add(member)
+            );
+          } else return new Error('Group code not found');
+        })
+      );
   }
 
   updateMember(
@@ -64,7 +77,7 @@ export class MemberService {
       .pipe(
         map((snap: QuerySnapshot<Split>) => {
           if (snap.size > 0) {
-            return null;
+            return of(null);
           } else {
             return from(
               this.db.doc(`/groups/${groupId}/members/${memberId}`).delete()

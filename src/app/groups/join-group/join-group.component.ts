@@ -6,7 +6,7 @@ import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import firebase from 'firebase/compat/app';
-import { catchError, tap, throwError } from 'rxjs';
+import { catchError, map, tap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-join-group',
@@ -47,12 +47,19 @@ export class JoinGroupComponent {
     this.memberService
       .addMemberToGroup(val.groupId, newMember)
       .pipe(
-        tap(() => {
-          this.dialogRef.close(true);
+        map((res) => {
+          if (res.name === 'Error') {
+            this.snackBar.open(res.message, 'Close', {
+              verticalPosition: 'top',
+            });
+            this.joinGroupForm.enable();
+          } else {
+            this.dialogRef.close(true);
+          }
         }),
         catchError((err: Error) => {
           this.snackBar.open(
-            'Something went wrong - could not join group.',
+            'Something went wrong - could not join group. Please check the group code.',
             'Close',
             {
               verticalPosition: 'top',

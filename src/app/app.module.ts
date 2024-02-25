@@ -2,6 +2,10 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { AngularFireModule } from '@angular/fire/compat';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {
+  MAT_SNACK_BAR_DEFAULT_OPTIONS,
+  MatSnackBarConfig,
+} from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AuthInterceptor } from '@services/auth.interceptor';
@@ -65,8 +69,15 @@ import {
       useValue: {
         disableClose: true,
         autoFocus: true,
-        width: '280px',
+        width: '400px',
       } as MatDialogConfig,
+    },
+    {
+      provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,
+      useValue: {
+        verticalPosition: 'top',
+        duration: 5000,
+      } as MatSnackBarConfig,
     },
     {
       provide: USE_FIRESTORE_EMULATOR,

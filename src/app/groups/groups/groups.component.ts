@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSelectChange } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
@@ -21,18 +22,26 @@ export class GroupsComponent implements OnInit {
   groups$: Observable<Group[]>;
   columnsToDisplay: string[] = ['name', 'memberCount'];
   selectedGroupId: string;
+  dialogConfig: MatDialogConfig = {
+    width: '520px',
+  };
 
   constructor(
     private groupService: GroupService,
     private router: Router,
     private dialog: MatDialog,
     private loading: LoadingService,
+    private snackbar: MatSnackBar,
     userService: UserService
   ) {
     this.currentUser = userService.getCurrentUser();
   }
 
   ngOnInit(): void {
+    this.refreshGroups();
+  }
+
+  refreshGroups(): void {
     this.loading.loadingOn();
     this.groups$ = this.groupService
       .getGroupsForUser(this.currentUser.uid)
@@ -40,11 +49,23 @@ export class GroupsComponent implements OnInit {
   }
 
   addGroup(): void {
-    this.dialog.open(AddGroupComponent);
+    const dialogRef = this.dialog.open(AddGroupComponent, this.dialogConfig);
+    dialogRef.afterClosed().subscribe((success) => {
+      if (success) {
+        this.snackbar.open('Group added!', 'OK');
+        this.refreshGroups();
+      }
+    });
   }
 
   joinGroup(): void {
-    this.dialog.open(JoinGroupComponent);
+    const dialogRef = this.dialog.open(JoinGroupComponent, this.dialogConfig);
+    dialogRef.afterClosed().subscribe((success) => {
+      if (success) {
+        this.snackbar.open('Group joined!', 'OK');
+        this.refreshGroups();
+      }
+    });
   }
 
   onSelectGroup(e: MatSelectChange): void {}
