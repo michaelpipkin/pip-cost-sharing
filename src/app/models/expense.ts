@@ -1,8 +1,11 @@
+import { Timestamp } from 'firebase/firestore';
 import { Split } from './split';
 
 export interface IExpense {
   id: string;
   groupId: string;
+  date: Timestamp;
+  description: string;
   categoryId: string;
   paidByMemberId: string;
   amount: number;
@@ -17,6 +20,8 @@ export class Expense implements IExpense {
   }
   id: string;
   groupId: string;
+  date: Timestamp;
+  description: string;
   categoryId: string;
   paidByMemberId: string;
   amount: number;

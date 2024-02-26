@@ -6,11 +6,15 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AuthInterceptor } from '@services/auth.interceptor';
 import { LoadingService } from '@shared/loading/loading.service';
+import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LoginComponent } from './auth/login/login.component';
 import { ProfileComponent } from './auth/profile/profile.component';
+import { AddCategoryComponent } from './categories/add-category/add-category.component';
+import { CategoriesComponent } from './categories/categories/categories.component';
+import { EditCategoryComponent } from './categories/edit-category/edit-category.component';
 import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
 import { ExpensesComponent } from './expenses/expenses/expenses.component';
 import { AddGroupComponent } from './groups/add-group/add-group.component';
@@ -39,9 +43,6 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { CategoriesComponent } from './categories/categories/categories.component';
-import { AddCategoryComponent } from './categories/add-category/add-category.component';
-import { EditCategoryComponent } from './categories/edit-category/edit-category.component';
 
 @NgModule({
   declarations: [
@@ -58,6 +59,7 @@ import { EditCategoryComponent } from './categories/edit-category/edit-category.
     CategoriesComponent,
     AddCategoryComponent,
     EditCategoryComponent,
+    YesNoPipe,
   ],
   imports: [
     BrowserModule,

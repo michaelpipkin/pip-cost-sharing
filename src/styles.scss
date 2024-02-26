@@ -190,7 +190,7 @@ mat-dialog-actions,
   }
 }
 
-.clickable-table tbody .mat-mdc-row:hover {
+.clickable-table tbody tr:hover {
   background-color: lightgray !important;
   cursor: pointer !important;
 }
