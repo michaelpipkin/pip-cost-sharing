@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { updateDoc } from '@angular/fire/firestore';
 import { Split } from '@models/split';
-import { from, map, Observable } from 'rxjs';
+import { from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -59,11 +60,10 @@ export class SplitService {
     splitId: string,
     changes: Partial<Split>
   ): Observable<any> {
-    return from(
-      this.db
-        .doc(`groups/${groupId}/expenses/${expenseId}/splits/${splitId}`)
-        .update(changes)
-    );
+    const docRef = this.db.doc(
+      `groups/${groupId}/expenses/${expenseId}/splits/${splitId}`
+    ).ref;
+    return of(updateDoc(docRef, changes));
   }
 
   deleteSplit(

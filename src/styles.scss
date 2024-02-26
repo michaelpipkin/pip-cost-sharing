@@ -190,6 +190,10 @@ mat-dialog-actions,
   }
 }
 
+.clickable:hover {
+  cursor: pointer;
+}
+
 .clickable-row:hover {
   background-color: lightgray;
   cursor: pointer;

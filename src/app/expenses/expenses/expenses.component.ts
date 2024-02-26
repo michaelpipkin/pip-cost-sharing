@@ -8,6 +8,7 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
+import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
 import {
   animate,
@@ -51,11 +52,12 @@ export class ExpensesComponent implements OnChanges {
     'paid',
     'expand',
   ];
-  splitColumnsToDisplay: string[] = ['owedBy', 'amount', 'paid'];
+  splitColumnsToDisplay: string[] = ['owedBy', 'amount', 'paid', 'mark'];
   expandedExpense: Expense | null;
 
   constructor(
     private expenseService: ExpenseService,
+    private splitService: SplitService,
     private memberService: MemberService,
     private categoryService: CategoryService,
     private sorter: SortingService
@@ -133,4 +135,19 @@ export class ExpensesComponent implements OnChanges {
   onRowClick(expense: Expense): void {}
 
   addExpense(): void {}
+
+  markSplitPaidUnpaid(expense: Expense, split: Split): void {
+    const changes = {
+      paid: !split.paid,
+    };
+    this.splitService
+      .updateSplit(this.groupId, expense.id, split.id, changes)
+      .pipe(
+        tap(() => {
+          this.loadData();
+          this.filterExpenses();
+        })
+      )
+      .subscribe();
+  }
 }

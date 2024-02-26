@@ -14,3 +14,7 @@ tr.split-row:hover {
   overflow: hidden;
   display: flex;
 }
+
+.split-table tr th {
+  width: 25%;
+}
