@@ -190,9 +190,9 @@ mat-dialog-actions,
   }
 }
 
-.clickable-table tbody tr:hover {
-  background-color: lightgray !important;
-  cursor: pointer !important;
+.clickable-row:hover {
+  background-color: lightgray;
+  cursor: pointer;
 }
 
 .mat-mdc-footer-cell {

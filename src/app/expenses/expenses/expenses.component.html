@@ -19,8 +19,8 @@
         </div>
         <div class="mat-elevation-z8 p-3 m-2">
             <div class="scrollable-table">
-                <table class="clickable-table" mat-table matSort [dataSource]="filteredExpenses$ | async"
-                    (matSortChange)="sortExpenses($event)" multiTemplateDataRows>
+                <table mat-table matSort [dataSource]="filteredExpenses$ | async" (matSortChange)="sortExpenses($event)"
+                    multiTemplateDataRows>
                     <ng-container matColumnDef="id">
                         <th mat-header-cell *matHeaderCellDef>Id</th>
                         <td mat-cell *matCellDef="let expense">{{expense.id}}</td>
@@ -82,8 +82,8 @@
                                         <th mat-header-cell *matHeaderCellDef>Paid</th>
                                         <td mat-cell *matCellDef="let split">{{split.paid | yesNo}}</td>
                                     </ng-container>
-                                    <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay" class="no-hover"></tr>
-                                    <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay" class="no-hover">
+                                    <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay"></tr>
+                                    <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay">
                                     </tr>
                                 </table>
                             </div>
@@ -91,7 +91,7 @@
                     </ng-container>
 
                     <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
-                    <tr mat-row *matRowDef="let expense; columns: columnsToDisplay" class="expense-row"
+                    <tr mat-row *matRowDef="let expense; columns: columnsToDisplay" class="expense-row clickable-row"
                         [class.expanded-row]="expandedExpense === expense" (click)="onRowClick(expense)">
                     </tr>
                     <tr mat-row *matRowDef="let split; columns: ['expandedDetail']" class="split-row"></tr>

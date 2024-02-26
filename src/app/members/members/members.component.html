@@ -13,8 +13,7 @@
         </div>
         <div class="mat-elevation-z8 p-3 m-2">
             <div class="scrollable-table">
-                <table class="clickable-table" mat-table matSort [dataSource]="filteredMembers$ | async"
-                    (matSortChange)="sortMembers($event)">
+                <table mat-table matSort [dataSource]="filteredMembers$ | async" (matSortChange)="sortMembers($event)">
                     <ng-container matColumnDef="id">
                         <th mat-header-cell *matHeaderCellDef>Id</th>
                         <td mat-cell *matCellDef="let member">{{member.id}}</td>
@@ -32,7 +31,8 @@
                         <td mat-cell *matCellDef="let member">{{member.groupAdminText}}</td>
                     </ng-container>
                     <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
-                    <tr mat-row *matRowDef="let myRowData; columns: columnsToDisplay" (click)="onRowClick(myRowData)">
+                    <tr mat-row *matRowDef="let myRowData; columns: columnsToDisplay" (click)="onRowClick(myRowData)"
+                        class="clickable-row">
                     </tr>
                     <tr class="mat-row" *matNoDataRow>
                         <td class="mat-cell" [colSpan]="columnsToDisplay.length">No members found matching
