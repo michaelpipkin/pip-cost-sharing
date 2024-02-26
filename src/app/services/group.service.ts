@@ -36,17 +36,19 @@ export class GroupService {
             return snapshot.ref.parent.parent.id;
           });
           return this.db
-            .collection<Group>('groups', (ref) =>
-              ref.where('id', 'in', groupIds).orderBy('name')
-            )
+            .collection<Group>('groups')
             .valueChanges({ idField: 'id' })
             .pipe(
               map((groups: Group[]) => {
-                return <Group[]>groups.map((group: Group) => {
-                  return new Group({
-                    ...group,
+                return <Group[]>groups
+                  .filter((group: Group) => {
+                    return groupIds.includes(group.id);
+                  })
+                  .map((group: Group) => {
+                    return new Group({
+                      ...group,
+                    });
                   });
-                });
               })
             );
         })
@@ -55,13 +57,11 @@ export class GroupService {
 
   addGroup(group: Partial<Group>, member: Partial<Member>): Observable<any> {
     const batch = this.db.firestore.batch();
-    group.id = this.db.createId();
-    member.id = this.db.createId();
-    const groupRef = this.db.doc(`/groups/${group.id}`).ref;
+    const groupId = this.db.createId();
+    const memberId = this.db.createId();
+    const groupRef = this.db.doc(`/groups/${groupId}`).ref;
     batch.set(groupRef, group);
-    const memberRef = this.db.doc(
-      `/groups/${group.id}/members/${member.id}`
-    ).ref;
+    const memberRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
     batch.set(memberRef, member);
     return from(batch.commit());
   }

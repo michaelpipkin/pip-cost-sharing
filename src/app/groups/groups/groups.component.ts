@@ -20,7 +20,6 @@ import { JoinGroupComponent } from '../join-group/join-group.component';
 export class GroupsComponent implements OnInit {
   currentUser: firebase.User;
   groups$: Observable<Group[]>;
-  columnsToDisplay: string[] = ['name', 'memberCount'];
   selectedGroupId: string;
   dialogConfig: MatDialogConfig = {
     width: '520px',

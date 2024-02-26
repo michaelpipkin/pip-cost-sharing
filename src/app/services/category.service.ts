@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
+import { updateDoc } from '@angular/fire/firestore';
 import { Category } from '@models/category';
-import { from, map, Observable } from 'rxjs';
+import { Expense } from '@models/expense';
+import { concatMap, from, map, Observable, of } from 'rxjs';
 import {
   AngularFirestore,
   QuerySnapshot,
@@ -28,9 +30,22 @@ export class CategoryService {
   }
 
   addCategory(groupId: string, category: Partial<Category>): Observable<any> {
-    return from(
-      this.db.collection(`groups/${groupId}/categories`).add(category)
-    );
+    return this.db
+      .collection(`groups/${groupId}/categories`, (ref) =>
+        ref.where('name', '==', category.name)
+      )
+      .get()
+      .pipe(
+        concatMap((querySnap) => {
+          if (querySnap.size > 0) {
+            return of(new Error('This category already exists.'));
+          } else {
+            return from(
+              this.db.collection(`groups/${groupId}/categories`).add(category)
+            );
+          }
+        })
+      );
   }
 
   updateCategory(
@@ -38,23 +53,26 @@ export class CategoryService {
     categoryId: string,
     changes: Partial<Category>
   ): Observable<any> {
-    return from(
-      this.db.doc(`groups/${groupId}/categories/${categoryId}`).update(changes)
-    );
+    const docRef = this.db.doc(
+      `groups/${groupId}/categories/${categoryId}`
+    ).ref;
+    return of(updateDoc(docRef, changes));
   }
 
   deleteCategory(groupId: string, categoryId: string): Observable<any> {
     return this.db
-      .collectionGroup<Category>('splits', (ref) =>
+      .collectionGroup<Expense>('expenses', (ref) =>
         ref
           .where('groupId', '==', groupId)
           .where('categoryId', '==', categoryId)
       )
       .get()
       .pipe(
-        map((snap: QuerySnapshot<Category>) => {
+        map((snap: QuerySnapshot<Expense>) => {
           if (snap.size > 0) {
-            return null;
+            return new Error(
+              'This category is assigned to expenses and cannot be deleted.'
+            );
           } else {
             return from(
               this.db

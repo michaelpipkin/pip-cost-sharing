@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Expense } from '@models/expense';
-import { from, map, Observable } from 'rxjs';
+import { Split } from '@models/split';
+import { concatMap, from, map, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -11,15 +12,28 @@ export class ExpenseService {
 
   getExpensesForGroup(groupId: string): Observable<Expense[]> {
     return this.db
-      .collection<Expense>(`groups/${groupId}/expenses`)
+      .collectionGroup('splits', (ref) => ref.where('groupId', '==', groupId))
       .valueChanges({ idField: 'id' })
       .pipe(
-        map((expenses: Expense[]) => {
-          return <Expense[]>expenses.map((expense) => {
-            return new Expense({
-              ...expense,
+        concatMap((res) => {
+          const splits = res.map((split) => {
+            return new Split({
+              ...split,
             });
           });
+          return this.db
+            .collection<Expense>(`groups/${groupId}/expenses`)
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((expenses: Expense[]) => {
+                return <Expense[]>expenses.map((expense) => {
+                  return new Expense({
+                    ...expense,
+                    splits: splits.filter((s) => s.expenseId === expense.id),
+                  });
+                });
+              })
+            );
         })
       );
   }

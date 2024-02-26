@@ -1,13 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Group } from '@models/group';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { concatMap, from, map, Observable, of, throwError } from 'rxjs';
-import {
-  AngularFirestore,
-  DocumentSnapshot,
-  QuerySnapshot,
-} from '@angular/fire/compat/firestore';
+import { concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -58,7 +52,7 @@ export class MemberService {
               .doc(`/groups/${groupId}`)
               .get()
               .pipe(
-                map((docSnap: DocumentSnapshot<Group>) => {
+                map((docSnap) => {
                   if (docSnap.exists) {
                     return from(
                       this.db
@@ -85,13 +79,13 @@ export class MemberService {
 
   deleteMemberFromGroup(groupId: string, memberId: string): Observable<any> {
     return this.db
-      .collectionGroup<Split>('splits', (ref) =>
+      .collectionGroup('splits', (ref) =>
         ref.where('groupId', '==', groupId).where('memberId', '==', memberId)
       )
       .get()
       .pipe(
-        map((snap: QuerySnapshot<Split>) => {
-          if (snap.size > 0) {
+        map((querySnap) => {
+          if (querySnap.size > 0) {
             return of(
               new Error(
                 'This member has existing splits and cannot be deleted.'

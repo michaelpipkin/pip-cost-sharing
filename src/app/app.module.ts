@@ -39,6 +39,9 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
+import { CategoriesComponent } from './categories/categories/categories.component';
+import { AddCategoryComponent } from './categories/add-category/add-category.component';
+import { EditCategoryComponent } from './categories/edit-category/edit-category.component';
 
 @NgModule({
   declarations: [
@@ -52,6 +55,9 @@ import {
     JoinGroupComponent,
     MembersComponent,
     ExpensesComponent,
+    CategoriesComponent,
+    AddCategoryComponent,
+    EditCategoryComponent,
   ],
   imports: [
     BrowserModule,

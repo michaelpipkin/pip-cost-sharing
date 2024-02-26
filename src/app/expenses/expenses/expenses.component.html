@@ -1,1 +1,20 @@
-<p>expenses works!</p>
+<ng-container *ngIf="members$ | async; let members">
+    <ng-container *ngIf="categories$ | async; let categories">
+        <ul>
+            @for (expense of expenses$ | async; track expense) {
+            <li>Amount: {{ expense.amount }}</li>
+            <li>Category: {{ getCategoryName(categories, expense.categoryId) }}</li>
+            <li>Paid By: {{ getMemberName(members, expense.paidByMemberId) }} </li>
+            <li>Unpaid Amount: ${{ expense.unpaidAmount | number : '1.2-2' }}</li>
+            <li>Paid: {{ expense.paid }}</li>
+            @for (split of expense.splits; track split) {
+            <ul>
+                <li>Owed By: {{ getMemberName(members, split.memberId) }}</li>
+                <li>Amount: ${{ split.amount | number : '1.2-2' }}</li>
+                <li>Paid: {{ split.paid }}</li>
+            </ul>
+            }
+            }
+        </ul>
+    </ng-container>
+</ng-container>
