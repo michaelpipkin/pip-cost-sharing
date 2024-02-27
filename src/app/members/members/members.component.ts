@@ -1,8 +1,12 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
-import { map, Observable } from 'rxjs';
+import firebase from 'firebase/compat/app';
+import { map, Observable, tap } from 'rxjs';
+import { EditMemberComponent } from '../edit-member/edit-member.component';
 
 @Component({
   selector: 'app-members',
@@ -11,6 +15,7 @@ import { map, Observable } from 'rxjs';
 })
 export class MembersComponent implements OnChanges {
   @Input() groupId: string = '';
+  @Input() currentUser: firebase.User;
   members$: Observable<Member[]>;
   filteredMembers$: Observable<Member[]>;
   activeOnly: boolean = false;
@@ -18,10 +23,13 @@ export class MembersComponent implements OnChanges {
   sortField: string = 'displayName';
   sortAsc: boolean = true;
   columnsToDisplay: string[] = ['displayName', 'activeText', 'groupAdminText'];
+  isUserAdmin: boolean = false;
 
   constructor(
     private memberService: MemberService,
-    private sorter: SortingService
+    private sorter: SortingService,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -30,7 +38,13 @@ export class MembersComponent implements OnChanges {
   }
 
   loadMembers(): void {
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId);
+    this.members$ = this.memberService.getAllGroupMembers(this.groupId).pipe(
+      tap((members: Member[]) => {
+        this.isUserAdmin = members.find(
+          (m) => m.userId == this.currentUser.uid
+        ).groupAdmin;
+      })
+    );
   }
 
   filterMembers(): void {
@@ -66,5 +80,22 @@ export class MembersComponent implements OnChanges {
     this.filterMembers();
   }
 
-  onRowClick(member: Member): void {}
+  onRowClick(member: Member): void {
+    if (this.isUserAdmin || this.currentUser.uid == member.userId) {
+      const dialogConfig: MatDialogConfig = {};
+      dialogConfig.data = {
+        userId: this.currentUser.uid,
+        isUserAdmin: this.isUserAdmin,
+        member: member,
+      };
+      const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((result) => {
+        if (result.success) {
+          this.snackBar.open(`Member ${result.operation}`, 'OK');
+          this.loadMembers();
+          this.filterMembers();
+        }
+      });
+    }
+  }
 }

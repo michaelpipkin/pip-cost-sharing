@@ -77,4 +77,35 @@ export class SplitService {
         .delete()
     );
   }
+
+  addSplits(
+    groupId: string,
+    expenseId: string,
+    splits: Partial<Split>[]
+  ): Observable<any> {
+    const batch = this.db.firestore.batch();
+    splits.forEach((split: Partial<Split>) => {
+      const splitId = this.db.createId();
+      const splitRef = this.db.doc(
+        `/groups/${groupId}/expenses/${expenseId}/splits/${splitId}`
+      ).ref;
+      batch.set(splitRef, split);
+    });
+    return from(batch.commit());
+  }
+
+  clearSplits(groupId: string, expenseId: string): Observable<any> {
+    const batch = this.db.firestore.batch();
+    return this.db
+      .collection<Split>(`groups/${groupId}/expenses/${expenseId}/splits`)
+      .get()
+      .pipe(
+        map((querySnap) => {
+          querySnap.forEach((docSnap) => {
+            batch.delete(docSnap.ref);
+          });
+          return from(batch.commit());
+        })
+      );
+  }
 }

@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { deleteDoc, updateDoc } from '@angular/fire/firestore';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { concatMap, from, map, Observable } from 'rxjs';
+import { concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -60,14 +61,12 @@ export class ExpenseService {
     expenseId: string,
     changes: Partial<Expense>
   ): Observable<any> {
-    return from(
-      this.db.doc(`groups/${groupId}/expenses/${expenseId}`).update(changes)
-    );
+    const docRef = this.db.doc(`groups/${groupId}/expenses/${expenseId}`).ref;
+    return of(updateDoc(docRef, changes));
   }
 
   deleteExpense(groupId: string, expenseId: string): Observable<any> {
-    return from(
-      this.db.doc(`groups/${groupId}/expenses/${expenseId}`).delete()
-    );
+    const docRef = this.db.doc(`groups/${groupId}/expenses/${expenseId}`).ref;
+    return of(deleteDoc(docRef));
   }
 }

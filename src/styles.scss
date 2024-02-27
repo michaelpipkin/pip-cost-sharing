@@ -190,6 +190,10 @@ mat-dialog-actions,
   }
 }
 
+.hidden {
+  display: none !important;
+}
+
 .clickable:hover {
   cursor: pointer;
 }
@@ -197,6 +201,15 @@ mat-dialog-actions,
 .clickable-row:hover {
   background-color: lightgray;
   cursor: pointer;
+}
+
+.paid-icon {
+  color: green;
+}
+
+.paid-icon:hover {
+  cursor: pointer;
+  color: chartreuse;
 }
 
 .mat-mdc-footer-cell {

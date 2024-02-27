@@ -69,7 +69,6 @@ export class EditCategoryComponent {
         map((res) => {
           if (res.name === 'Error') {
             this.snackBar.open(res.message, 'Close');
-            this.editCategoryForm.enable();
           } else {
             this.dialogRef.close({
               success: true,
@@ -82,7 +81,6 @@ export class EditCategoryComponent {
             'Something went wrong - could not delete category.',
             'Close'
           );
-          this.editCategoryForm.enable();
           return throwError(() => new Error(err.message));
         })
       )

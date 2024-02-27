@@ -43,6 +43,7 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
+import { EditMemberComponent } from './members/edit-member/edit-member.component';
 
 @NgModule({
   declarations: [
@@ -60,6 +61,7 @@ import {
     AddCategoryComponent,
     EditCategoryComponent,
     YesNoPipe,
+    EditMemberComponent,
   ],
   imports: [
     BrowserModule,

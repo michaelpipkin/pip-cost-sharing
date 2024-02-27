@@ -17,16 +17,16 @@
         </div>
     </div>
     <div class="row d-flex justify-content-center">
-        <div class="col-9">
+        <div class="col-lg-9 col-md-12">
             <div *ngIf="!!selectedGroupId" id="group-details">
                 <div class="center-text">
-                    <span id="join-code" matTooltip="Click to copy group join code" (click)="copyGroupCode()">Group join
-                        code:
-                        {{selectedGroupId}}</span>
+                    <span id="join-code" matTooltip="Click to copy group join code" (click)="copyGroupCode()">
+                        Group join code: {{selectedGroupId}}
+                    </span>
                 </div>
                 <mat-tab-group>
                     <mat-tab label="Members">
-                        <app-members [groupId]="selectedGroupId"></app-members>
+                        <app-members [groupId]="selectedGroupId" [currentUser]="currentUser"></app-members>
                     </mat-tab>
                     <mat-tab label="Categories">
                         <app-categories [groupId]="selectedGroupId"></app-categories>

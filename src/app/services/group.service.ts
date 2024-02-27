@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { updateDoc } from '@angular/fire/firestore';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { concatMap, from, map, Observable, of } from 'rxjs';
@@ -61,13 +62,15 @@ export class GroupService {
     const memberId = this.db.createId();
     const groupRef = this.db.doc(`/groups/${groupId}`).ref;
     batch.set(groupRef, group);
+    member.groupId = groupId;
     const memberRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
     batch.set(memberRef, member);
     return from(batch.commit());
   }
 
   updateGroup(groupId: string, changes: Partial<Group>): Observable<any> {
-    return from(this.db.doc(`groups/${groupId}`).update(changes));
+    const docRef = this.db.doc(`groups/${groupId}`).ref;
+    return of(updateDoc(docRef, changes));
   }
 
   deleteGroup(groupId: string): Observable<any> {

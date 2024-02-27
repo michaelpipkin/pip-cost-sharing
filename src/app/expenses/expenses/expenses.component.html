@@ -63,7 +63,7 @@
                         </td>
                     </ng-container>
                     <ng-container matColumnDef="expandedDetail">
-                        <td mat-cell *matCellDef="let expense" colspan="7">
+                        <td mat-cell *matCellDef="let expense" [colSpan]="columnsToDisplay.length">
                             <div [@detailExpand]="expense == expandedExpense ? 'expanded' : 'collapsed'">
                                 <table mat-table [dataSource]="expense.splits" class="split-table">
                                     <ng-container matColumnDef="id">
@@ -85,8 +85,8 @@
                                     <ng-container matColumnDef="mark">
                                         <th mat-header-cell *matHeaderCellDef>Mark Paid/Unpaid</th>
                                         <td mat-cell *matCellDef="let split">
-                                            <mat-icon style="color: green"
-                                                class="material-icons-outlined clickable ms-4"
+                                            <mat-icon *ngIf="expense.paidByMemberId != split.memberId"
+                                                class="material-icons-outlined paid-icon ms-4"
                                                 (click)="markSplitPaidUnpaid(expense, split)">
                                                 paid
                                             </mat-icon>

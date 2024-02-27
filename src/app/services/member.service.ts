@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { updateDoc } from '@angular/fire/firestore';
 import { Member } from '@models/member';
 import { concatMap, from, map, Observable, of } from 'rxjs';
 
@@ -72,9 +73,8 @@ export class MemberService {
     memberId: string,
     changes: Partial<Member>
   ): Observable<any> {
-    return from(
-      this.db.doc(`/groups/${groupId}/members/${memberId}`).update(changes)
-    );
+    const docRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
+    return of(updateDoc(docRef, changes));
   }
 
   deleteMemberFromGroup(groupId: string, memberId: string): Observable<any> {
@@ -86,10 +86,8 @@ export class MemberService {
       .pipe(
         map((querySnap) => {
           if (querySnap.size > 0) {
-            return of(
-              new Error(
-                'This member has existing splits and cannot be deleted.'
-              )
+            return new Error(
+              'This member has existing splits and cannot be deleted.'
             );
           } else {
             return from(
