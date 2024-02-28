@@ -37,7 +37,7 @@ export class GroupService {
             return snapshot.ref.parent.parent.id;
           });
           return this.db
-            .collection<Group>('groups')
+            .collection<Group>('groups', (ref) => ref.orderBy('name'))
             .valueChanges({ idField: 'id' })
             .pipe(
               map((groups: Group[]) => {

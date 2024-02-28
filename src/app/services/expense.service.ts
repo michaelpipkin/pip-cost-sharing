@@ -23,7 +23,9 @@ export class ExpenseService {
             });
           });
           return this.db
-            .collection<Expense>(`groups/${groupId}/expenses`)
+            .collection<Expense>(`groups/${groupId}/expenses`, (ref) =>
+              ref.orderBy('date')
+            )
             .valueChanges({ idField: 'id' })
             .pipe(
               map((expenses: Expense[]) => {

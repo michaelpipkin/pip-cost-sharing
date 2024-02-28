@@ -1,4 +1,6 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Member } from '@models/member';
@@ -9,6 +11,7 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
+import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import {
   animate,
   state,
@@ -34,6 +37,7 @@ import {
 })
 export class ExpensesComponent implements OnChanges {
   @Input() groupId: string = '';
+  @Input() currentMember: Member;
   @Input() isGroupAdmin: boolean = false;
   members: Member[];
   categories: Category[];
@@ -60,7 +64,9 @@ export class ExpensesComponent implements OnChanges {
     private splitService: SplitService,
     private memberService: MemberService,
     private categoryService: CategoryService,
-    private sorter: SortingService
+    private sorter: SortingService,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -134,7 +140,24 @@ export class ExpensesComponent implements OnChanges {
 
   onRowClick(expense: Expense): void {}
 
-  addExpense(): void {}
+  addExpense(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        groupId: this.groupId,
+        member: this.currentMember,
+        isGroupAdmin: this.isGroupAdmin,
+      },
+      width: '650px',
+    };
+    const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result.success) {
+        this.snackBar.open(`Member ${result.operation}`, 'OK');
+        this.loadData();
+        this.filterExpenses();
+      }
+    });
+  }
 
   markSplitPaidUnpaid(expense: Expense, split: Split): void {
     const changes = {

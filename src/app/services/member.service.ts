@@ -41,7 +41,9 @@ export class MemberService {
 
   getAllGroupMembers(groupId: string): Observable<Member[]> {
     return this.db
-      .collection<Member>(`groups/${groupId}/members`)
+      .collection<Member>(`groups/${groupId}/members`, (ref) =>
+        ref.orderBy('displayName')
+      )
       .valueChanges({ idField: 'id' })
       .pipe(
         map((members: Member[]) => {

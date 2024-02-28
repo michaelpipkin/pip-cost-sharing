@@ -76,11 +76,12 @@ export class MembersComponent implements OnChanges {
 
   onRowClick(member: Member): void {
     if (this.isGroupAdmin || this.currentUser.uid == member.userId) {
-      const dialogConfig: MatDialogConfig = {};
-      dialogConfig.data = {
-        userId: this.currentUser.uid,
-        isGroupAdmin: this.isGroupAdmin,
-        member: member,
+      const dialogConfig: MatDialogConfig = {
+        data: {
+          userId: this.currentUser.uid,
+          isGroupAdmin: this.isGroupAdmin,
+          member: member,
+        },
       };
       const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {

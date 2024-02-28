@@ -72,8 +72,9 @@ export class CategoriesComponent implements OnChanges {
   }
 
   addCategory(): void {
-    const dialogConfig: MatDialogConfig = {};
-    dialogConfig.data = this.groupId;
+    const dialogConfig: MatDialogConfig = {
+      data: this.groupId,
+    };
     const dialogRef = this.dialog.open(AddCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
@@ -85,8 +86,9 @@ export class CategoriesComponent implements OnChanges {
   }
 
   onRowClick(category: Category): void {
-    const dialogConfig: MatDialogConfig = {};
-    dialogConfig.data = category;
+    const dialogConfig: MatDialogConfig = {
+      data: category,
+    };
     const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {

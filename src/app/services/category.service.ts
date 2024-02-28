@@ -16,7 +16,9 @@ export class CategoryService {
 
   getCategoriesForGroup(groupId: string): Observable<Category[]> {
     return this.db
-      .collection<Category>(`groups/${groupId}/categories`)
+      .collection<Category>(`groups/${groupId}/categories`, (ref) =>
+        ref.orderBy('name')
+      )
       .valueChanges({ idField: 'id' })
       .pipe(
         map((categories: Category[]) => {

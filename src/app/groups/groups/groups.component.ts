@@ -3,6 +3,7 @@ import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
+import { Member } from '@models/member';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
@@ -19,6 +20,7 @@ import { JoinGroupComponent } from '../join-group/join-group.component';
 })
 export class GroupsComponent implements OnInit {
   currentUser: firebase.User;
+  currentMember: Member;
   groups$: Observable<Group[]>;
   selectedGroupId: string;
   isGroupAdmin: boolean = false;
@@ -73,6 +75,7 @@ export class GroupsComponent implements OnInit {
       .getMemberByUserId(e.value, this.currentUser.uid)
       .pipe(
         tap((member) => {
+          this.currentMember = member;
           this.isGroupAdmin = member.groupAdmin;
         })
       )

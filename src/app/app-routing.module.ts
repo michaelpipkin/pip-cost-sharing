@@ -10,17 +10,17 @@ import {
 } from '@angular/fire/compat/auth-guard';
 
 const authGuard = () => redirectUnauthorizedTo(['login']);
-const loggedInGuard = () => redirectLoggedInTo(['members']);
+const loggedInGuard = () => redirectLoggedInTo(['home']);
 
 const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: '/members' },
+  { path: '', pathMatch: 'full', redirectTo: '/home' },
   {
     path: 'login',
     component: LoginComponent,
     ...canActivate(loggedInGuard),
   },
   {
-    path: 'groups',
+    path: 'home',
     component: GroupsComponent,
     ...canActivate(authGuard),
   },
@@ -29,12 +29,7 @@ const routes: Routes = [
     component: ProfileComponent,
     ...canActivate(authGuard),
   },
-  // {
-  //   path: 'categories',
-  //   component: CategoriesComponent,
-  //   ...canActivate(authGuard),
-  // }
-  { path: '**', redirectTo: '/groups' },
+  { path: '**', redirectTo: '/home' },
 ];
 
 @NgModule({
