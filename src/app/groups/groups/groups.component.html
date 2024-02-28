@@ -26,13 +26,14 @@
                 </div>
                 <mat-tab-group>
                     <mat-tab label="Members">
-                        <app-members [groupId]="selectedGroupId" [currentUser]="currentUser"></app-members>
+                        <app-members [groupId]="selectedGroupId" [currentUser]="currentUser"
+                            [isGroupAdmin]="isGroupAdmin"></app-members>
                     </mat-tab>
                     <mat-tab label="Categories">
-                        <app-categories [groupId]="selectedGroupId"></app-categories>
+                        <app-categories [groupId]="selectedGroupId" [isGroupAdmin]="isGroupAdmin"></app-categories>
                     </mat-tab>
                     <mat-tab label="Expenses">
-                        <app-expenses [groupId]="selectedGroupId"></app-expenses>
+                        <app-expenses [groupId]="selectedGroupId" [isGroupAdmin]="isGroupAdmin"></app-expenses>
                     </mat-tab>
                 </mat-tab-group>
             </div>

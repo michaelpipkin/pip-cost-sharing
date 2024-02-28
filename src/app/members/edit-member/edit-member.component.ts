@@ -1,9 +1,15 @@
 import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { catchError, map, throwError } from 'rxjs';
 
 @Component({
@@ -14,19 +20,20 @@ import { catchError, map, throwError } from 'rxjs';
 export class EditMemberComponent {
   member: Member;
   userId: string;
-  isUserAdmin: boolean = false;
+  isGroupAdmin: boolean = false;
   editMemberForm: FormGroup;
 
   constructor(
     private dialogRef: MatDialogRef<EditMemberComponent>,
     private fb: FormBuilder,
+    private dialog: MatDialog,
     private memberService: MemberService,
     private snackBar: MatSnackBar,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.member = this.data.member;
     this.userId = this.data.userId;
-    this.isUserAdmin = this.data.isUserAdmin;
+    this.isGroupAdmin = this.data.isGroupAdmin;
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
       active: [this.member.active],
@@ -78,28 +85,37 @@ export class EditMemberComponent {
   }
 
   deleteMember(): void {
-    this.memberService
-      .deleteMemberFromGroup(this.member.groupId, this.member.id)
-      .pipe(
-        map((res) => {
-          if (res.name === 'Error') {
-            this.snackBar.open(res.message, 'Close');
-          } else {
-            this.dialogRef.close({
-              success: true,
-              operation: 'deleted',
-            });
-          }
-        }),
-        catchError((err: Error) => {
-          this.snackBar.open(
-            'Something went wrong - could not delete member.',
-            'Close'
-          );
-          return throwError(() => new Error(err.message));
-        })
-      )
-      .subscribe();
+    const dialogConfig: MatDialogConfig = {
+      width: '600px',
+      data: `member: ${this.member.displayName}`,
+    };
+    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.memberService
+          .deleteMemberFromGroup(this.member.groupId, this.member.id)
+          .pipe(
+            map((res) => {
+              if (res.name === 'Error') {
+                this.snackBar.open(res.message, 'Close');
+              } else {
+                this.dialogRef.close({
+                  success: true,
+                  operation: 'deleted',
+                });
+              }
+            }),
+            catchError((err: Error) => {
+              this.snackBar.open(
+                'Something went wrong - could not delete member.',
+                'Close'
+              );
+              return throwError(() => new Error(err.message));
+            })
+          )
+          .subscribe();
+      }
+    });
   }
 
   close(): void {

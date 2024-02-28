@@ -6,8 +6,6 @@ export interface IMember {
   email: string;
   active: boolean;
   groupAdmin: boolean;
-  readonly activeText: string;
-  readonly groupAdminText: string;
 }
 
 export class Member implements IMember {
@@ -21,10 +19,4 @@ export class Member implements IMember {
   email: string;
   active: boolean;
   groupAdmin: boolean;
-  get activeText(): string {
-    return this.active ? 'Active' : 'Inactive';
-  }
-  get groupAdminText(): string {
-    return this.groupAdmin ? 'Yes' : 'No';
-  }
 }

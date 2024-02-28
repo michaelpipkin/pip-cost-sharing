@@ -6,6 +6,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { AuthInterceptor } from '@services/auth.interceptor';
 import { LoadingService } from '@shared/loading/loading.service';
+import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
@@ -21,6 +22,7 @@ import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { MaterialModule } from './material.module';
+import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 import {
@@ -43,7 +45,7 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { EditMemberComponent } from './members/edit-member/edit-member.component';
+import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
 
 @NgModule({
   declarations: [
@@ -62,6 +64,8 @@ import { EditMemberComponent } from './members/edit-member/edit-member.component
     EditCategoryComponent,
     YesNoPipe,
     EditMemberComponent,
+    ActiveInactivePipe,
+    DeleteDialogComponent,
   ],
   imports: [
     BrowserModule,

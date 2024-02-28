@@ -1,5 +1,4 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Member } from '@models/member';
@@ -35,6 +34,7 @@ import {
 })
 export class ExpensesComponent implements OnChanges {
   @Input() groupId: string = '';
+  @Input() isGroupAdmin: boolean = false;
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;

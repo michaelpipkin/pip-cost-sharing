@@ -23,6 +23,22 @@ export class MemberService {
       );
   }
 
+  getMemberByUserId(groupId: string, userId: string): Observable<Member> {
+    return this.db
+      .collection<Member>(`groups/${groupId}/members`, (ref) =>
+        ref.where('userId', '==', userId).limit(1)
+      )
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        map((docs: Member[]) => {
+          const member = docs.shift();
+          return new Member({
+            ...member,
+          });
+        })
+      );
+  }
+
   getAllGroupMembers(groupId: string): Observable<Member[]> {
     return this.db
       .collection<Member>(`groups/${groupId}/members`)

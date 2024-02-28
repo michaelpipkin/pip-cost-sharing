@@ -15,13 +15,14 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
 })
 export class CategoriesComponent implements OnChanges {
   @Input() groupId: string = '';
+  @Input() isGroupAdmin: boolean = false;
   categories$: Observable<Category[]>;
   filteredCategories$: Observable<Category[]>;
   activeOnly: boolean = false;
   nameFilter: string = '';
   sortField: string = 'name';
   sortAsc: boolean = true;
-  columnsToDisplay: string[] = ['name', 'activeText'];
+  columnsToDisplay: string[] = ['name', 'active'];
 
   constructor(
     private categorySerice: CategoryService,

@@ -1,0 +1,9 @@
+<h1 mat-dialog-title>Confirm Action</h1>
+<mat-dialog-content>
+    <p>WARNING! This action cannot be undone. Are you sure you want to delete {{target}}?</p>
+
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button type="button" class="btn btn-secondary me-2" (click)="close(false)">Cancel</button>
+    <button type="button" class="btn btn-warning me-2" (click)="close(true)">Delete</button>
+</mat-dialog-actions>

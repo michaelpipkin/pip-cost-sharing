@@ -3,7 +3,6 @@ export interface ICategory {
   groupId: string;
   name: string;
   active: boolean;
-  readonly activeText: string;
 }
 
 export class Category implements ICategory {
@@ -14,7 +13,4 @@ export class Category implements ICategory {
   groupId: string;
   name: string;
   active: boolean = true;
-  get activeText(): string {
-    return this.active ? 'Active' : 'Inactive';
-  }
 }

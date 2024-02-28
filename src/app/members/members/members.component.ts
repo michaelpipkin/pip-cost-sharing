@@ -16,14 +16,14 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
 export class MembersComponent implements OnChanges {
   @Input() groupId: string = '';
   @Input() currentUser: firebase.User;
+  @Input() isGroupAdmin: boolean = false;
   members$: Observable<Member[]>;
   filteredMembers$: Observable<Member[]>;
   activeOnly: boolean = false;
   nameFilter: string = '';
   sortField: string = 'displayName';
   sortAsc: boolean = true;
-  columnsToDisplay: string[] = ['displayName', 'activeText', 'groupAdminText'];
-  isUserAdmin: boolean = false;
+  columnsToDisplay: string[] = ['displayName', 'active', 'groupAdmin'];
 
   constructor(
     private memberService: MemberService,
@@ -38,13 +38,7 @@ export class MembersComponent implements OnChanges {
   }
 
   loadMembers(): void {
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId).pipe(
-      tap((members: Member[]) => {
-        this.isUserAdmin = members.find(
-          (m) => m.userId == this.currentUser.uid
-        ).groupAdmin;
-      })
-    );
+    this.members$ = this.memberService.getAllGroupMembers(this.groupId);
   }
 
   filterMembers(): void {
@@ -81,11 +75,11 @@ export class MembersComponent implements OnChanges {
   }
 
   onRowClick(member: Member): void {
-    if (this.isUserAdmin || this.currentUser.uid == member.userId) {
+    if (this.isGroupAdmin || this.currentUser.uid == member.userId) {
       const dialogConfig: MatDialogConfig = {};
       dialogConfig.data = {
         userId: this.currentUser.uid,
-        isUserAdmin: this.isUserAdmin,
+        isGroupAdmin: this.isGroupAdmin,
         member: member,
       };
       const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);

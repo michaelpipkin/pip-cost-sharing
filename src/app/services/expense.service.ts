@@ -41,18 +41,34 @@ export class ExpenseService {
 
   getExpense(groupId: string, expenseId: string): Observable<Expense> {
     return this.db
-      .doc<Expense>(`groups/${groupId}/expenses/${expenseId}`)
+      .collectionGroup('splits', (ref) =>
+        ref.where('expenseId', '==', expenseId)
+      )
       .valueChanges({ idField: 'id' })
       .pipe(
-        map((expense: Expense) => {
-          return new Expense({
-            ...expense,
+        concatMap((res) => {
+          const splits = res.map((split) => {
+            return new Split({
+              ...split,
+            });
           });
+          return this.db
+            .doc<Expense>(`groups/${groupId}/expenses/${expenseId}`)
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((expense: Expense) => {
+                return new Expense({
+                  ...expense,
+                  splits: splits,
+                });
+              })
+            );
         })
       );
   }
 
   addExpense(groupId: string, expense: Partial<Expense>): Observable<any> {
+    // TO-DO: refactor to add splits along with expense
     return from(this.db.collection(`groups/${groupId}/expenses`).add(expense));
   }
 

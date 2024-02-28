@@ -2,9 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
@@ -21,13 +21,14 @@ export class GroupsComponent implements OnInit {
   currentUser: firebase.User;
   groups$: Observable<Group[]>;
   selectedGroupId: string;
+  isGroupAdmin: boolean = false;
   dialogConfig: MatDialogConfig = {
     width: '520px',
   };
 
   constructor(
     private groupService: GroupService,
-    private router: Router,
+    private memberService: MemberService,
     private dialog: MatDialog,
     private loading: LoadingService,
     private snackbar: MatSnackBar,
@@ -67,7 +68,16 @@ export class GroupsComponent implements OnInit {
     });
   }
 
-  onSelectGroup(e: MatSelectChange): void {}
+  onSelectGroup(e: MatSelectChange): void {
+    this.memberService
+      .getMemberByUserId(e.value, this.currentUser.uid)
+      .pipe(
+        tap((member) => {
+          this.isGroupAdmin = member.groupAdmin;
+        })
+      )
+      .subscribe();
+  }
 
   copyGroupCode(): void {
     navigator.clipboard.writeText(this.selectedGroupId);
