@@ -147,7 +147,7 @@ export class ExpensesComponent implements OnChanges {
         member: this.currentMember,
         isGroupAdmin: this.isGroupAdmin,
       },
-      width: '650px',
+      width: '850px',
     };
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {

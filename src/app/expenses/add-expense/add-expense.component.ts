@@ -1,5 +1,4 @@
 import { Component, Inject, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -11,10 +10,26 @@ import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import { Observable } from 'rxjs';
 import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
+import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogRef,
 } from '@angular/material/dialog';
+
+export class SplitInProgress {
+  constructor(init?: Partial<SplitInProgress>) {
+    Object.assign(this, init);
+  }
+  memberId: string = '';
+  assigned: number = 0;
+  allocated: number = 0;
+}
 
 @Component({
   selector: 'app-add-expense',
@@ -28,10 +43,17 @@ export class AddExpenseComponent implements OnInit {
   currentMember: Member;
   isGroupAdmin: boolean = false;
   addExpenseForm: FormGroup;
-  splits: Split[] = [];
-  splitsDataSource = [...this.splits];
-  columnsToDisplay: string[] = ['member', 'allocated', 'amount', 'delete'];
-  @ViewChild(MatTable) table: MatTable<Split>;
+  splitsDataSource: SplitInProgress[] = [];
+  columnsToDisplay: string[] = [
+    'memberId',
+    'assigned',
+    'allocated',
+    'save',
+    'delete',
+  ];
+  splitForm: FormArray;
+
+  @ViewChild(MatTable) splitsTable: MatTable<SplitInProgress>;
 
   constructor(
     private dialogRef: MatDialogRef<AddExpenseComponent>,
@@ -66,17 +88,57 @@ export class AddExpenseComponent implements OnInit {
     return this.addExpenseForm.controls;
   }
 
-  addRow(): void {
-    this.splitsDataSource.push(new Split());
-    this.table.renderRows();
+  getSplitControl(index: number, controlName: string): FormControl {
+    return (this.splitForm.at(index) as FormGroup).get(
+      controlName
+    ) as FormControl;
   }
 
-  allocateSharedAmounts(): void {}
+  updateForm(): void {
+    this.splitForm = new FormArray(
+      this.splitsDataSource.map(
+        (x: any) =>
+          new FormGroup({
+            memberId: new FormControl(x.memberId),
+            assigned: new FormControl(x.assigned),
+          })
+      )
+    );
+  }
+
+  addRow(): void {
+    this.saveSplitsData();
+    this.splitsDataSource.push(new SplitInProgress());
+    this.updateForm();
+    this.splitsTable.renderRows();
+  }
+
+  saveSplitsData(): void {
+    for (let i = 0; i < this.splitForm.controls.length; i++) {
+      const split = this.splitForm.controls[i].value;
+      this.splitsDataSource[i] = new SplitInProgress({
+        memberId: split.memberId,
+        assigned: split.assigned,
+        allocated: 0,
+      });
+    }
+  }
+
+  deleteRow(index: number): void {
+    this.saveSplitsData();
+    this.splitsDataSource.splice(index, 1);
+    this.updateForm();
+    this.splitsTable.renderRows();
+  }
+
+  allocateSharedAmounts(): void {
+    this.saveSplitsData();
+  }
 
   getSplitTotal(): number {
     let total = 0;
-    this.splits.forEach((split) => {
-      total += split.amount;
+    this.splitsDataSource.forEach((split) => {
+      total += split.allocated;
     });
     return total;
   }
