@@ -1,4 +1,5 @@
 import { Component, Inject, OnInit, ViewChild } from '@angular/core';
+import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
 import { Category } from '@models/category';
@@ -8,9 +9,18 @@ import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import * as firestore from 'firebase/firestore';
-import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import { Url } from 'url';
+import {
+  catchError,
+  NotFoundError,
+  Observable,
+  of,
+  tap,
+  throwError,
+} from 'rxjs';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -36,6 +46,9 @@ export class EditExpenseComponent implements OnInit {
   groupId: string;
   currentMember: Member;
   isGroupAdmin: boolean = false;
+  fileName: string;
+  receiptFile: File;
+  receiptUrl: Url;
   editExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
@@ -51,6 +64,7 @@ export class EditExpenseComponent implements OnInit {
     private expenseService: ExpenseService,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
+    private storage: AngularFireStorage,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.groupId = this.data.groupId;
@@ -73,6 +87,21 @@ export class EditExpenseComponent implements OnInit {
   ngOnInit(): void {
     this.members$ = this.memberService.getAllGroupMembers(this.groupId);
     this.categories$ = this.categoryService.getCategoriesForGroup(this.groupId);
+    const url = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
+    this.storage
+      .ref(url)
+      .getDownloadURL()
+      .pipe(
+        tap((url) => {
+          if (!!url) {
+            this.receiptUrl = url;
+          }
+        }),
+        catchError((err: NotFoundError) => {
+          return of('Receipt not found');
+        })
+      )
+      .subscribe();
   }
 
   public get e() {
@@ -95,6 +124,21 @@ export class EditExpenseComponent implements OnInit {
           })
       )
     );
+  }
+
+  onFileSelected(e): void {
+    if (e.target.files.length > 0) {
+      const file: File = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        this.snackBar.open(
+          'File is too large. File size limited to 5MB.',
+          'OK'
+        );
+      } else {
+        this.receiptFile = file;
+        this.fileName = this.receiptFile.name;
+      }
+    }
   }
 
   addRow(): void {
@@ -206,49 +250,68 @@ export class EditExpenseComponent implements OnInit {
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(): void {
-    this.editExpenseForm.disable();
-    const val = this.editExpenseForm.value;
-    const changes: Partial<Expense> = {
-      date: firestore.Timestamp.fromDate(val.date),
-      description: val.description,
-      categoryId: val.categoryId,
-      paidByMemberId: val.paidByMemberId,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Confirm Action',
+        confirmationText:
+          'Updating an expense will mark all splits as unpaid. Are you sure you want to continue?',
+        cancelButtonText: 'No',
+        confirmButtonText: 'Yes',
+      },
     };
-    let splits: Partial<Split>[] = [];
-    this.splitsDataSource.forEach((s) => {
-      const split: Partial<Split> = {
-        groupId: this.groupId,
-        categoryId: val.categoryId,
-        assignedAmount: s.assignedAmount,
-        allocatedAmount: s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
-        paid: s.owedByMemberId == val.paidByMemberId,
-      };
-      splits.push(split);
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.editExpenseForm.disable();
+        const val = this.editExpenseForm.value;
+        const changes: Partial<Expense> = {
+          date: firestore.Timestamp.fromDate(val.date),
+          description: val.description,
+          categoryId: val.categoryId,
+          paidByMemberId: val.paidByMemberId,
+          sharedAmount: val.sharedAmount,
+          allocatedAmount: val.allocatedAmount,
+          totalAmount: val.amount,
+        };
+        let splits: Partial<Split>[] = [];
+        this.splitsDataSource.forEach((s) => {
+          const split: Partial<Split> = {
+            groupId: this.groupId,
+            categoryId: val.categoryId,
+            assignedAmount: s.assignedAmount,
+            allocatedAmount: s.allocatedAmount,
+            paidByMemberId: val.paidByMemberId,
+            owedByMemberId: s.owedByMemberId,
+            paid: s.owedByMemberId == val.paidByMemberId,
+          };
+          splits.push(split);
+        });
+        this.expenseService
+          .updateExpense(this.groupId, this.data.expense.id, changes, splits)
+          .pipe(
+            tap(() => {
+              if (this.receiptFile) {
+                const filePath = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
+                const upload = this.storage.upload(filePath, this.receiptFile);
+                upload.snapshotChanges().subscribe();
+              }
+              this.dialogRef.close({
+                success: true,
+                operation: 'edited',
+              });
+            }),
+            catchError((err: Error) => {
+              this.snackBar.open(
+                'Something went wrong - could not add expense.',
+                'Close'
+              );
+              this.editExpenseForm.enable();
+              return throwError(() => new Error(err.message));
+            })
+          )
+          .subscribe();
+      }
     });
-    this.expenseService
-      .updateExpense(this.groupId, this.data.expense.id, changes, splits)
-      .pipe(
-        tap(() => {
-          this.dialogRef.close({
-            success: true,
-            operation: 'edited',
-          });
-        }),
-        catchError((err: Error) => {
-          this.snackBar.open(
-            'Something went wrong - could not add expense.',
-            'Close'
-          );
-          this.editExpenseForm.enable();
-          return throwError(() => new Error(err.message));
-        })
-      )
-      .subscribe();
   }
 
   delete(): void {
@@ -263,6 +326,13 @@ export class EditExpenseComponent implements OnInit {
           .deleteExpense(this.groupId, this.data.expense.id)
           .pipe(
             tap(() => {
+              if (this.receiptUrl) {
+                this.storage
+                  .ref(
+                    `groups/${this.groupId}/receipts/${this.data.expense.id}`
+                  )
+                  .delete();
+              }
               this.dialogRef.close({
                 success: true,
                 operation: 'deleted',

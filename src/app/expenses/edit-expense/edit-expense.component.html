@@ -62,10 +62,24 @@
         </mat-form-field>
     </form>
     <br />
-    <button type="button" class="btn btn-primary me-3" (click)="addRow()">Add New Split</button>
-    <button type="button" class="btn btn-primary me-3" (click)="allocateSharedAmounts()">
-        Allocate shared amounts
-    </button>
+    <div class="row" id="expense-buttons">
+        <div class="col-7">
+            <button type="button" class="btn btn-primary me-2" (click)="addRow()">Add New Split</button>
+            <button type="button" class="btn btn-primary me-2" (click)="allocateSharedAmounts()">
+                Allocate Expense
+            </button>
+            <a type="button" class="btn btn-primary" [class.hidden]="!receiptUrl" [href]="receiptUrl"
+                target="_blank">View Receipt</a>
+        </div>
+        <div (click)="attachFile.click()" class="col-5 file-upload">
+            <input type="file" accept=".pdf,.jpg,.jpeg" class="file-input" #attachFile
+                (change)="onFileSelected($event)">
+            <button mat-mini-fab class="btn btn-secondary align-top">
+                <mat-icon>attach_file</mat-icon>
+            </button>
+            <span class="filename">{{ fileName || "Upload receipt" }}</span>
+        </div>
+    </div>
     <br />
     <div class="mat-elevation-z8 p-3 m-2">
         <div class="scrollable-table">

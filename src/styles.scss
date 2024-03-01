@@ -314,3 +314,24 @@ input.number-right::-webkit-inner-spin-button {
 .clickable {
   cursor: pointer;
 }
+
+.file-input {
+  display: none;
+}
+
+.file-upload {
+  max-width: 320px;
+  height: 52px;
+  padding: 0;
+  overflow: hidden;
+  button.mdc-fab {
+    width: 48px !important;
+  }
+}
+
+span.filename {
+  margin-left: 8px;
+  display: inline-block;
+  max-width: 250px;
+  max-height: 48px;
+}

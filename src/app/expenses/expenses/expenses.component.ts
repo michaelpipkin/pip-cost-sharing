@@ -1,4 +1,5 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
@@ -11,6 +12,7 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
+import { Url } from 'url';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
@@ -45,6 +47,7 @@ export class ExpensesComponent implements OnChanges {
   categories: Category[];
   expenses$: Observable<Expense[]>;
   filteredExpenses$: Observable<Expense[]>;
+  receipts: string[] = [];
   unpaidOnly: boolean = true;
   selectedMemberId: string = '';
   selectedCategoryId: string = '';
@@ -56,6 +59,7 @@ export class ExpensesComponent implements OnChanges {
     'amount',
     'description',
     'category',
+    'receipt',
     'paid',
     'expand',
   ];
@@ -68,6 +72,7 @@ export class ExpensesComponent implements OnChanges {
     private memberService: MemberService,
     private categoryService: CategoryService,
     private sorter: SortingService,
+    private storage: AngularFireStorage,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {}
@@ -84,6 +89,7 @@ export class ExpensesComponent implements OnChanges {
     }
     this.selectedMemberId = '';
     this.unpaidOnly = true;
+    this.getReceipts();
     this.memberService
       .getAllGroupMembers(this.groupId)
       .pipe(
@@ -103,7 +109,21 @@ export class ExpensesComponent implements OnChanges {
     this.filterExpenses();
   }
 
+  getReceipts(): Observable<any> {
+    return this.storage
+      .ref(`groups/${this.groupId}/receipts/`)
+      .list()
+      .pipe(
+        map((res) => {
+          res.items.forEach((file) => {
+            this.receipts.push(file.name);
+          });
+        })
+      );
+  }
+
   filterExpenses(): void {
+    this.getReceipts().subscribe();
     this.splitService.getSplitsForGroup(this.groupId).subscribe();
     this.filteredExpenses$ = this.expenses$.pipe(
       map((expenses: Expense[]) => {

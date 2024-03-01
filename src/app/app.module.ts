@@ -49,6 +49,11 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
+import { MembersHelpComponent } from './help/members-help/members-help.component';
+import { CategoriesHelpComponent } from './help/categories-help/categories-help.component';
+import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
+import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
+import { HelpComponent } from './help/help/help.component';
 
 @NgModule({
   declarations: [
@@ -72,6 +77,11 @@ import {
     EditExpenseComponent,
     SummaryComponent,
     ConfirmDialogComponent,
+    MembersHelpComponent,
+    CategoriesHelpComponent,
+    ExpensesHelpComponent,
+    SummaryHelpComponent,
+    HelpComponent,
   ],
   imports: [
     BrowserModule,

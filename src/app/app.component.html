@@ -1,16 +1,3 @@
-<!-- <mat-toolbar color="primary">
-    <div class="toolbar-tools-left">
-      <a id="title" routerLink="groups">Home</a>
-    </div>
-    <div class="toolbar-tools-right">
-      <ng-container *ngIf="user.isLoggedIn$ | async">
-        <a (click)="logout()">Log out</a>
-      </ng-container>
-      <ng-container *ngIf="!(user.isLoggedIn$ | async)">
-        <a routerLink="login">Log in</a>
-      </ng-container>
-    </div>
-  </mat-toolbar> -->
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
   <div class="container-fluid">
     <a class="navbar-brand" routerLink="home">Pip Cost Sharing</a>
@@ -27,6 +14,12 @@
       <div class="d-flex">
         <ng-container class="nav-item" *ngIf="user.isLoggedIn$ | async">
           <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <button mat-mini-fab class="btn btn-primary me-4 help-button" aria-label="help" title="Help"
+                (click)="showHelp()">
+                <mat-icon>help</mat-icon>
+              </button>
+            </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="profile">Profile</a>
             </li>

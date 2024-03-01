@@ -1,4 +1,6 @@
 import { Component, Inject, OnInit, ViewChild } from '@angular/core';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -30,6 +32,9 @@ export class AddExpenseComponent implements OnInit {
   groupId: string;
   currentMember: Member;
   isGroupAdmin: boolean = false;
+  fileName: string;
+  receiptFile: File;
+  newExpenseId: string;
   addExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
@@ -44,6 +49,8 @@ export class AddExpenseComponent implements OnInit {
     private expenseService: ExpenseService,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
+    private db: AngularFirestore,
+    private storage: AngularFireStorage,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.groupId = this.data.groupId;
@@ -65,6 +72,18 @@ export class AddExpenseComponent implements OnInit {
     this.categories$ = this.categoryService.getActiveCategoriesForGroup(
       this.groupId
     );
+    this.categories$
+      .pipe(
+        map((categories) => {
+          if (categories.length == 1) {
+            this.addExpenseForm.patchValue({
+              categoryId: categories[0].id,
+            });
+          }
+        })
+      )
+      .subscribe();
+    this.newExpenseId = this.db.createId();
   }
 
   public get e() {
@@ -87,6 +106,21 @@ export class AddExpenseComponent implements OnInit {
           })
       )
     );
+  }
+
+  onFileSelected(e): void {
+    if (e.target.files.length > 0) {
+      const file: File = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        this.snackBar.open(
+          'File is too large. File size limited to 5MB.',
+          'OK'
+        );
+      } else {
+        this.receiptFile = file;
+        this.fileName = this.receiptFile.name;
+      }
+    }
   }
 
   addRow(): void {
@@ -223,6 +257,7 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expense: Partial<Expense> = {
+      id: this.newExpenseId,
       groupId: this.groupId,
       date: firestore.Timestamp.fromDate(val.date),
       description: val.description,
@@ -236,6 +271,7 @@ export class AddExpenseComponent implements OnInit {
     this.splitsDataSource.forEach((s) => {
       const split: Partial<Split> = {
         groupId: this.groupId,
+        expenseId: this.newExpenseId,
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
         allocatedAmount: s.allocatedAmount,
@@ -249,6 +285,11 @@ export class AddExpenseComponent implements OnInit {
       .addExpense(this.groupId, expense, splits)
       .pipe(
         tap(() => {
+          if (this.receiptFile) {
+            const filePath = `groups/${this.groupId}/receipts/${this.newExpenseId}`;
+            const upload = this.storage.upload(filePath, this.receiptFile);
+            upload.snapshotChanges().subscribe();
+          }
           this.dialogRef.close(true);
         }),
         catchError((err: Error) => {

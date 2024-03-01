@@ -95,17 +95,15 @@ export class ExpenseService {
     splits: Partial<Split>[]
   ): Observable<any> {
     const batch = this.db.firestore.batch();
-    const expenseId = this.db.createId();
     const expenseRef = this.db.doc(
-      `/groups/${groupId}/expenses/${expenseId}`
+      `/groups/${groupId}/expenses/${expense.id}`
     ).ref;
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
       const splitId = this.db.createId();
       const splitRef = this.db.doc(
-        `/groups/${groupId}/expenses/${expenseId}/splits/${splitId}`
+        `/groups/${groupId}/expenses/${expense.id}/splits/${splitId}`
       ).ref;
-      split.expenseId = expenseId;
       batch.set(splitRef, split);
     });
     return from(batch.commit());
