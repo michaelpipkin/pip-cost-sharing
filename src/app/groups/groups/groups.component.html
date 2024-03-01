@@ -34,10 +34,11 @@
                     </mat-tab>
                     <mat-tab label="Expenses">
                         <app-expenses [groupId]="selectedGroupId" [currentMember]="currentMember"
-                            [isGroupAdmin]="isGroupAdmin"></app-expenses>
+                            [isGroupAdmin]="isGroupAdmin" [expensesChanged]="expensesChanged"></app-expenses>
                     </mat-tab>
                     <mat-tab label="Summary">
-                        <app-summary [groupId]="selectedGroupId" [isGroupAdmin]="isGroupAdmin"></app-summary>
+                        <app-summary [groupId]="selectedGroupId" [isGroupAdmin]="isGroupAdmin"
+                            (expensesPaidEvent)="expensesPaid($event)"></app-summary>
                     </mat-tab>
                 </mat-tab-group>
             </div>

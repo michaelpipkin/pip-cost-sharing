@@ -68,10 +68,13 @@
         </mat-form-field>
     </form>
     <br />
-    <button type="button" class="btn btn-primary me-3" (click)="addRow()">Add New Split</button>
-    <button type="button" class="btn btn-primary me-3" (click)="allocateSharedAmounts()">
-        Allocate shared amounts
-    </button>
+    <div id="expense-buttons">
+        <button type="button" class="btn btn-primary me-3" (click)="addRow()">Add New Split</button>
+        <button type="button" class="btn btn-primary me-3" (click)="addAllActiveGroupMembers()">Add All Members</button>
+        <button type="button" class="btn btn-primary me-3" (click)="allocateSharedAmounts()">
+            Allocate Expense
+        </button>
+    </div>
     <br />
     <div class="mat-elevation-z8 p-3 m-2">
         <div class="scrollable-table">

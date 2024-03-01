@@ -1,0 +1,9 @@
+<h1 mat-dialog-title>{{data.dialogTitle}}</h1>
+<mat-dialog-content>
+    <p>{{data.confirmationText}}</p>
+
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button type="button" class="btn btn-secondary me-2" (click)="close(false)">{{data.cancelButtonText}}</button>
+    <button type="button" class="btn btn-warning" (click)="close(true)">{{data.confirmButtonText}}</button>
+</mat-dialog-actions>

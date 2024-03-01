@@ -14,8 +14,8 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
   styleUrl: './categories.component.scss',
 })
 export class CategoriesComponent implements OnChanges {
-  @Input() groupId: string = '';
   @Input() isGroupAdmin: boolean = false;
+  @Input() groupId: string = '';
   categories$: Observable<Category[]>;
   filteredCategories$: Observable<Category[]>;
   activeOnly: boolean = false;
@@ -32,6 +32,9 @@ export class CategoriesComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (!!changes.groupId) {
+      this.groupId = changes.groupId.currentValue;
+    }
     this.activeOnly = false;
     this.nameFilter = '';
     this.categories$ = this.categorySerice.getCategoriesForGroup(this.groupId);

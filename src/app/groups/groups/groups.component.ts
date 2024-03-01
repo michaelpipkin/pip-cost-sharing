@@ -24,6 +24,7 @@ export class GroupsComponent implements OnInit {
   groups$: Observable<Group[]>;
   selectedGroupId: string;
   isGroupAdmin: boolean = false;
+  expensesChanged: string = '';
   dialogConfig: MatDialogConfig = {
     width: '520px',
   };
@@ -87,5 +88,9 @@ export class GroupsComponent implements OnInit {
     this.snackbar.open('Group join code copied', 'OK', {
       duration: 2000,
     });
+  }
+
+  expensesPaid(e): void {
+    this.expensesChanged = e;
   }
 }

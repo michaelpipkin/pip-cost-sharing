@@ -13,6 +13,18 @@
                     <mat-icon>close</mat-icon>
                 </button>
             </mat-form-field>
+            <mat-form-field class="me-2">
+                <mat-label>Filter by category</mat-label>
+                <mat-select [(ngModel)]="selectedCategoryId" name="category" (selectionChange)="filterExpenses()">
+                    @for (category of categories; track category) {
+                    <mat-option [value]="category.id">{{category.name}}</mat-option>
+                    }
+                </mat-select>
+                <button *ngIf="selectedCategoryId" matSuffix mat-icon-button aria-label="Clear"
+                    (click)="clearSelectedCategory()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </mat-form-field>
             <mat-slide-toggle color="primary" [(ngModel)]="unpaidOnly" (change)="filterExpenses()">Unpaid expenses
                 only</mat-slide-toggle>
             <button class="btn btn-primary ms-4" (click)="addExpense()">Add New Expense</button>

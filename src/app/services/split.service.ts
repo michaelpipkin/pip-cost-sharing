@@ -142,4 +142,27 @@ export class SplitService {
         })
       );
   }
+
+  paySplitsBetweenMembers(
+    member1Id: string,
+    member2Id: string
+  ): Observable<any> {
+    const batch = this.db.firestore.batch();
+    return this.db
+      .collectionGroup('splits', (ref) =>
+        ref
+          .where('paidByMemberId', 'in', [member1Id, member2Id])
+          .where('owedByMemberId', 'in', [member1Id, member2Id])
+          .where('paid', '==', false)
+      )
+      .get()
+      .pipe(
+        map((querySnap) => {
+          querySnap.docs.forEach((doc) => {
+            batch.update(doc.ref, { paid: true });
+          });
+          return from(batch.commit());
+        })
+      );
+  }
 }

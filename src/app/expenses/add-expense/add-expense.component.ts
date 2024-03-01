@@ -10,7 +10,7 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import * as firestore from 'firebase/firestore';
-import { catchError, Observable, tap, throwError } from 'rxjs';
+import { catchError, map, Observable, share, tap, throwError } from 'rxjs';
 import {
   FormArray,
   FormBuilder,
@@ -98,6 +98,28 @@ export class AddExpenseComponent implements OnInit {
     this.splitsTable.renderRows();
   }
 
+  addAllActiveGroupMembers(): void {
+    if (this.splitsDataSource.length > 0) {
+      this.saveSplitsData();
+    }
+    this.members$
+      .pipe(
+        map((members) => {
+          members.forEach((member) => {
+            this.splitsDataSource.push(
+              new Split({
+                owedByMemberId: member.id,
+                assignedAmount: 0,
+              })
+            );
+          });
+          this.updateForm();
+          this.splitsTable.renderRows();
+        })
+      )
+      .subscribe();
+  }
+
   saveSplitsData(): void {
     for (let i = 0; i < this.splitForm.controls.length; i++) {
       const split = this.splitForm.controls[i].value;
@@ -131,56 +153,56 @@ export class AddExpenseComponent implements OnInit {
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addExpenseForm.value;
       const totalAmount: number = val.amount;
-      const sharedAmount: number = val.sharedAmount;
+      let sharedAmount: number = val.sharedAmount;
       const allocatedAmount: number = val.allocatedAmount;
-      if (
-        totalAmount == +(sharedAmount + allocatedAmount + splitTotal).toFixed(2)
-      ) {
-        this.splitsDataSource.forEach((split) => {
-          if (split.owedByMemberId != '') {
-            split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
-          }
+      const totalSharedSplits: number = +(
+        sharedAmount +
+        allocatedAmount +
+        splitTotal
+      ).toFixed(2);
+      if (totalAmount != totalSharedSplits) {
+        sharedAmount = totalAmount - splitTotal - allocatedAmount;
+        this.addExpenseForm.patchValue({
+          sharedAmount: sharedAmount,
         });
-        this.splitsDataSource.forEach((split) => {
-          if (split.owedByMemberId != '') {
-            if (splitTotal == 0) {
-              split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(
-                2
-              );
-            } else {
-              split.allocatedAmount = +(
-                +split.assignedAmount +
-                +split.allocatedAmount +
-                (+split.assignedAmount / splitTotal) * allocatedAmount
-              ).toFixed(2);
-            }
-          }
-        });
-        if (!this.expenseFullyAllocated()) {
-          let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
-          for (let i = 0; diff != 0; ) {
-            if (diff > 0) {
-              this.splitsDataSource[i].allocatedAmount += 0.01;
-              diff -= 0.01;
-            } else {
-              this.splitsDataSource[i].allocatedAmount -= 0.01;
-              diff += 0.01;
-            }
-            if (i < this.splitsDataSource.length - 1) {
-              i++;
-            } else {
-              i = 0;
-            }
+      }
+      this.splitsDataSource.forEach((split) => {
+        if (split.owedByMemberId != '') {
+          split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
+        }
+      });
+      this.splitsDataSource.forEach((split) => {
+        if (split.owedByMemberId != '') {
+          if (splitTotal == 0) {
+            split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
+          } else {
+            split.allocatedAmount = +(
+              +split.assignedAmount +
+              +split.allocatedAmount +
+              (+split.assignedAmount / splitTotal) * allocatedAmount
+            ).toFixed(2);
           }
         }
-        this.updateForm();
-        this.splitsTable.renderRows();
-      } else {
-        this.snackBar.open(
-          'Sum of evenly shared amount, proportional amount, and all member amounts must equal the total amount before allocating.',
-          'OK'
-        );
+      });
+      if (!this.expenseFullyAllocated()) {
+        let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
+        for (let i = 0; diff != 0; ) {
+          if (diff > 0) {
+            this.splitsDataSource[i].allocatedAmount += 0.01;
+            diff -= 0.01;
+          } else {
+            this.splitsDataSource[i].allocatedAmount -= 0.01;
+            diff += 0.01;
+          }
+          if (i < this.splitsDataSource.length - 1) {
+            i++;
+          } else {
+            i = 0;
+          }
+        }
       }
+      this.updateForm();
+      this.splitsTable.renderRows();
     }
   }
 

@@ -14,9 +14,9 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
   styleUrl: './members.component.scss',
 })
 export class MembersComponent implements OnChanges {
-  @Input() groupId: string = '';
   @Input() currentUser: firebase.User;
   @Input() isGroupAdmin: boolean = false;
+  @Input() groupId: string = '';
   members$: Observable<Member[]>;
   filteredMembers$: Observable<Member[]>;
   activeOnly: boolean = false;
@@ -33,6 +33,9 @@ export class MembersComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (!!changes.groupId) {
+      this.groupId = changes.groupId.currentValue;
+    }
     this.activeOnly = false;
     this.nameFilter = '';
     this.members$ = this.memberService.getAllGroupMembers(this.groupId);

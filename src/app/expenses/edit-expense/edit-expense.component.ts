@@ -71,10 +71,8 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.members$ = this.memberService.getActiveGroupMembers(this.groupId);
-    this.categories$ = this.categoryService.getActiveCategoriesForGroup(
-      this.groupId
-    );
+    this.members$ = this.memberService.getAllGroupMembers(this.groupId);
+    this.categories$ = this.categoryService.getCategoriesForGroup(this.groupId);
   }
 
   public get e() {

@@ -37,15 +37,17 @@ import {
   ],
 })
 export class ExpensesComponent implements OnChanges {
-  @Input() groupId: string = '';
   @Input() currentMember: Member;
   @Input() isGroupAdmin: boolean = false;
+  @Input() groupId: string = '';
+  @Input() expensesChanged: string = '';
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;
   filteredExpenses$: Observable<Expense[]>;
   unpaidOnly: boolean = true;
   selectedMemberId: string = '';
+  selectedCategoryId: string = '';
   sortField: string = 'date';
   sortAsc: boolean = true;
   columnsToDisplay: string[] = [
@@ -71,6 +73,15 @@ export class ExpensesComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    this.expenses$ = this.expenseService.getExpensesWithSplitsForGroup(
+      this.groupId
+    );
+    if (!!changes.groupId) {
+      this.groupId = changes.groupId.currentValue;
+    }
+    if (!!changes.expensesChanged) {
+      this.filterExpenses();
+    }
     this.selectedMemberId = '';
     this.unpaidOnly = true;
     this.memberService
@@ -89,9 +100,6 @@ export class ExpensesComponent implements OnChanges {
         })
       )
       .subscribe();
-    this.expenses$ = this.expenseService.getExpensesWithSplitsForGroup(
-      this.groupId
-    );
     this.filterExpenses();
   }
 
@@ -105,7 +113,11 @@ export class ExpensesComponent implements OnChanges {
             expense.paidByMemberId ==
               (this.selectedMemberId != ''
                 ? this.selectedMemberId
-                : expense.paidByMemberId)
+                : expense.paidByMemberId) &&
+            expense.categoryId ==
+              (this.selectedCategoryId != ''
+                ? this.selectedCategoryId
+                : expense.categoryId)
         );
         if (filteredExpenses.length > 0) {
           filteredExpenses = this.sorter.sort(
@@ -127,6 +139,11 @@ export class ExpensesComponent implements OnChanges {
 
   clearSelectedMember(): void {
     this.selectedMemberId = '';
+    this.filterExpenses();
+  }
+
+  clearSelectedCategory(): void {
+    this.selectedCategoryId = '';
     this.filterExpenses();
   }
 

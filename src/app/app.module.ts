@@ -19,12 +19,14 @@ import { EditCategoryComponent } from './categories/edit-category/edit-category.
 import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
 import { EditExpenseComponent } from './expenses/edit-expense/edit-expense.component';
 import { ExpensesComponent } from './expenses/expenses/expenses.component';
+import { SummaryComponent } from './expenses/summary/summary.component';
 import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
+import { ConfirmDialogComponent } from './shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 import {
@@ -47,7 +49,6 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { SummaryComponent } from './expenses/summary/summary.component';
 
 @NgModule({
   declarations: [
@@ -70,6 +71,7 @@ import { SummaryComponent } from './expenses/summary/summary.component';
     DeleteDialogComponent,
     EditExpenseComponent,
     SummaryComponent,
+    ConfirmDialogComponent,
   ],
   imports: [
     BrowserModule,
