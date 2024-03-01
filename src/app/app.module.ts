@@ -17,6 +17,7 @@ import { AddCategoryComponent } from './categories/add-category/add-category.com
 import { CategoriesComponent } from './categories/categories/categories.component';
 import { EditCategoryComponent } from './categories/edit-category/edit-category.component';
 import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
+import { EditExpenseComponent } from './expenses/edit-expense/edit-expense.component';
 import { ExpensesComponent } from './expenses/expenses/expenses.component';
 import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
@@ -24,6 +25,7 @@ import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
+import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
@@ -45,7 +47,7 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
+import { SummaryComponent } from './expenses/summary/summary.component';
 
 @NgModule({
   declarations: [
@@ -66,6 +68,8 @@ import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.comp
     EditMemberComponent,
     ActiveInactivePipe,
     DeleteDialogComponent,
+    EditExpenseComponent,
+    SummaryComponent,
   ],
   imports: [
     BrowserModule,

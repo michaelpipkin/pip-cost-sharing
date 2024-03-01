@@ -1,6 +1,6 @@
-<h1 mat-dialog-title>Add Expense</h1>
+<h1 mat-dialog-title>Edit Expense</h1>
 <mat-dialog-content>
-    <form [formGroup]="addExpenseForm" id="expense-form">
+    <form [formGroup]="editExpenseForm" id="expense-form">
         <mat-form-field id="paid-by-select" color="primary" class="me-3">
             <mat-label>Paid by</mat-label>
             <mat-select formControlName="paidByMemberId" name="group">
@@ -54,17 +54,11 @@
             <mat-label>Evenly Shared Amount</mat-label>
             <input matInput formControlName="sharedAmount" type="number" class="number-right">
             <span matTextPrefix>$</span>
-            <mat-error *ngIf="e.sharedAmount.errors?.['required']">
-                *Required - Enter 0 if none
-            </mat-error>
         </mat-form-field>
         <mat-form-field appearance="fill" floatLabel="always" class="wide-number-field">
             <mat-label>Proportional Amount (i.e. taxes, tips)</mat-label>
             <input matInput formControlName="allocatedAmount" type="number" class="number-right">
             <span matTextPrefix>$</span>
-            <mat-error *ngIf="e.allocatedAmount.errors?.['required']">
-                *Required - Enter 0 if none
-            </mat-error>
         </mat-form-field>
     </form>
     <br />
@@ -126,9 +120,10 @@
     </div>
 </mat-dialog-content>
 <mat-dialog-actions>
+    <button type="button" class="btn btn-warning me-2" (click)="delete()">Delete</button>
     <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
     <button type="submit" defaultButton class="btn btn-primary"
-        [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()" (click)="onSubmit()">
+        [disabled]="!editExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()" (click)="onSubmit()">
         Save
     </button>
 </mat-dialog-actions>

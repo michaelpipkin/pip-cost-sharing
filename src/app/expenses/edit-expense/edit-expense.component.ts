@@ -1,5 +1,4 @@
 import { Component, Inject, OnInit, ViewChild } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
 import { Category } from '@models/category';
@@ -9,8 +8,15 @@ import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import * as firestore from 'firebase/firestore';
-import { catchError, Observable, tap, throwError } from 'rxjs';
+import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import {
   FormArray,
   FormBuilder,
@@ -20,17 +26,17 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-add-expense',
-  templateUrl: './add-expense.component.html',
-  styleUrl: './add-expense.component.scss',
+  selector: 'app-edit-expense',
+  templateUrl: './edit-expense.component.html',
+  styleUrl: './edit-expense.component.scss',
 })
-export class AddExpenseComponent implements OnInit {
+export class EditExpenseComponent implements OnInit {
   members$: Observable<Member[]>;
   categories$: Observable<Category[]>;
   groupId: string;
   currentMember: Member;
   isGroupAdmin: boolean = false;
-  addExpenseForm: FormGroup;
+  editExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
   splitForm: FormArray;
@@ -38,8 +44,9 @@ export class AddExpenseComponent implements OnInit {
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
 
   constructor(
-    private dialogRef: MatDialogRef<AddExpenseComponent>,
+    private dialogRef: MatDialogRef<EditExpenseComponent>,
     private fb: FormBuilder,
+    private dialog: MatDialog,
     private memberService: MemberService,
     private expenseService: ExpenseService,
     private categoryService: CategoryService,
@@ -49,15 +56,18 @@ export class AddExpenseComponent implements OnInit {
     this.groupId = this.data.groupId;
     this.currentMember = this.data.member;
     this.isGroupAdmin = this.data.isGroupAdmin;
-    this.addExpenseForm = this.fb.group({
-      paidByMemberId: [this.currentMember.id, Validators.required],
-      date: [new Date(), Validators.required],
-      amount: [0.0, Validators.required],
-      description: ['', Validators.required],
-      categoryId: ['', Validators.required],
-      sharedAmount: [0.0, Validators.required],
-      allocatedAmount: [0.0, Validators.required],
+    const expense: Expense = this.data.expense;
+    this.editExpenseForm = this.fb.group({
+      paidByMemberId: [expense.paidByMemberId, Validators.required],
+      date: [expense.date.toDate(), Validators.required],
+      amount: [expense.totalAmount, Validators.required],
+      description: [expense.description, Validators.required],
+      categoryId: [expense.categoryId, Validators.required],
+      sharedAmount: [expense.sharedAmount, Validators.required],
+      allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
+    this.splitsDataSource = data.expense.splits;
+    this.updateForm();
   }
 
   ngOnInit(): void {
@@ -68,7 +78,7 @@ export class AddExpenseComponent implements OnInit {
   }
 
   public get e() {
-    return this.addExpenseForm.controls;
+    return this.editExpenseForm.controls;
   }
 
   getSplitControl(index: number, controlName: string): FormControl {
@@ -129,7 +139,7 @@ export class AddExpenseComponent implements OnInit {
       }
       const splitCount: number = this.splitsDataSource.length;
       const splitTotal: number = this.getAssignedTotal();
-      const val = this.addExpenseForm.value;
+      const val = this.editExpenseForm.value;
       const totalAmount: number = val.amount;
       const sharedAmount: number = val.sharedAmount;
       const allocatedAmount: number = val.allocatedAmount;
@@ -195,13 +205,12 @@ export class AddExpenseComponent implements OnInit {
       .toFixed(2);
 
   expenseFullyAllocated = (): boolean =>
-    this.addExpenseForm.value.amount == this.getAllocatedTotal();
+    this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(): void {
-    this.addExpenseForm.disable();
-    const val = this.addExpenseForm.value;
-    const expense: Partial<Expense> = {
-      groupId: this.groupId,
+    this.editExpenseForm.disable();
+    const val = this.editExpenseForm.value;
+    const changes: Partial<Expense> = {
       date: firestore.Timestamp.fromDate(val.date),
       description: val.description,
       categoryId: val.categoryId,
@@ -224,21 +233,54 @@ export class AddExpenseComponent implements OnInit {
       splits.push(split);
     });
     this.expenseService
-      .addExpense(this.groupId, expense, splits)
+      .updateExpense(this.groupId, this.data.expense.id, changes, splits)
       .pipe(
         tap(() => {
-          this.dialogRef.close(true);
+          this.dialogRef.close({
+            success: true,
+            operation: 'edited',
+          });
         }),
         catchError((err: Error) => {
           this.snackBar.open(
             'Something went wrong - could not add expense.',
             'Close'
           );
-          this.addExpenseForm.enable();
+          this.editExpenseForm.enable();
           return throwError(() => new Error(err.message));
         })
       )
       .subscribe();
+  }
+
+  delete(): void {
+    const dialogConfig: MatDialogConfig = {
+      width: '600px',
+      data: `this expense`,
+    };
+    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.expenseService
+          .deleteExpense(this.groupId, this.data.expense.id)
+          .pipe(
+            tap(() => {
+              this.dialogRef.close({
+                success: true,
+                operation: 'deleted',
+              });
+            }),
+            catchError((err: Error) => {
+              this.snackBar.open(
+                'Something went wrong - could not delete expense.',
+                'Close'
+              );
+              return throwError(() => new Error(err.message));
+            })
+          )
+          .subscribe();
+      }
+    });
   }
 
   close(): void {

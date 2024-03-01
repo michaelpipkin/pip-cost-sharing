@@ -12,7 +12,41 @@ export class SplitService {
 
   getSplitsForExpense(groupId: string, expenseId: string): Observable<Split[]> {
     return this.db
-      .collection<Split>(`groups/${groupId}/expense/${expenseId}/splits`)
+      .collection<Split>(`groups/${groupId}/expenses/${expenseId}/splits`)
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        map((splits: Split[]) => {
+          return <Split[]>splits.map((split) => {
+            return new Split({
+              ...split,
+            });
+          });
+        })
+      );
+  }
+
+  getSplitsForGroup(groupId: string): Observable<Split[]> {
+    return this.db
+      .collectionGroup<Split>('splits', (ref) =>
+        ref.where('groupId', '==', groupId)
+      )
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        map((splits: Split[]) => {
+          return <Split[]>splits.map((split) => {
+            return new Split({
+              ...split,
+            });
+          });
+        })
+      );
+  }
+
+  getUnpaidSplitsForGroup(groupId: string): Observable<Split[]> {
+    return this.db
+      .collectionGroup<Split>('splits', (ref) =>
+        ref.where('groupId', '==', groupId).where('paid', '==', false)
+      )
       .valueChanges({ idField: 'id' })
       .pipe(
         map((splits: Split[]) => {

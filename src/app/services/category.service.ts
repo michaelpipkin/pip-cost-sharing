@@ -31,6 +31,23 @@ export class CategoryService {
       );
   }
 
+  getActiveCategoriesForGroup(groupId: string): Observable<Category[]> {
+    return this.db
+      .collection<Category>(`groups/${groupId}/categories`, (ref) =>
+        ref.where('active', '==', true).orderBy('name')
+      )
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        map((categories: Category[]) => {
+          return <Category[]>categories.map((category) => {
+            return new Category({
+              ...category,
+            });
+          });
+        })
+      );
+  }
+
   addCategory(groupId: string, category: Partial<Category>): Observable<any> {
     return this.db
       .collection(`groups/${groupId}/categories`, (ref) =>

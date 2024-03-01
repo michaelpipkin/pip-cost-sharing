@@ -32,12 +32,10 @@ export class CategoriesComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.loadCategories();
-    this.filterCategories();
-  }
-
-  loadCategories(): void {
+    this.activeOnly = false;
+    this.nameFilter = '';
     this.categories$ = this.categorySerice.getCategoriesForGroup(this.groupId);
+    this.filterCategories();
   }
 
   filterCategories(): void {
@@ -79,8 +77,6 @@ export class CategoriesComponent implements OnChanges {
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackBar.open('Category added', 'OK');
-        this.loadCategories();
-        this.filterCategories();
       }
     });
   }
@@ -93,8 +89,6 @@ export class CategoriesComponent implements OnChanges {
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {
         this.snackBar.open(`Category ${result.operation}`, 'OK');
-        this.loadCategories();
-        this.filterCategories();
       }
     });
   }

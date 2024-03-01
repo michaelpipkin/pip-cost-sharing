@@ -12,6 +12,7 @@ import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
+import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
   animate,
   state,
@@ -70,11 +71,8 @@ export class ExpensesComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.loadData();
-    this.filterExpenses();
-  }
-
-  loadData(): void {
+    this.selectedMemberId = '';
+    this.unpaidOnly = true;
     this.memberService
       .getAllGroupMembers(this.groupId)
       .pipe(
@@ -91,10 +89,14 @@ export class ExpensesComponent implements OnChanges {
         })
       )
       .subscribe();
-    this.expenses$ = this.expenseService.getExpensesForGroup(this.groupId);
+    this.expenses$ = this.expenseService.getExpensesWithSplitsForGroup(
+      this.groupId
+    );
+    this.filterExpenses();
   }
 
   filterExpenses(): void {
+    this.splitService.getSplitsForGroup(this.groupId).subscribe();
     this.filteredExpenses$ = this.expenses$.pipe(
       map((expenses: Expense[]) => {
         let filteredExpenses: Expense[] = expenses.filter(
@@ -138,7 +140,24 @@ export class ExpensesComponent implements OnChanges {
     return !!category ? category.name : '';
   }
 
-  onRowClick(expense: Expense): void {}
+  onRowClick(expense: Expense): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        expense: expense,
+        groupId: this.groupId,
+        member: this.currentMember,
+        isGroupAdmin: this.isGroupAdmin,
+      },
+      width: '850px',
+    };
+    const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((res) => {
+      if (res.success) {
+        this.snackBar.open(`Expense ${res.operation}`, 'OK');
+        this.filterExpenses();
+      }
+    });
+  }
 
   addExpense(): void {
     const dialogConfig: MatDialogConfig = {
@@ -150,27 +169,21 @@ export class ExpensesComponent implements OnChanges {
       width: '850px',
     };
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result.success) {
-        this.snackBar.open(`Member ${result.operation}`, 'OK');
-        this.loadData();
+    dialogRef.afterClosed().subscribe((success) => {
+      if (success) {
+        this.snackBar.open('Expense added', 'OK');
         this.filterExpenses();
       }
     });
   }
 
-  markSplitPaidUnpaid(expense: Expense, split: Split): void {
+  markSplitPaidUnpaid(split: Split): void {
     const changes = {
       paid: !split.paid,
     };
     this.splitService
-      .updateSplit(this.groupId, expense.id, split.id, changes)
-      .pipe(
-        tap(() => {
-          this.loadData();
-          this.filterExpenses();
-        })
-      )
+      .updateSplit(this.groupId, split.expenseId, split.id, changes)
       .subscribe();
+    this.filterExpenses();
   }
 }

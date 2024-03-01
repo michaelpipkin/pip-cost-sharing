@@ -3,8 +3,10 @@ export interface ISplit {
   expenseId: string;
   groupId: string;
   categoryId: string;
-  amount: number;
-  memberId: string;
+  assignedAmount: number;
+  allocatedAmount: number;
+  paidByMemberId: string;
+  owedByMemberId: string;
   paid: boolean;
 }
 
@@ -16,7 +18,9 @@ export class Split implements ISplit {
   expenseId: string;
   groupId: string;
   categoryId: string;
-  amount: number;
-  memberId: string;
+  assignedAmount: number;
+  allocatedAmount: number;
+  paidByMemberId: string;
+  owedByMemberId: string;
   paid: boolean = false;
 }

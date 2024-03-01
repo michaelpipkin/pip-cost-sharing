@@ -36,6 +36,9 @@
                         <app-expenses [groupId]="selectedGroupId" [currentMember]="currentMember"
                             [isGroupAdmin]="isGroupAdmin"></app-expenses>
                     </mat-tab>
+                    <mat-tab label="Summary">
+                        <app-summary [groupId]="selectedGroupId" [isGroupAdmin]="isGroupAdmin"></app-summary>
+                    </mat-tab>
                 </mat-tab-group>
             </div>
         </div>

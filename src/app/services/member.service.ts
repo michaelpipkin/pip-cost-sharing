@@ -56,6 +56,23 @@ export class MemberService {
       );
   }
 
+  getActiveGroupMembers(groupId: string): Observable<Member[]> {
+    return this.db
+      .collection<Member>(`groups/${groupId}/members`, (ref) =>
+        ref.where('active', '==', true).orderBy('displayName')
+      )
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        map((members: Member[]) => {
+          return <Member[]>members.map((member: Member) => {
+            return new Member({
+              ...member,
+            });
+          });
+        })
+      );
+  }
+
   addMemberToGroup(groupId: string, member: Partial<Member>): Observable<any> {
     return this.db
       .collection(`groups/${groupId}/members`, (ref) =>

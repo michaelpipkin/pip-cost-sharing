@@ -8,7 +8,9 @@ export interface IExpense {
   description: string;
   categoryId: string;
   paidByMemberId: string;
-  amount: number;
+  sharedAmount: number;
+  allocatedAmount: number;
+  totalAmount: number;
   splits: Split[];
   readonly unpaidAmount: number;
   readonly paid: boolean;
@@ -24,13 +26,15 @@ export class Expense implements IExpense {
   description: string;
   categoryId: string;
   paidByMemberId: string;
-  amount: number;
+  sharedAmount: number;
+  allocatedAmount: number;
+  totalAmount: number;
   splits: Split[];
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
-      if (!split.paid && !(split.memberId === this.paidByMemberId)) {
-        amount += split.amount;
+      if (!split.paid && !(split.owedByMemberId === this.paidByMemberId)) {
+        amount += split.allocatedAmount;
       }
     });
     return amount;

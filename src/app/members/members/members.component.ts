@@ -33,12 +33,10 @@ export class MembersComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.loadMembers();
-    this.filterMembers();
-  }
-
-  loadMembers(): void {
+    this.activeOnly = false;
+    this.nameFilter = '';
     this.members$ = this.memberService.getAllGroupMembers(this.groupId);
+    this.filterMembers();
   }
 
   filterMembers(): void {
@@ -87,8 +85,6 @@ export class MembersComponent implements OnChanges {
       dialogRef.afterClosed().subscribe((result) => {
         if (result.success) {
           this.snackBar.open(`Member ${result.operation}`, 'OK');
-          this.loadMembers();
-          this.filterMembers();
         }
       });
     }
