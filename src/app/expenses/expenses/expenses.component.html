@@ -1,0 +1,134 @@
+<div class="content row d-flex justify-content-center">
+    <div class="col-12">
+        <div class="header">
+            <mat-form-field class="me-2">
+                <mat-label>Filter by payee</mat-label>
+                <mat-select [(ngModel)]="selectedMemberId" name="member" (selectionChange)="filterExpenses()">
+                    @for (member of members; track member) {
+                    <mat-option [value]="member.id">{{member.displayName}}</mat-option>
+                    }
+                </mat-select>
+                <button *ngIf="selectedMemberId" matSuffix mat-icon-button aria-label="Clear"
+                    (click)="clearSelectedMember()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </mat-form-field>
+            <mat-form-field class="me-2">
+                <mat-label>Filter by category</mat-label>
+                <mat-select [(ngModel)]="selectedCategoryId" name="category" (selectionChange)="filterExpenses()">
+                    @for (category of categories; track category) {
+                    <mat-option [value]="category.id">{{category.name}}</mat-option>
+                    }
+                </mat-select>
+                <button *ngIf="selectedCategoryId" matSuffix mat-icon-button aria-label="Clear"
+                    (click)="clearSelectedCategory()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </mat-form-field>
+            <mat-slide-toggle color="primary" [(ngModel)]="unpaidOnly" (change)="filterExpenses()">Unpaid expenses
+                only</mat-slide-toggle>
+            <button class="btn btn-primary ms-4" (click)="addExpense()">Add New Expense</button>
+        </div>
+        <div class="mat-elevation-z8 p-3 m-2">
+            <div class="scrollable-table">
+                <table mat-table matSort [dataSource]="filteredExpenses$ | async" (matSortChange)="sortExpenses($event)"
+                    multiTemplateDataRows>
+                    <ng-container matColumnDef="id">
+                        <th mat-header-cell *matHeaderCellDef>Id</th>
+                        <td mat-cell *matCellDef="let expense">{{expense.id}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="date">
+                        <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                        <td mat-cell *matCellDef="let expense">{{expense.date.toDate() | date : 'yyyy-MM-dd'}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="paidBy">
+                        <th mat-header-cell *matHeaderCellDef>Paid By</th>
+                        <td mat-cell *matCellDef="let expense">{{getMemberName(expense.paidByMemberId)}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="amount">
+                        <th mat-header-cell *matHeaderCellDef>Amount</th>
+                        <td mat-cell *matCellDef="let expense">${{expense.totalAmount | number : '1.2-2'}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="description">
+                        <th mat-header-cell *matHeaderCellDef>Description</th>
+                        <td mat-cell *matCellDef="let expense">{{expense.description}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="category">
+                        <th mat-header-cell *matHeaderCellDef>Category</th>
+                        <td mat-cell *matCellDef="let expense">{{getCategoryName(expense.categoryId)}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="receipt">
+                        <th mat-header-cell *matHeaderCellDef>Receipt</th>
+                        <td mat-cell *matCellDef="let expense">{{receipts.includes(expense.id) | yesNo}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="paid">
+                        <th mat-header-cell *matHeaderCellDef>Paid</th>
+                        <td mat-cell *matCellDef="let expense">{{expense.paid | yesNo}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="expand">
+                        <th mat-header-cell *matHeaderCellDef aria-label="row actions">Expand</th>
+                        <td mat-cell *matCellDef="let expense">
+                            <button mat-icon-button aria-label="expand row"
+                                (click)="(expandedExpense = expandedExpense === expense ? null : expense); $event.stopPropagation()">
+                                @if (expandedExpense === expense) {
+                                <mat-icon>keyboard_arrow_up</mat-icon>
+                                } @else {
+                                <mat-icon>keyboard_arrow_down</mat-icon>
+                                }
+                            </button>
+                        </td>
+                    </ng-container>
+                    <ng-container matColumnDef="expandedDetail">
+                        <td mat-cell *matCellDef="let expense" [colSpan]="columnsToDisplay.length">
+                            <div [@detailExpand]="expense == expandedExpense ? 'expanded' : 'collapsed'">
+                                <table mat-table [dataSource]="expense.splits" class="split-table">
+                                    <ng-container matColumnDef="id">
+                                        <th mat-header-cell *matHeaderCellDef>Id</th>
+                                        <td mat-cell *matCellDef="let split">{{split.id}}</td>
+                                    </ng-container>
+                                    <ng-container matColumnDef="owedBy">
+                                        <th mat-header-cell *matHeaderCellDef>Owed By</th>
+                                        <td mat-cell *matCellDef="let split">{{getMemberName(split.owedByMemberId)}}
+                                        </td>
+                                    </ng-container>
+                                    <ng-container matColumnDef="amount">
+                                        <th mat-header-cell *matHeaderCellDef>Amount</th>
+                                        <td mat-cell *matCellDef="let split">${{split.allocatedAmount | number:
+                                            '1.2-2'}}</td>
+                                    </ng-container>
+                                    <ng-container matColumnDef="paid">
+                                        <th mat-header-cell *matHeaderCellDef>Paid</th>
+                                        <td mat-cell *matCellDef="let split">{{split.paid | yesNo}}</td>
+                                    </ng-container>
+                                    <ng-container matColumnDef="mark">
+                                        <th mat-header-cell *matHeaderCellDef>Mark Paid/Unpaid</th>
+                                        <td mat-cell *matCellDef="let split">
+                                            <mat-icon *ngIf="expense.paidByMemberId != split.owedByMemberId"
+                                                class="material-icons-outlined paid-icon ms-4"
+                                                (click)="markSplitPaidUnpaid(split)">
+                                                paid
+                                            </mat-icon>
+                                        </td>
+                                    </ng-container>
+                                    <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay"></tr>
+                                    <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay">
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+                    <tr mat-row *matRowDef="let expense; columns: columnsToDisplay" class="expense-row clickable-row"
+                        [class.expanded-row]="expandedExpense === expense" (click)="onRowClick(expense)">
+                    </tr>
+                    <tr mat-row *matRowDef="let split; columns: ['expandedDetail']" class="split-row"></tr>
+                    <tr class="mat-row" *matNoDataRow>
+                        <td class="mat-cell" [colSpan]="columnsToDisplay.length">No expenses found for search criteria.
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,9 @@
+:host {
+  display: flex;
+  justify-content: center;
+}
+
+.scrollable-table {
+  overflow-y: auto;
+  max-height: 800px;
+}

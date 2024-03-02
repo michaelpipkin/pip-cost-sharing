@@ -1,0 +1,20 @@
+tr.split-row {
+  height: 0;
+}
+
+tr.split-row:hover {
+  background-color: transparent !important;
+}
+
+.expense-row td {
+  border-bottom-width: 0;
+}
+
+.split-detail {
+  overflow: hidden;
+  display: flex;
+}
+
+.split-table tr th {
+  width: 25%;
+}
