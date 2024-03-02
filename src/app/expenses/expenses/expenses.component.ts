@@ -12,7 +12,6 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
-import { Url } from 'url';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
@@ -53,6 +52,8 @@ export class ExpensesComponent implements OnChanges {
   selectedCategoryId: string = '';
   sortField: string = 'date';
   sortAsc: boolean = true;
+  startDate: Date | null;
+  endDate: Date | null;
   columnsToDisplay: string[] = [
     'date',
     'paidBy',
@@ -139,6 +140,16 @@ export class ExpensesComponent implements OnChanges {
                 ? this.selectedCategoryId
                 : expense.categoryId)
         );
+        if (this.startDate !== undefined && this.startDate !== null) {
+          filteredExpenses = filteredExpenses.filter(
+            (expense: Expense) => expense.date.toDate() >= this.startDate
+          );
+        }
+        if (this.endDate !== undefined && this.endDate !== null) {
+          filteredExpenses = filteredExpenses.filter(
+            (expense: Expense) => expense.date.toDate() <= this.endDate
+          );
+        }
         if (filteredExpenses.length > 0) {
           filteredExpenses = this.sorter.sort(
             filteredExpenses,
@@ -164,6 +175,16 @@ export class ExpensesComponent implements OnChanges {
 
   clearSelectedCategory(): void {
     this.selectedCategoryId = '';
+    this.filterExpenses();
+  }
+
+  clearStartDate(): void {
+    this.startDate = null;
+    this.filterExpenses();
+  }
+
+  clearEndDate(): void {
+    this.endDate = null;
     this.filterExpenses();
   }
 
