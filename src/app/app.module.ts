@@ -54,6 +54,7 @@ import { CategoriesHelpComponent } from './help/categories-help/categories-help.
 import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
 import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
 import { HelpComponent } from './help/help/help.component';
+import { FooterComponent } from './shared/footer/footer.component';
 
 @NgModule({
   declarations: [
@@ -82,6 +83,7 @@ import { HelpComponent } from './help/help/help.component';
     ExpensesHelpComponent,
     SummaryHelpComponent,
     HelpComponent,
+    FooterComponent,
   ],
   imports: [
     BrowserModule,

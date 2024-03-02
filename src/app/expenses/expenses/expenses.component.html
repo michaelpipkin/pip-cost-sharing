@@ -1,6 +1,6 @@
 <div class="content row d-flex justify-content-center">
     <div class="col-12">
-        <div class="header">
+        <div>
             <mat-form-field appearance="fill" class="datepicker me-2">
                 <mat-label>Start date</mat-label>
                 <input matInput [(ngModel)]="startDate" [matDatepicker]="startDatepicker" (dateInput)="filterExpenses()"
@@ -47,7 +47,7 @@
                     <mat-icon>close</mat-icon>
                 </button>
             </mat-form-field>
-            <mat-slide-toggle color="primary" [(ngModel)]="unpaidOnly" (change)="filterExpenses()">Unpaid expenses
+            <mat-slide-toggle color="primary" [(ngModel)]="unpaidOnly" (change)="filterExpenses()">Unpaid
                 only</mat-slide-toggle>
             <button class="btn btn-primary ms-4" (click)="addExpense()">Add New Expense</button>
         </div>
