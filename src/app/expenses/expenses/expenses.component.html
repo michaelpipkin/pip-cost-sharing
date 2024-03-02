@@ -1,6 +1,28 @@
 <div class="content row d-flex justify-content-center">
     <div class="col-12">
         <div class="header">
+            <mat-form-field appearance="fill" class="datepicker me-2">
+                <mat-label>Start date</mat-label>
+                <input matInput [(ngModel)]="startDate" [matDatepicker]="startDatepicker" (dateInput)="filterExpenses()"
+                    (dateChange)="filterExpenses()">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matIconSuffix [for]="startDatepicker"></mat-datepicker-toggle>
+                <button *ngIf="startDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearStartDate()">
+                    <mat-icon>close</mat-icon>
+                </button>
+                <mat-datepicker #startDatepicker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="fill" class="datepicker me-2">
+                <mat-label>End date</mat-label>
+                <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" (dateInput)="filterExpenses()"
+                    (dateChange)="filterExpenses()">
+                <mat-hint>MM/DD/YYYY</mat-hint>
+                <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+                <button *ngIf="endDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearEndDate()">
+                    <mat-icon>close</mat-icon>
+                </button>
+                <mat-datepicker #endDatePicker></mat-datepicker>
+            </mat-form-field>
             <mat-form-field class="me-2">
                 <mat-label>Filter by payee</mat-label>
                 <mat-select [(ngModel)]="selectedMemberId" name="member" (selectionChange)="filterExpenses()">

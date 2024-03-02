@@ -1,11 +1,12 @@
 {
   "name": "pip-cost-sharing",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "kill-ports": "npx kill-port 9099 && npx kill-port 8080 && npx kill-port 5000 && npx kill-port 9199",
     "local-dev": "firebase emulators:start --import seed-data",
+    "build-prod": "ng build --configuration=production",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
