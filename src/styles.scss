@@ -3,6 +3,7 @@
 @use "@angular/material" as mat;
 // Plus imports for other components in your app.
 @import "~firebaseui/dist/firebaseui.css";
+$enable-negative-margins: true;
 
 // Include the common styles for Angular Material. We include this here so that you only
 // have to load a single css file for Angular Material in your app.
@@ -145,11 +146,15 @@ body {
   height: 100%;
 }
 
-body {
-  margin: 0;
+* {
   font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol";
+  font-size: 0.9rem;
+}
+
+body {
+  margin: 0;
 }
 
 a:hover {
@@ -161,11 +166,11 @@ mat-hint {
   font-size: 0.7rem;
 }
 
-app-login {
-  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol" !important;
-}
+// app-login {
+//   font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+//     Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+//     "Segoe UI Emoji", "Segoe UI Symbol" !important;
+// }
 
 .auth-container {
   width: 400px;
@@ -179,6 +184,11 @@ app-login {
   width: 100%;
 }
 
+.scrollable-table {
+  overflow-y: auto;
+  max-height: 800px;
+}
+
 .mat-error {
   font-size: 0.7rem;
   color: red;
@@ -189,19 +199,31 @@ mat-dialog-actions,
 .mat-mdc-dialog-actions {
   display: flex !important;
   justify-content: flex-end !important;
+  button {
+    margin-left: 8px;
+  }
 }
 
 .mat-form-field {
   display: block;
 }
 
-.form-buttons {
-  width: 100%;
-  display: flex !important;
-  justify-content: flex-end !important;
-  button {
-    margin-right: 8px;
-  }
+.form-buttons-right button {
+  margin-left: 8px;
+  margin-bottom: 8px;
+}
+
+.form-buttons-right a {
+  margin-bottom: 8px;
+}
+
+.form-buttons-left button {
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.form-buttons-left a {
+  margin-bottom: 8px;
 }
 
 .hidden {
@@ -230,12 +252,13 @@ mat-dialog-actions,
   color: chartreuse;
 }
 
-.mat-mdc-footer-cell {
-  font-weight: 600;
+.help-content {
+  max-height: calc(90vh - 64px);
+  overflow-y: auto;
 }
 
-.center-text {
-  text-align: center;
+.mat-mdc-footer-cell {
+  font-weight: 600;
 }
 
 .datepicker .mat-mdc-form-field-infix {
@@ -332,6 +355,7 @@ input.number-right::-webkit-inner-spin-button {
 span.filename {
   margin-left: 8px;
   display: inline-block;
-  max-width: 250px;
+  max-width: calc(100% - 58px);
   max-height: 48px;
+  overflow: hidden;
 }

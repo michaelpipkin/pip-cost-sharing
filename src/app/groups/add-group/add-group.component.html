@@ -1,24 +1,29 @@
 <h1 mat-dialog-title>Add New Group</h1>
 <form [formGroup]="newGroupForm">
     <mat-dialog-content>
-        <mat-form-field appearance="fill" color="primary">
-            <mat-label>Group name</mat-label>
-            <input matInput formControlName="groupName">
-            <mat-error *ngIf="f.groupName.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <br />
-        <mat-form-field appearance="fill" color="primary">
-            <mat-label>Your name in the group</mat-label>
-            <input matInput formControlName="displayName">
-            <mat-error *ngIf="f.displayName.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
+        <div class="d-flex flex-column">
+            <div class="d-flex justify-content-start">
+                <mat-form-field appearance="fill" color="primary">
+                    <mat-label>Group name</mat-label>
+                    <input matInput formControlName="groupName">
+                    <mat-error *ngIf="f.groupName.errors?.['required']">
+                        *Required
+                    </mat-error>
+                </mat-form-field>
+            </div>
+            <div class="d-flex justify-content-start">
+                <mat-form-field appearance="fill" color="primary">
+                    <mat-label>Your name in the group</mat-label>
+                    <input matInput formControlName="displayName">
+                    <mat-error *ngIf="f.displayName.errors?.['required']">
+                        *Required
+                    </mat-error>
+                </mat-form-field>
+            </div>
+        </div>
     </mat-dialog-content>
     <mat-dialog-actions>
-        <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
+        <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
         <button type="submit" defaultButton class="btn btn-primary" [disabled]="!newGroupForm.valid"
             (click)="onSubmit()">
             Save

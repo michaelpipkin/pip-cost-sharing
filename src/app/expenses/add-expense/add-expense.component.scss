@@ -1,20 +1,7 @@
-#paid-by-select,
-#category-select {
-  width: 250px;
+.number-field {
+  width: 150px;
 }
 
-#description {
-  width: 300px;
-}
-
-#split-member {
-  width: 95%;
-}
-
-#expense-buttons button {
-  min-height: 48px;
-}
-
-.wide-number-field {
-  width: 260px;
+mat-form-field {
+  margin-right: 8px;
 }
