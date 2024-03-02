@@ -1,19 +1,24 @@
 <h1 mat-dialog-title>Edit Member</h1>
 <form [formGroup]="editMemberForm">
     <mat-dialog-content>
-        <mat-form-field appearance="fill" color="primary">
-            <mat-label>Member name</mat-label>
-            <input matInput formControlName="memberName">
-            <mat-error *ngIf="f.memberName.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <br />
-        <mat-slide-toggle class="me-2" color="primary" formControlName="active">Active</mat-slide-toggle>
-        <mat-slide-toggle color="primary" formControlName="groupAdmin" [class.hidden]="!isGroupAdmin"
-            [matTooltip]="member.userId == userId ? 'You cannot remove yourself as a group admin' : ''">
-            Group Admin
-        </mat-slide-toggle>
+        <div class="d-flex flex-column">
+            <div class="d-flex justify-content-start">
+                <mat-form-field appearance="fill" color="primary">
+                    <mat-label>Member name</mat-label>
+                    <input matInput formControlName="memberName">
+                    <mat-error *ngIf="f.memberName.errors?.['required']">
+                        *Required
+                    </mat-error>
+                </mat-form-field>
+            </div>
+            <div class="d-flex justify-content-start ps-2">
+                <mat-slide-toggle class="me-2" color="primary" formControlName="active">Active</mat-slide-toggle>
+                <mat-slide-toggle color="primary" formControlName="groupAdmin" [class.hidden]="!isGroupAdmin"
+                    [matTooltip]="member.userId == userId ? 'You cannot remove yourself as a group admin' : ''">
+                    Group Admin
+                </mat-slide-toggle>
+            </div>
+        </div>
     </mat-dialog-content>
     <mat-dialog-actions>
         <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>

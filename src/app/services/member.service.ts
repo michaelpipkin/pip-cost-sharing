@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
 import { Member } from '@models/member';
+import { Split } from '@models/split';
 import { concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
@@ -114,13 +115,18 @@ export class MemberService {
 
   deleteMemberFromGroup(groupId: string, memberId: string): Observable<any> {
     return this.db
-      .collectionGroup('splits', (ref) =>
-        ref.where('groupId', '==', groupId).where('memberId', '==', memberId)
+      .collectionGroup<Split>('splits', (ref) =>
+        ref.where('groupId', '==', groupId)
       )
       .get()
       .pipe(
         map((querySnap) => {
-          if (querySnap.size > 0) {
+          const memberSplit = querySnap.docs.find(
+            (doc) =>
+              doc.data().owedByMemberId == memberId ||
+              doc.data().paidByMemberId == memberId
+          );
+          if (!!memberSplit) {
             return new Error(
               'This member has existing splits and cannot be deleted.'
             );

@@ -1,49 +1,66 @@
-<div id="profileContainer">
-    <h4 class="mt-2">Update Email Address</h4>
-    <form class="mt-2" [formGroup]="emailForm">
-        <mat-form-field>
-            <mat-label>Email Address</mat-label>
-            <input matInput type="email" formControlName="email">
-            <mat-error *ngIf="fEmail.email.errors?.['email']">
-                Invalid email address
-            </mat-error>
-        </mat-form-field>
-        <div class="form-buttons">
-            <button type="button" class="btn btn-secondary" [disabled]="currentUser.emailVerified"
-                (click)="verifyEmail()">{{currentUser.emailVerified ? 'Email Verified' : 'Verify Email'}}
-            </button>
-            <button type="submit" class="btn btn-primary"
-                [disabled]="emailForm.invalid || fEmail.email.value === currentUser.email || fEmail.email.value === ''"
-                (click)="onSubmitEmail()">Update Email</button>
-        </div>
-    </form>
-    <h4 class="mt-2">Change Your Password</h4>
-    <form class="mt-2" [formGroup]="passwordForm">
-        <mat-form-field>
-            <mat-label>New Password</mat-label>
-            <input matInput [type]="hidePassword ? 'password' : 'text'" autocomplete="new-password"
-                formControlName="password">
-            <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword" [attr.aria-label]="'Hide password'"
-                [attr.aria-pressed]="hidePassword">
-                <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-            </button>
-        </mat-form-field>
-        <mat-form-field>
-            <mat-label>Confirm Password</mat-label>
-            <input matInput [type]="hideConfirm ? 'password' : 'text'" autocomplete="new-password"
-                formControlName="confirmPassword">
-            <button mat-icon-button matSuffix (click)="hideConfirm = !hideConfirm" [attr.aria-label]="'Hide password'"
-                [attr.aria-pressed]="hideConfirm">
-                <mat-icon>{{hideConfirm ? 'visibility_off' : 'visibility'}}</mat-icon>
-            </button>
-        </mat-form-field>
-        <div class="mat-error mat-mdc-form-field-error mt-n2" *ngIf="passwordForm.errors?.['mismatch']">
-            Passwords do not match.
-        </div>
-        <div class="form-buttons">
-            <button type="submit" class="btn btn-primary"
-                [disabled]="passwordForm.invalid || passwordForm.controls.confirmPassword.value === ''"
-                (click)="onSubmitPassword()">Change Password</button>
+<div class="d-flex flex-column">
+    <div class="d-flex pt-2 justify-content-center">
+        <h4>Update Email Address</h4>
+    </div>
+    <div class="d-flex p-2 justify-content-center">
+        <form [formGroup]="emailForm">
+            <div class="d-flex flex-column">
+                <div class="d-flex justify-content-center">
+                    <mat-form-field>
+                        <mat-label>Email Address</mat-label>
+                        <input matInput type="email" formControlName="email">
+                        <mat-error *ngIf="fEmail.email.errors?.['email']">
+                            Invalid email address
+                        </mat-error>
+                    </mat-form-field>
+                </div>
+                <div class="d-flex justify-content-center form-buttons-right">
+                    <button type="button" class="btn btn-secondary" [disabled]="currentUser.emailVerified"
+                        (click)="verifyEmail()">{{currentUser.emailVerified ? 'Email Verified' : 'Verify Email'}}
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                        [disabled]="emailForm.invalid || fEmail.email.value === currentUser.email || fEmail.email.value === ''"
+                        (click)="onSubmitEmail()">Update Email</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="d-flex mt-4 pt-2 justify-content-center">
+        <h4>Change Your Password</h4>
+    </div>
+    <div class="d-flex p-2 justify-content-center"></div>
+    <form [formGroup]="passwordForm">
+        <div class="d-flex flex-column">
+            <div class="d-flex justify-content-center">
+                <mat-form-field>
+                    <mat-label>New Password</mat-label>
+                    <input matInput [type]="hidePassword ? 'password' : 'text'" autocomplete="new-password"
+                        formControlName="password">
+                    <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword"
+                        [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword">
+                        <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                </mat-form-field>
+            </div>
+            <div class="d-flex justify-content-center">
+                <mat-form-field>
+                    <mat-label>Confirm Password</mat-label>
+                    <input matInput [type]="hideConfirm ? 'password' : 'text'" autocomplete="new-password"
+                        formControlName="confirmPassword">
+                    <button mat-icon-button matSuffix (click)="hideConfirm = !hideConfirm"
+                        [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hideConfirm">
+                        <mat-icon>{{hideConfirm ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                </mat-form-field>
+                <div class="mat-error mat-mdc-form-field-error mt-n2" *ngIf="passwordForm.errors?.['mismatch']">
+                    Passwords do not match.
+                </div>
+            </div>
+            <div class="d-flex justify-content-center form-buttons-right">
+                <button type="submit" class="btn btn-primary"
+                    [disabled]="passwordForm.invalid || passwordForm.controls.confirmPassword.value === ''"
+                    (click)="onSubmitPassword()">Change Password</button>
+            </div>
         </div>
     </form>
 </div>

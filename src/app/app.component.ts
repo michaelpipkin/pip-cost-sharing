@@ -18,9 +18,10 @@ export class AppComponent {
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
       disableClose: false,
-      width: '75vw',
+      width: '90vw',
+      maxHeight: '90vh',
     };
-    const dialogRef = this.dialog.open(HelpComponent, dialogConfig);
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   logout(): void {

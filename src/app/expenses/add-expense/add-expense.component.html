@@ -1,146 +1,154 @@
 <h1 mat-dialog-title>Add Expense</h1>
 <mat-dialog-content>
-    <form [formGroup]="addExpenseForm" id="expense-form">
-        <mat-form-field id="paid-by-select" color="primary" class="me-3">
-            <mat-label>Paid by</mat-label>
-            <mat-select formControlName="paidByMemberId" name="group">
-                @for (member of members$ | async; track member) {
-                <mat-option [value]="member.id">{{member.displayName}}</mat-option>
-                }
-            </mat-select>
-            <mat-error *ngIf="e.paidByMemberId.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="datepicker me-3">
-            <mat-label>Date</mat-label>
-            <input matInput formControlName="date" [matDatepicker]="expenseDatePicker">
-            <mat-hint>MM/DD/YYYY</mat-hint>
-            <mat-datepicker-toggle matIconSuffix [for]="expenseDatePicker"></mat-datepicker-toggle>
-            <mat-datepicker #expenseDatePicker></mat-datepicker>
-            <mat-error *ngIf="e.date.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="fill" floatLabel="always" class="number-field">
-            <mat-label>Total Amount</mat-label>
-            <input matInput formControlName="amount" type="number" class="number-right">
-            <span matTextPrefix>$</span>
-            <mat-error *ngIf="e.amount.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <br />
-        <mat-form-field appearance="fill" color="primary" class="me-3" id="description">
-            <mat-label>Description</mat-label>
-            <input matInput formControlName="description">
-            <mat-error *ngIf="e.description.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <mat-form-field id="category-select" color="primary" class="me-3">
-            <mat-label>Category</mat-label>
-            <mat-select formControlName="categoryId" name="category">
-                @for (category of categories$ | async; track category) {
-                <mat-option [value]="category.id">{{category.name}}</mat-option>
-                }
-            </mat-select>
-            <mat-error *ngIf="e.categoryId.errors?.['required']">
-                *Required
-            </mat-error>
-        </mat-form-field>
-        <br />
-        <mat-form-field appearance="fill" floatLabel="always" class="me-3 wide-number-field">
-            <mat-label>Evenly Shared Amount</mat-label>
-            <input matInput formControlName="sharedAmount" type="number" class="number-right">
-            <span matTextPrefix>$</span>
-            <mat-error *ngIf="e.sharedAmount.errors?.['required']">
-                *Required - Enter 0 if none
-            </mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="fill" floatLabel="always" class="wide-number-field">
-            <mat-label>Proportional Amount (i.e. taxes, tips)</mat-label>
-            <input matInput formControlName="allocatedAmount" type="number" class="number-right">
-            <span matTextPrefix>$</span>
-            <mat-error *ngIf="e.allocatedAmount.errors?.['required']">
-                *Required - Enter 0 if none
-            </mat-error>
-        </mat-form-field>
-    </form>
-    <br />
-    <div class="row" id="expense-buttons">
-        <div class="col-7">
-            <button type="button" class="btn btn-primary me-2" (click)="addRow()">Add New Split</button>
-            <button type="button" class="btn btn-primary me-2" (click)="addAllActiveGroupMembers()">Add All
-                Members</button>
-            <button type="button" class="btn btn-primary" (click)="allocateSharedAmounts()">
-                Allocate Expense
-            </button>
-        </div>
-        <div (click)="attachFile.click()" class="col-5 file-upload">
-            <input type="file" accept=".pdf,.jpg,.jpeg" class="file-input" #attachFile
-                (change)="onFileSelected($event)">
-            <button mat-mini-fab class="btn btn-secondary align-top">
-                <mat-icon>attach_file</mat-icon>
-            </button>
-            <span class="filename">{{ fileName || "Upload receipt" }}</span>
-        </div>
-    </div>
-    <br />
-    <div class="mat-elevation-z8 p-3 m-2">
-        <div class="scrollable-table">
-            <table mat-table [dataSource]="splitsDataSource">
-                <ng-container matColumnDef="memberId">
-                    <th mat-header-cell *matHeaderCellDef style="width: 40%">Member</th>
-                    <td mat-cell *matCellDef="let split; let i = index">
-                        <mat-form-field color="primary" id="split-member">
-                            <mat-select [formControl]="getSplitControl(i, 'owedByMemberId')">
+    <div class="d-flex p-2 flex-column">
+        <div class="d-flex justify-content-left">
+            <form [formGroup]="addExpenseForm" id="expense-form">
+                <div class="d-flex flex-column">
+                    <div class="d-flex flex-wrap">
+                        <mat-form-field id="paid-by-select" color="primary">
+                            <mat-label>Paid by</mat-label>
+                            <mat-select formControlName="paidByMemberId" name="group">
                                 @for (member of members$ | async; track member) {
                                 <mat-option [value]="member.id">{{member.displayName}}</mat-option>
                                 }
                             </mat-select>
+                            <mat-error *ngIf="e.paidByMemberId.errors?.['required']">
+                                *Required
+                            </mat-error>
                         </mat-form-field>
-                    </td>
-                </ng-container>
-                <ng-container matColumnDef="assigned">
-                    <th mat-header-cell *matHeaderCellDef style="width: 20%" class="cell-right pe-4">Member Amount</th>
-                    <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
+                        <mat-form-field appearance="fill" class="datepicker">
+                            <mat-label>Date</mat-label>
+                            <input matInput formControlName="date" [matDatepicker]="expenseDatePicker">
+                            <mat-hint>MM/DD/YYYY</mat-hint>
+                            <mat-datepicker-toggle matIconSuffix [for]="expenseDatePicker"></mat-datepicker-toggle>
+                            <mat-datepicker #expenseDatePicker></mat-datepicker>
+                            <mat-error *ngIf="e.date.errors?.['required']">
+                                *Required
+                            </mat-error>
+                        </mat-form-field>
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
-                            <input matInput class="number-right" name="assignedAmount"
-                                [formControl]="getSplitControl(i, 'assignedAmount')">
+                            <mat-label>Total Amount</mat-label>
+                            <input matInput formControlName="amount" type="number" class="number-right">
                             <span matTextPrefix>$</span>
+                            <mat-error *ngIf="e.amount.errors?.['required']">
+                                *Required
+                            </mat-error>
                         </mat-form-field>
-                    </td>
-                </ng-container>
-                <ng-container matColumnDef="allocated">
-                    <th mat-header-cell *matHeaderCellDef style="width: 25%" class="cell-right">
-                        Allocated Amount</th>
-                    <td mat-cell *matCellDef="let split" class="cell-right allocated-amount">${{split.allocatedAmount |
-                        number :
-                        '1.2-2'}}</td>
-                </ng-container>
-                <ng-container matColumnDef="delete">
-                    <th mat-header-cell *matHeaderCellDef style="width: 15%" class="cell-right">Delete</th>
-                    <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
-                        <button mat-mini-fab color="warn" (click)="deleteRow(i)">
-                            <mat-icon>delete</mat-icon>
-                        </button>
-                    </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
-                <tr mat-row *matRowDef="let split; columns: columnsToDisplay">
-                </tr>
-                <tr class="mat-row" *matNoDataRow>
-                    <td class="mat-cell" [colSpan]="columnsToDisplay.length">Click the Add New Split button to add a
-                        split.
-                    </td>
-                </tr>
-            </table>
+                    </div>
+                    <div class="d-flex flex-wrap">
+                        <mat-form-field appearance="fill" color="primary" id="description">
+                            <mat-label>Description</mat-label>
+                            <input matInput formControlName="description">
+                            <mat-error *ngIf="e.description.errors?.['required']">
+                                *Required
+                            </mat-error>
+                        </mat-form-field>
+                        <mat-form-field id="category-select" color="primary">
+                            <mat-label>Category</mat-label>
+                            <mat-select formControlName="categoryId" name="category">
+                                @for (category of categories$ | async; track category) {
+                                <mat-option [value]="category.id">{{category.name}}</mat-option>
+                                }
+                            </mat-select>
+                            <mat-error *ngIf="e.categoryId.errors?.['required']">
+                                *Required
+                            </mat-error>
+                        </mat-form-field>
+                    </div>
+                    <div class="d-flex flex-wrap">
+                        <mat-form-field appearance="fill" floatLabel="always" class="number-field">
+                            <mat-label>Evenly Shared Amount</mat-label>
+                            <input matInput formControlName="sharedAmount" type="number" class="number-right">
+                            <span matTextPrefix>$</span>
+                            <mat-error *ngIf="e.sharedAmount.errors?.['required']">
+                                *Required - Enter 0 if none
+                            </mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" floatLabel="always" class="number-field">
+                            <mat-label>Proportional Amount</mat-label>
+                            <input matInput formControlName="allocatedAmount" type="number" class="number-right">
+                            <span matTextPrefix>$</span>
+                            <mat-error *ngIf="e.allocatedAmount.errors?.['required']">
+                                *Required - Enter 0 if none
+                            </mat-error>
+                        </mat-form-field>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="d-flex justify-content-left flex-wrap form-buttons-left">
+            <button type="button" class="btn btn-primary" (click)="addRow()">Add New Split</button>
+            <button type="button" class="btn btn-primary" (click)="addAllActiveGroupMembers()">Add All
+                Members</button>
+            <button type="button" class="btn btn-primary" (click)="allocateSharedAmounts()">
+                Allocate Expense
+            </button>
+            <div (click)="attachFile.click()" class="d-flex justify-content-left flex-no-wrap">
+                <input type="file" accept=".pdf,.jpg,.jpeg" class="file-input" #attachFile
+                    (change)="onFileSelected($event)">
+                <button mat-mini-fab class="btn btn-secondary">
+                    <mat-icon>attach_file</mat-icon>
+                </button>
+                <span class="filename">{{ fileName || "Upload receipt" }}</span>
+            </div>
+        </div>
+        <div class="d-flex p-3 justify-content-center mat-elevation-z8">
+            <div class="scrollable-table">
+                <table mat-table [dataSource]="splitsDataSource">
+                    <ng-container matColumnDef="memberId">
+                        <th mat-header-cell *matHeaderCellDef>Member</th>
+                        <td mat-cell *matCellDef="let split; let i = index">
+                            <mat-form-field color="primary" id="split-member">
+                                <mat-select [formControl]="getSplitControl(i, 'owedByMemberId')">
+                                    @for (member of members$ | async; track member) {
+                                    <mat-option [value]="member.id">{{member.displayName}}</mat-option>
+                                    }
+                                </mat-select>
+                            </mat-form-field>
+                        </td>
+                    </ng-container>
+                    <ng-container matColumnDef="assigned">
+                        <th mat-header-cell *matHeaderCellDef class="cell-right pe-4">Member Amount
+                        </th>
+                        <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
+                            <mat-form-field appearance="fill" floatLabel="always" class="number-field">
+                                <input matInput class="number-right" name="assignedAmount"
+                                    [formControl]="getSplitControl(i, 'assignedAmount')">
+                                <span matTextPrefix>$</span>
+                            </mat-form-field>
+                        </td>
+                    </ng-container>
+                    <ng-container matColumnDef="allocated">
+                        <th mat-header-cell *matHeaderCellDef class="cell-right">
+                            Allocated Amount</th>
+                        <td mat-cell *matCellDef="let split" class="cell-right allocated-amount">
+                            ${{split.allocatedAmount |
+                            number :
+                            '1.2-2'}}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="delete">
+                        <th mat-header-cell *matHeaderCellDef class="cell-right">Delete</th>
+                        <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
+                            <button mat-mini-fab color="warn" (click)="deleteRow(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+                    <tr mat-row *matRowDef="let split; columns: columnsToDisplay">
+                    </tr>
+                    <tr class="mat-row" *matNoDataRow>
+                        <td class="mat-cell" [colSpan]="columnsToDisplay.length">Click the Add New Split button to add a
+                            split.
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
 </mat-dialog-content>
 <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
+    <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
     <button type="submit" defaultButton class="btn btn-primary"
         [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()" (click)="onSubmit()">
         Save

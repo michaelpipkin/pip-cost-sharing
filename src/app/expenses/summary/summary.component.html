@@ -1,57 +1,49 @@
-<div class="content row d-flex justify-content-center">
-    <div class="col-lg-6 col-md-8 col-sm-12">
-        <div class="row">
-            <div class="col-12 d-flex justify-content-center">
-                <mat-form-field id="group-select" color="primary">
-                    <mat-label>Select Member</mat-label>
-                    <mat-select [(ngModel)]="selectedMemberId" name="member" (selectionChange)="onSelectMember($event)">
-                        @for (member of members$ | async; track member) {
-                        <mat-option [value]="member.id">{{member.displayName}}</mat-option>
-                        }
-                    </mat-select>
-                </mat-form-field>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-12 d-flex justify-content-center">
-                <div class="mat-elevation-z8 p-3 m-2">
-                    <div class="scrollable-table">
-                        <table mat-table [dataSource]="tableData">
-                            <ng-container matColumnDef="owedTo">
-                                <th mat-header-cell *matHeaderCellDef>Owed To</th>
-                                <td mat-cell *matCellDef="let amountDue">{{getMemberName(amountDue.owedToMemberId)}}
-                                </td>
-                            </ng-container>
-                            <ng-container matColumnDef="owedBy">
-                                <th mat-header-cell *matHeaderCellDef>Owed By</th>
-                                <td mat-cell *matCellDef="let amountDue">{{getMemberName(amountDue.owedByMemberId)}}
-                                </td>
-                            </ng-container>
-                            <ng-container matColumnDef="amount">
-                                <th mat-header-cell *matHeaderCellDef>Amount</th>
-                                <td mat-cell *matCellDef="let amountDue">{{amountDue.amount | number : '1.2-2'}}</td>
-                            </ng-container>
-                            <ng-container matColumnDef="markPaid">
-                                <th mat-header-cell *matHeaderCellDef>Mark Paid</th>
-                                <td mat-cell *matCellDef="let amountDue">
-                                    <mat-icon class="material-icons-outlined paid-icon ms-4"
-                                        (click)="markExpensesPaid(amountDue.owedToMemberId, amountDue.owedByMemberId)">
-                                        paid
-                                    </mat-icon>
-                                </td>
-                            </ng-container>
-                            <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
-                            <tr mat-row *matRowDef="let amountDue; columns: columnsToDisplay"></tr>
-                            <tr class="mat-row" *matNoDataRow>
-                                <td class="mat-cell" [colSpan]="columnsToDisplay.length">No outstanding expenses found
-                                    for
-                                    selected member.
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="d-flex flex-column">
+    <div class="d-flex p-2 justify-content-center align-items-center">
+        <mat-form-field id="group-select" color="primary">
+            <mat-label>Select Member</mat-label>
+            <mat-select [(ngModel)]="selectedMemberId" name="member" (selectionChange)="onSelectMember($event)">
+                @for (member of members$ | async; track member) {
+                <mat-option [value]="member.id">{{member.displayName}}</mat-option>
+                }
+            </mat-select>
+        </mat-form-field>
+    </div>
+</div>
+<div class="d-flex p-3 justify-content-center mat-elevation-z8">
+    <div class="scrollable-table">
+        <table mat-table [dataSource]="tableData">
+            <ng-container matColumnDef="owedTo">
+                <th mat-header-cell *matHeaderCellDef>Owed To</th>
+                <td mat-cell *matCellDef="let amountDue">{{getMemberName(amountDue.owedToMemberId)}}
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="owedBy">
+                <th mat-header-cell *matHeaderCellDef>Owed By</th>
+                <td mat-cell *matCellDef="let amountDue">{{getMemberName(amountDue.owedByMemberId)}}
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef>Amount</th>
+                <td mat-cell *matCellDef="let amountDue">{{amountDue.amount | number : '1.2-2'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="markPaid">
+                <th mat-header-cell *matHeaderCellDef>Mark Paid</th>
+                <td mat-cell *matCellDef="let amountDue">
+                    <mat-icon class="material-icons-outlined paid-icon ms-4"
+                        (click)="markExpensesPaid(amountDue.owedToMemberId, amountDue.owedByMemberId)">
+                        paid
+                    </mat-icon>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+            <tr mat-row *matRowDef="let amountDue; columns: columnsToDisplay"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell" [colSpan]="columnsToDisplay.length">No outstanding expenses found
+                    for
+                    selected member.
+                </td>
+            </tr>
+        </table>
     </div>
 </div>
