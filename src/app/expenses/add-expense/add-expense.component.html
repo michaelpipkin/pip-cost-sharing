@@ -153,6 +153,7 @@
         [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()"
         (click)="memorize()">Memorize</button>
     <button type="submit" defaultButton class="btn btn-primary"
+        [matTooltip]="!expenseFullyAllocated() ? 'You must allocate the expense before saving.' : ''"
         [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()" (click)="onSubmit()">
         Save
     </button>
