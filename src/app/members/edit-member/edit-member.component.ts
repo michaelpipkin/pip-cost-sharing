@@ -1,16 +1,16 @@
 import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Member } from '@models/member';
+import { MemberService } from '@services/member.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { catchError, map, throwError } from 'rxjs';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogConfig,
   MatDialogRef,
 } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Member } from '@models/member';
-import { MemberService } from '@services/member.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { catchError, map, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-edit-member',
@@ -86,7 +86,6 @@ export class EditMemberComponent {
 
   deleteMember(): void {
     const dialogConfig: MatDialogConfig = {
-      width: '600px',
       data: `member: ${this.member.displayName}`,
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);

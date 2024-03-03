@@ -19,15 +19,22 @@ import { EditCategoryComponent } from './categories/edit-category/edit-category.
 import { AddExpenseComponent } from './expenses/add-expense/add-expense.component';
 import { EditExpenseComponent } from './expenses/edit-expense/edit-expense.component';
 import { ExpensesComponent } from './expenses/expenses/expenses.component';
+import { MemorizedComponent } from './expenses/memorized/memorized.component';
 import { SummaryComponent } from './expenses/summary/summary.component';
 import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
+import { CategoriesHelpComponent } from './help/categories-help/categories-help.component';
+import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
+import { HelpComponent } from './help/help/help.component';
+import { MembersHelpComponent } from './help/members-help/members-help.component';
+import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
 import { ConfirmDialogComponent } from './shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
+import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
@@ -49,12 +56,7 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { MembersHelpComponent } from './help/members-help/members-help.component';
-import { CategoriesHelpComponent } from './help/categories-help/categories-help.component';
-import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
-import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
-import { HelpComponent } from './help/help/help.component';
-import { FooterComponent } from './shared/footer/footer.component';
+import { MemorizedHelpComponent } from './help/memorized-help/memorized-help.component';
 
 @NgModule({
   declarations: [
@@ -84,6 +86,8 @@ import { FooterComponent } from './shared/footer/footer.component';
     SummaryHelpComponent,
     HelpComponent,
     FooterComponent,
+    MemorizedComponent,
+    MemorizedHelpComponent,
   ],
   imports: [
     BrowserModule,
@@ -103,7 +107,6 @@ import { FooterComponent } from './shared/footer/footer.component';
       useValue: {
         disableClose: true,
         autoFocus: true,
-        width: '400px',
       } as MatDialogConfig,
     },
     {

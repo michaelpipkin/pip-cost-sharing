@@ -71,7 +71,6 @@ export class EditCategoryComponent {
 
   deleteCategory(): void {
     const dialogConfig: MatDialogConfig = {
-      width: '600px',
       data: `category: ${this.category.name}`,
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);

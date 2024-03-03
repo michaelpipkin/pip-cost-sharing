@@ -26,9 +26,6 @@ export class GroupsComponent implements OnInit {
   selectedGroupId: string;
   isGroupAdmin: boolean = false;
   expensesChanged: string = '';
-  dialogConfig: MatDialogConfig = {
-    width: '520px',
-  };
 
   constructor(
     private groupService: GroupService,
@@ -53,7 +50,7 @@ export class GroupsComponent implements OnInit {
   }
 
   addGroup(): void {
-    const dialogRef = this.dialog.open(AddGroupComponent, this.dialogConfig);
+    const dialogRef = this.dialog.open(AddGroupComponent);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackbar.open('Group added!', 'OK');
@@ -63,7 +60,7 @@ export class GroupsComponent implements OnInit {
   }
 
   joinGroup(): void {
-    const dialogRef = this.dialog.open(JoinGroupComponent, this.dialogConfig);
+    const dialogRef = this.dialog.open(JoinGroupComponent);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackbar.open('Group joined!', 'OK');
