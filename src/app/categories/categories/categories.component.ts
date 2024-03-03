@@ -85,14 +85,16 @@ export class CategoriesComponent implements OnChanges {
   }
 
   onRowClick(category: Category): void {
-    const dialogConfig: MatDialogConfig = {
-      data: category,
-    };
-    const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result.success) {
-        this.snackBar.open(`Category ${result.operation}`, 'OK');
-      }
-    });
+    if (this.isGroupAdmin) {
+      const dialogConfig: MatDialogConfig = {
+        data: category,
+      };
+      const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((result) => {
+        if (result.success) {
+          this.snackBar.open(`Category ${result.operation}`, 'OK');
+        }
+      });
+    }
   }
 }

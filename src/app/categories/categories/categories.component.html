@@ -9,7 +9,8 @@
         </mat-form-field>
         <mat-slide-toggle color="primary" [(ngModel)]="activeOnly" (change)="filterCategories()">Active
             only</mat-slide-toggle>
-        <button class="btn btn-primary ms-4" (click)="addCategory()">Add Category</button>
+        <button class="btn btn-primary ms-4" [class.hidden]="!isGroupAdmin" (click)="addCategory()">Add
+            Category</button>
     </div>
     <div class="d-flex p-3 justify-content-center mat-elevation-z8">
         <div class="scrollable-table">
@@ -29,7 +30,7 @@
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
                 <tr mat-row *matRowDef="let myRowData; columns: columnsToDisplay" (click)="onRowClick(myRowData)"
-                    class="clickable-row">
+                    [class.clickable-row]="isGroupAdmin">
                 </tr>
                 <tr class="mat-row" *matNoDataRow>
                     <td class="mat-cell" [colSpan]="columnsToDisplay.length">No categories found matching
