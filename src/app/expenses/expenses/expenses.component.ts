@@ -41,7 +41,7 @@ export class ExpensesComponent implements OnChanges {
   @Input() currentMember: Member;
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
-  @Input() expensesChanged: string = '';
+  @Input() selectedTab: number;
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;
@@ -85,9 +85,6 @@ export class ExpensesComponent implements OnChanges {
     );
     if (!!changes.groupId) {
       this.groupId = changes.groupId.currentValue;
-    }
-    if (!!changes.expensesChanged) {
-      this.filterExpenses();
     }
     this.selectedMemberId = '';
     this.unpaidOnly = true;

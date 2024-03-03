@@ -27,7 +27,6 @@ import {
 export class SummaryComponent implements OnChanges {
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
-  @Output() expensesPaidEvent = new EventEmitter<string>();
   members$: Observable<Member[]>;
   members: Member[];
   splits$: Observable<Split[]>;
@@ -125,7 +124,6 @@ export class SummaryComponent implements OnChanges {
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');
               this.table.renderRows();
-              this.expensesPaidEvent.emit(new Date().toISOString());
             }),
             catchError((err: Error) => {
               this.snackBar.open(

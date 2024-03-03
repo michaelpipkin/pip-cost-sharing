@@ -11,6 +11,18 @@
                     </mat-error>
                 </mat-form-field>
             </div>
+            <div class="d-flex justify-content-start">
+                <mat-form-field appearance="fill" color="primary">
+                    <mat-label>Email</mat-label>
+                    <input matInput email formControlName="email">
+                    <mat-error *ngIf="f.email.errors?.['required']">
+                        *Required
+                    </mat-error>
+                    <mat-error *ngIf="f.email.errors?.['email']">
+                        *Not a valid email address
+                    </mat-error>
+                </mat-form-field>
+            </div>
             <div class="d-flex justify-content-start ps-2" [class.hidden]="!isGroupAdmin">
                 <mat-slide-toggle class="me-2" color="primary" formControlName="active">Active</mat-slide-toggle>
                 <mat-slide-toggle color="primary" formControlName="groupAdmin" [matTooltip]="groupAdminTooltip">
@@ -20,8 +32,8 @@
         </div>
     </mat-dialog-content>
     <mat-dialog-actions>
-        <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
-        <button type="button" class="btn btn-warning me-2" (click)="removeMember()">Remove</button>
+        <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+        <button type="button" class="btn btn-warning" (click)="removeMember()">Remove</button>
         <button type="submit" defaultButton class="btn btn-primary" [disabled]="!editMemberForm.valid"
             (click)="onSubmit()">
             Save

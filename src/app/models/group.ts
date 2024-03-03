@@ -4,6 +4,7 @@ import { Member } from './member';
 export interface IGroup {
   id: string;
   name: string;
+  active: boolean;
   members: Member[];
   expenses: Expense[];
 }
@@ -14,6 +15,7 @@ export class Group implements IGroup {
   }
   id: string;
   name: string;
+  active: boolean;
   members: Member[];
   expenses: Expense[];
 }

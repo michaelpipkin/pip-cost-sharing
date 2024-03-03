@@ -17,8 +17,8 @@
         </div>
     </mat-dialog-content>
     <mat-dialog-actions>
-        <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
-        <button type="button" class="btn btn-warning me-2" (click)="deleteCategory()">Delete</button>
+        <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+        <button type="button" class="btn btn-warning" (click)="deleteCategory()">Delete</button>
         <button type="submit" defaultButton class="btn btn-primary" [disabled]="!editCategoryForm.valid"
             (click)="onSubmit()">
             Save

@@ -37,6 +37,7 @@ export class EditMemberComponent {
     this.isGroupAdmin = this.data.isGroupAdmin;
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
+      email: [this.member.email, [Validators.required, Validators.email]],
       active: [this.member.active],
       groupAdmin: [
         {
@@ -59,6 +60,7 @@ export class EditMemberComponent {
     const form = this.editMemberForm.value;
     const changes: Partial<Member> = {
       displayName: form.memberName,
+      email: form.email,
       active: form.active,
       groupAdmin: form.groupAdmin,
     };

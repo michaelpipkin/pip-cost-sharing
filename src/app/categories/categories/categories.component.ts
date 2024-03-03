@@ -16,6 +16,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
 export class CategoriesComponent implements OnChanges {
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
+  @Input() selectedTab: number;
   categories$: Observable<Category[]>;
   filteredCategories$: Observable<Category[]>;
   activeOnly: boolean = false;

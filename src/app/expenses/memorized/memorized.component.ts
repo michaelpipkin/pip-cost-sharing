@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Member } from '@models/member';
+import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
@@ -38,6 +39,7 @@ export class MemorizedComponent implements OnChanges {
   @Input() currentMember: Member;
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
+  @Input() selectedTab: number;
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;

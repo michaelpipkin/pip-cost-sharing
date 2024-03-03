@@ -1,0 +1,36 @@
+<h1 mat-dialog-title>Manage Groups</h1>
+
+<mat-dialog-content>
+    <div class="d-flex flex-column">
+        <div class="d-flex justify-content-start">
+            <mat-form-field id="group-select" color="primary">
+                <mat-label>Select Group</mat-label>
+                <mat-select [(ngModel)]="selectedGroupId" name="group" (selectionChange)="onSelectGroup($event)">
+                    @for (group of groups$ | async; track group) {
+                    <mat-option [value]="group.id">{{group.name}}</mat-option>
+                    }
+                </mat-select>
+            </mat-form-field>
+        </div>
+        <form [formGroup]="editGroupForm" class="d-flex flex-column">
+            <div class="d-flex justify-content-start">
+                <mat-form-field appearance="fill" color="primary">
+                    <mat-label>Group name</mat-label>
+                    <input matInput formControlName="groupName">
+                    <mat-error *ngIf="f.groupName.errors?.['required']">
+                        *Required
+                    </mat-error>
+                </mat-form-field>
+            </div>
+            <div class="d-flex justify-content-start ps-2">
+                <mat-slide-toggle color="primary" formControlName="active">Active</mat-slide-toggle>
+            </div>
+        </form>
+    </div>
+</mat-dialog-content>
+<mat-dialog-actions>
+    <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+    <button type="submit" defaultButton class="btn btn-primary" [disabled]="!editGroupForm.valid" (click)="onSubmit()">
+        Save
+    </button>
+</mat-dialog-actions>
