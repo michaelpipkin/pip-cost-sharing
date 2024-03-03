@@ -149,6 +149,9 @@
 </mat-dialog-content>
 <mat-dialog-actions>
     <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+    <button type="button" class="btn btn-primary" [class.hidden]="fromMemorized"
+        [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()"
+        (click)="memorize()">Memorize</button>
     <button type="submit" defaultButton class="btn btn-primary"
         [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()" (click)="onSubmit()">
         Save

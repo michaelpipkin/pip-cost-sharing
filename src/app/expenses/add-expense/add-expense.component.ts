@@ -35,6 +35,7 @@ export class AddExpenseComponent implements OnInit {
   fileName: string;
   receiptFile: File;
   newExpenseId: string;
+  fromMemorized: boolean = false;
   addExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
@@ -56,15 +57,29 @@ export class AddExpenseComponent implements OnInit {
     this.groupId = this.data.groupId;
     this.currentMember = this.data.member;
     this.isGroupAdmin = this.data.isGroupAdmin;
-    this.addExpenseForm = this.fb.group({
-      paidByMemberId: [this.currentMember.id, Validators.required],
-      date: [new Date(), Validators.required],
-      amount: [0.0, Validators.required],
-      description: ['', Validators.required],
-      categoryId: ['', Validators.required],
-      sharedAmount: [0.0, Validators.required],
-      allocatedAmount: [0.0, Validators.required],
-    });
+    if (this.data.memorized) {
+      this.fromMemorized = true;
+      const expense: Expense = this.data.expense;
+      this.addExpenseForm = this.fb.group({
+        paidByMemberId: [expense.paidByMemberId, Validators.required],
+        date: [new Date(), Validators.required],
+        amount: [expense.totalAmount, Validators.required],
+        description: [expense.description, Validators.required],
+        categoryId: [expense.categoryId, Validators.required],
+        sharedAmount: [expense.sharedAmount, Validators.required],
+        allocatedAmount: [expense.allocatedAmount, Validators.required],
+      });
+    } else {
+      this.addExpenseForm = this.fb.group({
+        paidByMemberId: [this.currentMember.id, Validators.required],
+        date: [new Date(), Validators.required],
+        amount: [0.0, Validators.required],
+        description: ['', Validators.required],
+        categoryId: ['', Validators.required],
+        sharedAmount: [0.0, Validators.required],
+        allocatedAmount: [0.0, Validators.required],
+      });
+    }
   }
 
   ngOnInit(): void {
@@ -84,6 +99,10 @@ export class AddExpenseComponent implements OnInit {
       )
       .subscribe();
     this.newExpenseId = this.db.createId();
+    if (this.data.memorized) {
+      this.splitsDataSource = this.data.expense.splits;
+      this.updateForm();
+    }
   }
 
   public get e() {
@@ -290,11 +309,55 @@ export class AddExpenseComponent implements OnInit {
             const upload = this.storage.upload(filePath, this.receiptFile);
             upload.snapshotChanges().subscribe();
           }
-          this.dialogRef.close(true);
+          this.dialogRef.close({ success: true, operation: 'added' });
         }),
         catchError((err: Error) => {
           this.snackBar.open(
             'Something went wrong - could not add expense.',
+            'Close'
+          );
+          this.addExpenseForm.enable();
+          return throwError(() => new Error(err.message));
+        })
+      )
+      .subscribe();
+  }
+
+  memorize(): void {
+    this.addExpenseForm.disable();
+    const val = this.addExpenseForm.value;
+    const expense: Partial<Expense> = {
+      id: this.newExpenseId,
+      groupId: this.groupId,
+      description: val.description,
+      categoryId: val.categoryId,
+      paidByMemberId: val.paidByMemberId,
+      sharedAmount: val.sharedAmount,
+      allocatedAmount: val.allocatedAmount,
+      totalAmount: val.amount,
+    };
+    let splits: Partial<Split>[] = [];
+    this.splitsDataSource.forEach((s) => {
+      const split: Partial<Split> = {
+        groupId: this.groupId,
+        expenseId: this.newExpenseId,
+        categoryId: val.categoryId,
+        assignedAmount: s.assignedAmount,
+        allocatedAmount: s.allocatedAmount,
+        paidByMemberId: val.paidByMemberId,
+        owedByMemberId: s.owedByMemberId,
+      };
+      splits.push(split);
+    });
+    this.expenseService
+      .memorizeExpense(this.groupId, expense, splits)
+      .pipe(
+        tap(() => {
+          this.dialogRef.close({ success: true, operation: 'memorized' });
+        }),
+        catchError((err: Error) => {
+          this.snackBar.open(
+            'Something went wrong - could not memorize expense.',
             'Close'
           );
           this.addExpenseForm.enable();

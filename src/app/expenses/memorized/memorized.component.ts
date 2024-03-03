@@ -1,15 +1,12 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
-import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
@@ -23,9 +20,9 @@ import {
 } from '@angular/animations';
 
 @Component({
-  selector: 'app-expenses',
-  templateUrl: './expenses.component.html',
-  styleUrl: './expenses.component.scss',
+  selector: 'app-memorized',
+  templateUrl: './memorized.component.html',
+  styleUrl: './memorized.component.scss',
   animations: [
     trigger('detailExpand', [
       state('collapsed,void', style({ height: '0px', minHeight: '0' })),
@@ -37,35 +34,25 @@ import {
     ]),
   ],
 })
-export class ExpensesComponent implements OnChanges {
+export class MemorizedComponent implements OnChanges {
   @Input() currentMember: Member;
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
-  @Input() expensesChanged: string = '';
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;
   filteredExpenses$: Observable<Expense[]>;
-  receipts: string[] = [];
-  unpaidOnly: boolean = true;
   selectedMemberId: string = '';
   selectedCategoryId: string = '';
-  expenseTotal: number = 0;
-  sortField: string = 'date';
-  sortAsc: boolean = true;
-  startDate: Date | null;
-  endDate: Date | null;
   columnsToDisplay: string[] = [
-    'date',
     'paidBy',
     'description',
     'category',
     'amount',
-    'receipt',
-    'paid',
+    'create',
     'expand',
   ];
-  splitColumnsToDisplay: string[] = ['owedBy', 'amount', 'paid', 'mark'];
+  splitColumnsToDisplay: string[] = ['owedBy', 'amount'];
   expandedExpense: Expense | null;
 
   constructor(
@@ -73,25 +60,18 @@ export class ExpensesComponent implements OnChanges {
     private splitService: SplitService,
     private memberService: MemberService,
     private categoryService: CategoryService,
-    private sorter: SortingService,
-    private storage: AngularFireStorage,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.expenses$ = this.expenseService.getExpensesWithSplitsForGroup(
+    this.expenses$ = this.expenseService.getMemorizedExpensesWithSplitsForGroup(
       this.groupId
     );
     if (!!changes.groupId) {
       this.groupId = changes.groupId.currentValue;
     }
-    if (!!changes.expensesChanged) {
-      this.filterExpenses();
-    }
     this.selectedMemberId = '';
-    this.unpaidOnly = true;
-    this.getReceipts();
     this.memberService
       .getAllGroupMembers(this.groupId)
       .pipe(
@@ -111,27 +91,12 @@ export class ExpensesComponent implements OnChanges {
     this.filterExpenses();
   }
 
-  getReceipts(): Observable<any> {
-    return this.storage
-      .ref(`groups/${this.groupId}/receipts/`)
-      .list()
-      .pipe(
-        map((res) => {
-          res.items.forEach((file) => {
-            this.receipts.push(file.name);
-          });
-        })
-      );
-  }
-
   filterExpenses(): void {
-    this.getReceipts().subscribe();
     this.splitService.getSplitsForGroup(this.groupId).subscribe();
     this.filteredExpenses$ = this.expenses$.pipe(
       map((expenses: Expense[]) => {
         let filteredExpenses: Expense[] = expenses.filter(
           (expense: Expense) =>
-            (!expense.paid || expense.paid != this.unpaidOnly) &&
             expense.paidByMemberId ==
               (this.selectedMemberId != ''
                 ? this.selectedMemberId
@@ -141,36 +106,9 @@ export class ExpensesComponent implements OnChanges {
                 ? this.selectedCategoryId
                 : expense.categoryId)
         );
-        if (this.startDate !== undefined && this.startDate !== null) {
-          filteredExpenses = filteredExpenses.filter(
-            (expense: Expense) => expense.date.toDate() >= this.startDate
-          );
-        }
-        if (this.endDate !== undefined && this.endDate !== null) {
-          filteredExpenses = filteredExpenses.filter(
-            (expense: Expense) => expense.date.toDate() <= this.endDate
-          );
-        }
-        if (filteredExpenses.length > 0) {
-          filteredExpenses = this.sorter.sort(
-            filteredExpenses,
-            this.sortField,
-            this.sortAsc
-          );
-        }
-        this.expenseTotal = filteredExpenses.reduce(
-          (total, e) => (total += e.totalAmount),
-          0
-        );
         return filteredExpenses;
       })
     );
-  }
-
-  sortExpenses(e: { active: string; direction: string }): void {
-    this.sortField = e.active;
-    this.sortAsc = e.direction == 'asc';
-    this.filterExpenses();
   }
 
   clearSelectedMember(): void {
@@ -180,16 +118,6 @@ export class ExpensesComponent implements OnChanges {
 
   clearSelectedCategory(): void {
     this.selectedCategoryId = '';
-    this.filterExpenses();
-  }
-
-  clearStartDate(): void {
-    this.startDate = null;
-    this.filterExpenses();
-  }
-
-  clearEndDate(): void {
-    this.endDate = null;
     this.filterExpenses();
   }
 
@@ -207,7 +135,7 @@ export class ExpensesComponent implements OnChanges {
     const dialogConfig: MatDialogConfig = {
       data: {
         expense: expense,
-        memorized: false,
+        memorized: true,
         groupId: this.groupId,
         member: this.currentMember,
         isGroupAdmin: this.isGroupAdmin,
@@ -223,32 +151,23 @@ export class ExpensesComponent implements OnChanges {
     });
   }
 
-  addExpense(): void {
+  addExpense(expense: Expense): void {
     const dialogConfig: MatDialogConfig = {
       data: {
         groupId: this.groupId,
         member: this.currentMember,
         isGroupAdmin: this.isGroupAdmin,
-        memorized: false,
+        memorized: true,
+        expense: expense,
       },
       width: '90vh',
     };
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((success) => {
-      if (success) {
-        this.snackBar.open('Expense added', 'OK');
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result.success) {
+        this.snackBar.open(`Expense ${result.operation}`, 'OK');
         this.filterExpenses();
       }
     });
-  }
-
-  markSplitPaidUnpaid(split: Split): void {
-    const changes = {
-      paid: !split.paid,
-    };
-    this.splitService
-      .updateSplit(this.groupId, split.expenseId, split.id, changes)
-      .subscribe();
-    this.filterExpenses();
   }
 }

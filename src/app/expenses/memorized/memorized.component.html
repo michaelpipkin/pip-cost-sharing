@@ -1,27 +1,5 @@
 <div class="d-flex flex-column">
     <div class="d-flex p-2 justify-content-center align-items-center flex-wrap">
-        <mat-form-field appearance="fill" class="datepicker me-2">
-            <mat-label>Start date</mat-label>
-            <input matInput [(ngModel)]="startDate" [matDatepicker]="startDatepicker" (dateInput)="filterExpenses()"
-                (dateChange)="filterExpenses()">
-            <mat-hint>MM/DD/YYYY</mat-hint>
-            <mat-datepicker-toggle matIconSuffix [for]="startDatepicker"></mat-datepicker-toggle>
-            <button *ngIf="startDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearStartDate()">
-                <mat-icon>close</mat-icon>
-            </button>
-            <mat-datepicker #startDatepicker></mat-datepicker>
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="datepicker me-2">
-            <mat-label>End date</mat-label>
-            <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" (dateInput)="filterExpenses()"
-                (dateChange)="filterExpenses()">
-            <mat-hint>MM/DD/YYYY</mat-hint>
-            <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
-            <button *ngIf="endDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearEndDate()">
-                <mat-icon>close</mat-icon>
-            </button>
-            <mat-datepicker #endDatePicker></mat-datepicker>
-        </mat-form-field>
         <mat-form-field class="me-2">
             <mat-label>Filter by payee</mat-label>
             <mat-select [(ngModel)]="selectedMemberId" name="member" (selectionChange)="filterExpenses()">
@@ -46,54 +24,38 @@
                 <mat-icon>close</mat-icon>
             </button>
         </mat-form-field>
-        <mat-slide-toggle color="primary" [(ngModel)]="unpaidOnly" (change)="filterExpenses()">Unpaid
-            only</mat-slide-toggle>
-        <button class="btn btn-primary ms-4" (click)="addExpense()">Add New Expense</button>
     </div>
     <div class="d-flex p-3 justify-content-center mat-elevation-z8">
         <div class="scrollable-table">
-            <table mat-table matSort [dataSource]="filteredExpenses$ | async" (matSortChange)="sortExpenses($event)"
-                multiTemplateDataRows>
+            <table mat-table [dataSource]="filteredExpenses$ | async" multiTemplateDataRows>
                 <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Id</th>
                     <td mat-cell *matCellDef="let expense">{{expense.id}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
-                </ng-container>
-                <ng-container matColumnDef="date">
-                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-                    <td mat-cell *matCellDef="let expense">{{expense.date.toDate() | date : 'yyyy-MM-dd'}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="paidBy">
                     <th mat-header-cell *matHeaderCellDef>Paid By</th>
                     <td mat-cell *matCellDef="let expense">{{getMemberName(expense.paidByMemberId)}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="description">
                     <th mat-header-cell *matHeaderCellDef>Description</th>
                     <td mat-cell *matCellDef="let expense">{{expense.description}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="category">
                     <th mat-header-cell *matHeaderCellDef>Category</th>
                     <td mat-cell *matCellDef="let expense">{{getCategoryName(expense.categoryId)}}</td>
-                    <td mat-footer-cell *matFooterCellDef>Total:</td>
                 </ng-container>
                 <ng-container matColumnDef="amount">
                     <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
                     <td mat-cell *matCellDef="let expense" class="cell-right">${{expense.totalAmount | number :
                         '1.2-2'}}</td>
-                    <td mat-footer-cell *matFooterCellDef class="cell-right">${{expenseTotal | number : '1.2-2'}}</td>
                 </ng-container>
-                <ng-container matColumnDef="receipt">
-                    <th mat-header-cell *matHeaderCellDef>Receipt</th>
-                    <td mat-cell *matCellDef="let expense">{{receipts.includes(expense.id) | yesNo}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
-                </ng-container>
-                <ng-container matColumnDef="paid">
-                    <th mat-header-cell *matHeaderCellDef>Paid</th>
-                    <td mat-cell *matCellDef="let expense">{{expense.paid | yesNo}}</td>
-                    <td mat-footer-cell *matFooterCellDef></td>
+                <ng-container matColumnDef="create">
+                    <th mat-header-cell *matHeaderCellDef>Create Expense</th>
+                    <td mat-cell *matCellDef="let expense" class="cell-center">
+                        <button mat-icon-button (click)="addExpense(expense); $event.stopPropagation()">
+                            <mat-icon>add</mat-icon>
+                        </button>
+                    </td>
                 </ng-container>
                 <ng-container matColumnDef="expand">
                     <th mat-header-cell *matHeaderCellDef aria-label="row actions">Expand</th>
@@ -107,7 +69,6 @@
                             }
                         </button>
                     </td>
-                    <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="expandedDetail">
                     <td mat-cell *matCellDef="let expense" [colSpan]="columnsToDisplay.length">
@@ -127,20 +88,6 @@
                                     <td mat-cell *matCellDef="let split">${{split.allocatedAmount | number:
                                         '1.2-2'}}</td>
                                 </ng-container>
-                                <ng-container matColumnDef="paid">
-                                    <th mat-header-cell *matHeaderCellDef>Paid</th>
-                                    <td mat-cell *matCellDef="let split">{{split.paid | yesNo}}</td>
-                                </ng-container>
-                                <ng-container matColumnDef="mark">
-                                    <th mat-header-cell *matHeaderCellDef>Mark Paid/Unpaid</th>
-                                    <td mat-cell *matCellDef="let split">
-                                        <mat-icon *ngIf="expense.paidByMemberId != split.owedByMemberId"
-                                            class="material-icons-outlined paid-icon ms-4"
-                                            (click)="markSplitPaidUnpaid(split)">
-                                            paid
-                                        </mat-icon>
-                                    </td>
-                                </ng-container>
                                 <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay"></tr>
                                 <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay">
                                 </tr>
@@ -153,7 +100,6 @@
                 <tr mat-row *matRowDef="let expense; columns: columnsToDisplay" class="expense-row clickable-row"
                     [class.expanded-row]="expandedExpense === expense" (click)="onRowClick(expense)">
                 </tr>
-                <tr mat-footer-row *matFooterRowDef="columnsToDisplay; sticky: true"></tr>
                 <tr mat-row *matRowDef="let split; columns: ['expandedDetail']" class="split-row"></tr>
                 <tr class="mat-row" *matNoDataRow>
                     <td class="mat-cell" [colSpan]="columnsToDisplay.length">No expenses found for search criteria.

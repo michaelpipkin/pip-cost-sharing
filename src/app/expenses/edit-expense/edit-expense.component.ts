@@ -49,6 +49,7 @@ export class EditExpenseComponent implements OnInit {
   fileName: string;
   receiptFile: File;
   receiptUrl: Url;
+  fromMemorized: boolean = false;
   editExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
@@ -71,15 +72,21 @@ export class EditExpenseComponent implements OnInit {
     this.currentMember = this.data.member;
     this.isGroupAdmin = this.data.isGroupAdmin;
     const expense: Expense = this.data.expense;
+    this.fromMemorized = this.data.memorized;
     this.editExpenseForm = this.fb.group({
       paidByMemberId: [expense.paidByMemberId, Validators.required],
-      date: [expense.date.toDate(), Validators.required],
+      date: [new Date(), Validators.required],
       amount: [expense.totalAmount, Validators.required],
       description: [expense.description, Validators.required],
       categoryId: [expense.categoryId, Validators.required],
       sharedAmount: [expense.sharedAmount, Validators.required],
       allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
+    if (!this.fromMemorized) {
+      this.editExpenseForm.patchValue({
+        date: expense.date.toDate(),
+      });
+    }
     this.splitsDataSource = data.expense.splits;
     this.updateForm();
   }
@@ -250,105 +257,192 @@ export class EditExpenseComponent implements OnInit {
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        dialogTitle: 'Confirm Action',
-        confirmationText:
-          'Updating an expense will mark all splits as unpaid. Are you sure you want to continue?',
-        cancelButtonText: 'No',
-        confirmButtonText: 'Yes',
-      },
-    };
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
-      if (confirm) {
-        this.editExpenseForm.disable();
-        const val = this.editExpenseForm.value;
-        const changes: Partial<Expense> = {
-          date: firestore.Timestamp.fromDate(val.date),
-          description: val.description,
+    if (this.fromMemorized) {
+      this.editExpenseForm.disable();
+      const val = this.editExpenseForm.value;
+      const changes: Partial<Expense> = {
+        description: val.description,
+        categoryId: val.categoryId,
+        paidByMemberId: val.paidByMemberId,
+        sharedAmount: val.sharedAmount,
+        allocatedAmount: val.allocatedAmount,
+        totalAmount: val.amount,
+      };
+      let splits: Partial<Split>[] = [];
+      this.splitsDataSource.forEach((s) => {
+        const split: Partial<Split> = {
+          groupId: this.groupId,
           categoryId: val.categoryId,
+          assignedAmount: s.assignedAmount,
+          allocatedAmount: s.allocatedAmount,
           paidByMemberId: val.paidByMemberId,
-          sharedAmount: val.sharedAmount,
-          allocatedAmount: val.allocatedAmount,
-          totalAmount: val.amount,
+          owedByMemberId: s.owedByMemberId,
         };
-        let splits: Partial<Split>[] = [];
-        this.splitsDataSource.forEach((s) => {
-          const split: Partial<Split> = {
-            groupId: this.groupId,
+        splits.push(split);
+      });
+      this.expenseService
+        .updateMemorizedExpense(
+          this.groupId,
+          this.data.expense.id,
+          changes,
+          splits
+        )
+        .pipe(
+          tap(() => {
+            this.dialogRef.close({
+              success: true,
+              operation: 'edited',
+            });
+          }),
+          catchError((err: Error) => {
+            this.snackBar.open(
+              'Something went wrong - could not update memorized expense.',
+              'Close'
+            );
+            this.editExpenseForm.enable();
+            return throwError(() => new Error(err.message));
+          })
+        )
+        .subscribe();
+    } else {
+      const dialogConfig: MatDialogConfig = {
+        data: {
+          dialogTitle: 'Confirm Action',
+          confirmationText:
+            'Updating an expense will mark all splits as unpaid. Are you sure you want to continue?',
+          cancelButtonText: 'No',
+          confirmButtonText: 'Yes',
+        },
+      };
+      const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((confirm) => {
+        if (confirm) {
+          this.editExpenseForm.disable();
+          const val = this.editExpenseForm.value;
+          const changes: Partial<Expense> = {
+            date: firestore.Timestamp.fromDate(val.date),
+            description: val.description,
             categoryId: val.categoryId,
-            assignedAmount: s.assignedAmount,
-            allocatedAmount: s.allocatedAmount,
             paidByMemberId: val.paidByMemberId,
-            owedByMemberId: s.owedByMemberId,
-            paid: s.owedByMemberId == val.paidByMemberId,
+            sharedAmount: val.sharedAmount,
+            allocatedAmount: val.allocatedAmount,
+            totalAmount: val.amount,
           };
-          splits.push(split);
-        });
-        this.expenseService
-          .updateExpense(this.groupId, this.data.expense.id, changes, splits)
-          .pipe(
-            tap(() => {
-              if (this.receiptFile) {
-                const filePath = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
-                const upload = this.storage.upload(filePath, this.receiptFile);
-                upload.snapshotChanges().subscribe();
-              }
-              this.dialogRef.close({
-                success: true,
-                operation: 'edited',
-              });
-            }),
-            catchError((err: Error) => {
-              this.snackBar.open(
-                'Something went wrong - could not add expense.',
-                'Close'
-              );
-              this.editExpenseForm.enable();
-              return throwError(() => new Error(err.message));
-            })
-          )
-          .subscribe();
-      }
-    });
+          let splits: Partial<Split>[] = [];
+          this.splitsDataSource.forEach((s) => {
+            const split: Partial<Split> = {
+              groupId: this.groupId,
+              categoryId: val.categoryId,
+              assignedAmount: s.assignedAmount,
+              allocatedAmount: s.allocatedAmount,
+              paidByMemberId: val.paidByMemberId,
+              owedByMemberId: s.owedByMemberId,
+              paid: s.owedByMemberId == val.paidByMemberId,
+            };
+            splits.push(split);
+          });
+          this.expenseService
+            .updateExpense(this.groupId, this.data.expense.id, changes, splits)
+            .pipe(
+              tap(() => {
+                if (this.receiptFile) {
+                  const filePath = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
+                  const upload = this.storage.upload(
+                    filePath,
+                    this.receiptFile
+                  );
+                  upload.snapshotChanges().subscribe();
+                }
+                this.dialogRef.close({
+                  success: true,
+                  operation: 'edited',
+                });
+              }),
+              catchError((err: Error) => {
+                this.snackBar.open(
+                  'Something went wrong - could not edit expense.',
+                  'Close'
+                );
+                this.editExpenseForm.enable();
+                return throwError(() => new Error(err.message));
+              })
+            )
+            .subscribe();
+        }
+      });
+    }
   }
 
   delete(): void {
-    const dialogConfig: MatDialogConfig = {
-      width: '600px',
-      data: `this expense`,
-    };
-    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
-      if (confirm) {
-        this.expenseService
-          .deleteExpense(this.groupId, this.data.expense.id)
-          .pipe(
-            tap(() => {
-              if (this.receiptUrl) {
-                this.storage
-                  .ref(
-                    `groups/${this.groupId}/receipts/${this.data.expense.id}`
-                  )
-                  .delete();
-              }
-              this.dialogRef.close({
-                success: true,
-                operation: 'deleted',
-              });
-            }),
-            catchError((err: Error) => {
-              this.snackBar.open(
-                'Something went wrong - could not delete expense.',
-                'Close'
-              );
-              return throwError(() => new Error(err.message));
-            })
-          )
-          .subscribe();
-      }
-    });
+    if (this.fromMemorized) {
+      const dialogConfig: MatDialogConfig = {
+        data: `this memorized expense`,
+      };
+      const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((confirm) => {
+        if (confirm) {
+          this.expenseService
+            .deleteMemorizedExpense(this.groupId, this.data.expense.id)
+            .pipe(
+              tap(() => {
+                if (this.receiptUrl) {
+                  this.storage
+                    .ref(
+                      `groups/${this.groupId}/receipts/${this.data.expense.id}`
+                    )
+                    .delete();
+                }
+                this.dialogRef.close({
+                  success: true,
+                  operation: 'deleted',
+                });
+              }),
+              catchError((err: Error) => {
+                this.snackBar.open(
+                  'Something went wrong - could not delete memorized expense.',
+                  'Close'
+                );
+                return throwError(() => new Error(err.message));
+              })
+            )
+            .subscribe();
+        }
+      });
+    } else {
+      const dialogConfig: MatDialogConfig = {
+        data: `this expense`,
+      };
+      const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((confirm) => {
+        if (confirm) {
+          this.expenseService
+            .deleteExpense(this.groupId, this.data.expense.id)
+            .pipe(
+              tap(() => {
+                if (this.receiptUrl) {
+                  this.storage
+                    .ref(
+                      `groups/${this.groupId}/receipts/${this.data.expense.id}`
+                    )
+                    .delete();
+                }
+                this.dialogRef.close({
+                  success: true,
+                  operation: 'deleted',
+                });
+              }),
+              catchError((err: Error) => {
+                this.snackBar.open(
+                  'Something went wrong - could not delete expense.',
+                  'Close'
+                );
+                return throwError(() => new Error(err.message));
+              })
+            )
+            .subscribe();
+        }
+      });
+    }
   }
 
   close(): void {
