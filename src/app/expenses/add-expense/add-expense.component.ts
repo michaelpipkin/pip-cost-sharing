@@ -309,7 +309,7 @@ export class AddExpenseComponent implements OnInit {
             const upload = this.storage.upload(filePath, this.receiptFile);
             upload.snapshotChanges().subscribe();
           }
-          this.dialogRef.close({ success: true, operation: 'added' });
+          this.dialogRef.close({ success: true, operation: 'Expense added.' });
         }),
         catchError((err: Error) => {
           this.snackBar.open(
@@ -353,7 +353,10 @@ export class AddExpenseComponent implements OnInit {
       .memorizeExpense(this.groupId, expense, splits)
       .pipe(
         tap(() => {
-          this.dialogRef.close({ success: true, operation: 'memorized' });
+          this.dialogRef.close({
+            success: true,
+            operation: 'Expense memorized.',
+          });
         }),
         catchError((err: Error) => {
           this.snackBar.open(

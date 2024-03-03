@@ -394,7 +394,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'deleted',
+                  operation: 'Memorized expense deleted.',
                 });
               }),
               catchError((err: Error) => {
@@ -428,7 +428,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'deleted',
+                  operation: 'Expense deleted.',
                 });
               }),
               catchError((err: Error) => {

@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import packageJson from '../../../../package.json';
 
 @Component({
   selector: 'footer',
@@ -6,9 +7,6 @@ import { Component } from '@angular/core';
   styleUrl: './footer.component.scss',
 })
 export class FooterComponent {
-  currentYear: string;
-
-  constructor() {
-    this.currentYear = new Date().getFullYear().toString();
-  }
+  currentYear: string = new Date().getFullYear().toString();
+  version: string = packageJson.version;
 }
