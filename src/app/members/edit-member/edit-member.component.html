@@ -21,7 +21,7 @@
     </mat-dialog-content>
     <mat-dialog-actions>
         <button type="button" class="btn btn-secondary me-2" (click)="close()">Cancel</button>
-        <button type="button" class="btn btn-warning me-2" (click)="deleteMember()">Delete</button>
+        <button type="button" class="btn btn-warning me-2" (click)="removeMember()">Remove</button>
         <button type="submit" defaultButton class="btn btn-primary" [disabled]="!editMemberForm.valid"
             (click)="onSubmit()">
             Save

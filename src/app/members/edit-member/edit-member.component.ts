@@ -88,9 +88,12 @@ export class EditMemberComponent {
       .subscribe();
   }
 
-  deleteMember(): void {
+  removeMember(): void {
     const dialogConfig: MatDialogConfig = {
-      data: `member: ${this.member.displayName}`,
+      data: {
+        operation: 'Remove',
+        target: `member: ${this.member.displayName}`,
+      },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {
@@ -104,13 +107,13 @@ export class EditMemberComponent {
               } else {
                 this.dialogRef.close({
                   success: true,
-                  operation: 'deleted',
+                  operation: 'removed',
                 });
               }
             }),
             catchError((err: Error) => {
               this.snackBar.open(
-                'Something went wrong - could not delete member.',
+                'Something went wrong - could not remove member.',
                 'Close'
               );
               return throwError(() => new Error(err.message));

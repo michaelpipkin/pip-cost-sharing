@@ -391,7 +391,10 @@ export class EditExpenseComponent implements OnInit {
   delete(): void {
     if (this.fromMemorized) {
       const dialogConfig: MatDialogConfig = {
-        data: `this memorized expense`,
+        data: {
+          operation: 'Delete',
+          target: `this memorized expense`,
+        },
       };
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
@@ -425,7 +428,10 @@ export class EditExpenseComponent implements OnInit {
       });
     } else {
       const dialogConfig: MatDialogConfig = {
-        data: `this expense`,
+        data: {
+          operation: 'Delete',
+          target: `this expense`,
+        },
       };
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
