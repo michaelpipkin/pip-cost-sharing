@@ -13,8 +13,7 @@
             </div>
             <div class="d-flex justify-content-start ps-2" [class.hidden]="!isGroupAdmin">
                 <mat-slide-toggle class="me-2" color="primary" formControlName="active">Active</mat-slide-toggle>
-                <mat-slide-toggle color="primary" formControlName="groupAdmin" [class.hidden]="!isGroupAdmin"
-                    [matTooltip]="member.userId == userId ? 'You cannot remove yourself as a group admin' : ''">
+                <mat-slide-toggle color="primary" formControlName="groupAdmin" [matTooltip]="groupAdminTooltip">
                     Group Admin
                 </mat-slide-toggle>
             </div>

@@ -21,6 +21,7 @@ export class EditMemberComponent {
   member: Member;
   userId: string;
   isGroupAdmin: boolean = false;
+  groupAdminTooltip: string = '';
   editMemberForm: FormGroup;
 
   constructor(
@@ -44,6 +45,9 @@ export class EditMemberComponent {
         },
       ],
     });
+    if (this.member.userId == this.userId) {
+      this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
+    }
   }
 
   public get f() {
