@@ -7,10 +7,16 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
   styleUrl: './delete-dialog.component.scss',
 })
 export class DeleteDialogComponent {
+  operation: string = '';
+  target: string = '';
+
   constructor(
     private dialogRef: MatDialogRef<DeleteDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public target: string
-  ) {}
+    @Inject(MAT_DIALOG_DATA) public data
+  ) {
+    this.operation = data.operation;
+    this.target = data.target;
+  }
 
   close(confirm: boolean): void {
     this.dialogRef.close(confirm);

@@ -26,7 +26,45 @@ export class GroupService {
 
   getGroupsForUser(userId: string): Observable<Group[]> {
     return this.db
-      .collectionGroup('members', (ref) => ref.where('userId', '==', userId))
+      .collectionGroup<Member>('members', (ref) =>
+        ref.where('userId', '==', userId)
+      )
+      .get()
+      .pipe(
+        concatMap((res) => {
+          if (res.size === 0) {
+            return of(null);
+          }
+          const groupIds = <string[]>res.docs.map((snapshot) => {
+            return snapshot.ref.parent.parent.id;
+          });
+          return this.db
+            .collection<Group>('groups', (ref) =>
+              ref.where('active', '==', true).orderBy('name')
+            )
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((groups: Group[]) => {
+                return <Group[]>groups
+                  .filter((group: Group) => {
+                    return groupIds.includes(group.id);
+                  })
+                  .map((group: Group) => {
+                    return new Group({
+                      ...group,
+                    });
+                  });
+              })
+            );
+        })
+      );
+  }
+
+  getAdminGroupsForUser(userId: string): Observable<Group[]> {
+    return this.db
+      .collectionGroup<Member>('members', (ref) =>
+        ref.where('userId', '==', userId).where('groupAdmin', '==', true)
+      )
       .get()
       .pipe(
         concatMap((res) => {
@@ -71,9 +109,5 @@ export class GroupService {
   updateGroup(groupId: string, changes: Partial<Group>): Observable<any> {
     const docRef = this.db.doc(`groups/${groupId}`).ref;
     return of(updateDoc(docRef, changes));
-  }
-
-  deleteGroup(groupId: string): Observable<any> {
-    return from(this.db.doc(`groups/${groupId}`).delete());
   }
 }

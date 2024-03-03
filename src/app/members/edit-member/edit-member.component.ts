@@ -21,6 +21,7 @@ export class EditMemberComponent {
   member: Member;
   userId: string;
   isGroupAdmin: boolean = false;
+  groupAdminTooltip: string = '';
   editMemberForm: FormGroup;
 
   constructor(
@@ -36,6 +37,7 @@ export class EditMemberComponent {
     this.isGroupAdmin = this.data.isGroupAdmin;
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
+      email: [this.member.email, [Validators.required, Validators.email]],
       active: [this.member.active],
       groupAdmin: [
         {
@@ -44,6 +46,9 @@ export class EditMemberComponent {
         },
       ],
     });
+    if (this.member.userId == this.userId) {
+      this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
+    }
   }
 
   public get f() {
@@ -55,6 +60,7 @@ export class EditMemberComponent {
     const form = this.editMemberForm.value;
     const changes: Partial<Member> = {
       displayName: form.memberName,
+      email: form.email,
       active: form.active,
       groupAdmin: form.groupAdmin,
     };
@@ -84,9 +90,12 @@ export class EditMemberComponent {
       .subscribe();
   }
 
-  deleteMember(): void {
+  removeMember(): void {
     const dialogConfig: MatDialogConfig = {
-      data: `member: ${this.member.displayName}`,
+      data: {
+        operation: 'Remove',
+        target: `member: ${this.member.displayName}`,
+      },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {
@@ -100,13 +109,13 @@ export class EditMemberComponent {
               } else {
                 this.dialogRef.close({
                   success: true,
-                  operation: 'deleted',
+                  operation: 'removed',
                 });
               }
             }),
             catchError((err: Error) => {
               this.snackBar.open(
-                'Something went wrong - could not delete member.',
+                'Something went wrong - could not remove member.',
                 'Close'
               );
               return throwError(() => new Error(err.message));

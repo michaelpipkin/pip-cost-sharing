@@ -15,6 +15,7 @@ import * as firestore from 'firebase/firestore';
 import { Url } from 'url';
 import {
   catchError,
+  map,
   NotFoundError,
   Observable,
   of,
@@ -92,8 +93,22 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId);
-    this.categories$ = this.categoryService.getCategoriesForGroup(this.groupId);
+    this.members$ = this.memberService.getAllGroupMembers(this.groupId).pipe(
+      map((members: Member[]) => {
+        return members.filter(
+          (m) => m.active || m.id == this.data.expense.paidByMemberId
+        );
+      })
+    );
+    this.categories$ = this.categoryService
+      .getCategoriesForGroup(this.groupId)
+      .pipe(
+        map((categories: Category[]) => {
+          return categories.filter(
+            (c) => c.active || c.id == this.data.expense.categoryId
+          );
+        })
+      );
     const url = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
     this.storage
       .ref(url)
@@ -376,7 +391,10 @@ export class EditExpenseComponent implements OnInit {
   delete(): void {
     if (this.fromMemorized) {
       const dialogConfig: MatDialogConfig = {
-        data: `this memorized expense`,
+        data: {
+          operation: 'Delete',
+          target: `this memorized expense`,
+        },
       };
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
@@ -410,7 +428,10 @@ export class EditExpenseComponent implements OnInit {
       });
     } else {
       const dialogConfig: MatDialogConfig = {
-        data: `this expense`,
+        data: {
+          operation: 'Delete',
+          target: `this expense`,
+        },
       };
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {

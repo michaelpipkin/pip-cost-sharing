@@ -8,35 +8,35 @@
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link" aria-label="home" title="Home" routerLink="home">
-            Home
+          <a class="nav-link d-flex align-items-center" aria-label="home" title="Home" routerLink="home">
+            <mat-icon>home</mat-icon>Home
           </a>
         </li>
       </ul>
-      <div class="d-flex">
+      <div class="d-flex align-items-center">
         <ng-container class="nav-item" *ngIf="user.isLoggedIn$ | async">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link" aria-label="help" title="Help" (click)="showHelp()">
-                Help
+              <a class="nav-link d-flex align-items-center" aria-label="help" title="Help" (click)="showHelp()">
+                <mat-icon>help</mat-icon>Help
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" aria-label="profile" title="Profile" routerLink="profile">
-                Profile
+              <a class="nav-link d-flex align-items-center" aria-label="profile" title="Profile" routerLink="profile">
+                <mat-icon>account_circle</mat-icon>Profile
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" aria-label="log out" title="Log out" (click)="logout()">
-                Log out
+              <a class="nav-link d-flex align-items-center" aria-label="log out" title="Log out" (click)="logout()">
+                <mat-icon>logout</mat-icon>Log out
               </a>
             </li>
           </ul>
         </ng-container>
         <ng-container class="nav-item" *ngIf="!(user.isLoggedIn$ | async)">
           <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-              <a class="nav-link" routerLink="login">Log in</a>
+            <li class="nav-item d-flex align-items-center">
+              <a class="nav-link" routerLink="login"><mat-icon>login</mat-icon>Log in</a>
             </li>
           </ul>
         </ng-container>

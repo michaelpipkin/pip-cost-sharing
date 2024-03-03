@@ -71,7 +71,10 @@ export class EditCategoryComponent {
 
   deleteCategory(): void {
     const dialogConfig: MatDialogConfig = {
-      data: `category: ${this.category.name}`,
+      data: {
+        operation: 'Delete',
+        target: `category: ${this.category.name}`,
+      },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {

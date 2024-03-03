@@ -16,6 +16,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
 export class CategoriesComponent implements OnChanges {
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
+  @Input() selectedTab: number;
   categories$: Observable<Category[]>;
   filteredCategories$: Observable<Category[]>;
   activeOnly: boolean = false;
@@ -85,14 +86,16 @@ export class CategoriesComponent implements OnChanges {
   }
 
   onRowClick(category: Category): void {
-    const dialogConfig: MatDialogConfig = {
-      data: category,
-    };
-    const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result.success) {
-        this.snackBar.open(`Category ${result.operation}`, 'OK');
-      }
-    });
+    if (this.isGroupAdmin) {
+      const dialogConfig: MatDialogConfig = {
+        data: category,
+      };
+      const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((result) => {
+        if (result.success) {
+          this.snackBar.open(`Category ${result.operation}`, 'OK');
+        }
+      });
+    }
   }
 }

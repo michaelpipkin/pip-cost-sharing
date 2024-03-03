@@ -17,13 +17,20 @@ export class MembersComponent implements OnChanges {
   @Input() currentUser: firebase.User;
   @Input() isGroupAdmin: boolean = false;
   @Input() groupId: string = '';
+  @Input() selectedTab: number;
   members$: Observable<Member[]>;
   filteredMembers$: Observable<Member[]>;
   activeOnly: boolean = false;
   nameFilter: string = '';
   sortField: string = 'displayName';
   sortAsc: boolean = true;
-  columnsToDisplay: string[] = ['displayName', 'active', 'groupAdmin'];
+  columnsToDisplay: string[] = [
+    'displayName',
+    'email',
+    'send',
+    'active',
+    'groupAdmin',
+  ];
 
   constructor(
     private memberService: MemberService,
