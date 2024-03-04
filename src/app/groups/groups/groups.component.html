@@ -11,8 +11,8 @@
             </mat-form-field>
             <button type="button" class="btn btn-primary ms-4 me-2" (click)="addGroup()">Create New
                 Group</button>
-            <button type="button" class="btn btn-primary me-2" (click)="joinGroup()">Join Group</button>
-            <button type="button" class="btn btn-primary" (click)="manageGroups()">Manage Groups</button>
+            <button type="button" class="btn btn-secondary me-2" (click)="joinGroup()">Join Group</button>
+            <button type="button" class="btn btn-info" (click)="manageGroups()">Manage Groups</button>
         </div>
     </div>
     <div *ngIf="!!selectedGroupId" id="group-details" class="d-flex flex-column">
