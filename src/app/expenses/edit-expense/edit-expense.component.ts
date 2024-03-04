@@ -310,6 +310,7 @@ export class EditExpenseComponent implements OnInit {
             });
           }),
           catchError((err: Error) => {
+            console.log(err.message);
             this.snackBar.open(
               'Something went wrong - could not update memorized expense.',
               'Close'
@@ -374,6 +375,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not edit expense.',
                   'Close'
@@ -416,6 +418,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not delete memorized expense.',
                   'Close'
@@ -453,6 +456,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not delete expense.',
                   'Close'

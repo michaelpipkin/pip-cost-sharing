@@ -71,6 +71,7 @@ export class ManageGroupsComponent implements OnInit {
           });
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not edit group.',
             'Close'

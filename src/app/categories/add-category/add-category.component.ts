@@ -48,6 +48,7 @@ export class AddCategoryComponent {
           }
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not add category.',
             'Close'

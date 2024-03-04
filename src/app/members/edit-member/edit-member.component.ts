@@ -79,6 +79,7 @@ export class EditMemberComponent {
           }
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not edit member.',
             'Close'
@@ -114,6 +115,7 @@ export class EditMemberComponent {
               }
             }),
             catchError((err: Error) => {
+              console.log(err.message);
               this.snackBar.open(
                 'Something went wrong - could not remove member.',
                 'Close'
