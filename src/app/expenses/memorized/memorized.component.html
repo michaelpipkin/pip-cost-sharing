@@ -78,15 +78,23 @@
                                     <th mat-header-cell *matHeaderCellDef>Id</th>
                                     <td mat-cell *matCellDef="let split">{{split.id}}</td>
                                 </ng-container>
+                                <ng-container matColumnDef="empty1">
+                                    <th mat-header-cell *matHeaderCellDef colspan="2"></th>
+                                    <td mat-cell *matCellDef="let split" colspan="2"></td>
+                                </ng-container>
                                 <ng-container matColumnDef="owedBy">
                                     <th mat-header-cell *matHeaderCellDef>Owed By</th>
                                     <td mat-cell *matCellDef="let split">{{getMemberName(split.owedByMemberId)}}
                                     </td>
                                 </ng-container>
                                 <ng-container matColumnDef="amount">
-                                    <th mat-header-cell *matHeaderCellDef>Amount</th>
-                                    <td mat-cell *matCellDef="let split">${{split.allocatedAmount | number:
-                                        '1.2-2'}}</td>
+                                    <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
+                                    <td mat-cell *matCellDef="let split" class="cell-right">
+                                        ${{split.allocatedAmount | number: '1.2-2'}}</td>
+                                </ng-container>
+                                <ng-container matColumnDef="empty2">
+                                    <th mat-header-cell *matHeaderCellDef></th>
+                                    <td mat-cell *matCellDef="let split"></td>
                                 </ng-container>
                                 <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay"></tr>
                                 <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay">

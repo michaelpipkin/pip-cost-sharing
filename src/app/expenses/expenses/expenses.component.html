@@ -86,13 +86,14 @@
                     <td mat-footer-cell *matFooterCellDef class="cell-right">${{expenseTotal | number : '1.2-2'}}</td>
                 </ng-container>
                 <ng-container matColumnDef="receipt">
-                    <th mat-header-cell *matHeaderCellDef>Receipt</th>
-                    <td mat-cell *matCellDef="let expense">{{receipts.includes(expense.id) | yesNo}}</td>
+                    <th mat-header-cell *matHeaderCellDef class="cell-center">Receipt</th>
+                    <td mat-cell *matCellDef="let expense" class="cell-center">{{receipts.includes(expense.id) | yesNo}}
+                    </td>
                     <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="paid">
-                    <th mat-header-cell *matHeaderCellDef>Paid</th>
-                    <td mat-cell *matCellDef="let expense">{{expense.paid | yesNo}}</td>
+                    <th mat-header-cell *matHeaderCellDef class="cell-center">Paid</th>
+                    <td mat-cell *matCellDef="let expense" class="cell-center">{{expense.paid | yesNo}}</td>
                     <td mat-footer-cell *matFooterCellDef></td>
                 </ng-container>
                 <ng-container matColumnDef="expand">
@@ -117,19 +118,23 @@
                                     <th mat-header-cell *matHeaderCellDef>Id</th>
                                     <td mat-cell *matCellDef="let split">{{split.id}}</td>
                                 </ng-container>
+                                <ng-container matColumnDef="empty1">
+                                    <th mat-header-cell *matHeaderCellDef colspan="2"></th>
+                                    <td mat-cell *matCellDef="let split" colspan="2"></td>
+                                </ng-container>
                                 <ng-container matColumnDef="owedBy">
                                     <th mat-header-cell *matHeaderCellDef>Owed By</th>
                                     <td mat-cell *matCellDef="let split">{{getMemberName(split.owedByMemberId)}}
                                     </td>
                                 </ng-container>
                                 <ng-container matColumnDef="amount">
-                                    <th mat-header-cell *matHeaderCellDef>Amount</th>
-                                    <td mat-cell *matCellDef="let split">${{split.allocatedAmount | number:
-                                        '1.2-2'}}</td>
+                                    <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
+                                    <td mat-cell *matCellDef="let split" class="cell-right">
+                                        ${{split.allocatedAmount | number: '1.2-2'}}</td>
                                 </ng-container>
                                 <ng-container matColumnDef="paid">
-                                    <th mat-header-cell *matHeaderCellDef>Paid</th>
-                                    <td mat-cell *matCellDef="let split">{{split.paid | yesNo}}</td>
+                                    <th mat-header-cell *matHeaderCellDef class="cell-center">Paid</th>
+                                    <td mat-cell *matCellDef="let split" class="cell-center">{{split.paid | yesNo}}</td>
                                 </ng-container>
                                 <ng-container matColumnDef="mark">
                                     <th mat-header-cell *matHeaderCellDef class="cell-center">Mark Paid/Unpaid</th>
@@ -140,6 +145,10 @@
                                             <mat-icon>paid</mat-icon>
                                         </button>
                                     </td>
+                                </ng-container>
+                                <ng-container matColumnDef="empty2">
+                                    <th mat-header-cell *matHeaderCellDef></th>
+                                    <td mat-cell *matCellDef="let split"></td>
                                 </ng-container>
                                 <tr mat-header-row *matHeaderRowDef="splitColumnsToDisplay"></tr>
                                 <tr mat-row *matRowDef="let split; columns: splitColumnsToDisplay">
