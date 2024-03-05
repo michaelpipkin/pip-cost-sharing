@@ -27,7 +27,8 @@
                         </mat-form-field>
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Total Amount</mat-label>
-                            <input matInput formControlName="amount" type="number" class="number-right">
+                            <input matInput formControlName="amount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.amount.errors?.['required']">
                                 *Required
@@ -57,12 +58,14 @@
                     <div class="d-flex flex-wrap">
                         <mat-form-field appearance="fill" floatLabel="always" class="me-3 wide-number-field">
                             <mat-label>Evenly Shared Amount</mat-label>
-                            <input matInput formControlName="sharedAmount" type="number" class="number-right">
+                            <input matInput formControlName="sharedAmount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                         </mat-form-field>
                         <mat-form-field appearance="fill" floatLabel="always" class="wide-number-field">
                             <mat-label>Proportional Amount</mat-label>
-                            <input matInput formControlName="allocatedAmount" type="number" class="number-right">
+                            <input matInput formControlName="allocatedAmount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                         </mat-form-field>
                     </div>
@@ -105,8 +108,9 @@
                         </th>
                         <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
                             <mat-form-field appearance="fill" floatLabel="always" class="number-field">
-                                <input matInput class="number-right" name="assignedAmount"
-                                    [formControl]="getSplitControl(i, 'assignedAmount')">
+                                <input matInput type="number" class="number-right" name="assignedAmount"
+                                    [formControl]="getSplitControl(i, 'assignedAmount')"
+                                    (change)="formatNumber($event)">
                                 <span matTextPrefix>$</span>
                             </mat-form-field>
                         </td>

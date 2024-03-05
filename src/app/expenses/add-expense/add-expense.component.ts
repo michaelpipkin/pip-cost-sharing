@@ -115,10 +115,14 @@ export class AddExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
+  formatNumber(e): void {
+    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+  }
+
   updateForm(): void {
     this.splitForm = new FormArray(
       this.splitsDataSource.map(
-        (x: any) =>
+        (x: Split) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
             assignedAmount: new FormControl(x.assignedAmount),
@@ -146,7 +150,7 @@ export class AddExpenseComponent implements OnInit {
     if (this.splitsDataSource.length > 0) {
       this.saveSplitsData();
     }
-    this.splitsDataSource.push(new Split());
+    this.splitsDataSource.push(new Split({ assignedAmount: 0 }));
     this.updateForm();
     this.splitsTable.renderRows();
   }
@@ -214,7 +218,7 @@ export class AddExpenseComponent implements OnInit {
         splitTotal
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
-        sharedAmount = totalAmount - splitTotal - allocatedAmount;
+        sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
         this.addExpenseForm.patchValue({
           sharedAmount: sharedAmount,
         });
