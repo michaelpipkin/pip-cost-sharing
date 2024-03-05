@@ -59,6 +59,7 @@ export class JoinGroupComponent {
           }
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not join group. Please check the group code.',
             'Close',

@@ -28,7 +28,8 @@
                         </mat-form-field>
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Total Amount</mat-label>
-                            <input matInput formControlName="amount" type="number" class="number-right">
+                            <input matInput formControlName="amount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.amount.errors?.['required']">
                                 *Required
@@ -58,7 +59,8 @@
                     <div class="d-flex flex-wrap">
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Evenly Shared Amount</mat-label>
-                            <input matInput formControlName="sharedAmount" type="number" class="number-right">
+                            <input matInput formControlName="sharedAmount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.sharedAmount.errors?.['required']">
                                 *Required - Enter 0 if none
@@ -66,7 +68,8 @@
                         </mat-form-field>
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Proportional Amount</mat-label>
-                            <input matInput formControlName="allocatedAmount" type="number" class="number-right">
+                            <input matInput formControlName="allocatedAmount" type="number" class="number-right"
+                                (change)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.allocatedAmount.errors?.['required']">
                                 *Required - Enter 0 if none
@@ -86,7 +89,7 @@
             <div (click)="attachFile.click()" class="d-flex justify-content-left flex-no-wrap">
                 <input type="file" accept=".pdf,.jpg,.jpeg" class="file-input" #attachFile
                     (change)="onFileSelected($event)">
-                <button mat-mini-fab class="btn btn-secondary">
+                <button mat-mini-fab class="btn btn-success">
                     <mat-icon>attach_file</mat-icon>
                 </button>
                 <span class="filename">{{ fileName || "Upload receipt" }}</span>
@@ -112,8 +115,9 @@
                         </th>
                         <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
                             <mat-form-field appearance="fill" floatLabel="always" class="number-field">
-                                <input matInput class="number-right" name="assignedAmount"
-                                    [formControl]="getSplitControl(i, 'assignedAmount')">
+                                <input matInput type="number" class="number-right" name="assignedAmount"
+                                    [formControl]="getSplitControl(i, 'assignedAmount')"
+                                    (change)="formatNumber($event)">
                                 <span matTextPrefix>$</span>
                             </mat-form-field>
                         </td>
@@ -129,7 +133,7 @@
                     <ng-container matColumnDef="delete">
                         <th mat-header-cell *matHeaderCellDef class="cell-right">Delete</th>
                         <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
-                            <button mat-mini-fab color="warn" (click)="deleteRow(i)">
+                            <button mat-mini-fab class="btn btn-danger text-white" (click)="deleteRow(i)">
                                 <mat-icon>delete</mat-icon>
                             </button>
                         </td>
@@ -149,7 +153,7 @@
 </mat-dialog-content>
 <mat-dialog-actions>
     <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
-    <button type="button" class="btn btn-primary" [class.hidden]="fromMemorized"
+    <button type="button" class="btn btn-info" [class.hidden]="fromMemorized"
         [disabled]="!addExpenseForm.valid || e.amount.value == 0 || !expenseFullyAllocated()"
         (click)="memorize()">Memorize</button>
     <button type="submit" defaultButton class="btn btn-primary"

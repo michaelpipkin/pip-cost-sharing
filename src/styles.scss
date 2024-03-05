@@ -166,11 +166,11 @@ mat-hint {
   font-size: 0.7rem;
 }
 
-// app-login {
-//   font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
-//     Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
-//     "Segoe UI Emoji", "Segoe UI Symbol" !important;
-// }
+.mat-mdc-header-row,
+.mat-mdc-footer-row {
+  background-color: #dcdcdc !important;
+  font-weight: bold !important;
+}
 
 .auth-container {
   width: 400px;
@@ -255,10 +255,6 @@ mat-dialog-actions,
 .help-content {
   max-height: calc(90vh - 64px);
   overflow-y: auto;
-}
-
-.mat-mdc-footer-cell {
-  font-weight: 600;
 }
 
 .datepicker .mat-mdc-form-field-infix {

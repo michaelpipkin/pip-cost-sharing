@@ -58,6 +58,7 @@ export class EditCategoryComponent {
           }
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not edit category.',
             'Close'
@@ -93,6 +94,7 @@ export class EditCategoryComponent {
               }
             }),
             catchError((err: Error) => {
+              console.log(err.message);
               this.snackBar.open(
                 'Something went wrong - could not delete category.',
                 'Close'

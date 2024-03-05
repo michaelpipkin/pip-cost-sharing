@@ -54,7 +54,7 @@ export class MemorizedComponent implements OnChanges {
     'create',
     'expand',
   ];
-  splitColumnsToDisplay: string[] = ['owedBy', 'amount'];
+  splitColumnsToDisplay: string[] = ['empty1', 'owedBy', 'amount', 'empty2'];
   expandedExpense: Expense | null;
 
   constructor(

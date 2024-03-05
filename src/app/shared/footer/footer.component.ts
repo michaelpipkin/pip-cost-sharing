@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { environment } from 'src/environments/environment';
 import packageJson from '../../../../package.json';
 
 @Component({
@@ -9,4 +10,5 @@ import packageJson from '../../../../package.json';
 export class FooterComponent {
   currentYear: string = new Date().getFullYear().toString();
   version: string = packageJson.version;
+  buildDate: Date = environment.buildDate;
 }

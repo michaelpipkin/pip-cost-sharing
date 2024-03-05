@@ -136,6 +136,10 @@ export class EditExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
+  formatNumber(e): void {
+    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+  }
+
   updateForm(): void {
     this.splitForm = new FormArray(
       this.splitsDataSource.map(
@@ -205,56 +209,56 @@ export class EditExpenseComponent implements OnInit {
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
       const totalAmount: number = val.amount;
-      const sharedAmount: number = val.sharedAmount;
+      let sharedAmount: number = val.sharedAmount;
       const allocatedAmount: number = val.allocatedAmount;
-      if (
-        totalAmount == +(sharedAmount + allocatedAmount + splitTotal).toFixed(2)
-      ) {
-        this.splitsDataSource.forEach((split) => {
-          if (split.owedByMemberId != '') {
-            split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
-          }
+      const totalSharedSplits: number = +(
+        sharedAmount +
+        allocatedAmount +
+        splitTotal
+      ).toFixed(2);
+      if (totalAmount != totalSharedSplits) {
+        sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
+        this.editExpenseForm.patchValue({
+          sharedAmount: sharedAmount,
         });
-        this.splitsDataSource.forEach((split) => {
-          if (split.owedByMemberId != '') {
-            if (splitTotal == 0) {
-              split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(
-                2
-              );
-            } else {
-              split.allocatedAmount = +(
-                +split.assignedAmount +
-                +split.allocatedAmount +
-                (+split.assignedAmount / splitTotal) * allocatedAmount
-              ).toFixed(2);
-            }
-          }
-        });
-        if (!this.expenseFullyAllocated()) {
-          let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
-          for (let i = 0; diff != 0; ) {
-            if (diff > 0) {
-              this.splitsDataSource[i].allocatedAmount += 0.01;
-              diff -= 0.01;
-            } else {
-              this.splitsDataSource[i].allocatedAmount -= 0.01;
-              diff += 0.01;
-            }
-            if (i < this.splitsDataSource.length - 1) {
-              i++;
-            } else {
-              i = 0;
-            }
+      }
+      this.splitsDataSource.forEach((split) => {
+        if (split.owedByMemberId != '') {
+          split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
+        }
+      });
+      this.splitsDataSource.forEach((split) => {
+        if (split.owedByMemberId != '') {
+          if (splitTotal == 0) {
+            split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
+          } else {
+            split.allocatedAmount = +(
+              +split.assignedAmount +
+              +split.allocatedAmount +
+              (+split.assignedAmount / splitTotal) * allocatedAmount
+            ).toFixed(2);
           }
         }
-        this.updateForm();
-        this.splitsTable.renderRows();
-      } else {
-        this.snackBar.open(
-          'Sum of evenly shared amount, proportional amount, and all member amounts must equal the total amount before allocating.',
-          'OK'
-        );
+      });
+      if (!this.expenseFullyAllocated()) {
+        let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
+        for (let i = 0; diff != 0; ) {
+          if (diff > 0) {
+            this.splitsDataSource[i].allocatedAmount += 0.01;
+            diff -= 0.01;
+          } else {
+            this.splitsDataSource[i].allocatedAmount -= 0.01;
+            diff += 0.01;
+          }
+          if (i < this.splitsDataSource.length - 1) {
+            i++;
+          } else {
+            i = 0;
+          }
+        }
       }
+      this.updateForm();
+      this.splitsTable.renderRows();
     }
   }
 
@@ -310,6 +314,7 @@ export class EditExpenseComponent implements OnInit {
             });
           }),
           catchError((err: Error) => {
+            console.log(err.message);
             this.snackBar.open(
               'Something went wrong - could not update memorized expense.',
               'Close'
@@ -374,6 +379,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not edit expense.',
                   'Close'
@@ -416,6 +422,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not delete memorized expense.',
                   'Close'
@@ -453,6 +460,7 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
+                console.log(err.message);
                 this.snackBar.open(
                   'Something went wrong - could not delete expense.',
                   'Close'

@@ -126,6 +126,7 @@ export class SummaryComponent implements OnChanges {
               this.table.renderRows();
             }),
             catchError((err: Error) => {
+              console.log(err.message);
               this.snackBar.open(
                 'Something went wrong - could not mark expenses paid.',
                 'Close'

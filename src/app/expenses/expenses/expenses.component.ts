@@ -65,7 +65,14 @@ export class ExpensesComponent implements OnChanges {
     'paid',
     'expand',
   ];
-  splitColumnsToDisplay: string[] = ['owedBy', 'amount', 'paid', 'mark'];
+  splitColumnsToDisplay: string[] = [
+    'empty1',
+    'owedBy',
+    'amount',
+    'paid',
+    'mark',
+    'empty2',
+  ];
   expandedExpense: Expense | null;
 
   constructor(

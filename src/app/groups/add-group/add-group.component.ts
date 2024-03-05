@@ -55,6 +55,7 @@ export class AddGroupComponent {
           this.dialogRef.close(true);
         }),
         catchError((err: Error) => {
+          console.log(err.message);
           this.snackBar.open(
             'Something went wrong - could not add group.',
             'Close',
