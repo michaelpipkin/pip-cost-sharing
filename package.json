@@ -8,7 +8,7 @@
     "export-data": "rm seed-data -r -f && firebase emulators:export seed-data",
     "local-dev": "firebase emulators:start --import seed-data",
     "get-indexes": "firebase firestore:indexes",
-    "build-prod": "ng build --configuration=production",
+    "build-prod": "npm --no-git-tag-version version patch && node ./setBuildDate.js && ng build --configuration=production",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
@@ -31,6 +31,7 @@
     "firebase": "^10.8.0",
     "firebase-admin": "^12.0.0",
     "firebaseui": "^6.1.0",
+    "replace-in-file": "^7.1.0",
     "rxjs": "^7.8.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.4"
