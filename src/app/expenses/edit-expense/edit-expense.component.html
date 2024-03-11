@@ -28,7 +28,7 @@
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Total Amount</mat-label>
                             <input matInput formControlName="amount" type="number" class="number-right"
-                                (change)="formatNumber($event)">
+                                (change)="formatNumber($event)" (blur)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.amount.errors?.['required']">
                                 *Required

@@ -116,8 +116,8 @@
                         <td mat-cell *matCellDef="let split; let i = index" class="cell-right">
                             <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                                 <input matInput type="number" class="number-right" name="assignedAmount"
-                                    [formControl]="getSplitControl(i, 'assignedAmount')"
-                                    (change)="formatNumber($event)">
+                                    [formControl]="getSplitControl(i, 'assignedAmount')" (change)="formatNumber($event)"
+                                    (blur)="formatNumber($event)">
                                 <span matTextPrefix>$</span>
                             </mat-form-field>
                         </td>

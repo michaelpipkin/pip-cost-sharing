@@ -116,7 +116,11 @@ export class AddExpenseComponent implements OnInit {
   }
 
   formatNumber(e): void {
-    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    if (e.currentTarget.value === '') {
+      e.currentTarget.value = '0.00';
+    } else {
+      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    }
   }
 
   updateForm(): void {
@@ -125,7 +129,7 @@ export class AddExpenseComponent implements OnInit {
         (x: Split) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount),
+            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
           })
       )
     );
@@ -313,7 +317,7 @@ export class AddExpenseComponent implements OnInit {
             const upload = this.storage.upload(filePath, this.receiptFile);
             upload.snapshotChanges().subscribe();
           }
-          this.dialogRef.close({ success: true, operation: 'Expense added.' });
+          this.dialogRef.close({ success: true, operation: 'added' });
         }),
         catchError((err: Error) => {
           console.log(err.message);
@@ -360,7 +364,7 @@ export class AddExpenseComponent implements OnInit {
         tap(() => {
           this.dialogRef.close({
             success: true,
-            operation: 'Expense memorized.',
+            operation: 'memorized',
           });
         }),
         catchError((err: Error) => {

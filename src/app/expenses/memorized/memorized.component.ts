@@ -147,7 +147,7 @@ export class MemorizedComponent implements OnChanges {
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.snackBar.open(`Expense ${res.operation}`, 'OK');
+        this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
         this.filterExpenses();
       }
     });
@@ -167,7 +167,7 @@ export class MemorizedComponent implements OnChanges {
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {
-        this.snackBar.open(`Expense ${result.operation}`, 'OK');
+        this.snackBar.open(`Memorized expense ${result.operation}`, 'OK');
         this.filterExpenses();
       }
     });

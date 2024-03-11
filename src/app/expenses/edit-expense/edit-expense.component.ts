@@ -137,7 +137,11 @@ export class EditExpenseComponent implements OnInit {
   }
 
   formatNumber(e): void {
-    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    if (e.currentTarget.value === '') {
+      e.currentTarget.value = '0.00';
+    } else {
+      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    }
   }
 
   updateForm(): void {
@@ -146,7 +150,7 @@ export class EditExpenseComponent implements OnInit {
         (x: any) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount),
+            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
           })
       )
     );
@@ -418,7 +422,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'Memorized expense deleted.',
+                  operation: 'deleted',
                 });
               }),
               catchError((err: Error) => {
@@ -456,7 +460,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'Expense deleted.',
+                  operation: 'deleted',
                 });
               }),
               catchError((err: Error) => {
