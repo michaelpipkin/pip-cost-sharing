@@ -12,7 +12,7 @@ export class ExpenseService {
 
   getExpensesWithSplitsForGroup(groupId: string): Observable<Expense[]> {
     return this.db
-      .collectionGroup('splits', (ref) => ref.where('groupId', '==', groupId))
+      .collection(`groups/${groupId}/splits`)
       .valueChanges({ idField: 'id' })
       .pipe(
         concatMap((res) => {
@@ -44,7 +44,7 @@ export class ExpenseService {
     groupId: string
   ): Observable<Expense[]> {
     return this.db
-      .collectionGroup('splits', (ref) => ref.where('groupId', '==', groupId))
+      .collection(`groups/${groupId}/splits`)
       .valueChanges({ idField: 'id' })
       .pipe(
         concatMap((res) => {
@@ -92,7 +92,7 @@ export class ExpenseService {
     expenseId: string
   ): Observable<Expense> {
     return this.db
-      .collectionGroup('splits', (ref) =>
+      .collection(`groups/${groupId}/splits`, (ref) =>
         ref.where('expenseId', '==', expenseId)
       )
       .valueChanges({ idField: 'id' })
@@ -123,7 +123,7 @@ export class ExpenseService {
     expenseId: string
   ): Observable<Expense> {
     return this.db
-      .collectionGroup('splits', (ref) =>
+      .collection(`groups/${groupId}/splits`, (ref) =>
         ref.where('expenseId', '==', expenseId)
       )
       .valueChanges({ idField: 'id' })
@@ -151,19 +151,18 @@ export class ExpenseService {
 
   addExpense(
     groupId: string,
+    expenseId: string,
     expense: Partial<Expense>,
     splits: Partial<Split>[]
   ): Observable<any> {
     const batch = this.db.firestore.batch();
     const expenseRef = this.db.doc(
-      `/groups/${groupId}/expenses/${expense.id}`
+      `/groups/${groupId}/expenses/${expenseId}`
     ).ref;
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
       const splitId = this.db.createId();
-      const splitRef = this.db.doc(
-        `/groups/${groupId}/expenses/${expense.id}/splits/${splitId}`
-      ).ref;
+      const splitRef = this.db.doc(`/groups/${groupId}/splits/${splitId}`).ref;
       batch.set(splitRef, split);
     });
     return from(batch.commit());
@@ -171,19 +170,18 @@ export class ExpenseService {
 
   memorizeExpense(
     groupId: string,
+    expenseId: string,
     expense: Partial<Expense>,
     splits: Partial<Split>[]
   ): Observable<any> {
     const batch = this.db.firestore.batch();
     const expenseRef = this.db.doc(
-      `/groups/${groupId}/memorized/${expense.id}`
+      `/groups/${groupId}/memorized/${expenseId}`
     ).ref;
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
       const splitId = this.db.createId();
-      const splitRef = this.db.doc(
-        `/groups/${groupId}/memorized/${expense.id}/splits/${splitId}`
-      ).ref;
+      const splitRef = this.db.doc(`/groups/${groupId}/splits/${splitId}`).ref;
       batch.set(splitRef, split);
     });
     return from(batch.commit());
@@ -201,7 +199,9 @@ export class ExpenseService {
     ).ref;
     batch.update(expenseRef, changes);
     return this.db
-      .collection(`/groups/${groupId}/expenses/${expenseId}/splits/`)
+      .collection(`/groups/${groupId}/splits/`, (ref) =>
+        ref.where('expenseId', '==', expenseId)
+      )
       .get()
       .pipe(
         map((querySnap) => {
@@ -215,7 +215,7 @@ export class ExpenseService {
           splits.forEach((split) => {
             const splitId = this.db.createId();
             const splitRef = this.db.doc(
-              `/groups/${groupId}/expenses/${expenseId}/splits/${splitId}`
+              `/groups/${groupId}/splits/${splitId}`
             ).ref;
             split.expenseId = expenseId;
             batch.set(splitRef, split);
@@ -237,7 +237,9 @@ export class ExpenseService {
     ).ref;
     batch.update(expenseRef, changes);
     return this.db
-      .collection(`/groups/${groupId}/memorized/${expenseId}/splits/`)
+      .collection(`/groups/${groupId}/splits/`, (ref) =>
+        ref.where('expenseId', '==', expenseId)
+      )
       .get()
       .pipe(
         map((querySnap) => {
@@ -251,7 +253,7 @@ export class ExpenseService {
           splits.forEach((split) => {
             const splitId = this.db.createId();
             const splitRef = this.db.doc(
-              `/groups/${groupId}/memorized/${expenseId}/splits/${splitId}`
+              `/groups/${groupId}/splits/${splitId}`
             ).ref;
             split.expenseId = expenseId;
             batch.set(splitRef, split);
@@ -267,7 +269,9 @@ export class ExpenseService {
       `/groups/${groupId}/expenses/${expenseId}`
     ).ref;
     return this.db
-      .collection(`/groups/${groupId}/expenses/${expenseId}/splits/`)
+      .collection(`/groups/${groupId}/splits/`, (ref) =>
+        ref.where('expenseId', '==', expenseId)
+      )
       .get()
       .pipe(
         map((querySnap) => {
@@ -290,7 +294,9 @@ export class ExpenseService {
       `/groups/${groupId}/memorized/${expenseId}`
     ).ref;
     return this.db
-      .collection(`/groups/${groupId}/memorized/${expenseId}/splits/`)
+      .collection(`/groups/${groupId}/splits/`, (ref) =>
+        ref.where('expenseId', '==', expenseId)
+      )
       .get()
       .pipe(
         map((querySnap) => {

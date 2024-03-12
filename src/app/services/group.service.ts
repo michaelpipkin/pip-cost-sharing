@@ -100,7 +100,6 @@ export class GroupService {
     const memberId = this.db.createId();
     const groupRef = this.db.doc(`/groups/${groupId}`).ref;
     batch.set(groupRef, group);
-    member.groupId = groupId;
     const memberRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
     batch.set(memberRef, member);
     return from(batch.commit());

@@ -3,7 +3,6 @@ import { Split } from './split';
 
 export interface IExpense {
   id: string;
-  groupId: string;
   date: Timestamp;
   description: string;
   categoryId: string;
@@ -21,7 +20,6 @@ export class Expense implements IExpense {
     Object.assign(this, init);
   }
   id: string;
-  groupId: string;
   date: Timestamp;
   description: string;
   categoryId: string;

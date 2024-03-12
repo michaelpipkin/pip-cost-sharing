@@ -115,9 +115,7 @@ export class MemberService {
 
   deleteMemberFromGroup(groupId: string, memberId: string): Observable<any> {
     return this.db
-      .collectionGroup<Split>('splits', (ref) =>
-        ref.where('groupId', '==', groupId)
-      )
+      .collection<Split>(`groups/${groupId}/splits`)
       .get()
       .pipe(
         map((querySnap) => {

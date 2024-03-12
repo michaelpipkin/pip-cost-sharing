@@ -88,7 +88,10 @@ export class CategoriesComponent implements OnChanges {
   onRowClick(category: Category): void {
     if (this.isGroupAdmin) {
       const dialogConfig: MatDialogConfig = {
-        data: category,
+        data: {
+          category: category,
+          groupId: this.groupId,
+        },
       };
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {

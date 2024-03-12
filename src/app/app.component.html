@@ -35,8 +35,8 @@
         </ng-container>
         <ng-container class="nav-item" *ngIf="!(user.isLoggedIn$ | async)">
           <ul class="navbar-nav me-auto">
-            <li class="nav-item d-flex align-items-center">
-              <a class="nav-link" routerLink="login"><mat-icon>login</mat-icon>Log in</a>
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center" routerLink="login"><mat-icon>login</mat-icon>Log in</a>
             </li>
           </ul>
         </ng-container>

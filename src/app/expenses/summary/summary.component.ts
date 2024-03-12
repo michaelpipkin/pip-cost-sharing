@@ -11,10 +11,8 @@ import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.co
 import { catchError, map, Observable, tap, throwError } from 'rxjs';
 import {
   Component,
-  EventEmitter,
   Input,
   OnChanges,
-  Output,
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
@@ -119,7 +117,7 @@ export class SummaryComponent implements OnChanges {
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
         this.splitService
-          .paySplitsBetweenMembers(owedToMemberId, owedByMemberId)
+          .paySplitsBetweenMembers(this.groupId, owedToMemberId, owedByMemberId)
           .pipe(
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');

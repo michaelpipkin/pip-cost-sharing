@@ -250,9 +250,7 @@ export class ExpensesComponent implements OnChanges {
     const changes = {
       paid: !split.paid,
     };
-    this.splitService
-      .updateSplit(this.groupId, split.expenseId, split.id, changes)
-      .subscribe();
+    this.splitService.updateSplit(this.groupId, split.id, changes).subscribe();
     this.filterExpenses();
   }
 }

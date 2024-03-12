@@ -284,8 +284,6 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expense: Partial<Expense> = {
-      id: this.newExpenseId,
-      groupId: this.groupId,
       date: firestore.Timestamp.fromDate(val.date),
       description: val.description,
       categoryId: val.categoryId,
@@ -309,7 +307,7 @@ export class AddExpenseComponent implements OnInit {
       splits.push(split);
     });
     this.expenseService
-      .addExpense(this.groupId, expense, splits)
+      .addExpense(this.groupId, this.newExpenseId, expense, splits)
       .pipe(
         tap(() => {
           if (this.receiptFile) {
@@ -336,8 +334,6 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expense: Partial<Expense> = {
-      id: this.newExpenseId,
-      groupId: this.groupId,
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
@@ -355,11 +351,12 @@ export class AddExpenseComponent implements OnInit {
         allocatedAmount: s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
+        paid: false,
       };
       splits.push(split);
     });
     this.expenseService
-      .memorizeExpense(this.groupId, expense, splits)
+      .memorizeExpense(this.groupId, this.newExpenseId, expense, splits)
       .pipe(
         tap(() => {
           this.dialogRef.close({

@@ -18,9 +18,10 @@ import {
   styleUrl: './edit-category.component.scss',
 })
 export class EditCategoryComponent {
+  category: Category;
   editCategoryForm = this.fb.group({
-    categoryName: [this.category.name, Validators.required],
-    active: [this.category.active],
+    categoryName: [this.data.category.name, Validators.required],
+    active: [this.data.category.active],
   });
 
   constructor(
@@ -29,8 +30,10 @@ export class EditCategoryComponent {
     private dialog: MatDialog,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
-    @Inject(MAT_DIALOG_DATA) public category: Category
-  ) {}
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {
+    this.category = this.data.category;
+  }
 
   public get f() {
     return this.editCategoryForm.controls;
@@ -44,7 +47,7 @@ export class EditCategoryComponent {
       active: form.active,
     };
     this.categoryService
-      .updateCategory(this.category.groupId, this.category.id, changes)
+      .updateCategory(this.data.groupId, this.category.id, changes)
       .pipe(
         map((res) => {
           if (res.name === 'Error') {
@@ -81,7 +84,7 @@ export class EditCategoryComponent {
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
         this.categoryService
-          .deleteCategory(this.category.groupId, this.category.id)
+          .deleteCategory(this.data.groupId, this.category.id)
           .pipe(
             map((res) => {
               if (res.name === 'Error') {
