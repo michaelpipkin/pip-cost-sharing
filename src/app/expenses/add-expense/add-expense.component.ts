@@ -1,6 +1,6 @@
-import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { MatDatepicker } from '@angular/material/datepicker';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -12,7 +12,15 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import * as firestore from 'firebase/firestore';
+import moment from 'moment';
 import { catchError, map, Observable, share, tap, throwError } from 'rxjs';
+import {
+  Component,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -42,6 +50,7 @@ export class AddExpenseComponent implements OnInit {
   splitForm: FormArray;
 
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor(
     private dialogRef: MatDialogRef<AddExpenseComponent>,
@@ -264,6 +273,30 @@ export class AddExpenseComponent implements OnInit {
       }
       this.updateForm();
       this.splitsTable.renderRows();
+    }
+  }
+
+  onCalendarKeyPress(e: KeyboardEvent) {
+    if (['-', '+'].includes(e.key)) {
+      const currentDate = new Date(this.datePicker.nativeElement.value);
+      if (currentDate.toString() !== 'Invalid Date') {
+        if (e.key === '-') {
+          const newDate = currentDate.setDate(currentDate.getDate() - 1);
+          this.addExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        } else if (e.key === '+') {
+          const newDate = currentDate.setDate(currentDate.getDate() + 1);
+          this.addExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        }
+      } else {
+        this.addExpenseForm.patchValue({
+          date: new Date(),
+        });
+      }
+      e.preventDefault();
     }
   }
 

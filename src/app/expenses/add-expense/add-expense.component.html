@@ -18,8 +18,9 @@
                         </mat-form-field>
                         <mat-form-field appearance="fill" class="datepicker">
                             <mat-label>Date</mat-label>
-                            <input matInput formControlName="date" [matDatepicker]="expenseDatePicker">
-                            <mat-hint>MM/DD/YYYY</mat-hint>
+                            <input matInput formControlName="date" [matDatepicker]="expenseDatePicker" #datePicker
+                                (keypress)="onCalendarKeyPress($event)">
+                            <mat-hint>+/- to change date</mat-hint>
                             <mat-datepicker-toggle matIconSuffix [for]="expenseDatePicker"></mat-datepicker-toggle>
                             <mat-datepicker #expenseDatePicker></mat-datepicker>
                             <mat-error *ngIf="e.date.errors?.['required']">
@@ -29,7 +30,7 @@
                         <mat-form-field appearance="fill" floatLabel="always" class="number-field">
                             <mat-label>Total Amount</mat-label>
                             <input matInput formControlName="amount" type="number" class="number-right"
-                                (change)="formatNumber($event)">
+                                (change)="formatNumber($event)" (blur)="formatNumber($event)">
                             <span matTextPrefix>$</span>
                             <mat-error *ngIf="e.amount.errors?.['required']">
                                 *Required

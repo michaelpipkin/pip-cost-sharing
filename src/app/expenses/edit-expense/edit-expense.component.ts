@@ -1,4 +1,3 @@
-import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -13,6 +12,13 @@ import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.co
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import * as firestore from 'firebase/firestore';
 import { Url } from 'url';
+import {
+  Component,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   catchError,
   map,
@@ -57,6 +63,7 @@ export class EditExpenseComponent implements OnInit {
   splitForm: FormArray;
 
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor(
     private dialogRef: MatDialogRef<EditExpenseComponent>,
@@ -128,6 +135,30 @@ export class EditExpenseComponent implements OnInit {
 
   public get e() {
     return this.editExpenseForm.controls;
+  }
+
+  onCalendarKeyPress(e: KeyboardEvent) {
+    if (['-', '+'].includes(e.key)) {
+      const currentDate = new Date(this.datePicker.nativeElement.value);
+      if (currentDate.toString() !== 'Invalid Date') {
+        if (e.key === '-') {
+          const newDate = currentDate.setDate(currentDate.getDate() - 1);
+          this.editExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        } else if (e.key === '+') {
+          const newDate = currentDate.setDate(currentDate.getDate() + 1);
+          this.editExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        }
+      } else {
+        this.editExpenseForm.patchValue({
+          date: this.data.expense.date.toDate(),
+        });
+      }
+      e.preventDefault();
+    }
   }
 
   getSplitControl(index: number, controlName: string): FormControl {
