@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { HelpComponent } from './help/help/help.component';
 
@@ -12,11 +11,7 @@ import { HelpComponent } from './help/help/help.component';
 export class AppComponent {
   title = 'Cost Sharing';
 
-  constructor(
-    public user: UserService,
-    private dialog: MatDialog,
-    private splitsService: SplitService
-  ) {}
+  constructor(public user: UserService, private dialog: MatDialog) {}
 
   ngOnInit(): void {}
 
