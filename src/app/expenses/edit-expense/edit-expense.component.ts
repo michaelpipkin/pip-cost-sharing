@@ -1,4 +1,3 @@
-import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -13,6 +12,13 @@ import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.co
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import * as firestore from 'firebase/firestore';
 import { Url } from 'url';
+import {
+  Component,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   catchError,
   map,
@@ -57,6 +63,7 @@ export class EditExpenseComponent implements OnInit {
   splitForm: FormArray;
 
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor(
     private dialogRef: MatDialogRef<EditExpenseComponent>,
@@ -130,6 +137,30 @@ export class EditExpenseComponent implements OnInit {
     return this.editExpenseForm.controls;
   }
 
+  onCalendarKeyPress(e: KeyboardEvent) {
+    if (['-', '+'].includes(e.key)) {
+      const currentDate = new Date(this.datePicker.nativeElement.value);
+      if (currentDate.toString() !== 'Invalid Date') {
+        if (e.key === '-') {
+          const newDate = currentDate.setDate(currentDate.getDate() - 1);
+          this.editExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        } else if (e.key === '+') {
+          const newDate = currentDate.setDate(currentDate.getDate() + 1);
+          this.editExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        }
+      } else {
+        this.editExpenseForm.patchValue({
+          date: this.data.expense.date.toDate(),
+        });
+      }
+      e.preventDefault();
+    }
+  }
+
   getSplitControl(index: number, controlName: string): FormControl {
     return (this.splitForm.at(index) as FormGroup).get(
       controlName
@@ -137,7 +168,11 @@ export class EditExpenseComponent implements OnInit {
   }
 
   formatNumber(e): void {
-    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    if (e.currentTarget.value === '') {
+      e.currentTarget.value = '0.00';
+    } else {
+      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    }
   }
 
   updateForm(): void {
@@ -146,7 +181,7 @@ export class EditExpenseComponent implements OnInit {
         (x: any) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount),
+            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
           })
       )
     );
@@ -290,7 +325,6 @@ export class EditExpenseComponent implements OnInit {
       let splits: Partial<Split>[] = [];
       this.splitsDataSource.forEach((s) => {
         const split: Partial<Split> = {
-          groupId: this.groupId,
           categoryId: val.categoryId,
           assignedAmount: s.assignedAmount,
           allocatedAmount: s.allocatedAmount,
@@ -351,7 +385,6 @@ export class EditExpenseComponent implements OnInit {
           let splits: Partial<Split>[] = [];
           this.splitsDataSource.forEach((s) => {
             const split: Partial<Split> = {
-              groupId: this.groupId,
               categoryId: val.categoryId,
               assignedAmount: s.assignedAmount,
               allocatedAmount: s.allocatedAmount,
@@ -418,7 +451,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'Memorized expense deleted.',
+                  operation: 'deleted',
                 });
               }),
               catchError((err: Error) => {
@@ -456,7 +489,7 @@ export class EditExpenseComponent implements OnInit {
                 }
                 this.dialogRef.close({
                   success: true,
-                  operation: 'Expense deleted.',
+                  operation: 'deleted',
                 });
               }),
               catchError((err: Error) => {

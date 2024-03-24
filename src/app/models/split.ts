@@ -1,13 +1,14 @@
 export interface ISplit {
   id: string;
   expenseId: string;
-  groupId: string;
   categoryId: string;
   assignedAmount: number;
   allocatedAmount: number;
   paidByMemberId: string;
   owedByMemberId: string;
   paid: boolean;
+  memorized: boolean;
+  groupId: string;
 }
 
 export class Split implements ISplit {
@@ -16,11 +17,12 @@ export class Split implements ISplit {
   }
   id: string;
   expenseId: string;
-  groupId: string;
   categoryId: string;
   assignedAmount: number;
   allocatedAmount: number;
   paidByMemberId: string;
   owedByMemberId: string;
   paid: boolean = false;
+  memorized: boolean = false;
+  groupId: string;
 }

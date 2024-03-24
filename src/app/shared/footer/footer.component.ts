@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
+import packageJson from 'package.json';
 import { environment } from 'src/environments/environment';
-import packageJson from '../../../../package.json';
 
 @Component({
   selector: 'footer',

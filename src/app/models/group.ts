@@ -1,3 +1,4 @@
+import { Category } from './category';
 import { Expense } from './expense';
 import { Member } from './member';
 
@@ -7,6 +8,7 @@ export interface IGroup {
   active: boolean;
   members: Member[];
   expenses: Expense[];
+  categories: Category[];
 }
 
 export class Group implements IGroup {
@@ -18,4 +20,5 @@ export class Group implements IGroup {
   active: boolean;
   members: Member[];
   expenses: Expense[];
+  categories: Category[];
 }

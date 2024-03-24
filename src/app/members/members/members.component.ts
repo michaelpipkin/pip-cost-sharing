@@ -86,6 +86,7 @@ export class MembersComponent implements OnChanges {
     if (this.isGroupAdmin || this.currentUser.uid == member.userId) {
       const dialogConfig: MatDialogConfig = {
         data: {
+          groupId: this.groupId,
           userId: this.currentUser.uid,
           isGroupAdmin: this.isGroupAdmin,
           member: member,

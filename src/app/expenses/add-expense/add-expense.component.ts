@@ -1,6 +1,6 @@
-import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { MatDatepicker } from '@angular/material/datepicker';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -12,7 +12,15 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import * as firestore from 'firebase/firestore';
+import moment from 'moment';
 import { catchError, map, Observable, share, tap, throwError } from 'rxjs';
+import {
+  Component,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -42,6 +50,7 @@ export class AddExpenseComponent implements OnInit {
   splitForm: FormArray;
 
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor(
     private dialogRef: MatDialogRef<AddExpenseComponent>,
@@ -116,7 +125,11 @@ export class AddExpenseComponent implements OnInit {
   }
 
   formatNumber(e): void {
-    e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    if (e.currentTarget.value === '') {
+      e.currentTarget.value = '0.00';
+    } else {
+      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+    }
   }
 
   updateForm(): void {
@@ -125,7 +138,7 @@ export class AddExpenseComponent implements OnInit {
         (x: Split) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount),
+            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
           })
       )
     );
@@ -263,6 +276,30 @@ export class AddExpenseComponent implements OnInit {
     }
   }
 
+  onCalendarKeyPress(e: KeyboardEvent) {
+    if (['-', '+'].includes(e.key)) {
+      const currentDate = new Date(this.datePicker.nativeElement.value);
+      if (currentDate.toString() !== 'Invalid Date') {
+        if (e.key === '-') {
+          const newDate = currentDate.setDate(currentDate.getDate() - 1);
+          this.addExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        } else if (e.key === '+') {
+          const newDate = currentDate.setDate(currentDate.getDate() + 1);
+          this.addExpenseForm.patchValue({
+            date: new Date(newDate),
+          });
+        }
+      } else {
+        this.addExpenseForm.patchValue({
+          date: new Date(),
+        });
+      }
+      e.preventDefault();
+    }
+  }
+
   getAssignedTotal = (): number =>
     +this.splitsDataSource
       .reduce((total, s) => (total += +s.assignedAmount), 0)
@@ -280,8 +317,6 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expense: Partial<Expense> = {
-      id: this.newExpenseId,
-      groupId: this.groupId,
       date: firestore.Timestamp.fromDate(val.date),
       description: val.description,
       categoryId: val.categoryId,
@@ -305,7 +340,7 @@ export class AddExpenseComponent implements OnInit {
       splits.push(split);
     });
     this.expenseService
-      .addExpense(this.groupId, expense, splits)
+      .addExpense(this.groupId, this.newExpenseId, expense, splits)
       .pipe(
         tap(() => {
           if (this.receiptFile) {
@@ -313,7 +348,7 @@ export class AddExpenseComponent implements OnInit {
             const upload = this.storage.upload(filePath, this.receiptFile);
             upload.snapshotChanges().subscribe();
           }
-          this.dialogRef.close({ success: true, operation: 'Expense added.' });
+          this.dialogRef.close({ success: true, operation: 'added' });
         }),
         catchError((err: Error) => {
           console.log(err.message);
@@ -332,8 +367,6 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expense: Partial<Expense> = {
-      id: this.newExpenseId,
-      groupId: this.groupId,
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
@@ -351,16 +384,17 @@ export class AddExpenseComponent implements OnInit {
         allocatedAmount: s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
+        paid: false,
       };
       splits.push(split);
     });
     this.expenseService
-      .memorizeExpense(this.groupId, expense, splits)
+      .memorizeExpense(this.groupId, this.newExpenseId, expense, splits)
       .pipe(
         tap(() => {
           this.dialogRef.close({
             success: true,
-            operation: 'Expense memorized.',
+            operation: 'memorized',
           });
         }),
         catchError((err: Error) => {

@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
-import { catchError, map, tap, throwError } from 'rxjs';
+import { catchError, map, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-add-category',
@@ -33,7 +33,6 @@ export class AddCategoryComponent {
     const categoryName = this.newCategoryForm.value.categoryName;
     const newCategory: Partial<Category> = {
       name: categoryName,
-      groupId: this.groupId,
       active: true,
     };
     this.categoryService

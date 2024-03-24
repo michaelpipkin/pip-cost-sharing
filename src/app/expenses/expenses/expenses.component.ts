@@ -221,7 +221,7 @@ export class ExpensesComponent implements OnChanges {
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.snackBar.open(`${res.operation}`, 'OK');
+        this.snackBar.open(`Expense ${res.operation}`, 'OK');
         this.filterExpenses();
       }
     });
@@ -240,7 +240,7 @@ export class ExpensesComponent implements OnChanges {
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.snackBar.open(`${res.operation}`, 'OK');
+        this.snackBar.open(`Expense ${res.operation}`, 'OK');
         this.filterExpenses();
       }
     });
@@ -250,9 +250,7 @@ export class ExpensesComponent implements OnChanges {
     const changes = {
       paid: !split.paid,
     };
-    this.splitService
-      .updateSplit(this.groupId, split.expenseId, split.id, changes)
-      .subscribe();
+    this.splitService.updateSplit(this.groupId, split.id, changes).subscribe();
     this.filterExpenses();
   }
 }

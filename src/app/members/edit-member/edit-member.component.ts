@@ -65,7 +65,7 @@ export class EditMemberComponent {
       groupAdmin: form.groupAdmin,
     };
     this.memberService
-      .updateMember(this.member.groupId, this.member.id, changes)
+      .updateMember(this.data.groupId, this.member.id, changes)
       .pipe(
         map((res) => {
           if (res.name === 'Error') {
@@ -102,7 +102,7 @@ export class EditMemberComponent {
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
         this.memberService
-          .deleteMemberFromGroup(this.member.groupId, this.member.id)
+          .deleteMemberFromGroup(this.data.groupId, this.member.id)
           .pipe(
             map((res) => {
               if (res.name === 'Error') {

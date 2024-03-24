@@ -1,7 +1,6 @@
 export interface IMember {
   id: string;
   userId: string;
-  groupId: string;
   displayName: string;
   email: string;
   active: boolean;
@@ -14,7 +13,6 @@ export class Member implements IMember {
   }
   id: string;
   userId: string;
-  groupId: string;
   displayName: string;
   email: string;
   active: boolean;
