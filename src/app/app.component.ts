@@ -32,8 +32,4 @@ export class AppComponent {
   logout(): void {
     this.user.logout();
   }
-
-  moveSplits(): void {
-    this.splitsService.moveSplitsToGroupLevel().subscribe();
-  }
 }

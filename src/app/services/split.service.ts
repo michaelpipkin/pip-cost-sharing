@@ -1,47 +1,15 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
+import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { from, map, Observable, of, tap } from 'rxjs';
+import { concatMap, from, map, Observable, of, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SplitService {
   constructor(private db: AngularFirestore) {}
-
-  moveSplitsToGroupLevel(): Observable<any> {
-    const batch = this.db.firestore.batch();
-    return this.db
-      .collectionGroup('splits')
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((splits: Split[]) => {
-          splits.forEach((doc) => {
-            const groupId = doc.groupId;
-            const split: Partial<Split> = {
-              expenseId: doc.expenseId,
-              categoryId: doc.categoryId,
-              assignedAmount: doc.assignedAmount,
-              allocatedAmount: doc.allocatedAmount,
-              paidByMemberId: doc.paidByMemberId,
-              owedByMemberId: doc.owedByMemberId,
-              paid: doc.paid ?? false,
-            };
-            const deleteRef = this.db.doc(
-              `groups/${groupId}/expenses/${split.expenseId}/splits/${split.id}`
-            ).ref;
-            batch.delete(deleteRef);
-            const splitId = this.db.createId();
-            const addRef = this.db.doc(
-              `groups/${groupId}/splits/${splitId}`
-            ).ref;
-            batch.set(addRef, split);
-          });
-          return from(batch.commit());
-        })
-      );
-  }
 
   getSplitsForExpense(groupId: string, expenseId: string): Observable<Split[]> {
     return this.db
@@ -77,17 +45,29 @@ export class SplitService {
 
   getUnpaidSplitsForGroup(groupId: string): Observable<Split[]> {
     return this.db
-      .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-        ref.where('paid', '==', false)
-      )
+      .collection<Expense>(`groups/${groupId}/expenses`)
       .valueChanges({ idField: 'id' })
       .pipe(
-        map((splits: Split[]) => {
-          return <Split[]>splits.map((split) => {
-            return new Split({
-              ...split,
-            });
+        concatMap((res) => {
+          const expenseIds = res.map((expense) => {
+            return expense.id;
           });
+          return this.db
+            .collection<Split>(`groups/${groupId}/splits`, (ref) =>
+              ref
+                .where('paid', '==', false)
+                .where('expenseId', 'in', expenseIds)
+            )
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((splits: Split[]) => {
+                return <Split[]>splits.map((split) => {
+                  return new Split({
+                    ...split,
+                  });
+                });
+              })
+            );
         })
       );
   }
@@ -156,19 +136,30 @@ export class SplitService {
   ): Observable<any> {
     const batch = this.db.firestore.batch();
     return this.db
-      .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-        ref
-          .where('paidByMemberId', 'in', [member1Id, member2Id])
-          .where('owedByMemberId', 'in', [member1Id, member2Id])
-          .where('paid', '==', false)
-      )
-      .get()
+      .collection<Expense>(`groups/${groupId}/expenses`)
+      .valueChanges({ idField: 'id' })
       .pipe(
-        map((querySnap) => {
-          querySnap.docs.forEach((doc) => {
-            batch.update(doc.ref, { paid: true });
+        concatMap((res) => {
+          const expenseIds = res.map((expense) => {
+            return expense.id;
           });
-          return from(batch.commit());
+          return this.db
+            .collection<Split>(`groups/${groupId}/splits`, (ref) =>
+              ref
+                .where('paidByMemberId', 'in', [member1Id, member2Id])
+                .where('owedByMemberId', 'in', [member1Id, member2Id])
+                .where('paid', '==', false)
+                .where('expenseId', 'in', expenseIds)
+            )
+            .get()
+            .pipe(
+              map((querySnap) => {
+                querySnap.docs.forEach((doc) => {
+                  batch.update(doc.ref, { paid: true });
+                });
+                return from(batch.commit());
+              })
+            );
         })
       );
   }
