@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { UserService } from '@services/user.service';
 import { HelpComponent } from './help/help/help.component';
@@ -11,7 +12,13 @@ import { HelpComponent } from './help/help/help.component';
 export class AppComponent {
   title = 'Cost Sharing';
 
-  constructor(public user: UserService, private dialog: MatDialog) {}
+  constructor(
+    public user: UserService,
+    private dialog: MatDialog,
+    analytics: AngularFireAnalytics
+  ) {
+    analytics.logEvent('app_initalized');
+  }
 
   ngOnInit(): void {}
 

@@ -1,4 +1,5 @@
 import { Component, Inject } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
@@ -30,6 +31,7 @@ export class EditCategoryComponent {
     private dialog: MatDialog,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.category = this.data.category;
@@ -54,6 +56,7 @@ export class EditCategoryComponent {
             this.snackBar.open(res.message, 'Close');
             this.editCategoryForm.enable();
           } else {
+            this.analytics.logEvent('edit_category');
             this.dialogRef.close({
               success: true,
               operation: 'saved',
