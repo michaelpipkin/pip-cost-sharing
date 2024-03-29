@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { HelpComponent } from './help/help/help.component';
 
@@ -14,6 +15,7 @@ export class AppComponent {
 
   constructor(
     public user: UserService,
+    public groupService: GroupService,
     private dialog: MatDialog,
     analytics: AngularFireAnalytics
   ) {

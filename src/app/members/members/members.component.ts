@@ -1,9 +1,14 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
@@ -13,11 +18,10 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
   templateUrl: './members.component.html',
   styleUrl: './members.component.scss',
 })
-export class MembersComponent implements OnChanges {
-  @Input() currentUser: firebase.User;
-  @Input() isGroupAdmin: boolean = false;
-  @Input() groupId: string = '';
-  @Input() selectedTab: number;
+export class MembersComponent implements OnInit {
+  currentUser: firebase.User;
+  currentGroup: Group;
+  currentMember: Member;
   members$: Observable<Member[]>;
   filteredMembers$: Observable<Member[]>;
   activeOnly: boolean = false;
@@ -33,20 +37,35 @@ export class MembersComponent implements OnChanges {
   ];
 
   constructor(
+    private router: Router,
+    private userService: UserService,
+    private groupService: GroupService,
     private memberService: MemberService,
     private sorter: SortingService,
     private dialog: MatDialog,
+    private loading: LoadingService,
     private snackBar: MatSnackBar
   ) {}
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (!!changes.groupId) {
-      this.groupId = changes.groupId.currentValue;
+  ngOnInit(): void {
+    if (this.groupService.getCurrentGroup() == null) {
+      this.router.navigateByUrl('/groups');
+    } else {
+      this.currentUser = this.userService.getCurrentUser();
+      this.currentGroup = this.groupService.getCurrentGroup();
+      this.currentMember = this.memberService.getCurrentGroupMember();
+      this.activeOnly = false;
+      this.nameFilter = '';
+      this.loadMembers();
+      this.filterMembers();
     }
-    this.activeOnly = false;
-    this.nameFilter = '';
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId);
-    this.filterMembers();
+  }
+
+  loadMembers(): void {
+    this.loading.loadingOn();
+    this.members$ = this.memberService
+      .getAllGroupMembers(this.currentGroup.id)
+      .pipe(tap(() => this.loading.loadingOff()));
   }
 
   filterMembers(): void {
@@ -83,12 +102,15 @@ export class MembersComponent implements OnChanges {
   }
 
   onRowClick(member: Member): void {
-    if (this.isGroupAdmin || this.currentUser.uid == member.userId) {
+    if (
+      this.currentMember.groupAdmin ||
+      this.currentUser.uid == member.userId
+    ) {
       const dialogConfig: MatDialogConfig = {
         data: {
-          groupId: this.groupId,
+          groupId: this.currentGroup.id,
           userId: this.currentUser.uid,
-          isGroupAdmin: this.isGroupAdmin,
+          isGroupAdmin: this.currentMember.groupAdmin,
           member: member,
         },
       };
