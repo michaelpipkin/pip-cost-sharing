@@ -25,13 +25,7 @@ import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { ManageGroupsComponent } from './groups/manage-groups/manage-groups.component';
-import { CategoriesHelpComponent } from './help/categories-help/categories-help.component';
-import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
-import { GroupsHelpComponent } from './help/groups-help/groups-help.component';
 import { HelpComponent } from './help/help/help.component';
-import { MembersHelpComponent } from './help/members-help/members-help.component';
-import { MemorizedHelpComponent } from './help/memorized-help/memorized-help.component';
-import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
@@ -90,16 +84,10 @@ import {
     EditExpenseComponent,
     SummaryComponent,
     ConfirmDialogComponent,
-    MembersHelpComponent,
-    CategoriesHelpComponent,
-    ExpensesHelpComponent,
-    SummaryHelpComponent,
     HelpComponent,
     FooterComponent,
     MemorizedComponent,
-    MemorizedHelpComponent,
     ManageGroupsComponent,
-    GroupsHelpComponent,
   ],
   imports: [
     BrowserModule,

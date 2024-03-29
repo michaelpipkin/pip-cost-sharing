@@ -1,30 +1,33 @@
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
+import { Router } from '@angular/router';
 import { AmountDue } from '@models/amount-due';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
+import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import firebase from 'firebase/compat/app';
 import { catchError, map, Observable, tap, throwError } from 'rxjs';
-import {
-  Component,
-  Input,
-  OnChanges,
-  SimpleChanges,
-  ViewChild,
-} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
   templateUrl: './summary.component.html',
   styleUrl: './summary.component.scss',
 })
-export class SummaryComponent implements OnChanges {
-  @Input() isGroupAdmin: boolean = false;
-  @Input() groupId: string = '';
+export class SummaryComponent implements OnInit {
+  currentUser: firebase.User;
+  currentGroup: Group;
+  currentMember: Member;
   members$: Observable<Member[]>;
   members: Member[];
   splits$: Observable<Split[]>;
@@ -35,24 +38,42 @@ export class SummaryComponent implements OnChanges {
   @ViewChild(MatTable) table: MatTable<AmountDue>;
 
   constructor(
+    private router: Router,
+    private userService: UserService,
+    private groupService: GroupService,
     private memberService: MemberService,
+    private expenseService: ExpenseService,
     private splitService: SplitService,
+    private categoryService: CategoryService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private loading: LoadingService
   ) {}
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (!!changes.groupId) {
-      this.groupId = changes.groupId.currentValue;
+  ngOnInit(): void {
+    if (this.groupService.getCurrentGroup() == null) {
+      this.router.navigateByUrl('/groups');
+    } else {
+      this.currentUser = this.userService.getCurrentUser();
+      this.currentGroup = this.groupService.getCurrentGroup();
+      this.currentMember = this.memberService.getCurrentGroupMember();
+      this.members$ = this.memberService
+        .getAllGroupMembers(this.currentGroup.id)
+        .pipe(
+          tap((members) => {
+            this.members = members;
+          })
+        );
+      this.tableData = [];
+      this.selectedMemberId = '';
+      this.loadUnpaidSplits();
     }
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId).pipe(
-      tap((members) => {
-        this.members = members;
-      })
+  }
+
+  loadUnpaidSplits(): void {
+    this.splits$ = this.splitService.getUnpaidSplitsForGroup(
+      this.currentGroup.id
     );
-    this.splits$ = this.splitService.getUnpaidSplitsForGroup(this.groupId);
-    this.tableData = [];
-    this.selectedMemberId = '';
   }
 
   getMemberName(memberId: string): string {
@@ -61,6 +82,7 @@ export class SummaryComponent implements OnChanges {
   }
 
   onSelectMember(e: MatSelectChange) {
+    this.loading.loadingOn();
     this.splits$
       .pipe(
         map((splits) => {
@@ -98,6 +120,10 @@ export class SummaryComponent implements OnChanges {
               }
             });
           this.table.renderRows();
+        }),
+
+        tap(() => {
+          this.loading.loadingOff();
         })
       )
       .subscribe();
@@ -117,7 +143,11 @@ export class SummaryComponent implements OnChanges {
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
         this.splitService
-          .paySplitsBetweenMembers(this.groupId, owedToMemberId, owedByMemberId)
+          .paySplitsBetweenMembers(
+            this.currentGroup.id,
+            owedToMemberId,
+            owedByMemberId
+          )
           .pipe(
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');

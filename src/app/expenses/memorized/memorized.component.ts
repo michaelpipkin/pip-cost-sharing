@@ -1,14 +1,19 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
@@ -35,11 +40,10 @@ import {
     ]),
   ],
 })
-export class MemorizedComponent implements OnChanges {
-  @Input() currentMember: Member;
-  @Input() isGroupAdmin: boolean = false;
-  @Input() groupId: string = '';
-  @Input() selectedTab: number;
+export class MemorizedComponent implements OnInit {
+  currentUser: firebase.User;
+  currentGroup: Group;
+  currentMember: Member;
   members: Member[];
   categories: Category[];
   expenses$: Observable<Expense[]>;
@@ -58,43 +62,56 @@ export class MemorizedComponent implements OnChanges {
   expandedExpense: Expense | null;
 
   constructor(
+    private router: Router,
+    private userService: UserService,
+    private groupService: GroupService,
+    private memberService: MemberService,
     private expenseService: ExpenseService,
     private splitService: SplitService,
-    private memberService: MemberService,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private loading: LoadingService
   ) {}
 
-  ngOnChanges(changes: SimpleChanges): void {
-    this.expenses$ = this.expenseService.getMemorizedExpensesWithSplitsForGroup(
-      this.groupId
-    );
-    if (!!changes.groupId) {
-      this.groupId = changes.groupId.currentValue;
+  ngOnInit(): void {
+    if (this.groupService.getCurrentGroup() == null) {
+      this.router.navigateByUrl('/groups');
+    } else {
+      this.currentUser = this.userService.getCurrentUser();
+      this.currentGroup = this.groupService.getCurrentGroup();
+      this.currentMember = this.memberService.getCurrentGroupMember();
+      this.selectedMemberId = '';
+      this.memberService
+        .getAllGroupMembers(this.currentGroup.id)
+        .pipe(
+          tap((members: Member[]) => {
+            this.members = members;
+          })
+        )
+        .subscribe();
+      this.categoryService
+        .getCategoriesForGroup(this.currentGroup.id)
+        .pipe(
+          tap((categories: Category[]) => {
+            this.categories = categories;
+          })
+        )
+        .subscribe();
+      this.loadMemorizedExpenses();
+      this.filterExpenses();
     }
-    this.selectedMemberId = '';
-    this.memberService
-      .getAllGroupMembers(this.groupId)
-      .pipe(
-        tap((members: Member[]) => {
-          this.members = members;
-        })
-      )
-      .subscribe();
-    this.categoryService
-      .getCategoriesForGroup(this.groupId)
-      .pipe(
-        tap((categories: Category[]) => {
-          this.categories = categories;
-        })
-      )
-      .subscribe();
-    this.filterExpenses();
+  }
+
+  loadMemorizedExpenses(): void {
+    this.loading.loadingOn();
+    this.expenses$ = this.expenseService
+      .getMemorizedExpensesWithSplitsForGroup(this.currentGroup.id)
+      .pipe(tap(() => this.loading.loadingOff()));
   }
 
   filterExpenses(): void {
-    this.splitService.getSplitsForGroup(this.groupId).subscribe();
+    this.splitService.getSplitsForGroup(this.currentGroup.id).subscribe();
     this.filteredExpenses$ = this.expenses$.pipe(
       map((expenses: Expense[]) => {
         let filteredExpenses: Expense[] = expenses.filter(
@@ -138,9 +155,9 @@ export class MemorizedComponent implements OnChanges {
       data: {
         expense: expense,
         memorized: true,
-        groupId: this.groupId,
+        groupId: this.currentGroup.id,
         member: this.currentMember,
-        isGroupAdmin: this.isGroupAdmin,
+        isGroupAdmin: this.currentMember.groupAdmin,
       },
       width: '90vh',
     };
@@ -156,9 +173,9 @@ export class MemorizedComponent implements OnChanges {
   addExpense(expense: Expense): void {
     const dialogConfig: MatDialogConfig = {
       data: {
-        groupId: this.groupId,
+        groupId: this.currentGroup.id,
         member: this.currentMember,
-        isGroupAdmin: this.isGroupAdmin,
+        isGroupAdmin: this.currentMember.groupAdmin,
         memorized: true,
         expense: expense,
       },

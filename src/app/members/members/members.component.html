@@ -1,4 +1,7 @@
-<div class="d-flex flex-column p-2 justify-content-center align-items-center">
+<div class="d-flex flex-column p-2">
+    <div class="d-flex pt-2 justify-content-center align-items-center">
+        <h3>{{currentGroup?.name}}</h3>
+    </div>
     <div class="d-flex p-2 justify-content-center align-items-center">
         <mat-form-field class="me-2">
             <mat-label>Search by name</mat-label>
@@ -10,8 +13,8 @@
         <mat-slide-toggle color="primary" [(ngModel)]="activeOnly" (change)="filterMembers()">Active
             only</mat-slide-toggle>
     </div>
-    <div class="d-flex p-3 justify-content-center mat-elevation-z8">
-        <div class="scrollable-table">
+    <div class="d-flex justify-content-center">
+        <div class="scrollable-table p-2 mat-elevation-z8">
             <table mat-table matSort [dataSource]="filteredMembers$ | async" (matSortChange)="sortMembers($event)">
                 <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Id</th>
@@ -26,7 +29,7 @@
                     <td mat-cell *matCellDef="let member">{{member.email}}</td>
                 </ng-container>
                 <ng-container matColumnDef="send">
-                    <th mat-header-cell *matHeaderCellDef>Send Email</th>
+                    <th mat-header-cell *matHeaderCellDef class="cell-center">Send Email</th>
                     <td mat-cell *matCellDef="let member" class="cell-center">
                         <a mat-icon-button href="mailto:{{member.email}}" target="_blank"
                             (click)="$event.stopPropagation()">
@@ -44,7 +47,7 @@
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
                 <tr mat-row *matRowDef="let member; columns: columnsToDisplay" (click)="onRowClick(member)"
-                    [class.clickable-row]="isGroupAdmin || currentUser.uid == member.userId">
+                    [class.clickable-row]="currentMember?.groupAdmin || currentUser.uid == member.userId">
                 </tr>
                 <tr class="mat-row" *matNoDataRow>
                     <td class="mat-cell" [colSpan]="columnsToDisplay.length">No members found matching

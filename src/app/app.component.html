@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="home">Pip Cost Sharing</a>
+    <span class="navbar-brand">Pip Cost Sharing</span>
     <button class="navbar-toggler collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
       aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
@@ -8,27 +8,56 @@
     <div class="collapse navbar-collapse" id="mainNavbar">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link d-flex align-items-center" aria-label="home" title="Home" routerLink="home">
-            <mat-icon>home</mat-icon>Home
+          <a class="nav-link d-flex align-items-center" aria-label="groups" title="Groups" routerLink="groups">
+            <mat-icon>groups</mat-icon>&nbsp;Groups
           </a>
         </li>
+        <ng-container *ngIf="(groupService.selectedGroup$ | async) != null">
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" aria-label="members" title="Members" routerLink="members">
+              <mat-icon>face</mat-icon>&nbsp;Members
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" aria-label="categories" title="Categories"
+              routerLink="categories">
+              <mat-icon>category</mat-icon>&nbsp;Categories
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" aria-label="expenses" title="Expenses" routerLink="expenses">
+              <mat-icon>attach_money</mat-icon>Expenses
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" aria-label="memorized" title="Memorized"
+              routerLink="memorized">
+              <mat-icon>currency_exchange</mat-icon>&nbsp;Memorized
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" aria-label="summary" title="Summary" routerLink="summary">
+              <mat-icon>compare_arrows</mat-icon>&nbsp;Summary
+            </a>
+          </li>
+        </ng-container>
       </ul>
       <div class="d-flex align-items-center">
         <ng-container class="nav-item" *ngIf="user.isLoggedIn$ | async">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link d-flex align-items-center" aria-label="help" title="Help" (click)="showHelp()">
-                <mat-icon>help</mat-icon>Help
+              <a class="nav-link d-flex align-items-center" aria-label="help" title="Help" routerLink="help">
+                <mat-icon>help</mat-icon>&nbsp;Help
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" aria-label="profile" title="Profile" routerLink="profile">
-                <mat-icon>account_circle</mat-icon>Profile
+                <mat-icon>account_circle</mat-icon>&nbsp;Profile
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" aria-label="log out" title="Log out" (click)="logout()">
-                <mat-icon>logout</mat-icon>Log out
+                <mat-icon>logout</mat-icon>&nbsp;Log out
               </a>
             </li>
           </ul>
@@ -36,7 +65,8 @@
         <ng-container class="nav-item" *ngIf="!(user.isLoggedIn$ | async)">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link d-flex align-items-center" routerLink="login"><mat-icon>login</mat-icon>Log in</a>
+              <a class="nav-link d-flex align-items-center" routerLink="login"><mat-icon>login</mat-icon>&nbsp;Log
+                in</a>
             </li>
           </ul>
         </ng-container>

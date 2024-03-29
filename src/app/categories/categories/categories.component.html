@@ -1,4 +1,7 @@
-<div class="d-flex flex-column p-2 justify-content-center align-items-center">
+<div class="d-flex flex-column p-2">
+    <div class="d-flex pt-2 justify-content-center align-items-center">
+        <h3>{{currentGroup?.name}}</h3>
+    </div>
     <div class="d-flex p-2 justify-content-center align-items-center">
         <mat-form-field class="me-2">
             <mat-label>Search by name</mat-label>
@@ -9,11 +12,11 @@
         </mat-form-field>
         <mat-slide-toggle color="primary" [(ngModel)]="activeOnly" (change)="filterCategories()">Active
             only</mat-slide-toggle>
-        <button class="btn btn-primary ms-4" [class.hidden]="!isGroupAdmin" (click)="addCategory()">Add
+        <button class="btn btn-primary ms-4" [class.hidden]="!currentMember?.groupAdmin" (click)="addCategory()">Add
             Category</button>
     </div>
-    <div class="d-flex p-3 justify-content-center mat-elevation-z8">
-        <div class="scrollable-table">
+    <div class="d-flex justify-content-center">
+        <div class="scrollable-table p-2 mat-elevation-z8">
             <table mat-table matSort [dataSource]="filteredCategories$ | async"
                 (matSortChange)="sortCategories($event)">
                 <ng-container matColumnDef="id">
@@ -30,7 +33,7 @@
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
                 <tr mat-row *matRowDef="let myRowData; columns: columnsToDisplay" (click)="onRowClick(myRowData)"
-                    [class.clickable-row]="isGroupAdmin">
+                    [class.clickable-row]="currentMember?.groupAdmin">
                 </tr>
                 <tr class="mat-row" *matNoDataRow>
                     <td class="mat-cell" [colSpan]="columnsToDisplay.length">No categories found matching
