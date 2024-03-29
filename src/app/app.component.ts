@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { GroupService } from '@services/group.service';
@@ -12,6 +12,7 @@ import { HelpComponent } from './help/help/help.component';
 })
 export class AppComponent {
   title = 'Cost Sharing';
+  @ViewChild('mainNavbar') navbar: ElementRef;
 
   constructor(
     public user: UserService,
@@ -23,6 +24,14 @@ export class AppComponent {
   }
 
   ngOnInit(): void {}
+
+  navigate(): void {
+    var nav = this.navbar.nativeElement;
+    if (nav.classList.contains('show')) {
+      nav.collapse('hide');
+      //nav.className = 'navbar-collapse collapse';
+    }
+  }
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

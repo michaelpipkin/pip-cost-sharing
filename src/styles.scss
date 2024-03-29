@@ -183,6 +183,8 @@ mat-hint {
 .scrollable-table {
   overflow-y: auto;
   max-height: 800px;
+  border: 12px solid white;
+  margin-bottom: 24px;
 }
 
 .mat-error {

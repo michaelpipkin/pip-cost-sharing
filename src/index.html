@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Open%20Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Filled"
     rel="stylesheet">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 </head>
 
 <body class="mat-typography">
@@ -18,3 +19,14 @@
 </body>
 
 </html>
+
+<script>
+  $(document).ready(function () {
+    $('#mainNavbar').on('click', '.nav-link', function () {
+      var navbar = $('#mainNavbar');
+      if (navbar.hasClass('show')) {
+        navbar.collapse('hide');
+      }
+    });
+  });
+</script>
