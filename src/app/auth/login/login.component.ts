@@ -44,6 +44,6 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   onLoginSuccess() {
-    this.router.navigateByUrl('/home');
+    this.router.navigateByUrl('/groups');
   }
 }

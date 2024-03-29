@@ -3,12 +3,16 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { concatMap, from, map, Observable, of } from 'rxjs';
+import { BehaviorSubject, concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemberService {
+  private groupMemberSubject = new BehaviorSubject<Member>(null);
+  currentGroupMember$: Observable<Member> =
+    this.groupMemberSubject.asObservable();
+
   constructor(private db: AngularFirestore) {}
 
   getMember(groupId: string, memberId: string): Observable<Member> {
@@ -32,13 +36,17 @@ export class MemberService {
       .valueChanges({ idField: 'id' })
       .pipe(
         map((docs: Member[]) => {
-          const member = docs.shift();
-          return new Member({
-            ...member,
+          const memberDoc = docs.shift();
+          const member = new Member({
+            ...memberDoc,
           });
+          this.groupMemberSubject.next(member);
+          return member;
         })
       );
   }
+
+  getCurrentGroupMember = (): Member => this.groupMemberSubject.getValue();
 
   getAllGroupMembers(groupId: string): Observable<Member[]> {
     return this.db

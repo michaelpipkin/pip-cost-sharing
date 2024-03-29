@@ -41,10 +41,14 @@ export class GroupsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.refreshGroups();
+    this.loadGroups();
+    const currentGroup = this.groupService.getCurrentGroup();
+    if (currentGroup !== null) {
+      this.selectedGroupId = currentGroup.id;
+    }
   }
 
-  refreshGroups(): void {
+  loadGroups(): void {
     this.loading.loadingOn();
     this.groups$ = this.groupService
       .getGroupsForUser(this.currentUser.uid)
@@ -56,7 +60,7 @@ export class GroupsComponent implements OnInit {
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackBar.open('Group added!', 'OK');
-        this.refreshGroups();
+        this.loadGroups();
       }
     });
   }
@@ -66,7 +70,7 @@ export class GroupsComponent implements OnInit {
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackBar.open('Group joined!', 'OK');
-        this.refreshGroups();
+        this.loadGroups();
       }
     });
   }
@@ -74,13 +78,8 @@ export class GroupsComponent implements OnInit {
   onSelectGroup(e: MatSelectChange): void {
     this.memberService
       .getMemberByUserId(e.value, this.currentUser.uid)
-      .pipe(
-        tap((member) => {
-          this.currentMember = member;
-          this.isGroupAdmin = member.groupAdmin;
-        })
-      )
       .subscribe();
+    this.groupService.getGroupById(e.value).subscribe();
   }
 
   copyGroupCode(): void {

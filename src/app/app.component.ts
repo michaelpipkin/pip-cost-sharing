@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { SplitService } from '@services/split.service';
+import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { HelpComponent } from './help/help/help.component';
 
@@ -14,9 +15,12 @@ export class AppComponent {
 
   constructor(
     public user: UserService,
+    public groupService: GroupService,
     private dialog: MatDialog,
-    private splitsService: SplitService
-  ) {}
+    analytics: AngularFireAnalytics
+  ) {
+    analytics.logEvent('app_initalized');
+  }
 
   ngOnInit(): void {}
 

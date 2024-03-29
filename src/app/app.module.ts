@@ -25,12 +25,7 @@ import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { ManageGroupsComponent } from './groups/manage-groups/manage-groups.component';
-import { CategoriesHelpComponent } from './help/categories-help/categories-help.component';
-import { ExpensesHelpComponent } from './help/expenses-help/expenses-help.component';
 import { HelpComponent } from './help/help/help.component';
-import { MembersHelpComponent } from './help/members-help/members-help.component';
-import { MemorizedHelpComponent } from './help/memorized-help/memorized-help.component';
-import { SummaryHelpComponent } from './help/summary-help/summary-help.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
@@ -38,6 +33,10 @@ import { ConfirmDialogComponent } from './shared/confirm-dialog/confirm-dialog.c
 import { DeleteDialogComponent } from './shared/delete-dialog/delete-dialog.component';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
+import {
+  AngularFireAnalytics,
+  AngularFireAnalyticsModule,
+} from '@angular/fire/compat/analytics';
 import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
   MatSnackBarConfig,
@@ -58,7 +57,10 @@ import {
   AngularFireStorageModule,
   USE_EMULATOR as USE_STORAGE_EMULATOR,
 } from '@angular/fire/compat/storage';
-import { GroupsHelpComponent } from './help/groups-help/groups-help.component';
+import {
+  ScreenTrackingService,
+  UserTrackingService,
+} from '@angular/fire/analytics';
 
 @NgModule({
   declarations: [
@@ -82,16 +84,10 @@ import { GroupsHelpComponent } from './help/groups-help/groups-help.component';
     EditExpenseComponent,
     SummaryComponent,
     ConfirmDialogComponent,
-    MembersHelpComponent,
-    CategoriesHelpComponent,
-    ExpensesHelpComponent,
-    SummaryHelpComponent,
     HelpComponent,
     FooterComponent,
     MemorizedComponent,
-    MemorizedHelpComponent,
     ManageGroupsComponent,
-    GroupsHelpComponent,
   ],
   imports: [
     BrowserModule,
@@ -99,6 +95,7 @@ import { GroupsHelpComponent } from './help/groups-help/groups-help.component';
     BrowserAnimationsModule,
     MaterialModule,
     AngularFireModule.initializeApp(environment.firebase),
+    AngularFireAnalyticsModule,
     AngularFirestoreModule,
     AngularFireAuthModule,
     AngularFireStorageModule,
@@ -140,6 +137,9 @@ import { GroupsHelpComponent } from './help/groups-help/groups-help.component';
       multi: true,
     },
     LoadingService,
+    AngularFireAnalytics,
+    ScreenTrackingService,
+    UserTrackingService,
   ],
   bootstrap: [AppComponent],
 })

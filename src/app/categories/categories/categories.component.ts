@@ -1,10 +1,18 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
 import { CategoryService } from '@services/category.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
-import { map, Observable } from 'rxjs';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import firebase from 'firebase/compat/app';
+import { map, Observable, tap } from 'rxjs';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
 
@@ -13,10 +21,10 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
   templateUrl: './categories.component.html',
   styleUrl: './categories.component.scss',
 })
-export class CategoriesComponent implements OnChanges {
-  @Input() isGroupAdmin: boolean = false;
-  @Input() groupId: string = '';
-  @Input() selectedTab: number;
+export class CategoriesComponent implements OnInit {
+  currentUser: firebase.User;
+  currentGroup: Group;
+  currentMember: Member;
   categories$: Observable<Category[]>;
   filteredCategories$: Observable<Category[]>;
   activeOnly: boolean = false;
@@ -26,20 +34,36 @@ export class CategoriesComponent implements OnChanges {
   columnsToDisplay: string[] = ['name', 'active'];
 
   constructor(
+    private router: Router,
+    private userService: UserService,
+    private groupService: GroupService,
+    private memberService: MemberService,
     private categorySerice: CategoryService,
     private sorter: SortingService,
     private dialog: MatDialog,
+    private loading: LoadingService,
     private snackBar: MatSnackBar
   ) {}
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (!!changes.groupId) {
-      this.groupId = changes.groupId.currentValue;
+  ngOnInit(): void {
+    if (this.groupService.getCurrentGroup() == null) {
+      this.router.navigateByUrl('/groups');
+    } else {
+      this.currentUser = this.userService.getCurrentUser();
+      this.currentGroup = this.groupService.getCurrentGroup();
+      this.currentMember = this.memberService.getCurrentGroupMember();
+      this.activeOnly = false;
+      this.nameFilter = '';
+      this.loadCategories();
+      this.filterCategories();
     }
-    this.activeOnly = false;
-    this.nameFilter = '';
-    this.categories$ = this.categorySerice.getCategoriesForGroup(this.groupId);
-    this.filterCategories();
+  }
+
+  loadCategories(): void {
+    this.loading.loadingOn();
+    this.categories$ = this.categorySerice
+      .getCategoriesForGroup(this.currentGroup.id)
+      .pipe(tap(() => this.loading.loadingOff()));
   }
 
   filterCategories(): void {
@@ -75,7 +99,7 @@ export class CategoriesComponent implements OnChanges {
 
   addCategory(): void {
     const dialogConfig: MatDialogConfig = {
-      data: this.groupId,
+      data: this.currentGroup.id,
     };
     const dialogRef = this.dialog.open(AddCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
@@ -86,11 +110,11 @@ export class CategoriesComponent implements OnChanges {
   }
 
   onRowClick(category: Category): void {
-    if (this.isGroupAdmin) {
+    if (this.currentMember.groupAdmin) {
       const dialogConfig: MatDialogConfig = {
         data: {
           category: category,
-          groupId: this.groupId,
+          groupId: this.currentGroup.id,
         },
       };
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
