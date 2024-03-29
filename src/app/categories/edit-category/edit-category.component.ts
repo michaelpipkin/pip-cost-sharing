@@ -56,7 +56,6 @@ export class EditCategoryComponent {
             this.snackBar.open(res.message, 'Close');
             this.editCategoryForm.enable();
           } else {
-            this.analytics.logEvent('edit_category');
             this.dialogRef.close({
               success: true,
               operation: 'saved',
@@ -64,7 +63,11 @@ export class EditCategoryComponent {
           }
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_category',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not edit category.',
             'Close'
@@ -100,7 +103,11 @@ export class EditCategoryComponent {
               }
             }),
             catchError((err: Error) => {
-              console.log(err.message);
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'delete_category',
+                message: err.message,
+              });
               this.snackBar.open(
                 'Something went wrong - could not delete category.',
                 'Close'

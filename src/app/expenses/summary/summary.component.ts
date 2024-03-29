@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,8 +9,6 @@ import { AmountDue } from '@models/amount-due';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
@@ -42,12 +41,11 @@ export class SummaryComponent implements OnInit {
     private userService: UserService,
     private groupService: GroupService,
     private memberService: MemberService,
-    private expenseService: ExpenseService,
     private splitService: SplitService,
-    private categoryService: CategoryService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private loading: LoadingService
+    private loading: LoadingService,
+    private analytics: AngularFireAnalytics
   ) {}
 
   ngOnInit(): void {
@@ -154,7 +152,11 @@ export class SummaryComponent implements OnInit {
               this.table.renderRows();
             }),
             catchError((err: Error) => {
-              console.log(err.message);
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'mark_expenses_paid',
+                message: err.message,
+              });
               this.snackBar.open(
                 'Something went wrong - could not mark expenses paid.',
                 'Close'

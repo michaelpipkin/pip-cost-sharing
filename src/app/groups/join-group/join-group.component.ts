@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -25,6 +26,7 @@ export class JoinGroupComponent {
     private fb: FormBuilder,
     private memberService: MemberService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     userService: UserService
   ) {
     this.currentUser = userService.getCurrentUser();
@@ -58,7 +60,11 @@ export class JoinGroupComponent {
           }
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'join_group',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not join group. Please check the group code.',
             'Close',

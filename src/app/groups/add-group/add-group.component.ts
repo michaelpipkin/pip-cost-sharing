@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -26,6 +27,7 @@ export class AddGroupComponent {
     private fb: FormBuilder,
     private groupService: GroupService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     userService: UserService
   ) {
     this.currentUser = userService.getCurrentUser();
@@ -55,7 +57,11 @@ export class AddGroupComponent {
           this.dialogRef.close(true);
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'add_group',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not add group.',
             'Close',
