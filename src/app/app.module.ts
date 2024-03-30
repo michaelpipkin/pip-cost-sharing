@@ -9,6 +9,7 @@ import { AuthInterceptor } from '@services/auth.interceptor';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
@@ -80,6 +81,7 @@ import {
     AddCategoryComponent,
     EditCategoryComponent,
     YesNoPipe,
+    CurrencyPipe,
     EditMemberComponent,
     ActiveInactivePipe,
     DeleteDialogComponent,

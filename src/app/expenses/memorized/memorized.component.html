@@ -49,7 +49,7 @@
                 </ng-container>
                 <ng-container matColumnDef="amount">
                     <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
-                    <td mat-cell *matCellDef="let expense" class="cell-right">${{expense.totalAmount | number :
+                    <td mat-cell *matCellDef="let expense" class="cell-right">{{expense.totalAmount | number :
                         '1.2-2'}}</td>
                 </ng-container>
                 <ng-container matColumnDef="create">
@@ -93,7 +93,7 @@
                                 <ng-container matColumnDef="amount">
                                     <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
                                     <td mat-cell *matCellDef="let split" class="cell-right">
-                                        ${{split.allocatedAmount | number: '1.2-2'}}</td>
+                                        {{split.allocatedAmount | currency}}</td>
                                 </ng-container>
                                 <ng-container matColumnDef="empty2">
                                     <th mat-header-cell *matHeaderCellDef></th>
