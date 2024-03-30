@@ -5,10 +5,9 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class CurrencyPipe implements PipeTransform {
   transform(value: number, ...args: unknown[]): string {
-    if (value < 0) {
-      return `-$${Math.abs(value).toFixed(2)}`;
-    } else {
-      return `$${value.toFixed(2)}`;
-    }
+    return `${value < 0 ? '-' : ''}$${Math.abs(value).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
 }
