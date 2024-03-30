@@ -1,6 +1,7 @@
 export interface IAmountDue {
   owedByMemberId: string;
   owedToMemberId: string;
+  categoryId: string;
   amount: number;
 }
 
@@ -10,5 +11,6 @@ export class AmountDue implements IAmountDue {
   }
   owedByMemberId: string;
   owedToMemberId: string;
+  categoryId: string;
   amount: number;
 }

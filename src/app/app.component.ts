@@ -25,14 +25,6 @@ export class AppComponent {
 
   ngOnInit(): void {}
 
-  navigate(): void {
-    var nav = this.navbar.nativeElement;
-    if (nav.classList.contains('show')) {
-      nav.collapse('hide');
-      //nav.className = 'navbar-collapse collapse';
-    }
-  }
-
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
       disableClose: false,

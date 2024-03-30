@@ -1,14 +1,14 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTable } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { AmountDue } from '@models/amount-due';
+import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
@@ -28,13 +28,19 @@ export class SummaryComponent implements OnInit {
   currentGroup: Group;
   currentMember: Member;
   members$: Observable<Member[]>;
-  members: Member[];
   splits$: Observable<Split[]>;
+  members: Member[];
+  categories: Category[];
   selectedMemberId: string = '';
-  tableData: AmountDue[] = [];
-  columnsToDisplay: string[] = ['owedTo', 'owedBy', 'amount', 'markPaid'];
-
-  @ViewChild(MatTable) table: MatTable<AmountDue>;
+  summaryData: AmountDue[] = [];
+  detailData: AmountDue[] = [];
+  summaryColumnsToDisplay: string[] = [
+    'owedTo',
+    'owedBy',
+    'amount',
+    'markPaid',
+  ];
+  detailColumnsToDisplay: string[] = ['category', 'amount'];
 
   constructor(
     private router: Router,
@@ -42,6 +48,7 @@ export class SummaryComponent implements OnInit {
     private groupService: GroupService,
     private memberService: MemberService,
     private splitService: SplitService,
+    private categoryService: CategoryService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private loading: LoadingService,
@@ -62,7 +69,15 @@ export class SummaryComponent implements OnInit {
             this.members = members;
           })
         );
-      this.tableData = [];
+      this.categoryService
+        .getCategoriesForGroup(this.currentGroup.id)
+        .pipe(
+          tap((categories) => {
+            this.categories = categories;
+          })
+        )
+        .subscribe();
+      this.summaryData = [];
       this.selectedMemberId = '';
       this.loadUnpaidSplits();
     }
@@ -79,12 +94,21 @@ export class SummaryComponent implements OnInit {
     return !!member ? member.displayName : '';
   }
 
-  onSelectMember(e: MatSelectChange) {
+  getCategoryName(categoryId: string): string {
+    const category = this.categories.find((c) => c.id === categoryId);
+    return !!category ? category.name : '';
+  }
+
+  abs(amount: number) {
+    return Math.abs(amount);
+  }
+
+  onSelectMember() {
     this.loading.loadingOn();
     this.splits$
       .pipe(
         map((splits) => {
-          this.tableData = [];
+          this.summaryData = [];
           const memberSplits = splits.filter(
             (s) =>
               s.owedByMemberId == this.selectedMemberId ||
@@ -100,7 +124,7 @@ export class SummaryComponent implements OnInit {
                 .filter((m) => m.paidByMemberId == member.id)
                 .reduce((total, split) => (total += split.allocatedAmount), 0);
               if (owedToSelected > owedBySelected) {
-                this.tableData.push(
+                this.summaryData.push(
                   new AmountDue({
                     owedByMemberId: member.id,
                     owedToMemberId: this.selectedMemberId,
@@ -108,7 +132,7 @@ export class SummaryComponent implements OnInit {
                   })
                 );
               } else if (owedBySelected > owedToSelected) {
-                this.tableData.push(
+                this.summaryData.push(
                   new AmountDue({
                     owedToMemberId: member.id,
                     owedByMemberId: this.selectedMemberId,
@@ -117,9 +141,54 @@ export class SummaryComponent implements OnInit {
                 );
               }
             });
-          this.table.renderRows();
         }),
+        tap(() => {
+          this.loading.loadingOff();
+        })
+      )
+      .subscribe();
+  }
 
+  onRowSelect(owedToMemberId: string, owedByMemberId: string) {
+    this.loading.loadingOn();
+    this.splits$
+      .pipe(
+        map((splits) => {
+          this.detailData = [];
+          const memberSplits = splits.filter(
+            (s) =>
+              (s.owedByMemberId == owedToMemberId ||
+                s.paidByMemberId == owedToMemberId) &&
+              (s.owedByMemberId == owedByMemberId ||
+                s.paidByMemberId == owedByMemberId)
+          );
+          this.categories.forEach((category) => {
+            if (
+              memberSplits.filter((f) => f.categoryId == category.id).length > 0
+            ) {
+              const owedToMember1 = memberSplits
+                .filter(
+                  (s) =>
+                    s.paidByMemberId == owedToMemberId &&
+                    s.categoryId == category.id
+                )
+                .reduce((total, split) => (total += split.allocatedAmount), 0);
+              const owedToMember2 = memberSplits
+                .filter(
+                  (s) =>
+                    s.paidByMemberId == owedByMemberId &&
+                    s.categoryId == category.id
+                )
+                .reduce((total, split) => (total += split.allocatedAmount), 0);
+              this.detailData.push(
+                new AmountDue({
+                  categoryId: category.id,
+                  amount: owedToMember1 - owedToMember2,
+                })
+              );
+            }
+          });
+        }),
         tap(() => {
           this.loading.loadingOff();
         })
@@ -149,7 +218,6 @@ export class SummaryComponent implements OnInit {
           .pipe(
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');
-              this.table.renderRows();
             }),
             catchError((err: Error) => {
               this.analytics.logEvent('error', {
