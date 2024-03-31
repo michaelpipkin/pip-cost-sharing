@@ -12,6 +12,30 @@
             </mat-select>
         </mat-form-field>
     </div>
+    <div class="d-flex p-2 justify-content-center align-items-center">
+        <mat-form-field appearance="fill" class="datepicker me-2">
+            <mat-label>Start date</mat-label>
+            <input matInput [(ngModel)]="startDate" [matDatepicker]="startDatepicker" (dateInput)="loadUnpaidSplits()"
+                (dateChange)="loadUnpaidSplits()">
+            <mat-hint>MM/DD/YYYY</mat-hint>
+            <mat-datepicker-toggle matIconSuffix [for]="startDatepicker"></mat-datepicker-toggle>
+            <button *ngIf="startDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearStartDate()">
+                <mat-icon>close</mat-icon>
+            </button>
+            <mat-datepicker #startDatepicker></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="fill" class="datepicker me-2">
+            <mat-label>End date</mat-label>
+            <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" (dateInput)="loadUnpaidSplits()"
+                (dateChange)="loadUnpaidSplits()">
+            <mat-hint>MM/DD/YYYY</mat-hint>
+            <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+            <button *ngIf="endDate" matSuffix mat-icon-button aria-label="Clear" (click)="clearEndDate()">
+                <mat-icon>close</mat-icon>
+            </button>
+            <mat-datepicker #endDatePicker></mat-datepicker>
+        </mat-form-field>
+    </div>
     <div class="d-flex justify-content-center">
         <div class="scrollable-table mat-elevation-z8">
             <table mat-table [dataSource]="summaryData">

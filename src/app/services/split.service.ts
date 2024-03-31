@@ -43,31 +43,48 @@ export class SplitService {
       );
   }
 
-  getUnpaidSplitsForGroup(groupId: string): Observable<Split[]> {
+  getUnpaidSplitsForGroup(
+    groupId: string,
+    startDate: Date = null,
+    endDate: Date = null
+  ): Observable<Split[]> {
+    if (startDate == null) {
+      startDate = new Date('1/1/1900');
+    }
+    if (endDate == null) {
+      const today = new Date();
+      endDate = new Date(today.setFullYear(today.getFullYear() + 100));
+    } else {
+      endDate = new Date(endDate.setDate(endDate.getDate() + 1));
+    }
     return this.db
-      .collection<Expense>(`groups/${groupId}/expenses`)
+      .collection<Expense>(`groups/${groupId}/expenses`, (ref) =>
+        ref.where('date', '>=', startDate).where('date', '<', endDate)
+      )
       .valueChanges({ idField: 'id' })
       .pipe(
         concatMap((res) => {
           const expenseIds = res.map((expense) => {
             return expense.id;
           });
-          return this.db
-            .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-              ref
-                .where('paid', '==', false)
-                .where('expenseId', 'in', expenseIds)
-            )
-            .valueChanges({ idField: 'id' })
-            .pipe(
-              map((splits: Split[]) => {
-                return <Split[]>splits.map((split) => {
-                  return new Split({
-                    ...split,
+          if (expenseIds.length > 0) {
+            return this.db
+              .collection<Split>(`groups/${groupId}/splits`, (ref) =>
+                ref
+                  .where('paid', '==', false)
+                  .where('expenseId', 'in', expenseIds)
+              )
+              .valueChanges({ idField: 'id' })
+              .pipe(
+                map((splits: Split[]) => {
+                  return <Split[]>splits.map((split) => {
+                    return new Split({
+                      ...split,
+                    });
                   });
-                });
-              })
-            );
+                })
+              );
+          } else return of([]);
         })
       );
   }
@@ -129,38 +146,12 @@ export class SplitService {
       );
   }
 
-  paySplitsBetweenMembers(
-    groupId: string,
-    member1Id: string,
-    member2Id: string
-  ): Observable<any> {
+  paySplitsBetweenMembers(groupId: string, splits: Split[]): Observable<any> {
     const batch = this.db.firestore.batch();
-    return this.db
-      .collection<Expense>(`groups/${groupId}/expenses`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        concatMap((res) => {
-          const expenseIds = res.map((expense) => {
-            return expense.id;
-          });
-          return this.db
-            .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-              ref
-                .where('paidByMemberId', 'in', [member1Id, member2Id])
-                .where('owedByMemberId', 'in', [member1Id, member2Id])
-                .where('paid', '==', false)
-                .where('expenseId', 'in', expenseIds)
-            )
-            .get()
-            .pipe(
-              map((querySnap) => {
-                querySnap.docs.forEach((doc) => {
-                  batch.update(doc.ref, { paid: true });
-                });
-                return from(batch.commit());
-              })
-            );
-        })
-      );
+    splits.forEach((split) => {
+      const docRef = this.db.doc(`groups/${groupId}/splits/${split.id}`).ref;
+      batch.update(docRef, { paid: true });
+    });
+    return from(batch.commit());
   }
 }

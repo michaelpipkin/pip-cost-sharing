@@ -16,7 +16,7 @@ import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
-import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import { catchError, concatMap, map, Observable, tap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-summary',
@@ -32,6 +32,8 @@ export class SummaryComponent implements OnInit {
   members: Member[];
   categories: Category[];
   selectedMemberId: string = '';
+  startDate: Date;
+  endDate: Date;
   summaryData: AmountDue[] = [];
   detailData: AmountDue[] = [];
   summaryColumnsToDisplay: string[] = [
@@ -78,6 +80,7 @@ export class SummaryComponent implements OnInit {
         )
         .subscribe();
       this.summaryData = [];
+      this.detailData = [];
       this.selectedMemberId = '';
       this.loadUnpaidSplits();
     }
@@ -85,8 +88,26 @@ export class SummaryComponent implements OnInit {
 
   loadUnpaidSplits(): void {
     this.splits$ = this.splitService.getUnpaidSplitsForGroup(
-      this.currentGroup.id
+      this.currentGroup.id,
+      this.startDate,
+      this.endDate
     );
+    this.detailData = [];
+    if (!!this.selectedMemberId) {
+      this.onSelectMember();
+    }
+  }
+
+  clearStartDate(): void {
+    this.startDate = null;
+    this.detailData = [];
+    this.loadUnpaidSplits();
+  }
+
+  clearEndDate(): void {
+    this.endDate = null;
+    this.detailData = [];
+    this.loadUnpaidSplits();
   }
 
   getMemberName(memberId: string): string {
@@ -105,42 +126,51 @@ export class SummaryComponent implements OnInit {
 
   onSelectMember() {
     this.loading.loadingOn();
+    this.detailData = [];
     this.splits$
       .pipe(
         map((splits) => {
           this.summaryData = [];
-          const memberSplits = splits.filter(
-            (s) =>
-              s.owedByMemberId == this.selectedMemberId ||
-              s.paidByMemberId == this.selectedMemberId
-          );
-          this.members
-            .filter((m) => m.id != this.selectedMemberId)
-            .forEach((member) => {
-              const owedToSelected = memberSplits
-                .filter((m) => m.owedByMemberId == member.id)
-                .reduce((total, split) => (total += split.allocatedAmount), 0);
-              const owedBySelected = memberSplits
-                .filter((m) => m.paidByMemberId == member.id)
-                .reduce((total, split) => (total += split.allocatedAmount), 0);
-              if (owedToSelected > owedBySelected) {
-                this.summaryData.push(
-                  new AmountDue({
-                    owedByMemberId: member.id,
-                    owedToMemberId: this.selectedMemberId,
-                    amount: owedToSelected - owedBySelected,
-                  })
-                );
-              } else if (owedBySelected > owedToSelected) {
-                this.summaryData.push(
-                  new AmountDue({
-                    owedToMemberId: member.id,
-                    owedByMemberId: this.selectedMemberId,
-                    amount: owedBySelected - owedToSelected,
-                  })
-                );
-              }
-            });
+          if (splits.length > 0) {
+            const memberSplits = splits.filter(
+              (s) =>
+                s.owedByMemberId == this.selectedMemberId ||
+                s.paidByMemberId == this.selectedMemberId
+            );
+            this.members
+              .filter((m) => m.id != this.selectedMemberId)
+              .forEach((member) => {
+                const owedToSelected = memberSplits
+                  .filter((m) => m.owedByMemberId == member.id)
+                  .reduce(
+                    (total, split) => (total += split.allocatedAmount),
+                    0
+                  );
+                const owedBySelected = memberSplits
+                  .filter((m) => m.paidByMemberId == member.id)
+                  .reduce(
+                    (total, split) => (total += split.allocatedAmount),
+                    0
+                  );
+                if (owedToSelected > owedBySelected) {
+                  this.summaryData.push(
+                    new AmountDue({
+                      owedByMemberId: member.id,
+                      owedToMemberId: this.selectedMemberId,
+                      amount: owedToSelected - owedBySelected,
+                    })
+                  );
+                } else if (owedBySelected > owedToSelected) {
+                  this.summaryData.push(
+                    new AmountDue({
+                      owedToMemberId: member.id,
+                      owedByMemberId: this.selectedMemberId,
+                      amount: owedBySelected - owedToSelected,
+                    })
+                  );
+                }
+              });
+          }
         }),
         tap(() => {
           this.loading.loadingOff();
@@ -197,6 +227,22 @@ export class SummaryComponent implements OnInit {
   }
 
   markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {
+    var splitsToPay: Split[] = [];
+    this.splits$
+      .pipe(
+        map((splits: Split[]) => {
+          this.detailData = [];
+          const memberSplits = splits.filter(
+            (s) =>
+              (s.owedByMemberId == owedByMemberId &&
+                s.paidByMemberId == owedToMemberId) ||
+              (s.owedByMemberId == owedToMemberId &&
+                s.paidByMemberId == owedByMemberId)
+          );
+          splitsToPay = memberSplits;
+        })
+      )
+      .subscribe();
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Action',
@@ -210,11 +256,7 @@ export class SummaryComponent implements OnInit {
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
         this.splitService
-          .paySplitsBetweenMembers(
-            this.currentGroup.id,
-            owedToMemberId,
-            owedByMemberId
-          )
+          .paySplitsBetweenMembers(this.currentGroup.id, splitsToPay)
           .pipe(
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');
