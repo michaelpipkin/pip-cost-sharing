@@ -1,4 +1,5 @@
 import { Component, Inject } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
@@ -30,6 +31,7 @@ export class EditMemberComponent {
     private dialog: MatDialog,
     private memberService: MemberService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.member = this.data.member;
@@ -79,7 +81,11 @@ export class EditMemberComponent {
           }
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_member',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not edit member.',
             'Close'
@@ -115,7 +121,11 @@ export class EditMemberComponent {
               }
             }),
             catchError((err: Error) => {
-              console.log(err.message);
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'remove_member',
+                message: err.message,
+              });
               this.snackBar.open(
                 'Something went wrong - could not remove member.',
                 'Close'

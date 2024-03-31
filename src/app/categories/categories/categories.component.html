@@ -16,7 +16,7 @@
             Category</button>
     </div>
     <div class="d-flex justify-content-center">
-        <div class="scrollable-table p-2 mat-elevation-z8">
+        <div class="scrollable-table mat-elevation-z8">
             <table mat-table matSort [dataSource]="filteredCategories$ | async"
                 (matSortChange)="sortCategories($event)">
                 <ng-container matColumnDef="id">

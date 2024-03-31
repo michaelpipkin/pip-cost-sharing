@@ -1,3 +1,4 @@
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatDatepicker } from '@angular/material/datepicker';
@@ -61,6 +62,7 @@ export class AddExpenseComponent implements OnInit {
     private snackBar: MatSnackBar,
     private db: AngularFirestore,
     private storage: AngularFireStorage,
+    private analytics: AngularFireAnalytics,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.groupId = this.data.groupId;
@@ -351,7 +353,11 @@ export class AddExpenseComponent implements OnInit {
           this.dialogRef.close({ success: true, operation: 'added' });
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'add_expense',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not add expense.',
             'Close'
@@ -398,7 +404,11 @@ export class AddExpenseComponent implements OnInit {
           });
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'memorize_expense',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not memorize expense.',
             'Close'

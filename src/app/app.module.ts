@@ -4,9 +4,12 @@ import { AngularFireModule } from '@angular/fire/compat';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { TitleStrategy } from '@angular/router';
 import { AuthInterceptor } from '@services/auth.interceptor';
+import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { environment } from 'src/environments/environment';
 import { AppRoutingModule } from './app-routing.module';
@@ -78,6 +81,7 @@ import {
     AddCategoryComponent,
     EditCategoryComponent,
     YesNoPipe,
+    CurrencyPipe,
     EditMemberComponent,
     ActiveInactivePipe,
     DeleteDialogComponent,
@@ -103,6 +107,10 @@ import {
     ReactiveFormsModule,
   ],
   providers: [
+    {
+      provide: TitleStrategy,
+      useClass: PageTitleStrategyService,
+    },
     {
       provide: MAT_DIALOG_DEFAULT_OPTIONS,
       useValue: {

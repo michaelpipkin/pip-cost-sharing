@@ -5,7 +5,7 @@
       aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="mainNavbar">
+    <div class="collapse navbar-collapse" id="mainNavbar" #mainNavbar>
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center" aria-label="groups" title="Groups" routerLink="groups">
@@ -65,8 +65,9 @@
         <ng-container class="nav-item" *ngIf="!(user.isLoggedIn$ | async)">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link d-flex align-items-center" routerLink="login"><mat-icon>login</mat-icon>&nbsp;Log
-                in</a>
+              <a class="nav-link d-flex align-items-center" routerLink="login">
+                <mat-icon>login</mat-icon>&nbsp;Log in
+              </a>
             </li>
           </ul>
         </ng-container>

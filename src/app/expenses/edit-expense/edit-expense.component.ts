@@ -1,3 +1,4 @@
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTable } from '@angular/material/table';
@@ -74,6 +75,7 @@ export class EditExpenseComponent implements OnInit {
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
     private storage: AngularFireStorage,
+    private analytics: AngularFireAnalytics,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.groupId = this.data.groupId;
@@ -348,7 +350,11 @@ export class EditExpenseComponent implements OnInit {
             });
           }),
           catchError((err: Error) => {
-            console.log(err.message);
+            this.analytics.logEvent('error', {
+              component: this.constructor.name,
+              action: 'edit_memorized_expense',
+              message: err.message,
+            });
             this.snackBar.open(
               'Something went wrong - could not update memorized expense.',
               'Close'
@@ -412,7 +418,11 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
-                console.log(err.message);
+                this.analytics.logEvent('error', {
+                  component: this.constructor.name,
+                  action: 'edit_expense',
+                  message: err.message,
+                });
                 this.snackBar.open(
                   'Something went wrong - could not edit expense.',
                   'Close'
@@ -455,7 +465,11 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
-                console.log(err.message);
+                this.analytics.logEvent('error', {
+                  component: this.constructor.name,
+                  action: 'delete_memorized_expense',
+                  message: err.message,
+                });
                 this.snackBar.open(
                   'Something went wrong - could not delete memorized expense.',
                   'Close'
@@ -493,7 +507,11 @@ export class EditExpenseComponent implements OnInit {
                 });
               }),
               catchError((err: Error) => {
-                console.log(err.message);
+                this.analytics.logEvent('error', {
+                  component: this.constructor.name,
+                  action: 'delete_expense',
+                  message: err.message,
+                });
                 this.snackBar.open(
                   'Something went wrong - could not delete expense.',
                   'Close'

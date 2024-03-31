@@ -14,7 +14,7 @@
             only</mat-slide-toggle>
     </div>
     <div class="d-flex justify-content-center">
-        <div class="scrollable-table p-2 mat-elevation-z8">
+        <div class="scrollable-table mat-elevation-z8">
             <table mat-table matSort [dataSource]="filteredMembers$ | async" (matSortChange)="sortMembers($event)">
                 <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Id</th>

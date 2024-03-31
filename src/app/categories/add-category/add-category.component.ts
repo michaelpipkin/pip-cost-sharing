@@ -1,4 +1,5 @@
 import { Component, Inject } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -21,6 +22,7 @@ export class AddCategoryComponent {
     private fb: FormBuilder,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     @Inject(MAT_DIALOG_DATA) public groupId: string
   ) {}
 
@@ -47,7 +49,11 @@ export class AddCategoryComponent {
           }
         }),
         catchError((err: Error) => {
-          console.log(err.message);
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'add_category',
+            message: err.message,
+          });
           this.snackBar.open(
             'Something went wrong - could not add category.',
             'Close'
