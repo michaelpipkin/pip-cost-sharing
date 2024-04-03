@@ -28,7 +28,8 @@ import { AddGroupComponent } from './groups/add-group/add-group.component';
 import { GroupsComponent } from './groups/groups/groups.component';
 import { JoinGroupComponent } from './groups/join-group/join-group.component';
 import { ManageGroupsComponent } from './groups/manage-groups/manage-groups.component';
-import { HelpComponent } from './help/help/help.component';
+import { HelpComponent } from './help/help.component';
+import { HomeComponent } from './home/home.component';
 import { MaterialModule } from './material.module';
 import { EditMemberComponent } from './members/edit-member/edit-member.component';
 import { MembersComponent } from './members/members/members.component';
@@ -92,6 +93,7 @@ import {
     FooterComponent,
     MemorizedComponent,
     ManageGroupsComponent,
+    HomeComponent,
   ],
   imports: [
     BrowserModule,

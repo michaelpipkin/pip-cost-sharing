@@ -3,7 +3,7 @@ import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
-import { HelpComponent } from './help/help/help.component';
+import { HelpComponent } from './help/help.component';
 
 @Component({
   selector: 'app-root',
