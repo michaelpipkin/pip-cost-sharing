@@ -208,7 +208,9 @@ export class EditExpenseComponent implements OnInit {
     if (this.splitsDataSource.length > 0) {
       this.saveSplitsData();
     }
-    this.splitsDataSource.push(new Split());
+    this.splitsDataSource.push(
+      new Split({ assignedAmount: 0, allocatedAmount: 0 })
+    );
     this.updateForm();
     this.splitsTable.renderRows();
   }
@@ -220,6 +222,7 @@ export class EditExpenseComponent implements OnInit {
         this.splitsDataSource[i] = new Split({
           owedByMemberId: split.owedByMemberId,
           assignedAmount: +split.assignedAmount,
+          allocatedAmount: 0,
         });
       }
     }

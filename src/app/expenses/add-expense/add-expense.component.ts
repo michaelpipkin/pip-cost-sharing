@@ -113,6 +113,8 @@ export class AddExpenseComponent implements OnInit {
     if (this.data.memorized) {
       this.splitsDataSource = this.data.expense.splits;
       this.updateForm();
+    } else {
+      this.addAllActiveGroupMembers();
     }
   }
 
@@ -165,7 +167,9 @@ export class AddExpenseComponent implements OnInit {
     if (this.splitsDataSource.length > 0) {
       this.saveSplitsData();
     }
-    this.splitsDataSource.push(new Split({ assignedAmount: 0 }));
+    this.splitsDataSource.push(
+      new Split({ assignedAmount: 0, allocatedAmount: 0 })
+    );
     this.updateForm();
     this.splitsTable.renderRows();
   }
@@ -178,12 +182,18 @@ export class AddExpenseComponent implements OnInit {
       .pipe(
         map((members) => {
           members.forEach((member) => {
-            this.splitsDataSource.push(
-              new Split({
-                owedByMemberId: member.id,
-                assignedAmount: 0,
-              })
+            const existingSplits = this.splitsDataSource.map(
+              (s) => s.owedByMemberId
             );
+            if (!existingSplits.includes(member.id)) {
+              this.splitsDataSource.push(
+                new Split({
+                  owedByMemberId: member.id,
+                  assignedAmount: 0,
+                  allocatedAmount: 0,
+                })
+              );
+            }
           });
           this.updateForm();
           this.splitsTable.renderRows();
@@ -199,6 +209,7 @@ export class AddExpenseComponent implements OnInit {
         this.splitsDataSource[i] = new Split({
           owedByMemberId: split.owedByMemberId,
           assignedAmount: +split.assignedAmount,
+          allocatedAmount: 0,
         });
       }
     }
