@@ -1,0 +1,99 @@
+.home-container {
+  padding: 16px 20% 0;
+}
+
+@media (max-width: 1200px) {
+  .home-container {
+    padding: 16px 10% 0;
+  }
+}
+
+@media (max-width: 800px) {
+  .home-container {
+    padding: 16px 5% 0;
+
+    .container {
+      display: grid;
+      grid-template-rows: auto;
+      grid-template-columns: 1fr;
+      row-gap: 2px;
+    }
+  }
+}
+
+@media (min-width: 601px) {
+  #logo {
+    height: 200px;
+    width: 200px;
+  }
+}
+
+@media (max-width: 600px) {
+  #logo {
+    height: 125px;
+    width: 125px;
+  }
+}
+
+.top-section {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+}
+
+.description {
+  align-self: flex-start;
+}
+
+.image {
+  align-self: center;
+  justify-self: center;
+}
+
+.summary {
+  font-size: larger;
+  font-weight: bold;
+}
+
+.app-title {
+  font-size: x-large;
+  font-weight: bold;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  column-gap: 2px;
+}
+
+.feature {
+  display: grid;
+  grid-template-rows: 64px 64px auto;
+}
+
+.feature-icon {
+  align-self: center;
+}
+
+.feature-icon mat-icon {
+  height: 36px;
+  width: 36px;
+  font-size: 36px;
+}
+
+.feature-title {
+  align-self: top;
+  justify-self: center;
+}
+
+.container div {
+  display: grid;
+  color: white;
+  background-color: #446e9b;
+  justify-items: center;
+}
+
+.container div p {
+  justify-self: center;
+  padding: 0 12px;
+  margin-bottom: 0;
+}

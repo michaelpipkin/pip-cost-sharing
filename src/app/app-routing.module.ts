@@ -7,7 +7,8 @@ import { ExpensesComponent } from './expenses/expenses/expenses.component';
 import { MemorizedComponent } from './expenses/memorized/memorized.component';
 import { SummaryComponent } from './expenses/summary/summary.component';
 import { GroupsComponent } from './groups/groups/groups.component';
-import { HelpComponent } from './help/help/help.component';
+import { HelpComponent } from './help/help.component';
+import { HomeComponent } from './home/home.component';
 import { MembersComponent } from './members/members/members.component';
 import {
   canActivate,
@@ -19,7 +20,12 @@ const authGuard = () => redirectUnauthorizedTo(['login']);
 const loggedInGuard = () => redirectLoggedInTo(['profile']);
 
 const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: '/groups' },
+  { path: '', pathMatch: 'full', redirectTo: '/home' },
+  {
+    path: 'home',
+    title: 'Home',
+    component: HomeComponent,
+  },
   {
     path: 'login',
     title: 'Login',
@@ -74,7 +80,7 @@ const routes: Routes = [
     component: HelpComponent,
     ...canActivate(authGuard),
   },
-  { path: '**', redirectTo: '/groups' },
+  { path: '**', redirectTo: '/home' },
 ];
 
 @NgModule({
