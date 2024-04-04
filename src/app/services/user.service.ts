@@ -26,7 +26,7 @@ export class UserService {
   }
 
   logout() {
-    this.afAuth.signOut().finally(() => this.router.navigateByUrl('/login'));
+    this.afAuth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
 
   getCurrentUser = (): firebase.User => this.userSubject.getValue();

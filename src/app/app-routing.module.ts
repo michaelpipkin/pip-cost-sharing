@@ -20,7 +20,7 @@ const authGuard = () => redirectUnauthorizedTo(['login']);
 const loggedInGuard = () => redirectLoggedInTo(['profile']);
 
 const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: '/groups' },
+  { path: '', pathMatch: 'full', redirectTo: '/home' },
   {
     path: 'home',
     title: 'Home',
@@ -80,7 +80,7 @@ const routes: Routes = [
     component: HelpComponent,
     ...canActivate(authGuard),
   },
-  { path: '**', redirectTo: '/groups' },
+  { path: '**', redirectTo: '/home' },
 ];
 
 @NgModule({

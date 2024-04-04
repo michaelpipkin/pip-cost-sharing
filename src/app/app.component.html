@@ -1,12 +1,12 @@
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
   <div class="container-fluid">
-    <span class="navbar-brand">Pip Cost Sharing</span>
+    <a class="navbar-brand" routerLink="home">Pip Cost Sharing</a>
     <button class="navbar-toggler collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
       aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="mainNavbar" #mainNavbar>
-      <ul class="navbar-nav me-auto">
+      <ul class="navbar-nav me-auto" *ngIf="user.isLoggedIn$ | async">
         <li class="nav-item">
           <a class="nav-link d-flex align-items-center" aria-label="groups" title="Groups" routerLink="groups">
             <mat-icon>groups</mat-icon>&nbsp;Groups
@@ -42,9 +42,9 @@
           </li>
         </ng-container>
       </ul>
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center ms-auto">
         <ng-container class="nav-item" *ngIf="user.isLoggedIn$ | async">
-          <ul class="navbar-nav me-auto">
+          <ul class="navbar-nav">
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" aria-label="help" title="Help" routerLink="help">
                 <mat-icon>help</mat-icon>&nbsp;Help
@@ -63,7 +63,7 @@
           </ul>
         </ng-container>
         <ng-container class="nav-item" *ngIf="!(user.isLoggedIn$ | async)">
-          <ul class="navbar-nav me-auto">
+          <ul class="navbar-nav">
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" routerLink="login">
                 <mat-icon>login</mat-icon>&nbsp;Log in
