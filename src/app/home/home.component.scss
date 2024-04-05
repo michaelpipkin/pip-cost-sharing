@@ -28,7 +28,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   #logo {
     height: 125px;
     width: 125px;
@@ -37,7 +37,8 @@
 
 .top-section {
   display: grid;
-  grid-template-columns: 2fr 3fr;
+  grid-template-columns: 1fr 4fr 3fr 1fr;
+  justify-content: center;
 }
 
 .description {
@@ -45,8 +46,15 @@
 }
 
 .image {
-  align-self: center;
-  justify-self: center;
+  display: grid;
+  margin-left: 20px;
+  align-self: self-start;
+  justify-items: center;
+}
+
+.image span,
+a {
+  font-size: 0.8rem;
 }
 
 .summary {
