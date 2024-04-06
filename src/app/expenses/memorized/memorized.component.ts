@@ -159,7 +159,6 @@ export class MemorizedComponent implements OnInit {
         member: this.currentMember,
         isGroupAdmin: this.currentMember.groupAdmin,
       },
-      width: '90vh',
     };
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {

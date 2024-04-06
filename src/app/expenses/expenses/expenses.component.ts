@@ -234,7 +234,6 @@ export class ExpensesComponent implements OnInit {
         member: this.currentMember,
         isGroupAdmin: this.currentMember.groupAdmin,
       },
-      width: '90vh',
     };
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
@@ -253,7 +252,6 @@ export class ExpensesComponent implements OnInit {
         isGroupAdmin: this.currentMember.groupAdmin,
         memorized: false,
       },
-      width: '90vh',
     };
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
