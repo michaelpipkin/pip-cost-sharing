@@ -178,7 +178,6 @@ export class MemorizedComponent implements OnInit {
         memorized: true,
         expense: expense,
       },
-      width: '90vh',
     };
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
