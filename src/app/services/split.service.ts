@@ -70,18 +70,18 @@ export class SplitService {
           if (expenseIds.length > 0) {
             return this.db
               .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-                ref
-                  .where('paid', '==', false)
-                  .where('expenseId', 'in', expenseIds)
+                ref.where('paid', '==', false)
               )
               .valueChanges({ idField: 'id' })
               .pipe(
                 map((splits: Split[]) => {
-                  return <Split[]>splits.map((split) => {
-                    return new Split({
-                      ...split,
+                  return <Split[]>splits
+                    .filter((s) => expenseIds.includes(s.expenseId))
+                    .map((split) => {
+                      return new Split({
+                        ...split,
+                      });
                     });
-                  });
                 })
               );
           } else return of([]);

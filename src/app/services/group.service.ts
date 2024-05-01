@@ -3,7 +3,14 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { BehaviorSubject, concatMap, from, map, Observable, of } from 'rxjs';
+import {
+  BehaviorSubject,
+  concatMap,
+  from,
+  map,
+  Observable,
+  of
+  } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -52,7 +59,7 @@ export class GroupService {
             .valueChanges({ idField: 'id' })
             .pipe(
               map((groups: Group[]) => {
-                return <Group[]>groups
+                const memberGroups = <Group[]>groups
                   .filter((group: Group) => {
                     return groupIds.includes(group.id);
                   })
@@ -61,6 +68,10 @@ export class GroupService {
                       ...group,
                     });
                   });
+                if (memberGroups.length === 1) {
+                  this.groupSubject.next(memberGroups[0]);
+                }
+                return memberGroups;
               })
             );
         })
