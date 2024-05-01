@@ -12,7 +12,8 @@
                 Split expenses with friends for your weekend getaway, track monthly costs with your roommates,
                 or easily calculate shares of a dinner out.
             </p>
-            <a *ngIf="!(user.isLoggedIn$ | async)" type="button" class="btn btn-primary mb-4" routerLink="/login">
+            <a *ngIf="!(userService.isLoggedIn$ | async)" type="button" class="btn btn-primary mb-4"
+                routerLink="/login">
                 Sign up for a free account
             </a>
         </div>
