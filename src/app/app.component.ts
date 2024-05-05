@@ -1,8 +1,11 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
+import { tap } from 'rxjs';
 import { HelpComponent } from './help/help.component';
 
 @Component({
@@ -16,6 +19,7 @@ export class AppComponent {
 
   constructor(
     public user: UserService,
+    public memberService: MemberService,
     public groupService: GroupService,
     private dialog: MatDialog,
     analytics: AngularFireAnalytics
@@ -23,7 +27,25 @@ export class AppComponent {
     analytics.logEvent('app_initalized');
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.user.isLoggedIn$.subscribe((loggedIn) => {
+      if (loggedIn) {
+        const user = this.user.getCurrentUser();
+        this.groupService
+          .getGroupsForUser(user.uid)
+          .pipe(
+            tap((groups: Group[]) => {
+              if (groups.length === 1) {
+                this.memberService
+                  .getMemberByUserId(groups[0].id, user.uid)
+                  .subscribe();
+              }
+            })
+          )
+          .subscribe();
+      }
+    });
+  }
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
