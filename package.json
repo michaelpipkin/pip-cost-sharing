@@ -1,6 +1,6 @@
 {
   "name": "pip-cost-sharing",
-  "version": "1.9.8",
+  "version": "1.9.9",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -8,7 +8,7 @@
     "export-data": "rm seed-data -r -f && firebase emulators:export seed-data",
     "local-dev": "firebase emulators:start --import seed-data",
     "get-indexes": "firebase firestore:indexes",
-    "build-prod": "npm --no-git-tag-version version patch && node ./setBuildDate.js && ng build --configuration=production",
+    "build:prod": "npm --no-git-tag-version version patch && node ./setBuildDate.js && ng build --configuration=production",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

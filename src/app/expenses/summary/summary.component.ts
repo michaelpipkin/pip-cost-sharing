@@ -16,7 +16,14 @@ import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
-import { catchError, concatMap, map, Observable, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  concatMap,
+  map,
+  Observable,
+  tap,
+  throwError
+  } from 'rxjs';
 
 @Component({
   selector: 'app-summary',
@@ -81,7 +88,7 @@ export class SummaryComponent implements OnInit {
         .subscribe();
       this.summaryData = [];
       this.detailData = [];
-      this.selectedMemberId = '';
+      this.selectedMemberId = this.currentMember.id;
       this.loadUnpaidSplits();
     }
   }
