@@ -1,6 +1,7 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
@@ -21,6 +22,7 @@ export class AppComponent {
     public user: UserService,
     public memberService: MemberService,
     public groupService: GroupService,
+    public router: Router,
     private dialog: MatDialog,
     analytics: AngularFireAnalytics
   ) {
@@ -38,7 +40,11 @@ export class AppComponent {
               if (groups.length === 1) {
                 this.memberService
                   .getMemberByUserId(groups[0].id, user.uid)
-                  .subscribe();
+                  .subscribe(() => {
+                    this.router.navigateByUrl('/expenses');
+                  });
+              } else {
+                this.router.navigateByUrl('/groups');
               }
             })
           )

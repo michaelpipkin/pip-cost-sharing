@@ -42,10 +42,11 @@ export class GroupsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadGroups();
-    const currentGroup = this.groupService.getCurrentGroup();
-    if (currentGroup !== null) {
-      this.selectedGroupId = currentGroup.id;
-    }
+    this.groupService.selectedGroup$.subscribe((group: Group) => {
+      if (group !== null) {
+        this.selectedGroupId = group.id;
+      }
+    });
   }
 
   loadGroups(): void {
