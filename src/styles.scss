@@ -1,8 +1,8 @@
 // Custom Theming for Angular Material
 // For more information: https://material.angular.io/guide/theming
-@use "@angular/material" as mat;
+@use '@angular/material' as mat;
 // Plus imports for other components in your app.
-@import "~firebaseui/dist/firebaseui.css";
+@import '~firebaseui/dist/firebaseui.css';
 $enable-negative-margins: true;
 
 // Include the common styles for Angular Material. We include this here so that you only
@@ -119,7 +119,7 @@ $app-accent: mat.define-palette($spacelab-palette-accent);
 $app-warn: mat.define-palette($spacelab-palette-warn);
 
 $spacelab-typography: mat.define-typography-config(
-  $font-family: "Open Sans",
+  $font-family: 'Open Sans',
 );
 
 // Create the theme object. A theme consists of configurations for individual
@@ -147,9 +147,18 @@ body {
 }
 
 * {
-  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family:
+    'Open Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol';
   font-size: 0.9rem;
 }
 

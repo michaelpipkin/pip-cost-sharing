@@ -13,14 +13,14 @@ export class SortingService {
           return a[col].toLowerCase() > b[col].toLowerCase()
             ? 1
             : a[col].toLowerCase() < b[col].toLowerCase()
-            ? -1
-            : 0;
+              ? -1
+              : 0;
         } else {
           return b[col].toLowerCase() > a[col].toLowerCase()
             ? 1
             : b[col].toLowerCase() < a[col].toLowerCase()
-            ? -1
-            : 0;
+              ? -1
+              : 0;
         }
       });
     } else {

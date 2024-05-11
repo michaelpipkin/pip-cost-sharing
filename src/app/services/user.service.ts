@@ -11,7 +11,10 @@ export class UserService {
   private userSubject = new BehaviorSubject<firebase.User>(null);
   isLoggedIn$: Observable<boolean>;
 
-  constructor(private afAuth: AngularFireAuth, private router: Router) {
+  constructor(
+    private afAuth: AngularFireAuth,
+    private router: Router
+  ) {
     this.isLoggedIn$ = afAuth.authState.pipe(
       map((user) => {
         if (!!user) {

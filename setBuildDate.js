@@ -1,11 +1,11 @@
-var replace = require("replace-in-file");
+var replace = require('replace-in-file');
 
 const buildDate = new Date();
 
 const options = {
   files: [
-    "src/environments/environment.ts",
-    "src/environments/environment.prod.ts",
+    'src/environments/environment.ts',
+    'src/environments/environment.prod.ts',
   ],
   from: /buildDate: (.*)/g,
   to: `buildDate: new Date('${buildDate.toISOString()}')`,
@@ -19,6 +19,6 @@ try {
 
   console.log(`Build date is set to ${buildDate.toDateString()}`);
 } catch (error) {
-  console.error("Error occurred:", error);
+  console.error('Error occurred:', error);
   throw error;
 }

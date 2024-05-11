@@ -1,6 +1,31 @@
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatIconAnchor, MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import {
+  MatFormField,
+  MatLabel,
+  MatSuffix,
+} from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
+import {
+  MatCell,
+  MatCellDef,
+  MatColumnDef,
+  MatHeaderCell,
+  MatHeaderCellDef,
+  MatHeaderRow,
+  MatHeaderRowDef,
+  MatNoDataRow,
+  MatRow,
+  MatRowDef,
+  MatTable,
+} from '@angular/material/table';
 import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -9,6 +34,8 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
@@ -17,6 +44,35 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
   selector: 'app-members',
   templateUrl: './members.component.html',
   styleUrl: './members.component.scss',
+  standalone: true,
+  imports: [
+    MatFormField,
+    MatLabel,
+    MatInput,
+    FormsModule,
+    CommonModule,
+    MatIconButton,
+    MatSuffix,
+    MatIcon,
+    MatSlideToggle,
+    MatTable,
+    MatSort,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatSortHeader,
+    MatIconAnchor,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatNoDataRow,
+    AsyncPipe,
+    YesNoPipe,
+    ActiveInactivePipe,
+  ],
 })
 export class MembersComponent implements OnInit {
   currentUser: firebase.User;

@@ -7,7 +7,7 @@ describe('GroupsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [GroupsComponent],
+      imports: [GroupsComponent],
     }).compileComponents();
   });
 

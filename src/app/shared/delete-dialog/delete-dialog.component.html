@@ -1,9 +1,15 @@
-<h1 mat-dialog-title>Confirm {{operation}}</h1>
+<h1 mat-dialog-title>Confirm {{ operation }}</h1>
 <mat-dialog-content>
-    <p>WARNING! This action cannot be undone. Are you sure you want to {{operation.toLowerCase()}} {{target}}?</p>
-
+  <p>
+    WARNING! This action cannot be undone. Are you sure you want to
+    {{ operation.toLowerCase() }} {{ target }}?
+  </p>
 </mat-dialog-content>
 <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary" (click)="close(false)">Cancel</button>
-    <button type="button" class="btn btn-danger" (click)="close(true)">{{operation}}</button>
+  <button type="button" class="btn btn-secondary" (click)="close(false)">
+    Cancel
+  </button>
+  <button type="button" class="btn btn-danger" (click)="close(true)">
+    {{ operation }}
+  </button>
 </mat-dialog-actions>

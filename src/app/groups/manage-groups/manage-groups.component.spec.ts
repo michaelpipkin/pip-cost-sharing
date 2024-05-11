@@ -8,10 +8,9 @@ describe('ManageGroupsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ManageGroupsComponent]
-    })
-    .compileComponents();
-    
+      imports: [ManageGroupsComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(ManageGroupsComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
