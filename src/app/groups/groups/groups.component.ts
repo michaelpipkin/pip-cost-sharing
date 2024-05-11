@@ -1,8 +1,13 @@
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatSelectChange } from '@angular/material/select';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabChangeEvent } from '@angular/material/tabs';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { GroupService } from '@services/group.service';
@@ -19,6 +24,17 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
   selector: 'app-groups',
   templateUrl: './groups.component.html',
   styleUrls: ['./groups.component.scss'],
+  standalone: true,
+  imports: [
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    FormsModule,
+    MatOption,
+    CommonModule,
+    MatTooltip,
+    AsyncPipe,
+  ],
 })
 export class GroupsComponent implements OnInit {
   currentUser: firebase.User;

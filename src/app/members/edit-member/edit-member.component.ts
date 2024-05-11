@@ -1,22 +1,51 @@
+import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogActions,
+  MatDialogConfig,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { catchError, map, throwError } from 'rxjs';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-member',
   templateUrl: './edit-member.component.html',
   styleUrl: './edit-member.component.scss',
+  standalone: true,
+  imports: [
+    MatDialogTitle,
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogContent,
+    MatFormField,
+    MatLabel,
+    MatInput,
+    CommonModule,
+    MatError,
+    MatSlideToggle,
+    MatTooltip,
+    MatDialogActions,
+  ],
 })
 export class EditMemberComponent {
   member: Member;

@@ -1,5 +1,11 @@
+import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatIconButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatIcon } from '@angular/material/icon';
+import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
@@ -17,6 +23,24 @@ import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
+import {
+  MatFormField,
+  MatLabel,
+  MatSuffix,
+} from '@angular/material/form-field';
+import {
+  MatCell,
+  MatCellDef,
+  MatColumnDef,
+  MatHeaderCell,
+  MatHeaderCellDef,
+  MatHeaderRow,
+  MatHeaderRowDef,
+  MatNoDataRow,
+  MatRow,
+  MatRowDef,
+  MatTable,
+} from '@angular/material/table';
 import {
   animate,
   state,
@@ -38,6 +62,31 @@ import {
         animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')
       ),
     ]),
+  ],
+  standalone: true,
+  imports: [
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    FormsModule,
+    MatOption,
+    CommonModule,
+    MatIconButton,
+    MatSuffix,
+    MatIcon,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatNoDataRow,
+    AsyncPipe,
+    CurrencyPipe,
   ],
 })
 export class MemorizedComponent implements OnInit {

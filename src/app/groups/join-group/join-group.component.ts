@@ -1,7 +1,20 @@
+import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { FormBuilder, Validators } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialogActions,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { MemberService } from '@services/member.service';
@@ -13,6 +26,19 @@ import { catchError, map, throwError } from 'rxjs';
   selector: 'app-join-group',
   templateUrl: './join-group.component.html',
   styleUrl: './join-group.component.scss',
+  standalone: true,
+  imports: [
+    MatDialogTitle,
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogContent,
+    MatFormField,
+    MatLabel,
+    MatInput,
+    CommonModule,
+    MatError,
+    MatDialogActions,
+  ],
 })
 export class JoinGroupComponent {
   joinGroupForm = this.fb.group({

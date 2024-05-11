@@ -1,7 +1,24 @@
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, Inject, OnInit } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { FormBuilder, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { MatOption } from '@angular/material/core';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogActions,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
@@ -12,6 +29,23 @@ import { catchError, map, Observable, tap, throwError } from 'rxjs';
   selector: 'app-manage-groups',
   templateUrl: './manage-groups.component.html',
   styleUrl: './manage-groups.component.scss',
+  standalone: true,
+  imports: [
+    MatDialogTitle,
+    MatDialogContent,
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    FormsModule,
+    MatOption,
+    ReactiveFormsModule,
+    MatInput,
+    CommonModule,
+    MatError,
+    MatSlideToggle,
+    MatDialogActions,
+    AsyncPipe,
+  ],
 })
 export class ManageGroupsComponent implements OnInit {
   editGroupForm = this.fb.group({

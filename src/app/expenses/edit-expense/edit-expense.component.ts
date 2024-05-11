@@ -1,7 +1,56 @@
+import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
+import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { MatMiniFabButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
+import {
+  MatDatepicker,
+  MatDatepickerInput,
+  MatDatepickerToggle,
+} from '@angular/material/datepicker';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogActions,
+  MatDialogConfig,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import {
+  MatError,
+  MatFormField,
+  MatHint,
+  MatLabel,
+  MatPrefix,
+  MatSuffix,
+} from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTable } from '@angular/material/table';
+import {
+  MatCell,
+  MatCellDef,
+  MatColumnDef,
+  MatHeaderCell,
+  MatHeaderCellDef,
+  MatHeaderRow,
+  MatHeaderRowDef,
+  MatNoDataRow,
+  MatRow,
+  MatRowDef,
+  MatTable,
+} from '@angular/material/table';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Member } from '@models/member';
@@ -29,24 +78,47 @@ import {
   tap,
   throwError,
 } from 'rxjs';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogRef,
-} from '@angular/material/dialog';
-import {
-  FormArray,
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-edit-expense',
   templateUrl: './edit-expense.component.html',
   styleUrl: './edit-expense.component.scss',
+  standalone: true,
+  imports: [
+    MatDialogTitle,
+    MatDialogContent,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    MatOption,
+    CommonModule,
+    MatError,
+    MatInput,
+    MatDatepickerInput,
+    MatHint,
+    MatDatepickerToggle,
+    MatSuffix,
+    MatDatepicker,
+    MatPrefix,
+    MatMiniFabButton,
+    MatIcon,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatNoDataRow,
+    MatDialogActions,
+    AsyncPipe,
+    CurrencyPipe,
+  ],
 })
 export class EditExpenseComponent implements OnInit {
   members$: Observable<Member[]>;

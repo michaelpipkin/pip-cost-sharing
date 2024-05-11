@@ -8,10 +8,9 @@ describe('JoinGroupComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [JoinGroupComponent]
-    })
-    .compileComponents();
-    
+      imports: [JoinGroupComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(JoinGroupComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

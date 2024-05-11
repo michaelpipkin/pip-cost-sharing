@@ -1,18 +1,32 @@
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { Router } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { tap } from 'rxjs';
 import { HelpComponent } from './help/help.component';
+import { FooterComponent } from './shared/footer/footer.component';
+import { LoadingComponent } from './shared/loading/loading.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
+  standalone: true,
+  imports: [
+    RouterLink,
+    CommonModule,
+    MatIcon,
+    LoadingComponent,
+    RouterOutlet,
+    FooterComponent,
+    AsyncPipe,
+  ],
 })
 export class AppComponent {
   title = 'Cost Sharing';

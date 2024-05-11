@@ -1,7 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { FormsModule } from '@angular/forms';
+import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -16,10 +24,45 @@ import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
+import {
+  AsyncPipe,
+  CommonModule,
+  CurrencyPipe,
+  DatePipe,
+} from '@angular/common';
+import {
+  MatDatepicker,
+  MatDatepickerInput,
+  MatDatepickerToggle,
+} from '@angular/material/datepicker';
+import {
+  MatFormField,
+  MatHint,
+  MatLabel,
+  MatSuffix,
+} from '@angular/material/form-field';
+import {
+  MatCell,
+  MatCellDef,
+  MatColumnDef,
+  MatFooterCell,
+  MatFooterCellDef,
+  MatFooterRow,
+  MatFooterRowDef,
+  MatHeaderCell,
+  MatHeaderCellDef,
+  MatHeaderRow,
+  MatHeaderRowDef,
+  MatNoDataRow,
+  MatRow,
+  MatRowDef,
+  MatTable,
+} from '@angular/material/table';
 import {
   animate,
   state,
@@ -41,6 +84,46 @@ import {
         animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')
       ),
     ]),
+  ],
+  standalone: true,
+  imports: [
+    MatFormField,
+    MatLabel,
+    MatSelect,
+    FormsModule,
+    MatOption,
+    CommonModule,
+    MatIconButton,
+    MatSuffix,
+    MatIcon,
+    MatSlideToggle,
+    MatInput,
+    MatDatepickerInput,
+    MatHint,
+    MatDatepickerToggle,
+    MatDatepicker,
+    MatTable,
+    MatSort,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatFooterCellDef,
+    MatFooterCell,
+    MatSortHeader,
+    MatMiniFabButton,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatFooterRowDef,
+    MatFooterRow,
+    MatNoDataRow,
+    AsyncPipe,
+    CurrencyPipe,
+    DatePipe,
+    YesNoPipe,
   ],
 })
 export class ExpensesComponent implements OnInit {

@@ -3,14 +3,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import {
-  BehaviorSubject,
-  concatMap,
-  from,
-  map,
-  Observable,
-  of
-  } from 'rxjs';
+import { BehaviorSubject, concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',

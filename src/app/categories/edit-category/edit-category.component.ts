@@ -1,22 +1,48 @@
+import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { FormBuilder, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogActions,
+  MatDialogConfig,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { catchError, map, throwError } from 'rxjs';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-category',
   templateUrl: './edit-category.component.html',
   styleUrl: './edit-category.component.scss',
+  standalone: true,
+  imports: [
+    MatDialogTitle,
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogContent,
+    MatFormField,
+    MatLabel,
+    MatInput,
+    CommonModule,
+    MatError,
+    MatSlideToggle,
+    MatDialogActions,
+  ],
 })
 export class EditCategoryComponent {
   category: Category;
