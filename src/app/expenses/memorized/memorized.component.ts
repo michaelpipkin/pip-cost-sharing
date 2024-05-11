@@ -231,7 +231,7 @@ export class MemorizedComponent implements OnInit {
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {
-        this.snackBar.open(`Memorized expense ${result.operation}`, 'OK');
+        this.snackBar.open(`Expense ${result.operation}`, 'OK');
         this.filterExpenses();
       }
     });

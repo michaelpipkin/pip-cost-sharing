@@ -1,11 +1,4 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  Inject,
-  OnInit,
-  ViewChild,
-} from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
@@ -24,6 +17,13 @@ import { ExpenseService } from '@services/expense.service';
 import { MemberService } from '@services/member.service';
 import * as firestore from 'firebase/firestore';
 import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import {
+  Component,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -443,7 +443,7 @@ export class AddExpenseComponent implements OnInit {
             message: err.message,
           });
           this.snackBar.open(
-            'Something went wrong - could not add expense.',
+            'Something went wrong - could not save expense.',
             'Close'
           );
           this.addExpenseForm.enable();
