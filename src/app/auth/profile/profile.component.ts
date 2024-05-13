@@ -1,6 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { MatIconButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Group } from '@models/group';
+import { GroupService } from '@services/group.service';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import * as firebase from 'firebase/auth';
+import { catchError, Observable, tap, throwError } from 'rxjs';
 import {
   FormBuilder,
   FormGroup,
@@ -8,17 +22,12 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatIconButton } from '@angular/material/button';
 import {
   MatError,
   MatFormField,
   MatLabel,
   MatSuffix,
 } from '@angular/material/form-field';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import * as firebase from 'firebase/auth';
 
 @Component({
   selector: 'app-profile',
@@ -29,7 +38,9 @@ import * as firebase from 'firebase/auth';
     FormsModule,
     ReactiveFormsModule,
     MatFormField,
+    MatOption,
     MatLabel,
+    MatSelect,
     MatInput,
     CommonModule,
     MatError,
@@ -39,22 +50,26 @@ import * as firebase from 'firebase/auth';
   ],
 })
 export class ProfileComponent implements OnInit {
+  groups$: Observable<Group[]>;
   emailForm: FormGroup;
   passwordForm: FormGroup;
+  defaultGroupForm: FormGroup;
+  selectedGroupId: string = '';
   currentUser: firebase.User;
   hidePassword: boolean = true;
   hideConfirm: boolean = true;
 
   constructor(
+    private userSerivce: UserService,
+    private groupService: GroupService,
     private fb: FormBuilder,
+    private loading: LoadingService,
     private snackBar: MatSnackBar,
+    private analytics: AngularFireAnalytics,
     private afAuth: AngularFireAuth
   ) {
-    this.afAuth.currentUser.then((user) => {
-      this.currentUser = user;
-      this.emailForm = this.fb.group({
-        email: [user.email, Validators.email],
-      });
+    this.emailForm = this.fb.group({
+      email: ['', Validators.email],
     });
     this.passwordForm = this.fb.group(
       {
@@ -63,6 +78,26 @@ export class ProfileComponent implements OnInit {
       },
       { validators: this.passwordMatchValidator }
     );
+    this.afAuth.currentUser.then((user) => {
+      this.currentUser = user;
+      this.emailForm.patchValue({ email: user.email });
+      this.loadGroups();
+    });
+  }
+
+  loadGroups(): void {
+    this.loading.loadingOn();
+    this.groups$ = this.groupService
+      .getGroupsForUser(this.currentUser.uid)
+      .pipe(
+        tap(() => {
+          const defaultGroupId = this.userSerivce.getDefaultGroupId();
+          if (defaultGroupId !== null) {
+            this.selectedGroupId = defaultGroupId;
+          }
+          this.loading.loadingOff();
+        })
+      );
   }
 
   get fEmail() {
@@ -152,5 +187,28 @@ export class ProfileComponent implements OnInit {
         });
     }
     this.passwordForm.enable();
+  }
+
+  saveDefaultGroup(): void {
+    this.userSerivce
+      .saveDefaultGroup(this.selectedGroupId)
+      .pipe(
+        tap(() => {
+          this.snackBar.open('Default group updated.', 'Close');
+        }),
+        catchError((err: Error) => {
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_group',
+            message: err.message,
+          });
+          this.snackBar.open(
+            'Something went wrong - could not update default group.',
+            'Close'
+          );
+          return throwError(() => new Error(err.message));
+        })
+      )
+      .subscribe();
   }
 }

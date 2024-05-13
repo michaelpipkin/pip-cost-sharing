@@ -3,7 +3,16 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { updateDoc } from '@angular/fire/firestore';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { BehaviorSubject, concatMap, from, map, Observable, of } from 'rxjs';
+import { UserData } from '@models/user-info';
+import {
+  BehaviorSubject,
+  concatMap,
+  from,
+  map,
+  Observable,
+  of,
+  tap,
+} from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -117,7 +126,25 @@ export class GroupService {
   }
 
   updateGroup(groupId: string, changes: Partial<Group>): Observable<any> {
+    const batch = this.db.firestore.batch();
     const docRef = this.db.doc(`groups/${groupId}`).ref;
-    return of(updateDoc(docRef, changes));
+    batch.update(docRef, changes);
+    if (!changes.active) {
+      return this.db
+        .collection('users', (ref) =>
+          ref.where('defaultGroupId', '==', groupId)
+        )
+        .get()
+        .pipe(
+          tap((users) => {
+            users.docs.forEach((u) => {
+              batch.update(u.ref, { defaultGroupId: '' });
+            });
+            return from(batch.commit());
+          })
+        );
+    } else {
+      return from(batch.commit());
+    }
   }
 }

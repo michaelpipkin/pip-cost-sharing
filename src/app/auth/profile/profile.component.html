@@ -18,17 +18,17 @@
           <button
             type="button"
             class="btn btn-secondary"
-            [disabled]="currentUser.emailVerified"
+            [disabled]="currentUser?.emailVerified"
             (click)="verifyEmail()"
           >
-            {{ currentUser.emailVerified ? 'Email Verified' : 'Verify Email' }}
+            {{ currentUser?.emailVerified ? 'Email Verified' : 'Verify Email' }}
           </button>
           <button
             type="submit"
             class="btn btn-primary"
             [disabled]="
               emailForm.invalid ||
-              fEmail.email.value === currentUser.email ||
+              fEmail.email?.value === currentUser?.email ||
               fEmail.email.value === ''
             "
             (click)="onSubmitEmail()"
@@ -88,12 +88,12 @@
             }}</mat-icon>
           </button>
         </mat-form-field>
-        <div
-          class="mat-error mat-mdc-form-field-error mt-n2"
-          *ngIf="passwordForm.errors?.['mismatch']"
-        >
-          Passwords do not match.
-        </div>
+      </div>
+      <div
+        class="d-flex justify-content-center mat-error mat-mdc-form-field-error mt-n2"
+        *ngIf="passwordForm.errors?.['mismatch']"
+      >
+        Passwords do not match.
       </div>
       <div class="d-flex justify-content-center form-buttons-right">
         <button
@@ -110,4 +110,30 @@
       </div>
     </div>
   </form>
+  <div class="d-flex mt-4 pt-2 justify-content-center">
+    <h4>Select Default Group</h4>
+  </div>
+  <div class="d-flex p-2 justify-content-center"></div>
+  <div class="d-flex flex-column">
+    <div class="d-flex justify-content-center">
+      <mat-form-field id="group-select" color="primary">
+        <mat-label>Select Group</mat-label>
+        <mat-select [(ngModel)]="selectedGroupId" name="group" #groupSelect>
+          @for (group of groups$ | async; track group) {
+            <mat-option [value]="group.id">{{ group.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="d-flex justify-content-center form-buttons-right">
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="selectedGroupId === ''"
+        (click)="saveDefaultGroup()"
+      >
+        Save
+      </button>
+    </div>
+  </div>
 </div>

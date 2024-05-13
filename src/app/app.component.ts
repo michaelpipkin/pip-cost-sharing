@@ -1,10 +1,12 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
+import { UserData } from '@models/user-info';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
@@ -33,10 +35,11 @@ export class AppComponent {
   @ViewChild('mainNavbar') navbar: ElementRef;
 
   constructor(
+    private db: AngularFirestore,
     public user: UserService,
-    public memberService: MemberService,
-    public groupService: GroupService,
-    public router: Router,
+    private memberService: MemberService,
+    private groupService: GroupService,
+    private router: Router,
     private dialog: MatDialog,
     analytics: AngularFireAnalytics
   ) {
@@ -46,20 +49,43 @@ export class AppComponent {
   ngOnInit(): void {
     this.user.isLoggedIn$.subscribe((loggedIn) => {
       if (loggedIn) {
+        this.user.createUserData();
         const user = this.user.getCurrentUser();
         this.groupService
           .getGroupsForUser(user.uid)
           .pipe(
             tap((groups: Group[]) => {
-              if (groups.length === 1) {
-                this.memberService
-                  .getMemberByUserId(groups[0].id, user.uid)
-                  .subscribe(() => {
-                    this.router.navigateByUrl('/expenses');
-                  });
-              } else {
-                this.router.navigateByUrl('/groups');
-              }
+              var groupId: string = '';
+              this.db
+                .doc(`users/${user.uid}`)
+                .get()
+                .pipe(
+                  tap((docSnap) => {
+                    if (groups.length === 1) {
+                      groupId = groups[0].id;
+                    } else if (docSnap.exists) {
+                      const userData: UserData = docSnap.data() as UserData;
+                      groupId = userData.defaultGroupId;
+                    }
+                    if (groupId !== '') {
+                      this.groupService
+                        .getGroupById(groupId)
+                        .pipe(
+                          tap(() => {
+                            this.memberService
+                              .getMemberByUserId(groupId, user.uid)
+                              .subscribe(() => {
+                                this.router.navigateByUrl('/expenses');
+                              });
+                          })
+                        )
+                        .subscribe();
+                    } else {
+                      this.router.navigateByUrl('/groups');
+                    }
+                  })
+                )
+                .subscribe();
             })
           )
           .subscribe();

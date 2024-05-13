@@ -1,6 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { GroupService } from '@services/group.service';
+import { UserService } from '@services/user.service';
+import firebase from 'firebase/compat/app';
+import { catchError, tap, throwError } from 'rxjs';
 import {
   FormBuilder,
   FormsModule,
@@ -13,15 +22,6 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { GroupService } from '@services/group.service';
-import { UserService } from '@services/user.service';
-import firebase from 'firebase/compat/app';
-import { catchError, tap, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-add-group',
@@ -68,6 +68,7 @@ export class AddGroupComponent {
     const val = this.newGroupForm.value;
     const newGroup: Partial<Group> = {
       name: val.groupName,
+      active: true,
     };
     const newMember: Partial<Member> = {
       userId: this.currentUser.uid,

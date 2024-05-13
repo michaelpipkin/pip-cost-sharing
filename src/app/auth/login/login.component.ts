@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Router } from '@angular/router';
+import { UserService } from '@services/user.service';
 import firebase from 'firebase/compat/app';
 import * as firebaseui from 'firebaseui';
 import EmailAuthProvider = firebase.auth.EmailAuthProvider;
@@ -17,6 +18,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   constructor(
     private afAuth: AngularFireAuth,
+    private user: UserService,
     private router: Router
   ) {}
 
