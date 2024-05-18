@@ -1,25 +1,26 @@
 <div class="d-flex flex-column p-2">
   <div class="d-flex pt-2 justify-content-center align-items-center">
-    <h3>{{ currentGroup?.name }}</h3>
+    <h3>{{ currentGroup()?.name }}</h3>
   </div>
   <div class="d-flex p-2 justify-content-center align-items-center">
     <mat-form-field class="me-2">
       <mat-label>Search by name</mat-label>
-      <input matInput [(ngModel)]="nameFilter" (keyup)="filterMembers()" />
-      <button
-        *ngIf="nameFilter"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSearch()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      <input matInput [(ngModel)]="nameFilterValue" (input)="updateSearch()" />
+      @if (nameFilter) {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSearch()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
     <mat-slide-toggle
+      #activeToggle
       color="primary"
-      [(ngModel)]="activeOnly"
-      (change)="filterMembers()"
+      (change)="toggleActive(activeToggle.checked)"
       >Active only</mat-slide-toggle
     >
   </div>
@@ -28,7 +29,7 @@
       <table
         mat-table
         matSort
-        [dataSource]="filteredMembers$ | async"
+        [dataSource]="filteredMembers()"
         (matSortChange)="sortMembers($event)"
       >
         <ng-container matColumnDef="id">
@@ -79,12 +80,12 @@
           *matRowDef="let member; columns: columnsToDisplay"
           (click)="onRowClick(member)"
           [class.clickable-row]="
-            currentMember?.groupAdmin || currentUser.uid == member.userId
+            currentMember()?.groupAdmin || user().id == member.userId
           "
         ></tr>
         <tr class="mat-row" *matNoDataRow>
           <td class="mat-cell" [colSpan]="columnsToDisplay.length">
-            No members found matching "{{ nameFilter }}".
+            No members found matching "{{ nameFilter() }}".
           </td>
         </tr>
       </table>

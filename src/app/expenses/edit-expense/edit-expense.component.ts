@@ -1,6 +1,27 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { MatMiniFabButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import * as firestore from 'firebase/firestore';
+import { catchError, NotFoundError, of, tap, throwError } from 'rxjs';
+import { Url } from 'url';
 import {
   FormArray,
   FormBuilder,
@@ -10,8 +31,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatMiniFabButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
 import {
   MatDatepicker,
   MatDatepickerInput,
@@ -34,10 +53,6 @@ import {
   MatPrefix,
   MatSuffix,
 } from '@angular/material/form-field';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   MatCell,
   MatCellDef,
@@ -51,33 +66,15 @@ import {
   MatRowDef,
   MatTable,
 } from '@angular/material/table';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { MemberService } from '@services/member.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import * as firestore from 'firebase/firestore';
-import { Url } from 'url';
 import {
   Component,
   ElementRef,
-  Inject,
+  inject,
   OnInit,
+  signal,
   ViewChild,
+  WritableSignal,
 } from '@angular/core';
-import {
-  catchError,
-  map,
-  NotFoundError,
-  Observable,
-  of,
-  tap,
-  throwError,
-} from 'rxjs';
 
 @Component({
   selector: 'app-edit-expense',
@@ -121,11 +118,24 @@ import {
   ],
 })
 export class EditExpenseComponent implements OnInit {
-  members$: Observable<Member[]>;
-  categories$: Observable<Category[]>;
-  groupId: string;
-  currentMember: Member;
-  isGroupAdmin: boolean = false;
+  dialogRef = inject(MatDialogRef<EditExpenseComponent>);
+  fb = inject(FormBuilder);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  expenseService = inject(ExpenseService);
+  dialog = inject(MatDialog);
+  loading = inject(LoadingService);
+  snackBar = inject(MatSnackBar);
+  storage = inject(AngularFireStorage);
+  analytics = inject(AngularFireAnalytics);
+  data: any = inject(MAT_DIALOG_DATA);
+
+  categories = signal<Category[]>([]);
+  members = signal<Member[]>([]);
+
+  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
   fileName: string;
   receiptFile: File;
   receiptUrl: Url;
@@ -138,21 +148,7 @@ export class EditExpenseComponent implements OnInit {
   @ViewChild(MatTable) splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
 
-  constructor(
-    private dialogRef: MatDialogRef<EditExpenseComponent>,
-    private fb: FormBuilder,
-    private dialog: MatDialog,
-    private memberService: MemberService,
-    private expenseService: ExpenseService,
-    private categoryService: CategoryService,
-    private snackBar: MatSnackBar,
-    private storage: AngularFireStorage,
-    private analytics: AngularFireAnalytics,
-    @Inject(MAT_DIALOG_DATA) public data: any
-  ) {
-    this.groupId = this.data.groupId;
-    this.currentMember = this.data.member;
-    this.isGroupAdmin = this.data.isGroupAdmin;
+  constructor() {
     const expense: Expense = this.data.expense;
     this.fromMemorized = this.data.memorized;
     this.editExpenseForm = this.fb.group({
@@ -169,28 +165,23 @@ export class EditExpenseComponent implements OnInit {
         date: expense.date.toDate(),
       });
     }
-    this.splitsDataSource = data.expense.splits;
+    this.splitsDataSource = this.data.expense.splits;
     this.updateForm();
   }
 
   ngOnInit(): void {
-    this.members$ = this.memberService.getAllGroupMembers(this.groupId).pipe(
-      map((members: Member[]) => {
-        return members.filter(
-          (m) => m.active || m.id == this.data.expense.paidByMemberId
-        );
-      })
+    this.members.set(
+      this.memberService
+        .allGroupMembers()
+        .filter((m) => m.active || m.id == this.data.expense.paidByMemberId)
     );
-    this.categories$ = this.categoryService
-      .getCategoriesForGroup(this.groupId)
-      .pipe(
-        map((categories: Category[]) => {
-          return categories.filter(
-            (c) => c.active || c.id == this.data.expense.categoryId
-          );
-        })
-      );
-    const url = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
+    this.categoryService.getGroupCategories(this.currentGroup().id);
+    this.categories.set(
+      this.categoryService
+        .allCategories()
+        .filter((c) => c.active || c.id == this.data.expense.categoryId)
+    );
+    const url = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
     this.storage
       .ref(url)
       .getDownloadURL()
@@ -410,35 +401,34 @@ export class EditExpenseComponent implements OnInit {
         };
         splits.push(split);
       });
+      this.loading.loadingOn();
       this.expenseService
-        .updateMemorizedExpense(
-          this.groupId,
+        .updateExpense(
+          this.currentGroup().id,
           this.data.expense.id,
           changes,
-          splits
+          splits,
+          true
         )
-        .pipe(
-          tap(() => {
-            this.dialogRef.close({
-              success: true,
-              operation: 'edited',
-            });
-          }),
-          catchError((err: Error) => {
-            this.analytics.logEvent('error', {
-              component: this.constructor.name,
-              action: 'edit_memorized_expense',
-              message: err.message,
-            });
-            this.snackBar.open(
-              'Something went wrong - could not update memorized expense.',
-              'Close'
-            );
-            this.editExpenseForm.enable();
-            return throwError(() => new Error(err.message));
-          })
-        )
-        .subscribe();
+        .then(() => {
+          this.dialogRef.close({
+            success: true,
+            operation: 'edited',
+          });
+        })
+        .catch((err: Error) => {
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_memorized_expense',
+            message: err.message,
+          });
+          this.snackBar.open(
+            'Something went wrong - could not update memorized expense.',
+            'Close'
+          );
+          this.editExpenseForm.enable();
+        })
+        .finally(() => this.loading.loadingOff());
     } else {
       const dialogConfig: MatDialogConfig = {
         data: {
@@ -452,6 +442,7 @@ export class EditExpenseComponent implements OnInit {
       const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
         if (confirm) {
+          this.loading.loadingOn();
           this.editExpenseForm.disable();
           const val = this.editExpenseForm.value;
           const changes: Partial<Expense> = {
@@ -476,37 +467,36 @@ export class EditExpenseComponent implements OnInit {
             splits.push(split);
           });
           this.expenseService
-            .updateExpense(this.groupId, this.data.expense.id, changes, splits)
-            .pipe(
-              tap(() => {
-                if (this.receiptFile) {
-                  const filePath = `groups/${this.groupId}/receipts/${this.data.expense.id}`;
-                  const upload = this.storage.upload(
-                    filePath,
-                    this.receiptFile
-                  );
-                  upload.snapshotChanges().subscribe();
-                }
-                this.dialogRef.close({
-                  success: true,
-                  operation: 'edited',
-                });
-              }),
-              catchError((err: Error) => {
-                this.analytics.logEvent('error', {
-                  component: this.constructor.name,
-                  action: 'edit_expense',
-                  message: err.message,
-                });
-                this.snackBar.open(
-                  'Something went wrong - could not edit expense.',
-                  'Close'
-                );
-                this.editExpenseForm.enable();
-                return throwError(() => new Error(err.message));
-              })
+            .updateExpense(
+              this.currentGroup().id,
+              this.data.expense.id,
+              changes,
+              splits
             )
-            .subscribe();
+            .then(() => {
+              if (this.receiptFile) {
+                const filePath = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
+                const upload = this.storage.upload(filePath, this.receiptFile);
+                upload.snapshotChanges().subscribe();
+              }
+              this.dialogRef.close({
+                success: true,
+                operation: 'edited',
+              });
+            })
+            .catch((err: Error) => {
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'edit_expense',
+                message: err.message,
+              });
+              this.snackBar.open(
+                'Something went wrong - could not edit expense.',
+                'Close'
+              );
+              this.editExpenseForm.enable();
+            })
+            .finally(() => this.loading.loadingOff());
         }
       });
     }
@@ -523,36 +513,34 @@ export class EditExpenseComponent implements OnInit {
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
         if (confirm) {
+          this.loading.loadingOn();
           this.expenseService
-            .deleteMemorizedExpense(this.groupId, this.data.expense.id)
-            .pipe(
-              tap(() => {
-                if (this.receiptUrl) {
-                  this.storage
-                    .ref(
-                      `groups/${this.groupId}/receipts/${this.data.expense.id}`
-                    )
-                    .delete();
-                }
-                this.dialogRef.close({
-                  success: true,
-                  operation: 'deleted',
-                });
-              }),
-              catchError((err: Error) => {
-                this.analytics.logEvent('error', {
-                  component: this.constructor.name,
-                  action: 'delete_memorized_expense',
-                  message: err.message,
-                });
-                this.snackBar.open(
-                  'Something went wrong - could not delete memorized expense.',
-                  'Close'
-                );
-                return throwError(() => new Error(err.message));
-              })
-            )
-            .subscribe();
+            .deleteExpense(this.currentGroup().id, this.data.expense.id, true)
+            .then(() => {
+              if (this.receiptUrl) {
+                this.storage
+                  .ref(
+                    `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                  )
+                  .delete();
+              }
+              this.dialogRef.close({
+                success: true,
+                operation: 'deleted',
+              });
+            })
+            .catch((err: Error) => {
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'delete_memorized_expense',
+                message: err.message,
+              });
+              this.snackBar.open(
+                'Something went wrong - could not delete memorized expense.',
+                'Close'
+              );
+            })
+            .finally(() => this.loading.loadingOff());
         }
       });
     } else {
@@ -565,36 +553,34 @@ export class EditExpenseComponent implements OnInit {
       const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((confirm) => {
         if (confirm) {
+          this.loading.loadingOn();
           this.expenseService
-            .deleteExpense(this.groupId, this.data.expense.id)
-            .pipe(
-              tap(() => {
-                if (this.receiptUrl) {
-                  this.storage
-                    .ref(
-                      `groups/${this.groupId}/receipts/${this.data.expense.id}`
-                    )
-                    .delete();
-                }
-                this.dialogRef.close({
-                  success: true,
-                  operation: 'deleted',
-                });
-              }),
-              catchError((err: Error) => {
-                this.analytics.logEvent('error', {
-                  component: this.constructor.name,
-                  action: 'delete_expense',
-                  message: err.message,
-                });
-                this.snackBar.open(
-                  'Something went wrong - could not delete expense.',
-                  'Close'
-                );
-                return throwError(() => new Error(err.message));
-              })
-            )
-            .subscribe();
+            .deleteExpense(this.currentGroup().id, this.data.expense.id)
+            .then(() => {
+              if (this.receiptUrl) {
+                this.storage
+                  .ref(
+                    `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                  )
+                  .delete();
+              }
+              this.dialogRef.close({
+                success: true,
+                operation: 'deleted',
+              });
+            })
+            .catch((err: Error) => {
+              this.analytics.logEvent('error', {
+                component: this.constructor.name,
+                action: 'delete_expense',
+                message: err.message,
+              });
+              this.snackBar.open(
+                'Something went wrong - could not delete expense.',
+                'Close'
+              );
+            })
+            .finally(() => this.loading.loadingOff());
         }
       });
     }

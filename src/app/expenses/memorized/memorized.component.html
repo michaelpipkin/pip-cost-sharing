@@ -1,16 +1,16 @@
 <div class="d-flex flex-column p-2">
   <div class="d-flex pt-2 justify-content-center align-items-center">
-    <h3>{{ currentGroup?.name }}</h3>
+    <h3>{{ currentGroup()?.name }}</h3>
   </div>
   <div class="d-flex p-2 justify-content-center align-items-center flex-wrap">
     <mat-form-field class="me-2">
       <mat-label>Filter by payee</mat-label>
       <mat-select
-        [(ngModel)]="selectedMemberId"
+        [(ngModel)]="selectedMemberIdValue"
         name="member"
-        (selectionChange)="filterExpenses()"
+        (selectionChange)="selectedMemberChanged()"
       >
-        @for (member of members; track member) {
+        @for (member of members(); track member) {
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
       </mat-select>
@@ -27,11 +27,11 @@
     <mat-form-field class="me-2">
       <mat-label>Filter by category</mat-label>
       <mat-select
-        [(ngModel)]="selectedCategoryId"
+        [(ngModel)]="selectedCategoryIdValue"
         name="category"
-        (selectionChange)="filterExpenses()"
+        (selectionChange)="selectedCategoryChagned()"
       >
-        @for (category of categories; track category) {
+        @for (category of categories(); track category) {
           <mat-option [value]="category.id">{{ category.name }}</mat-option>
         }
       </mat-select>
@@ -48,11 +48,7 @@
   </div>
   <div class="d-flex justify-content-center">
     <div class="scrollable-table mat-elevation-z8">
-      <table
-        mat-table
-        [dataSource]="filteredExpenses$ | async"
-        multiTemplateDataRows
-      >
+      <table mat-table [dataSource]="filteredExpenses()" multiTemplateDataRows>
         <ng-container matColumnDef="id">
           <th mat-header-cell *matHeaderCellDef>Id</th>
           <td mat-cell *matCellDef="let expense">{{ expense.id }}</td>

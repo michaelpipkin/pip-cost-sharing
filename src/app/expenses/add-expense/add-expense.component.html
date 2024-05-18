@@ -8,7 +8,7 @@
             <mat-form-field id="paid-by-select" color="primary">
               <mat-label>Paid by</mat-label>
               <mat-select formControlName="paidByMemberId" name="group">
-                @for (member of members$ | async; track member) {
+                @for (member of members(); track member) {
                   <mat-option [value]="member.id">{{
                     member.displayName
                   }}</mat-option>
@@ -68,7 +68,7 @@
             <mat-form-field id="category-select" color="primary">
               <mat-label>Category</mat-label>
               <mat-select formControlName="categoryId" name="category">
-                @for (category of categories$ | async; track category) {
+                @for (category of categories(); track category) {
                   <mat-option [value]="category.id">{{
                     category.name
                   }}</mat-option>
@@ -165,7 +165,7 @@
                 <mat-select
                   [formControl]="getSplitControl(i, 'owedByMemberId')"
                 >
-                  @for (member of members$ | async; track member) {
+                  @for (member of members(); track member) {
                     <mat-option [value]="member.id">{{
                       member.displayName
                     }}</mat-option>

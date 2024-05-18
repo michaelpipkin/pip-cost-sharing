@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit, WritableSignal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
@@ -15,6 +15,7 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
@@ -23,7 +24,9 @@ import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
-import { catchError, concatMap, map, Observable, tap, throwError } from 'rxjs';
+import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import { GroupsComponent } from 'src/app/groups/groups/groups.component';
+import { MembersComponent } from 'src/app/members/members/members.component';
 import {
   MatDatepicker,
   MatDatepickerInput,
@@ -86,14 +89,27 @@ import {
   ],
 })
 export class SummaryComponent implements OnInit {
-  currentUser: firebase.User;
-  currentGroup: Group;
-  currentMember: Member;
-  members$: Observable<Member[]>;
-  splits$: Observable<Split[]>;
-  members: Member[];
-  categories: Category[];
+  router = inject(Router);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  splitService = inject(SplitService);
+  snackBar = inject(MatSnackBar);
+  dialog = inject(MatDialog);
+  loading = inject(LoadingService);
+  analytics = inject(AngularFireAnalytics);
+
+  user: WritableSignal<User> = this.userService.user;
+  categories: WritableSignal<Category[]> = this.categoryService.allCategories;
+  activeMembers: WritableSignal<Member[]> =
+    this.memberService.activeGroupMembers;
+  allMembers: WritableSignal<Member[]> = this.memberService.allGroupMembers;
+  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
+
   selectedMemberId: string = '';
+  splits$: Observable<Split[]>;
   startDate: Date;
   endDate: Date;
   summaryData: AmountDue[] = [];
@@ -106,51 +122,20 @@ export class SummaryComponent implements OnInit {
   ];
   detailColumnsToDisplay: string[] = ['category', 'amount'];
 
-  constructor(
-    private router: Router,
-    private userService: UserService,
-    private groupService: GroupService,
-    private memberService: MemberService,
-    private splitService: SplitService,
-    private categoryService: CategoryService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog,
-    private loading: LoadingService,
-    private analytics: AngularFireAnalytics
-  ) {}
-
   ngOnInit(): void {
-    if (this.groupService.getCurrentGroup() == null) {
+    if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
-      this.currentUser = this.userService.getCurrentUser();
-      this.currentGroup = this.groupService.getCurrentGroup();
-      this.currentMember = this.memberService.getCurrentGroupMember();
-      this.members$ = this.memberService
-        .getAllGroupMembers(this.currentGroup.id)
-        .pipe(
-          tap((members) => {
-            this.members = members;
-          })
-        );
-      this.categoryService
-        .getCategoriesForGroup(this.currentGroup.id)
-        .pipe(
-          tap((categories) => {
-            this.categories = categories;
-          })
-        )
-        .subscribe();
       this.summaryData = [];
       this.detailData = [];
-      this.selectedMemberId = this.currentMember.id;
+      this.selectedMemberId = this.currentMember().id;
       this.loadUnpaidSplits();
     }
   }
 
   loadUnpaidSplits(): void {
     this.splits$ = this.splitService.getUnpaidSplitsForGroup(
-      this.currentGroup.id,
+      this.currentGroup().id,
       this.startDate,
       this.endDate
     );
@@ -173,12 +158,12 @@ export class SummaryComponent implements OnInit {
   }
 
   getMemberName(memberId: string): string {
-    const member = this.members.find((m) => m.id === memberId);
+    const member = this.allMembers().find((m) => m.id === memberId);
     return !!member ? member.displayName : '';
   }
 
   getCategoryName(categoryId: string): string {
-    const category = this.categories.find((c) => c.id === categoryId);
+    const category = this.categories().find((c) => c.id === categoryId);
     return !!category ? category.name : '';
   }
 
@@ -199,7 +184,7 @@ export class SummaryComponent implements OnInit {
                 s.owedByMemberId == this.selectedMemberId ||
                 s.paidByMemberId == this.selectedMemberId
             );
-            this.members
+            this.allMembers()
               .filter((m) => m.id != this.selectedMemberId)
               .forEach((member) => {
                 const owedToSelected = memberSplits
@@ -254,7 +239,7 @@ export class SummaryComponent implements OnInit {
               (s.owedByMemberId == owedByMemberId ||
                 s.paidByMemberId == owedByMemberId)
           );
-          this.categories.forEach((category) => {
+          this.categories().forEach((category) => {
             if (
               memberSplits.filter((f) => f.categoryId == category.id).length > 0
             ) {
@@ -317,8 +302,9 @@ export class SummaryComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
+        this.loading.loadingOn();
         this.splitService
-          .paySplitsBetweenMembers(this.currentGroup.id, splitsToPay)
+          .paySplitsBetweenMembers(this.currentGroup().id, splitsToPay)
           .pipe(
             tap(() => {
               this.snackBar.open('Expenses have been marked paid.', 'OK');
@@ -336,7 +322,8 @@ export class SummaryComponent implements OnInit {
               return throwError(() => new Error(err.message));
             })
           )
-          .subscribe();
+          .subscribe()
+          .add(() => this.loading.loadingOff());
       }
     });
   }

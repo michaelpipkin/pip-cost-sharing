@@ -1,105 +1,94 @@
-import { Injectable } from '@angular/core';
-import { updateDoc } from '@angular/fire/firestore';
+import { inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { concatMap, from, map, Observable, of } from 'rxjs';
+import { SortingService } from './sorting.service';
 import {
-  AngularFirestore,
-  QuerySnapshot,
-} from '@angular/fire/compat/firestore';
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  documentId,
+  Firestore,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CategoryService {
-  constructor(private db: AngularFirestore) {}
+  allCategories = signal<Category[]>([]);
+  activeCategories = signal<Category[]>([]);
+  filteredCategories = signal<Category[]>([]);
 
-  getCategoriesForGroup(groupId: string): Observable<Category[]> {
-    return this.db
-      .collection<Category>(`groups/${groupId}/categories`, (ref) =>
-        ref.orderBy('name')
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((categories: Category[]) => {
-          return <Category[]>categories.map((category) => {
-            return new Category({
-              ...category,
-            });
-          });
-        })
-      );
+  fs = inject(Firestore);
+  sorter = inject(SortingService);
+
+  async getGroupCategories(groupId: string): Promise<void> {
+    const q = query(
+      collection(this.fs, `groups/${groupId}/categories`),
+      orderBy('name')
+    );
+    onSnapshot(q, (querySnap) => {
+      const categories = [
+        ...querySnap.docs.map((d) => new Category({ id: d.id, ...d.data() })),
+      ];
+      this.allCategories.set(categories);
+      this.activeCategories.set(categories.filter((c) => c.active));
+    });
   }
 
-  getActiveCategoriesForGroup(groupId: string): Observable<Category[]> {
-    return this.db
-      .collection<Category>(`groups/${groupId}/categories`, (ref) =>
-        ref.where('active', '==', true).orderBy('name')
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((categories: Category[]) => {
-          return <Category[]>categories.map((category) => {
-            return new Category({
-              ...category,
-            });
-          });
-        })
-      );
+  async addCategory(
+    groupId: string,
+    category: Partial<Category>
+  ): Promise<any> {
+    const c = collection(this.fs, `groups/${groupId}/categories`);
+    const q = query(c, where('name', '==', category.name));
+    return await getDocs(q).then(async (snap) => {
+      if (snap.size > 0) {
+        return new Error('This category already exists.');
+      }
+      return await addDoc(c, category);
+    });
   }
 
-  addCategory(groupId: string, category: Partial<Category>): Observable<any> {
-    return this.db
-      .collection(`groups/${groupId}/categories`, (ref) =>
-        ref.where('name', '==', category.name)
-      )
-      .get()
-      .pipe(
-        concatMap((querySnap) => {
-          if (querySnap.size > 0) {
-            return of(new Error('This category already exists.'));
-          } else {
-            return from(
-              this.db.collection(`groups/${groupId}/categories`).add(category)
-            );
-          }
-        })
-      );
-  }
-
-  updateCategory(
+  async updateCategory(
     groupId: string,
     categoryId: string,
     changes: Partial<Category>
-  ): Observable<any> {
-    const docRef = this.db.doc(
-      `groups/${groupId}/categories/${categoryId}`
-    ).ref;
-    return of(updateDoc(docRef, changes));
+  ): Promise<any> {
+    const c = collection(this.fs, `groups/${groupId}/categories`);
+    const q = query(
+      c,
+      where('name', '==', changes.name),
+      where(documentId(), '!=', categoryId)
+    );
+    return await getDocs(q).then(async (snap) => {
+      if (snap.size > 0) {
+        return new Error('This category already exists.');
+      }
+      return await updateDoc(
+        doc(this.fs, `groups/${groupId}/categories/${categoryId}`),
+        changes
+      );
+    });
   }
 
-  deleteCategory(groupId: string, categoryId: string): Observable<any> {
-    return this.db
-      .collectionGroup<Expense>('expenses', (ref) =>
-        ref
-          .where('groupId', '==', groupId)
-          .where('categoryId', '==', categoryId)
-      )
-      .get()
-      .pipe(
-        map((snap: QuerySnapshot<Expense>) => {
-          if (snap.size > 0) {
-            return new Error(
-              'This category is assigned to expenses and cannot be deleted.'
-            );
-          } else {
-            return from(
-              this.db
-                .doc(`/groups/${groupId}/categories/${categoryId}`)
-                .delete()
-            );
-          }
-        })
+  async deleteCategory(groupId: string, categoryId: string): Promise<any> {
+    const c = collection(this.fs, `groups/${groupId}/expenses`);
+    const q = query(c, where('categoryId', '==', categoryId));
+    return await getDocs(q).then(async (snap) => {
+      if (snap.size > 0) {
+        return new Error(
+          'This category is assigned to expenses and cannot be deleted.'
+        );
+      }
+      return await deleteDoc(
+        doc(this.fs, `/groups/${groupId}/categories/${categoryId}`)
       );
+    });
   }
 }

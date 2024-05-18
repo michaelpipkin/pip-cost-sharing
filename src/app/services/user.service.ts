@@ -1,79 +1,113 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
-import { UserData } from '@models/user-info';
-import firebase from 'firebase/compat/app';
-import { updateDoc } from 'firebase/firestore';
-import { BehaviorSubject, map, Observable, of, tap } from 'rxjs';
+import { Group } from '@models/group';
+import { User } from '@models/user';
+import { LoadingService } from '@shared/loading/loading.service';
+import { map, Observable } from 'rxjs';
+import { GroupService } from './group.service';
+import { MemberService } from './member.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService {
-  private userSubject = new BehaviorSubject<firebase.User>(null);
-  private defaultGroupIdSubject = new BehaviorSubject<string>(null);
+  user = signal<User>(null);
+
+  fs = inject(Firestore);
+  router = inject(Router);
+  afAuth = inject(AngularFireAuth);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  loading = inject(LoadingService);
+
   isLoggedIn$: Observable<boolean>;
 
-  constructor(
-    private afAuth: AngularFireAuth,
-    private db: AngularFirestore,
-    private router: Router
-  ) {
-    this.isLoggedIn$ = afAuth.authState.pipe(
-      map((user) => {
-        if (!!user) {
-          this.userSubject.next(user);
-          this.db
-            .doc(`users/${user.uid}`)
-            .get()
-            .pipe(
-              tap((docSnap) => {
-                if (docSnap.exists) {
-                  const userData: UserData = docSnap.data() as UserData;
-                  this.defaultGroupIdSubject.next(userData.defaultGroupId);
+  constructor() {
+    this.isLoggedIn$ = this.afAuth.authState.pipe(
+      map((firebaseUser) => {
+        if (!!firebaseUser) {
+          this.loading.loadingOn();
+          this.getDefaultGroup(firebaseUser.uid)
+            .then((groupId: string) => {
+              const user = new User({
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                defaultGroupId: groupId,
+              });
+              this.user.set(user);
+              return user;
+            })
+            .then((user: User) => {
+              this.groupService.getUserGroups(user.id).then(() => {
+                const activeUserGroups: Group[] =
+                  this.groupService.activeUserGroups();
+                if (activeUserGroups.length === 1) {
+                  this.memberService
+                    .getMemberByUserId(activeUserGroups[0].id, user.id)
+                    .then(
+                      async () =>
+                        await this.groupService
+                          .getGroupById(activeUserGroups[0].id)
+                          .then(() => {
+                            this.loading.loadingOff();
+                            this.router.navigateByUrl('/expenses');
+                          })
+                    );
+                } else if (user.defaultGroupId !== '') {
+                  this.memberService
+                    .getMemberByUserId(user.defaultGroupId, user.id)
+                    .then(
+                      async () =>
+                        await this.groupService
+                          .getGroupById(user.defaultGroupId)
+                          .then(() => {
+                            this.loading.loadingOff();
+                            this.router.navigateByUrl('/expenses');
+                          })
+                    );
+                } else {
+                  this.loading.loadingOff();
+                  this.router.navigateByUrl('/groups');
                 }
-              })
-            )
-            .subscribe();
+              });
+            });
           return true;
         } else {
-          this.userSubject.next(null);
+          this.user.set(null);
+          this.loading.loadingOff();
           return false;
         }
       })
     );
   }
 
-  saveDefaultGroup(groupId: string): Observable<any> {
-    const docRef = this.db.doc(`users/${this.userSubject.getValue().uid}`).ref;
-    return of(
-      updateDoc(docRef, {
-        defaultGroupId: groupId,
-      })
-    );
+  async getDefaultGroup(userId: string): Promise<string> {
+    const docRef = doc(this.fs, `users/${userId}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().defaultGroupId;
+    } else {
+      setDoc(docRef, {
+        defaultGroupId: '',
+      });
+      return '';
+    }
   }
 
-  createUserData(): void {
-    const uid = this.userSubject.getValue().uid;
-    const docRef = this.db.doc(`users/${uid}`);
-    docRef
-      .get()
-      .pipe(
-        tap((doc) => {
-          if (!doc.exists) {
-            docRef.set({ defaultGroupId: '' });
-          }
-        })
-      )
-      .subscribe();
+  async saveDefaultGroup(groupId: string): Promise<void> {
+    const docRef = doc(this.fs, `users/${this.user().id}`);
+    return await setDoc(
+      docRef,
+      {
+        defaultGroupId: groupId,
+      },
+      { merge: true }
+    );
   }
 
   logout() {
     this.afAuth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
-
-  getCurrentUser = (): firebase.User => this.userSubject.getValue();
-
-  getDefaultGroupId = (): string => this.defaultGroupIdSubject.getValue();
 }

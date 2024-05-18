@@ -1,47 +1,17 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { updateDoc } from '@angular/fire/firestore';
+import { Firestore, updateDoc } from '@angular/fire/firestore';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { concatMap, from, map, Observable, of, tap } from 'rxjs';
+import { concatMap, from, map, Observable, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SplitService {
+  fs = inject(Firestore);
+
   constructor(private db: AngularFirestore) {}
-
-  getSplitsForExpense(groupId: string, expenseId: string): Observable<Split[]> {
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-        ref.where('expenseId', '==', expenseId)
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((splits: Split[]) => {
-          return <Split[]>splits.map((split) => {
-            return new Split({
-              ...split,
-            });
-          });
-        })
-      );
-  }
-
-  getSplitsForGroup(groupId: string): Observable<Split[]> {
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((splits: Split[]) => {
-          return <Split[]>splits.map((split) => {
-            return new Split({
-              ...split,
-            });
-          });
-        })
-      );
-  }
 
   getUnpaidSplitsForGroup(
     groupId: string,

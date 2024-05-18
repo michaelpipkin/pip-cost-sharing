@@ -18,17 +18,19 @@
           <button
             type="button"
             class="btn btn-secondary"
-            [disabled]="currentUser?.emailVerified"
+            [disabled]="firebaseUser?.emailVerified"
             (click)="verifyEmail()"
           >
-            {{ currentUser?.emailVerified ? 'Email Verified' : 'Verify Email' }}
+            {{
+              firebaseUser?.emailVerified ? 'Email Verified' : 'Verify Email'
+            }}
           </button>
           <button
             type="submit"
             class="btn btn-primary"
             [disabled]="
               emailForm.invalid ||
-              fEmail.email?.value === currentUser?.email ||
+              fEmail.email?.value === firebaseUser?.email ||
               fEmail.email.value === ''
             "
             (click)="onSubmitEmail()"
@@ -119,7 +121,7 @@
       <mat-form-field id="group-select" color="primary">
         <mat-label>Select Group</mat-label>
         <mat-select [(ngModel)]="selectedGroupId" name="group" #groupSelect>
-          @for (group of groups$ | async; track group) {
+          @for (group of userGroups(); track group) {
             <mat-option [value]="group.id">{{ group.name }}</mat-option>
           }
         </mat-select>

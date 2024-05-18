@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { UserService } from '@services/user.service';
@@ -12,5 +12,5 @@ import { UserService } from '@services/user.service';
   imports: [CommonModule, RouterLink, MatIcon, AsyncPipe],
 })
 export class HomeComponent {
-  constructor(public userService: UserService) {}
+  userService = inject(UserService);
 }

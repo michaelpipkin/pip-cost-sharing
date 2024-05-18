@@ -1,13 +1,7 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import {
-  MatFormField,
-  MatLabel,
-  MatSuffix,
-} from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -17,6 +11,7 @@ import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
@@ -25,9 +20,21 @@ import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import firebase from 'firebase/compat/app';
-import { map, Observable, tap } from 'rxjs';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+  WritableSignal,
+} from '@angular/core';
+import {
+  MatFormField,
+  MatLabel,
+  MatSuffix,
+} from '@angular/material/form-field';
 import {
   MatCell,
   MatCellDef,
@@ -75,84 +82,73 @@ import {
   ],
 })
 export class CategoriesComponent implements OnInit {
-  currentUser: firebase.User;
-  currentGroup: Group;
-  currentMember: Member;
-  categories$: Observable<Category[]>;
-  filteredCategories$: Observable<Category[]>;
-  activeOnly: boolean = false;
-  nameFilter: string = '';
-  sortField: string = 'name';
-  sortAsc: boolean = true;
+  router = inject(Router);
+  categoryService = inject(CategoryService);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  sorter = inject(SortingService);
+  dialog = inject(MatDialog);
+  loading = inject(LoadingService);
+  snackBar = inject(MatSnackBar);
+
+  user: WritableSignal<User> = this.userService.user;
+  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
+  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  categories: WritableSignal<Category[]> = this.categoryService.allCategories;
+
+  activeOnly = signal<boolean>(false);
+  nameFilter = signal<string>('');
+  sortField = signal<string>('name');
+  sortAsc = signal<boolean>(true);
+
+  filteredCategories = computed(() => {
+    var categories = this.categories().filter((c: Category) => {
+      return (
+        (c.active || c.active == this.activeOnly()) &&
+        c.name.toLowerCase().includes(this.nameFilter().toLowerCase())
+      );
+    });
+    if (categories.length > 0) {
+      categories = this.sorter.sort(
+        categories,
+        this.sortField(),
+        this.sortAsc()
+      );
+    }
+    return categories;
+  });
+
+  categoryFilterValue: string = '';
   columnsToDisplay: string[] = ['name', 'active'];
 
-  constructor(
-    private router: Router,
-    private userService: UserService,
-    private groupService: GroupService,
-    private memberService: MemberService,
-    private categorySerice: CategoryService,
-    private sorter: SortingService,
-    private dialog: MatDialog,
-    private loading: LoadingService,
-    private snackBar: MatSnackBar
-  ) {}
-
   ngOnInit(): void {
-    if (this.groupService.getCurrentGroup() == null) {
+    if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
-    } else {
-      this.currentUser = this.userService.getCurrentUser();
-      this.currentGroup = this.groupService.getCurrentGroup();
-      this.currentMember = this.memberService.getCurrentGroupMember();
-      this.activeOnly = false;
-      this.nameFilter = '';
-      this.loadCategories();
-      this.filterCategories();
     }
   }
 
-  loadCategories(): void {
-    this.loading.loadingOn();
-    this.categories$ = this.categorySerice
-      .getCategoriesForGroup(this.currentGroup.id)
-      .pipe(tap(() => this.loading.loadingOff()));
-  }
-
-  filterCategories(): void {
-    this.filteredCategories$ = this.categories$.pipe(
-      map((categories: Category[]) => {
-        let filteredCategories: Category[] = categories.filter(
-          (category: Category) =>
-            (category.active || category.active == this.activeOnly) &&
-            category.name.toLowerCase().includes(this.nameFilter.toLowerCase())
-        );
-        if (filteredCategories.length > 0) {
-          filteredCategories = this.sorter.sort(
-            filteredCategories,
-            this.sortField,
-            this.sortAsc
-          );
-        }
-        return filteredCategories;
-      })
-    );
-  }
-
-  sortCategories(e: { active: string; direction: string }): void {
-    this.sortField = e.active;
-    this.sortAsc = e.direction == 'asc';
-    this.filterCategories();
+  updateSearch() {
+    this.nameFilter.set(this.categoryFilterValue);
   }
 
   clearSearch(): void {
-    this.nameFilter = '';
-    this.filterCategories();
+    this.nameFilter.set('');
+    this.categoryFilterValue = '';
+  }
+
+  toggleActive(activeOnly: boolean) {
+    this.activeOnly.set(activeOnly);
+  }
+
+  sortCategories(e: { active: string; direction: string }): void {
+    this.sortField.set(e.active);
+    this.sortAsc.set(e.direction == 'asc');
   }
 
   addCategory(): void {
     const dialogConfig: MatDialogConfig = {
-      data: this.currentGroup.id,
+      data: this.currentGroup().id,
     };
     const dialogRef = this.dialog.open(AddCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
@@ -163,11 +159,11 @@ export class CategoriesComponent implements OnInit {
   }
 
   onRowClick(category: Category): void {
-    if (this.currentMember.groupAdmin) {
+    if (this.currentMember().groupAdmin) {
       const dialogConfig: MatDialogConfig = {
         data: {
           category: category,
-          groupId: this.currentGroup.id,
+          groupId: this.currentGroup().id,
         },
       };
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
