@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { UserService } from '@services/user.service';
@@ -13,4 +13,6 @@ import { UserService } from '@services/user.service';
 })
 export class HomeComponent {
   userService = inject(UserService);
+
+  isLoggedIn: Signal<boolean> = this.userService.isLoggedIn;
 }

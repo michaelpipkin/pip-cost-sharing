@@ -14,15 +14,16 @@
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
       </mat-select>
-      <button
-        *ngIf="selectedMemberId"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSelectedMember()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (selectedMemberId() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSelectedMember()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
     <mat-form-field class="me-2">
       <mat-label>Filter by category</mat-label>
@@ -35,15 +36,16 @@
           <mat-option [value]="category.id">{{ category.name }}</mat-option>
         }
       </mat-select>
-      <button
-        *ngIf="selectedCategoryId"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSelectedCategory()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (selectedCategoryId() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSelectedCategory()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
   </div>
   <div class="d-flex justify-content-center">

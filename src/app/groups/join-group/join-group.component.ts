@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, WritableSignal } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -51,7 +51,7 @@ export class JoinGroupComponent {
     groupId: ['', Validators.required],
     displayName: ['', Validators.required],
   });
-  user: WritableSignal<User> = this.userService.user;
+  user: Signal<User> = this.userService.user;
 
   public get f() {
     return this.joinGroupForm.controls;

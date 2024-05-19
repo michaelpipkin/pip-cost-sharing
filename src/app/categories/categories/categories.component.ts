@@ -19,7 +19,6 @@ import { SortingService } from '@services/sorting.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
-import firebase from 'firebase/compat/app';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
 import {
@@ -28,7 +27,7 @@ import {
   inject,
   OnInit,
   signal,
-  WritableSignal,
+  Signal,
 } from '@angular/core';
 import {
   MatFormField,
@@ -92,10 +91,10 @@ export class CategoriesComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: WritableSignal<User> = this.userService.user;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
-  categories: WritableSignal<Category[]> = this.categoryService.allCategories;
+  user: Signal<User> = this.userService.user;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  categories: Signal<Category[]> = this.categoryService.allCategories;
 
   activeOnly = signal<boolean>(false);
   nameFilter = signal<string>('');

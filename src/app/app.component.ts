@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject, WritableSignal } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink, RouterOutlet } from '@angular/router';
@@ -31,7 +31,8 @@ export class AppComponent {
   groupService = inject(GroupService);
   analytics = inject(AngularFireAnalytics);
 
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  isLoggedIn: Signal<boolean> = this.userService.isLoggedIn;
 
   constructor() {
     this.analytics.logEvent('app_initalized');

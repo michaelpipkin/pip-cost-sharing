@@ -13,19 +13,17 @@
       </mat-select>
     </mat-form-field>
   </div>
-  <div
-    *ngIf="!!selectedGroupId"
-    id="group-details"
-    class="d-flex justify-content-center mb-4"
-  >
-    <span
-      id="join-code"
-      matTooltip="Click to copy group join code"
-      (click)="copyGroupCode()"
-    >
-      Group join code: {{ selectedGroupId }}
-    </span>
-  </div>
+  @if (selectedGroupId != '') {
+    <div id="group-details" class="d-flex justify-content-center mb-4">
+      <span
+        id="join-code"
+        matTooltip="Click to copy group join code"
+        (click)="copyGroupCode()"
+      >
+        Group join code: {{ selectedGroupId }}
+      </span>
+    </div>
+  }
   <div class="d-flex justify-content-center">
     <button type="button" class="btn btn-primary me-2" (click)="addGroup()">
       Create New Group

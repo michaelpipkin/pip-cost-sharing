@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, WritableSignal } from '@angular/core';
+import { Component, inject, OnInit, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { MatIconButton } from '@angular/material/button';
@@ -58,9 +58,9 @@ export class ProfileComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   analytics = inject(AngularFireAnalytics);
 
-  user: WritableSignal<User> = this.userService.user;
+  user: Signal<User> = this.userService.user;
   firebaseUser: firebase.User;
-  userGroups: WritableSignal<Group[]> = this.groupService.activeUserGroups;
+  userGroups: Signal<Group[]> = this.groupService.activeUserGroups;
 
   emailForm = this.fb.group({
     email: [this.user().email, Validators.email],

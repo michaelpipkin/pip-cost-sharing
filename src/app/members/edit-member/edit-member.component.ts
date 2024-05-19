@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, Inject, WritableSignal } from '@angular/core';
+import { Component, inject, Inject, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -62,8 +62,8 @@ export class EditMemberComponent {
   data: any = inject(MAT_DIALOG_DATA);
 
   member: Member = this.data.member;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  user: WritableSignal<User> = this.userService.user;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  user: Signal<User> = this.userService.user;
   groupAdminTooltip: string = '';
   editMemberForm: FormGroup;
 

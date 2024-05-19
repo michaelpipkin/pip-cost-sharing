@@ -4,6 +4,7 @@ import { Member } from '@models/member';
 import { CategoryService } from './category.service';
 import { ExpenseService } from './expense.service';
 import { MemberService } from './member.service';
+import { SplitService } from './split.service';
 import {
   doc,
   Firestore,
@@ -31,6 +32,7 @@ export class GroupService {
   categoryService = inject(CategoryService);
   memberService = inject(MemberService);
   expensesService = inject(ExpenseService);
+  splitService = inject(SplitService);
 
   async getUserGroups(userId: string): Promise<void> {
     const memberQuery = query(
@@ -77,6 +79,7 @@ export class GroupService {
     await this.memberService.getGroupMembers(group.id);
     await this.expensesService.getExpensesWithSplitsForGroup(group.id);
     await this.expensesService.getExpensesWithSplitsForGroup(group.id, true);
+    await this.splitService.getUnpaidSplitsForGroup(group.id);
   }
 
   async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any> {

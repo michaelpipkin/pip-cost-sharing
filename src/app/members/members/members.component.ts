@@ -25,7 +25,7 @@ import {
   inject,
   OnInit,
   signal,
-  WritableSignal,
+  Signal,
 } from '@angular/core';
 import {
   MatFormField,
@@ -90,10 +90,10 @@ export class MembersComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: WritableSignal<User> = this.userService.user;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  groupMembers: WritableSignal<Member[]> = this.memberService.allGroupMembers;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  user: Signal<User> = this.userService.user;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  groupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
 
   activeOnly = signal<boolean>(false);
   nameFilter = signal<string>('');

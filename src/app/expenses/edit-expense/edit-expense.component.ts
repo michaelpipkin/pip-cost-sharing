@@ -73,7 +73,7 @@ import {
   OnInit,
   signal,
   ViewChild,
-  WritableSignal,
+  Signal,
 } from '@angular/core';
 
 @Component({
@@ -134,8 +134,8 @@ export class EditExpenseComponent implements OnInit {
   categories = signal<Category[]>([]);
   members = signal<Member[]>([]);
 
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
   fileName: string;
   receiptFile: File;
   receiptUrl: Url;
@@ -145,7 +145,7 @@ export class EditExpenseComponent implements OnInit {
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
   splitForm: FormArray;
 
-  @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('splitsTable') splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor() {
@@ -445,8 +445,9 @@ export class EditExpenseComponent implements OnInit {
           this.loading.loadingOn();
           this.editExpenseForm.disable();
           const val = this.editExpenseForm.value;
+          const expenseDate = firestore.Timestamp.fromDate(val.date);
           const changes: Partial<Expense> = {
-            date: firestore.Timestamp.fromDate(val.date),
+            date: expenseDate,
             description: val.description,
             categoryId: val.categoryId,
             paidByMemberId: val.paidByMemberId,
@@ -457,6 +458,7 @@ export class EditExpenseComponent implements OnInit {
           let splits: Partial<Split>[] = [];
           this.splitsDataSource.forEach((s) => {
             const split: Partial<Split> = {
+              date: expenseDate,
               categoryId: val.categoryId,
               assignedAmount: s.assignedAmount,
               allocatedAmount: s.allocatedAmount,

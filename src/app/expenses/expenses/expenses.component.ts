@@ -26,8 +26,7 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
-import firebase from 'firebase/compat/app';
-import { map, Observable, tap } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
@@ -36,7 +35,8 @@ import {
   inject,
   OnInit,
   signal,
-  WritableSignal,
+  Signal,
+  ViewChild,
 } from '@angular/core';
 import {
   AsyncPipe,
@@ -150,12 +150,12 @@ export class ExpensesComponent implements OnInit {
   storage = inject(AngularFireStorage);
   analytics = inject(AngularFireAnalytics);
 
-  user: WritableSignal<User> = this.userService.user;
-  members: WritableSignal<Member[]> = this.memberService.allGroupMembers;
-  categories: WritableSignal<Category[]> = this.categoryService.allCategories;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  expenses: WritableSignal<Expense[]> = this.expenseService.groupExpenses;
+  user: Signal<User> = this.userService.user;
+  members: Signal<Member[]> = this.memberService.allGroupMembers;
+  categories: Signal<Category[]> = this.categoryService.allCategories;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  expenses: Signal<Expense[]> = this.expenseService.groupExpenses;
 
   unpaidOnly = signal<boolean>(true);
   selectedMemberId = signal<string>('');
@@ -165,43 +165,47 @@ export class ExpensesComponent implements OnInit {
   startDate = signal<Date | null>(null);
   endDate = signal<Date | null>(null);
 
-  filteredExpenses = computed(() => {
-    var filteredExpenses = this.expenses().filter((expense: Expense) => {
-      return (
-        (!expense.paid || expense.paid != this.unpaidOnly()) &&
-        expense.paidByMemberId ==
-          (this.selectedMemberId() != ''
-            ? this.selectedMemberId()
-            : expense.paidByMemberId) &&
-        expense.categoryId ==
-          (this.selectedCategoryId() != ''
-            ? this.selectedCategoryId()
-            : expense.categoryId)
-      );
-    });
-    if (this.startDate() !== undefined && this.startDate() !== null) {
-      filteredExpenses = filteredExpenses.filter((expense: Expense) => {
-        return expense.date.toDate() >= this.startDate();
+  filteredExpenses = computed(
+    (
+      unpaidOnly: boolean = this.unpaidOnly(),
+      selectedMemberId: string = this.selectedMemberId(),
+      selectedCategoryId: string = this.selectedCategoryId()
+    ) => {
+      var filteredExpenses = this.expenses().filter((expense: Expense) => {
+        return (
+          (!expense.paid || expense.paid != unpaidOnly) &&
+          expense.paidByMemberId ==
+            (selectedMemberId != ''
+              ? selectedMemberId
+              : expense.paidByMemberId) &&
+          expense.categoryId ==
+            (selectedCategoryId != '' ? selectedCategoryId : expense.categoryId)
+        );
       });
-    }
-    if (this.endDate() !== undefined && this.endDate() !== null) {
-      filteredExpenses = filteredExpenses.filter((expense: Expense) => {
-        return expense.date.toDate() <= this.endDate();
-      });
-    }
-    if (filteredExpenses.length > 0) {
-      filteredExpenses = this.sorter.sort(
-        filteredExpenses,
-        this.sortField(),
-        this.sortAsc()
+      if (this.startDate() !== undefined && this.startDate() !== null) {
+        filteredExpenses = filteredExpenses.filter((expense: Expense) => {
+          return expense.date.toDate() >= this.startDate();
+        });
+      }
+      if (this.endDate() !== undefined && this.endDate() !== null) {
+        filteredExpenses = filteredExpenses.filter((expense: Expense) => {
+          return expense.date.toDate() <= this.endDate();
+        });
+      }
+      if (filteredExpenses.length > 0) {
+        filteredExpenses = this.sorter.sort(
+          filteredExpenses,
+          this.sortField(),
+          this.sortAsc()
+        );
+      }
+      this.expenseTotal = filteredExpenses.reduce(
+        (total, e) => (total += e.totalAmount),
+        0
       );
+      return filteredExpenses;
     }
-    this.expenseTotal = filteredExpenses.reduce(
-      (total, e) => (total += e.totalAmount),
-      0
-    );
-    return filteredExpenses;
-  });
+  );
 
   receipts: string[] = [];
   expenseTotal: number = 0;
@@ -231,7 +235,9 @@ export class ExpensesComponent implements OnInit {
   ];
   expandedExpense: Expense | null;
 
-  ngOnInit(): void {
+  @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
+
+  async ngOnInit(): Promise<void> {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
@@ -348,8 +354,9 @@ export class ExpensesComponent implements OnInit {
     const changes = {
       paid: !split.paid,
     };
+    this.loading.loadingOn();
     this.splitService
       .updateSplit(this.currentGroup().id, split.id, changes)
-      .subscribe();
+      .then(() => this.loading.loadingOff());
   }
 }

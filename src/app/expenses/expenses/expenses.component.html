@@ -14,15 +14,16 @@
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
       </mat-select>
-      <button
-        *ngIf="selectedMemberId"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSelectedMember()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (selectedMemberId() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSelectedMember()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
     <mat-form-field class="me-2">
       <mat-label>Filter by category</mat-label>
@@ -35,15 +36,16 @@
           <mat-option [value]="category.id">{{ category.name }}</mat-option>
         }
       </mat-select>
-      <button
-        *ngIf="selectedCategoryId"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSelectedCategory()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (selectedCategoryId() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSelectedCategory()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
     <mat-slide-toggle
       #unpaidToggle
@@ -60,7 +62,6 @@
         matInput
         [matDatepicker]="startDatepicker"
         [(ngModel)]="startDateValue"
-        (dateInput)="startDateChange()"
         (dateChange)="startDateChange()"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
@@ -68,15 +69,16 @@
         matIconSuffix
         [for]="startDatepicker"
       ></mat-datepicker-toggle>
-      <button
-        *ngIf="startDate"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearStartDate()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (!!startDate()) {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearStartDate()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
       <mat-datepicker #startDatepicker></mat-datepicker>
     </mat-form-field>
     <mat-form-field appearance="fill" class="datepicker me-2">
@@ -85,7 +87,6 @@
         matInput
         [matDatepicker]="endDatePicker"
         [(ngModel)]="endDateValue"
-        (dateInput)="endDateChange()"
         (dateChange)="endDateChange()"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
@@ -93,15 +94,16 @@
         matIconSuffix
         [for]="endDatePicker"
       ></mat-datepicker-toggle>
-      <button
-        *ngIf="endDate"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearEndDate()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      @if (!!endDate()) {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearEndDate()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
       <mat-datepicker #endDatePicker></mat-datepicker>
     </mat-form-field>
     <button class="btn btn-primary ms-4" (click)="addExpense()">
@@ -111,6 +113,7 @@
   <div class="d-flex justify-content-center">
     <div class="scrollable-table mat-elevation-z8">
       <table
+        #expensesTable
         mat-table
         matSort
         [dataSource]="filteredExpenses()"
@@ -244,16 +247,18 @@
                     Mark Paid/Unpaid
                   </th>
                   <td mat-cell *matCellDef="let split" class="cell-center">
-                    <button
-                      *ngIf="expense.paidByMemberId != split.owedByMemberId"
-                      mat-mini-fab
-                      class="btn btn-success"
-                      (click)="
-                        markSplitPaidUnpaid(split); $event.stopPropagation()
-                      "
-                    >
-                      <mat-icon>paid</mat-icon>
-                    </button>
+                    @if (expense.paidByMemberId != split.owedByMemberId) {
+                      <button
+                        mat-mini-fab
+                        class="btn"
+                        [class]="split.paid ? 'btn-danger' : 'btn-success'"
+                        (click)="
+                          markSplitPaidUnpaid(split); $event.stopPropagation()
+                        "
+                      >
+                        <mat-icon>paid</mat-icon>
+                      </button>
+                    }
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="empty2">

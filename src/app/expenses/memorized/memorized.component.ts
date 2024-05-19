@@ -28,7 +28,7 @@ import {
   inject,
   OnInit,
   signal,
-  WritableSignal,
+  Signal,
 } from '@angular/core';
 import {
   MatFormField,
@@ -108,12 +108,12 @@ export class MemorizedComponent implements OnInit {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
 
-  user: WritableSignal<User> = this.userService.user;
-  categories: WritableSignal<Category[]> = this.categoryService.allCategories;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  members: WritableSignal<Member[]> = this.memberService.activeGroupMembers;
-  expenses: WritableSignal<Expense[]> = this.expenseService.memorizedExpenses;
+  user: Signal<User> = this.userService.user;
+  categories: Signal<Category[]> = this.categoryService.allCategories;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  members: Signal<Member[]> = this.memberService.activeGroupMembers;
+  expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
   filteredExpenses = computed(() => {
     var filteredExpenses = this.expenses().filter((expense: Expense) => {
       return (

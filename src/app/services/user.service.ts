@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
-import { map, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 import { GroupService } from './group.service';
 import { MemberService } from './member.service';
 
@@ -14,6 +14,7 @@ import { MemberService } from './member.service';
 })
 export class UserService {
   user = signal<User>(null);
+  isLoggedIn = signal<boolean>(false);
 
   fs = inject(Firestore);
   router = inject(Router);
@@ -25,62 +26,62 @@ export class UserService {
   isLoggedIn$: Observable<boolean>;
 
   constructor() {
-    this.isLoggedIn$ = this.afAuth.authState.pipe(
-      map((firebaseUser) => {
-        if (!!firebaseUser) {
-          this.loading.loadingOn();
-          this.getDefaultGroup(firebaseUser.uid)
-            .then((groupId: string) => {
-              const user = new User({
-                id: firebaseUser.uid,
-                email: firebaseUser.email,
-                defaultGroupId: groupId,
-              });
-              this.user.set(user);
-              return user;
-            })
-            .then((user: User) => {
-              this.groupService.getUserGroups(user.id).then(() => {
-                const activeUserGroups: Group[] =
-                  this.groupService.activeUserGroups();
-                if (activeUserGroups.length === 1) {
-                  this.memberService
-                    .getMemberByUserId(activeUserGroups[0].id, user.id)
-                    .then(
-                      async () =>
-                        await this.groupService
-                          .getGroupById(activeUserGroups[0].id)
-                          .then(() => {
-                            this.loading.loadingOff();
-                            this.router.navigateByUrl('/expenses');
-                          })
-                    );
-                } else if (user.defaultGroupId !== '') {
-                  this.memberService
-                    .getMemberByUserId(user.defaultGroupId, user.id)
-                    .then(
-                      async () =>
-                        await this.groupService
-                          .getGroupById(user.defaultGroupId)
-                          .then(() => {
-                            this.loading.loadingOff();
-                            this.router.navigateByUrl('/expenses');
-                          })
-                    );
-                } else {
-                  this.loading.loadingOff();
-                  this.router.navigateByUrl('/groups');
-                }
-              });
+    this.afAuth.onAuthStateChanged((firebaseUser) => {
+      if (!!firebaseUser) {
+        this.isLoggedIn.set(true);
+        this.loading.loadingOn();
+        this.getDefaultGroup(firebaseUser.uid)
+          .then((groupId: string) => {
+            const user = new User({
+              id: firebaseUser.uid,
+              email: firebaseUser.email,
+              defaultGroupId: groupId,
             });
-          return true;
-        } else {
-          this.user.set(null);
-          this.loading.loadingOff();
-          return false;
-        }
-      })
-    );
+            this.user.set(user);
+            return user;
+          })
+          .then((user: User) => {
+            this.groupService.getUserGroups(user.id).then(() => {
+              const activeUserGroups: Group[] =
+                this.groupService.activeUserGroups();
+              if (activeUserGroups.length === 1) {
+                this.memberService
+                  .getMemberByUserId(activeUserGroups[0].id, user.id)
+                  .then(
+                    async () =>
+                      await this.groupService
+                        .getGroupById(activeUserGroups[0].id)
+                        .then(() => {
+                          this.loading.loadingOff();
+                          this.router.navigateByUrl('/expenses');
+                        })
+                  );
+              } else if (user.defaultGroupId !== '') {
+                this.memberService
+                  .getMemberByUserId(user.defaultGroupId, user.id)
+                  .then(
+                    async () =>
+                      await this.groupService
+                        .getGroupById(user.defaultGroupId)
+                        .then(() => {
+                          this.loading.loadingOff();
+                          this.router.navigateByUrl('/expenses');
+                        })
+                  );
+              } else {
+                this.loading.loadingOff();
+                this.router.navigateByUrl('/groups');
+              }
+            });
+          });
+        return true;
+      } else {
+        this.user.set(null);
+        this.isLoggedIn.set(false);
+        this.loading.loadingOff();
+        return false;
+      }
+    });
   }
 
   async getDefaultGroup(userId: string): Promise<string> {

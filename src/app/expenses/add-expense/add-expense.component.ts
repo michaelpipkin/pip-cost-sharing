@@ -25,7 +25,7 @@ import {
   inject,
   OnInit,
   ViewChild,
-  WritableSignal,
+  Signal,
 } from '@angular/core';
 import {
   FormArray,
@@ -124,11 +124,10 @@ export class AddExpenseComponent implements OnInit {
   analytics = inject(AngularFireAnalytics);
   data: any = inject(MAT_DIALOG_DATA);
 
-  categories: WritableSignal<Category[]> =
-    this.categoryService.activeCategories;
-  members: WritableSignal<Member[]> = this.memberService.activeGroupMembers;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  categories: Signal<Category[]> = this.categoryService.activeCategories;
+  members: Signal<Member[]> = this.memberService.activeGroupMembers;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
 
   fileName: string;
   receiptFile: File;
@@ -138,7 +137,7 @@ export class AddExpenseComponent implements OnInit {
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
   splitForm: FormArray;
 
-  @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('splitsTable') splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
 
   constructor() {
@@ -384,8 +383,9 @@ export class AddExpenseComponent implements OnInit {
   onSubmit(): void {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
+    const expenseDate = firestore.Timestamp.fromDate(val.date);
     const expense: Partial<Expense> = {
-      date: firestore.Timestamp.fromDate(val.date),
+      date: expenseDate,
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
@@ -396,6 +396,7 @@ export class AddExpenseComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsDataSource.forEach((s) => {
       const split: Partial<Split> = {
+        date: expenseDate,
         groupId: this.currentGroup().id,
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,

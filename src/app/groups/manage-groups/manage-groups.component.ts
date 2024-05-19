@@ -12,13 +12,7 @@ import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import firebase from 'firebase/compat/app';
 import { catchError, Observable, tap, throwError } from 'rxjs';
-import {
-  Component,
-  inject,
-  Inject,
-  OnInit,
-  WritableSignal,
-} from '@angular/core';
+import { Component, inject, Inject, OnInit, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -64,7 +58,7 @@ export class ManageGroupsComponent {
   loading = inject(LoadingService);
   user: User = inject(MAT_DIALOG_DATA);
 
-  userAdminGroups: WritableSignal<Group[]> = this.groupService.adminUserGroups;
+  userAdminGroups: Signal<Group[]> = this.groupService.adminUserGroups;
 
   editGroupForm = this.fb.group({
     groupName: ['', Validators.required],

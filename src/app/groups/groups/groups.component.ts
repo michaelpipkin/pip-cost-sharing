@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject, OnInit, WritableSignal } from '@angular/core';
+import { Component, inject, OnInit, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -42,10 +42,10 @@ export class GroupsComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: WritableSignal<User> = this.userService.user;
-  currentMember: WritableSignal<Member> = this.memberService.currentGroupMember;
-  userGroups: WritableSignal<Group[]> = this.groupService.activeUserGroups;
-  currentGroup: WritableSignal<Group> = this.groupService.currentGroup;
+  user: Signal<User> = this.userService.user;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  userGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
   isGroupAdmin: boolean = false;
   selectedGroupId: string;
 
