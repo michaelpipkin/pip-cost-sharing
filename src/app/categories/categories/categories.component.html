@@ -10,7 +10,7 @@
         matInput
         (input)="updateSearch()"
       />
-      @if (nameFilter) {
+      @if (nameFilter() !== '') {
         <button
           matSuffix
           mat-icon-button

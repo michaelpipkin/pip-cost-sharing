@@ -25,6 +25,7 @@ import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { map, Observable } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
@@ -133,6 +134,7 @@ import {
     CurrencyPipe,
     DatePipe,
     YesNoPipe,
+    YesNoNaPipe,
   ],
 })
 export class ExpensesComponent implements OnInit {

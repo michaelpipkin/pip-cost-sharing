@@ -101,6 +101,11 @@
                   amountDue.owedByMemberId
                 )
               "
+              title="
+                Mark expenses owed between {{
+                getMemberName(amountDue.owedToMemberId)
+              }} and {{ getMemberName(amountDue.owedByMemberId) }} as paid.
+              "
             >
               <mat-icon>paid</mat-icon>
             </button>

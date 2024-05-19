@@ -244,7 +244,6 @@ export class SummaryComponent implements OnInit {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
-      this.splitService.getUnpaidSplitsForGroup(this.currentGroup().id);
       this.selectedMemberIdValue = this.currentMember().id;
       this.selectedMemberId.set(this.currentMember().id);
     }

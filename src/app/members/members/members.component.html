@@ -6,7 +6,7 @@
     <mat-form-field class="me-2">
       <mat-label>Search by name</mat-label>
       <input matInput [(ngModel)]="nameFilterValue" (input)="updateSearch()" />
-      @if (nameFilter) {
+      @if (nameFilter() !== '') {
         <button
           matSuffix
           mat-icon-button
