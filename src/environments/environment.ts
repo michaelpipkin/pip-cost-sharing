@@ -5,8 +5,8 @@ import 'zone.js/plugins/zone-error';
 
 export const environment = {
   production: false,
-  useEmulators: true,
-  buildDate: new Date('2024-05-13T03:41:17.147Z'),
+  useEmulators: false,
+  buildDate: new Date('2024-05-20T23:10:25.188Z')
 };
 
 /*

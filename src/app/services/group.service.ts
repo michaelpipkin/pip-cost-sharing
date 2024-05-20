@@ -1,10 +1,13 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryService } from './category.service';
 import { ExpenseService } from './expense.service';
 import { MemberService } from './member.service';
 import { SplitService } from './split.service';
+import { UserService } from './user.service';
 import {
   doc,
   Firestore,
@@ -34,10 +37,52 @@ export class GroupService {
   currentGroup = signal<Group>(null);
 
   fs = inject(Firestore);
+  userService = inject(UserService);
   categoryService = inject(CategoryService);
   memberService = inject(MemberService);
   expensesService = inject(ExpenseService);
   splitService = inject(SplitService);
+  loading = inject(LoadingService);
+  router = inject(Router);
+
+  userLoaded = computed(() => {
+    if (!!this.userService.user()) {
+      const user = this.userService.user();
+      this.getUserGroups(user.id).then(async () => {
+        const activeUserGroups: Group[] = this.activeUserGroups();
+        if (activeUserGroups.length === 1) {
+          await this.memberService
+            .getMemberByUserId(activeUserGroups[0].id, user.id)
+            .then(
+              async () =>
+                await this.getGroupById(activeUserGroups[0].id).then(() => {
+                  this.loading.loadingOff();
+                  this.router.navigateByUrl('/groups');
+                })
+            );
+        } else if (user.defaultGroupId !== '') {
+          await this.memberService
+            .getMemberByUserId(user.defaultGroupId, user.id)
+            .then(
+              async () =>
+                await this.getGroupById(user.defaultGroupId).then(() => {
+                  this.loading.loadingOff();
+                  this.router.navigateByUrl('/groups');
+                })
+            );
+        } else {
+          this.loading.loadingOff();
+          this.router.navigateByUrl('/groups');
+        }
+      });
+    }
+  });
+
+  constructor() {
+    effect(() => {
+      this.userLoaded();
+    });
+  }
 
   async getUserGroups(userId: string): Promise<void> {
     const memberQuery = query(
@@ -76,8 +121,8 @@ export class GroupService {
       ...docSnap.data(),
     });
     this.currentGroup.set(group);
-    await this.categoryService.getGroupCategories(group.id);
     await this.memberService.getGroupMembers(group.id);
+    await this.categoryService.getGroupCategories(group.id);
     await this.expensesService.getExpensesWithSplitsForGroup(group.id);
     await this.expensesService.getExpensesWithSplitsForGroup(group.id, true);
     await this.splitService.getUnpaidSplitsForGroup(group.id);

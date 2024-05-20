@@ -42,6 +42,8 @@ export class MemberService {
         this.currentGroupMember.set(
           new Member({ id: memberDoc.id, ...memberDoc.data() })
         );
+      } else {
+        this.currentGroupMember.set(null);
       }
     });
   }

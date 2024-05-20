@@ -240,7 +240,7 @@ export class SummaryComponent implements OnInit {
   detailColumnsToDisplay: string[] = ['category', 'amount'];
 
   ngOnInit(): void {
-    this.splitService.addDatesToSplits();
+    //this.splitService.addDatesToSplits();
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
