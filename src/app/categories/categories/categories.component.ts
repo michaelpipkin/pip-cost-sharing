@@ -96,7 +96,7 @@ export class CategoriesComponent implements OnInit {
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   categories: Signal<Category[]> = this.categoryService.allCategories;
 
-  activeOnly = signal<boolean>(false);
+  activeOnly = signal<boolean>(true);
   nameFilter = signal<string>('');
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);

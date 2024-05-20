@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
 import { SortingService } from './sorting.service';
 import {
@@ -21,8 +21,9 @@ import {
 })
 export class CategoryService {
   allCategories = signal<Category[]>([]);
-  activeCategories = signal<Category[]>([]);
-  filteredCategories = signal<Category[]>([]);
+  activeCategories = computed(() =>
+    this.allCategories().filter((c) => c.active)
+  );
 
   fs = inject(Firestore);
   sorter = inject(SortingService);
@@ -37,7 +38,6 @@ export class CategoryService {
         ...querySnap.docs.map((d) => new Category({ id: d.id, ...d.data() })),
       ];
       this.allCategories.set(categories);
-      this.activeCategories.set(categories.filter((c) => c.active));
     });
   }
 

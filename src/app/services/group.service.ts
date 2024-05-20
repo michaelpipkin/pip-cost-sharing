@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { CategoryService } from './category.service';
@@ -24,8 +24,13 @@ import {
 })
 export class GroupService {
   allUserGroups = signal<Group[]>([]);
-  activeUserGroups = signal<Group[]>([]);
-  adminUserGroups = signal<Group[]>([]);
+  activeUserGroups = computed(() =>
+    this.allUserGroups().filter((g) => g.active)
+  );
+  private adminGroupIds = signal<string[]>([]);
+  adminUserGroups = computed(() =>
+    this.allUserGroups().filter((g) => this.adminGroupIds().includes(g.id))
+  );
   currentGroup = signal<Group>(null);
 
   fs = inject(Firestore);
@@ -51,19 +56,15 @@ export class GroupService {
       const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
       onSnapshot(groupQuery, (groupQuerySnap) => {
         const userGroupIds = userGroups.map((m) => m.groupId);
-        const adminGroupIds = userGroups
-          .filter((f) => f.groupAdmin)
-          .map((m) => m.groupId);
+        this.adminGroupIds.set(
+          userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
+        );
         const groups: Group[] = [
           ...groupQuerySnap.docs.map(
             (d) => new Group({ id: d.id, ...d.data() })
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
-        this.activeUserGroups.set(groups.filter((g) => g.active));
-        this.adminUserGroups.set(
-          groups.filter((g) => adminGroupIds.includes(g.id))
-        );
       });
     });
   }

@@ -95,7 +95,7 @@ export class MembersComponent implements OnInit {
   groupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
 
-  activeOnly = signal<boolean>(false);
+  activeOnly = signal<boolean>(true);
   nameFilter = signal<string>('');
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);

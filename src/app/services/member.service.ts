@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Member } from '@models/member';
 import { SortingService } from './sorting.service';
 import {
@@ -23,8 +23,9 @@ import {
 export class MemberService {
   currentGroupMember = signal<Member>(null);
   allGroupMembers = signal<Member[]>([]);
-  activeGroupMembers = signal<Member[]>([]);
-  filteredMembers = signal<Member[]>([]);
+  activeGroupMembers = computed(() =>
+    this.allGroupMembers().filter((m) => m.active)
+  );
 
   fs = inject(Firestore);
   sorter = inject(SortingService);
@@ -55,7 +56,6 @@ export class MemberService {
         ...querySnap.docs.map((d) => new Member({ id: d.id, ...d.data() })),
       ];
       this.allGroupMembers.set(groupMembers);
-      this.activeGroupMembers.set(groupMembers.filter((m) => m.active));
     });
   }
 

@@ -53,7 +53,7 @@ export class UserService {
                         .getGroupById(activeUserGroups[0].id)
                         .then(() => {
                           this.loading.loadingOff();
-                          this.router.navigateByUrl('/expenses');
+                          this.router.navigateByUrl('/groups');
                         })
                   );
               } else if (user.defaultGroupId !== '') {
@@ -65,7 +65,7 @@ export class UserService {
                         .getGroupById(user.defaultGroupId)
                         .then(() => {
                           this.loading.loadingOff();
-                          this.router.navigateByUrl('/expenses');
+                          this.router.navigateByUrl('/groups');
                         })
                   );
               } else {

@@ -132,10 +132,14 @@ export class EditExpenseComponent implements OnInit {
   data: any = inject(MAT_DIALOG_DATA);
 
   categories = signal<Category[]>([]);
-  members = signal<Member[]>([]);
+  expenseMembers = signal<Member[]>([]);
+  splitMembers = signal<Member[]>([]);
 
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  allGroupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
+  allCategories: Signal<Category[]> = this.categoryService.allCategories;
+
   fileName: string;
   receiptFile: File;
   receiptUrl: Url;
@@ -170,16 +174,22 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.members.set(
-      this.memberService
-        .allGroupMembers()
-        .filter((m) => m.active || m.id == this.data.expense.paidByMemberId)
+    this.expenseMembers.set(
+      this.allGroupMembers().filter(
+        (m) => m.active || m.id == this.data.expense.paidByMemberId
+      )
     );
     this.categoryService.getGroupCategories(this.currentGroup().id);
     this.categories.set(
-      this.categoryService
-        .allCategories()
-        .filter((c) => c.active || c.id == this.data.expense.categoryId)
+      this.allCategories().filter(
+        (c) => c.active || c.id == this.data.expense.categoryId
+      )
+    );
+    const splitMemberIds = this.splitsDataSource.map((s) => s.owedByMemberId);
+    this.splitMembers.set(
+      this.allGroupMembers().filter(
+        (m) => m.active || splitMemberIds.includes(m.id)
+      )
     );
     const url = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
     this.storage
