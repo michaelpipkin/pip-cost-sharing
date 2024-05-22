@@ -25,6 +25,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import {
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -238,6 +239,12 @@ export class SummaryComponent implements OnInit {
     'markPaid',
   ];
   detailColumnsToDisplay: string[] = ['category', 'amount'];
+
+  constructor() {
+    effect(() => {
+      this.filteredSplits();
+    });
+  }
 
   ngOnInit(): void {
     //this.splitService.addDatesToSplits();

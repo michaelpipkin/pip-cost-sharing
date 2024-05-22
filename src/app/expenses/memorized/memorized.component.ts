@@ -25,6 +25,7 @@ import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -146,6 +147,12 @@ export class MemorizedComponent implements OnInit {
   ];
   splitColumnsToDisplay: string[] = ['empty1', 'owedBy', 'amount', 'empty2'];
   expandedExpense: Expense | null;
+
+  constructor() {
+    effect(() => {
+      this.filteredExpenses();
+    });
+  }
 
   ngOnInit(): void {
     if (this.currentGroup() == null) {

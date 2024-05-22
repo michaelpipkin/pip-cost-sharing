@@ -33,6 +33,7 @@ import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -238,6 +239,12 @@ export class ExpensesComponent implements OnInit {
   expandedExpense: Expense | null;
 
   @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
+
+  constructor() {
+    effect(() => {
+      this.filteredExpenses();
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     if (this.currentGroup() == null) {

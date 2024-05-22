@@ -1,6 +1,16 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupService } from './group.service';
 import { SortingService } from './sorting.service';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+} from '@angular/core';
 import {
   addDoc,
   collection,
@@ -27,6 +37,25 @@ export class CategoryService {
 
   fs = inject(Firestore);
   sorter = inject(SortingService);
+  loading = inject(LoadingService);
+  groupService = inject(GroupService);
+
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+
+  groupSelected = computed(async () => {
+    if (!!this.currentGroup()) {
+      this.loading.loadingOn();
+      this.getGroupCategories(this.currentGroup().id).then(() =>
+        this.loading.loadingOff()
+      );
+    }
+  });
+
+  constructor() {
+    effect(() => {
+      this.groupSelected();
+    });
+  }
 
   async getGroupCategories(groupId: string): Promise<void> {
     const q = query(

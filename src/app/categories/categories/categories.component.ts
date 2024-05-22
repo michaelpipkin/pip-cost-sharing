@@ -24,6 +24,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
 import {
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -120,6 +121,12 @@ export class CategoriesComponent implements OnInit {
 
   categoryFilterValue: string = '';
   columnsToDisplay: string[] = ['name', 'active'];
+
+  constructor() {
+    effect(() => {
+      this.filteredCategories();
+    });
+  }
 
   ngOnInit(): void {
     if (this.currentGroup() == null) {

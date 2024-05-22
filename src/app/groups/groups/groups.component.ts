@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject, OnInit, Signal } from '@angular/core';
+import { Component, effect, inject, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -34,7 +34,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     AsyncPipe,
   ],
 })
-export class GroupsComponent implements OnInit {
+export class GroupsComponent {
   userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -49,10 +49,12 @@ export class GroupsComponent implements OnInit {
   isGroupAdmin: boolean = false;
   selectedGroupId: string;
 
-  ngOnInit(): void {
-    if (this.currentGroup() !== null) {
-      this.selectedGroupId = this.currentGroup().id;
-    }
+  constructor() {
+    effect(() => {
+      if (!!this.currentGroup()) {
+        this.selectedGroupId = this.currentGroup().id;
+      }
+    });
   }
 
   addGroup(): void {

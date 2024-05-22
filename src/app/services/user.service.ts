@@ -33,6 +33,7 @@ export class UserService {
           });
           this.user.set(user);
         });
+        this.loading.loadingOff();
         return true;
       } else {
         this.user.set(null);

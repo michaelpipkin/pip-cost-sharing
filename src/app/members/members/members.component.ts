@@ -22,6 +22,7 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
 import {
   Component,
   computed,
+  effect,
   inject,
   OnInit,
   signal,
@@ -122,6 +123,12 @@ export class MembersComponent implements OnInit {
     'active',
     'groupAdmin',
   ];
+
+  constructor() {
+    effect(() => {
+      this.filteredMembers();
+    });
+  }
 
   ngOnInit(): void {
     if (this.currentGroup() == null) {
