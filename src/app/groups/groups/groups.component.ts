@@ -53,6 +53,8 @@ export class GroupsComponent {
     effect(() => {
       if (!!this.currentGroup()) {
         this.selectedGroupId = this.currentGroup().id;
+      } else {
+        this.selectedGroupId = '';
       }
     });
   }

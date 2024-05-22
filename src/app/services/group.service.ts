@@ -51,27 +51,7 @@ export class GroupService {
   userLoaded = computed(() => {
     if (!!this.user()) {
       this.loading.loadingOn();
-      const user = this.user();
-      this.getUserGroups(user.id).then(async () => {
-        const activeUserGroups = this.activeUserGroups();
-        if (activeUserGroups.length === 1) {
-          await this.getGroupById(activeUserGroups[0].id).then(() => {
-            this.router
-              .navigateByUrl('/expenses')
-              .then(() => this.loading.loadingOff());
-          });
-        } else if (user.defaultGroupId !== '') {
-          await this.getGroupById(user.defaultGroupId).then(() => {
-            this.router
-              .navigateByUrl('/expenses')
-              .then(() => this.loading.loadingOff());
-          });
-        } else {
-          this.router
-            .navigateByUrl('/groups')
-            .then(() => this.loading.loadingOff());
-        }
-      });
+      this.getUserGroups(this.user());
     }
   });
 
@@ -79,12 +59,15 @@ export class GroupService {
     effect(() => {
       this.userLoaded();
     });
+    effect(() => {
+      this.activeUserGroups();
+    });
   }
 
-  async getUserGroups(userId: string): Promise<void> {
+  async getUserGroups(user: User): Promise<void> {
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
-      where('userId', '==', userId)
+      where('userId', '==', user.id)
     );
     onSnapshot(memberQuery, (memberQuerySnap) => {
       const userGroups: { groupId: string; groupAdmin: boolean }[] = [
@@ -107,6 +90,20 @@ export class GroupService {
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
+        if (groups.length === 1) {
+          this.currentGroup.set(groups[0]);
+          this.router
+            .navigateByUrl('/expenses')
+            .then(() => this.loading.loadingOff());
+        } else if (user.defaultGroupId !== '') {
+          this.getGroupById(user.defaultGroupId)
+            .then(() => this.router.navigateByUrl('/expenses'))
+            .then(() => this.loading.loadingOff());
+        } else {
+          this.router
+            .navigateByUrl('/groups')
+            .then(() => this.loading.loadingOff());
+        }
       });
     });
   }
@@ -151,6 +148,9 @@ export class GroupService {
           batch.update(u.ref, { defaultGroupId: '' });
         });
       });
+      if (this.currentGroup().id === groupId) {
+        this.currentGroup.set(null);
+      }
     }
     return await batch
       .commit()
