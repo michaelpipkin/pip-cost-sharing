@@ -83,6 +83,8 @@ export class ProfileComponent implements OnInit {
     this.firebaseUser = await this.afAuth.currentUser;
     if (this.user().defaultGroupId !== '') {
       this.selectedGroupId = this.user().defaultGroupId;
+    } else {
+      this.selectedGroupId = null;
     }
   }
 
@@ -174,22 +176,24 @@ export class ProfileComponent implements OnInit {
   }
 
   saveDefaultGroup(): void {
-    this.userService
-      .saveDefaultGroup(this.selectedGroupId)
-      .then(() => {
-        this.snackBar.open('Default group updated.', 'Close');
-      })
-      .catch((err: Error) => {
-        this.analytics.logEvent('error', {
-          component: this.constructor.name,
-          action: 'edit_group',
-          message: err.message,
+    if (this.selectedGroupId !== null && this.selectedGroupId !== '') {
+      this.userService
+        .saveDefaultGroup(this.selectedGroupId)
+        .then(() => {
+          this.snackBar.open('Default group updated.', 'Close');
+        })
+        .catch((err: Error) => {
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_group',
+            message: err.message,
+          });
+          this.snackBar.open(
+            'Something went wrong - could not update default group.',
+            'Close'
+          );
+          return throwError(() => new Error(err.message));
         });
-        this.snackBar.open(
-          'Something went wrong - could not update default group.',
-          'Close'
-        );
-        return throwError(() => new Error(err.message));
-      });
+    }
   }
 }

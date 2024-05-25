@@ -90,7 +90,7 @@ export class GroupService {
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
-        if (groups.length === 1) {
+        if (groups.length === 1 && groups[0].active) {
           this.currentGroup.set(groups[0]);
           this.router
             .navigateByUrl('/expenses')
