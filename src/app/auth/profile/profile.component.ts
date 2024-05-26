@@ -1,6 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit, Signal } from '@angular/core';
+import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { MatIconButton } from '@angular/material/button';
+import { MatOption } from '@angular/material/core';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatSelect } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Group } from '@models/group';
+import { User } from '@models/user';
+import { GroupService } from '@services/group.service';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import * as firebase from 'firebase/auth';
+import { Observable, throwError } from 'rxjs';
 import {
   FormBuilder,
   FormGroup,
@@ -8,17 +22,12 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatIconButton } from '@angular/material/button';
 import {
   MatError,
   MatFormField,
   MatLabel,
   MatSuffix,
 } from '@angular/material/form-field';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import * as firebase from 'firebase/auth';
 
 @Component({
   selector: 'app-profile',
@@ -29,7 +38,9 @@ import * as firebase from 'firebase/auth';
     FormsModule,
     ReactiveFormsModule,
     MatFormField,
+    MatOption,
     MatLabel,
+    MatSelect,
     MatInput,
     CommonModule,
     MatError,
@@ -39,30 +50,42 @@ import * as firebase from 'firebase/auth';
   ],
 })
 export class ProfileComponent implements OnInit {
-  emailForm: FormGroup;
-  passwordForm: FormGroup;
-  currentUser: firebase.User;
+  fb = inject(FormBuilder);
+  afAuth = inject(AngularFireAuth);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  loading = inject(LoadingService);
+  snackBar = inject(MatSnackBar);
+  analytics = inject(AngularFireAnalytics);
+
+  user: Signal<User> = this.userService.user;
+  firebaseUser: firebase.User;
+  userGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+
+  emailForm = this.fb.group({
+    email: [this.user().email, Validators.email],
+  });
+  passwordForm = this.fb.group(
+    {
+      password: '',
+      confirmPassword: '',
+    },
+    { validators: this.passwordMatchValidator }
+  );
+
+  groups$: Observable<Group[]>;
+  defaultGroupForm: FormGroup;
+  selectedGroupId: string = '';
   hidePassword: boolean = true;
   hideConfirm: boolean = true;
 
-  constructor(
-    private fb: FormBuilder,
-    private snackBar: MatSnackBar,
-    private afAuth: AngularFireAuth
-  ) {
-    this.afAuth.currentUser.then((user) => {
-      this.currentUser = user;
-      this.emailForm = this.fb.group({
-        email: [user.email, Validators.email],
-      });
-    });
-    this.passwordForm = this.fb.group(
-      {
-        password: '',
-        confirmPassword: '',
-      },
-      { validators: this.passwordMatchValidator }
-    );
+  async ngOnInit(): Promise<void> {
+    this.firebaseUser = await this.afAuth.currentUser;
+    if (this.user().defaultGroupId !== '') {
+      this.selectedGroupId = this.user().defaultGroupId;
+    } else {
+      this.selectedGroupId = null;
+    }
   }
 
   get fEmail() {
@@ -79,11 +102,9 @@ export class ProfileComponent implements OnInit {
       : { mismatch: true };
   }
 
-  ngOnInit(): void {}
-
-  verifyEmail(): void {
+  async verifyEmail(): Promise<void> {
     firebase
-      .sendEmailVerification(this.currentUser)
+      .sendEmailVerification(this.firebaseUser)
       .then(() => {
         this.snackBar.open(
           'Check your email to verify your email address.',
@@ -108,9 +129,9 @@ export class ProfileComponent implements OnInit {
   onSubmitEmail(): void {
     this.emailForm.disable();
     const newEmail = this.emailForm.value.email;
-    if (newEmail !== this.currentUser.email) {
+    if (newEmail !== this.firebaseUser.email) {
       firebase
-        .updateEmail(this.currentUser, newEmail)
+        .updateEmail(this.firebaseUser, newEmail)
         .then(() => {
           this.snackBar.open('Your email address has been updated.', 'Close', {
             verticalPosition: 'top',
@@ -135,7 +156,7 @@ export class ProfileComponent implements OnInit {
     const changes = this.passwordForm.value;
     if (changes.password !== '') {
       firebase
-        .updatePassword(this.currentUser, changes.password)
+        .updatePassword(this.firebaseUser, changes.password)
         .then(() => {
           this.snackBar.open('Your password has been updated.', 'Close', {
             verticalPosition: 'top',
@@ -152,5 +173,27 @@ export class ProfileComponent implements OnInit {
         });
     }
     this.passwordForm.enable();
+  }
+
+  saveDefaultGroup(): void {
+    if (this.selectedGroupId !== null && this.selectedGroupId !== '') {
+      this.userService
+        .saveDefaultGroup(this.selectedGroupId)
+        .then(() => {
+          this.snackBar.open('Default group updated.', 'Close');
+        })
+        .catch((err: Error) => {
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'edit_group',
+            message: err.message,
+          });
+          this.snackBar.open(
+            'Something went wrong - could not update default group.',
+            'Close'
+          );
+          return throwError(() => new Error(err.message));
+        });
+    }
   }
 }

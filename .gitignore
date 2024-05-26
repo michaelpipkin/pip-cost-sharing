@@ -36,7 +36,9 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
-environments
+*.sqlite
+*.vsidx
+src/app/firebase.config.ts
 
 # System files
 .DS_Store
@@ -49,5 +51,5 @@ ui-debug.log
 seed-data
 seed-data.ts
 .firebase/hosting.*
-*.sqlite
-*.vsidx
+
+

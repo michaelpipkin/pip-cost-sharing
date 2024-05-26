@@ -1,5 +1,4 @@
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { ProfileComponent } from './auth/profile/profile.component';
 import { CategoriesComponent } from './categories/categories/categories.component';
@@ -19,7 +18,7 @@ import {
 const authGuard = () => redirectUnauthorizedTo(['login']);
 const loggedInGuard = () => redirectLoggedInTo(['profile']);
 
-const routes: Routes = [
+export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: '/home' },
   {
     path: 'home',
@@ -82,9 +81,3 @@ const routes: Routes = [
   },
   { path: '**', redirectTo: '/home' },
 ];
-
-@NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}

@@ -1,157 +1,116 @@
-import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { updateDoc } from '@angular/fire/firestore';
 import { Expense } from '@models/expense';
+import { Group } from '@models/group';
 import { Split } from '@models/split';
-import { concatMap, from, map, Observable, of, tap } from 'rxjs';
+import { LoadingService } from '@shared/loading/loading.service';
+import { collection, writeBatch } from 'firebase/firestore';
+import { GroupService } from './group.service';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+} from '@angular/core';
+import {
+  collectionGroup,
+  doc,
+  Firestore,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SplitService {
-  constructor(private db: AngularFirestore) {}
+  fs = inject(Firestore);
+  loading = inject(LoadingService);
+  groupService = inject(GroupService);
 
-  getSplitsForExpense(groupId: string, expenseId: string): Observable<Split[]> {
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-        ref.where('expenseId', '==', expenseId)
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((splits: Split[]) => {
-          return <Split[]>splits.map((split) => {
-            return new Split({
-              ...split,
-            });
-          });
-        })
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+
+  unpaidSplits = signal<Split[]>([]);
+
+  groupSelected = computed(async () => {
+    if (!!this.currentGroup()) {
+      this.loading.loadingOn();
+      await this.getUnpaidSplitsForGroup(this.currentGroup().id).then(() =>
+        this.loading.loadingOff()
       );
-  }
-
-  getSplitsForGroup(groupId: string): Observable<Split[]> {
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((splits: Split[]) => {
-          return <Split[]>splits.map((split) => {
-            return new Split({
-              ...split,
-            });
-          });
-        })
-      );
-  }
-
-  getUnpaidSplitsForGroup(
-    groupId: string,
-    startDate: Date = null,
-    endDate: Date = null
-  ): Observable<Split[]> {
-    if (startDate == null) {
-      startDate = new Date('1/1/1900');
     }
-    if (endDate == null) {
-      const today = new Date();
-      endDate = new Date(today.setFullYear(today.getFullYear() + 100));
-    } else {
-      endDate = new Date(endDate.setDate(endDate.getDate() + 1));
-    }
-    return this.db
-      .collection<Expense>(`groups/${groupId}/expenses`, (ref) =>
-        ref.where('date', '>=', startDate).where('date', '<', endDate)
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        concatMap((res) => {
-          const expenseIds = res.map((expense) => {
-            return expense.id;
-          });
-          if (expenseIds.length > 0) {
-            return this.db
-              .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-                ref.where('paid', '==', false)
-              )
-              .valueChanges({ idField: 'id' })
-              .pipe(
-                map((splits: Split[]) => {
-                  return <Split[]>splits
-                    .filter((s) => expenseIds.includes(s.expenseId))
-                    .map((split) => {
-                      return new Split({
-                        ...split,
-                      });
-                    });
-                })
-              );
-          } else return of([]);
-        })
-      );
+  });
+
+  constructor() {
+    effect(() => {
+      this.groupSelected();
+    });
   }
 
-  getSplit(groupId: string, splitId: string): Observable<Split> {
-    return this.db
-      .doc<Split>(`groups/${groupId}/splits/${splitId}`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((split: Split) => {
+  async addDatesToSplits() {
+    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
+    const expenses = expDocs.docs.map(
+      (e) => new Expense({ id: e.id, ...e.data() })
+    );
+    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
+    splitDocs.docs.forEach(async (d) => {
+      const expense = expenses.find((e) => e.id === d.data().expenseId);
+      if (!!expense) {
+        await updateDoc(d.ref, { date: expense.date });
+      }
+    });
+  }
+
+  async getUnpaidSplitsForGroup(groupId: string): Promise<void> {
+    const splitsQuery = query(
+      collection(this.fs, `groups/${groupId}/splits`),
+      where('paid', '==', false),
+      where('date', '!=', null)
+    );
+    onSnapshot(splitsQuery, (splitsQuerySnap) => {
+      const splits = [
+        ...splitsQuerySnap.docs.map((d) => {
           return new Split({
-            ...split,
+            id: d.id,
+            ...d.data(),
           });
-        })
-      );
+        }),
+      ];
+      this.unpaidSplits.set(splits);
+    });
   }
 
-  addSplit(groupId: string, split: Partial<Split>): Observable<any> {
-    return from(this.db.collection(`groups/${groupId}/splits`).add(split));
-  }
-
-  updateSplit(
+  async updateSplit(
     groupId: string,
     splitId: string,
     changes: Partial<Split>
-  ): Observable<any> {
-    const docRef = this.db.doc(`groups/${groupId}/splits/${splitId}`).ref;
-    return of(updateDoc(docRef, changes));
+  ): Promise<any> {
+    return await updateDoc(
+      doc(this.fs, `groups/${groupId}/splits/${splitId}`),
+      changes
+    );
   }
 
-  deleteSplit(groupId: string, splitId: string): Observable<any> {
-    return from(this.db.doc(`groups/${groupId}/splits/${splitId}`).delete());
-  }
-
-  addSplits(groupId: string, splits: Partial<Split>[]): Observable<any> {
-    const batch = this.db.firestore.batch();
-    splits.forEach((split: Partial<Split>) => {
-      const splitId = this.db.createId();
-      const splitRef = this.db.doc(`/groups/${groupId}/splits/${splitId}`).ref;
-      batch.set(splitRef, split);
-    });
-    return from(batch.commit());
-  }
-
-  clearSplits(groupId: string, expenseId: string): Observable<any> {
-    const batch = this.db.firestore.batch();
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`, (ref) =>
-        ref.where('expenseId', '==', expenseId)
-      )
-      .get()
-      .pipe(
-        map((querySnap) => {
-          querySnap.forEach((docSnap) => {
-            batch.delete(docSnap.ref);
-          });
-          return from(batch.commit());
-        })
-      );
-  }
-
-  paySplitsBetweenMembers(groupId: string, splits: Split[]): Observable<any> {
-    const batch = this.db.firestore.batch();
+  async paySplitsBetweenMembers(
+    groupId: string,
+    splits: Split[]
+  ): Promise<any> {
+    const batch = writeBatch(this.fs);
     splits.forEach((split) => {
-      const docRef = this.db.doc(`groups/${groupId}/splits/${split.id}`).ref;
-      batch.update(docRef, { paid: true });
+      batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
+        paid: true,
+      });
     });
-    return from(batch.commit());
+    return await batch
+      .commit()
+      .then(() => {
+        return true;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
   }
 }

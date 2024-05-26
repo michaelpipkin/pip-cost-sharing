@@ -1,5 +1,4 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
@@ -15,6 +14,7 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
@@ -22,8 +22,15 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
-import firebase from 'firebase/compat/app';
-import { catchError, concatMap, map, Observable, tap, throwError } from 'rxjs';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   MatDatepicker,
   MatDatepickerInput,
@@ -86,18 +93,145 @@ import {
   ],
 })
 export class SummaryComponent implements OnInit {
-  currentUser: firebase.User;
-  currentGroup: Group;
-  currentMember: Member;
-  members$: Observable<Member[]>;
-  splits$: Observable<Split[]>;
-  members: Member[];
-  categories: Category[];
-  selectedMemberId: string = '';
-  startDate: Date;
-  endDate: Date;
-  summaryData: AmountDue[] = [];
-  detailData: AmountDue[] = [];
+  router = inject(Router);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  splitService = inject(SplitService);
+  snackBar = inject(MatSnackBar);
+  dialog = inject(MatDialog);
+  loading = inject(LoadingService);
+  analytics = inject(AngularFireAnalytics);
+
+  user: Signal<User> = this.userService.user;
+  categories: Signal<Category[]> = this.categoryService.allCategories;
+  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+  allMembers: Signal<Member[]> = this.memberService.allGroupMembers;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  splits: Signal<Split[]> = this.splitService.unpaidSplits;
+
+  selectedMemberId = signal<string>('');
+  startDate = signal<Date | null>(null);
+  endDate = signal<Date | null>(null);
+  owedToMemberId = signal<string>('');
+  owedByMemberId = signal<string>('');
+
+  filteredSplits = computed(() => {
+    var startDate: Date | null;
+    var endDate: Date | null;
+    if (this.startDate() == null) {
+      startDate = new Date('1/1/1900');
+    } else {
+      startDate = new Date(this.startDate());
+    }
+    if (this.endDate() == null) {
+      const today = new Date();
+      endDate = new Date(today.setFullYear(today.getFullYear() + 100));
+    } else {
+      endDate = new Date(this.endDate());
+      endDate = new Date(endDate.setDate(endDate.getDate() + 1));
+    }
+    return this.splits().filter((split: Split) => {
+      return split.date.toDate() >= startDate && split.date.toDate() < endDate;
+    });
+  });
+
+  summaryData = computed(
+    (
+      selectedMemberId: string = this.selectedMemberId(),
+      splits: Split[] = this.filteredSplits()
+    ) => {
+      var summaryData: AmountDue[] = [];
+      if (splits.length > 0) {
+        var memberSplits = splits.filter((s) => {
+          return (
+            s.owedByMemberId == selectedMemberId ||
+            s.paidByMemberId == selectedMemberId
+          );
+        });
+        this.allMembers()
+          .filter((m) => m.id != selectedMemberId)
+          .forEach((member) => {
+            const owedToSelected = memberSplits
+              .filter((m) => m.owedByMemberId == member.id)
+              .reduce((total, split) => (total += split.allocatedAmount), 0);
+            const owedBySelected = memberSplits
+              .filter((m) => m.paidByMemberId == member.id)
+              .reduce((total, split) => (total += split.allocatedAmount), 0);
+            if (owedToSelected > owedBySelected) {
+              summaryData.push(
+                new AmountDue({
+                  owedByMemberId: member.id,
+                  owedToMemberId: selectedMemberId,
+                  amount: owedToSelected - owedBySelected,
+                })
+              );
+            } else if (owedBySelected > owedToSelected) {
+              summaryData.push(
+                new AmountDue({
+                  owedToMemberId: member.id,
+                  owedByMemberId: selectedMemberId,
+                  amount: owedBySelected - owedToSelected,
+                })
+              );
+            }
+          });
+      }
+      return summaryData;
+    }
+  );
+
+  detailData = computed(
+    (
+      owedToMemberId: string = this.owedToMemberId(),
+      owedByMemberId: string = this.owedByMemberId(),
+      splits: Split[] = this.filteredSplits(),
+      categories: Category[] = this.categories()
+    ) => {
+      var detailData: AmountDue[] = [];
+      const memberSplits = splits.filter(
+        (s) =>
+          (s.owedByMemberId == owedToMemberId ||
+            s.paidByMemberId == owedToMemberId) &&
+          (s.owedByMemberId == owedByMemberId ||
+            s.paidByMemberId == owedByMemberId)
+      );
+      categories.forEach((category) => {
+        if (
+          memberSplits.filter((f) => f.categoryId == category.id).length > 0
+        ) {
+          const owedToMember1 = memberSplits
+            .filter(
+              (s) =>
+                s.paidByMemberId == owedToMemberId &&
+                s.categoryId == category.id
+            )
+            .reduce((total, split) => (total += split.allocatedAmount), 0);
+          const owedToMember2 = memberSplits
+            .filter(
+              (s) =>
+                s.paidByMemberId == owedByMemberId &&
+                s.categoryId == category.id
+            )
+            .reduce((total, split) => (total += split.allocatedAmount), 0);
+          detailData.push(
+            new AmountDue({
+              categoryId: category.id,
+              amount: owedToMember1 - owedToMember2,
+            })
+          );
+        }
+      });
+      return detailData;
+    }
+  );
+
+  selectedMemberIdValue: string = '';
+  startDateValue: Date | null = null;
+  endDateValue: Date | null = null;
+
   summaryColumnsToDisplay: string[] = [
     'owedTo',
     'owedBy',
@@ -106,79 +240,61 @@ export class SummaryComponent implements OnInit {
   ];
   detailColumnsToDisplay: string[] = ['category', 'amount'];
 
-  constructor(
-    private router: Router,
-    private userService: UserService,
-    private groupService: GroupService,
-    private memberService: MemberService,
-    private splitService: SplitService,
-    private categoryService: CategoryService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog,
-    private loading: LoadingService,
-    private analytics: AngularFireAnalytics
-  ) {}
+  constructor() {
+    effect(() => {
+      this.filteredSplits();
+    });
+  }
 
   ngOnInit(): void {
-    if (this.groupService.getCurrentGroup() == null) {
+    //this.splitService.addDatesToSplits();
+    if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
-      this.currentUser = this.userService.getCurrentUser();
-      this.currentGroup = this.groupService.getCurrentGroup();
-      this.currentMember = this.memberService.getCurrentGroupMember();
-      this.members$ = this.memberService
-        .getAllGroupMembers(this.currentGroup.id)
-        .pipe(
-          tap((members) => {
-            this.members = members;
-          })
-        );
-      this.categoryService
-        .getCategoriesForGroup(this.currentGroup.id)
-        .pipe(
-          tap((categories) => {
-            this.categories = categories;
-          })
-        )
-        .subscribe();
-      this.summaryData = [];
-      this.detailData = [];
-      this.selectedMemberId = this.currentMember.id;
-      this.loadUnpaidSplits();
+      this.selectedMemberIdValue = this.currentMember().id;
+      this.selectedMemberId.set(this.currentMember().id);
     }
   }
 
-  loadUnpaidSplits(): void {
-    this.splits$ = this.splitService.getUnpaidSplitsForGroup(
-      this.currentGroup.id,
-      this.startDate,
-      this.endDate
-    );
-    this.detailData = [];
-    if (!!this.selectedMemberId) {
-      this.onSelectMember();
-    }
+  selectedMemberChange() {
+    this.selectedMemberId.set(this.selectedMemberIdValue);
+    this.clearOwedByToMemberIds();
+  }
+
+  startDateChange() {
+    this.startDate.set(this.startDateValue);
+    this.clearOwedByToMemberIds();
   }
 
   clearStartDate(): void {
-    this.startDate = null;
-    this.detailData = [];
-    this.loadUnpaidSplits();
+    this.startDate.set(null);
+    this.startDateValue = null;
+    this.clearOwedByToMemberIds();
+  }
+
+  endDateChange() {
+    this.endDate.set(this.endDateValue);
+    this.clearOwedByToMemberIds();
   }
 
   clearEndDate(): void {
-    this.endDate = null;
-    this.detailData = [];
-    this.loadUnpaidSplits();
+    this.endDate.set(null);
+    this.endDateValue = null;
+    this.clearOwedByToMemberIds();
+  }
+
+  clearOwedByToMemberIds(): void {
+    this.owedToMemberId.set('');
+    this.owedByMemberId.set('');
   }
 
   getMemberName(memberId: string): string {
-    const member = this.members.find((m) => m.id === memberId);
+    const member = this.allMembers().find((m) => m.id === memberId);
     return !!member ? member.displayName : '';
   }
 
   getCategoryName(categoryId: string): string {
-    const category = this.categories.find((c) => c.id === categoryId);
+    const category = this.categories().find((c) => c.id === categoryId);
     return !!category ? category.name : '';
   }
 
@@ -186,125 +302,21 @@ export class SummaryComponent implements OnInit {
     return Math.abs(amount);
   }
 
-  onSelectMember() {
-    this.loading.loadingOn();
-    this.detailData = [];
-    this.splits$
-      .pipe(
-        map((splits) => {
-          this.summaryData = [];
-          if (splits.length > 0) {
-            const memberSplits = splits.filter(
-              (s) =>
-                s.owedByMemberId == this.selectedMemberId ||
-                s.paidByMemberId == this.selectedMemberId
-            );
-            this.members
-              .filter((m) => m.id != this.selectedMemberId)
-              .forEach((member) => {
-                const owedToSelected = memberSplits
-                  .filter((m) => m.owedByMemberId == member.id)
-                  .reduce(
-                    (total, split) => (total += split.allocatedAmount),
-                    0
-                  );
-                const owedBySelected = memberSplits
-                  .filter((m) => m.paidByMemberId == member.id)
-                  .reduce(
-                    (total, split) => (total += split.allocatedAmount),
-                    0
-                  );
-                if (owedToSelected > owedBySelected) {
-                  this.summaryData.push(
-                    new AmountDue({
-                      owedByMemberId: member.id,
-                      owedToMemberId: this.selectedMemberId,
-                      amount: owedToSelected - owedBySelected,
-                    })
-                  );
-                } else if (owedBySelected > owedToSelected) {
-                  this.summaryData.push(
-                    new AmountDue({
-                      owedToMemberId: member.id,
-                      owedByMemberId: this.selectedMemberId,
-                      amount: owedBySelected - owedToSelected,
-                    })
-                  );
-                }
-              });
-          }
-        }),
-        tap(() => {
-          this.loading.loadingOff();
-        })
-      )
-      .subscribe();
-  }
-
   onRowSelect(owedToMemberId: string, owedByMemberId: string) {
-    this.loading.loadingOn();
-    this.splits$
-      .pipe(
-        map((splits) => {
-          this.detailData = [];
-          const memberSplits = splits.filter(
-            (s) =>
-              (s.owedByMemberId == owedToMemberId ||
-                s.paidByMemberId == owedToMemberId) &&
-              (s.owedByMemberId == owedByMemberId ||
-                s.paidByMemberId == owedByMemberId)
-          );
-          this.categories.forEach((category) => {
-            if (
-              memberSplits.filter((f) => f.categoryId == category.id).length > 0
-            ) {
-              const owedToMember1 = memberSplits
-                .filter(
-                  (s) =>
-                    s.paidByMemberId == owedToMemberId &&
-                    s.categoryId == category.id
-                )
-                .reduce((total, split) => (total += split.allocatedAmount), 0);
-              const owedToMember2 = memberSplits
-                .filter(
-                  (s) =>
-                    s.paidByMemberId == owedByMemberId &&
-                    s.categoryId == category.id
-                )
-                .reduce((total, split) => (total += split.allocatedAmount), 0);
-              this.detailData.push(
-                new AmountDue({
-                  categoryId: category.id,
-                  amount: owedToMember1 - owedToMember2,
-                })
-              );
-            }
-          });
-        }),
-        tap(() => {
-          this.loading.loadingOff();
-        })
-      )
-      .subscribe();
+    this.owedToMemberId.set(owedToMemberId);
+    this.owedByMemberId.set(owedByMemberId);
   }
 
   markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {
     var splitsToPay: Split[] = [];
-    this.splits$
-      .pipe(
-        map((splits: Split[]) => {
-          this.detailData = [];
-          const memberSplits = splits.filter(
-            (s) =>
-              (s.owedByMemberId == owedByMemberId &&
-                s.paidByMemberId == owedToMemberId) ||
-              (s.owedByMemberId == owedToMemberId &&
-                s.paidByMemberId == owedByMemberId)
-          );
-          splitsToPay = memberSplits;
-        })
-      )
-      .subscribe();
+    const memberSplits = this.filteredSplits().filter(
+      (s) =>
+        (s.owedByMemberId == owedByMemberId &&
+          s.paidByMemberId == owedToMemberId) ||
+        (s.owedByMemberId == owedToMemberId &&
+          s.paidByMemberId == owedByMemberId)
+    );
+    splitsToPay = memberSplits;
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Action',
@@ -317,26 +329,24 @@ export class SummaryComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
+        this.loading.loadingOn();
         this.splitService
-          .paySplitsBetweenMembers(this.currentGroup.id, splitsToPay)
-          .pipe(
-            tap(() => {
-              this.snackBar.open('Expenses have been marked paid.', 'OK');
-            }),
-            catchError((err: Error) => {
-              this.analytics.logEvent('error', {
-                component: this.constructor.name,
-                action: 'mark_expenses_paid',
-                message: err.message,
-              });
-              this.snackBar.open(
-                'Something went wrong - could not mark expenses paid.',
-                'Close'
-              );
-              return throwError(() => new Error(err.message));
-            })
-          )
-          .subscribe();
+          .paySplitsBetweenMembers(this.currentGroup().id, splitsToPay)
+          .then(() => {
+            this.snackBar.open('Expenses have been marked paid.', 'OK');
+          })
+          .catch((err: Error) => {
+            this.analytics.logEvent('error', {
+              component: this.constructor.name,
+              action: 'mark_expenses_paid',
+              message: err.message,
+            });
+            this.snackBar.open(
+              'Something went wrong - could not mark expenses paid.',
+              'Close'
+            );
+          })
+          .finally(() => this.loading.loadingOff());
       }
     });
   }

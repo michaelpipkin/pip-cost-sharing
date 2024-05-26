@@ -1,6 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, inject, Inject, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
+import { Member } from '@models/member';
+import { User } from '@models/user';
+import { MemberService } from '@services/member.service';
+import { UserService } from '@services/user.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import { catchError, map, throwError } from 'rxjs';
 import {
   FormBuilder,
   FormGroup,
@@ -17,15 +29,6 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
-import { Member } from '@models/member';
-import { MemberService } from '@services/member.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { catchError, map, throwError } from 'rxjs';
 
 @Component({
   selector: 'app-edit-member',
@@ -48,24 +51,23 @@ import { catchError, map, throwError } from 'rxjs';
   ],
 })
 export class EditMemberComponent {
-  member: Member;
-  userId: string;
-  isGroupAdmin: boolean = false;
+  dialogRef = inject(MatDialogRef<EditMemberComponent>);
+  fb = inject(FormBuilder);
+  dialog = inject(MatDialog);
+  userService = inject(UserService);
+  memberService = inject(MemberService);
+  loading = inject(LoadingService);
+  snackBar = inject(MatSnackBar);
+  analytics = inject(AngularFireAnalytics);
+  data: any = inject(MAT_DIALOG_DATA);
+
+  member: Member = this.data.member;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  user: Signal<User> = this.userService.user;
   groupAdminTooltip: string = '';
   editMemberForm: FormGroup;
 
-  constructor(
-    private dialogRef: MatDialogRef<EditMemberComponent>,
-    private fb: FormBuilder,
-    private dialog: MatDialog,
-    private memberService: MemberService,
-    private snackBar: MatSnackBar,
-    private analytics: AngularFireAnalytics,
-    @Inject(MAT_DIALOG_DATA) public data: any
-  ) {
-    this.member = this.data.member;
-    this.userId = this.data.userId;
-    this.isGroupAdmin = this.data.isGroupAdmin;
+  constructor() {
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
       email: [this.member.email, [Validators.required, Validators.email]],
@@ -73,11 +75,11 @@ export class EditMemberComponent {
       groupAdmin: [
         {
           value: this.member.groupAdmin,
-          disabled: this.member.userId === this.userId,
+          disabled: this.member.userId === this.user().id,
         },
       ],
     });
-    if (this.member.userId == this.userId) {
+    if (this.member.userId == this.user().id) {
       this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
     }
   }
@@ -95,35 +97,34 @@ export class EditMemberComponent {
       active: form.active,
       groupAdmin: form.groupAdmin,
     };
+    this.loading.loadingOn();
     this.memberService
       .updateMember(this.data.groupId, this.member.id, changes)
-      .pipe(
-        map((res) => {
-          if (res.name === 'Error') {
-            this.snackBar.open(res.message, 'Close');
-            this.editMemberForm.enable();
-          } else {
-            this.dialogRef.close({
-              success: true,
-              operation: 'saved',
-            });
-          }
-        }),
-        catchError((err: Error) => {
-          this.analytics.logEvent('error', {
-            component: this.constructor.name,
-            action: 'edit_member',
-            message: err.message,
-          });
-          this.snackBar.open(
-            'Something went wrong - could not edit member.',
-            'Close'
-          );
+      .then((res) => {
+        if (res?.name === 'Error') {
+          this.snackBar.open(res.message, 'Close');
           this.editMemberForm.enable();
-          return throwError(() => new Error(err.message));
-        })
-      )
-      .subscribe();
+        } else {
+          this.dialogRef.close({
+            success: true,
+            operation: 'saved',
+          });
+        }
+      })
+      .catch((err: Error) => {
+        this.analytics.logEvent('error', {
+          component: this.constructor.name,
+          action: 'edit_member',
+          message: err.message,
+        });
+        this.snackBar.open(
+          'Something went wrong - could not edit member.',
+          'Close'
+        );
+        this.editMemberForm.enable();
+        return throwError(() => new Error(err.message));
+      })
+      .finally(() => this.loading.loadingOff());
   }
 
   removeMember(): void {
@@ -136,33 +137,32 @@ export class EditMemberComponent {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((confirm) => {
       if (confirm) {
+        this.loading.loadingOn();
         this.memberService
-          .deleteMemberFromGroup(this.data.groupId, this.member.id)
-          .pipe(
-            map((res) => {
-              if (res.name === 'Error') {
-                this.snackBar.open(res.message, 'Close');
-              } else {
-                this.dialogRef.close({
-                  success: true,
-                  operation: 'removed',
-                });
-              }
-            }),
-            catchError((err: Error) => {
-              this.analytics.logEvent('error', {
-                component: this.constructor.name,
-                action: 'remove_member',
-                message: err.message,
+          .removeMemberFromGroup(this.data.groupId, this.member.id)
+          .then((res) => {
+            if (res?.name === 'Error') {
+              this.snackBar.open(res.message, 'Close');
+            } else {
+              this.dialogRef.close({
+                success: true,
+                operation: 'removed',
               });
-              this.snackBar.open(
-                'Something went wrong - could not remove member.',
-                'Close'
-              );
-              return throwError(() => new Error(err.message));
-            })
-          )
-          .subscribe();
+            }
+          })
+          .catch((err: Error) => {
+            this.analytics.logEvent('error', {
+              component: this.constructor.name,
+              action: 'remove_member',
+              message: err.message,
+            });
+            this.snackBar.open(
+              'Something went wrong - could not remove member.',
+              'Close'
+            );
+            return throwError(() => new Error(err.message));
+          })
+          .finally(() => this.loading.loadingOff());
       }
     });
   }

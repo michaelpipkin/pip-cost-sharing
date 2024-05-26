@@ -1,15 +1,11 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
-import { tap } from 'rxjs';
-import { HelpComponent } from './help/help.component';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 
@@ -30,53 +26,19 @@ import { LoadingComponent } from './shared/loading/loading.component';
 })
 export class AppComponent {
   title = 'Cost Sharing';
-  @ViewChild('mainNavbar') navbar: ElementRef;
 
-  constructor(
-    public user: UserService,
-    public memberService: MemberService,
-    public groupService: GroupService,
-    public router: Router,
-    private dialog: MatDialog,
-    analytics: AngularFireAnalytics
-  ) {
-    analytics.logEvent('app_initalized');
-  }
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  analytics = inject(AngularFireAnalytics);
 
-  ngOnInit(): void {
-    this.user.isLoggedIn$.subscribe((loggedIn) => {
-      if (loggedIn) {
-        const user = this.user.getCurrentUser();
-        this.groupService
-          .getGroupsForUser(user.uid)
-          .pipe(
-            tap((groups: Group[]) => {
-              if (groups.length === 1) {
-                this.memberService
-                  .getMemberByUserId(groups[0].id, user.uid)
-                  .subscribe(() => {
-                    this.router.navigateByUrl('/expenses');
-                  });
-              } else {
-                this.router.navigateByUrl('/groups');
-              }
-            })
-          )
-          .subscribe();
-      }
-    });
-  }
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  isLoggedIn: Signal<boolean> = this.userService.isLoggedIn;
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      disableClose: false,
-      maxWidth: '90vw',
-      maxHeight: '90vh',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
+  constructor() {
+    this.analytics.logEvent('app_initalized');
   }
 
   logout(): void {
-    this.user.logout();
+    this.userService.logout();
   }
 }

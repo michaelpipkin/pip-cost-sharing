@@ -1,147 +1,148 @@
-import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { updateDoc } from '@angular/fire/firestore';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { BehaviorSubject, concatMap, from, map, Observable, of } from 'rxjs';
+import { User } from '@models/user';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupService } from './group.service';
+import { SortingService } from './sorting.service';
+import { UserService } from './user.service';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+} from '@angular/core';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  Firestore,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemberService {
-  private groupMemberSubject = new BehaviorSubject<Member>(null);
-  currentGroupMember$: Observable<Member> =
-    this.groupMemberSubject.asObservable();
+  currentGroupMember = signal<Member>(null);
+  allGroupMembers = signal<Member[]>([]);
+  activeGroupMembers = computed(() =>
+    this.allGroupMembers().filter((m) => m.active)
+  );
 
-  constructor(private db: AngularFirestore) {}
+  fs = inject(Firestore);
+  sorter = inject(SortingService);
+  loading = inject(LoadingService);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
 
-  getMember(groupId: string, memberId: string): Observable<Member> {
-    return this.db
-      .doc<Member>(`groups/${groupId}/members/${memberId}`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((member: Member) => {
-          return new Member({
-            ...member,
-          });
-        })
-      );
+  user: Signal<User> = this.userService.user;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+
+  groupSelected = computed(async () => {
+    if (!!this.user() && !!this.currentGroup()) {
+      this.loading.loadingOn();
+      const user = this.user();
+      const group = this.currentGroup();
+      await this.getGroupMembers(group.id).then(async () => {
+        await this.getMemberByUserId(group.id, user.id).then(() => {
+          this.loading.loadingOff();
+        });
+      });
+    }
+  });
+
+  constructor() {
+    effect(() => {
+      this.groupSelected();
+    });
   }
 
-  getMemberByUserId(groupId: string, userId: string): Observable<Member> {
-    return this.db
-      .collection<Member>(`groups/${groupId}/members`, (ref) =>
-        ref.where('userId', '==', userId).limit(1)
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((docs: Member[]) => {
-          const memberDoc = docs.shift();
-          const member = new Member({
-            ...memberDoc,
-          });
-          this.groupMemberSubject.next(member);
-          return member;
-        })
-      );
+  async getMemberByUserId(groupId: string, userId: string): Promise<void> {
+    const q = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      where('userId', '==', userId),
+      limit(1)
+    );
+    await getDocs(q).then((docSnap) => {
+      if (!docSnap.empty) {
+        const memberDoc = docSnap.docs[0];
+        this.currentGroupMember.set(
+          new Member({ id: memberDoc.id, ...memberDoc.data() })
+        );
+      } else {
+        this.currentGroupMember.set(null);
+      }
+    });
   }
 
-  getCurrentGroupMember = (): Member => this.groupMemberSubject.getValue();
-
-  getAllGroupMembers(groupId: string): Observable<Member[]> {
-    return this.db
-      .collection<Member>(`groups/${groupId}/members`, (ref) =>
-        ref.orderBy('displayName')
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((members: Member[]) => {
-          return <Member[]>members.map((member: Member) => {
-            return new Member({
-              ...member,
-            });
-          });
-        })
-      );
+  async getGroupMembers(groupId: string): Promise<void> {
+    const q = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      orderBy('displayName')
+    );
+    onSnapshot(q, (querySnap) => {
+      const groupMembers: Member[] = [
+        ...querySnap.docs.map((d) => new Member({ id: d.id, ...d.data() })),
+      ];
+      this.allGroupMembers.set(groupMembers);
+    });
   }
 
-  getActiveGroupMembers(groupId: string): Observable<Member[]> {
-    return this.db
-      .collection<Member>(`groups/${groupId}/members`, (ref) =>
-        ref.where('active', '==', true).orderBy('displayName')
-      )
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((members: Member[]) => {
-          return <Member[]>members.map((member: Member) => {
-            return new Member({
-              ...member,
-            });
-          });
-        })
-      );
+  async addMemberToGroup(
+    groupId: string,
+    member: Partial<Member>
+  ): Promise<any> {
+    const groupSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
+    if (!groupSnap.exists()) {
+      return new Error('Group code not found!');
+    }
+    const membersQuery = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      where('userId', '==', member.userId)
+    );
+    const membersSnapshot = await getDocs(membersQuery);
+    if (!membersSnapshot.empty) {
+      return new Error('You are already a member of that group!');
+    }
+    return await addDoc(
+      collection(this.fs, `groups/${groupId}/members`),
+      member
+    );
   }
 
-  addMemberToGroup(groupId: string, member: Partial<Member>): Observable<any> {
-    return this.db
-      .collection(`groups/${groupId}/members`, (ref) =>
-        ref.where('userId', '==', member.userId)
-      )
-      .get()
-      .pipe(
-        concatMap((querySnap) => {
-          if (querySnap.size > 0) {
-            return of(new Error('You are already a member of that group!'));
-          } else {
-            return this.db
-              .doc(`/groups/${groupId}`)
-              .get()
-              .pipe(
-                map((docSnap) => {
-                  if (docSnap.exists) {
-                    return from(
-                      this.db
-                        .collection(`groups/${groupId}/members`)
-                        .add(member)
-                    );
-                  } else return new Error('Group code not found');
-                })
-              );
-          }
-        })
-      );
-  }
-
-  updateMember(
+  async updateMember(
     groupId: string,
     memberId: string,
     changes: Partial<Member>
-  ): Observable<any> {
-    const docRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
-    return of(updateDoc(docRef, changes));
+  ): Promise<any> {
+    const docRef = doc(this.fs, `/groups/${groupId}/members/${memberId}`);
+    return await updateDoc(docRef, changes);
   }
 
-  deleteMemberFromGroup(groupId: string, memberId: string): Observable<any> {
-    return this.db
-      .collection<Split>(`groups/${groupId}/splits`)
-      .get()
-      .pipe(
-        map((querySnap) => {
-          const memberSplit = querySnap.docs.find(
-            (doc) =>
-              doc.data().owedByMemberId == memberId ||
-              doc.data().paidByMemberId == memberId
-          );
-          if (!!memberSplit) {
-            return new Error(
-              'This member has existing splits and cannot be deleted.'
-            );
-          } else {
-            return from(
-              this.db.doc(`/groups/${groupId}/members/${memberId}`).delete()
-            );
-          }
-        })
+  async removeMemberFromGroup(groupId: string, memberId: string): Promise<any> {
+    const splits = await getDocs(
+      collection(this.fs, `groups/${groupId}/splits`)
+    );
+    const memberSplit = splits.docs.find(
+      (doc) =>
+        doc.data().owedByMemberId == memberId ||
+        doc.data().paidByMemberId == memberId
+    );
+    if (!!memberSplit) {
+      return new Error(
+        'This member has existing splits and cannot be deleted.'
       );
+    }
+    return deleteDoc(doc(this.fs, `groups/${groupId}/members/${memberId}`));
   }
 }
