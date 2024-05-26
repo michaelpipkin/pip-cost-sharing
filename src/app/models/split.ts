@@ -1,6 +1,9 @@
+import { Timestamp } from 'firebase/firestore';
+
 export interface ISplit {
   id: string;
   expenseId: string;
+  date: Timestamp;
   categoryId: string;
   assignedAmount: number;
   allocatedAmount: number;
@@ -16,6 +19,7 @@ export class Split implements ISplit {
   }
   id: string;
   expenseId: string;
+  date: Timestamp;
   categoryId: string;
   assignedAmount: number;
   allocatedAmount: number;

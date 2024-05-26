@@ -1,150 +1,164 @@
-import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { updateDoc } from '@angular/fire/firestore';
+import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { UserData } from '@models/user-info';
+import { User } from '@models/user';
+import { LoadingService } from '@shared/loading/loading.service';
+import { UserService } from './user.service';
+
 import {
-  BehaviorSubject,
-  concatMap,
-  from,
-  map,
-  Observable,
-  of,
-  tap,
-} from 'rxjs';
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+} from '@angular/core';
+import {
+  doc,
+  Firestore,
+  getDoc,
+  collectionGroup,
+  query,
+  where,
+  getDocs,
+  collection,
+  writeBatch,
+  onSnapshot,
+  orderBy,
+} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GroupService {
-  private groupSubject = new BehaviorSubject<Group>(null);
-  selectedGroup$: Observable<Group> = this.groupSubject.asObservable();
+  fs = inject(Firestore);
+  loading = inject(LoadingService);
+  router = inject(Router);
+  userService = inject(UserService);
 
-  constructor(private db: AngularFirestore) {}
+  allUserGroups = signal<Group[]>([]);
+  activeUserGroups = computed(() =>
+    this.allUserGroups().filter((g) => g.active)
+  );
+  private adminGroupIds = signal<string[]>([]);
+  adminUserGroups = computed(() =>
+    this.allUserGroups().filter((g) => this.adminGroupIds().includes(g.id))
+  );
+  currentGroup = signal<Group>(null);
 
-  getGroupById(id: string): Observable<Group> {
-    return this.db
-      .doc<Group>(`/groups/${id}`)
-      .valueChanges({ idField: 'id' })
-      .pipe(
-        map((res: Group) => {
-          const group = new Group({
-            ...res,
-          });
-          this.groupSubject.next(group);
-          return group;
-        })
-      );
-  }
+  user: Signal<User> = this.userService.user;
 
-  getCurrentGroup = (): Group => this.groupSubject.getValue();
-
-  getGroupsForUser(userId: string): Observable<Group[]> {
-    return this.db
-      .collectionGroup<Member>('members', (ref) =>
-        ref.where('userId', '==', userId)
-      )
-      .get()
-      .pipe(
-        concatMap((res) => {
-          if (res.size === 0) {
-            return of(null);
-          }
-          const groupIds = <string[]>res.docs.map((snapshot) => {
-            return snapshot.ref.parent.parent.id;
-          });
-          return this.db
-            .collection<Group>('groups', (ref) =>
-              ref.where('active', '==', true).orderBy('name')
-            )
-            .valueChanges({ idField: 'id' })
-            .pipe(
-              map((groups: Group[]) => {
-                const memberGroups = <Group[]>groups
-                  .filter((group: Group) => {
-                    return groupIds.includes(group.id);
-                  })
-                  .map((group: Group) => {
-                    return new Group({
-                      ...group,
-                    });
-                  });
-                if (memberGroups.length === 1) {
-                  this.groupSubject.next(memberGroups[0]);
-                }
-                return memberGroups;
-              })
-            );
-        })
-      );
-  }
-
-  getAdminGroupsForUser(userId: string): Observable<Group[]> {
-    return this.db
-      .collectionGroup<Member>('members', (ref) =>
-        ref.where('userId', '==', userId).where('groupAdmin', '==', true)
-      )
-      .get()
-      .pipe(
-        concatMap((res) => {
-          if (res.size === 0) {
-            return of(null);
-          }
-          const groupIds = <string[]>res.docs.map((snapshot) => {
-            return snapshot.ref.parent.parent.id;
-          });
-          return this.db
-            .collection<Group>('groups', (ref) => ref.orderBy('name'))
-            .valueChanges({ idField: 'id' })
-            .pipe(
-              map((groups: Group[]) => {
-                return <Group[]>groups
-                  .filter((group: Group) => {
-                    return groupIds.includes(group.id);
-                  })
-                  .map((group: Group) => {
-                    return new Group({
-                      ...group,
-                    });
-                  });
-              })
-            );
-        })
-      );
-  }
-
-  addGroup(group: Partial<Group>, member: Partial<Member>): Observable<any> {
-    const batch = this.db.firestore.batch();
-    const groupId = this.db.createId();
-    const memberId = this.db.createId();
-    const groupRef = this.db.doc(`/groups/${groupId}`).ref;
-    batch.set(groupRef, group);
-    const memberRef = this.db.doc(`/groups/${groupId}/members/${memberId}`).ref;
-    batch.set(memberRef, member);
-    return from(batch.commit());
-  }
-
-  updateGroup(groupId: string, changes: Partial<Group>): Observable<any> {
-    const batch = this.db.firestore.batch();
-    const docRef = this.db.doc(`groups/${groupId}`).ref;
-    batch.update(docRef, changes);
-    if (!changes.active) {
-      return this.db
-        .collection('users', (ref) =>
-          ref.where('defaultGroupId', '==', groupId)
-        )
-        .get()
-        .pipe(
-          tap((users) => {
-            users.docs.forEach((u) => {
-              batch.update(u.ref, { defaultGroupId: '' });
-            });
-            return from(batch.commit());
-          })
-        );
-    } else {
-      return from(batch.commit());
+  userLoaded = computed(() => {
+    if (!!this.user()) {
+      this.loading.loadingOn();
+      this.getUserGroups(this.user());
     }
+  });
+
+  constructor() {
+    effect(() => {
+      this.userLoaded();
+    });
+    effect(() => {
+      this.activeUserGroups();
+    });
+  }
+
+  async getUserGroups(user: User): Promise<void> {
+    const memberQuery = query(
+      collectionGroup(this.fs, 'members'),
+      where('userId', '==', user.id)
+    );
+    onSnapshot(memberQuery, (memberQuerySnap) => {
+      const userGroups: { groupId: string; groupAdmin: boolean }[] = [
+        ...memberQuerySnap.docs.map((d) => {
+          return {
+            groupId: d.ref.parent.parent.id,
+            groupAdmin: d.data().groupAdmin,
+          };
+        }),
+      ];
+      const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
+      onSnapshot(groupQuery, (groupQuerySnap) => {
+        const userGroupIds = userGroups.map((m) => m.groupId);
+        this.adminGroupIds.set(
+          userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
+        );
+        const groups: Group[] = [
+          ...groupQuerySnap.docs.map(
+            (d) => new Group({ id: d.id, ...d.data() })
+          ),
+        ].filter((g) => userGroupIds.includes(g.id));
+        this.allUserGroups.set(groups);
+        if (groups.length === 1 && groups[0].active) {
+          this.currentGroup.set(groups[0]);
+          this.router
+            .navigateByUrl('/expenses')
+            .then(() => this.loading.loadingOff());
+        } else if (user.defaultGroupId !== '') {
+          this.getGroupById(user.defaultGroupId)
+            .then(() => this.router.navigateByUrl('/expenses'))
+            .then(() => this.loading.loadingOff());
+        } else {
+          this.router
+            .navigateByUrl('/groups')
+            .then(() => this.loading.loadingOff());
+        }
+      });
+    });
+  }
+
+  async getGroupById(id: string): Promise<void> {
+    const docSnap = await getDoc(doc(this.fs, `groups/${id}`));
+    const group = new Group({
+      id: docSnap.id,
+      ...docSnap.data(),
+    });
+    this.currentGroup.set(group);
+  }
+
+  async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any> {
+    const batch = writeBatch(this.fs);
+    const groupRef = doc(collection(this.fs, 'groups'));
+    batch.set(groupRef, group);
+    const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
+    batch.set(memberRef, member);
+    return await batch
+      .commit()
+      .then(() => {
+        return true;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
+  }
+
+  async updateGroup(groupId: string, changes: Partial<Group>): Promise<any> {
+    const batch = writeBatch(this.fs);
+    const groupRef = doc(this.fs, `groups/${groupId}`);
+    batch.update(groupRef, changes);
+    if (!changes.active) {
+      const usersRef = collection(this.fs, 'users');
+      const usersQuery = query(
+        usersRef,
+        where('defaultGroupId', '==', groupId)
+      );
+      await getDocs(usersQuery).then((users) => {
+        users.forEach((u) => {
+          batch.update(u.ref, { defaultGroupId: '' });
+        });
+      });
+      if (this.currentGroup().id === groupId) {
+        this.currentGroup.set(null);
+      }
+    }
+    return await batch
+      .commit()
+      .then(() => {
+        return true;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
   }
 }

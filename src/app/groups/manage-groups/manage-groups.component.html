@@ -10,7 +10,7 @@
           name="group"
           (selectionChange)="onSelectGroup($event)"
         >
-          @for (group of groups$ | async; track group) {
+          @for (group of userAdminGroups(); track group) {
             <mat-option [value]="group.id">{{ group.name }}</mat-option>
           }
         </mat-select>

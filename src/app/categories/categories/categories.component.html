@@ -1,30 +1,36 @@
 <div class="d-flex flex-column p-2">
   <div class="d-flex pt-2 justify-content-center align-items-center">
-    <h3>{{ currentGroup?.name }}</h3>
+    <h3>{{ currentGroup()?.name }}</h3>
   </div>
   <div class="d-flex p-2 justify-content-center align-items-center">
     <mat-form-field class="me-2">
       <mat-label>Search by name</mat-label>
-      <input matInput [(ngModel)]="nameFilter" (keyup)="filterCategories()" />
-      <button
-        *ngIf="nameFilter"
-        matSuffix
-        mat-icon-button
-        aria-label="Clear"
-        (click)="clearSearch()"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
+      <input
+        [(ngModel)]="categoryFilterValue"
+        matInput
+        (input)="updateSearch()"
+      />
+      @if (nameFilter() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="clearSearch()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
     </mat-form-field>
     <mat-slide-toggle
+      #activeToggle
+      [checked]="true"
       color="primary"
-      [(ngModel)]="activeOnly"
-      (change)="filterCategories()"
+      (change)="toggleActive(activeToggle.checked)"
       >Active only</mat-slide-toggle
     >
     <button
       class="btn btn-primary ms-4"
-      [class.hidden]="!currentMember?.groupAdmin"
+      [class.hidden]="!currentMember()?.groupAdmin"
       (click)="addCategory()"
     >
       Add Category
@@ -35,7 +41,7 @@
       <table
         mat-table
         matSort
-        [dataSource]="filteredCategories$ | async"
+        [dataSource]="filteredCategories()"
         (matSortChange)="sortCategories($event)"
       >
         <ng-container matColumnDef="id">
@@ -60,11 +66,11 @@
           mat-row
           *matRowDef="let myRowData; columns: columnsToDisplay"
           (click)="onRowClick(myRowData)"
-          [class.clickable-row]="currentMember?.groupAdmin"
+          [class.clickable-row]="currentMember()?.groupAdmin"
         ></tr>
         <tr class="mat-row" *matNoDataRow>
           <td class="mat-cell" [colSpan]="columnsToDisplay.length">
-            No categories found matching "{{ nameFilter }}".
+            No categories found matching "{{ nameFilter() }}".
           </td>
         </tr>
       </table>

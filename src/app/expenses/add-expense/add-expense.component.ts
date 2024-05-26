@@ -10,19 +10,22 @@ import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
+import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
-import { catchError, map, Observable, tap, throwError } from 'rxjs';
 import {
   Component,
   ElementRef,
-  Inject,
+  inject,
   OnInit,
   ViewChild,
+  Signal,
 } from '@angular/core';
 import {
   FormArray,
@@ -109,38 +112,35 @@ import {
   ],
 })
 export class AddExpenseComponent implements OnInit {
-  members$: Observable<Member[]>;
-  categories$: Observable<Category[]>;
-  groupId: string;
-  currentMember: Member;
-  isGroupAdmin: boolean = false;
+  dialogRef = inject(MatDialogRef<AddExpenseComponent>);
+  fb = inject(FormBuilder);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  expenseService = inject(ExpenseService);
+  loading = inject(LoadingService);
+  snackBar = inject(MatSnackBar);
+  storage = inject(AngularFireStorage);
+  analytics = inject(AngularFireAnalytics);
+  data: any = inject(MAT_DIALOG_DATA);
+
+  categories: Signal<Category[]> = this.categoryService.activeCategories;
+  members: Signal<Member[]> = this.memberService.activeGroupMembers;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+
   fileName: string;
   receiptFile: File;
-  newExpenseId: string;
   fromMemorized: boolean = false;
   addExpenseForm: FormGroup;
   splitsDataSource: Split[] = [];
   columnsToDisplay: string[] = ['memberId', 'assigned', 'allocated', 'delete'];
   splitForm: FormArray;
 
-  @ViewChild(MatTable) splitsTable: MatTable<Split>;
+  @ViewChild('splitsTable') splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
 
-  constructor(
-    private dialogRef: MatDialogRef<AddExpenseComponent>,
-    private fb: FormBuilder,
-    private memberService: MemberService,
-    private expenseService: ExpenseService,
-    private categoryService: CategoryService,
-    private snackBar: MatSnackBar,
-    private db: AngularFirestore,
-    private storage: AngularFireStorage,
-    private analytics: AngularFireAnalytics,
-    @Inject(MAT_DIALOG_DATA) public data: any
-  ) {
-    this.groupId = this.data.groupId;
-    this.currentMember = this.data.member;
-    this.isGroupAdmin = this.data.isGroupAdmin;
+  constructor() {
     if (this.data.memorized) {
       this.fromMemorized = true;
       const expense: Expense = this.data.expense;
@@ -155,7 +155,7 @@ export class AddExpenseComponent implements OnInit {
       });
     } else {
       this.addExpenseForm = this.fb.group({
-        paidByMemberId: [this.currentMember.id, Validators.required],
+        paidByMemberId: [this.currentMember().id, Validators.required],
         date: [new Date(), Validators.required],
         amount: [0.0, Validators.required],
         description: ['', Validators.required],
@@ -167,22 +167,11 @@ export class AddExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.members$ = this.memberService.getActiveGroupMembers(this.groupId);
-    this.categories$ = this.categoryService.getActiveCategoriesForGroup(
-      this.groupId
-    );
-    this.categories$
-      .pipe(
-        map((categories) => {
-          if (categories.length == 1) {
-            this.addExpenseForm.patchValue({
-              categoryId: categories[0].id,
-            });
-          }
-        })
-      )
-      .subscribe();
-    this.newExpenseId = this.db.createId();
+    if (this.categories().length == 1) {
+      this.addExpenseForm.patchValue({
+        categoryId: this.categories()[0].id,
+      });
+    }
     if (this.data.memorized) {
       this.splitsDataSource = this.data.expense.splits;
       this.updateForm();
@@ -251,28 +240,20 @@ export class AddExpenseComponent implements OnInit {
     if (this.splitsDataSource.length > 0) {
       this.saveSplitsData();
     }
-    this.members$
-      .pipe(
-        map((members) => {
-          members.forEach((member) => {
-            const existingSplits = this.splitsDataSource.map(
-              (s) => s.owedByMemberId
-            );
-            if (!existingSplits.includes(member.id)) {
-              this.splitsDataSource.push(
-                new Split({
-                  owedByMemberId: member.id,
-                  assignedAmount: 0,
-                  allocatedAmount: 0,
-                })
-              );
-            }
-          });
-          this.updateForm();
-          this.splitsTable.renderRows();
-        })
-      )
-      .subscribe();
+    this.members().forEach((member) => {
+      const existingSplits = this.splitsDataSource.map((s) => s.owedByMemberId);
+      if (!existingSplits.includes(member.id)) {
+        this.splitsDataSource.push(
+          new Split({
+            owedByMemberId: member.id,
+            assignedAmount: 0,
+            allocatedAmount: 0,
+          })
+        );
+      }
+    });
+    this.updateForm();
+    this.splitsTable?.renderRows();
   }
 
   saveSplitsData(): void {
@@ -402,8 +383,9 @@ export class AddExpenseComponent implements OnInit {
   onSubmit(): void {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
+    const expenseDate = firestore.Timestamp.fromDate(val.date);
     const expense: Partial<Expense> = {
-      date: firestore.Timestamp.fromDate(val.date),
+      date: expenseDate,
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
@@ -414,8 +396,8 @@ export class AddExpenseComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsDataSource.forEach((s) => {
       const split: Partial<Split> = {
-        groupId: this.groupId,
-        expenseId: this.newExpenseId,
+        date: expenseDate,
+        groupId: this.currentGroup().id,
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
         allocatedAmount: s.allocatedAmount,
@@ -425,32 +407,30 @@ export class AddExpenseComponent implements OnInit {
       };
       splits.push(split);
     });
+    this.loading.loadingOn();
     this.expenseService
-      .addExpense(this.groupId, this.newExpenseId, expense, splits)
-      .pipe(
-        tap(() => {
-          if (this.receiptFile) {
-            const filePath = `groups/${this.groupId}/receipts/${this.newExpenseId}`;
-            const upload = this.storage.upload(filePath, this.receiptFile);
-            upload.snapshotChanges().subscribe();
-          }
-          this.dialogRef.close({ success: true, operation: 'added' });
-        }),
-        catchError((err: Error) => {
-          this.analytics.logEvent('error', {
-            component: this.constructor.name,
-            action: 'add_expense',
-            message: err.message,
-          });
-          this.snackBar.open(
-            'Something went wrong - could not save expense.',
-            'Close'
-          );
-          this.addExpenseForm.enable();
-          return throwError(() => new Error(err.message));
-        })
-      )
-      .subscribe();
+      .addExpense(this.currentGroup().id, expense, splits)
+      .then((expenseId: string) => {
+        if (this.receiptFile) {
+          const filePath = `groups/${this.currentGroup().id}/receipts/${expenseId}`;
+          const upload = this.storage.upload(filePath, this.receiptFile);
+          upload.snapshotChanges().subscribe();
+        }
+        this.dialogRef.close({ success: true, operation: 'added' });
+      })
+      .catch((err: Error) => {
+        this.analytics.logEvent('error', {
+          component: this.constructor.name,
+          action: 'add_expense',
+          message: err.message,
+        });
+        this.snackBar.open(
+          'Something went wrong - could not save expense.',
+          'Close'
+        );
+        this.addExpenseForm.enable();
+      })
+      .finally(() => this.loading.loadingOff());
   }
 
   memorize(): void {
@@ -467,8 +447,7 @@ export class AddExpenseComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsDataSource.forEach((s) => {
       const split: Partial<Split> = {
-        groupId: this.groupId,
-        expenseId: this.newExpenseId,
+        groupId: this.currentGroup().id,
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
         allocatedAmount: s.allocatedAmount,
@@ -478,30 +457,28 @@ export class AddExpenseComponent implements OnInit {
       };
       splits.push(split);
     });
+    this.loading.loadingOn();
     this.expenseService
-      .memorizeExpense(this.groupId, this.newExpenseId, expense, splits)
-      .pipe(
-        tap(() => {
-          this.dialogRef.close({
-            success: true,
-            operation: 'memorized',
-          });
-        }),
-        catchError((err: Error) => {
-          this.analytics.logEvent('error', {
-            component: this.constructor.name,
-            action: 'memorize_expense',
-            message: err.message,
-          });
-          this.snackBar.open(
-            'Something went wrong - could not memorize expense.',
-            'Close'
-          );
-          this.addExpenseForm.enable();
-          return throwError(() => new Error(err.message));
-        })
-      )
-      .subscribe();
+      .addExpense(this.currentGroup().id, expense, splits, true)
+      .then(() => {
+        this.dialogRef.close({
+          success: true,
+          operation: 'memorized',
+        });
+      })
+      .catch((err: Error) => {
+        this.analytics.logEvent('error', {
+          component: this.constructor.name,
+          action: 'memorize_expense',
+          message: err.message,
+        });
+        this.snackBar.open(
+          'Something went wrong - could not memorize expense.',
+          'Close'
+        );
+        this.addExpenseForm.enable();
+      })
+      .finally(() => this.loading.loadingOff());
   }
 
   close(): void {

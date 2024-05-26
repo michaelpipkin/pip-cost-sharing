@@ -1,5 +1,4 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -12,6 +11,7 @@ import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
@@ -19,10 +19,18 @@ import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import firebase from 'firebase/compat/app';
 import { map, Observable, tap } from 'rxjs';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   MatFormField,
   MatLabel,
@@ -90,15 +98,45 @@ import {
   ],
 })
 export class MemorizedComponent implements OnInit {
-  currentUser: firebase.User;
-  currentGroup: Group;
-  currentMember: Member;
-  members: Member[];
-  categories: Category[];
-  expenses$: Observable<Expense[]>;
-  filteredExpenses$: Observable<Expense[]>;
-  selectedMemberId: string = '';
-  selectedCategoryId: string = '';
+  router = inject(Router);
+  userService = inject(UserService);
+  groupService = inject(GroupService);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  expenseService = inject(ExpenseService);
+  splitService = inject(SplitService);
+  snackBar = inject(MatSnackBar);
+  dialog = inject(MatDialog);
+  loading = inject(LoadingService);
+
+  user: Signal<User> = this.userService.user;
+  categories: Signal<Category[]> = this.categoryService.allCategories;
+  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  members: Signal<Member[]> = this.memberService.activeGroupMembers;
+  expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
+  filteredExpenses = computed(() => {
+    var filteredExpenses = this.expenses().filter((expense: Expense) => {
+      return (
+        expense.paidByMemberId ==
+          (this.selectedMemberId() != ''
+            ? this.selectedMemberId()
+            : expense.paidByMemberId) &&
+        expense.categoryId ==
+          (this.selectedCategoryId() != ''
+            ? this.selectedCategoryId()
+            : expense.categoryId)
+      );
+    });
+    return filteredExpenses;
+  });
+
+  selectedMemberId = signal<string>('');
+  selectedCategoryId = signal<string>('');
+
+  selectedMemberIdValue: string = '';
+  selectedCategoryIdValue: string = '';
+
   columnsToDisplay: string[] = [
     'paidBy',
     'description',
@@ -110,92 +148,43 @@ export class MemorizedComponent implements OnInit {
   splitColumnsToDisplay: string[] = ['empty1', 'owedBy', 'amount', 'empty2'];
   expandedExpense: Expense | null;
 
-  constructor(
-    private router: Router,
-    private userService: UserService,
-    private groupService: GroupService,
-    private memberService: MemberService,
-    private expenseService: ExpenseService,
-    private splitService: SplitService,
-    private categoryService: CategoryService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog,
-    private loading: LoadingService
-  ) {}
+  constructor() {
+    effect(() => {
+      this.filteredExpenses();
+    });
+  }
 
   ngOnInit(): void {
-    if (this.groupService.getCurrentGroup() == null) {
+    if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
-    } else {
-      this.currentUser = this.userService.getCurrentUser();
-      this.currentGroup = this.groupService.getCurrentGroup();
-      this.currentMember = this.memberService.getCurrentGroupMember();
-      this.selectedMemberId = '';
-      this.memberService
-        .getAllGroupMembers(this.currentGroup.id)
-        .pipe(
-          tap((members: Member[]) => {
-            this.members = members;
-          })
-        )
-        .subscribe();
-      this.categoryService
-        .getCategoriesForGroup(this.currentGroup.id)
-        .pipe(
-          tap((categories: Category[]) => {
-            this.categories = categories;
-          })
-        )
-        .subscribe();
-      this.loadMemorizedExpenses();
-      this.filterExpenses();
     }
   }
 
-  loadMemorizedExpenses(): void {
-    this.loading.loadingOn();
-    this.expenses$ = this.expenseService
-      .getMemorizedExpensesWithSplitsForGroup(this.currentGroup.id)
-      .pipe(tap(() => this.loading.loadingOff()));
-  }
-
-  filterExpenses(): void {
-    this.splitService.getSplitsForGroup(this.currentGroup.id).subscribe();
-    this.filteredExpenses$ = this.expenses$.pipe(
-      map((expenses: Expense[]) => {
-        let filteredExpenses: Expense[] = expenses.filter(
-          (expense: Expense) =>
-            expense.paidByMemberId ==
-              (this.selectedMemberId != ''
-                ? this.selectedMemberId
-                : expense.paidByMemberId) &&
-            expense.categoryId ==
-              (this.selectedCategoryId != ''
-                ? this.selectedCategoryId
-                : expense.categoryId)
-        );
-        return filteredExpenses;
-      })
-    );
+  selectedMemberChanged(): void {
+    this.selectedMemberId.set(this.selectedMemberIdValue);
   }
 
   clearSelectedMember(): void {
-    this.selectedMemberId = '';
-    this.filterExpenses();
+    this.selectedMemberId.set('');
+    this.selectedMemberIdValue = '';
+  }
+
+  selectedCategoryChagned(): void {
+    this.selectedCategoryId.set(this.selectedCategoryIdValue);
   }
 
   clearSelectedCategory(): void {
-    this.selectedCategoryId = '';
-    this.filterExpenses();
+    this.selectedCategoryId.set('');
+    this.selectedCategoryIdValue = '';
   }
 
   getMemberName(memberId: string): string {
-    const member = this.members.find((m) => m.id === memberId);
+    const member = this.members().find((m) => m.id === memberId);
     return !!member ? member.displayName : '';
   }
 
   getCategoryName(categoryId: string): string {
-    const category = this.categories.find((c) => c.id === categoryId);
+    const category = this.categories().find((c) => c.id === categoryId);
     return !!category ? category.name : '';
   }
 
@@ -204,16 +193,15 @@ export class MemorizedComponent implements OnInit {
       data: {
         expense: expense,
         memorized: true,
-        groupId: this.currentGroup.id,
+        groupId: this.currentGroup().id,
         member: this.currentMember,
-        isGroupAdmin: this.currentMember.groupAdmin,
+        isGroupAdmin: this.currentMember().groupAdmin,
       },
     };
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
         this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
-        this.filterExpenses();
       }
     });
   }
@@ -221,9 +209,9 @@ export class MemorizedComponent implements OnInit {
   addExpense(expense: Expense): void {
     const dialogConfig: MatDialogConfig = {
       data: {
-        groupId: this.currentGroup.id,
+        groupId: this.currentGroup().id,
         member: this.currentMember,
-        isGroupAdmin: this.currentMember.groupAdmin,
+        isGroupAdmin: this.currentMember().groupAdmin,
         memorized: true,
         expense: expense,
       },
@@ -232,7 +220,6 @@ export class MemorizedComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {
         this.snackBar.open(`Expense ${result.operation}`, 'OK');
-        this.filterExpenses();
       }
     });
   }
