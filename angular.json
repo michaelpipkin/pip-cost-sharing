@@ -13,7 +13,7 @@
           "strict": true
         },
         "@schematics/angular:component": {
-          "standalone": false,
+          "standalone": true,
           "style": "scss"
         }
       },
