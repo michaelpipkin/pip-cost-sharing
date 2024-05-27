@@ -1,5 +1,9 @@
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  provideExperimentalZonelessChangeDetection,
+} from '@angular/core';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { AngularFireModule } from '@angular/fire/compat';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -7,10 +11,6 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { BrowserModule } from '@angular/platform-browser';
-import {
-  BrowserAnimationsModule,
-  provideAnimations,
-} from '@angular/platform-browser/animations';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { AuthInterceptor } from '@services/auth.interceptor';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
@@ -18,6 +18,10 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { appRoutes } from './app.routes';
 import { FirebaseConfig } from './firebase.config';
 import { environment } from '../environments/environment';
+import {
+  BrowserAnimationsModule,
+  provideAnimations,
+} from '@angular/platform-browser/animations';
 import {
   provideStorage,
   getStorage,
@@ -61,6 +65,7 @@ const useEmulators = environment.useEmulators;
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideExperimentalZonelessChangeDetection(),
     provideRouter(appRoutes),
     provideAnimations(),
     importProvidersFrom([

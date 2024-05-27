@@ -1,4 +1,4 @@
-import 'zone.js/plugins/zone-error';
+//import 'zone.js/plugins/zone-error';
 // This file can be replaced during build by using the `fileReplacements` array.
 // `ng build` replaces `environment.ts` with `environment.prod.ts`.
 // The list of file replacements can be found in `angular.json`.
@@ -6,7 +6,7 @@ import 'zone.js/plugins/zone-error';
 export const environment = {
   production: false,
   useEmulators: true,
-  buildDate: new Date('2024-05-25T07:48:34.226Z')
+  buildDate: new Date('2024-05-25T07:48:34.226Z'),
 };
 
 /*
