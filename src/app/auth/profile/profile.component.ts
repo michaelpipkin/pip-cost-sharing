@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, Signal } from '@angular/core';
+import { Component, effect, inject, OnInit, Signal } from '@angular/core';
 import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { MatIconButton } from '@angular/material/button';
@@ -81,11 +81,16 @@ export class ProfileComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.firebaseUser = await this.afAuth.currentUser;
-    if (this.user().defaultGroupId !== '') {
-      this.selectedGroupId = this.user().defaultGroupId;
-    } else {
-      this.selectedGroupId = null;
-    }
+  }
+
+  constructor() {
+    effect(() => {
+      if (!!this.user() && this.user().defaultGroupId !== '') {
+        this.selectedGroupId = this.user().defaultGroupId;
+      } else {
+        this.selectedGroupId = null;
+      }
+    });
   }
 
   get fEmail() {
