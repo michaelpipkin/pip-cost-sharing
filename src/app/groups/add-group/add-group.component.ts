@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, Signal } from '@angular/core';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -46,7 +46,7 @@ export class AddGroupComponent {
   userService = inject(UserService);
   groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
 
   newGroupForm = this.fb.group({
     groupName: ['', Validators.required],
@@ -78,7 +78,7 @@ export class AddGroupComponent {
         this.dialogRef.close(true);
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_group',
           message: err.message,

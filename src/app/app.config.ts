@@ -1,11 +1,6 @@
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
-import {
-  ApplicationConfig,
-  importProvidersFrom,
-  provideExperimentalZonelessChangeDetection,
-} from '@angular/core';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { AngularFireModule } from '@angular/fire/compat';
+import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -18,6 +13,11 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { appRoutes } from './app.routes';
 import { FirebaseConfig } from './firebase.config';
 import { environment } from '../environments/environment';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  provideExperimentalZonelessChangeDetection,
+} from '@angular/core';
 import {
   BrowserAnimationsModule,
   provideAnimations,
@@ -33,25 +33,11 @@ import {
   provideFirestore,
 } from '@angular/fire/firestore';
 import {
+  getAnalytics,
+  provideAnalytics,
   ScreenTrackingService,
   UserTrackingService,
 } from '@angular/fire/analytics';
-import {
-  AngularFireAnalytics,
-  AngularFireAnalyticsModule,
-} from '@angular/fire/compat/analytics';
-import {
-  AngularFireAuthModule,
-  USE_EMULATOR as USE_AUTH_EMULATOR,
-} from '@angular/fire/compat/auth';
-import {
-  AngularFirestoreModule,
-  USE_EMULATOR as USE_FIRESTORE_EMULATOR,
-} from '@angular/fire/compat/firestore';
-import {
-  AngularFireStorageModule,
-  USE_EMULATOR as USE_STORAGE_EMULATOR,
-} from '@angular/fire/compat/storage';
 import {
   MAT_DIALOG_DEFAULT_OPTIONS,
   MatDialogConfig,
@@ -70,11 +56,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     importProvidersFrom([
       BrowserModule,
-      AngularFireModule.initializeApp(FirebaseConfig),
-      AngularFireAnalyticsModule,
-      AngularFirestoreModule,
-      AngularFireAuthModule,
-      AngularFireStorageModule,
       FormsModule,
       ReactiveFormsModule,
       MatDatepickerModule,
@@ -83,6 +64,16 @@ export const appConfig: ApplicationConfig = {
       BrowserAnimationsModule,
     ]),
     provideFirebaseApp(() => initializeApp(FirebaseConfig)),
+    provideAuth(() => {
+      const auth = getAuth();
+      if (useEmulators) {
+        connectAuthEmulator(auth, 'http://localhost:9099', {
+          disableWarnings: true,
+        });
+      }
+      return auth;
+    }),
+    provideAnalytics(() => getAnalytics()),
     provideFirestore(() => {
       const firestore = initializeFirestore(getApp(), {
         experimentalAutoDetectLongPolling: useEmulators ? true : false,
@@ -118,26 +109,11 @@ export const appConfig: ApplicationConfig = {
       } as MatSnackBarConfig,
     },
     {
-      provide: USE_FIRESTORE_EMULATOR,
-      useValue: environment.useEmulators ? ['localhost', 8080] : undefined,
-    },
-    {
-      provide: USE_AUTH_EMULATOR,
-      useValue: environment.useEmulators
-        ? ['http://localhost:9099']
-        : undefined,
-    },
-    {
-      provide: USE_STORAGE_EMULATOR,
-      useValue: environment.useEmulators ? ['localhost', 9199] : undefined,
-    },
-    {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
       multi: true,
     },
     LoadingService,
-    AngularFireAnalytics,
     ScreenTrackingService,
     UserTrackingService,
     MatDatepickerModule,

@@ -1,5 +1,6 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { Component, inject, Signal } from '@angular/core';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatOption } from '@angular/material/core';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -10,9 +11,7 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import firebase from 'firebase/compat/app';
-import { catchError, Observable, tap, throwError } from 'rxjs';
-import { Component, inject, Inject, OnInit, Signal } from '@angular/core';
+import { throwError } from 'rxjs';
 import {
   FormBuilder,
   FormsModule,
@@ -54,7 +53,7 @@ export class ManageGroupsComponent {
   dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   fb = inject(FormBuilder);
   snackBar = inject(MatSnackBar);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
   loading = inject(LoadingService);
   user: User = inject(MAT_DIALOG_DATA);
 
@@ -99,7 +98,7 @@ export class ManageGroupsComponent {
         });
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_group',
           message: err.message,

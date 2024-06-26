@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -45,7 +45,7 @@ export class AddCategoryComponent {
   fb = inject(FormBuilder);
   categoryService = inject(CategoryService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
   groupId: string = inject(MAT_DIALOG_DATA);
 
   newCategoryForm = this.fb.group({
@@ -75,7 +75,7 @@ export class AddCategoryComponent {
         }
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_category',
           message: err.message,

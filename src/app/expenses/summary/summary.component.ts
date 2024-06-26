@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -102,7 +102,7 @@ export class SummaryComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
 
   user: Signal<User> = this.userService.user;
   categories: Signal<Category[]> = this.categoryService.allCategories;
@@ -336,7 +336,7 @@ export class SummaryComponent implements OnInit {
             this.snackBar.open('Expenses have been marked paid.', 'OK');
           })
           .catch((err: Error) => {
-            this.analytics.logEvent('error', {
+            logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'mark_expenses_paid',
               message: err.message,

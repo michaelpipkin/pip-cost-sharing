@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Auth } from '@angular/fire/auth';
 import { doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
@@ -15,13 +15,13 @@ export class UserService {
 
   fs = inject(Firestore);
   router = inject(Router);
-  afAuth = inject(AngularFireAuth);
+  auth = inject(Auth);
   loading = inject(LoadingService);
 
   isLoggedIn$: Observable<boolean>;
 
   constructor() {
-    this.afAuth.onAuthStateChanged((firebaseUser) => {
+    this.auth.onAuthStateChanged((firebaseUser) => {
       if (!!firebaseUser) {
         this.isLoggedIn.set(true);
         this.loading.loadingOn();
@@ -69,6 +69,6 @@ export class UserService {
   }
 
   logout() {
-    this.afAuth.signOut().finally(() => this.router.navigateByUrl('/home'));
+    this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
 }
