@@ -1,5 +1,4 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink, RouterOutlet } from '@angular/router';
@@ -8,6 +7,13 @@ import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
+import {
+  Component,
+  ElementRef,
+  inject,
+  Signal,
+  ViewChild,
+} from '@angular/core';
 
 @Component({
   selector: 'app-root',
@@ -40,5 +46,11 @@ export class AppComponent {
 
   logout(): void {
     this.userService.logout();
+  }
+
+  menuClick(navBar, hamburger): void {
+    if (navBar.classList.contains('show')) {
+      hamburger.click();
+    }
   }
 }
