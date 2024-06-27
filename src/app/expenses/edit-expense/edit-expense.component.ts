@@ -147,6 +147,7 @@ export class EditExpenseComponent implements OnInit {
   allGroupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
   allCategories: Signal<Category[]> = this.categoryService.allCategories;
 
+  hasReceipt: boolean;
   fileName: string;
   receiptFile: File;
   receiptUrl: Url;
@@ -161,6 +162,7 @@ export class EditExpenseComponent implements OnInit {
 
   constructor() {
     const expense: Expense = this.data.expense;
+    this.hasReceipt = expense.hasReceipt;
     this.fromMemorized = this.data.memorized;
     this.editExpenseForm = this.fb.group({
       paidByMemberId: [expense.paidByMemberId, Validators.required],
@@ -198,18 +200,20 @@ export class EditExpenseComponent implements OnInit {
         (m) => m.active || splitMemberIds.includes(m.id)
       )
     );
-    const storageUrl = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
-    getDownloadURL(ref(this.storage, storageUrl))
-      .then((url: unknown) => {
-        if (!!url) {
-          this.receiptUrl = <Url>url;
-        }
-      })
-      .catch((err: FirebaseError) => {
-        if (err.code !== 'storage/object-not-found') {
-          logEvent(this.analytics, 'receipt-retrieval-error');
-        }
-      });
+    if (this.hasReceipt) {
+      const storageUrl = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
+      getDownloadURL(ref(this.storage, storageUrl))
+        .then((url: unknown) => {
+          if (!!url) {
+            this.receiptUrl = <Url>url;
+          }
+        })
+        .catch((err: FirebaseError) => {
+          if (err.code !== 'storage/object-not-found') {
+            logEvent(this.analytics, 'receipt-retrieval-error');
+          }
+        });
+    }
   }
 
   public get e() {
@@ -279,6 +283,11 @@ export class EditExpenseComponent implements OnInit {
         this.fileName = this.receiptFile.name;
       }
     }
+  }
+
+  removeFile(): void {
+    this.receiptFile = null;
+    this.fileName = '';
   }
 
   addRow(): void {
@@ -468,6 +477,7 @@ export class EditExpenseComponent implements OnInit {
             sharedAmount: val.sharedAmount,
             allocatedAmount: val.allocatedAmount,
             totalAmount: val.amount,
+            hasReceipt: this.hasReceipt || !!this.fileName,
           };
           let splits: Partial<Split>[] = [];
           this.splitsDataSource.forEach((s) => {
