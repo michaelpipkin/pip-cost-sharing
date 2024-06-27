@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Auth, idToken } from '@angular/fire/auth';
 
 @Injectable({
   providedIn: 'root',
@@ -7,7 +7,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 export class AuthTokenService {
   authJwtToken: string;
 
-  constructor(private afAuth: AngularFireAuth) {
-    this.afAuth.idToken.subscribe((jwt) => (this.authJwtToken = jwt));
+  constructor(auth: Auth) {
+    idToken(auth).subscribe((jwt) => (this.authJwtToken = jwt));
   }
 }

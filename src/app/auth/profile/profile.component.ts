@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, Signal } from '@angular/core';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, effect, inject, OnInit, Signal } from '@angular/core';
+import { Analytics, logEvent } from '@angular/fire/analytics';
+import { Auth } from '@angular/fire/auth';
 import { MatIconButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
@@ -51,12 +51,12 @@ import {
 })
 export class ProfileComponent implements OnInit {
   fb = inject(FormBuilder);
-  afAuth = inject(AngularFireAuth);
+  auth = inject(Auth);
   userService = inject(UserService);
   groupService = inject(GroupService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
 
   user: Signal<User> = this.userService.user;
   firebaseUser: firebase.User;
@@ -80,12 +80,17 @@ export class ProfileComponent implements OnInit {
   hideConfirm: boolean = true;
 
   async ngOnInit(): Promise<void> {
-    this.firebaseUser = await this.afAuth.currentUser;
-    if (this.user().defaultGroupId !== '') {
-      this.selectedGroupId = this.user().defaultGroupId;
-    } else {
-      this.selectedGroupId = null;
-    }
+    this.firebaseUser = await this.auth.currentUser;
+  }
+
+  constructor() {
+    effect(() => {
+      if (!!this.user() && this.user().defaultGroupId !== '') {
+        this.selectedGroupId = this.user().defaultGroupId;
+      } else {
+        this.selectedGroupId = null;
+      }
+    });
   }
 
   get fEmail() {
@@ -183,7 +188,7 @@ export class ProfileComponent implements OnInit {
           this.snackBar.open('Default group updated.', 'Close');
         })
         .catch((err: Error) => {
-          this.analytics.logEvent('error', {
+          logEvent(this.analytics, 'error', {
             component: this.constructor.name,
             action: 'edit_group',
             message: err.message,

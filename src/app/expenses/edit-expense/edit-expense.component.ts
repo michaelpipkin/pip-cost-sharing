@@ -1,6 +1,5 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
@@ -19,9 +18,17 @@ import { MemberService } from '@services/member.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
 import { catchError, NotFoundError, of, tap, throwError } from 'rxjs';
 import { Url } from 'url';
+import {
+  deleteObject,
+  getDownloadURL,
+  ref,
+  Storage,
+  uploadBytes,
+} from '@angular/fire/storage';
 import {
   FormArray,
   FormBuilder,
@@ -127,8 +134,8 @@ export class EditExpenseComponent implements OnInit {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  storage = inject(AngularFireStorage);
-  analytics = inject(AngularFireAnalytics);
+  storage = inject(Storage);
+  analytics = inject(Analytics);
   data: any = inject(MAT_DIALOG_DATA);
 
   categories = signal<Category[]>([]);
@@ -191,21 +198,18 @@ export class EditExpenseComponent implements OnInit {
         (m) => m.active || splitMemberIds.includes(m.id)
       )
     );
-    const url = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
-    this.storage
-      .ref(url)
-      .getDownloadURL()
-      .pipe(
-        tap((url) => {
-          if (!!url) {
-            this.receiptUrl = url;
-          }
-        }),
-        catchError((err: NotFoundError) => {
-          return of('Receipt not found');
-        })
-      )
-      .subscribe();
+    const storageUrl = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
+    getDownloadURL(ref(this.storage, storageUrl))
+      .then((url: unknown) => {
+        if (!!url) {
+          this.receiptUrl = <Url>url;
+        }
+      })
+      .catch((err: FirebaseError) => {
+        if (err.code !== 'storage/object-not-found') {
+          logEvent(this.analytics, 'receipt-retrieval-error');
+        }
+      });
   }
 
   public get e() {
@@ -427,7 +431,7 @@ export class EditExpenseComponent implements OnInit {
           });
         })
         .catch((err: Error) => {
-          this.analytics.logEvent('error', {
+          logEvent(this.analytics, 'error', {
             component: this.constructor.name,
             action: 'edit_memorized_expense',
             message: err.message,
@@ -487,9 +491,13 @@ export class EditExpenseComponent implements OnInit {
             )
             .then(() => {
               if (this.receiptFile) {
-                const filePath = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
-                const upload = this.storage.upload(filePath, this.receiptFile);
-                upload.snapshotChanges().subscribe();
+                const fileRef = ref(
+                  this.storage,
+                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                );
+                uploadBytes(fileRef, this.receiptFile).then(() => {
+                  logEvent(this.analytics, 'receipt_uploaded');
+                });
               }
               this.dialogRef.close({
                 success: true,
@@ -497,7 +505,7 @@ export class EditExpenseComponent implements OnInit {
               });
             })
             .catch((err: Error) => {
-              this.analytics.logEvent('error', {
+              logEvent(this.analytics, 'error', {
                 component: this.constructor.name,
                 action: 'edit_expense',
                 message: err.message,
@@ -530,11 +538,11 @@ export class EditExpenseComponent implements OnInit {
             .deleteExpense(this.currentGroup().id, this.data.expense.id, true)
             .then(() => {
               if (this.receiptUrl) {
-                this.storage
-                  .ref(
-                    `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
-                  )
-                  .delete();
+                const fileRef = ref(
+                  this.storage,
+                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                );
+                deleteObject(fileRef);
               }
               this.dialogRef.close({
                 success: true,
@@ -542,7 +550,7 @@ export class EditExpenseComponent implements OnInit {
               });
             })
             .catch((err: Error) => {
-              this.analytics.logEvent('error', {
+              logEvent(this.analytics, 'error', {
                 component: this.constructor.name,
                 action: 'delete_memorized_expense',
                 message: err.message,
@@ -570,11 +578,11 @@ export class EditExpenseComponent implements OnInit {
             .deleteExpense(this.currentGroup().id, this.data.expense.id)
             .then(() => {
               if (this.receiptUrl) {
-                this.storage
-                  .ref(
-                    `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
-                  )
-                  .delete();
+                const fileRef = ref(
+                  this.storage,
+                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                );
+                deleteObject(fileRef);
               }
               this.dialogRef.close({
                 success: true,
@@ -582,7 +590,7 @@ export class EditExpenseComponent implements OnInit {
               });
             })
             .catch((err: Error) => {
-              this.analytics.logEvent('error', {
+              logEvent(this.analytics, 'error', {
                 component: this.constructor.name,
                 action: 'delete_expense',
                 message: err.message,

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, Inject, Signal } from '@angular/core';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
+import { Component, inject, Signal } from '@angular/core';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -58,7 +58,7 @@ export class EditMemberComponent {
   memberService = inject(MemberService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(AngularFireAnalytics);
+  analytics = inject(Analytics);
   data: any = inject(MAT_DIALOG_DATA);
 
   member: Member = this.data.member;
@@ -112,7 +112,7 @@ export class EditMemberComponent {
         }
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_member',
           message: err.message,
@@ -151,7 +151,7 @@ export class EditMemberComponent {
             }
           })
           .catch((err: Error) => {
-            this.analytics.logEvent('error', {
+            logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'remove_member',
               message: err.message,

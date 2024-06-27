@@ -1,7 +1,6 @@
 import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { Analytics, logEvent } from '@angular/fire/analytics';
+import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
@@ -120,8 +119,8 @@ export class AddExpenseComponent implements OnInit {
   expenseService = inject(ExpenseService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  storage = inject(AngularFireStorage);
-  analytics = inject(AngularFireAnalytics);
+  storage = inject(Storage);
+  analytics = inject(Analytics);
   data: any = inject(MAT_DIALOG_DATA);
 
   categories: Signal<Category[]> = this.categoryService.activeCategories;
@@ -412,14 +411,18 @@ export class AddExpenseComponent implements OnInit {
       .addExpense(this.currentGroup().id, expense, splits)
       .then((expenseId: string) => {
         if (this.receiptFile) {
-          const filePath = `groups/${this.currentGroup().id}/receipts/${expenseId}`;
-          const upload = this.storage.upload(filePath, this.receiptFile);
-          upload.snapshotChanges().subscribe();
+          const fileRef = ref(
+            this.storage,
+            `groups/${this.currentGroup().id}/receipts/${expenseId}`
+          );
+          uploadBytes(fileRef, this.receiptFile).then(() => {
+            logEvent(this.analytics, 'receipt_uploaded');
+          });
         }
         this.dialogRef.close({ success: true, operation: 'added' });
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_expense',
           message: err.message,
@@ -467,7 +470,7 @@ export class AddExpenseComponent implements OnInit {
         });
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('error', {
+        logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'memorize_expense',
           message: err.message,

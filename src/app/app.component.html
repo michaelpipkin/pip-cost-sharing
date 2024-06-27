@@ -1,6 +1,11 @@
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="home">Pip Cost Sharing</a>
+    <a
+      class="navbar-brand"
+      routerLink="home"
+      (click)="menuClick(mainNavbar, hamburger)"
+      >Pip Cost Sharing</a
+    >
     <button
       class="navbar-toggler collapsed"
       type="button"
@@ -9,6 +14,7 @@
       aria-controls="mainNavbar"
       aria-expanded="false"
       aria-label="Toggle navigation"
+      #hamburger
     >
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -21,6 +27,7 @@
               aria-label="groups"
               title="Groups"
               routerLink="groups"
+              (click)="menuClick(mainNavbar, hamburger)"
             >
               <mat-icon>groups</mat-icon>&nbsp;Groups
             </a>
@@ -32,6 +39,7 @@
                 aria-label="members"
                 title="Members"
                 routerLink="members"
+                (click)="menuClick(mainNavbar, hamburger)"
               >
                 <mat-icon>face</mat-icon>&nbsp;Members
               </a>
@@ -42,6 +50,7 @@
                 aria-label="categories"
                 title="Categories"
                 routerLink="categories"
+                (click)="menuClick(mainNavbar, hamburger)"
               >
                 <mat-icon>category</mat-icon>&nbsp;Categories
               </a>
@@ -52,6 +61,7 @@
                 aria-label="expenses"
                 title="Expenses"
                 routerLink="expenses"
+                (click)="menuClick(mainNavbar, hamburger)"
               >
                 <mat-icon>attach_money</mat-icon>Expenses
               </a>
@@ -62,6 +72,7 @@
                 aria-label="memorized"
                 title="Memorized"
                 routerLink="memorized"
+                (click)="menuClick(mainNavbar, hamburger)"
               >
                 <mat-icon>currency_exchange</mat-icon>&nbsp;Memorized
               </a>
@@ -72,6 +83,7 @@
                 aria-label="summary"
                 title="Summary"
                 routerLink="summary"
+                (click)="menuClick(mainNavbar, hamburger)"
               >
                 <mat-icon>compare_arrows</mat-icon>&nbsp;Summary
               </a>
@@ -89,6 +101,7 @@
                   aria-label="help"
                   title="Help"
                   routerLink="help"
+                  (click)="menuClick(mainNavbar, hamburger)"
                 >
                   <mat-icon>help</mat-icon>&nbsp;Help
                 </a>
@@ -99,6 +112,7 @@
                   aria-label="profile"
                   title="Profile"
                   routerLink="profile"
+                  (click)="menuClick(mainNavbar, hamburger)"
                 >
                   <mat-icon>account_circle</mat-icon>&nbsp;Profile
                 </a>
@@ -109,6 +123,7 @@
                   aria-label="log out"
                   title="Log out"
                   (click)="logout()"
+                  (click)="menuClick(mainNavbar, hamburger)"
                 >
                   <mat-icon>logout</mat-icon>&nbsp;Log out
                 </a>
@@ -122,6 +137,7 @@
                 <a
                   class="nav-link d-flex align-items-center"
                   routerLink="login"
+                  (click)="menuClick(mainNavbar, hamburger)"
                 >
                   <mat-icon>login</mat-icon>&nbsp;Log in
                 </a>

@@ -1,5 +1,5 @@
-import { AngularFireAnalytics } from '@angular/fire/compat/analytics';
-import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { Analytics } from '@angular/fire/analytics';
+import { listAll, ref, Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -150,8 +150,8 @@ export class ExpensesComponent implements OnInit {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   sorter = inject(SortingService);
-  storage = inject(AngularFireStorage);
-  analytics = inject(AngularFireAnalytics);
+  storage = inject(Storage);
+  analytics = inject(Analytics);
 
   user: Signal<User> = this.userService.user;
   members: Signal<Member[]> = this.memberService.allGroupMembers;
@@ -250,21 +250,20 @@ export class ExpensesComponent implements OnInit {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     } else {
-      this.getReceipts().subscribe();
+      this.getReceipts();
     }
   }
 
-  getReceipts(): Observable<any> {
-    return this.storage
-      .ref(`groups/${this.currentGroup().id}/receipts/`)
-      .list()
-      .pipe(
-        map((res) => {
-          res.items.forEach((file) => {
-            this.receipts.push(file.name);
-          });
-        })
-      );
+  getReceipts(): void {
+    const receiptsRef = ref(
+      this.storage,
+      `groups/${this.currentGroup().id}/receipts/`
+    );
+    listAll(receiptsRef).then((res) => {
+      res.items.forEach((file) => {
+        this.receipts.push(file.name);
+      });
+    });
   }
 
   unpaidOnlyToggle(unpaidOnly: boolean) {
@@ -335,7 +334,7 @@ export class ExpensesComponent implements OnInit {
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.getReceipts().subscribe();
+        this.getReceipts();
         this.snackBar.open(`Expense ${res.operation}`, 'OK');
       }
     });
@@ -353,7 +352,7 @@ export class ExpensesComponent implements OnInit {
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.getReceipts().subscribe();
+        this.getReceipts();
         this.snackBar.open(`Expense ${res.operation}`, 'OK');
       }
     });
