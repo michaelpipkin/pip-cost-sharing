@@ -249,21 +249,7 @@ export class ExpensesComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
-    } else {
-      this.getReceipts();
     }
-  }
-
-  getReceipts(): void {
-    const receiptsRef = ref(
-      this.storage,
-      `groups/${this.currentGroup().id}/receipts/`
-    );
-    listAll(receiptsRef).then((res) => {
-      res.items.forEach((file) => {
-        this.receipts.push(file.name);
-      });
-    });
   }
 
   unpaidOnlyToggle(unpaidOnly: boolean) {
@@ -334,7 +320,6 @@ export class ExpensesComponent implements OnInit {
     const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.getReceipts();
         this.snackBar.open(`Expense ${res.operation}`, 'OK');
       }
     });
@@ -352,7 +337,6 @@ export class ExpensesComponent implements OnInit {
     const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
-        this.getReceipts();
         this.snackBar.open(`Expense ${res.operation}`, 'OK');
       }
     });

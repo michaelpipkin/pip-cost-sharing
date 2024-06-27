@@ -224,6 +224,11 @@ export class AddExpenseComponent implements OnInit {
     }
   }
 
+  removeFile(): void {
+    this.receiptFile = null;
+    this.fileName = '';
+  }
+
   addRow(): void {
     if (this.splitsDataSource.length > 0) {
       this.saveSplitsData();
@@ -391,6 +396,7 @@ export class AddExpenseComponent implements OnInit {
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,
+      hasReceipt: !!this.fileName,
     };
     let splits: Partial<Split>[] = [];
     this.splitsDataSource.forEach((s) => {

@@ -11,6 +11,7 @@ export interface IExpense {
   allocatedAmount: number;
   totalAmount: number;
   splits: Split[];
+  hasReceipt: boolean;
   readonly unpaidAmount: number;
   readonly paid: boolean;
 }
@@ -28,6 +29,7 @@ export class Expense implements IExpense {
   allocatedAmount: number;
   totalAmount: number;
   splits: Split[];
+  hasReceipt: boolean = false;
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
