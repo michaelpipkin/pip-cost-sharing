@@ -1,13 +1,13 @@
 <div class="d-flex flex-column pt-3">
   <div class="d-flex justify-content-center">
-    <mat-form-field id="group-select" color="primary">
+    <mat-form-field id="group-select">
       <mat-label>Select Group</mat-label>
       <mat-select
         [(ngModel)]="selectedGroupId"
         name="group"
         (selectionChange)="onSelectGroup($event)"
       >
-        @for (group of userGroups(); track group) {
+        @for (group of userGroups(); track group.id) {
           <mat-option [value]="group.id">{{ group.name }}</mat-option>
         }
       </mat-select>

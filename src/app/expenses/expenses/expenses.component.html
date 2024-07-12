@@ -10,7 +10,7 @@
         [(ngModel)]="selectedMemberIdValue"
         (selectionChange)="selectedMemberChange()"
       >
-        @for (member of members(); track member) {
+        @for (member of members(); track member.id) {
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
       </mat-select>
@@ -32,7 +32,7 @@
         [(ngModel)]="selectedCategoryIdValue"
         (selectionChange)="selectCategoryChange()"
       >
-        @for (category of categories(); track category) {
+        @for (category of categories(); track category.id) {
           <mat-option [value]="category.id">{{ category.name }}</mat-option>
         }
       </mat-select>
@@ -49,7 +49,6 @@
     </mat-form-field>
     <mat-slide-toggle
       #unpaidToggle
-      color="primary"
       [checked]="true"
       (change)="unpaidOnlyToggle(unpaidToggle.checked)"
       >Unpaid only</mat-slide-toggle

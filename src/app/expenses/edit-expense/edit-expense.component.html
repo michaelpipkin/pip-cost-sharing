@@ -5,10 +5,10 @@
       <form [formGroup]="editExpenseForm" id="expense-form">
         <div class="d-flex flex-column">
           <div class="d-flex flex-wrap">
-            <mat-form-field id="paid-by-select" color="primary">
+            <mat-form-field id="paid-by-select">
               <mat-label>Paid by</mat-label>
               <mat-select formControlName="paidByMemberId" name="group">
-                @for (member of expenseMembers(); track member) {
+                @for (member of expenseMembers(); track member.id) {
                   <mat-option [value]="member.id">{{
                     member.displayName
                   }}</mat-option>
@@ -58,17 +58,17 @@
             </mat-form-field>
           </div>
           <div class="d-flex flex-wrap">
-            <mat-form-field appearance="fill" color="primary" id="description">
+            <mat-form-field appearance="fill" id="description">
               <mat-label>Description</mat-label>
               <input matInput formControlName="description" />
               <mat-error *ngIf="e.description.errors?.['required']">
                 *Required
               </mat-error>
             </mat-form-field>
-            <mat-form-field id="category-select" color="primary">
+            <mat-form-field id="category-select">
               <mat-label>Category</mat-label>
               <mat-select formControlName="categoryId" name="category">
-                @for (category of categories(); track category) {
+                @for (category of categories(); track category.id) {
                   <mat-option [value]="category.id">{{
                     category.name
                   }}</mat-option>
@@ -168,11 +168,11 @@
           <ng-container matColumnDef="memberId">
             <th mat-header-cell *matHeaderCellDef>Member</th>
             <td mat-cell *matCellDef="let split; let i = index">
-              <mat-form-field color="primary" id="split-member">
+              <mat-form-field id="split-member">
                 <mat-select
                   [formControl]="getSplitControl(i, 'owedByMemberId')"
                 >
-                  @for (member of splitMembers(); track member) {
+                  @for (member of splitMembers(); track member.id) {
                     <mat-option [value]="member.id">{{
                       member.displayName
                     }}</mat-option>
