@@ -1,7 +1,7 @@
 <h1 mat-dialog-title>Add Expense</h1>
 <mat-dialog-content>
   @let memberList = members();
-  <div class="container">
+  <div class="container mb-2">
     <form [formGroup]="addExpenseForm" id="expense-form">
       <div class="details-1">
         <mat-form-field id="paid-by-select">
@@ -32,9 +32,7 @@
             [for]="expenseDatePicker"
           ></mat-datepicker-toggle>
           <mat-datepicker #expenseDatePicker></mat-datepicker>
-          <mat-error *ngIf="e.date.errors?.['required']">
-            *Required
-          </mat-error>
+          <mat-error *ngIf="e.date.errors?.['required']"> *Required </mat-error>
         </mat-form-field>
         <mat-form-field
           appearance="fill"
@@ -68,9 +66,7 @@
           <mat-label>Category</mat-label>
           <mat-select formControlName="categoryId" name="category">
             @for (category of categories(); track category.id) {
-              <mat-option [value]="category.id">{{
-                category.name
-              }}</mat-option>
+              <mat-option [value]="category.id">{{ category.name }}</mat-option>
             }
           </mat-select>
           <mat-error *ngIf="e.categoryId.errors?.['required']">
@@ -119,20 +115,14 @@
     </form>
     <div class="attachment-container">
       @if (!!fileName) {
-        <div
-          (click)="removeFile()"
-          class="attachment"
-        >
+        <div (click)="removeFile()" class="attachment">
           <button mat-mini-fab class="btn btn-danger">
             <mat-icon>delete</mat-icon>
           </button>
           <span class="filename">{{ fileName }}</span>
         </div>
       } @else {
-        <div
-          (click)="attachFile.click()"
-          class="attachment"
-        >
+        <div (click)="attachFile.click()" class="attachment">
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg"
@@ -174,9 +164,7 @@
           <th mat-header-cell *matHeaderCellDef>Member</th>
           <td mat-cell *matCellDef="let split; let i = index">
             <mat-form-field id="split-member">
-              <mat-select
-                [formControl]="getSplitControl(i, 'owedByMemberId')"
-              >
+              <mat-select [formControl]="getSplitControl(i, 'owedByMemberId')">
                 @for (member of memberList; track member.id) {
                   <mat-option [value]="member.id">{{
                     member.displayName
