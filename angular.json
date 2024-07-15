@@ -99,7 +99,6 @@
             "karmaConfig": "karma.conf.js",
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": [
-              "./node_modules/@angular/material/prebuilt-themes/indigo-pink.css",
               "./node_modules/bootswatch/dist/spacelab/bootstrap.min.css",
               "src/styles.scss"
             ],

@@ -1,0 +1,21 @@
+.filters {
+  display: grid;
+  gap: 8px;
+  align-items: baseline;
+  justify-items: center;
+  grid-template-rows: auto;
+  grid-template-columns: max-content max-content;
+}
+
+@media (max-width: 767px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
+  .add-button {
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+}

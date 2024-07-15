@@ -1,4 +1,4 @@
-div {
+.footer {
   position: fixed;
   width: 100%;
   background-color: #446e9b;
@@ -6,12 +6,23 @@ div {
   left: 0px;
   color: white;
   margin: 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: max-content auto;
   a {
     color: white;
     text-decoration: none;
   }
-  p {
-    margin-top: 4px;
-    margin-bottom: 4px;
-  }
+}
+
+.footer-left {
+  display: grid;
+  justify-items: start;
+  align-items: center;
+}
+
+.footer-right {
+  display: grid;
+  justify-items: end;
+  align-items: center;
 }

@@ -1,6 +1,7 @@
 // Custom Theming for Angular Material
 // For more information: https://material.angular.io/guide/theming
 @use '@angular/material' as mat;
+@use './app/styles/m3-theme.scss' as theme;
 // Plus imports for other components in your app.
 @import 'firebaseui/dist/firebaseui.css';
 $enable-negative-margins: true;
@@ -13,132 +14,216 @@ $enable-negative-margins: true;
 // Define the palettes for your theme using the Material Design palettes available in palette.scss
 // (imported above). For each palette, you can optionally specify a default, lighter, and darker
 // hue. Available color palettes: https://material.io/design/color/
-$spacelab-palette-primary: (
-  50: #e7f3f8,
-  100: #c4e0ef,
-  200: #a2cde5,
-  300: #85b9d9,
-  400: #71abd2,
-  500: #629dcb,
-  600: #5890bf,
-  700: #4d7ead,
-  800: #446e9b,
-  900: #35527a,
-  A100: #f3f3f3,
-  A200: #ebebeb,
-  A400: #b8b8b8,
-  A700: #5d5d5d,
-  contrast: (
-    50: #000000,
-    100: #000000,
-    200: #000000,
-    300: #000000,
-    400: #000000,
-    500: #000000,
-    600: #000000,
-    700: #ffffff,
-    800: #ffffff,
-    900: #ffffff,
-    A100: #000000,
-    A200: #000000,
-    A400: #000000,
-    A700: #ffffff,
-  ),
-);
+// $_palettes: (
+//   primary: (
+//     50: #e7f3f8,
+//     100: #c4e0ef,
+//     200: #a2cde5,
+//     300: #85b9d9,
+//     400: #71abd2,
+//     500: #629dcb,
+//     600: #5890bf,
+//     700: #4d7ead,
+//     800: #446e9b,
+//     900: #35527a,
+//     A100: #f3f3f3,
+//     A200: #ebebeb,
+//     A400: #b8b8b8,
+//     A700: #5d5d5d,
+//     contrast: (
+//       50: #000000,
+//       100: #000000,
+//       200: #000000,
+//       300: #000000,
+//       400: #000000,
+//       500: #000000,
+//       600: #000000,
+//       700: #ffffff,
+//       800: #ffffff,
+//       900: #ffffff,
+//       A100: #000000,
+//       A200: #000000,
+//       A400: #000000,
+//       A700: #ffffff,
+//     ),
+//   ),
+//   accent: (
+//     50: #f9f9f9,
+//     100: #f3f3f3,
+//     200: #ebebeb,
+//     300: #dcdcdc,
+//     400: #b8b8b8,
+//     500: #999999,
+//     600: #707070,
+//     700: #5d5d5d,
+//     800: #3e3e3e,
+//     900: #1d1d1d,
+//     A100: #c4e0ef,
+//     A200: #a2cde5,
+//     A400: #71abd2,
+//     A700: #4d7ead,
+//     contrast: (
+//       50: #000000,
+//       100: #000000,
+//       200: #000000,
+//       300: #000000,
+//       400: #000000,
+//       500: #000000,
+//       600: #000000,
+//       700: #ffffff,
+//       800: #ffffff,
+//       900: #ffffff,
+//       A100: #000000,
+//       A200: #000000,
+//       A400: #000000,
+//       A700: #ffffff,
+//     ),
+//   ),
+//   warn: (
+//     50: #fcf2e5,
+//     100: #f9dfbe,
+//     200: #f6ca95,
+//     300: #f2b56f,
+//     400: #efa658,
+//     500: #ea994d,
+//     600: #e58f49,
+//     700: #dd8144,
+//     800: #d47441,
+//     900: #c5623d,
+//     A100: #b9e7f6,
+//     A200: #8ed7f0,
+//     A400: #54bae6,
+//     A700: #398ec1,
+//     contrast: (
+//       50: #000000,
+//       100: #000000,
+//       200: #000000,
+//       300: #000000,
+//       400: #000000,
+//       500: #000000,
+//       600: #000000,
+//       700: #000000,
+//       800: #000000,
+//       900: #ffffff,
+//       A100: #000000,
+//       A200: #000000,
+//       A400: #000000,
+//       A700: #ffffff,
+//     ),
+//   ),
+//   tertiary: (
+//     0: #000000,
+//     10: #241532,
+//     20: #392a49,
+//     25: #453554,
+//     30: #514060,
+//     35: #5d4b6d,
+//     40: #695779,
+//     50: #837093,
+//     60: #9d89ae,
+//     70: #b8a3c9,
+//     80: #d4bee6,
+//     90: #f0dbff,
+//     95: #f9ecff,
+//     98: #fff7fe,
+//     99: #fffbff,
+//     100: #ffffff,
+//   ),
+//   neutral: (
+//     0: #000000,
+//     10: #1a1c1e,
+//     20: #2f3033,
+//     25: #3a3b3e,
+//     30: #45474a,
+//     35: #515255,
+//     40: #5d5e61,
+//     50: #76777a,
+//     60: #909094,
+//     70: #aaabae,
+//     80: #c6c6ca,
+//     90: #e2e2e5,
+//     95: #f1f0f4,
+//     98: #f9f9fc,
+//     99: #fcfcff,
+//     100: #ffffff,
+//     4: #0c0e11,
+//     6: #121316,
+//     12: #1e2022,
+//     17: #282a2d,
+//     22: #333538,
+//     24: #38393c,
+//     87: #dadadd,
+//     92: #e8e8eb,
+//     94: #eeedf1,
+//     96: #f4f3f7,
+//   ),
+//   neutral-variant: (
+//     0: #000000,
+//     10: #171c22,
+//     20: #2c3137,
+//     25: #373c42,
+//     30: #42474e,
+//     35: #4e535a,
+//     40: #5a5f66,
+//     50: #73777f,
+//     60: #8c9199,
+//     70: #a7abb3,
+//     80: #c2c7cf,
+//     90: #dee3eb,
+//     95: #edf1f9,
+//     98: #f7f9ff,
+//     99: #fcfcff,
+//     100: #ffffff,
+//   ),
+//   error: (
+//     0: #000000,
+//     10: #410002,
+//     20: #690005,
+//     25: #7e0007,
+//     30: #93000a,
+//     35: #a80710,
+//     40: #ba1a1a,
+//     50: #de3730,
+//     60: #ff5449,
+//     70: #ff897d,
+//     80: #ffb4ab,
+//     90: #ffdad6,
+//     95: #ffedea,
+//     98: #fff8f7,
+//     99: #fffbff,
+//     100: #ffffff,
+//   ),
+// );
 
-$spacelab-palette-accent: (
-  50: #f9f9f9,
-  100: #f3f3f3,
-  200: #ebebeb,
-  300: #dcdcdc,
-  400: #b8b8b8,
-  500: #999999,
-  600: #707070,
-  700: #5d5d5d,
-  800: #3e3e3e,
-  900: #1d1d1d,
-  A100: #c4e0ef,
-  A200: #a2cde5,
-  A400: #71abd2,
-  A700: #4d7ead,
-  contrast: (
-    50: #000000,
-    100: #000000,
-    200: #000000,
-    300: #000000,
-    400: #000000,
-    500: #000000,
-    600: #000000,
-    700: #ffffff,
-    800: #ffffff,
-    900: #ffffff,
-    A100: #000000,
-    A200: #000000,
-    A400: #000000,
-    A700: #ffffff,
-  ),
-);
+// $app-primary: mat.m2-define-palette($spacelab-palette-primary);
+// $app-accent: mat.m2-define-palette($spacelab-palette-accent);
 
-$spacelab-palette-warn: (
-  50: #fcf2e5,
-  100: #f9dfbe,
-  200: #f6ca95,
-  300: #f2b56f,
-  400: #efa658,
-  500: #ea994d,
-  600: #e58f49,
-  700: #dd8144,
-  800: #d47441,
-  900: #c5623d,
-  A100: #b9e7f6,
-  A200: #8ed7f0,
-  A400: #54bae6,
-  A700: #398ec1,
-  contrast: (
-    50: #000000,
-    100: #000000,
-    200: #000000,
-    300: #000000,
-    400: #000000,
-    500: #000000,
-    600: #000000,
-    700: #000000,
-    800: #000000,
-    900: #ffffff,
-    A100: #000000,
-    A200: #000000,
-    A400: #000000,
-    A700: #ffffff,
-  ),
-);
+// // The warn palette is optional (defaults to red).
+// $app-warn: mat.m2-define-palette($spacelab-palette-warn);
 
-$app-primary: mat.m2-define-palette($spacelab-palette-primary);
-$app-accent: mat.m2-define-palette($spacelab-palette-accent);
+// $spacelab-typography: mat.m2-define-typography-config(
+//   $font-family: 'Open Sans',
+// );
 
-// The warn palette is optional (defaults to red).
-$app-warn: mat.m2-define-palette($spacelab-palette-warn);
-
-$spacelab-typography: mat.m2-define-typography-config(
-  $font-family: 'Open Sans',
-);
-
-// Create the theme object. A theme consists of configurations for individual
-// theming systems such as "color" or "typography".
-$theme: mat.m2-define-light-theme(
-  (
-    color: (
-      primary: $app-primary,
-      accent: $app-accent,
-      warn: $app-warn,
-    ),
-    typography: $spacelab-typography,
-  )
-);
+// // Create the theme object. A theme consists of configurations for individual
+// // theming systems such as "color" or "typography".
+// $theme: mat.m2-define-light-theme(
+//   (
+//     color: (
+//       primary: $app-primary,
+//       accent: $app-accent,
+//       warn: $app-warn,
+//     ),
+//     typography: $spacelab-typography,
+//   )
+// );
 
 // Include theme styles for core and each component used in your app.
 // Alternatively, you can import and @include the theme mixins for each component
 // that you are using.
-@include mat.all-component-themes($theme);
+html {
+  @include mat.all-component-themes(theme.$light-theme);
+}
 
 /* You can add global styles to this file, and also import other style files */
 html,
@@ -147,18 +232,6 @@ body {
 }
 
 * {
-  font-family:
-    'Open Sans',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    sans-serif,
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
-    'Segoe UI Symbol';
   font-size: 0.9rem;
 }
 
@@ -173,6 +246,10 @@ a:hover {
 mat-error,
 mat-hint {
   font-size: 0.7rem;
+}
+
+mat-slide-toggle {
+  padding-bottom: 8px;
 }
 
 .mat-mdc-header-row,
@@ -202,13 +279,30 @@ mat-hint {
   margin-top: -20px;
 }
 
-mat-dialog-actions,
-.mat-mdc-dialog-actions {
-  display: flex !important;
-  justify-content: flex-end !important;
-  button {
-    margin-left: 8px;
-  }
+mat-dialog-title,
+.mat-mdc-dialog-title {
+  padding-bottom: 0 !important;
+}
+
+mat-dialog-content {
+  display: grid !important;
+}
+
+mat-dialog-actions {
+  display: grid !important;
+  grid-auto-flow: column;
+  justify-items: end;
+  column-gap: 8px;
+}
+
+.container {
+  display: grid;
+  justify-items: center;
+}
+
+.table-container {
+  display: grid;
+  justify-content: center;
 }
 
 .mat-form-field {
@@ -248,6 +342,10 @@ mat-dialog-actions,
 
 .allocated-amount {
   font-size: 1.2em;
+}
+
+.no-wrap {
+  white-space: nowrap;
 }
 
 .paid-icon {

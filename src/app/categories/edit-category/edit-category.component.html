@@ -1,21 +1,17 @@
 <h1 mat-dialog-title>Edit Category</h1>
 <form [formGroup]="editCategoryForm">
   <mat-dialog-content>
-    <div class="d-flex flex-column">
-      <div class="d-flex justify-content-start">
-        <mat-form-field appearance="fill" color="primary">
-          <mat-label>Category name</mat-label>
-          <input matInput formControlName="categoryName" />
-          <mat-error *ngIf="f.categoryName.errors?.['required']">
-            *Required
-          </mat-error>
-        </mat-form-field>
-      </div>
-      <div class="d-flex justify-content-start ps-2">
-        <mat-slide-toggle color="primary" formControlName="active"
-          >Active</mat-slide-toggle
-        >
-      </div>
+    <div class="content">
+      <mat-form-field appearance="fill">
+        <mat-label>Category name</mat-label>
+        <input matInput formControlName="categoryName" />
+        <mat-error *ngIf="f.categoryName.errors?.['required']">
+          *Required
+        </mat-error>
+      </mat-form-field>
+    </div>
+    <div class="toggle">
+      <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
     </div>
   </mat-dialog-content>
   <mat-dialog-actions>

@@ -1,3 +1,22 @@
+.filters {
+  display: grid;
+  gap: 8px;
+  align-items: baseline;
+  justify-items: center;
+}
+
+@media (max-width: 767px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
+  .filters {
+    grid-template-columns: max-content max-content;
+  }
+}
+
 tr.split-row {
   height: 0;
 }

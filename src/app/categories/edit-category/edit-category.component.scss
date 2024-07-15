@@ -1,4 +1,11 @@
-mat-form-field {
-  width: 100%;
-  max-width: 250px;
+.content {
+  display: grid;
+  justify-items: stretch;
+}
+
+.toggle {
+  display: grid;
+  grid-auto-flow: column;
+  column-gap: 8px;
+  justify-items: start;
 }

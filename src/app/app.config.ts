@@ -99,6 +99,8 @@ export const appConfig: ApplicationConfig = {
       useValue: {
         disableClose: true,
         autoFocus: true,
+        maxWidth: '95vw',
+        maxHeight: '95vh',
       } as MatDialogConfig,
     },
     {
