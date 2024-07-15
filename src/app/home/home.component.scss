@@ -1,5 +1,5 @@
 .home-container {
-  padding: 16px 20% 0;
+  padding: 16px 15% 0;
 }
 
 @media (max-width: 1200px) {
@@ -12,7 +12,7 @@
   .home-container {
     padding: 16px 5% 0;
 
-    .container {
+    .feature-container {
       display: grid;
       grid-template-rows: auto;
       grid-template-columns: 1fr;
@@ -21,14 +21,14 @@
   }
 }
 
-@media (min-width: 601px) {
+@media (min-width: 801px) {
   #logo {
     height: 200px;
     width: 200px;
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 800px) {
   #logo {
     height: 125px;
     width: 125px;
@@ -67,7 +67,7 @@ a {
   font-weight: bold;
 }
 
-.container {
+.feature-container {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   column-gap: 2px;
@@ -93,14 +93,14 @@ a {
   justify-self: center;
 }
 
-.container div {
+.feature-container div {
   display: grid;
   color: white;
   background-color: #446e9b;
   justify-items: center;
 }
 
-.container div p {
+.feature-container div p {
   justify-self: center;
   padding: 0 12px;
   margin-bottom: 0;

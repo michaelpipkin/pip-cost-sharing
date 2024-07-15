@@ -1,9 +1,18 @@
-<div class="d-flex align-items-center">
-  <p class="ps-2 me-auto">
-    &copy; {{ currentYear }} -
-    <a href="mailto:michael.a.pipkin@gmail.com">Michael A. Pipkin</a>
-  </p>
-  <p class="pe-2">Version {{ version }}</p>
-  <p class="pe-2">|</p>
-  <p class="pe-2">Build Date: {{ buildDate | date: 'yyyy-MM-dd' }}</p>
+<div class="footer">
+  <div class="footer-left">
+    <span>
+      &copy; {{ currentYear }} -
+      <a
+        href="mailto:michael.a.pipkin@gmail.com"
+        matTooltip="Email the developer"
+        >Michael A. Pipkin</a
+      >
+    </span>
+  </div>
+  <div class="footer-right">
+    <span>
+      Version {{ version }}&nbsp;|&nbsp;Build Date:
+      {{ buildDate | date: 'yyyy-MM-dd' }}
+    </span>
+  </div>
 </div>

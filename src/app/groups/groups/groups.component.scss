@@ -1,5 +1,11 @@
-button {
-  height: 56px;
+.container {
+  width: 360px;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  column-gap: 4px;
 }
 
 #join-code {

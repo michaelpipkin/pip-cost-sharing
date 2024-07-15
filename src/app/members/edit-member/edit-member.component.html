@@ -1,42 +1,31 @@
 <h1 mat-dialog-title>Edit Member</h1>
 <form [formGroup]="editMemberForm">
   <mat-dialog-content>
-    <div class="d-flex flex-column">
-      <div class="d-flex justify-content-start">
-        <mat-form-field appearance="fill">
-          <mat-label>Member name</mat-label>
-          <input matInput formControlName="memberName" />
-          <mat-error *ngIf="f.memberName.errors?.['required']">
-            *Required
-          </mat-error>
-        </mat-form-field>
-      </div>
-      <div class="d-flex justify-content-start">
-        <mat-form-field appearance="fill">
-          <mat-label>Email</mat-label>
-          <input matInput email formControlName="email" />
-          <mat-error *ngIf="f.email.errors?.['required']">
-            *Required
-          </mat-error>
-          <mat-error *ngIf="f.email.errors?.['email']">
-            *Not a valid email address
-          </mat-error>
-        </mat-form-field>
-      </div>
-      <div
-        class="d-flex justify-content-start ps-2"
-        [class.hidden]="!currentMember().groupAdmin"
+    <div class="content">
+      <mat-form-field appearance="fill">
+        <mat-label>Member name</mat-label>
+        <input matInput formControlName="memberName" />
+        <mat-error *ngIf="f.memberName.errors?.['required']">
+          *Required
+        </mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Email</mat-label>
+        <input matInput email formControlName="email" />
+        <mat-error *ngIf="f.email.errors?.['required']"> *Required </mat-error>
+        <mat-error *ngIf="f.email.errors?.['email']">
+          *Not a valid email address
+        </mat-error>
+      </mat-form-field>
+    </div>
+    <div class="toggle" [class.hidden]="!currentMember().groupAdmin">
+      <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
+      <mat-slide-toggle
+        formControlName="groupAdmin"
+        [matTooltip]="groupAdminTooltip"
       >
-        <mat-slide-toggle class="me-2" formControlName="active"
-          >Active</mat-slide-toggle
-        >
-        <mat-slide-toggle
-          formControlName="groupAdmin"
-          [matTooltip]="groupAdminTooltip"
-        >
-          Group Admin
-        </mat-slide-toggle>
-      </div>
+        Group Admin
+      </mat-slide-toggle>
     </div>
   </mat-dialog-content>
   <mat-dialog-actions>

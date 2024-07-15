@@ -232,18 +232,6 @@ body {
 }
 
 * {
-  font-family:
-    'Open Sans',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    sans-serif,
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
-    'Segoe UI Symbol';
   font-size: 0.9rem;
 }
 
@@ -291,13 +279,30 @@ mat-slide-toggle {
   margin-top: -20px;
 }
 
-mat-dialog-actions,
-.mat-mdc-dialog-actions {
-  display: flex !important;
-  justify-content: flex-end !important;
-  button {
-    margin-left: 8px;
-  }
+mat-dialog-title,
+.mat-mdc-dialog-title {
+  padding-bottom: 0 !important;
+}
+
+mat-dialog-content {
+  display: grid !important;
+}
+
+mat-dialog-actions {
+  display: grid !important;
+  grid-auto-flow: column;
+  justify-items: end;
+  column-gap: 8px;
+}
+
+.container {
+  display: grid;
+  justify-items: center;
+}
+
+.table-container {
+  display: grid;
+  justify-content: center;
 }
 
 .mat-form-field {
@@ -337,6 +342,10 @@ mat-dialog-actions,
 
 .allocated-amount {
   font-size: 1.2em;
+}
+
+.no-wrap {
+  white-space: nowrap;
 }
 
 .paid-icon {
