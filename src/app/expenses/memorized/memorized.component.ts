@@ -6,6 +6,7 @@ import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -20,6 +21,7 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { map, Observable, tap } from 'rxjs';
+import { HelpComponent } from 'src/app/help/help.component';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
@@ -82,6 +84,7 @@ import {
     MatIconButton,
     MatSuffix,
     MatIcon,
+    MatTooltip,
     MatTable,
     MatColumnDef,
     MatHeaderCellDef,
@@ -158,6 +161,17 @@ export class MemorizedComponent implements OnInit {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'memorized',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   selectedMemberChanged(): void {

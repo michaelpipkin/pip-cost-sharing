@@ -1,4 +1,5 @@
 import { Router } from '@angular/router';
+import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -123,6 +124,16 @@ export class GroupService {
     batch.set(groupRef, group);
     const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
     batch.set(memberRef, member);
+    const categoryRef = doc(
+      collection(this.fs, `groups/${groupRef.id}/categories`)
+    );
+    batch.set(
+      categoryRef,
+      new Category({
+        name: 'Default',
+        active: true,
+      })
+    );
     return await batch
       .commit()
       .then(() => {

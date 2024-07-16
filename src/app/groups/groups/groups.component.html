@@ -1,5 +1,6 @@
 <div class="container pt-3">
-  <div>
+  <div class="page-header">
+    <div></div>
     <mat-form-field id="group-select">
       <mat-label>Select Group</mat-label>
       <mat-select
@@ -12,6 +13,9 @@
         }
       </mat-select>
     </mat-form-field>
+    <div class="help-icon">
+      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    </div>
   </div>
   @if (selectedGroupId != '') {
     <div class="mb-4">

@@ -1,5 +1,5 @@
 import { Analytics } from '@angular/fire/analytics';
-import { listAll, ref, Storage } from '@angular/fire/storage';
+import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -10,6 +10,7 @@ import { MatSelect } from '@angular/material/select';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSort, MatSortHeader } from '@angular/material/sort';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -27,7 +28,7 @@ import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
-import { map, Observable } from 'rxjs';
+import { HelpComponent } from 'src/app/help/help.component';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
 import {
@@ -105,6 +106,7 @@ import {
     MatOption,
     CommonModule,
     MatIconButton,
+    MatTooltip,
     MatSuffix,
     MatIcon,
     MatSlideToggle,
@@ -250,6 +252,17 @@ export class ExpensesComponent implements OnInit {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'expenses',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   unpaidOnlyToggle(unpaidOnly: boolean) {
