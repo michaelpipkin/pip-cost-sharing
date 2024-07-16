@@ -6,7 +6,7 @@
 export const environment = {
   production: false,
   useEmulators: true,
-  buildDate: new Date('2024-07-15T15:07:32.430Z')
+  buildDate: new Date('2024-07-16T19:40:29.951Z')
 };
 
 /*
