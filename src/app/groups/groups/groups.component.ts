@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
 import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -14,6 +15,7 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { HelpComponent } from 'src/app/help/help.component';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
@@ -32,6 +34,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     CommonModule,
     MatTooltip,
     AsyncPipe,
+    MatIcon,
   ],
 })
 export class GroupsComponent {
@@ -75,6 +78,17 @@ export class GroupsComponent {
         this.snackBar.open('Group joined!', 'OK');
       }
     });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'groups',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   onSelectGroup(e: MatSelectChange): void {

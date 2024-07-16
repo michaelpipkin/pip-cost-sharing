@@ -1,4 +1,10 @@
-<h1 mat-dialog-title>Add Expense</h1>
+<div class="page-header">
+  <div></div>
+  <h3>Add Expense</h3>
+  <div class="help-icon">
+    <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+  </div>
+</div>
 <mat-dialog-content>
   @let memberList = members();
   <div class="container mb-2">
@@ -34,25 +40,6 @@
           <mat-datepicker #expenseDatePicker></mat-datepicker>
           <mat-error *ngIf="e.date.errors?.['required']"> *Required </mat-error>
         </mat-form-field>
-        <mat-form-field
-          appearance="fill"
-          floatLabel="always"
-          class="number-field"
-        >
-          <mat-label>Total Amount</mat-label>
-          <input
-            matInput
-            formControlName="amount"
-            type="number"
-            class="number-right"
-            (change)="formatNumber($event)"
-            (blur)="formatNumber($event)"
-          />
-          <span matTextPrefix>$</span>
-          <mat-error *ngIf="e.amount.errors?.['required']">
-            *Required
-          </mat-error>
-        </mat-form-field>
       </div>
       <div class="details-2">
         <mat-form-field appearance="fill" id="description">
@@ -80,17 +67,18 @@
           floatLabel="always"
           class="number-field"
         >
-          <mat-label>Evenly Shared Amount</mat-label>
+          <mat-label>Total Amount</mat-label>
           <input
             matInput
-            formControlName="sharedAmount"
+            formControlName="amount"
             type="number"
             class="number-right"
-            (change)="formatNumber($event)"
+            (change)="formatNumber($event); allocateSharedAmounts()"
+            (blur)="formatNumber($event)"
           />
           <span matTextPrefix>$</span>
-          <mat-error *ngIf="e.sharedAmount.errors?.['required']">
-            *Required - Enter 0 if none
+          <mat-error *ngIf="e.amount.errors?.['required']">
+            *Required
           </mat-error>
         </mat-form-field>
         <mat-form-field
@@ -104,13 +92,16 @@
             formControlName="allocatedAmount"
             type="number"
             class="number-right"
-            (change)="formatNumber($event)"
+            (change)="formatNumber($event); allocateSharedAmounts()"
           />
           <span matTextPrefix>$</span>
           <mat-error *ngIf="e.allocatedAmount.errors?.['required']">
             *Required - Enter 0 if none
           </mat-error>
         </mat-form-field>
+        <span class="evenly-shared-amt">
+          Evenly Shared Remainder: {{ e.sharedAmount.value | currency }}
+        </span>
       </div>
     </form>
     <div class="attachment-container">
@@ -153,7 +144,7 @@
         class="btn btn-primary"
         (click)="allocateSharedAmounts()"
       >
-        Allocate Expense
+        Reallocate Expense
       </button>
     </div>
   </div>
@@ -194,7 +185,7 @@
                 class="number-right"
                 name="assignedAmount"
                 [formControl]="getSplitControl(i, 'assignedAmount')"
-                (change)="formatNumber($event)"
+                (change)="formatNumber($event); saveSplitsData()"
                 (blur)="formatNumber($event)"
               />
               <span matTextPrefix>$</span>

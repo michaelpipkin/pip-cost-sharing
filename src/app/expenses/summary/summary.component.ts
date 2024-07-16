@@ -8,6 +8,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { AmountDue } from '@models/amount-due';
 import { Category } from '@models/category';
@@ -22,6 +23,7 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { HelpComponent } from 'src/app/help/help.component';
 import {
   Component,
   computed,
@@ -75,6 +77,7 @@ import {
     CommonModule,
     MatIconButton,
     MatIcon,
+    MatTooltip,
     MatDatepicker,
     MatTable,
     MatColumnDef,
@@ -254,6 +257,17 @@ export class SummaryComponent implements OnInit {
       this.selectedMemberIdValue = this.currentMember().id;
       this.selectedMemberId.set(this.currentMember().id);
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'summary',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   selectedMemberChange() {

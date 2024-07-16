@@ -6,6 +6,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
@@ -20,7 +21,7 @@ import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.compo
 import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
-import { catchError, NotFoundError, of, tap, throwError } from 'rxjs';
+import { HelpComponent } from 'src/app/help/help.component';
 import { Url } from 'url';
 import {
   deleteObject,
@@ -100,6 +101,7 @@ import {
     CommonModule,
     MatError,
     MatInput,
+    MatTooltip,
     MatDatepickerInput,
     MatHint,
     MatDatepickerToggle,
@@ -220,6 +222,17 @@ export class EditExpenseComponent implements OnInit {
     return this.editExpenseForm.controls;
   }
 
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'add-edit-expense',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
+  }
+
   onCalendarKeyPress(e: KeyboardEvent) {
     if (['-', '+'].includes(e.key)) {
       const currentDate = new Date(this.datePicker.nativeElement.value);
@@ -312,6 +325,7 @@ export class EditExpenseComponent implements OnInit {
         });
       }
     }
+    this.allocateSharedAmounts();
   }
 
   deleteRow(index: number): void {
@@ -323,7 +337,6 @@ export class EditExpenseComponent implements OnInit {
 
   allocateSharedAmounts(): void {
     if (this.splitsDataSource.length > 0) {
-      this.saveSplitsData();
       for (let i = 0; i < this.splitsDataSource.length; ) {
         if (this.splitsDataSource[i].owedByMemberId === '') {
           this.splitsDataSource.splice(i, 1);

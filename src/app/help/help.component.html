@@ -1,158 +1,145 @@
-<div class="container pt-3 pb-3">
-  <ul class="help-list">
-    <li>
-      <h4>Groups</h4>
-      <p>
-        In order to use this app, you must be a member of at least one group. If
-        you received a group join code, click the Join Group button. Enter the
-        group code, as well as your display name for the group. You can have a
-        different display name for each group you are in.
-      </p>
-      <p>
-        If you need to create a new group, click the Create New Group button.
-        Enter the group name, as well as your display name for the group. After
-        saving, the group join code will be generated and displayed. Share this
-        code with people you want to invite to the group. You will automatically
-        be made an admin for any group you create.
-      </p>
-      <p>
-        You can manage all groups for which you are a group admin by clicking
-        the Manage Groups button. From here, you can change the group name, or
-        make it inactive. Inactive groups won't show up in the Select Group
-        drowndown list on the groups page.
-      </p>
-    </li>
-    <li>
-      <h4>Members</h4>
-      <p>
-        Group members can click on their own name in the members list to update
-        their display name and email address for the group. By default, when
-        joining or creating a group, your email address is set to your login
-        email address. However, this can be updated individually for each group
-        without affecting your login email address.
-      </p>
-      <p>
-        Group admins can edit all group members, change their active status, and
-        give or remove admin rights to other members. An admin may not remove
-        their own admin rights - another admin must peform that update.
-      </p>
-      <p>
-        Group members can only be deleted if they don't have any expenses/splits
-        assigned to them. Group members who are made inactive will no longer
-        show up in the dropdown list when creating a new expense.
-      </p>
-    </li>
-    <li>
-      <h4>Categories</h4>
-      <p>A group admin must create categories before adding expenses.</p>
-      <p>
-        Categories can only be deleted if they don't have any expenses/splits
-        assigned to them. Categories that are made inactive will no longer show
-        up in the dropdown list when creating a new expense. Only group admins
-        can edit or delete categories, or change their active status.
-      </p>
-      <p>
-        If your group does not have any need for categorizing expenses, you can
-        create a default category for all expenses. As long as your group only
-        has one category, it will be selected automatically for you when you
-        create a new expense.
-      </p>
-    </li>
-    <li>
-      <h4>Expenses</h4>
-      <p>
-        By default, the expenses tab shows all unpaid expenses. You can use the
-        filter dropdowns to filter expenses by payee, category, or both. You can
-        also toggle off Unpaid only to view all expenses. Clicking the Date
-        header will toggle sorting the table in ascending or descending date
-        order.
-      </p>
-      <p>
-        Click the expand arrow on any row to view the split detail for that
-        expense. You can click the paid icon on a split row to mark that
-        specific split paid or unpaid.
-      </p>
-      <p>
-        Click the Add New Expense button to create a new expense for the group.
-        The Evenly Shared Amount field is for the portion of the expense that
-        should be split evenly amoung all members. The Proportional Amount field
-        is for items like tax and tip that should be split proportional to the
-        amount each member is responsible for.
-      </p>
-      <p>
-        Click the Add New Split button to add a single split line to the
-        expense. You can select the member and enter an amount in the Member
-        Amount field that the member is individually responsible for and should
-        not be split. Click the Add All Members button to automatically insert a
-        split line for each active group member not already listed in the splits
-        table.
-      </p>
-      <p>
-        Click the Allocate Expense button to allocate the shared and
-        proportional amounts to all members in the splits section. If you have
-        left the evenly shared amount blank, the form will calculate the amount
-        remaining in the total that has not been entered on the splits and
-        allocate it evenly. If you have an expense that should simply be split
-        evenly among all group members, after entering the Total Amount,
-        Description, and Category, simply click Add All Members then click
-        Allocate Expense.
-      </p>
-      <p style="font-weight: bold; text-decoration: underline">
-        You must click Allocate Expense before you can save the expense.
-      </p>
-      <p>
-        The form also allows you to upload a supporting receipt for the expense.
-        The receipt must be a PDF or an image file, with a maximum size of 5MB.
-        Click the Upload receipt button, then select your file. The receipt will
-        be saved with the expense.
-      </p>
-      <p>
-        Click on the expense row to edit the expense details. Please note that
-        editing an expense will mark all splits unpaid. When viewing an existing
-        expense, you can view the receipt, if one exists.
-      </p>
-      <p>
-        If your group has a regularly reccuring expense, you can choose to
-        memorize the expense on the add expense screeen. You can then find the
-        expense on the Memorized tab (see further instructions in the next
-        section).
-      </p>
-    </li>
-    <li>
-      <h4>Memorized Expenses</h4>
-      <p>
-        After creating a memorized expense (see the previous section), you can
-        view it on this tab. Clicking the memorized expense row will let you
-        edit or delete the memorized expense.
-      </p>
-      <p>
-        Clicking the + on the memorized expense row will create a new expense
-        based on the memorized expense. Please note that the expense date is not
-        saved with the memorized expense, so make sure you set the correct
-        expense date for the actual expense.
-      </p>
-    </li>
-    <li>
-      <h4>Summary</h4>
-      <p>
-        Select a group member from the dropdown list to view the total amount
-        owed by that member to the other group members, and to that member from
-        the other group members. If you wish to see a summary of expenses for a
-        specific date range, you can enter the start date, end date, or both.
-      </p>
-      <p>
-        After selecting a group member and optionally entering filter dates, if
-        any outstanding expenses are found, you can click on a row in the table
-        to see the category breakdown of the expenses owed between the two
-        members.
-      </p>
-      <p>
-        Click the paid icon on any row to mark all splits owed between those two
-        group members as paid. Please note this action can only be undone by
-        viewing the expenses on the expenses tab and clicking the paid icon one
-        split at a time. Please be sure that you have paid/are ready to pay
-        before clicking the paid icon.
-      </p>
-    </li>
-  </ul>
+<div class="dialog-header">
+  <mat-icon (click)="close()">close</mat-icon>
 </div>
+<mat-dialog-content class="dialog-content">
+  @if (page == 'groups') {
+    <p>
+      In order to use this app, you must be a member of at least one group. If
+      you received a group join code, click the Join Group button. Enter the
+      group code, as well as your display name for the group. You can have a
+      different display name for each group you are in.
+    </p>
+    <p>
+      If you need to create a new group, click the Create New Group button.
+      Enter the group name, as well as your display name for the group. After
+      saving, the group join code will be generated and displayed. Share this
+      code with people you want to invite to the group. You will automatically
+      be made an admin for any group you create.
+    </p>
+    <p>
+      You can manage all groups for which you are a group admin by clicking the
+      Manage Groups button. From here, you can change the group name, or make it
+      inactive. Inactive groups won't show up in the Select Group drowndown list
+      on the groups page.
+    </p>
+  } @else if (page == 'members') {
+    <p>
+      Group members can click on their own name in the members list to update
+      their display name and email address for the group. By default, when
+      joining or creating a group, your email address is set to your login email
+      address. However, this can be updated individually for each group without
+      affecting your login email address.
+    </p>
+    <p>
+      Group admins can edit all group members, change their active status, and
+      give or remove admin rights to other members. An admin may not remove
+      their own admin rights - another admin must peform that update.
+    </p>
+    <p>
+      Group members can only be removed if they don't have any expenses/splits
+      assigned to them. Group members who are made inactive will no longer show
+      up in the dropdown list when creating a new expense.
+    </p>
+  } @else if (page == 'categories') {
+    <p>
+      A default category is automatically created when a new group is created.
+      Any group admin can create additional categories.
+    </p>
+    <p>
+      Categories can only be deleted if they don't have any expenses/splits
+      assigned to them. Categories that are made inactive will no longer show up
+      in the dropdown list when creating a new expense. Only group admins can
+      edit or delete categories, or change their active status.
+    </p>
+    <p>
+      If your group does not have any need for categorizing expenses, you can
+      simply use the default category for all expenses. As long as your group
+      only has one category, it will be selected automatically for you when you
+      create a new expense.
+    </p>
+  } @else if (page == 'expenses') {
+    <p>
+      By default, the expenses tab shows all unpaid expenses. You can use the
+      filter dropdowns to filter expenses by payee, category, or both. You can
+      also toggle off Unpaid only to view all expenses. Clicking the Date header
+      will toggle sorting the table in ascending or descending date order.
+    </p>
+    <p>
+      Click the Splits arrow on any row to expand the split detail for that
+      expense. You can click the paid icon on a split row to mark that specific
+      split paid or unpaid.
+    </p>
+    <p>
+      Click the Add New Expense button to create a new expense for the group.
+    </p>
+    <p>
+      Click on an expense row to edit the expense details. Please note that
+      editing an expense will mark all splits unpaid. When viewing an existing
+      expense, you can view the receipt, if one exists.
+    </p>
+    <p>
+      If your group has a regularly reccuring expense, you can choose to
+      memorize the expense on the add expense screeen. You can then find the
+      expense on the Memorized page.
+    </p>
+  } @else if (page == 'add-edit-expense') {
+    <p>Enter or edit expense details with this form.</p>
+    <p>
+      The Proportional Amount field is for items like tax and tip that should be
+      split proportional to the amount for which each member is responsible. The
+      evenly shared remainder and the allocated split amount for each member
+      will update automatically as you enter/update the total amount,
+      proportional amount, and individual member amounts.
+    </p>
+    <p>
+      Click the Add New Split button to add a single split line to the expense.
+      You can select the member and enter an amount in the Member Amount field
+      that the member is individually responsible for and should not be split.
+      Click the Add All Members button to automatically insert a split line for
+      each active group member not already listed in the splits table.
+    </p>
+    <p>
+      Click the Reallocate Expense button to manually allocate the shared and
+      proportional amounts to all members in the splits section if you have
+      added or removed split lines after the expense has been automatically
+      allocated.
+    </p>
+    <p>
+      The form also allows you to upload a supporting receipt for the expense.
+      The receipt must be a PDF or an image file, with a maximum size of 5MB.
+      Click the Upload receipt button, then select your file. The receipt will
+      be saved with the expense.
+    </p>
+  } @else if (page == 'memorized') {
+    <p>
+      After creating a memorized expense, you can view it on this page. Clicking
+      a row in the table will let you edit or delete the memorized expense.
+    </p>
+    <p>
+      Clicking the + on the memorized expense row will create a new expense
+      based on the memorized expense. Please note that the expense date is not
+      saved with the memorized expense, so make sure you set the correct expense
+      date for the actual expense.
+    </p>
+  } @else if (page == 'summary') {
+    <p>
+      Select a group member from the dropdown list to view the total amount owed
+      by that member to the other group members, and to that member from the
+      other group members. If you wish to see a summary of expenses for a
+      specific date range, you can enter the start date, end date, or both.
+    </p>
+    <p>
+      After selecting a group member and optionally entering filter dates, if
+      any outstanding expenses are found, you can click on a row in the table to
+      see the category breakdown of the expenses owed between the two members.
+    </p>
+    <p>
+      Click the paid icon on any row to mark all splits owed between those two
+      group members as paid. Please note this action can only be undone by
+      viewing the expenses on the expenses tab and clicking the paid icon one
+      split at a time. Please be sure that you have made (and, if applicable,
+      recorded the payment and category breakdown in your accounting software)
+      before clicking the paid icon.
+    </p>
+  }
+</mat-dialog-content>

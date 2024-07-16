@@ -296,13 +296,36 @@ mat-dialog-actions {
 }
 
 .container {
+  position: relative;
   display: grid;
   justify-items: center;
+}
+
+.page-header {
+  display: grid;
+  grid-template-columns: 1fr max-content 1fr;
+  align-items: center;
+  margin-bottom: 8px;
+  h3 {
+    margin: 0;
+  }
 }
 
 .table-container {
   display: grid;
   justify-content: center;
+}
+
+.help-icon {
+  margin-left: 16px;
+  height: 30px;
+  width: 30px;
+  mat-icon {
+    color: #446e9b;
+    font-size: 30px;
+    height: 30px;
+    width: 30px;
+  }
 }
 
 .mat-form-field {

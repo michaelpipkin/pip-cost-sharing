@@ -7,6 +7,7 @@ import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSort, MatSortHeader } from '@angular/material/sort';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -19,6 +20,7 @@ import { SortingService } from '@services/sorting.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { HelpComponent } from 'src/app/help/help.component';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
 import {
@@ -63,6 +65,7 @@ import {
     MatIconButton,
     MatSuffix,
     MatIcon,
+    MatTooltip,
     MatSlideToggle,
     MatTable,
     MatSort,
@@ -132,6 +135,17 @@ export class CategoriesComponent implements OnInit {
     if (this.currentGroup() == null) {
       this.router.navigateByUrl('/groups');
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'categories',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 
   updateSearch() {

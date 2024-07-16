@@ -1,3 +1,16 @@
-.help-list {
-  list-style: none;
+.dialog-header {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  padding-top: 12px;
+  padding-right: 12px;
+}
+
+.dialog-content {
+  padding-top: 0;
+}
+
+p {
+  line-height: 1.3em;
+  font-size: 1.2em;
 }
