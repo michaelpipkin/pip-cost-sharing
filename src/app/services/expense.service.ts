@@ -1,17 +1,8 @@
+import { inject, Injectable, signal } from '@angular/core';
 import { Expense } from '@models/expense';
-import { Group } from '@models/group';
 import { Split } from '@models/split';
 import { LoadingService } from '@shared/loading/loading.service';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import {
-  computed,
-  effect,
-  inject,
-  Injectable,
-  Signal,
-  signal,
-} from '@angular/core';
 import {
   doc,
   Firestore,
@@ -28,35 +19,14 @@ import {
 export class ExpenseService {
   fs = inject(Firestore);
   loading = inject(LoadingService);
-  groupService = inject(GroupService);
-
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
 
   groupExpenses = signal<Expense[]>([]);
   memorizedExpenses = signal<Expense[]>([]);
 
-  groupSelected = computed(async () => {
-    if (!!this.currentGroup()) {
-      this.loading.loadingOn();
-      const group = this.currentGroup();
-      await this.getExpensesWithSplitsForGroup(group.id).then(async () => {
-        await this.getExpensesWithSplitsForGroup(group.id, true).then(() =>
-          this.loading.loadingOff()
-        );
-      });
-    }
-  });
-
-  constructor() {
-    effect(() => {
-      this.groupSelected();
-    });
-  }
-
-  async getExpensesWithSplitsForGroup(
+  getExpensesWithSplitsForGroup(
     groupId: string,
     memorized: boolean = false
-  ): Promise<void> {
+  ): void {
     const path = memorized ? 'memorized' : 'expenses';
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     onSnapshot(splitQuery, (splitQuerySnap) => {

@@ -1,19 +1,14 @@
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
-import { UserService } from './user.service';
-
-import {
-  computed,
-  effect,
-  inject,
-  Injectable,
-  Signal,
-  signal,
-} from '@angular/core';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { MemberService } from './member.service';
+import { SplitService } from './split.service';
 import {
   doc,
   Firestore,
@@ -33,9 +28,12 @@ import {
 })
 export class GroupService {
   fs = inject(Firestore);
+  memberService = inject(MemberService);
+  categoryService = inject(CategoryService);
+  expensesService = inject(ExpenseService);
+  splitsService = inject(SplitService);
   loading = inject(LoadingService);
   router = inject(Router);
-  userService = inject(UserService);
 
   allUserGroups = signal<Group[]>([]);
   activeUserGroups = computed(() =>
@@ -47,25 +45,8 @@ export class GroupService {
   );
   currentGroup = signal<Group>(null);
 
-  user: Signal<User> = this.userService.user;
-
-  userLoaded = computed(() => {
-    if (!!this.user()) {
-      this.loading.loadingOn();
-      this.getUserGroups(this.user());
-    }
-  });
-
-  constructor() {
-    effect(() => {
-      this.userLoaded();
-    });
-    effect(() => {
-      this.activeUserGroups();
-    });
-  }
-
-  async getUserGroups(user: User): Promise<void> {
+  async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
+    this.loading.loadingOn();
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
       where('userId', '==', user.id)
@@ -80,7 +61,7 @@ export class GroupService {
         }),
       ];
       const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
-      onSnapshot(groupQuery, (groupQuerySnap) => {
+      onSnapshot(groupQuery, async (groupQuerySnap) => {
         const userGroupIds = userGroups.map((m) => m.groupId);
         this.adminGroupIds.set(
           userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
@@ -92,30 +73,39 @@ export class GroupService {
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
         if (groups.length === 1 && groups[0].active) {
-          this.currentGroup.set(groups[0]);
-          this.router
-            .navigateByUrl('/expenses')
-            .then(() => this.loading.loadingOff());
+          await this.getGroupById(groups[0].id, user.id).then(() => {
+            if (autoNav) {
+              this.router.navigateByUrl('/expenses');
+            }
+          });
         } else if (user.defaultGroupId !== '') {
-          this.getGroupById(user.defaultGroupId)
-            .then(() => this.router.navigateByUrl('/expenses'))
-            .then(() => this.loading.loadingOff());
+          await this.getGroupById(user.defaultGroupId, user.id).then(() => {
+            if (autoNav) {
+              this.router.navigateByUrl('/expenses');
+            }
+          });
         } else {
-          this.router
-            .navigateByUrl('/groups')
-            .then(() => this.loading.loadingOff());
+          this.router.navigateByUrl('/groups');
         }
       });
     });
   }
 
-  async getGroupById(id: string): Promise<void> {
-    const docSnap = await getDoc(doc(this.fs, `groups/${id}`));
+  async getGroupById(groupId: string, userId: string): Promise<void> {
+    this.loading.loadingOn();
+    const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
     const group = new Group({
       id: docSnap.id,
       ...docSnap.data(),
     });
     this.currentGroup.set(group);
+    this.categoryService.getGroupCategories(groupId);
+    this.memberService.getGroupMembers(groupId);
+    this.memberService.getMemberByUserId(groupId, userId);
+    this.expensesService.getExpensesWithSplitsForGroup(groupId);
+    this.expensesService.getExpensesWithSplitsForGroup(groupId, true);
+    this.splitsService.getUnpaidSplitsForGroup(groupId);
+    this.loading.loadingOff();
   }
 
   async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any> {
@@ -127,13 +117,11 @@ export class GroupService {
     const categoryRef = doc(
       collection(this.fs, `groups/${groupRef.id}/categories`)
     );
-    batch.set(
-      categoryRef,
-      new Category({
-        name: 'Default',
-        active: true,
-      })
-    );
+    const category: Partial<Category> = {
+      name: 'Default',
+      active: true,
+    };
+    batch.set(categoryRef, category);
     return await batch
       .commit()
       .then(() => {

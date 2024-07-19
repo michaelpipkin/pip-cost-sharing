@@ -1,0 +1,94 @@
+<div class="container pt-3">
+  <div class="page-header">
+    <div></div>
+    <h3>{{ currentGroup()?.name }}</h3>
+    <div class="help-icon">
+      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    </div>
+  </div>
+  <div class="filters">
+    <mat-form-field>
+      <mat-label>Search by name</mat-label>
+      <input matInput [(ngModel)]="nameFilter" />
+      @if (nameFilter() !== '') {
+        <button
+          matSuffix
+          mat-icon-button
+          aria-label="Clear"
+          (click)="nameFilter.set('')"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+    <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly">
+      Active only
+    </mat-slide-toggle>
+  </div>
+</div>
+<div class="table-container">
+  <div class="scrollable-table mat-elevation-z8">
+    <table
+      mat-table
+      matSort
+      [dataSource]="filteredMembers()"
+      (matSortChange)="sortMembers($event)"
+    >
+      @let columnsToDisplay =
+        ['displayName', 'email', 'send', 'active', 'groupAdmin'];
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef>Id</th>
+        <td mat-cell *matCellDef="let member">{{ member.id }}</td>
+      </ng-container>
+      <ng-container matColumnDef="displayName">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+        <td mat-cell *matCellDef="let member">{{ member.displayName }}</td>
+      </ng-container>
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
+        <td mat-cell *matCellDef="let member">{{ member.email }}</td>
+      </ng-container>
+      <ng-container matColumnDef="send">
+        <th mat-header-cell *matHeaderCellDef class="cell-center">
+          Send<br />Email
+        </th>
+        <td mat-cell *matCellDef="let member" class="cell-center">
+          <a
+            mat-icon-button
+            href="mailto:{{ member.email }}"
+            target="_blank"
+            (click)="$event.stopPropagation()"
+          >
+            <mat-icon>email</mat-icon>
+          </a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="active">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let member">
+          {{ member.active | activeInactive }}
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="groupAdmin">
+        <th mat-header-cell *matHeaderCellDef>Group<br />Admin</th>
+        <td mat-cell *matCellDef="let member" class="cell-center">
+          {{ member.groupAdmin | yesNo }}
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+      <tr
+        mat-row
+        *matRowDef="let member; columns: columnsToDisplay"
+        (click)="onRowClick(member)"
+        [class.clickable-row]="
+          currentMember()?.groupAdmin || user().id == member.userId
+        "
+      ></tr>
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+          No members found matching "{{ nameFilter() }}".
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

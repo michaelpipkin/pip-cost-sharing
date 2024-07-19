@@ -15,4 +15,6 @@ export class FooterComponent {
   currentYear: string = new Date().getFullYear().toString();
   version: string = packageJson.version;
   buildDate: Date = environment.buildDate;
+  production: boolean = environment.production;
+  emulators: boolean = environment.useEmulators;
 }

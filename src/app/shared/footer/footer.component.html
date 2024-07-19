@@ -1,4 +1,4 @@
-<div class="footer">
+<div class="footer" [class.no-emulation]="!production && !emulators">
   <div class="footer-left">
     <span>
       &copy; {{ currentYear }} -
@@ -10,6 +10,13 @@
     </span>
   </div>
   <div class="footer-right">
+    @if (!production) {
+      @if (emulators) {
+        <span>*** DEV :: USING EMULATED DATA ***</span>
+      } @else {
+        <span>*** DEV :: USING PRODUCTION DATA ***</span>
+      }
+    }
     <span>
       Version {{ version }}&nbsp;|&nbsp;Build Date:
       {{ buildDate | date: 'yyyy-MM-dd' }}

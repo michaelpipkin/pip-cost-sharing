@@ -1,17 +1,8 @@
+import { inject, Injectable, signal } from '@angular/core';
 import { Expense } from '@models/expense';
-import { Group } from '@models/group';
 import { Split } from '@models/split';
 import { LoadingService } from '@shared/loading/loading.service';
 import { collection, writeBatch } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import {
-  computed,
-  effect,
-  inject,
-  Injectable,
-  Signal,
-  signal,
-} from '@angular/core';
 import {
   collectionGroup,
   doc,
@@ -29,26 +20,8 @@ import {
 export class SplitService {
   fs = inject(Firestore);
   loading = inject(LoadingService);
-  groupService = inject(GroupService);
-
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
 
   unpaidSplits = signal<Split[]>([]);
-
-  groupSelected = computed(async () => {
-    if (!!this.currentGroup()) {
-      this.loading.loadingOn();
-      await this.getUnpaidSplitsForGroup(this.currentGroup().id).then(() =>
-        this.loading.loadingOff()
-      );
-    }
-  });
-
-  constructor() {
-    effect(() => {
-      this.groupSelected();
-    });
-  }
 
   async addDatesToSplits() {
     const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
@@ -64,7 +37,7 @@ export class SplitService {
     });
   }
 
-  async getUnpaidSplitsForGroup(groupId: string): Promise<void> {
+  getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
       where('paid', '==', false),

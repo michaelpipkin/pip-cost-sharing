@@ -24,6 +24,11 @@
 
 .footer-right {
   display: grid;
+  grid-auto-flow: column;
   justify-items: end;
   align-items: center;
+}
+
+.no-emulation {
+  background-color: #f60;
 }
