@@ -7,13 +7,13 @@
   grid-template-columns: max-content max-content;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 473px) {
   .filters {
     grid-template-columns: 1fr;
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 474px) {
   .add-button {
     grid-column-start: 1;
     grid-column-end: span 2;

@@ -6,13 +6,13 @@
   grid-template-rows: auto;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 373px) {
   .filters {
     grid-template-columns: 1fr;
   }
 }
 
-@media (min-width: 577px) {
+@media (min-width: 374px) {
   .filters {
     grid-template-columns: max-content max-content;
   }

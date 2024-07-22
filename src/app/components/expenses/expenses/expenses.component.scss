@@ -8,14 +8,14 @@
   grid-template-columns: max-content max-content max-content;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 473px) {
   .filters-1,
   .filters-2 {
     grid-template-columns: 1fr;
   }
 }
 
-@media (min-width: 577px) and (max-width: 767px) {
+@media (min-width: 474px) and (max-width: 767px) {
   .filters-1 {
     grid-template-columns: max-content max-content;
   }

@@ -41,7 +41,7 @@
   grid-template-columns: 1fr 1fr 2fr;
 }
 
-@media (min-width: 577px) and (max-width: 767px) {
+@media (min-width: 474px) and (max-width: 767px) {
   .details-2 {
     grid-template-columns: 1fr;
   }
@@ -57,7 +57,7 @@
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 473px) {
   .details-1,
   .details-3 {
     grid-template-columns: max-content;
