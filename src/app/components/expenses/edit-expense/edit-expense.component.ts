@@ -302,17 +302,8 @@ export class EditExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
-  formatNumber(e): void {
-    if (e.currentTarget.value === '') {
-      e.currentTarget.value = '0.00';
-    } else {
-      try {
-        let result = stringMath(e.currentTarget.value);
-        e.currentTarget.value = result.toFixed(2);
-      } catch {
-        e.currentTarget.value = '0.00';
-      }
-    }
+  formatNumber(e: HTMLInputElement): void {
+    e.value = this.stringUtils.toNumber(e.value).toFixed(2);
   }
 
   updateForm(): void {
