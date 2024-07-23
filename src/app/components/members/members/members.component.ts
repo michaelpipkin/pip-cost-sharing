@@ -94,9 +94,9 @@ export class MembersComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: Signal<User> = this.userService.user;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
-  groupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
+  #user: Signal<User> = this.userService.user;
+  #currentMember: Signal<Member> = this.memberService.currentMember;
+  #groupMembers: Signal<Member[]> = this.memberService.groupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
 
   sortField = signal<string>('name');
@@ -106,7 +106,7 @@ export class MembersComponent implements OnInit {
   nameFilter = model<string>('');
 
   filteredMembers = computed(() => {
-    var members = this.groupMembers().filter((m: Member) => {
+    var members = this.#groupMembers().filter((m: Member) => {
       return (
         (m.active || m.active == this.activeOnly()) &&
         m.displayName.toLowerCase().includes(this.nameFilter().toLowerCase())
@@ -141,12 +141,12 @@ export class MembersComponent implements OnInit {
   }
 
   onRowClick(member: Member): void {
-    if (this.currentMember().groupAdmin || this.user().id == member.userId) {
+    if (this.#currentMember().groupAdmin || this.#user().id == member.userId) {
       const dialogConfig: MatDialogConfig = {
         data: {
           groupId: this.currentGroup().id,
-          userId: this.user().id,
-          isGroupAdmin: this.currentMember().groupAdmin,
+          userId: this.#user().id,
+          isGroupAdmin: this.#currentMember().groupAdmin,
           member: member,
         },
       };

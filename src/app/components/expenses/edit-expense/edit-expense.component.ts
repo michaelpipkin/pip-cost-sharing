@@ -23,7 +23,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
-import stringMath from 'string-math';
 import { Url } from 'url';
 import {
   deleteObject,
@@ -84,13 +83,13 @@ import {
   ElementRef,
   inject,
   OnInit,
-  signal,
   ViewChild,
   Signal,
   model,
   ViewChildren,
   QueryList,
   afterRender,
+  computed,
 } from '@angular/core';
 
 @Component({
@@ -150,14 +149,26 @@ export class EditExpenseComponent implements OnInit {
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
-  categories = signal<Category[]>([]);
-  expenseMembers = signal<Member[]>([]);
-  splitMembers = signal<Member[]>([]);
+  #currentGroup: Signal<Group> = this.groupService.currentGroup;
 
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
-  allGroupMembers: Signal<Member[]> = this.memberService.allGroupMembers;
-  allCategories: Signal<Category[]> = this.categoryService.allCategories;
+  categories = computed<Category[]>(() => {
+    return this.categoryService
+      .groupCategories()
+      .filter((c) => c.active || c.id == this.data.expense.categoryId);
+  });
+  expenseMembers = computed<Member[]>(() => {
+    return this.memberService
+      .groupMembers()
+      .filter((m) => m.active || m.id == this.data.expense.paidByMemberId);
+  });
+  splitMembers = computed<Member[]>(() => {
+    const splitMemberIds: string[] = this.data.expense.splits.map(
+      (s: Split) => s.owedByMemberId
+    );
+    return this.memberService
+      .groupMembers()
+      .filter((m) => m.active || splitMemberIds.includes(m.id));
+  });
 
   editExpenseForm: FormGroup;
   splitForm: FormArray;
@@ -199,7 +210,7 @@ export class EditExpenseComponent implements OnInit {
       });
     }
     let splits: Split[] = [];
-    this.data.expense.splits.forEach((split) => {
+    this.data.expense.splits.forEach((split: Split) => {
       splits.push(new Split({ ...split }));
     });
     this.splitsDataSource.set(splits);
@@ -210,24 +221,8 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.expenseMembers.set(
-      this.allGroupMembers().filter(
-        (m) => m.active || m.id == this.data.expense.paidByMemberId
-      )
-    );
-    this.categories.set(
-      this.allCategories().filter(
-        (c) => c.active || c.id == this.data.expense.categoryId
-      )
-    );
-    const splitMemberIds = this.splitsDataSource().map((s) => s.owedByMemberId);
-    this.splitMembers.set(
-      this.allGroupMembers().filter(
-        (m) => m.active || splitMemberIds.includes(m.id)
-      )
-    );
     if (this.hasReceipt) {
-      const storageUrl = `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`;
+      const storageUrl = `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`;
       getDownloadURL(ref(this.storage, storageUrl))
         .then((url: unknown) => {
           if (!!url) {
@@ -492,7 +487,7 @@ export class EditExpenseComponent implements OnInit {
       this.loading.loadingOn();
       this.expenseService
         .updateExpense(
-          this.currentGroup().id,
+          this.#currentGroup().id,
           this.data.expense.id,
           changes,
           splits,
@@ -559,7 +554,7 @@ export class EditExpenseComponent implements OnInit {
           });
           this.expenseService
             .updateExpense(
-              this.currentGroup().id,
+              this.#currentGroup().id,
               this.data.expense.id,
               changes,
               splits
@@ -568,7 +563,7 @@ export class EditExpenseComponent implements OnInit {
               if (this.receiptFile()) {
                 const fileRef = ref(
                   this.storage,
-                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
                 );
                 uploadBytes(fileRef, this.receiptFile()).then(() => {
                   logEvent(this.analytics, 'receipt_uploaded');
@@ -610,12 +605,12 @@ export class EditExpenseComponent implements OnInit {
         if (confirm) {
           this.loading.loadingOn();
           this.expenseService
-            .deleteExpense(this.currentGroup().id, this.data.expense.id, true)
+            .deleteExpense(this.#currentGroup().id, this.data.expense.id, true)
             .then(() => {
               if (this.receiptUrl()) {
                 const fileRef = ref(
                   this.storage,
-                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
                 );
                 deleteObject(fileRef);
               }
@@ -650,12 +645,12 @@ export class EditExpenseComponent implements OnInit {
         if (confirm) {
           this.loading.loadingOn();
           this.expenseService
-            .deleteExpense(this.currentGroup().id, this.data.expense.id)
+            .deleteExpense(this.#currentGroup().id, this.data.expense.id)
             .then(() => {
               if (this.receiptUrl()) {
                 const fileRef = ref(
                   this.storage,
-                  `groups/${this.currentGroup().id}/receipts/${this.data.expense.id}`
+                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
                 );
                 deleteObject(fileRef);
               }

@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, inject, model, Signal } from '@angular/core';
+import { Component, computed, inject, model, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatOption } from '@angular/material/core';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
@@ -56,7 +56,12 @@ export class ManageGroupsComponent {
   loading = inject(LoadingService);
   user: User = inject(MAT_DIALOG_DATA);
 
-  userAdminGroups: Signal<Group[]> = this.groupService.adminUserGroups;
+  userAdminGroups = computed<Group[]>(() => {
+    const adminGroupsIds = this.groupService.adminGroupIds();
+    return this.groupService
+      .allUserGroups()
+      .filter((g) => adminGroupsIds.includes(g.id));
+  });
 
   editGroupForm = this.fb.group({
     groupName: ['', Validators.required],

@@ -36,14 +36,12 @@ export class GroupService {
   router = inject(Router);
 
   allUserGroups = signal<Group[]>([]);
-  activeUserGroups = computed(() =>
-    this.allUserGroups().filter((g) => g.active)
-  );
-  private adminGroupIds = signal<string[]>([]);
-  adminUserGroups = computed(() =>
-    this.allUserGroups().filter((g) => this.adminGroupIds().includes(g.id))
-  );
   currentGroup = signal<Group>(null);
+  adminGroupIds = signal<string[]>([]);
+
+  activeUserGroups = computed<Group[]>(() => {
+    return this.allUserGroups().filter((g) => g.active);
+  });
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
     this.loading.loadingOn();

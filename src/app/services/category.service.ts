@@ -25,10 +25,11 @@ export class CategoryService {
   sorter = inject(SortingService);
   loading = inject(LoadingService);
 
-  allCategories = signal<Category[]>([]);
-  activeCategories = computed(() =>
-    this.allCategories().filter((c) => c.active)
-  );
+  groupCategories = signal<Category[]>([]);
+
+  activeGroupCategores = computed<Category[]>(() => {
+    return this.groupCategories().filter((c) => c.active);
+  });
 
   getGroupCategories(groupId: string): void {
     const q = query(
@@ -39,7 +40,7 @@ export class CategoryService {
       const categories = [
         ...querySnap.docs.map((d) => new Category({ id: d.id, ...d.data() })),
       ];
-      this.allCategories.set(categories);
+      this.groupCategories.set(categories);
     });
   }
 

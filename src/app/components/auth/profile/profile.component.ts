@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, model, OnInit, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Auth } from '@angular/fire/auth';
 import { MatIconButton } from '@angular/material/button';
@@ -14,6 +13,14 @@ import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firebase from 'firebase/auth';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  Signal,
+} from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -57,12 +64,20 @@ export class ProfileComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
 
-  user: Signal<User> = this.userService.user;
   firebaseUser: firebase.User;
-  userGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+
+  #user: Signal<User> = this.userService.user;
+
+  activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+
+  selectedGroupId = model<string>(
+    this.#user()?.defaultGroupId !== '' ? this.#user().defaultGroupId : ''
+  );
+  hidePassword = model<boolean>(true);
+  hideConfirm = model<boolean>(true);
 
   emailForm = this.fb.group({
-    email: [this.user().email, Validators.email],
+    email: [this.#user().email, Validators.email],
   });
   passwordForm = this.fb.group(
     {
@@ -72,19 +87,20 @@ export class ProfileComponent implements OnInit {
     { validators: this.passwordMatchValidator }
   );
 
-  defaultGroupForm: FormGroup;
-  selectedGroupId = model<string>(
-    this.user()?.defaultGroupId !== '' ? this.user().defaultGroupId : ''
-  );
-  hidePassword: boolean = true;
-  hideConfirm: boolean = true;
-
   ngOnInit(): void {
     this.firebaseUser = this.auth.currentUser;
   }
 
   get e() {
     return this.emailForm.controls;
+  }
+
+  toggleHidePassword() {
+    this.hidePassword.update((h) => !h);
+  }
+
+  toggleHideConfirm() {
+    this.hideConfirm.update((h) => !h);
   }
 
   passwordMatchValidator(g: FormGroup) {

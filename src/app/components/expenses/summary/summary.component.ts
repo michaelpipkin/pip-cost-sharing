@@ -16,12 +16,10 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import {
@@ -97,7 +95,6 @@ import {
 })
 export class SummaryComponent implements OnInit {
   router = inject(Router);
-  userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -107,13 +104,12 @@ export class SummaryComponent implements OnInit {
   loading = inject(LoadingService);
   analytics = inject(Analytics);
 
-  user: Signal<User> = this.userService.user;
-  categories: Signal<Category[]> = this.categoryService.allCategories;
-  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
-  allMembers: Signal<Member[]> = this.memberService.allGroupMembers;
+  categories: Signal<Category[]> = this.categoryService.groupCategories;
+  allMembers: Signal<Member[]> = this.memberService.groupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   splits: Signal<Split[]> = this.splitService.unpaidSplits;
+  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
 
   owedToMemberId = signal<string>('');
   owedByMemberId = signal<string>('');

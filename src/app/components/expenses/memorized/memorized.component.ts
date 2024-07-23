@@ -13,13 +13,11 @@ import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
@@ -100,7 +98,6 @@ import {
 })
 export class MemorizedComponent implements OnInit {
   router = inject(Router);
-  userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -110,13 +107,12 @@ export class MemorizedComponent implements OnInit {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
 
-  user: Signal<User> = this.userService.user;
-  categories: Signal<Category[]> = this.categoryService.allCategories;
+  categories: Signal<Category[]> = this.categoryService.groupCategories;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
-  members: Signal<Member[]> = this.memberService.activeGroupMembers;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
-  filteredExpenses = computed(() => {
+  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+  filteredExpenses = computed<Expense[]>(() => {
     var filteredExpenses = this.expenses().filter((expense: Expense) => {
       return (
         expense.paidByMemberId ==
@@ -158,7 +154,7 @@ export class MemorizedComponent implements OnInit {
   }
 
   getMemberName(memberId: string): string {
-    const member = this.members().find((m) => m.id === memberId);
+    const member = this.activeMembers().find((m: Member) => m.id === memberId);
     return !!member ? member.displayName : '';
   }
 

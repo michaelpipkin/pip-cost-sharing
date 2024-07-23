@@ -22,11 +22,12 @@ import {
   providedIn: 'root',
 })
 export class MemberService {
-  currentGroupMember = signal<Member>(null);
-  allGroupMembers = signal<Member[]>([]);
-  activeGroupMembers = computed(() =>
-    this.allGroupMembers().filter((m) => m.active)
-  );
+  currentMember = signal<Member>(null);
+  groupMembers = signal<Member[]>([]);
+
+  activeGroupMembers = computed<Member[]>(() => {
+    return this.groupMembers().filter((m) => m.active);
+  });
 
   fs = inject(Firestore);
   sorter = inject(SortingService);
@@ -41,11 +42,11 @@ export class MemberService {
     await getDocs(q).then((docSnap) => {
       if (!docSnap.empty) {
         const memberDoc = docSnap.docs[0];
-        this.currentGroupMember.set(
+        this.currentMember.set(
           new Member({ id: memberDoc.id, ...memberDoc.data() })
         );
       } else {
-        this.currentGroupMember.set(null);
+        this.currentMember.set(null);
       }
     });
   }
@@ -59,7 +60,7 @@ export class MemberService {
       const groupMembers: Member[] = [
         ...querySnap.docs.map((d) => new Member({ id: d.id, ...d.data() })),
       ];
-      this.allGroupMembers.set(groupMembers);
+      this.groupMembers.set(groupMembers);
     });
   }
 
