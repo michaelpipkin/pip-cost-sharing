@@ -20,6 +20,8 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import stringMath from 'string-math';
 import {
   Component,
   ElementRef,
@@ -134,6 +136,7 @@ export class AddExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
   categories: Signal<Category[]> = this.categoryService.activeCategories;
@@ -171,11 +174,11 @@ export class AddExpenseComponent implements OnInit {
       this.addExpenseForm = this.fb.group({
         paidByMemberId: [this.currentMember().id, Validators.required],
         date: [new Date(), Validators.required],
-        amount: [0.0, [Validators.required, this.amountValidator()]],
+        amount: ['0.00', [Validators.required, this.amountValidator()]],
         description: ['', Validators.required],
         categoryId: ['', Validators.required],
         sharedAmount: [0.0, Validators.required],
-        allocatedAmount: [0.0, Validators.required],
+        allocatedAmount: ['0.00', Validators.required],
       });
     }
     afterRender(() => {
@@ -261,7 +264,12 @@ export class AddExpenseComponent implements OnInit {
     if (e.currentTarget.value === '') {
       e.currentTarget.value = '0.00';
     } else {
-      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+      try {
+        let result = stringMath(e.currentTarget.value);
+        e.currentTarget.value = result.toFixed(2);
+      } catch {
+        e.currentTarget.value = '0.00';
+      }
     }
   }
 
@@ -344,7 +352,7 @@ export class AddExpenseComponent implements OnInit {
       if (split.owedByMemberId !== '') {
         splits[i] = new Split({
           owedByMemberId: split.owedByMemberId,
-          assignedAmount: +split.assignedAmount,
+          assignedAmount: this.stringUtils.toNumber(split.assignedAmount),
           allocatedAmount: 0,
         });
       }
@@ -367,9 +375,11 @@ export class AddExpenseComponent implements OnInit {
       const splitCount: number = splits.length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addExpenseForm.value;
-      const totalAmount: number = val.amount;
+      const totalAmount: number = this.stringUtils.toNumber(val.amount);
       let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = val.allocatedAmount;
+      const allocatedAmount: number = this.stringUtils.toNumber(
+        val.allocatedAmount
+      );
       const totalSharedSplits: number = +(
         sharedAmount +
         allocatedAmount +

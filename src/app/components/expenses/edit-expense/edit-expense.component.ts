@@ -22,6 +22,8 @@ import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.compo
 import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import stringMath from 'string-math';
 import { Url } from 'url';
 import {
   deleteObject,
@@ -145,6 +147,7 @@ export class EditExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
   categories = signal<Category[]>([]);
@@ -179,13 +182,16 @@ export class EditExpenseComponent implements OnInit {
       paidByMemberId: [expense.paidByMemberId, Validators.required],
       date: [new Date(), Validators.required],
       amount: [
-        expense.totalAmount,
+        expense.totalAmount.toFixed(2),
         [Validators.required, this.amountValidator()],
       ],
       description: [expense.description, Validators.required],
       categoryId: [expense.categoryId, Validators.required],
       sharedAmount: [expense.sharedAmount, Validators.required],
-      allocatedAmount: [expense.allocatedAmount, Validators.required],
+      allocatedAmount: [
+        expense.allocatedAmount.toFixed(2),
+        Validators.required,
+      ],
     });
     if (!this.fromMemorized) {
       this.editExpenseForm.patchValue({
@@ -300,7 +306,12 @@ export class EditExpenseComponent implements OnInit {
     if (e.currentTarget.value === '') {
       e.currentTarget.value = '0.00';
     } else {
-      e.currentTarget.value = e.currentTarget.valueAsNumber.toFixed(2);
+      try {
+        let result = stringMath(e.currentTarget.value);
+        e.currentTarget.value = result.toFixed(2);
+      } catch {
+        e.currentTarget.value = '0.00';
+      }
     }
   }
 
@@ -355,7 +366,7 @@ export class EditExpenseComponent implements OnInit {
       if (split.owedByMemberId !== '') {
         splits[i] = new Split({
           owedByMemberId: split.owedByMemberId,
-          assignedAmount: +split.assignedAmount,
+          assignedAmount: this.stringUtils.toNumber(split.assignedAmount),
           allocatedAmount: 0,
         });
       }
@@ -385,9 +396,11 @@ export class EditExpenseComponent implements OnInit {
       const splitCount: number = splits.length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
-      const totalAmount: number = val.amount;
+      const totalAmount: number = this.stringUtils.toNumber(val.amount);
       let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = val.allocatedAmount;
+      const allocatedAmount: number = this.stringUtils.toNumber(
+        val.allocatedAmount
+      );
       const totalSharedSplits: number = +(
         sharedAmount +
         allocatedAmount +
