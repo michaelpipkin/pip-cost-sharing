@@ -1,14 +1,14 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './auth/login/login.component';
-import { ProfileComponent } from './auth/profile/profile.component';
-import { CategoriesComponent } from './categories/categories/categories.component';
-import { ExpensesComponent } from './expenses/expenses/expenses.component';
-import { MemorizedComponent } from './expenses/memorized/memorized.component';
-import { SummaryComponent } from './expenses/summary/summary.component';
-import { GroupsComponent } from './groups/groups/groups.component';
-import { HelpComponent } from './help/help.component';
-import { HomeComponent } from './home/home.component';
-import { MembersComponent } from './members/members/members.component';
+import { LoginComponent } from '@components/auth/login/login.component';
+import { ProfileComponent } from '@components/auth/profile/profile.component';
+import { CategoriesComponent } from '@components/categories/categories/categories.component';
+import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
+import { MemorizedComponent } from '@components/expenses/memorized/memorized.component';
+import { SummaryComponent } from '@components/expenses/summary/summary.component';
+import { GroupsComponent } from '@components/groups/groups/groups.component';
+import { HelpComponent } from '@components/help/help.component';
+import { HomeComponent } from '@components/home/home.component';
+import { MembersComponent } from '@components/members/members/members.component';
 import {
   canActivate,
   redirectLoggedInTo,

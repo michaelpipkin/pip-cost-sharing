@@ -1,18 +1,7 @@
-import { Group } from '@models/group';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Member } from '@models/member';
-import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
-import { GroupService } from './group.service';
 import { SortingService } from './sorting.service';
-import { UserService } from './user.service';
-import {
-  computed,
-  effect,
-  inject,
-  Injectable,
-  Signal,
-  signal,
-} from '@angular/core';
 import {
   addDoc,
   collection,
@@ -42,30 +31,6 @@ export class MemberService {
   fs = inject(Firestore);
   sorter = inject(SortingService);
   loading = inject(LoadingService);
-  userService = inject(UserService);
-  groupService = inject(GroupService);
-
-  user: Signal<User> = this.userService.user;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-
-  groupSelected = computed(async () => {
-    if (!!this.user() && !!this.currentGroup()) {
-      this.loading.loadingOn();
-      const user = this.user();
-      const group = this.currentGroup();
-      await this.getGroupMembers(group.id).then(async () => {
-        await this.getMemberByUserId(group.id, user.id).then(() => {
-          this.loading.loadingOff();
-        });
-      });
-    }
-  });
-
-  constructor() {
-    effect(() => {
-      this.groupSelected();
-    });
-  }
 
   async getMemberByUserId(groupId: string, userId: string): Promise<void> {
     const q = query(
@@ -85,7 +50,7 @@ export class MemberService {
     });
   }
 
-  async getGroupMembers(groupId: string): Promise<void> {
+  getGroupMembers(groupId: string): void {
     const q = query(
       collection(this.fs, `groups/${groupId}/members`),
       orderBy('displayName')
