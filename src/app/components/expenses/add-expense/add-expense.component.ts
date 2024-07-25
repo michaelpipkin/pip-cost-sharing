@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
@@ -119,7 +119,6 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
-    AsyncPipe,
     CurrencyPipe,
   ],
 })

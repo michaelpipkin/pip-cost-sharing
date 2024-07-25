@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconAnchor, MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -79,7 +79,7 @@ import {
     MatRowDef,
     MatRow,
     MatNoDataRow,
-    AsyncPipe,
+
     YesNoPipe,
     ActiveInactivePipe,
   ],

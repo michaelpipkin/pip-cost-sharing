@@ -1,3 +1,4 @@
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Analytics } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
@@ -39,12 +40,6 @@ import {
   ViewChild,
   model,
 } from '@angular/core';
-import {
-  AsyncPipe,
-  CommonModule,
-  CurrencyPipe,
-  DatePipe,
-} from '@angular/common';
 import {
   MatDatepicker,
   MatDatepickerInput,
@@ -131,7 +126,6 @@ import {
     MatFooterRowDef,
     MatFooterRow,
     MatNoDataRow,
-    AsyncPipe,
     CurrencyPipe,
     DatePipe,
     YesNoPipe,

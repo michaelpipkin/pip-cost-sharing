@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, computed, inject, model, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatOption } from '@angular/material/core';
@@ -44,7 +44,6 @@ import {
     MatError,
     MatSlideToggle,
     MatDialogActions,
-    AsyncPipe,
   ],
 })
 export class ManageGroupsComponent {

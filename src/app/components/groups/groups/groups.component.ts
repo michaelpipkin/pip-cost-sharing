@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
@@ -31,7 +31,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatOption,
     CommonModule,
     MatTooltip,
-    AsyncPipe,
+
     MatIcon,
   ],
 })
