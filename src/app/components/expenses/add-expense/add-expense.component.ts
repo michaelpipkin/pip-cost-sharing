@@ -18,6 +18,7 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
@@ -87,6 +88,7 @@ import {
   styleUrl: './add-expense.component.scss',
   standalone: true,
   imports: [
+    FormatCurrencyInputDirective,
     MatDialogTitle,
     MatDialogContent,
     FormsModule,
@@ -173,11 +175,11 @@ export class AddExpenseComponent implements OnInit {
       this.addExpenseForm = this.fb.group({
         paidByMemberId: [this.currentMember().id, Validators.required],
         date: [new Date(), Validators.required],
-        amount: ['0.00', [Validators.required, this.amountValidator()]],
+        amount: [0, [Validators.required, this.amountValidator()]],
         description: ['', Validators.required],
         categoryId: ['', Validators.required],
         sharedAmount: [0.0, Validators.required],
-        allocatedAmount: ['0.00', Validators.required],
+        allocatedAmount: [0, Validators.required],
       });
     }
     afterRender(() => {
@@ -259,14 +261,10 @@ export class AddExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
-  formatNumber(e: HTMLInputElement, control: string = ''): void {
-    const newValue = this.stringUtils.toNumber(e.value).toFixed(2);
-    e.value = newValue;
-    if (control !== '') {
-      this.addExpenseForm.patchValue({
-        [control]: newValue,
-      });
-    }
+  saveValue(e: HTMLInputElement, control: string = ''): void {
+    this.addExpenseForm.patchValue({
+      [control]: +e.value,
+    });
   }
 
   updateForm(): void {
@@ -371,11 +369,9 @@ export class AddExpenseComponent implements OnInit {
       const splitCount: number = splits.length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addExpenseForm.value;
-      const totalAmount: number = this.stringUtils.toNumber(val.amount);
+      const totalAmount: number = val.amount;
       let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = this.stringUtils.toNumber(
-        val.allocatedAmount
-      );
+      const allocatedAmount: number = val.allocatedAmount;
       const totalSharedSplits: number = +(
         sharedAmount +
         allocatedAmount +
@@ -459,9 +455,9 @@ export class AddExpenseComponent implements OnInit {
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
-      sharedAmount: +val.sharedAmount,
-      allocatedAmount: +val.allocatedAmount,
-      totalAmount: +val.amount,
+      sharedAmount: val.sharedAmount,
+      allocatedAmount: val.allocatedAmount,
+      totalAmount: val.amount,
       hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
@@ -470,8 +466,8 @@ export class AddExpenseComponent implements OnInit {
         date: expenseDate,
         groupId: this.currentGroup().id,
         categoryId: val.categoryId,
-        assignedAmount: +s.assignedAmount,
-        allocatedAmount: +s.allocatedAmount,
+        assignedAmount: s.assignedAmount,
+        allocatedAmount: s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
         paid: s.owedByMemberId == val.paidByMemberId,

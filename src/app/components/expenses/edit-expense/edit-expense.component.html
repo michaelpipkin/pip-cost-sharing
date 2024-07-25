@@ -72,11 +72,11 @@
           <input
             matInput
             #inputElement
-            formControlName="amount"
+            #totalAmount
             class="number-right"
+            appFormatCurrencyInput
             (change)="
-              formatNumber($event.currentTarget, 'amount');
-              allocateSharedAmounts()
+              saveValue($event.currentTarget, 'amount'); allocateSharedAmounts()
             "
           />
           <span matTextPrefix>$</span>
@@ -96,10 +96,11 @@
           <input
             matInput
             #inputElement
-            formControlName="allocatedAmount"
+            #propAmount
             class="number-right"
+            appFormatCurrencyInput
             (change)="
-              formatNumber($event.currentTarget, 'allocatedAmount');
+              saveValue($event.currentTarget, 'allocatedAmount');
               allocateSharedAmounts()
             "
           />
@@ -193,10 +194,9 @@
                   #inputElement
                   class="number-right"
                   name="assignedAmount"
+                  appFormatCurrencyInput
                   [formControl]="getSplitControl(i, 'assignedAmount')"
-                  (change)="
-                    formatNumber($event.currentTarget); saveSplitsData()
-                  "
+                  (change)="saveSplitsData()"
                 />
                 <span matTextPrefix>$</span>
               </mat-form-field>
