@@ -1,9 +1,8 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
-import { LoadingService } from '@shared/loading/loading.service';
 import { GroupService } from './group.service';
 
 @Injectable({
@@ -11,19 +10,16 @@ import { GroupService } from './group.service';
 })
 export class UserService {
   user = signal<User>(null);
-  isLoggedIn = signal<boolean>(false);
+  isLoggedIn = computed(() => !!this.user());
 
   fs = inject(Firestore);
   router = inject(Router);
   auth = inject(Auth);
   groupService = inject(GroupService);
-  loading = inject(LoadingService);
 
   constructor() {
     this.auth.onAuthStateChanged((firebaseUser) => {
       if (!!firebaseUser) {
-        this.isLoggedIn.set(true);
-        this.loading.loadingOn();
         this.getDefaultGroup(firebaseUser.uid).then(async (groupId: string) => {
           const user = new User({
             id: firebaseUser.uid,
@@ -36,8 +32,6 @@ export class UserService {
         return true;
       } else {
         this.user.set(null);
-        this.isLoggedIn.set(false);
-        this.loading.loadingOff();
         return false;
       }
     });

@@ -37,14 +37,14 @@
       <mat-label>New Password</mat-label>
       <input
         matInput
-        [type]="hidePassword ? 'password' : 'text'"
+        [type]="hidePassword() ? 'password' : 'text'"
         autocomplete="new-password"
         formControlName="password"
       />
       <button
         mat-icon-button
         matSuffix
-        (click)="hidePassword = !hidePassword"
+        (click)="toggleHidePassword()"
         [attr.aria-label]="'Hide password'"
         [attr.aria-pressed]="hidePassword"
       >
@@ -57,14 +57,14 @@
       <mat-label>Confirm Password</mat-label>
       <input
         matInput
-        [type]="hideConfirm ? 'password' : 'text'"
+        [type]="hideConfirm() ? 'password' : 'text'"
         autocomplete="new-password"
         formControlName="confirmPassword"
       />
       <button
         mat-icon-button
         matSuffix
-        (click)="hideConfirm = !hideConfirm"
+        (click)="toggleHideConfirm()"
         [attr.aria-label]="'Hide password'"
         [attr.aria-pressed]="hideConfirm"
       >
@@ -91,7 +91,7 @@
     <mat-form-field id="group-select">
       <mat-label>Select Group</mat-label>
       <mat-select [(ngModel)]="selectedGroupId" name="group" #groupSelect>
-        @for (group of userGroups(); track group.id) {
+        @for (group of activeUserGroups(); track group.id) {
           <mat-option [value]="group.id">{{ group.name }}</mat-option>
         }
       </mat-select>

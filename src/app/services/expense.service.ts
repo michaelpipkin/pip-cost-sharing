@@ -27,6 +27,7 @@ export class ExpenseService {
     groupId: string,
     memorized: boolean = false
   ): void {
+    this.loading.loadingOn();
     const path = memorized ? 'memorized' : 'expenses';
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     onSnapshot(splitQuery, (splitQuerySnap) => {

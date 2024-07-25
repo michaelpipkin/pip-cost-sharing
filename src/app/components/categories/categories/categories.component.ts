@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -13,12 +13,10 @@ import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
-import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { AddCategoryComponent } from '../add-category/add-category.component';
@@ -80,14 +78,12 @@ import {
     MatRowDef,
     MatRow,
     MatNoDataRow,
-    AsyncPipe,
     ActiveInactivePipe,
   ],
 })
 export class CategoriesComponent implements OnInit {
   router = inject(Router);
   categoryService = inject(CategoryService);
-  userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   sorter = inject(SortingService);
@@ -95,10 +91,9 @@ export class CategoriesComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: Signal<User> = this.userService.user;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
-  categories: Signal<Category[]> = this.categoryService.allCategories;
+  #categories: Signal<Category[]> = this.categoryService.groupCategories;
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);
@@ -107,7 +102,7 @@ export class CategoriesComponent implements OnInit {
   nameFilter = model<string>('');
 
   filteredCategories = computed(() => {
-    var categories = this.categories().filter((c: Category) => {
+    var categories = this.#categories().filter((c: Category) => {
       return (
         (c.active || c.active == this.activeOnly()) &&
         c.name.toLowerCase().includes(this.nameFilter().toLowerCase())
@@ -123,11 +118,7 @@ export class CategoriesComponent implements OnInit {
     return categories;
   });
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

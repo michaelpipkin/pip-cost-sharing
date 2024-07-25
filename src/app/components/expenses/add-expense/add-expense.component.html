@@ -6,14 +6,14 @@
   </div>
 </div>
 <mat-dialog-content>
-  @let memberList = members();
+  @let members = activeMembers();
   <div class="container mb-2">
     <form [formGroup]="addExpenseForm" id="expense-form">
       <div class="details-1">
         <mat-form-field id="paid-by-select">
           <mat-label>Paid by</mat-label>
           <mat-select formControlName="paidByMemberId" name="group">
-            @for (member of memberList; track member.id) {
+            @for (member of members; track member.id) {
               <mat-option [value]="member.id">{{
                 member.displayName
               }}</mat-option>
@@ -52,7 +52,7 @@
         <mat-form-field id="category-select">
           <mat-label>Category</mat-label>
           <mat-select formControlName="categoryId" name="category">
-            @for (category of categories(); track category.id) {
+            @for (category of activeCategories(); track category.id) {
               <mat-option [value]="category.id">{{ category.name }}</mat-option>
             }
           </mat-select>
@@ -162,7 +162,7 @@
                 [formControl]="getSplitControl(i, 'owedByMemberId')"
                 (selectionChange)="saveSplitsData()"
               >
-                @for (member of memberList; track member.id) {
+                @for (member of members; track member.id) {
                   <mat-option [value]="member.id">{{
                     member.displayName
                   }}</mat-option>

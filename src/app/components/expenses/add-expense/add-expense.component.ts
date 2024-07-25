@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
@@ -21,7 +21,6 @@ import { MemberService } from '@services/member.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
-import stringMath from 'string-math';
 import {
   Component,
   ElementRef,
@@ -120,7 +119,6 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
-    AsyncPipe,
     CurrencyPipe,
   ],
 })
@@ -139,17 +137,18 @@ export class AddExpenseComponent implements OnInit {
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
-  categories: Signal<Category[]> = this.categoryService.activeCategories;
-  members: Signal<Member[]> = this.memberService.activeGroupMembers;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
-
-  addExpenseForm: FormGroup;
-  splitForm: FormArray;
+  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+  activeCategories: Signal<Category[]> =
+    this.categoryService.activeGroupCategores;
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
   splitsDataSource = model<Split[]>([]);
+
+  addExpenseForm: FormGroup;
+  splitForm: FormArray;
 
   @ViewChild('splitsTable') splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
@@ -187,9 +186,9 @@ export class AddExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.categories().length == 1) {
+    if (this.activeCategories().length == 1) {
       this.addExpenseForm.patchValue({
-        categoryId: this.categories()[0].id,
+        categoryId: this.activeCategories()[0].id,
       });
     }
     if (this.data.memorized) {
@@ -316,7 +315,7 @@ export class AddExpenseComponent implements OnInit {
   }
 
   addAllActiveGroupMembers(): void {
-    this.members().forEach((member) => {
+    this.activeMembers().forEach((member: Member) => {
       const existingSplits = this.splitsDataSource().map(
         (s) => s.owedByMemberId
       );

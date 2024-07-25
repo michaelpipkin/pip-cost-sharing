@@ -1,3 +1,4 @@
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Analytics } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
@@ -18,14 +19,12 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { User } from '@models/user';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
@@ -41,12 +40,6 @@ import {
   ViewChild,
   model,
 } from '@angular/core';
-import {
-  AsyncPipe,
-  CommonModule,
-  CurrencyPipe,
-  DatePipe,
-} from '@angular/common';
 import {
   MatDatepicker,
   MatDatepickerInput,
@@ -133,7 +126,6 @@ import {
     MatFooterRowDef,
     MatFooterRow,
     MatNoDataRow,
-    AsyncPipe,
     CurrencyPipe,
     DatePipe,
     YesNoPipe,
@@ -142,7 +134,6 @@ import {
 })
 export class ExpensesComponent implements OnInit {
   router = inject(Router);
-  userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -155,11 +146,10 @@ export class ExpensesComponent implements OnInit {
   storage = inject(Storage);
   analytics = inject(Analytics);
 
-  user: Signal<User> = this.userService.user;
-  members: Signal<Member[]> = this.memberService.allGroupMembers;
-  categories: Signal<Category[]> = this.categoryService.allCategories;
+  members: Signal<Member[]> = this.memberService.groupMembers;
+  categories: Signal<Category[]> = this.categoryService.groupCategories;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   expenses: Signal<Expense[]> = this.expenseService.groupExpenses;
 
   sortField = signal<string>('date');
@@ -217,11 +207,7 @@ export class ExpensesComponent implements OnInit {
 
   @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

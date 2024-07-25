@@ -32,21 +32,18 @@ export class GroupService {
   categoryService = inject(CategoryService);
   expensesService = inject(ExpenseService);
   splitsService = inject(SplitService);
-  loading = inject(LoadingService);
   router = inject(Router);
+  loading = inject(LoadingService);
 
   allUserGroups = signal<Group[]>([]);
-  activeUserGroups = computed(() =>
-    this.allUserGroups().filter((g) => g.active)
-  );
-  private adminGroupIds = signal<string[]>([]);
-  adminUserGroups = computed(() =>
-    this.allUserGroups().filter((g) => this.adminGroupIds().includes(g.id))
-  );
   currentGroup = signal<Group>(null);
+  adminGroupIds = signal<string[]>([]);
+
+  activeUserGroups = computed<Group[]>(() => {
+    return this.allUserGroups().filter((g) => g.active);
+  });
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
-    this.loading.loadingOn();
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
       where('userId', '==', user.id)

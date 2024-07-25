@@ -64,7 +64,7 @@ export class EditMemberComponent {
 
   editMemberForm: FormGroup;
 
-  currentMember: Signal<Member> = this.memberService.currentGroupMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   user: Signal<User> = this.userService.user;
 
   groupAdminTooltip: string = '';

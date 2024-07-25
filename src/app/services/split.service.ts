@@ -1,7 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { LoadingService } from '@shared/loading/loading.service';
 import { collection, writeBatch } from 'firebase/firestore';
 import {
   collectionGroup,
@@ -19,7 +18,6 @@ import {
 })
 export class SplitService {
   fs = inject(Firestore);
-  loading = inject(LoadingService);
 
   unpaidSplits = signal<Split[]>([]);
 

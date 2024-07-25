@@ -10,7 +10,7 @@
     <mat-form-field>
       <mat-label>Filter by payee</mat-label>
       <mat-select [(ngModel)]="selectedMemberId" name="member">
-        @for (member of members(); track member.id) {
+        @for (member of activeMembers(); track member.id) {
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
       </mat-select>

@@ -1,4 +1,4 @@
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
@@ -14,7 +14,6 @@ import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
@@ -32,7 +31,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatOption,
     CommonModule,
     MatTooltip,
-    AsyncPipe,
+
     MatIcon,
   ],
 })
@@ -41,14 +40,13 @@ export class GroupsComponent {
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   dialog = inject(MatDialog);
-  loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  user: Signal<User> = this.userService.user;
-  userGroups: Signal<Group[]> = this.groupService.activeUserGroups;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  #user: Signal<User> = this.userService.user;
+  #currentGroup: Signal<Group> = this.groupService.currentGroup;
+  activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
 
-  selectedGroupId = model<string>(this.currentGroup()?.id ?? '');
+  selectedGroupId = model<string>(this.#currentGroup()?.id ?? '');
 
   addGroup(): void {
     const dialogRef = this.dialog.open(AddGroupComponent);
@@ -80,7 +78,7 @@ export class GroupsComponent {
   }
 
   onSelectGroup(e: MatSelectChange): void {
-    this.groupService.getGroupById(e.value, this.user().id);
+    this.groupService.getGroupById(e.value, this.#user().id);
   }
 
   copyGroupCode(): void {
@@ -92,7 +90,7 @@ export class GroupsComponent {
 
   manageGroups(): void {
     const dialogConfig: MatDialogConfig = {
-      data: this.user(),
+      data: this.#user(),
     };
     const dialogRef = this.dialog.open(ManageGroupsComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
