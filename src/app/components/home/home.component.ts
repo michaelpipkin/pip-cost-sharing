@@ -9,7 +9,7 @@ import { UserService } from '@services/user.service';
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIcon, AsyncPipe],
+  imports: [CommonModule, RouterLink, MatIcon],
 })
 export class HomeComponent {
   userService = inject(UserService);
