@@ -213,11 +213,7 @@ export class ExpensesComponent implements OnInit {
 
   @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

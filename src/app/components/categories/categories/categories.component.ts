@@ -119,11 +119,7 @@ export class CategoriesComponent implements OnInit {
     return categories;
   });
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

@@ -32,8 +32,8 @@ export class GroupService {
   categoryService = inject(CategoryService);
   expensesService = inject(ExpenseService);
   splitsService = inject(SplitService);
-  loading = inject(LoadingService);
   router = inject(Router);
+  loading = inject(LoadingService);
 
   allUserGroups = signal<Group[]>([]);
   currentGroup = signal<Group>(null);
@@ -44,7 +44,6 @@ export class GroupService {
   });
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
-    this.loading.loadingOn();
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
       where('userId', '==', user.id)

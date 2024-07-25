@@ -1,5 +1,5 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
-import { Component, computed, inject, model, Signal } from '@angular/core';
+import { Component, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatOption } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -14,7 +14,6 @@ import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
@@ -41,7 +40,6 @@ export class GroupsComponent {
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   dialog = inject(MatDialog);
-  loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
   #user: Signal<User> = this.userService.user;

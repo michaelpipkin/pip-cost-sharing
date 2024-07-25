@@ -1,6 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Member } from '@models/member';
-import { LoadingService } from '@shared/loading/loading.service';
 import { SortingService } from './sorting.service';
 import {
   addDoc,
@@ -31,7 +30,6 @@ export class MemberService {
 
   fs = inject(Firestore);
   sorter = inject(SortingService);
-  loading = inject(LoadingService);
 
   async getMemberByUserId(groupId: string, userId: string): Promise<void> {
     const q = query(

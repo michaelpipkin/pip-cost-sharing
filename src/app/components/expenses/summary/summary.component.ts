@@ -238,9 +238,6 @@ export class SummaryComponent implements OnInit {
 
   ngOnInit(): void {
     //this.splitService.addDatesToSplits();
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
   }
 
   showHelp(): void {

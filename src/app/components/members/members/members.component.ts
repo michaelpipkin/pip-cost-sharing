@@ -95,7 +95,7 @@ export class MembersComponent implements OnInit {
   snackBar = inject(MatSnackBar);
 
   #user: Signal<User> = this.userService.user;
-  #currentMember: Signal<Member> = this.memberService.currentMember;
+  currentMember: Signal<Member> = this.memberService.currentMember;
   #groupMembers: Signal<Member[]> = this.memberService.groupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
 
@@ -118,11 +118,7 @@ export class MembersComponent implements OnInit {
     return members;
   });
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
@@ -141,12 +137,12 @@ export class MembersComponent implements OnInit {
   }
 
   onRowClick(member: Member): void {
-    if (this.#currentMember().groupAdmin || this.#user().id == member.userId) {
+    if (this.currentMember().groupAdmin || this.#user().id == member.userId) {
       const dialogConfig: MatDialogConfig = {
         data: {
           groupId: this.currentGroup().id,
           userId: this.#user().id,
-          isGroupAdmin: this.#currentMember().groupAdmin,
+          isGroupAdmin: this.currentMember().groupAdmin,
           member: member,
         },
       };

@@ -132,11 +132,7 @@ export class MemorizedComponent implements OnInit {
   selectedCategoryId = model<string>('');
   expandedExpense = model<Expense | null>(null);
 
-  ngOnInit(): void {
-    if (this.currentGroup() == null) {
-      this.router.navigateByUrl('/groups');
-    }
-  }
+  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

@@ -1,6 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
-import { LoadingService } from '@shared/loading/loading.service';
 import { SortingService } from './sorting.service';
 import {
   addDoc,
@@ -23,7 +22,6 @@ import {
 export class CategoryService {
   fs = inject(Firestore);
   sorter = inject(SortingService);
-  loading = inject(LoadingService);
 
   groupCategories = signal<Category[]>([]);
 
