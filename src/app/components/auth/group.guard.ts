@@ -6,7 +6,7 @@ export const groupGuard: CanActivateFn = (_route, _state) => {
   const groupService = inject(GroupService);
   const router = inject(Router);
   if (groupService.currentGroup() === null) {
-    router.navigate['/groups'];
+    router.navigate(['/groups']);
     return false;
   }
   return true;
