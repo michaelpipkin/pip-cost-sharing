@@ -74,9 +74,9 @@
             formControlName="amount"
             class="number-right"
             (change)="
-              formatNumber($event.currentTarget); allocateSharedAmounts()
+              formatNumber($event.currentTarget, 'amount');
+              allocateSharedAmounts()
             "
-            (blur)="formatNumber($event.currentTarget)"
           />
           <span matTextPrefix>$</span>
           <mat-error *ngIf="e.amount.errors?.['required']">
@@ -98,9 +98,9 @@
             formControlName="allocatedAmount"
             class="number-right"
             (change)="
-              formatNumber($event.currentTarget); allocateSharedAmounts()
+              formatNumber($event.currentTarget, 'allocatedAmount');
+              allocateSharedAmounts()
             "
-            (blur)="formatNumber($event.currentTarget)"
           />
           <span matTextPrefix>$</span>
           <mat-hint>Tax, tip, etc.</mat-hint>
@@ -192,7 +192,6 @@
                 name="assignedAmount"
                 [formControl]="getSplitControl(i, 'assignedAmount')"
                 (change)="formatNumber($event.currentTarget); saveSplitsData()"
-                (blur)="formatNumber($event.currentTarget)"
               />
               <span matTextPrefix>$</span>
             </mat-form-field>

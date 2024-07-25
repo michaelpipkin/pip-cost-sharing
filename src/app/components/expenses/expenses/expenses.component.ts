@@ -200,7 +200,7 @@ export class ExpensesComponent implements OnInit {
   );
 
   expenseTotal = computed(() =>
-    this.filteredExpenses().reduce((total, e) => (total += e.totalAmount), 0)
+    this.filteredExpenses().reduce((total, e) => (total += +e.totalAmount), 0)
   );
 
   expandedExpense = model<Expense | null>(null);

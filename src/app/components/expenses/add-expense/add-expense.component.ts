@@ -259,8 +259,14 @@ export class AddExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
-  formatNumber(e: HTMLInputElement): void {
-    e.value = this.stringUtils.toNumber(e.value).toFixed(2);
+  formatNumber(e: HTMLInputElement, control: string = ''): void {
+    const newValue = this.stringUtils.toNumber(e.value).toFixed(2);
+    e.value = newValue;
+    if (control !== '') {
+      this.addExpenseForm.patchValue({
+        [control]: newValue,
+      });
+    }
   }
 
   updateForm(): void {
@@ -453,9 +459,9 @@ export class AddExpenseComponent implements OnInit {
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
+      sharedAmount: +val.sharedAmount,
+      allocatedAmount: +val.allocatedAmount,
+      totalAmount: +val.amount,
       hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
@@ -464,8 +470,8 @@ export class AddExpenseComponent implements OnInit {
         date: expenseDate,
         groupId: this.currentGroup().id,
         categoryId: val.categoryId,
-        assignedAmount: s.assignedAmount,
-        allocatedAmount: s.allocatedAmount,
+        assignedAmount: +s.assignedAmount,
+        allocatedAmount: +s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
         paid: s.owedByMemberId == val.paidByMemberId,
@@ -509,17 +515,17 @@ export class AddExpenseComponent implements OnInit {
       description: val.description,
       categoryId: val.categoryId,
       paidByMemberId: val.paidByMemberId,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
+      sharedAmount: +val.sharedAmount,
+      allocatedAmount: +val.allocatedAmount,
+      totalAmount: +val.amount,
     };
     let splits: Partial<Split>[] = [];
     this.splitsDataSource().forEach((s: Split) => {
       const split: Partial<Split> = {
         groupId: this.currentGroup().id,
         categoryId: val.categoryId,
-        assignedAmount: s.assignedAmount,
-        allocatedAmount: s.allocatedAmount,
+        assignedAmount: +s.assignedAmount,
+        allocatedAmount: +s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
         paid: false,
