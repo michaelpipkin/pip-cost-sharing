@@ -116,8 +116,10 @@ export class ProfileComponent {
         );
       })
       .catch((err: Error) => {
-        logEvent(this.analytics, 'verify_email_error', {
-          error: err,
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'verify_email',
+          message: err.message,
         });
         this.snackBar.open(
           'Something went wrong - verification email could not be sent.',
@@ -141,8 +143,10 @@ export class ProfileComponent {
           });
         })
         .catch((err) => {
-          logEvent(this.analytics, 'update_email_error', {
-            error: err,
+          logEvent(this.analytics, 'error', {
+            component: this.constructor.name,
+            action: 'update_email',
+            message: err.message,
           });
           if (err.code === 'auth/email-already-in-use') {
             this.snackBar.open(
