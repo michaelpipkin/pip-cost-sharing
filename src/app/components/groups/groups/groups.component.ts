@@ -31,7 +31,6 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatOption,
     CommonModule,
     MatTooltip,
-
     MatIcon,
   ],
 })

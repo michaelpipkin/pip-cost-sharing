@@ -34,7 +34,6 @@ import {
   Component,
   computed,
   inject,
-  OnInit,
   signal,
   Signal,
   ViewChild,
@@ -132,7 +131,7 @@ import {
     YesNoNaPipe,
   ],
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -206,8 +205,6 @@ export class ExpensesComponent implements OnInit {
   expandedExpense = model<Expense | null>(null);
 
   @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
-
-  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

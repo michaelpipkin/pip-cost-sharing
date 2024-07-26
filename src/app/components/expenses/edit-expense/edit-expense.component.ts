@@ -245,7 +245,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   addSelectFocus(): void {
-    this.inputElements.forEach((elementRef) => {
+    this.inputElements.forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
         this.select();

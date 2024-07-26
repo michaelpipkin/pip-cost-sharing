@@ -21,14 +21,7 @@ import { SplitService } from '@services/split.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  Signal,
-} from '@angular/core';
+import { Component, computed, inject, model, Signal } from '@angular/core';
 import {
   MatFormField,
   MatLabel,
@@ -95,7 +88,7 @@ import {
     CurrencyPipe,
   ],
 })
-export class MemorizedComponent implements OnInit {
+export class MemorizedComponent {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -111,6 +104,7 @@ export class MemorizedComponent implements OnInit {
   currentMember: Signal<Member> = this.memberService.currentMember;
   expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+
   filteredExpenses = computed<Expense[]>(() => {
     var filteredExpenses = this.expenses().filter((expense: Expense) => {
       return (
@@ -130,8 +124,6 @@ export class MemorizedComponent implements OnInit {
   selectedMemberId = model<string>('');
   selectedCategoryId = model<string>('');
   expandedExpense = model<Expense | null>(null);
-
-  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

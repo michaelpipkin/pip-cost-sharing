@@ -26,7 +26,6 @@ import {
   computed,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -79,12 +78,11 @@ import {
     MatRowDef,
     MatRow,
     MatNoDataRow,
-
     YesNoPipe,
     ActiveInactivePipe,
   ],
 })
-export class MembersComponent implements OnInit {
+export class MembersComponent {
   router = inject(Router);
   userService = inject(UserService);
   groupService = inject(GroupService);
@@ -117,8 +115,6 @@ export class MembersComponent implements OnInit {
     }
     return members;
   });
-
-  ngOnInit(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

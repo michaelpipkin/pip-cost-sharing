@@ -12,17 +12,17 @@
       <button
         type="button"
         class="btn btn-secondary"
-        [disabled]="firebaseUser?.emailVerified"
+        [disabled]="firebaseUser()?.emailVerified"
         (click)="verifyEmail()"
       >
-        {{ firebaseUser?.emailVerified ? 'Email Verified' : 'Verify Email' }}
+        {{ firebaseUser()?.emailVerified ? 'Email Verified' : 'Verify Email' }}
       </button>
       <button
         type="submit"
         class="btn btn-primary"
         [disabled]="
           emailForm.invalid ||
-          e.email?.value === firebaseUser?.email ||
+          e.email?.value === firebaseUser()?.email ||
           e.email.value === ''
         "
         (click)="onSubmitEmail()"

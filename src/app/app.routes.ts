@@ -3,7 +3,9 @@ import { groupGuard } from '@components/auth/group.guard';
 import { LoginComponent } from '@components/auth/login/login.component';
 import { ProfileComponent } from '@components/auth/profile/profile.component';
 import { CategoriesComponent } from '@components/categories/categories/categories.component';
+import { categoriesResolver } from '@components/categories/categories/categories.resolver';
 import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
+import { expensesResolver } from '@components/expenses/expenses/expenses.resolver';
 import { MemorizedComponent } from '@components/expenses/memorized/memorized.component';
 import { SummaryComponent } from '@components/expenses/summary/summary.component';
 import { GroupsComponent } from '@components/groups/groups/groups.component';
@@ -50,6 +52,9 @@ export const appRoutes: Routes = [
     component: CategoriesComponent,
     ...canActivate(authGuard),
     canActivate: [groupGuard],
+    resolve: {
+      categories: categoriesResolver,
+    },
   },
   {
     path: 'expenses',
@@ -57,6 +62,9 @@ export const appRoutes: Routes = [
     component: ExpensesComponent,
     ...canActivate(authGuard),
     canActivate: [groupGuard],
+    resolve: {
+      expenses: expensesResolver,
+    },
   },
   {
     path: 'memorized',
