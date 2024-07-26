@@ -36,8 +36,9 @@ import {
   inject,
   signal,
   Signal,
-  ViewChild,
   model,
+  viewChild,
+  ElementRef,
 } from '@angular/core';
 import {
   MatDatepicker,
@@ -203,8 +204,6 @@ export class ExpensesComponent {
   );
 
   expandedExpense = model<Expense | null>(null);
-
-  @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));

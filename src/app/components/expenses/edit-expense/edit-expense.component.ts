@@ -84,14 +84,13 @@ import {
   ElementRef,
   inject,
   OnInit,
-  ViewChild,
   Signal,
   model,
-  ViewChildren,
-  QueryList,
   afterRender,
   computed,
   afterNextRender,
+  viewChildren,
+  viewChild,
 } from '@angular/core';
 
 @Component({
@@ -183,11 +182,11 @@ export class EditExpenseComponent implements OnInit {
   receiptUrl = model<Url>(null);
   splitsDataSource = model<Split[]>([]);
 
-  @ViewChild('splitsTable') splitsTable: MatTable<Split>;
-  @ViewChild('datePicker') datePicker: ElementRef;
-  @ViewChild('totalAmount') totalAmountField: ElementRef;
-  @ViewChild('propAmount') proportionalAmountField: ElementRef;
-  @ViewChildren('inputElement') inputElements!: QueryList<ElementRef>;
+  splitsTable = viewChild<MatTable<Split>>('splitsTable');
+  datePicker = viewChild<ElementRef>('datePicker');
+  totalAmountField = viewChild<ElementRef>('totalAmount');
+  proportionalAmountField = viewChild<ElementRef>('propAmount');
+  inputElements = viewChildren<ElementRef>('inputElement');
 
   constructor() {
     const expense: Expense = this.data.expense;
@@ -217,9 +216,9 @@ export class EditExpenseComponent implements OnInit {
     this.splitsDataSource.set(splits);
     this.updateForm();
     afterNextRender(() => {
-      this.totalAmountField.nativeElement.value =
+      this.totalAmountField().nativeElement.value =
         expense.totalAmount.toFixed(2);
-      this.proportionalAmountField.nativeElement.value =
+      this.proportionalAmountField().nativeElement.value =
         expense.allocatedAmount.toFixed(2);
     });
     afterRender(() => {
@@ -245,7 +244,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   addSelectFocus(): void {
-    this.inputElements.forEach((elementRef: ElementRef<any>) => {
+    this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
         this.select();
@@ -276,7 +275,7 @@ export class EditExpenseComponent implements OnInit {
 
   onCalendarKeyPress(e: KeyboardEvent) {
     if (['-', '+'].includes(e.key)) {
-      const currentDate = new Date(this.datePicker.nativeElement.value);
+      const currentDate = new Date(this.datePicker().nativeElement.value);
       if (currentDate.toString() !== 'Invalid Date') {
         if (e.key === '-') {
           const newDate = currentDate.setDate(currentDate.getDate() - 1);
@@ -351,7 +350,6 @@ export class EditExpenseComponent implements OnInit {
       new Split({ assignedAmount: 0, allocatedAmount: 0 }),
     ]);
     this.updateForm();
-    this.splitsTable.renderRows();
   }
 
   saveSplitsData(): void {
@@ -374,7 +372,6 @@ export class EditExpenseComponent implements OnInit {
     this.splitForm.controls.splice(index, 1);
     this.saveSplitsData();
     this.updateForm();
-    this.splitsTable.renderRows();
   }
 
   allocateSharedAmounts(): void {
@@ -441,7 +438,6 @@ export class EditExpenseComponent implements OnInit {
         }
       }
       this.updateForm();
-      this.splitsTable?.renderRows();
     }
   }
 
