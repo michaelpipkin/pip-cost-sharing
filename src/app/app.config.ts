@@ -1,4 +1,3 @@
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -7,7 +6,6 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { BrowserModule } from '@angular/platform-browser';
 import { provideRouter, TitleStrategy } from '@angular/router';
-import { AuthInterceptor } from '@services/auth.interceptor';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { appRoutes } from './app.routes';
@@ -109,11 +107,6 @@ export const appConfig: ApplicationConfig = {
         verticalPosition: 'top',
         duration: 5000,
       } as MatSnackBarConfig,
-    },
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: AuthInterceptor,
-      multi: true,
     },
     LoadingService,
     ScreenTrackingService,

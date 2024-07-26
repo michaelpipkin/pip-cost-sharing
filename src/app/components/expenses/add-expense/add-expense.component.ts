@@ -27,12 +27,11 @@ import {
   ElementRef,
   inject,
   OnInit,
-  ViewChild,
   Signal,
   model,
-  ViewChildren,
-  QueryList,
   afterRender,
+  viewChild,
+  viewChildren,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -152,9 +151,9 @@ export class AddExpenseComponent implements OnInit {
   addExpenseForm: FormGroup;
   splitForm: FormArray;
 
-  @ViewChild('splitsTable') splitsTable: MatTable<Split>;
-  @ViewChild('datePicker') datePicker: ElementRef;
-  @ViewChildren('inputElement') inputElements!: QueryList<ElementRef>;
+  splitsTable = viewChild<MatTable<Split>>('splitsTable');
+  datePicker = viewChild<ElementRef>('datePicker');
+  inputElements = viewChildren<ElementRef>('inputElement');
 
   constructor() {
     if (this.data.memorized) {
@@ -202,7 +201,7 @@ export class AddExpenseComponent implements OnInit {
   }
 
   addSelectFocus(): void {
-    this.inputElements.forEach((elementRef: ElementRef<any>) => {
+    this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
         this.select();
@@ -233,7 +232,7 @@ export class AddExpenseComponent implements OnInit {
 
   onCalendarKeyPress(e: KeyboardEvent) {
     if (['-', '+'].includes(e.key)) {
-      const currentDate = new Date(this.datePicker.nativeElement.value);
+      const currentDate = new Date(this.datePicker().nativeElement.value);
       if (currentDate.toString() !== 'Invalid Date') {
         if (e.key === '-') {
           const newDate = currentDate.setDate(currentDate.getDate() - 1);
@@ -308,14 +307,12 @@ export class AddExpenseComponent implements OnInit {
       new Split({ assignedAmount: 0, allocatedAmount: 0 }),
     ]);
     this.updateForm();
-    this.splitsTable.renderRows();
   }
 
   deleteRow(index: number): void {
     this.splitForm.controls.splice(index, 1);
     this.saveSplitsData();
     this.updateForm();
-    this.splitsTable.renderRows();
   }
 
   addAllActiveGroupMembers(): void {
@@ -336,7 +333,6 @@ export class AddExpenseComponent implements OnInit {
     });
     this.updateForm();
     this.saveSplitsData();
-    this.splitsTable?.renderRows();
   }
 
   saveSplitsData(): void {
@@ -419,7 +415,6 @@ export class AddExpenseComponent implements OnInit {
         }
       }
       this.updateForm();
-      this.splitsTable?.renderRows();
     }
   }
 
