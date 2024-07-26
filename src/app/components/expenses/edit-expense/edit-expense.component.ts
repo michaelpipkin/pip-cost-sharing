@@ -19,6 +19,7 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
@@ -90,6 +91,7 @@ import {
   QueryList,
   afterRender,
   computed,
+  afterNextRender,
 } from '@angular/core';
 
 @Component({
@@ -98,6 +100,7 @@ import {
   styleUrl: './edit-expense.component.scss',
   standalone: true,
   imports: [
+    FormatCurrencyInputDirective,
     MatDialogTitle,
     MatDialogContent,
     FormsModule,
@@ -182,6 +185,8 @@ export class EditExpenseComponent implements OnInit {
 
   @ViewChild('splitsTable') splitsTable: MatTable<Split>;
   @ViewChild('datePicker') datePicker: ElementRef;
+  @ViewChild('totalAmount') totalAmountField: ElementRef;
+  @ViewChild('propAmount') proportionalAmountField: ElementRef;
   @ViewChildren('inputElement') inputElements!: QueryList<ElementRef>;
 
   constructor() {
@@ -192,16 +197,13 @@ export class EditExpenseComponent implements OnInit {
       paidByMemberId: [expense.paidByMemberId, Validators.required],
       date: [new Date(), Validators.required],
       amount: [
-        expense.totalAmount.toFixed(2),
+        expense.totalAmount,
         [Validators.required, this.amountValidator()],
       ],
       description: [expense.description, Validators.required],
       categoryId: [expense.categoryId, Validators.required],
       sharedAmount: [expense.sharedAmount, Validators.required],
-      allocatedAmount: [
-        expense.allocatedAmount.toFixed(2),
-        Validators.required,
-      ],
+      allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
     if (!this.fromMemorized) {
       this.editExpenseForm.patchValue({
@@ -214,6 +216,12 @@ export class EditExpenseComponent implements OnInit {
     });
     this.splitsDataSource.set(splits);
     this.updateForm();
+    afterNextRender(() => {
+      this.totalAmountField.nativeElement.value =
+        expense.totalAmount.toFixed(2);
+      this.proportionalAmountField.nativeElement.value =
+        expense.allocatedAmount.toFixed(2);
+    });
     afterRender(() => {
       this.addSelectFocus();
     });
@@ -237,7 +245,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   addSelectFocus(): void {
-    this.inputElements.forEach((elementRef) => {
+    this.inputElements.forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
         this.select();
@@ -296,8 +304,10 @@ export class EditExpenseComponent implements OnInit {
     ) as FormControl;
   }
 
-  formatNumber(e: HTMLInputElement): void {
-    e.value = this.stringUtils.toNumber(e.value).toFixed(2);
+  saveValue(e: HTMLInputElement, control: string = ''): void {
+    this.editExpenseForm.patchValue({
+      [control]: +e.value,
+    });
   }
 
   updateForm(): void {
@@ -381,11 +391,9 @@ export class EditExpenseComponent implements OnInit {
       const splitCount: number = splits.length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
-      const totalAmount: number = this.stringUtils.toNumber(val.amount);
+      const totalAmount: number = val.amount;
       let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = this.stringUtils.toNumber(
-        val.allocatedAmount
-      );
+      const allocatedAmount: number = val.allocatedAmount;
       const totalSharedSplits: number = +(
         sharedAmount +
         allocatedAmount +
@@ -533,9 +541,9 @@ export class EditExpenseComponent implements OnInit {
             description: val.description,
             categoryId: val.categoryId,
             paidByMemberId: val.paidByMemberId,
-            sharedAmount: val.sharedAmount,
-            allocatedAmount: val.allocatedAmount,
-            totalAmount: val.amount,
+            sharedAmount: +val.sharedAmount,
+            allocatedAmount: +val.allocatedAmount,
+            totalAmount: +val.amount,
             hasReceipt: this.hasReceipt || !!this.fileName(),
           };
           let splits: Partial<Split>[] = [];
@@ -543,8 +551,8 @@ export class EditExpenseComponent implements OnInit {
             const split: Partial<Split> = {
               date: expenseDate,
               categoryId: val.categoryId,
-              assignedAmount: s.assignedAmount,
-              allocatedAmount: s.allocatedAmount,
+              assignedAmount: +s.assignedAmount,
+              allocatedAmount: +s.allocatedAmount,
               paidByMemberId: val.paidByMemberId,
               owedByMemberId: s.owedByMemberId,
               paid: s.owedByMemberId == val.paidByMemberId,

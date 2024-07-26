@@ -27,7 +27,6 @@ import {
   computed,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -89,11 +88,10 @@ import {
     MatRowDef,
     MatRow,
     MatNoDataRow,
-
     CurrencyPipe,
   ],
 })
-export class SummaryComponent implements OnInit {
+export class SummaryComponent {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -236,10 +234,6 @@ export class SummaryComponent implements OnInit {
   ];
   detailColumnsToDisplay: string[] = ['category', 'amount'];
 
-  ngOnInit(): void {
-    //this.splitService.addDatesToSplits();
-  }
-
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
       data: {
@@ -258,16 +252,12 @@ export class SummaryComponent implements OnInit {
 
   getMemberName(memberId: string): string {
     const member = this.allMembers().find((m) => m.id === memberId);
-    return !!member ? member.displayName : '';
+    return member?.displayName ?? '';
   }
 
   getCategoryName(categoryId: string): string {
     const category = this.categories().find((c) => c.id === categoryId);
-    return !!category ? category.name : '';
-  }
-
-  abs(amount: number) {
-    return Math.abs(amount);
+    return category?.name ?? '';
   }
 
   onRowSelect(owedToMemberId: string, owedByMemberId: string) {

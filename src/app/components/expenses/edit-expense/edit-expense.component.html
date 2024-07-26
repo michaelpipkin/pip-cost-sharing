@@ -72,12 +72,12 @@
           <input
             matInput
             #inputElement
-            formControlName="amount"
+            #totalAmount
             class="number-right"
+            appFormatCurrencyInput
             (change)="
-              formatNumber($event.currentTarget); allocateSharedAmounts()
+              saveValue($event.currentTarget, 'amount'); allocateSharedAmounts()
             "
-            (blur)="formatNumber($event.currentTarget)"
           />
           <span matTextPrefix>$</span>
           <mat-error *ngIf="e.amount.errors?.['required']">
@@ -96,12 +96,13 @@
           <input
             matInput
             #inputElement
-            formControlName="allocatedAmount"
+            #propAmount
             class="number-right"
+            appFormatCurrencyInput
             (change)="
-              formatNumber($event.currentTarget); allocateSharedAmounts()
+              saveValue($event.currentTarget, 'allocatedAmount');
+              allocateSharedAmounts()
             "
-            (blur)="formatNumber($event.currentTarget)"
           />
           <span matTextPrefix>$</span>
           <mat-hint>Tax, tip, etc.</mat-hint>
@@ -193,11 +194,9 @@
                   #inputElement
                   class="number-right"
                   name="assignedAmount"
+                  appFormatCurrencyInput
                   [formControl]="getSplitControl(i, 'assignedAmount')"
-                  (change)="
-                    formatNumber($event.currentTarget); saveSplitsData()
-                  "
-                  (blur)="formatNumber($event.currentTarget)"
+                  (change)="saveSplitsData()"
                 />
                 <span matTextPrefix>$</span>
               </mat-form-field>

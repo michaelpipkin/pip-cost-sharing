@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { Component, inject, model, signal, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Auth } from '@angular/fire/auth';
 import { MatIconButton } from '@angular/material/button';
@@ -10,17 +11,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
+import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firebase from 'firebase/auth';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  Signal,
-} from '@angular/core';
+import { environment } from 'src/environments/environment';
 import {
   FormBuilder,
   FormGroup,
@@ -55,7 +50,7 @@ import {
     MatIcon,
   ],
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent {
   fb = inject(FormBuilder);
   auth = inject(Auth);
   userService = inject(UserService);
@@ -63,21 +58,20 @@ export class ProfileComponent implements OnInit {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
-
-  firebaseUser: firebase.User;
+  splitService = inject(SplitService);
 
   #user: Signal<User> = this.userService.user;
-
   activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
 
-  selectedGroupId = model<string>(
-    this.#user()?.defaultGroupId !== '' ? this.#user().defaultGroupId : ''
-  );
+  firebaseUser = signal<firebase.User>(this.auth.currentUser);
+  prod = signal<boolean>(environment.production);
+
+  selectedGroupId = model<string>(this.#user()?.defaultGroupId ?? '');
   hidePassword = model<boolean>(true);
   hideConfirm = model<boolean>(true);
 
   emailForm = this.fb.group({
-    email: [this.#user().email, Validators.email],
+    email: [this.#user()?.email, Validators.email],
   });
   passwordForm = this.fb.group(
     {
@@ -87,12 +81,12 @@ export class ProfileComponent implements OnInit {
     { validators: this.passwordMatchValidator }
   );
 
-  ngOnInit(): void {
-    this.firebaseUser = this.auth.currentUser;
-  }
-
   get e() {
     return this.emailForm.controls;
+  }
+
+  fixSplits() {
+    this.splitService.fixSplits();
   }
 
   toggleHidePassword() {
@@ -111,7 +105,7 @@ export class ProfileComponent implements OnInit {
 
   async verifyEmail(): Promise<void> {
     firebase
-      .sendEmailVerification(this.firebaseUser)
+      .sendEmailVerification(this.firebaseUser())
       .then(() => {
         this.snackBar.open(
           'Check your email to verify your email address.',
@@ -122,7 +116,9 @@ export class ProfileComponent implements OnInit {
         );
       })
       .catch((err: Error) => {
-        console.log(err);
+        logEvent(this.analytics, 'verify_email_error', {
+          error: err,
+        });
         this.snackBar.open(
           'Something went wrong - verification email could not be sent.',
           'Close',
@@ -136,23 +132,35 @@ export class ProfileComponent implements OnInit {
   onSubmitEmail(): void {
     this.emailForm.disable();
     const newEmail = this.emailForm.value.email;
-    if (newEmail !== this.firebaseUser.email) {
+    if (newEmail !== this.firebaseUser().email) {
       firebase
-        .updateEmail(this.firebaseUser, newEmail)
+        .updateEmail(this.firebaseUser(), newEmail)
         .then(() => {
           this.snackBar.open('Your email address has been updated.', 'Close', {
             verticalPosition: 'top',
           });
         })
-        .catch((err: Error) => {
-          console.log(err);
-          this.snackBar.open(
-            'Something went wrong - your email address could not be updated.',
-            'Close',
-            {
-              verticalPosition: 'top',
-            }
-          );
+        .catch((err) => {
+          logEvent(this.analytics, 'update_email_error', {
+            error: err,
+          });
+          if (err.code === 'auth/email-already-in-use') {
+            this.snackBar.open(
+              'This email address is already in use by another account.',
+              'Close',
+              {
+                verticalPosition: 'top',
+              }
+            );
+          } else {
+            this.snackBar.open(
+              'Something went wrong - your email address could not be updated.',
+              'Close',
+              {
+                verticalPosition: 'top',
+              }
+            );
+          }
         });
     }
     this.emailForm.enable();
@@ -163,7 +171,7 @@ export class ProfileComponent implements OnInit {
     const changes = this.passwordForm.value;
     if (changes.password !== '') {
       firebase
-        .updatePassword(this.firebaseUser, changes.password)
+        .updatePassword(this.firebaseUser(), changes.password)
         .then(() => {
           this.snackBar.open('Your password has been updated.', 'Close', {
             verticalPosition: 'top',

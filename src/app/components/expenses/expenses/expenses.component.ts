@@ -34,7 +34,6 @@ import {
   Component,
   computed,
   inject,
-  OnInit,
   signal,
   Signal,
   ViewChild,
@@ -132,7 +131,7 @@ import {
     YesNoNaPipe,
   ],
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -200,14 +199,12 @@ export class ExpensesComponent implements OnInit {
   );
 
   expenseTotal = computed(() =>
-    this.filteredExpenses().reduce((total, e) => (total += e.totalAmount), 0)
+    this.filteredExpenses().reduce((total, e) => (total += +e.totalAmount), 0)
   );
 
   expandedExpense = model<Expense | null>(null);
 
   @ViewChild('expensesTable') expensesTable: MatTable<Expense[]>;
-
-  ngOnInit(): void {}
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
@@ -231,12 +228,12 @@ export class ExpensesComponent implements OnInit {
 
   getMemberName(memberId: string): string {
     const member = this.members().find((m) => m.id === memberId);
-    return !!member ? member.displayName : '';
+    return member?.displayName ?? '';
   }
 
   getCategoryName(categoryId: string): string {
     const category = this.categories().find((c) => c.id === categoryId);
-    return !!category ? category.name : '';
+    return category?.name ?? '';
   }
 
   onRowClick(expense: Expense): void {

@@ -25,7 +25,6 @@ import {
   Component,
   computed,
   inject,
-  OnInit,
   signal,
   Signal,
   model,
@@ -81,7 +80,7 @@ import {
     ActiveInactivePipe,
   ],
 })
-export class CategoriesComponent implements OnInit {
+export class CategoriesComponent {
   router = inject(Router);
   categoryService = inject(CategoryService);
   groupService = inject(GroupService);
@@ -117,8 +116,6 @@ export class CategoriesComponent implements OnInit {
     }
     return categories;
   });
-
-  ngOnInit(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

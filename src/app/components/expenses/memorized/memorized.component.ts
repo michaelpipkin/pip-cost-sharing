@@ -1,4 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
+import { Component, computed, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -21,14 +22,6 @@ import { SplitService } from '@services/split.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { AddExpenseComponent } from '../add-expense/add-expense.component';
 import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  Signal,
-} from '@angular/core';
 import {
   MatFormField,
   MatLabel,
@@ -95,7 +88,7 @@ import {
     CurrencyPipe,
   ],
 })
-export class MemorizedComponent implements OnInit {
+export class MemorizedComponent {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -111,6 +104,7 @@ export class MemorizedComponent implements OnInit {
   currentMember: Signal<Member> = this.memberService.currentMember;
   expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+
   filteredExpenses = computed<Expense[]>(() => {
     var filteredExpenses = this.expenses().filter((expense: Expense) => {
       return (
@@ -131,8 +125,6 @@ export class MemorizedComponent implements OnInit {
   selectedCategoryId = model<string>('');
   expandedExpense = model<Expense | null>(null);
 
-  ngOnInit(): void {}
-
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
@@ -150,12 +142,12 @@ export class MemorizedComponent implements OnInit {
 
   getMemberName(memberId: string): string {
     const member = this.activeMembers().find((m: Member) => m.id === memberId);
-    return !!member ? member.displayName : '';
+    return member?.displayName ?? '';
   }
 
   getCategoryName(categoryId: string): string {
     const category = this.categories().find((c) => c.id === categoryId);
-    return !!category ? category.name : '';
+    return category?.name ?? '';
   }
 
   onRowClick(expense: Expense): void {
