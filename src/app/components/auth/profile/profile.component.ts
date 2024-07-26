@@ -11,9 +11,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
+import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firebase from 'firebase/auth';
+import { environment } from 'src/environments/environment';
 import {
   FormBuilder,
   FormGroup,
@@ -56,11 +58,13 @@ export class ProfileComponent {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
+  splitService = inject(SplitService);
 
   #user: Signal<User> = this.userService.user;
   activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
 
   firebaseUser = signal<firebase.User>(this.auth.currentUser);
+  prod = signal<boolean>(environment.production);
 
   selectedGroupId = model<string>(this.#user()?.defaultGroupId ?? '');
   hidePassword = model<boolean>(true);
@@ -79,6 +83,10 @@ export class ProfileComponent {
 
   get e() {
     return this.emailForm.controls;
+  }
+
+  fixSplits() {
+    this.splitService.fixSplits();
   }
 
   toggleHidePassword() {
