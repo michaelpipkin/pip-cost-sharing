@@ -228,12 +228,12 @@ export class ExpensesComponent {
 
   getMemberName(memberId: string): string {
     const member = this.members().find((m) => m.id === memberId);
-    return !!member ? member.displayName : '';
+    return member?.displayName ?? '';
   }
 
   getCategoryName(categoryId: string): string {
     const category = this.categories().find((c) => c.id === categoryId);
-    return !!category ? category.name : '';
+    return category?.name ?? '';
   }
 
   onRowClick(expense: Expense): void {

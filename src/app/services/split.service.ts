@@ -21,20 +21,6 @@ export class SplitService {
 
   unpaidSplits = signal<Split[]>([]);
 
-  async addDatesToSplits() {
-    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
-    const expenses = expDocs.docs.map(
-      (e) => new Expense({ id: e.id, ...e.data() })
-    );
-    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
-    splitDocs.docs.forEach(async (d) => {
-      const expense = expenses.find((e) => e.id === d.data().expenseId);
-      if (!!expense) {
-        await updateDoc(d.ref, { date: expense.date });
-      }
-    });
-  }
-
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
