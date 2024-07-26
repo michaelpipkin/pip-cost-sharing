@@ -1,12 +1,9 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import { collection, writeBatch } from 'firebase/firestore';
 import {
-  collectionGroup,
   doc,
   Firestore,
-  getDocs,
   onSnapshot,
   query,
   updateDoc,
