@@ -4,11 +4,13 @@ import { Split } from '@models/split';
 import { LoadingService } from '@shared/loading/loading.service';
 import { collection, onSnapshot } from 'firebase/firestore';
 import {
+  collectionGroup,
   doc,
   Firestore,
   getDocs,
   orderBy,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from '@angular/fire/firestore';
@@ -144,5 +146,16 @@ export class ExpenseService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
+  }
+
+  async fixExpenses() {
+    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
+    expDocs.docs.forEach(async (d) => {
+      if (!('hasReceipt' in d.data())) {
+        await updateDoc(d.ref, {
+          hasReceipt: false,
+        });
+      }
+    });
   }
 }

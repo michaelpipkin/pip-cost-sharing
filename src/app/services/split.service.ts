@@ -25,28 +25,6 @@ export class SplitService {
 
   unpaidSplits = signal<Split[]>([]);
 
-  async fixSplits() {
-    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
-    const expenses = expDocs.docs.map(
-      (e) => new Expense({ id: e.id, ...e.data() })
-    );
-    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
-    splitDocs.docs.forEach(async (d) => {
-      const groupId = d.ref.parent.parent.id;
-      const allocatedAmount = +d.data().allocatedAmount.toFixed(2);
-      const expense = expenses.find((e) => e.id === d.data().expenseId);
-      if (!!expense) {
-        await updateDoc(d.ref, {
-          date: expense.date,
-          groupId: groupId,
-          allocatedAmount: allocatedAmount,
-        });
-      } else {
-        await deleteDoc(d.ref);
-      }
-    });
-  }
-
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
@@ -94,5 +72,25 @@ export class SplitService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
+  }
+
+  async fixSplits() {
+    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
+    const expenses = expDocs.docs.map(
+      (e) => new Expense({ id: e.id, ...e.data() })
+    );
+    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
+    splitDocs.docs.forEach(async (d) => {
+      const allocatedAmount = +d.data().allocatedAmount.toFixed(2);
+      const expense = expenses.find((e) => e.id === d.data().expenseId);
+      if (!!expense) {
+        await updateDoc(d.ref, {
+          date: expense.date,
+          allocatedAmount: allocatedAmount,
+        });
+      } else {
+        await deleteDoc(d.ref);
+      }
+    });
   }
 }
