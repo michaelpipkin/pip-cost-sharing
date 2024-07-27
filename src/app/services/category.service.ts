@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
 import { SortingService } from './sorting.service';
 import {
@@ -25,15 +25,9 @@ export class CategoryService {
 
   groupCategories = signal<Category[]>([]);
 
-  activeGroupCategores = computed<Category[]>(() => {
-    return this.groupCategories().filter((c) => c.active);
-  });
-
   getGroupCategories(groupId: string): void {
-    const q = query(
-      collection(this.fs, `groups/${groupId}/categories`),
-      orderBy('name')
-    );
+    const c = collection(this.fs, `groups/${groupId}/categories`);
+    const q = query(c, orderBy('name'));
     onSnapshot(q, (querySnap) => {
       const categories = [
         ...querySnap.docs.map((d) => new Category({ id: d.id, ...d.data() })),

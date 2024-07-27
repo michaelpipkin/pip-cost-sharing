@@ -32,6 +32,7 @@ import {
   afterRender,
   viewChild,
   viewChildren,
+  computed,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -141,8 +142,11 @@ export class AddExpenseComponent implements OnInit {
   currentMember: Signal<Member> = this.memberService.currentMember;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
-  activeCategories: Signal<Category[]> =
-    this.categoryService.activeGroupCategores;
+  #categories: Signal<Category[]> = this.categoryService.groupCategories;
+
+  activeCategories = computed<Category[]>(() => {
+    return this.#categories().filter((c) => c.active);
+  });
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
