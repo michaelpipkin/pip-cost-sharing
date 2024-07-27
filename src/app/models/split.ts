@@ -10,7 +10,6 @@ export interface ISplit {
   paidByMemberId: string;
   owedByMemberId: string;
   paid: boolean;
-  groupId: string;
 }
 
 export class Split implements ISplit {
@@ -26,5 +25,4 @@ export class Split implements ISplit {
   paidByMemberId: string;
   owedByMemberId: string;
   paid: boolean = false;
-  groupId: string;
 }

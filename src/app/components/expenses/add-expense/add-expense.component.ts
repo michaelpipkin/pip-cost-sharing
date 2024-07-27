@@ -463,7 +463,6 @@ export class AddExpenseComponent implements OnInit {
     this.splitsDataSource().forEach((s: Split) => {
       const split: Partial<Split> = {
         date: expenseDate,
-        groupId: this.currentGroup().id,
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
         allocatedAmount: s.allocatedAmount,
@@ -517,7 +516,6 @@ export class AddExpenseComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsDataSource().forEach((s: Split) => {
       const split: Partial<Split> = {
-        groupId: this.currentGroup().id,
         categoryId: val.categoryId,
         assignedAmount: +s.assignedAmount,
         allocatedAmount: +s.allocatedAmount,

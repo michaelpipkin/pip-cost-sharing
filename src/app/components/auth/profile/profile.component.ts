@@ -10,6 +10,7 @@ import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
@@ -59,6 +60,7 @@ export class ProfileComponent {
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
   splitService = inject(SplitService);
+  expenseService = inject(ExpenseService);
 
   #user: Signal<User> = this.userService.user;
   activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
@@ -83,10 +85,6 @@ export class ProfileComponent {
 
   get e() {
     return this.emailForm.controls;
-  }
-
-  fixSplits() {
-    this.splitService.fixSplits();
   }
 
   toggleHidePassword() {
@@ -213,5 +211,13 @@ export class ProfileComponent {
           );
         });
     }
+  }
+
+  fixSplits() {
+    this.splitService.fixSplits();
+  }
+
+  fixExpenses() {
+    this.expenseService.fixExpenses();
   }
 }
