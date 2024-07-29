@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, model, signal, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Auth } from '@angular/fire/auth';
@@ -44,7 +43,6 @@ import {
     MatLabel,
     MatSelect,
     MatInput,
-    CommonModule,
     MatError,
     MatIconButton,
     MatSuffix,

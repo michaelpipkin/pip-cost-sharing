@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Analytics } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
@@ -37,8 +37,6 @@ import {
   signal,
   Signal,
   model,
-  viewChild,
-  ElementRef,
 } from '@angular/core';
 import {
   MatDatepicker,
@@ -97,7 +95,6 @@ import {
     MatSelect,
     FormsModule,
     MatOption,
-    CommonModule,
     MatIconButton,
     MatTooltip,
     MatSuffix,

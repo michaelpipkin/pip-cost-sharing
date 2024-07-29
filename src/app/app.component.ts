@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatIcon } from '@angular/material/icon';
@@ -17,7 +16,6 @@ import { LoadingComponent } from './shared/loading/loading.component';
   standalone: true,
   imports: [
     RouterLink,
-    CommonModule,
     MatIcon,
     LoadingComponent,
     RouterOutlet,

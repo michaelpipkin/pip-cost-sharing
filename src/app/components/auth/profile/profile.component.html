@@ -4,9 +4,9 @@
     <mat-form-field>
       <mat-label>Email Address</mat-label>
       <input matInput type="email" formControlName="email" />
-      <mat-error *ngIf="e.email.errors?.['email']">
-        Invalid email address
-      </mat-error>
+      @if (e.email.errors?.['email']) {
+        <mat-error> Invalid email address </mat-error>
+      }
     </mat-form-field>
     <div class="buttons">
       <button
@@ -70,9 +70,9 @@
       >
         <mat-icon>{{ hideConfirm ? 'visibility_off' : 'visibility' }}</mat-icon>
       </button>
-      <mat-error *ngIf="passwordForm.errors?.['mismatch']">
-        Passwords do not match.
-      </mat-error>
+      @if (passwordForm.errors?.['mismatch']) {
+        <mat-error> Passwords do not match. </mat-error>
+      }
     </mat-form-field>
     <button
       type="submit"

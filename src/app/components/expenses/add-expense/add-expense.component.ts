@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
@@ -97,7 +97,6 @@ import {
     MatLabel,
     MatSelect,
     MatOption,
-    CommonModule,
     MatError,
     MatInput,
     MatTooltip,
@@ -122,6 +121,7 @@ import {
     MatNoDataRow,
     MatDialogActions,
     CurrencyPipe,
+    DecimalPipe,
   ],
 })
 export class AddExpenseComponent implements OnInit {
@@ -136,6 +136,7 @@ export class AddExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
@@ -276,7 +277,9 @@ export class AddExpenseComponent implements OnInit {
         (x: Split) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
+            assignedAmount: new FormControl(
+              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
+            ),
           })
       )
     );

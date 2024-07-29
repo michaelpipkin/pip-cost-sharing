@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, model, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatOption } from '@angular/material/core';
@@ -40,7 +39,6 @@ import {
     MatOption,
     ReactiveFormsModule,
     MatInput,
-    CommonModule,
     MatError,
     MatSlideToggle,
     MatDialogActions,

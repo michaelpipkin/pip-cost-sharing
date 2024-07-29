@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -112,5 +113,6 @@ export const appConfig: ApplicationConfig = {
     ScreenTrackingService,
     UserTrackingService,
     MatDatepickerModule,
+    DecimalPipe,
   ],
 };

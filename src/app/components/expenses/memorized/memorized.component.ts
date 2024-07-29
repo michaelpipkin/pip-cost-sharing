@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
@@ -69,7 +69,6 @@ import {
     MatSelect,
     FormsModule,
     MatOption,
-    CommonModule,
     MatIconButton,
     MatSuffix,
     MatIcon,

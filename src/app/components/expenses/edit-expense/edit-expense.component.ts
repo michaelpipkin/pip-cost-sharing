@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -108,7 +108,6 @@ import {
     MatLabel,
     MatSelect,
     MatOption,
-    CommonModule,
     MatError,
     MatInput,
     MatTooltip,
@@ -133,6 +132,7 @@ import {
     MatNoDataRow,
     MatDialogActions,
     CurrencyPipe,
+    DecimalPipe,
   ],
 })
 export class EditExpenseComponent implements OnInit {
@@ -147,6 +147,7 @@ export class EditExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
@@ -217,9 +218,9 @@ export class EditExpenseComponent implements OnInit {
     this.updateForm();
     afterNextRender(() => {
       this.totalAmountField().nativeElement.value =
-        expense.totalAmount.toFixed(2);
+        this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
       this.proportionalAmountField().nativeElement.value =
-        expense.allocatedAmount.toFixed(2);
+        this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') || '0.00';
     });
     afterRender(() => {
       this.addSelectFocus();
@@ -315,7 +316,9 @@ export class EditExpenseComponent implements OnInit {
         (x: any) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
+            assignedAmount: new FormControl(
+              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
+            ),
           })
       )
     );

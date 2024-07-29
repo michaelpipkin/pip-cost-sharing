@@ -19,9 +19,9 @@
       <mat-form-field appearance="fill">
         <mat-label>Group name</mat-label>
         <input matInput formControlName="groupName" />
-        <mat-error *ngIf="f.groupName.errors?.['required']">
-          *Required
-        </mat-error>
+        @if (f.groupName.errors?.['required']) {
+          <mat-error> *Required </mat-error>
+        }
       </mat-form-field>
     </div>
     <div class="toggle">

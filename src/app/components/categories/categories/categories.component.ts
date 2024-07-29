@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -58,7 +57,6 @@ import {
     MatLabel,
     MatInput,
     FormsModule,
-    CommonModule,
     MatIconButton,
     MatSuffix,
     MatIcon,
