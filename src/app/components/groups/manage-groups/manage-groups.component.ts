@@ -1,4 +1,4 @@
-import { Component, computed, inject, model, Signal } from '@angular/core';
+import { Component, computed, inject, model } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatOption } from '@angular/material/core';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';

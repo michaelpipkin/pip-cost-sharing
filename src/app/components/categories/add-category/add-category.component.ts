@@ -15,6 +15,7 @@ import {
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
+  MatDialogClose,
   MatDialogContent,
   MatDialogRef,
   MatDialogTitle,
@@ -35,6 +36,7 @@ import {
     MatInput,
     MatError,
     MatDialogActions,
+    MatDialogClose,
   ],
 })
 export class AddCategoryComponent {
@@ -85,9 +87,5 @@ export class AddCategoryComponent {
         this.newCategoryForm.enable();
       })
       .finally(() => this.loading.loadingOff());
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

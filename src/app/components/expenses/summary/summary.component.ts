@@ -225,14 +225,6 @@ export class SummaryComponent {
     }
   );
 
-  summaryColumnsToDisplay: string[] = [
-    'owedTo',
-    'owedBy',
-    'amount',
-    'markPaid',
-  ];
-  detailColumnsToDisplay: string[] = ['category', 'amount'];
-
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
       data: {

@@ -1,7 +1,7 @@
-<div class="footer" [class.no-emulation]="!production && !emulators">
+<div class="footer" [class.no-emulation]="!production() && !emulators()">
   <div class="footer-left">
     <span>
-      &copy; {{ currentYear }} -
+      &copy; {{ currentYear() }} -
       <a
         href="mailto:michael.a.pipkin@gmail.com"
         matTooltip="Email the developer"
@@ -10,16 +10,16 @@
     </span>
   </div>
   <div class="footer-right">
-    @if (!production) {
-      @if (emulators) {
+    @if (!production()) {
+      @if (emulators()) {
         <span>*** DEV :: USING EMULATED DATA ***</span>
       } @else {
         <span>*** DEV :: USING PRODUCTION DATA ***</span>
       }
     }
     <span>
-      Version {{ version }}&nbsp;|&nbsp;Build Date:
-      {{ buildDate | date: 'yyyy-MM-dd' }}
+      Version {{ version() }}&nbsp;|&nbsp;Build Date:
+      {{ buildDate() | date: 'yyyy-MM-dd' }}
     </span>
   </div>
 </div>

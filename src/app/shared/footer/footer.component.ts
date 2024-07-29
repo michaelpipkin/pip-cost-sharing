@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { MatTooltip } from '@angular/material/tooltip';
 import packageJson from 'package.json';
 import { environment } from 'src/environments/environment';
@@ -12,9 +12,9 @@ import { environment } from 'src/environments/environment';
   imports: [DatePipe, MatTooltip],
 })
 export class FooterComponent {
-  currentYear: string = new Date().getFullYear().toString();
-  version: string = packageJson.version;
-  buildDate: Date = environment.buildDate;
-  production: boolean = environment.production;
-  emulators: boolean = environment.useEmulators;
+  currentYear = signal<string>(new Date().getFullYear().toString());
+  version = signal<string>(packageJson.version);
+  buildDate = signal<Date>(environment.buildDate);
+  production = signal<boolean>(environment.production);
+  emulators = signal<boolean>(environment.useEmulators);
 }

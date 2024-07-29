@@ -3,10 +3,10 @@
   <p>{{ data.confirmationText }}</p>
 </mat-dialog-content>
 <mat-dialog-actions>
-  <button type="button" class="btn btn-secondary" (click)="close(false)">
+  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
     {{ data.cancelButtonText }}
   </button>
-  <button type="button" class="btn btn-primary" (click)="close(true)">
+  <button type="button" class="btn btn-primary" [mat-dialog-close]="true">
     {{ data.confirmButtonText }}
   </button>
 </mat-dialog-actions>
