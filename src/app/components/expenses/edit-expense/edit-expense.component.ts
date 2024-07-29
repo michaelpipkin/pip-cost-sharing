@@ -91,6 +91,7 @@ import {
   afterNextRender,
   viewChildren,
   viewChild,
+  signal,
 } from '@angular/core';
 
 @Component({
@@ -175,8 +176,8 @@ export class EditExpenseComponent implements OnInit {
   editExpenseForm: FormGroup;
   splitForm: FormArray;
 
-  private fromMemorized: boolean = false;
-  private hasReceipt: boolean;
+  #fromMemorized = signal<boolean>(false);
+  #hasReceipt = signal<boolean>(false);
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
@@ -191,8 +192,8 @@ export class EditExpenseComponent implements OnInit {
 
   constructor() {
     const expense: Expense = this.data.expense;
-    this.hasReceipt = expense.hasReceipt;
-    this.fromMemorized = this.data.memorized;
+    this.#hasReceipt.set(expense.hasReceipt);
+    this.#fromMemorized.set(this.data.memorized);
     this.editExpenseForm = this.fb.group({
       paidByMemberId: [expense.paidByMemberId, Validators.required],
       date: [new Date(), Validators.required],
@@ -205,7 +206,7 @@ export class EditExpenseComponent implements OnInit {
       sharedAmount: [expense.sharedAmount, Validators.required],
       allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
-    if (!this.fromMemorized) {
+    if (!this.#fromMemorized()) {
       this.editExpenseForm.patchValue({
         date: expense.date.toDate(),
       });
@@ -228,7 +229,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.hasReceipt) {
+    if (this.#hasReceipt()) {
       const storageUrl = `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`;
       getDownloadURL(ref(this.storage, storageUrl))
         .then((url: unknown) => {
@@ -468,7 +469,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.fromMemorized) {
+    if (this.#fromMemorized()) {
       this.editExpenseForm.disable();
       const val = this.editExpenseForm.value;
       const changes: Partial<Expense> = {
@@ -543,7 +544,7 @@ export class EditExpenseComponent implements OnInit {
             sharedAmount: +val.sharedAmount,
             allocatedAmount: +val.allocatedAmount,
             totalAmount: +val.amount,
-            hasReceipt: this.hasReceipt || !!this.fileName(),
+            hasReceipt: this.#hasReceipt() || !!this.fileName(),
           };
           let splits: Partial<Split>[] = [];
           this.splitsDataSource().forEach((s) => {
@@ -599,7 +600,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   delete(): void {
-    if (this.fromMemorized) {
+    if (this.#fromMemorized()) {
       const dialogConfig: MatDialogConfig = {
         data: {
           operation: 'Delete',

@@ -49,7 +49,7 @@
         [attr.aria-pressed]="hidePassword"
       >
         <mat-icon>{{
-          hidePassword ? 'visibility_off' : 'visibility'
+          hidePassword() ? 'visibility_off' : 'visibility'
         }}</mat-icon>
       </button>
     </mat-form-field>
@@ -68,7 +68,9 @@
         [attr.aria-label]="'Hide password'"
         [attr.aria-pressed]="hideConfirm"
       >
-        <mat-icon>{{ hideConfirm ? 'visibility_off' : 'visibility' }}</mat-icon>
+        <mat-icon>{{
+          hideConfirm() ? 'visibility_off' : 'visibility'
+        }}</mat-icon>
       </button>
       @if (passwordForm.errors?.['mismatch']) {
         <mat-error> Passwords do not match. </mat-error>
