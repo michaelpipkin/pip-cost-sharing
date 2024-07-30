@@ -1,10 +1,10 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
-  MatDialogRef,
   MatDialogTitle,
   MatDialogContent,
   MatDialogActions,
+  MatDialogClose,
 } from '@angular/material/dialog';
 
 @Component({
@@ -12,15 +12,15 @@ import {
   templateUrl: './confirm-dialog.component.html',
   styleUrl: './confirm-dialog.component.scss',
   standalone: true,
-  imports: [MatDialogTitle, MatDialogContent, MatDialogActions],
+  imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose],
 })
 export class ConfirmDialogComponent {
-  constructor(
-    private dialogRef: MatDialogRef<ConfirmDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any
-  ) {}
-
-  close(confirm: boolean): void {
-    this.dialogRef.close(confirm);
-  }
+  data: confirmData = inject(MAT_DIALOG_DATA);
 }
+
+type confirmData = {
+  dialogTitle: string;
+  confirmationText: string;
+  cancelButtonText: string;
+  confirmButtonText: string;
+};

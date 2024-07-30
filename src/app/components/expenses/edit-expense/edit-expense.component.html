@@ -20,11 +20,15 @@
               }}</mat-option>
             }
           </mat-select>
-          <mat-error *ngIf="e.paidByMemberId.errors?.['required']">
-            *Required
-          </mat-error>
+          @if (e.paidByMemberId.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
         </mat-form-field>
-        <mat-form-field appearance="fill" class="datepicker">
+        <mat-form-field
+          appearance="fill"
+          class="datepicker"
+          [class.hidden]="fromMemorized()"
+        >
           <mat-label>Date</mat-label>
           <input
             matInput
@@ -39,16 +43,18 @@
             [for]="expenseDatePicker"
           ></mat-datepicker-toggle>
           <mat-datepicker #expenseDatePicker></mat-datepicker>
-          <mat-error *ngIf="e.date.errors?.['required']"> *Required </mat-error>
+          @if (e.date.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
         </mat-form-field>
       </div>
       <div class="details-2">
         <mat-form-field appearance="fill" id="description">
           <mat-label>Description</mat-label>
           <input matInput formControlName="description" />
-          <mat-error *ngIf="e.description.errors?.['required']">
-            *Required
-          </mat-error>
+          @if (e.description.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
         </mat-form-field>
         <mat-form-field id="category-select">
           <mat-label>Category</mat-label>
@@ -57,9 +63,9 @@
               <mat-option [value]="category.id">{{ category.name }}</mat-option>
             }
           </mat-select>
-          <mat-error *ngIf="e.categoryId.errors?.['required']">
-            *Required
-          </mat-error>
+          @if (e.categoryId.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
         </mat-form-field>
       </div>
       <div class="details-3">
@@ -80,12 +86,12 @@
             "
           />
           <span matTextPrefix>$</span>
-          <mat-error *ngIf="e.amount.errors?.['required']">
-            *Required
-          </mat-error>
-          <mat-error *ngIf="e.amount.errors?.['zeroAmount']">
-            Cannot be zero
-          </mat-error>
+          @if (e.amount.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
+          @if (e.amount.errors?.['zeroAmount']) {
+            <mat-error> Cannot be zero </mat-error>
+          }
         </mat-form-field>
         <mat-form-field
           appearance="fill"
@@ -249,7 +255,7 @@
   <button type="button" class="btn btn-danger" (click)="delete()">
     Delete
   </button>
-  <button type="button" class="btn btn-secondary" (click)="close()">
+  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
     Cancel
   </button>
   <button

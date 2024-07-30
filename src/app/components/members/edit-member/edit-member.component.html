@@ -5,17 +5,19 @@
       <mat-form-field appearance="fill">
         <mat-label>Member name</mat-label>
         <input matInput formControlName="memberName" />
-        <mat-error *ngIf="f.memberName.errors?.['required']">
-          *Required
-        </mat-error>
+        @if (f.memberName.errors?.['required']) {
+          <mat-error> *Required </mat-error>
+        }
       </mat-form-field>
       <mat-form-field appearance="fill">
         <mat-label>Email</mat-label>
         <input matInput email formControlName="email" />
-        <mat-error *ngIf="f.email.errors?.['required']"> *Required </mat-error>
-        <mat-error *ngIf="f.email.errors?.['email']">
-          *Not a valid email address
-        </mat-error>
+        @if (f.email.errors?.['required']) {
+          <mat-error> *Required </mat-error>
+        }
+        @if (f.email.errors?.['email']) {
+          <mat-error> *Not a valid email address </mat-error>
+        }
       </mat-form-field>
     </div>
     <div class="toggle" [class.hidden]="!currentMember().groupAdmin">

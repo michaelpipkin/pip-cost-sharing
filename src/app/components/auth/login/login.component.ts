@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Router } from '@angular/router';
 import firebase from 'firebase/compat/app';
@@ -15,15 +15,13 @@ import GoogleAuthProvider = firebase.auth.GoogleAuthProvider;
 export class LoginComponent implements OnInit, OnDestroy {
   ui: firebaseui.auth.AuthUI;
 
-  constructor(
-    private auth: Auth,
-    private router: Router
-  ) {}
+  auth = inject(Auth);
+  router = inject(Router);
 
   ngOnInit(): void {
     const uiConfig = {
       callbacks: {
-        signInSuccessWithAuthResult: function (authResult, redirectUrl) {
+        signInSuccessWithAuthResult: function () {
           return true;
         },
       },

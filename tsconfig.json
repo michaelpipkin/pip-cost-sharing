@@ -20,9 +20,11 @@
       "@services/*": ["src/app/services/*"],
       "@models/*": ["src/app/models/*"],
       "@components/*": ["src/app/components/*"]
-    }
+    },
+    "typeRoots": ["node_modules/@types"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false
-  }
+  },
+  "include": ["src/**/*", "node_modules"]
 }

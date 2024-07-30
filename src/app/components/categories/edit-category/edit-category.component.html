@@ -5,9 +5,9 @@
       <mat-form-field appearance="fill">
         <mat-label>Category name</mat-label>
         <input matInput formControlName="categoryName" />
-        <mat-error *ngIf="f.categoryName.errors?.['required']">
-          *Required
-        </mat-error>
+        @if (f.categoryName.errors?.['required']) {
+          <mat-error> *Required </mat-error>
+        }
       </mat-form-field>
     </div>
     <div class="toggle">
@@ -15,7 +15,11 @@
     </div>
   </mat-dialog-content>
   <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary" (click)="close()">
+    <button
+      type="button"
+      class="btn btn-secondary"
+      [mat-dialog-close]="{ success: false }"
+    >
       Cancel
     </button>
     <button type="button" class="btn btn-warning" (click)="deleteCategory()">

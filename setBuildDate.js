@@ -1,4 +1,4 @@
-var replace = require('replace-in-file');
+import replaceInFile from 'replace-in-file';
 
 const buildDate = new Date();
 
@@ -12,7 +12,7 @@ const options = {
   allowEmptyPaths: false,
 };
 try {
-  let changedFiles = replace.sync(options);
+  let changedFiles = replaceInFile.sync(options);
   if (changedFiles == 0) {
     throw `Please make sure that the file ${options.files} has buildDate`;
   }

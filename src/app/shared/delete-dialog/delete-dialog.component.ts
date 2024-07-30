@@ -1,10 +1,10 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
-  MatDialogRef,
-  MatDialogTitle,
-  MatDialogContent,
   MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogTitle,
 } from '@angular/material/dialog';
 
 @Component({
@@ -12,21 +12,11 @@ import {
   templateUrl: './delete-dialog.component.html',
   styleUrl: './delete-dialog.component.scss',
   standalone: true,
-  imports: [MatDialogTitle, MatDialogContent, MatDialogActions],
+  imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose],
 })
 export class DeleteDialogComponent {
-  operation: string = '';
-  target: string = '';
+  data: { operation: string; target: string } = inject(MAT_DIALOG_DATA);
 
-  constructor(
-    private dialogRef: MatDialogRef<DeleteDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data
-  ) {
-    this.operation = data.operation;
-    this.target = data.target;
-  }
-
-  close(confirm: boolean): void {
-    this.dialogRef.close(confirm);
-  }
+  operation = signal<string>(this.data.operation);
+  target = signal<string>(this.data.target);
 }

@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
@@ -55,6 +55,7 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogActions,
+  MatDialogClose,
   MatDialogConfig,
   MatDialogContent,
   MatDialogRef,
@@ -97,7 +98,6 @@ import {
     MatLabel,
     MatSelect,
     MatOption,
-    CommonModule,
     MatError,
     MatInput,
     MatTooltip,
@@ -121,7 +121,9 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
+    MatDialogClose,
     CurrencyPipe,
+    DecimalPipe,
   ],
 })
 export class AddExpenseComponent implements OnInit {
@@ -136,6 +138,7 @@ export class AddExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
@@ -276,7 +279,9 @@ export class AddExpenseComponent implements OnInit {
         (x: Split) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
+            assignedAmount: new FormControl(
+              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
+            ),
           })
       )
     );
@@ -401,7 +406,7 @@ export class AddExpenseComponent implements OnInit {
           }
         }
       });
-      if (!this.expenseFullyAllocated()) {
+      if (!this.expenseFullyAllocated() && splitCount > 0) {
         let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
@@ -547,9 +552,5 @@ export class AddExpenseComponent implements OnInit {
         this.addExpenseForm.enable();
       })
       .finally(() => this.loading.loadingOff());
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

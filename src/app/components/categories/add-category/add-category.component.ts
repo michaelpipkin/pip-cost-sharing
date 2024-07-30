@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
@@ -16,6 +15,7 @@ import {
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
+  MatDialogClose,
   MatDialogContent,
   MatDialogRef,
   MatDialogTitle,
@@ -34,9 +34,9 @@ import {
     MatFormField,
     MatLabel,
     MatInput,
-    CommonModule,
     MatError,
     MatDialogActions,
+    MatDialogClose,
   ],
 })
 export class AddCategoryComponent {
@@ -87,9 +87,5 @@ export class AddCategoryComponent {
         this.newCategoryForm.enable();
       })
       .finally(() => this.loading.loadingOff());
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

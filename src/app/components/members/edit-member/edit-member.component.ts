@@ -1,5 +1,4 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject, model, Signal } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -42,7 +41,6 @@ import {
     MatFormField,
     MatLabel,
     MatInput,
-    CommonModule,
     MatError,
     MatSlideToggle,
     MatTooltip,

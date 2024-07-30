@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
@@ -71,7 +71,6 @@ import {
     MatHint,
     MatDatepickerToggle,
     MatSuffix,
-    CommonModule,
     MatIconButton,
     MatIcon,
     MatTooltip,
@@ -225,14 +224,6 @@ export class SummaryComponent {
       return detailData;
     }
   );
-
-  summaryColumnsToDisplay: string[] = [
-    'owedTo',
-    'owedBy',
-    'amount',
-    'markPaid',
-  ];
-  detailColumnsToDisplay: string[] = ['category', 'amount'];
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {

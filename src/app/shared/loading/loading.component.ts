@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, Signal } from '@angular/core';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { LoadingService } from './loading.service';
@@ -8,7 +7,7 @@ import { LoadingService } from './loading.service';
   templateUrl: './loading.component.html',
   styleUrls: ['./loading.component.scss'],
   standalone: true,
-  imports: [CommonModule, MatProgressSpinner],
+  imports: [MatProgressSpinner],
 })
 export class LoadingComponent {
   loadingService = inject(LoadingService);

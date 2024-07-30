@@ -4,16 +4,16 @@
     <mat-form-field appearance="fill">
       <mat-label>Group name</mat-label>
       <input matInput formControlName="groupName" />
-      <mat-error *ngIf="f.groupName.errors?.['required']">
-        *Required
-      </mat-error>
+      @if (f.groupName.errors?.['required']) {
+        <mat-error> *Required </mat-error>
+      }
     </mat-form-field>
     <mat-form-field appearance="fill">
       <mat-label>Your name in the group</mat-label>
       <input matInput formControlName="displayName" />
-      <mat-error *ngIf="f.displayName.errors?.['required']">
-        *Required
-      </mat-error>
+      @if (f.displayName.errors?.['required']) {
+        <mat-error> *Required </mat-error>
+      }
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions>

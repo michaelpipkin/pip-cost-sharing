@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
@@ -53,6 +53,7 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogActions,
+  MatDialogClose,
   MatDialogConfig,
   MatDialogContent,
   MatDialogRef,
@@ -91,6 +92,7 @@ import {
   afterNextRender,
   viewChildren,
   viewChild,
+  signal,
 } from '@angular/core';
 
 @Component({
@@ -108,7 +110,6 @@ import {
     MatLabel,
     MatSelect,
     MatOption,
-    CommonModule,
     MatError,
     MatInput,
     MatTooltip,
@@ -132,7 +133,9 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
+    MatDialogClose,
     CurrencyPipe,
+    DecimalPipe,
   ],
 })
 export class EditExpenseComponent implements OnInit {
@@ -147,6 +150,7 @@ export class EditExpenseComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   storage = inject(Storage);
   analytics = inject(Analytics);
+  decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
   data: any = inject(MAT_DIALOG_DATA);
 
@@ -174,8 +178,8 @@ export class EditExpenseComponent implements OnInit {
   editExpenseForm: FormGroup;
   splitForm: FormArray;
 
-  private fromMemorized: boolean = false;
-  private hasReceipt: boolean;
+  fromMemorized = signal<boolean>(false);
+  #hasReceipt = signal<boolean>(false);
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
@@ -190,8 +194,8 @@ export class EditExpenseComponent implements OnInit {
 
   constructor() {
     const expense: Expense = this.data.expense;
-    this.hasReceipt = expense.hasReceipt;
-    this.fromMemorized = this.data.memorized;
+    this.#hasReceipt.set(expense.hasReceipt);
+    this.fromMemorized.set(this.data.memorized);
     this.editExpenseForm = this.fb.group({
       paidByMemberId: [expense.paidByMemberId, Validators.required],
       date: [new Date(), Validators.required],
@@ -204,7 +208,7 @@ export class EditExpenseComponent implements OnInit {
       sharedAmount: [expense.sharedAmount, Validators.required],
       allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
-    if (!this.fromMemorized) {
+    if (!this.fromMemorized()) {
       this.editExpenseForm.patchValue({
         date: expense.date.toDate(),
       });
@@ -217,9 +221,9 @@ export class EditExpenseComponent implements OnInit {
     this.updateForm();
     afterNextRender(() => {
       this.totalAmountField().nativeElement.value =
-        expense.totalAmount.toFixed(2);
+        this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
       this.proportionalAmountField().nativeElement.value =
-        expense.allocatedAmount.toFixed(2);
+        this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') || '0.00';
     });
     afterRender(() => {
       this.addSelectFocus();
@@ -227,7 +231,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.hasReceipt) {
+    if (this.#hasReceipt()) {
       const storageUrl = `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`;
       getDownloadURL(ref(this.storage, storageUrl))
         .then((url: unknown) => {
@@ -315,7 +319,9 @@ export class EditExpenseComponent implements OnInit {
         (x: any) =>
           new FormGroup({
             owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(x.assignedAmount.toFixed(2)),
+            assignedAmount: new FormControl(
+              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
+            ),
           })
       )
     );
@@ -420,7 +426,7 @@ export class EditExpenseComponent implements OnInit {
           }
         }
       });
-      if (!this.expenseFullyAllocated()) {
+      if (!this.expenseFullyAllocated() && splitCount > 0) {
         let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
@@ -465,7 +471,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.fromMemorized) {
+    if (this.fromMemorized()) {
       this.editExpenseForm.disable();
       const val = this.editExpenseForm.value;
       const changes: Partial<Expense> = {
@@ -540,7 +546,7 @@ export class EditExpenseComponent implements OnInit {
             sharedAmount: +val.sharedAmount,
             allocatedAmount: +val.allocatedAmount,
             totalAmount: +val.amount,
-            hasReceipt: this.hasReceipt || !!this.fileName(),
+            hasReceipt: this.#hasReceipt() || !!this.fileName(),
           };
           let splits: Partial<Split>[] = [];
           this.splitsDataSource().forEach((s) => {
@@ -596,7 +602,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   delete(): void {
-    if (this.fromMemorized) {
+    if (this.fromMemorized()) {
       const dialogConfig: MatDialogConfig = {
         data: {
           operation: 'Delete',
@@ -677,9 +683,5 @@ export class EditExpenseComponent implements OnInit {
         }
       });
     }
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

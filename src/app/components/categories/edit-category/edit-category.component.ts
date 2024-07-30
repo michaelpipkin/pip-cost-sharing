@@ -1,5 +1,4 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -19,6 +18,7 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogActions,
+  MatDialogClose,
   MatDialogConfig,
   MatDialogContent,
   MatDialogRef,
@@ -38,10 +38,10 @@ import {
     MatFormField,
     MatLabel,
     MatInput,
-    CommonModule,
     MatError,
     MatSlideToggle,
     MatDialogActions,
+    MatDialogClose,
   ],
 })
 export class EditCategoryComponent {
@@ -52,9 +52,9 @@ export class EditCategoryComponent {
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
-  data: any = inject(MAT_DIALOG_DATA);
+  data: { category: Category; groupId: string } = inject(MAT_DIALOG_DATA);
 
-  category: Category = this.data.category;
+  #category = signal<Category>(this.data.category);
 
   editCategoryForm = this.fb.group({
     categoryName: [this.data.category.name, Validators.required],
@@ -74,7 +74,7 @@ export class EditCategoryComponent {
     };
     this.loading.loadingOn();
     this.categoryService
-      .updateCategory(this.data.groupId, this.category.id, changes)
+      .updateCategory(this.data.groupId, this.#category().id, changes)
       .then((res) => {
         if (res?.name === 'Error') {
           this.snackBar.open(res.message, 'Close');
@@ -105,7 +105,7 @@ export class EditCategoryComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
-        target: `category: ${this.category.name}`,
+        target: `category: ${this.#category.name}`,
       },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
@@ -113,7 +113,7 @@ export class EditCategoryComponent {
       if (confirm) {
         this.loading.loadingOn();
         this.categoryService
-          .deleteCategory(this.data.groupId, this.category.id)
+          .deleteCategory(this.data.groupId, this.#category().id)
           .then((res) => {
             if (res?.name === 'Error') {
               this.snackBar.open(res.message, 'Close');
@@ -137,12 +137,6 @@ export class EditCategoryComponent {
           })
           .finally(() => this.loading.loadingOff());
       }
-    });
-  }
-
-  close(): void {
-    this.dialogRef.close({
-      success: false,
     });
   }
 }
