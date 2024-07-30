@@ -33,6 +33,7 @@ import {
   viewChild,
   viewChildren,
   computed,
+  afterNextRender,
 } from '@angular/core';
 import {
   AbstractControl,
@@ -160,6 +161,8 @@ export class AddExpenseComponent implements OnInit {
 
   splitsTable = viewChild<MatTable<Split>>('splitsTable');
   datePicker = viewChild<ElementRef>('datePicker');
+  totalAmountField = viewChild<ElementRef>('totalAmount');
+  allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
 
   constructor() {
@@ -188,6 +191,21 @@ export class AddExpenseComponent implements OnInit {
         allocatedAmount: [0, Validators.required],
       });
     }
+    afterNextRender(() => {
+      if (this.data.memorized) {
+        this.totalAmountField().nativeElement.value =
+          this.decimalPipe.transform(this.data.expense.totalAmount, '1.2-2') ||
+          '0.00';
+        this.allocatedAmountField().nativeElement.value =
+          this.decimalPipe.transform(
+            this.data.expense.allocatedAmount,
+            '1.2-2'
+          ) || '0.00';
+      } else {
+        this.totalAmountField().nativeElement.value = '0.00';
+        this.allocatedAmountField().nativeElement.value = '0.00';
+      }
+    });
     afterRender(() => {
       this.addSelectFocus();
     });

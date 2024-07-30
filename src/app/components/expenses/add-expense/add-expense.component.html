@@ -73,8 +73,8 @@
           <input
             matInput
             #inputElement
+            #totalAmount
             class="number-right"
-            value="0.00"
             appFormatCurrencyInput
             (change)="
               saveValue($event.currentTarget, 'amount'); allocateSharedAmounts()
@@ -97,8 +97,8 @@
           <input
             matInput
             #inputElement
+            #propAmount
             class="number-right"
-            value="0.00"
             appFormatCurrencyInput
             (change)="
               saveValue($event.currentTarget, 'allocatedAmount');
