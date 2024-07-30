@@ -53,6 +53,7 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogActions,
+  MatDialogClose,
   MatDialogConfig,
   MatDialogContent,
   MatDialogRef,
@@ -132,6 +133,7 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
+    MatDialogClose,
     CurrencyPipe,
     DecimalPipe,
   ],
@@ -176,7 +178,7 @@ export class EditExpenseComponent implements OnInit {
   editExpenseForm: FormGroup;
   splitForm: FormArray;
 
-  #fromMemorized = signal<boolean>(false);
+  fromMemorized = signal<boolean>(false);
   #hasReceipt = signal<boolean>(false);
 
   fileName = model<string>('');
@@ -193,7 +195,7 @@ export class EditExpenseComponent implements OnInit {
   constructor() {
     const expense: Expense = this.data.expense;
     this.#hasReceipt.set(expense.hasReceipt);
-    this.#fromMemorized.set(this.data.memorized);
+    this.fromMemorized.set(this.data.memorized);
     this.editExpenseForm = this.fb.group({
       paidByMemberId: [expense.paidByMemberId, Validators.required],
       date: [new Date(), Validators.required],
@@ -206,7 +208,7 @@ export class EditExpenseComponent implements OnInit {
       sharedAmount: [expense.sharedAmount, Validators.required],
       allocatedAmount: [expense.allocatedAmount, Validators.required],
     });
-    if (!this.#fromMemorized()) {
+    if (!this.fromMemorized()) {
       this.editExpenseForm.patchValue({
         date: expense.date.toDate(),
       });
@@ -424,7 +426,7 @@ export class EditExpenseComponent implements OnInit {
           }
         }
       });
-      if (!this.expenseFullyAllocated()) {
+      if (!this.expenseFullyAllocated() && splitCount > 0) {
         let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
@@ -469,7 +471,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.#fromMemorized()) {
+    if (this.fromMemorized()) {
       this.editExpenseForm.disable();
       const val = this.editExpenseForm.value;
       const changes: Partial<Expense> = {
@@ -600,7 +602,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   delete(): void {
-    if (this.#fromMemorized()) {
+    if (this.fromMemorized()) {
       const dialogConfig: MatDialogConfig = {
         data: {
           operation: 'Delete',
@@ -681,9 +683,5 @@ export class EditExpenseComponent implements OnInit {
         }
       });
     }
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

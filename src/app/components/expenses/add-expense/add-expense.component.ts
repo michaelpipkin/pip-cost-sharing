@@ -55,6 +55,7 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogActions,
+  MatDialogClose,
   MatDialogConfig,
   MatDialogContent,
   MatDialogRef,
@@ -120,6 +121,7 @@ import {
     MatRow,
     MatNoDataRow,
     MatDialogActions,
+    MatDialogClose,
     CurrencyPipe,
     DecimalPipe,
   ],
@@ -404,7 +406,7 @@ export class AddExpenseComponent implements OnInit {
           }
         }
       });
-      if (!this.expenseFullyAllocated()) {
+      if (!this.expenseFullyAllocated() && splitCount > 0) {
         let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
@@ -550,9 +552,5 @@ export class AddExpenseComponent implements OnInit {
         this.addExpenseForm.enable();
       })
       .finally(() => this.loading.loadingOff());
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

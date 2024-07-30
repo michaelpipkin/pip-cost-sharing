@@ -1,6 +1,6 @@
 {
   "name": "pip-cost-sharing",
-  "version": "3.6.2",
+  "version": "3.7.2",
   "type": "module",
   "scripts": {
     "ng": "ng",
@@ -12,8 +12,7 @@
     "build:prod": "npm --no-git-tag-version version patch && node ./setBuildDate.js && ng build --configuration=production",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "format": "prettier-eslint --write \"src/**/*.js\" \"src/**/*.ts\" \"src/**/*.scss\" \"src/**/*.html\""
+    "test": "ng test"
   },
   "private": true,
   "dependencies": {

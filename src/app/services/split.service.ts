@@ -8,7 +8,6 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import {
-  deleteDoc,
   doc,
   Firestore,
   onSnapshot,
@@ -28,7 +27,8 @@ export class SplitService {
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
-      where('paid', '==', false)
+      where('paid', '==', false),
+      where('date', '!=', null)
     );
     onSnapshot(splitsQuery, (splitsQuerySnap) => {
       const splits = [
@@ -88,8 +88,6 @@ export class SplitService {
           date: expense.date,
           allocatedAmount: allocatedAmount,
         });
-      } else {
-        await deleteDoc(d.ref);
       }
     });
   }

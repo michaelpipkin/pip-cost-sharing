@@ -24,7 +24,11 @@
             <mat-error> *Required </mat-error>
           }
         </mat-form-field>
-        <mat-form-field appearance="fill" class="datepicker">
+        <mat-form-field
+          appearance="fill"
+          class="datepicker"
+          [class.hidden]="fromMemorized()"
+        >
           <mat-label>Date</mat-label>
           <input
             matInput
@@ -251,7 +255,7 @@
   <button type="button" class="btn btn-danger" (click)="delete()">
     Delete
   </button>
-  <button type="button" class="btn btn-secondary" (click)="close()">
+  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
     Cancel
   </button>
   <button

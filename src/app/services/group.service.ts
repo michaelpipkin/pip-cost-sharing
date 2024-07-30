@@ -72,16 +72,19 @@ export class GroupService {
         if (groups.length === 1 && groups[0].active) {
           await this.getGroupById(groups[0].id, user.id).then(() => {
             if (autoNav) {
+              autoNav = false;
               this.router.navigateByUrl('/expenses');
             }
           });
         } else if (user.defaultGroupId !== '') {
           await this.getGroupById(user.defaultGroupId, user.id).then(() => {
             if (autoNav) {
+              autoNav = false;
               this.router.navigateByUrl('/expenses');
             }
           });
         } else {
+          autoNav = false;
           this.router.navigateByUrl('/groups');
         }
       });
