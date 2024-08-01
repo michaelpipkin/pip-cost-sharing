@@ -167,6 +167,23 @@ export class MemorizedComponent {
     });
   }
 
+  addMemorizedExpense() {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        groupId: this.currentGroup().id,
+        member: this.currentMember,
+        isGroupAdmin: this.currentMember().groupAdmin,
+        memorized: true,
+      },
+    };
+    const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((res) => {
+      if (res.success) {
+        this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
+      }
+    });
+  }
+
   addExpense(expense: Expense): void {
     const dialogConfig: MatDialogConfig = {
       data: {

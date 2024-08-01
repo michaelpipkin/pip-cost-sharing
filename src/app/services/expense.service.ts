@@ -25,20 +25,15 @@ export class ExpenseService {
   groupExpenses = signal<Expense[]>([]);
   memorizedExpenses = signal<Expense[]>([]);
 
-  getExpensesWithSplitsForGroup(
-    groupId: string,
-    memorized: boolean = false
-  ): void {
-    this.loading.loadingOn();
-    const path = memorized ? 'memorized' : 'expenses';
+  getExpensesForGroup(groupId: string): void {
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     onSnapshot(splitQuery, (splitQuerySnap) => {
       const splits = [
         ...splitQuerySnap.docs.map((d) => new Split({ id: d.id, ...d.data() })),
       ];
       const expenseQuery = query(
-        collection(this.fs, `groups/${groupId}/${path}`),
-        orderBy(memorized ? 'description' : 'date')
+        collection(this.fs, `groups/${groupId}/expenses`),
+        orderBy('date')
       );
       onSnapshot(expenseQuery, (expenseQuerySnap) => {
         const expenses = [
@@ -51,24 +46,40 @@ export class ExpenseService {
               })
           ),
         ];
-        if (memorized) {
-          this.memorizedExpenses.set(expenses);
-        } else {
-          this.groupExpenses.set(expenses);
-        }
+        this.groupExpenses.set(expenses);
       });
+    });
+  }
+
+  getMemorizedExpensesForGroup(groupId: string) {
+    const q = collection(this.fs, `groups/${groupId}/memorized`);
+    onSnapshot(q, (memorizedSnap) => {
+      let memorizedExpenses: Expense[] = [];
+      memorizedSnap.forEach((memorizedDoc) => {
+        const memorized = new Expense({
+          id: memorizedDoc.id,
+          ...memorizedDoc.data(),
+        });
+        const splitRef = collection(memorizedDoc.ref, 'splits');
+        onSnapshot(splitRef, (splitSnap) => {
+          splitSnap.docs.forEach((splitDoc) => {
+            const split = new Split({ id: splitDoc.id, ...splitDoc.data() });
+            memorized.splits.push(split);
+          });
+        });
+        memorizedExpenses.push(memorized);
+      });
+      this.memorizedExpenses.set(memorizedExpenses);
     });
   }
 
   async addExpense(
     groupId: string,
     expense: Partial<Expense>,
-    splits: Partial<Split>[],
-    memorized: boolean = false
+    splits: Partial<Split>[]
   ): Promise<any> {
-    const path = memorized ? 'memorized' : 'expenses';
     const batch = writeBatch(this.fs);
-    const expenseRef = doc(collection(this.fs, `/groups/${groupId}/${path}`));
+    const expenseRef = doc(collection(this.fs, `/groups/${groupId}/expenses`));
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
       split.expenseId = expenseRef.id;
@@ -79,6 +90,30 @@ export class ExpenseService {
       .commit()
       .then(() => {
         return expenseRef.id;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
+  }
+
+  async addMemorized(
+    groupId: string,
+    memorized: Partial<Expense>,
+    splits: Partial<Split>[]
+  ) {
+    const batch = writeBatch(this.fs);
+    const memRef = doc(collection(this.fs, `/groups/${groupId}/memorized`));
+    batch.set(memRef, memorized);
+    splits.forEach((split) => {
+      const splitRef = doc(
+        collection(this.fs, `/groups/${groupId}/memorized/${memRef.id}/splits`)
+      );
+      batch.set(splitRef, split);
+    });
+    return await batch
+      .commit()
+      .then(() => {
+        return memRef.id;
       })
       .catch((err: Error) => {
         return new Error(err.message);

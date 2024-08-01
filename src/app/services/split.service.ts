@@ -8,6 +8,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import {
+  deleteDoc,
   doc,
   Firestore,
   onSnapshot,
@@ -88,6 +89,8 @@ export class SplitService {
           date: expense.date,
           allocatedAmount: allocatedAmount,
         });
+      } else {
+        deleteDoc(d.ref);
       }
     });
   }

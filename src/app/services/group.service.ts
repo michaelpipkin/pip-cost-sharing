@@ -102,8 +102,8 @@ export class GroupService {
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
     this.memberService.getMemberByUserId(groupId, userId);
-    this.expensesService.getExpensesWithSplitsForGroup(groupId);
-    this.expensesService.getExpensesWithSplitsForGroup(groupId, true);
+    this.expensesService.getExpensesForGroup(groupId);
+    this.expensesService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.loading.loadingOff();
   }

@@ -550,7 +550,7 @@ export class AddExpenseComponent implements OnInit {
     });
     this.loading.loadingOn();
     this.expenseService
-      .addExpense(this.currentGroup().id, expense, splits, true)
+      .addMemorized(this.currentGroup().id, expense, splits)
       .then(() => {
         this.dialogRef.close({
           success: true,
