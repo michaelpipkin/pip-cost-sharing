@@ -499,8 +499,7 @@ export class EditExpenseComponent implements OnInit {
           this.#currentGroup().id,
           this.data.expense.id,
           changes,
-          splits,
-          true
+          splits
         )
         .then(() => {
           this.dialogRef.close({
@@ -614,7 +613,7 @@ export class EditExpenseComponent implements OnInit {
         if (confirm) {
           this.loading.loadingOn();
           this.expenseService
-            .deleteExpense(this.#currentGroup().id, this.data.expense.id, true)
+            .deleteExpense(this.#currentGroup().id, this.data.expense.id)
             .then(() => {
               if (this.receiptUrl()) {
                 const fileRef = ref(

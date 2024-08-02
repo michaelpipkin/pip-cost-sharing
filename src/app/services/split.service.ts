@@ -28,8 +28,7 @@ export class SplitService {
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
-      where('paid', '==', false),
-      where('date', '!=', null) // Splits for memorized expenses should not be included. They are unpaid, but have no date.
+      where('paid', '==', false)
     );
     onSnapshot(splitsQuery, (splitsQuerySnap) => {
       const splits = [
