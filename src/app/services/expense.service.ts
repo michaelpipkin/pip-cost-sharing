@@ -75,13 +75,11 @@ export class ExpenseService {
     groupId: string,
     expenseId: string,
     changes: Partial<Expense>,
-    splits: Partial<Split>[],
-    memorized: boolean = false
+    splits: Partial<Split>[]
   ): Promise<any> {
-    const path = memorized ? 'memorized' : 'expenses';
     const batch = writeBatch(this.fs);
     batch.update(
-      doc(this.fs, `/groups/${groupId}/${path}/${expenseId}`),
+      doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`),
       changes
     );
     const splitQuery = query(
@@ -107,14 +105,9 @@ export class ExpenseService {
       });
   }
 
-  async deleteExpense(
-    groupId: string,
-    expenseId: string,
-    memorized: boolean = false
-  ): Promise<any> {
-    const path = memorized ? 'memorized' : 'expenses';
+  async deleteExpense(groupId: string, expenseId: string): Promise<any> {
     const batch = writeBatch(this.fs);
-    const expenseRef = doc(this.fs, `/groups/${groupId}/${path}/${expenseId}`);
+    const expenseRef = doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`);
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
       where('expenseId', '==', expenseId)
