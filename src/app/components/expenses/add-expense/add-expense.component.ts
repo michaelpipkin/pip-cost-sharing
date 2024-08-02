@@ -13,7 +13,6 @@ import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
@@ -521,54 +520,6 @@ export class AddExpenseComponent implements OnInit {
         });
         this.snackBar.open(
           'Something went wrong - could not save expense.',
-          'Close'
-        );
-        this.addExpenseForm.enable();
-      })
-      .finally(() => this.loading.loadingOff());
-  }
-
-  memorize(): void {
-    this.addExpenseForm.disable();
-    const val = this.addExpenseForm.value;
-    const memorized: Partial<Memorized> = {
-      description: val.description,
-      categoryId: val.categoryId,
-      paidByMemberId: val.paidByMemberId,
-      sharedAmount: +val.sharedAmount,
-      allocatedAmount: +val.allocatedAmount,
-      totalAmount: +val.amount,
-    };
-    let splits: Partial<Split>[] = [];
-    this.splitsDataSource().forEach((s: Split) => {
-      const split: Partial<Split> = {
-        categoryId: val.categoryId,
-        assignedAmount: +s.assignedAmount,
-        allocatedAmount: +s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
-        paid: false,
-      };
-      splits.push(split);
-    });
-    memorized.splits = splits;
-    this.loading.loadingOn();
-    this.memorizedService
-      .addMemorized(this.currentGroup().id, memorized)
-      .then(() => {
-        this.dialogRef.close({
-          success: true,
-          operation: 'memorized',
-        });
-      })
-      .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'memorize_expense',
-          message: err.message,
-        });
-        this.snackBar.open(
-          'Something went wrong - could not memorize expense.',
           'Close'
         );
         this.addExpenseForm.enable();
