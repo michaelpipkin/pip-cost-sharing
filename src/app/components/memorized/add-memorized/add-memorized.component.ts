@@ -1,6 +1,6 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { ref, Storage, uploadBytes } from '@angular/fire/storage';
+import { Storage } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
 import { MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
@@ -10,19 +10,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
-import * as firestore from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
   Component,
@@ -87,10 +84,10 @@ import {
 } from '@angular/material/table';
 
 @Component({
-  selector: 'app-add-expense',
-  templateUrl: './add-expense.component.html',
-  styleUrl: './add-expense.component.scss',
+  selector: 'app-add-memorized',
   standalone: true,
+  templateUrl: './add-memorized.component.html',
+  styleUrl: './add-memorized.component.scss',
   imports: [
     FormatCurrencyInputDirective,
     MatDialogTitle,
@@ -129,14 +126,13 @@ import {
     DecimalPipe,
   ],
 })
-export class AddExpenseComponent implements OnInit {
-  dialogRef = inject(MatDialogRef<AddExpenseComponent>);
+export class AddMemorizedComponent implements OnInit {
+  dialogRef = inject(MatDialogRef<AddMemorizedComponent>);
   dialog = inject(MatDialog);
   fb = inject(FormBuilder);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
-  expenseService = inject(ExpenseService);
   memorizedService = inject(MemorizedService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
@@ -155,53 +151,36 @@ export class AddExpenseComponent implements OnInit {
     return this.#categories().filter((c) => c.active);
   });
 
-  fileName = model<string>('');
-  receiptFile = model<File>(null);
   splitsDataSource = model<Split[]>([]);
 
-  addExpenseForm: FormGroup;
+  addMemorizedForm: FormGroup;
   splitForm: FormArray;
 
   splitsTable = viewChild<MatTable<Split>>('splitsTable');
-  datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
   allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
 
   constructor() {
-    if (this.data.memorized) {
-      const expense: Expense = this.data.expense;
-      this.addExpenseForm = this.fb.group({
-        paidByMemberId: [expense.paidByMemberId, Validators.required],
-        date: [new Date(), Validators.required],
-        amount: [
-          expense.totalAmount,
-          [Validators.required, this.amountValidator()],
-        ],
-        description: [expense.description, Validators.required],
-        categoryId: [expense.categoryId, Validators.required],
-        sharedAmount: [expense.sharedAmount, Validators.required],
-        allocatedAmount: [expense.allocatedAmount, Validators.required],
-      });
-    } else {
-      this.addExpenseForm = this.fb.group({
-        paidByMemberId: [this.currentMember().id, Validators.required],
-        date: [new Date(), Validators.required],
-        amount: [0, [Validators.required, this.amountValidator()]],
-        description: ['', Validators.required],
-        categoryId: ['', Validators.required],
-        sharedAmount: [0.0, Validators.required],
-        allocatedAmount: [0, Validators.required],
-      });
-    }
+    this.addMemorizedForm = this.fb.group({
+      paidByMemberId: [this.currentMember().id, Validators.required],
+      date: [new Date(), Validators.required],
+      amount: [0, [Validators.required, this.amountValidator()]],
+      description: ['', Validators.required],
+      categoryId: ['', Validators.required],
+      sharedAmount: [0.0, Validators.required],
+      allocatedAmount: [0, Validators.required],
+    });
     afterNextRender(() => {
       if (this.data.memorized) {
         this.totalAmountField().nativeElement.value =
-          this.decimalPipe.transform(this.data.expense.totalAmount, '1.2-2') ||
-          '0.00';
+          this.decimalPipe.transform(
+            this.data.memorized.totalAmount,
+            '1.2-2'
+          ) || '0.00';
         this.allocatedAmountField().nativeElement.value =
           this.decimalPipe.transform(
-            this.data.expense.allocatedAmount,
+            this.data.memorized.allocatedAmount,
             '1.2-2'
           ) || '0.00';
       } else {
@@ -216,12 +195,12 @@ export class AddExpenseComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.activeCategories().length == 1) {
-      this.addExpenseForm.patchValue({
+      this.addMemorizedForm.patchValue({
         categoryId: this.activeCategories()[0].id,
       });
     }
     if (this.data.memorized) {
-      this.splitsDataSource.set(this.data.expense.splits);
+      this.splitsDataSource.set(this.data.memorized.splits);
       this.updateForm();
     } else {
       this.addAllActiveGroupMembers();
@@ -244,42 +223,18 @@ export class AddExpenseComponent implements OnInit {
   }
 
   public get e() {
-    return this.addExpenseForm.controls;
+    return this.addMemorizedForm.controls;
   }
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
       data: {
-        page: 'add-edit-expense',
+        page: 'add-edit-memorized',
       },
       disableClose: false,
       maxWidth: '80vw',
     };
     this.dialog.open(HelpComponent, dialogConfig);
-  }
-
-  onCalendarKeyPress(e: KeyboardEvent) {
-    if (['-', '+'].includes(e.key)) {
-      const currentDate = new Date(this.datePicker().nativeElement.value);
-      if (currentDate.toString() !== 'Invalid Date') {
-        if (e.key === '-') {
-          const newDate = currentDate.setDate(currentDate.getDate() - 1);
-          this.addExpenseForm.patchValue({
-            date: new Date(newDate),
-          });
-        } else if (e.key === '+') {
-          const newDate = currentDate.setDate(currentDate.getDate() + 1);
-          this.addExpenseForm.patchValue({
-            date: new Date(newDate),
-          });
-        }
-      } else {
-        this.addExpenseForm.patchValue({
-          date: new Date(),
-        });
-      }
-      e.preventDefault();
-    }
   }
 
   getSplitControl(index: number, controlName: string): FormControl {
@@ -289,7 +244,7 @@ export class AddExpenseComponent implements OnInit {
   }
 
   saveValue(e: HTMLInputElement, control: string = ''): void {
-    this.addExpenseForm.patchValue({
+    this.addMemorizedForm.patchValue({
       [control]: +e.value,
     });
   }
@@ -306,26 +261,6 @@ export class AddExpenseComponent implements OnInit {
           })
       )
     );
-  }
-
-  onFileSelected(e): void {
-    if (e.target.files.length > 0) {
-      const file: File = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        this.snackBar.open(
-          'File is too large. File size limited to 5MB.',
-          'OK'
-        );
-      } else {
-        this.receiptFile.set(file);
-        this.fileName.set(file.name);
-      }
-    }
-  }
-
-  removeFile(): void {
-    this.receiptFile.set(null);
-    this.fileName.set('');
   }
 
   addRow(): void {
@@ -394,7 +329,7 @@ export class AddExpenseComponent implements OnInit {
       this.splitsDataSource.set([...splits]);
       const splitCount: number = splits.length;
       const splitTotal: number = this.getAssignedTotal();
-      const val = this.addExpenseForm.value;
+      const val = this.addMemorizedForm.value;
       const totalAmount: number = val.amount;
       let sharedAmount: number = val.sharedAmount;
       const allocatedAmount: number = val.allocatedAmount;
@@ -405,7 +340,7 @@ export class AddExpenseComponent implements OnInit {
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
         sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
-        this.addExpenseForm.patchValue({
+        this.addMemorizedForm.patchValue({
           sharedAmount: sharedAmount,
         });
       }
@@ -427,7 +362,7 @@ export class AddExpenseComponent implements OnInit {
           }
         }
       });
-      if (!this.expenseFullyAllocated() && splitCount > 0) {
+      if (!this.memorizedFullyAllocated() && splitCount > 0) {
         let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
@@ -458,8 +393,8 @@ export class AddExpenseComponent implements OnInit {
       .reduce((total, s) => (total += +s.allocatedAmount), 0)
       .toFixed(2);
 
-  expenseFullyAllocated = (): boolean =>
-    this.addExpenseForm.value.amount == this.getAllocatedTotal();
+  memorizedFullyAllocated = (): boolean =>
+    this.addMemorizedForm.value.amount == this.getAllocatedTotal();
 
   missingSplitMember(): boolean {
     let missing: boolean = false;
@@ -472,65 +407,8 @@ export class AddExpenseComponent implements OnInit {
   }
 
   onSubmit(): void {
-    this.addExpenseForm.disable();
-    const val = this.addExpenseForm.value;
-    const expenseDate = firestore.Timestamp.fromDate(val.date);
-    const expense: Partial<Expense> = {
-      date: expenseDate,
-      description: val.description,
-      categoryId: val.categoryId,
-      paidByMemberId: val.paidByMemberId,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
-      hasReceipt: !!this.fileName(),
-    };
-    let splits: Partial<Split>[] = [];
-    this.splitsDataSource().forEach((s: Split) => {
-      const split: Partial<Split> = {
-        date: expenseDate,
-        categoryId: val.categoryId,
-        assignedAmount: s.assignedAmount,
-        allocatedAmount: s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
-        paid: s.owedByMemberId == val.paidByMemberId,
-      };
-      splits.push(split);
-    });
-    this.loading.loadingOn();
-    this.expenseService
-      .addExpense(this.currentGroup().id, expense, splits)
-      .then((expenseId: string) => {
-        if (this.receiptFile()) {
-          const fileRef = ref(
-            this.storage,
-            `groups/${this.currentGroup().id}/receipts/${expenseId}`
-          );
-          uploadBytes(fileRef, this.receiptFile()).then(() => {
-            logEvent(this.analytics, 'receipt_uploaded');
-          });
-        }
-        this.dialogRef.close({ success: true, operation: 'added' });
-      })
-      .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'add_expense',
-          message: err.message,
-        });
-        this.snackBar.open(
-          'Something went wrong - could not save expense.',
-          'Close'
-        );
-        this.addExpenseForm.enable();
-      })
-      .finally(() => this.loading.loadingOff());
-  }
-
-  memorize(): void {
-    this.addExpenseForm.disable();
-    const val = this.addExpenseForm.value;
+    this.addMemorizedForm.disable();
+    const val = this.addMemorizedForm.value;
     const memorized: Partial<Memorized> = {
       description: val.description,
       categoryId: val.categoryId,
@@ -547,7 +425,6 @@ export class AddExpenseComponent implements OnInit {
         allocatedAmount: +s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,
-        paid: false,
       };
       splits.push(split);
     });
@@ -571,7 +448,7 @@ export class AddExpenseComponent implements OnInit {
           'Something went wrong - could not memorize expense.',
           'Close'
         );
-        this.addExpenseForm.enable();
+        this.addMemorizedForm.enable();
       })
       .finally(() => this.loading.loadingOff());
   }

@@ -11,17 +11,19 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { AddExpenseComponent } from '../add-expense/add-expense.component';
-import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
+import { AddExpenseComponent } from '../../expenses/add-expense/add-expense.component';
+import { AddMemorizedComponent } from '../add-memorized/add-memorized.component';
+import { EditMemorizedComponent } from '../edit-memorized/edit-memorized.component';
 import {
   MatFormField,
   MatLabel,
@@ -93,6 +95,7 @@ export class MemorizedComponent {
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
   expenseService = inject(ExpenseService);
+  memorizedService = inject(MemorizedService);
   splitService = inject(SplitService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
@@ -101,30 +104,30 @@ export class MemorizedComponent {
   categories: Signal<Category[]> = this.categoryService.groupCategories;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   currentMember: Signal<Member> = this.memberService.currentMember;
-  expenses: Signal<Expense[]> = this.expenseService.memorizedExpenses;
+  memorizeds: Signal<Memorized[]> = this.memorizedService.memorizedExpenses;
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
 
-  filteredExpenses = computed<Expense[]>(() => {
-    var filteredExpenses = this.expenses().filter((expense: Expense) => {
+  filteredMemorizeds = computed<Memorized[]>(() => {
+    var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {
       return (
-        expense.paidByMemberId ==
+        memorized.paidByMemberId ==
           (this.selectedMemberId() != ''
             ? this.selectedMemberId()
-            : expense.paidByMemberId) &&
-        expense.categoryId ==
+            : memorized.paidByMemberId) &&
+        memorized.categoryId ==
           (this.selectedCategoryId() != ''
             ? this.selectedCategoryId()
-            : expense.categoryId)
+            : memorized.categoryId)
       );
     });
-    return filteredExpenses;
+    return filteredMemorized;
   });
 
   selectedMemberId = model<string>('');
   selectedCategoryId = model<string>('');
-  expandedExpense = model<Expense | null>(null);
+  expandedExpense = model<Memorized | null>(null);
 
-  onExpandClick(expense: Expense) {
+  onExpandClick(expense: Memorized) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
 
@@ -149,17 +152,16 @@ export class MemorizedComponent {
     return category?.name ?? '';
   }
 
-  onRowClick(expense: Expense): void {
+  onRowClick(memorized: Memorized): void {
     const dialogConfig: MatDialogConfig = {
       data: {
-        expense: expense,
-        memorized: true,
+        memorized: memorized,
         groupId: this.currentGroup().id,
         member: this.currentMember,
         isGroupAdmin: this.currentMember().groupAdmin,
       },
     };
-    const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
+    const dialogRef = this.dialog.open(EditMemorizedComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
         this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
@@ -173,10 +175,9 @@ export class MemorizedComponent {
         groupId: this.currentGroup().id,
         member: this.currentMember,
         isGroupAdmin: this.currentMember().groupAdmin,
-        memorized: true,
       },
     };
-    const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
+    const dialogRef = this.dialog.open(AddMemorizedComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((res) => {
       if (res.success) {
         this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
@@ -184,7 +185,7 @@ export class MemorizedComponent {
     });
   }
 
-  addExpense(expense: Expense): void {
+  addExpense(expense: Memorized): void {
     const dialogConfig: MatDialogConfig = {
       data: {
         groupId: this.currentGroup().id,

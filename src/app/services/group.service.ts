@@ -8,6 +8,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryService } from './category.service';
 import { ExpenseService } from './expense.service';
 import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
 import { SplitService } from './split.service';
 import {
   doc,
@@ -32,6 +33,7 @@ export class GroupService {
   categoryService = inject(CategoryService);
   expensesService = inject(ExpenseService);
   splitsService = inject(SplitService);
+  memorizedService = inject(MemorizedService);
   router = inject(Router);
   loading = inject(LoadingService);
 
@@ -103,7 +105,7 @@ export class GroupService {
     this.memberService.getGroupMembers(groupId);
     this.memberService.getMemberByUserId(groupId, userId);
     this.expensesService.getExpensesForGroup(groupId);
-    this.expensesService.getMemorizedExpensesForGroup(groupId);
+    this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.loading.loadingOff();
   }

@@ -6,11 +6,11 @@ import { CategoriesComponent } from '@components/categories/categories/categorie
 import { categoriesResolver } from '@components/categories/categories/categories.resolver';
 import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
 import { expensesResolver } from '@components/expenses/expenses/expenses.resolver';
-import { MemorizedComponent } from '@components/expenses/memorized/memorized.component';
-import { SummaryComponent } from '@components/expenses/summary/summary.component';
 import { GroupsComponent } from '@components/groups/groups/groups.component';
 import { HomeComponent } from '@components/home/home.component';
 import { MembersComponent } from '@components/members/members/members.component';
+import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
+import { SummaryComponent } from '@components/summary/summary/summary.component';
 import {
   canActivate,
   redirectLoggedInTo,
