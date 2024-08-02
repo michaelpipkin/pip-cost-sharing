@@ -248,15 +248,6 @@
     Cancel
   </button>
   <button
-    type="button"
-    class="btn btn-info"
-    [class.hidden]="data.memorized"
-    [disabled]="!addExpenseForm.valid || missingSplitMember()"
-    (click)="memorize()"
-  >
-    Memorize
-  </button>
-  <button
     type="submit"
     defaultButton
     class="btn btn-primary"
