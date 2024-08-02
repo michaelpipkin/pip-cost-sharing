@@ -8,6 +8,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import {
+  deleteField,
   doc,
   Firestore,
   onSnapshot,
@@ -75,6 +76,7 @@ export class SplitService {
   }
 
   async fixSplits() {
+    const batch = writeBatch(this.fs);
     const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
     const expenses = expDocs.docs.map(
       (e) => new Expense({ id: e.id, ...e.data() })
@@ -84,11 +86,16 @@ export class SplitService {
       const allocatedAmount = +d.data().allocatedAmount.toFixed(2);
       const expense = expenses.find((e) => e.id === d.data().expenseId);
       if (!!expense) {
-        await updateDoc(d.ref, {
+        const updatedData = {
           date: expense.date,
           allocatedAmount: allocatedAmount,
-        });
+          groupId: deleteField(),
+        };
+        batch.update(d.ref, updatedData);
+      } else {
+        batch.delete(d.ref);
       }
     });
+    batch.commit();
   }
 }

@@ -44,10 +44,14 @@
       }
     </mat-form-field>
   </div>
+  <button class="btn btn-primary add-button" (click)="addMemorizedExpense()">
+    Memorize<br />
+    New Expense
+  </button>
 </div>
 <div class="table-container">
   <div class="scrollable-table mat-elevation-z8">
-    <table mat-table [dataSource]="filteredExpenses()" multiTemplateDataRows>
+    <table mat-table [dataSource]="filteredMemorizeds()" multiTemplateDataRows>
       @let columnsToDisplay =
         ['paidBy', 'description', 'category', 'amount', 'create', 'expand'];
       <ng-container matColumnDef="id">

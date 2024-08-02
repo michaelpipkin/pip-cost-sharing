@@ -1,0 +1,210 @@
+<div class="page-header">
+  <div></div>
+  <h3>Edit Memorized Expense</h3>
+  <div class="help-icon">
+    <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+  </div>
+</div>
+<mat-dialog-content>
+  @let memberList = memorizedMembers();
+  <div class="container mb-2">
+    <form [formGroup]="editMemorizedForm" id="expense-form">
+      <div class="details-1">
+        <mat-form-field id="paid-by-select">
+          <mat-label>Paid by</mat-label>
+          <mat-select formControlName="paidByMemberId" name="group">
+            @for (member of memberList; track member.id) {
+              <mat-option [value]="member.id">{{
+                member.displayName
+              }}</mat-option>
+            }
+          </mat-select>
+          @if (e.paidByMemberId.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
+        </mat-form-field>
+      </div>
+      <div class="details-2">
+        <mat-form-field appearance="fill" id="description">
+          <mat-label>Description</mat-label>
+          <input matInput formControlName="description" />
+          @if (e.description.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field id="category-select">
+          <mat-label>Category</mat-label>
+          <mat-select formControlName="categoryId" name="category">
+            @for (category of categories(); track category.id) {
+              <mat-option [value]="category.id">{{ category.name }}</mat-option>
+            }
+          </mat-select>
+          @if (e.categoryId.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
+        </mat-form-field>
+      </div>
+      <div class="details-3">
+        <mat-form-field
+          appearance="fill"
+          floatLabel="always"
+          class="number-field"
+        >
+          <mat-label>Total Amount</mat-label>
+          <input
+            matInput
+            #inputElement
+            #totalAmount
+            class="number-right"
+            appFormatCurrencyInput
+            (change)="
+              saveValue($event.currentTarget, 'amount'); allocateSharedAmounts()
+            "
+          />
+          <span matTextPrefix>$</span>
+          @if (e.amount.errors?.['required']) {
+            <mat-error> *Required </mat-error>
+          }
+          @if (e.amount.errors?.['zeroAmount']) {
+            <mat-error> Cannot be zero </mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field
+          appearance="fill"
+          floatLabel="always"
+          class="number-field"
+        >
+          <mat-label>Proportional Amount</mat-label>
+          <input
+            matInput
+            #inputElement
+            #propAmount
+            class="number-right"
+            appFormatCurrencyInput
+            (change)="
+              saveValue($event.currentTarget, 'allocatedAmount');
+              allocateSharedAmounts()
+            "
+          />
+          <span matTextPrefix>$</span>
+          <mat-hint>Tax, tip, etc.</mat-hint>
+        </mat-form-field>
+        <span class="evenly-shared-amt">
+          Evenly Shared Remainder: {{ e.sharedAmount.value | currency }}
+        </span>
+      </div>
+    </form>
+    <div class="buttons">
+      <button type="button" class="btn btn-primary" (click)="addRow()">
+        Add New Split
+      </button>
+    </div>
+    <div class="table-container">
+      <div class="scrollable-table mat-elevation-z8 mb-0">
+        <table mat-table #splitsTable [dataSource]="splitsDataSource()">
+          @let columnsToDisplay =
+            ['memberId', 'assigned', 'allocated', 'delete'];
+          <ng-container matColumnDef="memberId">
+            <th mat-header-cell *matHeaderCellDef class="ps-4">Member</th>
+            <td mat-cell *matCellDef="let split; let i = index">
+              <mat-form-field id="split-member">
+                <mat-select
+                  [formControl]="getSplitControl(i, 'owedByMemberId')"
+                  (selectionChange)="saveSplitsData()"
+                >
+                  @for (member of splitMembers(); track member.id) {
+                    <mat-option [value]="member.id">{{
+                      member.displayName
+                    }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="assigned">
+            <th mat-header-cell *matHeaderCellDef class="cell-right pe-5">
+              Member<br />Amount
+            </th>
+            <td
+              mat-cell
+              *matCellDef="let split; let i = index"
+              class="cell-right"
+            >
+              <mat-form-field
+                appearance="fill"
+                floatLabel="always"
+                class="number-field"
+              >
+                <input
+                  matInput
+                  #inputElement
+                  class="number-right"
+                  name="assignedAmount"
+                  appFormatCurrencyInput
+                  [formControl]="getSplitControl(i, 'assignedAmount')"
+                  (change)="saveSplitsData()"
+                />
+                <span matTextPrefix>$</span>
+              </mat-form-field>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="allocated">
+            <th mat-header-cell *matHeaderCellDef class="cell-right">
+              Allocated<br />Amount
+            </th>
+            <td
+              mat-cell
+              *matCellDef="let split"
+              class="cell-right allocated-amount"
+            >
+              {{ split.allocatedAmount | currency }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="delete">
+            <th mat-header-cell *matHeaderCellDef class="cell-right">Delete</th>
+            <td
+              mat-cell
+              *matCellDef="let split; let i = index"
+              class="cell-right"
+            >
+              <button
+                mat-mini-fab
+                class="btn btn-danger text-white"
+                (click)="deleteRow(i)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr
+            mat-header-row
+            *matHeaderRowDef="columnsToDisplay; sticky: true"
+          ></tr>
+          <tr mat-row *matRowDef="let split; columns: columnsToDisplay"></tr>
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+              Click the Add New Split button to add a split.
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions class="me-3">
+  <button type="button" class="btn btn-danger" (click)="delete()">
+    Delete
+  </button>
+  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
+    Cancel
+  </button>
+  <button
+    type="submit"
+    defaultButton
+    class="btn btn-primary"
+    [disabled]="!editMemorizedForm.valid || missingSplitMember()"
+    (click)="onSubmit()"
+  >
+    Save
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,86 @@
+.container {
+  justify-items: start;
+}
+
+.page-header {
+  margin-top: 12px;
+}
+
+.evenly-shared-amt {
+  line-height: 3em;
+}
+
+#expense-form {
+  width: 100%;
+}
+
+.details-1 {
+  display: grid;
+  column-gap: 8px;
+  grid-template-columns: max-content;
+}
+
+.details-2 {
+  display: grid;
+  width: 100%;
+  column-gap: 8px;
+  grid-template-columns: auto max-content;
+}
+
+.details-3 {
+  display: grid;
+  column-gap: 8px;
+  align-items: baseline;
+  grid-template-columns: max-content max-content max-content;
+}
+
+.buttons {
+  display: grid;
+  width: 100%;
+  column-gap: 8px;
+  grid-template-columns: 1fr 3fr;
+}
+
+@media (min-width: 474px) and (max-width: 767px) {
+  .details-2 {
+    grid-template-columns: 1fr;
+  }
+  .details-3 {
+    grid-template-columns: max-content max-content;
+  }
+  .evenly-shared-amt {
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  .buttons {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
+@media (max-width: 473px) {
+  .details-1,
+  .details-3 {
+    grid-template-columns: max-content;
+  }
+  .details-2 {
+    grid-template-columns: 1fr;
+  }
+  .buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.number-field {
+  width: 150px;
+}
+
+.attachment-container {
+  width: 100%;
+}
+
+.attachment {
+  display: grid;
+  grid-template-columns: max-content auto;
+  align-items: center;
+  margin-bottom: 8px;
+}

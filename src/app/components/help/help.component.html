@@ -107,21 +107,44 @@
       Click the Upload receipt button, then select your file. The receipt will
       be saved with the expense.
     </p>
-    <p>
-      If your group has a regularly reccuring expense, click Memorize instead of
-      Save after entering the expense details. You can then find the expense on
-      the Memorized page.
-    </p>
   } @else if (page == 'memorized') {
     <p>
-      After creating a memorized expense, you can view it on this page. Clicking
+      If your group has a regularly reccuring expense, you can create a
+      memorized expense on this page. Memorizing an expense saves most of the
+      expense details, allowing you to quickly and easily create a new expense
+      based on the memorized expense.
+    </p>
+    <p>
+      After creating a memorized expense, it will appear in the table. Clicking
       a row in the table will let you edit or delete the memorized expense.
     </p>
     <p>
       Clicking the + on the memorized expense row will create a new expense
-      based on the memorized expense. Please note that the expense date is not
-      saved with the memorized expense, so make sure you set the correct expense
-      date for the actual expense.
+      based on the memorized expense.
+    </p>
+  } @else if (page == 'add-edit-memorized') {
+    <p>Enter or edit a memorized expense with this form.</p>
+    <p>
+      The Proportional Amount field is for items like tax and tip that should be
+      split proportional to the amount for which each member is responsible. The
+      evenly shared remainder and the allocated split amount for each member
+      will update automatically as you enter/update the total amount,
+      proportional amount, and individual member amounts.
+    </p>
+    <p>
+      Click the Add New Split button to add a single split line to the expense.
+      You can select the member and enter an amount in the Member Amount field
+      that the member is individually responsible for and should not be split.
+      Click the Add All Members button to automatically insert a split line for
+      each active group member not already listed in the splits table. The form
+      will automatically update the allocated amounts for each member as you
+      change the total amount, proportional amount, or individual amounts for
+      each member.
+    </p>
+    <p>
+      You can perform basic arithmetic directly in any amount input field, if
+      needed. (i.e. entering 3*6-2 in the total amount field will evaluate to
+      16.00)
     </p>
   } @else if (page == 'summary') {
     <p>
