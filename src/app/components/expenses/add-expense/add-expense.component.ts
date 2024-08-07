@@ -2,7 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import { MatMiniFabButton } from '@angular/material/button';
-import { DateAdapter, MatOption } from '@angular/material/core';
+import { MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
@@ -22,7 +22,6 @@ import { MemorizedService } from '@services/memorized.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
-import { CustomDateAdapter } from 'src/app/utilities/custom-date-adapter.service';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
   Component,
@@ -128,7 +127,6 @@ import {
     CurrencyPipe,
     DecimalPipe,
   ],
-  providers: [{ provide: DateAdapter, useClass: CustomDateAdapter }],
 })
 export class AddExpenseComponent implements OnInit {
   dialogRef = inject(MatDialogRef<AddExpenseComponent>);
