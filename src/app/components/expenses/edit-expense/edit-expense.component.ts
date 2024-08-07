@@ -1,7 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatMiniFabButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
+import { DateAdapter, MatOption } from '@angular/material/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
@@ -23,6 +23,7 @@ import { FormatCurrencyInputDirective } from '@shared/directives/format-currency
 import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
+import { CustomDateAdapter } from 'src/app/utilities/custom-date-adapter.service';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { Url } from 'url';
 import {
@@ -137,6 +138,7 @@ import {
     CurrencyPipe,
     DecimalPipe,
   ],
+  providers: [{ provide: DateAdapter, useClass: CustomDateAdapter }],
 })
 export class EditExpenseComponent implements OnInit {
   dialogRef = inject(MatDialogRef<EditExpenseComponent>);
