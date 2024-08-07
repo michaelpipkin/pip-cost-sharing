@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
+import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { BrowserModule } from '@angular/platform-browser';
@@ -11,6 +11,7 @@ import { PageTitleStrategyService } from '@services/page-title-strategy.service'
 import { LoadingService } from '@shared/loading/loading.service';
 import { appRoutes } from './app.routes';
 import { FirebaseConfig } from './firebase.config';
+import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 import { environment } from '../environments/environment';
 import {
   ApplicationConfig,
@@ -114,5 +115,6 @@ export const appConfig: ApplicationConfig = {
     UserTrackingService,
     MatDatepickerModule,
     DecimalPipe,
+    { provide: DateAdapter, useClass: CustomDateAdapter },
   ],
 };
