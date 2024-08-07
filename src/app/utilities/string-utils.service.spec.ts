@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
+import { StringUtils } from './string-utils.service';
 
-import { StringUtilsService } from './string-utils.service';
 
 describe('StringUtilsService', () => {
-  let service: StringUtilsService;
+  let service: StringUtils;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(StringUtilsService);
+    service = TestBed.inject(StringUtils);
   });
 
   it('should be created', () => {
