@@ -130,7 +130,7 @@
         <div (click)="attachFile.click()" class="attachment">
           <input
             type="file"
-            accept=".pdf,.jpg,.jpeg"
+            accept=".pdf,image/*"
             class="file-input"
             #attachFile
             (change)="onFileSelected($event)"
