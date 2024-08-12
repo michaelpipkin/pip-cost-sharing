@@ -119,6 +119,7 @@ export class CategoriesComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'categories',
+        title: 'Categories Help',
       },
       disableClose: false,
       maxWidth: '80vw',

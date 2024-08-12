@@ -67,6 +67,7 @@ export class GroupsComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'groups',
+        title: 'Groups Help',
       },
       disableClose: false,
       maxWidth: '80vw',

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { FirestoreModule, provideFirestore } from '@angular/fire/firestore';
+import { FirebaseConfig } from '@app/firebase.config';
 import { CategoryService } from './category.service';
 import { SortingService } from './sorting.service';
-import { firestore } from '../../../firestore-setup';
-import { FirebaseConfig } from '../firebase.config';
+import { firestore } from '~/../firestore-setup';
 import {
   collection,
   addDoc,

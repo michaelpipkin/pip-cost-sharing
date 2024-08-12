@@ -118,6 +118,7 @@ export class MembersComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'members',
+        title: 'Members Help',
       },
       disableClose: false,
       maxWidth: '80vw',

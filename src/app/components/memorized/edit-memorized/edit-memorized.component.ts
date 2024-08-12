@@ -224,6 +224,7 @@ export class EditMemorizedComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'add-edit-memorized',
+        title: 'Memorized Expense Help',
       },
       disableClose: false,
       maxWidth: '80vw',

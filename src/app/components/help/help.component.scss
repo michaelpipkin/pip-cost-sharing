@@ -1,9 +1,22 @@
 .dialog-header {
   display: grid;
-  justify-items: end;
+  grid-template-columns: auto max-content;
   align-items: center;
   padding-top: 12px;
   padding-right: 12px;
+}
+
+.header-text {
+  display: grid;
+  justify-items: start;
+  align-items: center;
+  margin-left: 24px;
+}
+
+.header-close {
+  display: grid;
+  justify-items: end;
+  align-items: center;
 }
 
 .dialog-content {
