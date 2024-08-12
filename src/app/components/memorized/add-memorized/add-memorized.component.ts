@@ -230,6 +230,7 @@ export class AddMemorizedComponent implements OnInit {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'add-edit-memorized',
+        title: 'Memorized Expense Help',
       },
       disableClose: false,
       maxWidth: '80vw',

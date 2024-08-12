@@ -270,6 +270,7 @@ export class EditExpenseComponent implements OnInit {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'add-edit-expense',
+        title: 'Add/Edit Expense Help',
       },
       disableClose: false,
       maxWidth: '80vw',

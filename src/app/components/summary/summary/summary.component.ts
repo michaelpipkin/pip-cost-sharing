@@ -229,6 +229,7 @@ export class SummaryComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'summary',
+        title: 'Summary Help',
       },
       disableClose: false,
       maxWidth: '80vw',

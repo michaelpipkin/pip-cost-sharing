@@ -1,13 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-
-import { CustomDateAdapterService } from './custom-date-adapter.service';
+import { CustomDateAdapter } from './custom-date-adapter.service';
 
 describe('CustomDateAdapterService', () => {
-  let service: CustomDateAdapterService;
+  let service: CustomDateAdapter;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(CustomDateAdapterService);
+    service = TestBed.inject(CustomDateAdapter);
   });
 
   it('should be created', () => {

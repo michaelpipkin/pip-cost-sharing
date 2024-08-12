@@ -135,6 +135,7 @@ export class MemorizedComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'memorized',
+        title: 'Memorized Expenses Help',
       },
       disableClose: false,
       maxWidth: '80vw',

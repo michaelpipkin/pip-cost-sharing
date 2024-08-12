@@ -4,7 +4,8 @@
       "port": 9099
     },
     "firestore": {
-      "port": 8080
+      "port": 8080,
+      "rules": "firestore.test.rules"
     },
     "hosting": {
       "port": 5000
@@ -16,10 +17,6 @@
       "enabled": true
     },
     "singleProjectMode": true
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
   },
   "hosting": {
     "public": "dist/browser",

@@ -210,6 +210,7 @@ export class ExpensesComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         page: 'expenses',
+        title: 'Expenses Help',
       },
       disableClose: false,
       maxWidth: '80vw',

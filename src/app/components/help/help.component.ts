@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import {
   MAT_DIALOG_DATA,
@@ -17,10 +17,12 @@ export class HelpComponent implements OnInit {
   dialogRef = inject(MatDialogRef<HelpComponent>);
   data: any = inject(MAT_DIALOG_DATA);
 
-  public page: string;
+  page = signal<string>('');
+  title = signal<string>('');
 
   ngOnInit(): void {
-    this.page = this.data.page;
+    this.page.set(this.data.page);
+    this.title.set(this.data.title);
   }
 
   close(): void {
