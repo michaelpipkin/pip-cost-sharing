@@ -72,14 +72,14 @@ export class GroupService {
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
         if (groups.length === 1 && groups[0].active) {
-          await this.getGroupById(groups[0].id, user.id).then(() => {
+          await this.getGroup(groups[0].id, user.id).then(() => {
             if (autoNav) {
               autoNav = false;
               this.router.navigateByUrl('/expenses');
             }
           });
         } else if (user.defaultGroupId !== '') {
-          await this.getGroupById(user.defaultGroupId, user.id).then(() => {
+          await this.getGroup(user.defaultGroupId, user.id).then(() => {
             if (autoNav) {
               autoNav = false;
               this.router.navigateByUrl('/expenses');
@@ -93,14 +93,15 @@ export class GroupService {
     });
   }
 
-  async getGroupById(groupId: string, userId: string): Promise<void> {
+  async getGroup(groupId: string, userId: string): Promise<void> {
     this.loading.loadingOn();
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    const group = new Group({
-      id: docSnap.id,
-      ...docSnap.data(),
-    });
-    this.currentGroup.set(group);
+    this.currentGroup.set(
+      new Group({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })
+    );
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
     this.memberService.getMemberByUserId(groupId, userId);
