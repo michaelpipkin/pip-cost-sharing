@@ -13,6 +13,7 @@
       @if (nameFilter() !== '') {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
           (click)="nameFilter.set('')"

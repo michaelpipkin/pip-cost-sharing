@@ -20,6 +20,7 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
+import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { AddExpenseComponent } from '../../expenses/add-expense/add-expense.component';
 import { AddMemorizedComponent } from '../add-memorized/add-memorized.component';
@@ -87,6 +88,7 @@ import {
     MatRow,
     MatNoDataRow,
     CurrencyPipe,
+    ClearSelectDirective,
   ],
 })
 export class MemorizedComponent {

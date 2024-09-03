@@ -25,6 +25,7 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
+import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
@@ -127,6 +128,7 @@ import {
     DatePipe,
     YesNoPipe,
     YesNoNaPipe,
+    ClearSelectDirective,
   ],
 })
 export class ExpensesComponent {

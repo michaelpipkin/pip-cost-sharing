@@ -32,6 +32,7 @@
       @if (!!startDate()) {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
           (click)="startDate.set(null)"
@@ -52,6 +53,7 @@
       @if (!!endDate()) {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
           (click)="endDate.set(null)"

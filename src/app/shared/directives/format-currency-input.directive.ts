@@ -13,6 +13,7 @@ export class FormatCurrencyInputDirective {
   constructor(private el: ElementRef) {}
 
   @HostListener('change', ['$event.target.value']) onInput(value: string) {
+    value = value.replace(/\.([^\d]|$)/g, '$1');
     const calc = this.stringUtils.toNumber(value);
     this.el.nativeElement.value =
       this.decimalPipe.transform(calc, '1.2-2') || '0.00';
