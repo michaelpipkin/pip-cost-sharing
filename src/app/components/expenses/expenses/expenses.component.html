@@ -9,7 +9,7 @@
   <div class="filters-1 mb-2">
     <mat-form-field>
       <mat-label>Filter by payee</mat-label>
-      <mat-select name="member" [(ngModel)]="selectedMemberId">
+      <mat-select #memberSelect name="member" [(ngModel)]="selectedMemberId">
         @for (member of members(); track member.id) {
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
@@ -17,9 +17,10 @@
       @if (selectedMemberId() !== '') {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
-          (click)="selectedMemberId.set('')"
+          [appClearSelect]="memberSelect"
         >
           <mat-icon>close</mat-icon>
         </button>
@@ -27,7 +28,11 @@
     </mat-form-field>
     <mat-form-field>
       <mat-label>Filter by category</mat-label>
-      <mat-select name="category" [(ngModel)]="selectedCategoryId">
+      <mat-select
+        #categorySelect
+        name="category"
+        [(ngModel)]="selectedCategoryId"
+      >
         @for (category of categories(); track category.id) {
           <mat-option [value]="category.id">{{ category.name }}</mat-option>
         }
@@ -35,9 +40,10 @@
       @if (selectedCategoryId() !== '') {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
-          (click)="selectedCategoryId.set('')"
+          [appClearSelect]="categorySelect"
         >
           <mat-icon>close</mat-icon>
         </button>
@@ -67,6 +73,7 @@
       @if (!!startDate()) {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
           (click)="startDate.set(null)"
@@ -87,6 +94,7 @@
       @if (!!endDate()) {
         <button
           matSuffix
+          tabindex="-1"
           mat-icon-button
           aria-label="Clear"
           (click)="endDate.set(null)"
