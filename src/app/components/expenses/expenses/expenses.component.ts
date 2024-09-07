@@ -12,7 +12,6 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSort, MatSortHeader } from '@angular/material/sort';
 import { MatTooltip } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -132,7 +131,6 @@ import {
   ],
 })
 export class ExpensesComponent {
-  router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
