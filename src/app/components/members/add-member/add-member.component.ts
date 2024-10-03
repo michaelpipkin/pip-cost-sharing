@@ -1,14 +1,18 @@
-import { Component, inject, Signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
-import { User } from '@models/user';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import {
   FormBuilder,
   FormsModule,
@@ -17,9 +21,7 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-join-group',
-  templateUrl: './join-group.component.html',
-  styleUrl: './join-group.component.scss',
+  selector: 'app-add-member',
   standalone: true,
   imports: [
     FormsModule,
@@ -29,44 +31,46 @@ import {
     MatInputModule,
     MatButtonModule,
   ],
+  templateUrl: './add-member.component.html',
+  styleUrl: './add-member.component.scss',
 })
-export class JoinGroupComponent {
-  dialogRef = inject(MatDialogRef<JoinGroupComponent>);
+export class AddMemberComponent {
+  dialogRef = inject(MatDialogRef<AddMemberComponent>);
   fb = inject(FormBuilder);
   userService = inject(UserService);
   memberService = inject(MemberService);
+  groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
+  data: any = inject(MAT_DIALOG_DATA);
 
-  joinGroupForm = this.fb.group({
-    groupId: ['', Validators.required],
+  addMemberForm = this.fb.group({
     displayName: ['', Validators.required],
+    email: ['', Validators.email],
   });
 
-  user: Signal<User> = this.userService.user;
-
   public get f() {
-    return this.joinGroupForm.controls;
+    return this.addMemberForm.controls;
   }
 
   onSubmit(): void {
-    this.joinGroupForm.disable();
-    const val = this.joinGroupForm.value;
+    this.addMemberForm.disable();
+    const val = this.addMemberForm.value;
     const newMember: Partial<Member> = {
-      userId: this.user().id,
+      userId: '',
       displayName: val.displayName,
-      email: this.user().email,
+      email: val.email,
       active: true,
       groupAdmin: false,
     };
     this.memberService
-      .addMemberToGroup(val.groupId, newMember)
+      .addManualMemberToGroup(this.data.groupId, newMember)
       .then((res) => {
-        if (!!res && res.name === 'Error') {
+        if (res.name === 'Error') {
           this.snackBar.open(res.message, 'Close', {
             verticalPosition: 'top',
           });
-          this.joinGroupForm.enable();
+          this.addMemberForm.enable();
         } else {
           this.dialogRef.close(true);
         }
@@ -74,17 +78,17 @@ export class JoinGroupComponent {
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
-          action: 'join_group',
+          action: 'add_member',
           message: err.message,
         });
         this.snackBar.open(
-          'Something went wrong - could not join group. Please check the group code.',
+          'Something went wrong - could not add member.',
           'Close',
           {
             verticalPosition: 'top',
           }
         );
-        this.joinGroupForm.enable();
+        this.addMemberForm.enable();
       });
   }
 }

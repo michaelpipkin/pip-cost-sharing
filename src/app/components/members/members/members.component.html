@@ -26,6 +26,11 @@
       Active only
     </mat-slide-toggle>
   </div>
+  @if (currentMember().groupAdmin) {
+    <div>
+      <button mat-flat-button (click)="addMember()">Add Member</button>
+    </div>
+  }
 </div>
 <div class="table-container">
   <div class="scrollable-table mat-elevation-z8">
@@ -82,7 +87,7 @@
         *matRowDef="let member; columns: columnsToDisplay"
         (click)="onRowClick(member)"
         [class.clickable-row]="
-          currentMember()?.groupAdmin || user().id == member.userId
+          currentMember()?.groupAdmin || user()?.id == member.userId
         "
       ></tr>
       <tr class="mat-row" *matNoDataRow>

@@ -1,9 +1,13 @@
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
@@ -17,9 +21,8 @@ import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   Component,
   computed,
@@ -28,8 +31,7 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTableModule } from '@angular/material/table';
+
 
 @Component({
   selector: 'app-members',
@@ -60,7 +62,7 @@ export class MembersComponent {
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  #user: Signal<User> = this.userService.user;
+  user: Signal<User> = this.userService.user;
   currentMember: Signal<Member> = this.memberService.currentMember;
   #groupMembers: Signal<Member[]> = this.memberService.groupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
@@ -101,19 +103,33 @@ export class MembersComponent {
     this.sortAsc.set(e.direction == 'asc');
   }
 
+  addMember(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        groupId: this.currentGroup().id,
+      },
+    };
+    const dialogRef = this.dialog.open(AddMemberComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result.success) {
+        this.snackBar.open('Member added', 'OK');
+      }
+    });
+  }
+
   onRowClick(member: Member): void {
-    if (this.currentMember().groupAdmin || this.#user().id == member.userId) {
+    if (this.currentMember().groupAdmin || this.user().id == member.userId) {
       const dialogConfig: MatDialogConfig = {
         data: {
           groupId: this.currentGroup().id,
-          userId: this.#user().id,
+          userId: this.user().id,
           isGroupAdmin: this.currentMember().groupAdmin,
           member: member,
         },
       };
       const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {
-        if (result.success) {
+        if (!!result && result.success) {
           this.snackBar.open(`Member ${result.operation}`, 'OK');
         }
       });

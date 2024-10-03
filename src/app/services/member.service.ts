@@ -70,13 +70,47 @@ export class MemberService {
     if (!groupSnap.exists()) {
       return new Error('Group code not found!');
     }
-    const membersQuery = query(
+    const userIdQuery = query(
       collection(this.fs, `groups/${groupId}/members`),
       where('userId', '==', member.userId)
     );
+    const idSnapshot = await getDocs(userIdQuery);
+    if (!idSnapshot.empty) {
+      return new Error('You are already a member of that group!');
+    }
+    const emailQuery = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      where('email', '==', member.email)
+    );
+    const emailSnapshot = await getDocs(emailQuery);
+    if (!emailSnapshot.empty) {
+      const userRef = emailSnapshot.docs[0].ref;
+      const existingUser = emailSnapshot.docs[0].data();
+      existingUser.userId = member.userId;
+      existingUser.displayName = member.displayName;
+      existingUser.active = true;
+      return await updateDoc(userRef, existingUser);
+    } else {
+      return await addDoc(
+        collection(this.fs, `groups/${groupId}/members`),
+        member
+      );
+    }
+  }
+
+  async addManualMemberToGroup(
+    groupId: string,
+    member: Partial<Member>
+  ): Promise<any> {
+    const membersQuery = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      where('email', '==', member.email)
+    );
     const membersSnapshot = await getDocs(membersQuery);
     if (!membersSnapshot.empty) {
-      return new Error('You are already a member of that group!');
+      return new Error(
+        'A member with this email address already exists in the group.'
+      );
     }
     return await addDoc(
       collection(this.fs, `groups/${groupId}/members`),
