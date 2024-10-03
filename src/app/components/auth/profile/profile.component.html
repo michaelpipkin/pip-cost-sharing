@@ -10,16 +10,17 @@
     </mat-form-field>
     <div class="buttons">
       <button
+        mat-flat-button
         type="button"
-        class="btn btn-secondary"
+        class="btn-secondary"
         [disabled]="firebaseUser()?.emailVerified"
         (click)="verifyEmail()"
       >
         {{ firebaseUser()?.emailVerified ? 'Email Verified' : 'Verify Email' }}
       </button>
       <button
+        mat-flat-button
         type="submit"
-        class="btn btn-primary"
         [disabled]="
           emailForm.invalid ||
           e.email?.value === firebaseUser()?.email ||
@@ -77,8 +78,8 @@
       }
     </mat-form-field>
     <button
+      mat-flat-button
       type="submit"
-      class="btn btn-primary"
       [disabled]="
         passwordForm.invalid ||
         passwordForm.controls.confirmPassword.value === ''
@@ -89,29 +90,29 @@
     </button>
   </form>
   <h4>Select Default Group</h4>
-  <div class="container">
+  <form [formGroup]="groupForm" class="container">
     <mat-form-field id="group-select">
       <mat-label>Select Group</mat-label>
-      <mat-select [(ngModel)]="selectedGroupId" name="group" #groupSelect>
+      <mat-select formControlName="groupId" name="group" #groupSelect>
         @for (group of activeUserGroups(); track group.id) {
           <mat-option [value]="group.id">{{ group.name }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
     <button
+      mat-flat-button
       type="button"
-      class="btn btn-primary"
-      [disabled]="selectedGroupId === null"
+      [disabled]="selectedGroupId === null || groupForm.pristine"
       (click)="saveDefaultGroup()"
     >
       Save
     </button>
-  </div>
+  </form>
   @if (!prod()) {
-    <button type="button" class="btn btn-primary" (click)="fixSplits()">
+    <button mat-stroked-button type="button" (click)="fixSplits()">
       Fix Splits
     </button>
-    <button type="button" class="btn btn-primary" (click)="fixExpenses()">
+    <button mat-stroked-button type="button" (click)="fixExpenses()">
       Fix Expenses
     </button>
   }

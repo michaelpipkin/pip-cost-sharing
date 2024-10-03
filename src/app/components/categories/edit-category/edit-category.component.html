@@ -16,23 +16,35 @@
   </mat-dialog-content>
   <mat-dialog-actions>
     <button
-      type="button"
-      class="btn btn-secondary"
-      [mat-dialog-close]="{ success: false }"
-    >
-      Cancel
-    </button>
-    <button type="button" class="btn btn-warning" (click)="deleteCategory()">
-      Delete
-    </button>
-    <button
+      mat-flat-button
       type="submit"
       defaultButton
-      class="btn btn-primary"
-      [disabled]="!editCategoryForm.valid"
+      class="btn-tertiary"
+      [disabled]="
+        !editCategoryForm.valid ||
+        editCategoryForm.pristine ||
+        editCategoryForm.disabled
+      "
       (click)="onSubmit()"
     >
       Save
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      class="btn-danger"
+      [disabled]="editCategoryForm.disabled"
+      (click)="deleteCategory()"
+    >
+      Delete
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="editCategoryForm.disabled"
+      [mat-dialog-close]="{ success: false }"
+    >
+      Cancel
     </button>
   </mat-dialog-actions>
 </form>

@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
@@ -14,11 +15,8 @@ import {
 } from '@angular/forms';
 import {
   MAT_DIALOG_DATA,
-  MatDialogActions,
-  MatDialogClose,
-  MatDialogContent,
+  MatDialogModule,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 
 @Component({
@@ -27,16 +25,12 @@ import {
   styleUrl: './add-category.component.scss',
   standalone: true,
   imports: [
-    MatDialogTitle,
     FormsModule,
     ReactiveFormsModule,
-    MatDialogContent,
-    MatFormField,
-    MatLabel,
-    MatInput,
-    MatError,
-    MatDialogActions,
-    MatDialogClose,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatButtonModule,
+    MatInputModule,
   ],
 })
 export class AddCategoryComponent {

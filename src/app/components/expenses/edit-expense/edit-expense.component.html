@@ -147,12 +147,12 @@
       }
     </div>
     <div class="buttons">
-      <button type="button" class="btn btn-primary" (click)="addRow()">
+      <button mat-flat-button type="button" (click)="addRow()">
         Add New Split
       </button>
       <a
         type="button"
-        class="btn btn-primary"
+        mat-flat-button
         [class.hidden]="!hasReceipt"
         [href]="receiptUrl()"
         target="_blank"
@@ -252,19 +252,36 @@
   </div>
 </mat-dialog-content>
 <mat-dialog-actions class="me-3">
-  <button type="button" class="btn btn-danger" (click)="delete()">
-    Delete
-  </button>
-  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
-    Cancel
-  </button>
   <button
+    mat-flat-button
     type="submit"
     defaultButton
-    class="btn btn-primary"
-    [disabled]="!editExpenseForm.valid || missingSplitMember()"
+    class="btn-tertiary"
+    [disabled]="
+      !editExpenseForm.valid ||
+      missingSplitMember() ||
+      editExpenseForm.disabled ||
+      editExpenseForm.pristine
+    "
     (click)="onSubmit()"
   >
     Save
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    class="btn-danger"
+    [disabled]="editExpenseForm.disabled"
+    (click)="delete()"
+  >
+    Delete
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="editExpenseForm.disabled"
+    [mat-dialog-close]="false"
+  >
+    Cancel
   </button>
 </mat-dialog-actions>

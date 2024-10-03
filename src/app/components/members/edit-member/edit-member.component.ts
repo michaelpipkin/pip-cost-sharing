@@ -1,10 +1,11 @@
 import { Component, inject, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberService } from '@services/member.service';
@@ -21,11 +22,9 @@ import {
 import {
   MAT_DIALOG_DATA,
   MatDialog,
-  MatDialogActions,
   MatDialogConfig,
-  MatDialogContent,
+  MatDialogModule,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 
 @Component({
@@ -34,17 +33,14 @@ import {
   styleUrl: './edit-member.component.scss',
   standalone: true,
   imports: [
-    MatDialogTitle,
     FormsModule,
     ReactiveFormsModule,
-    MatDialogContent,
-    MatFormField,
-    MatLabel,
-    MatInput,
-    MatError,
-    MatSlideToggle,
-    MatTooltip,
-    MatDialogActions,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSlideToggleModule,
+    MatTooltipModule,
   ],
 })
 export class EditMemberComponent {
@@ -162,12 +158,6 @@ export class EditMemberComponent {
           })
           .finally(() => this.loading.loadingOff());
       }
-    });
-  }
-
-  close(): void {
-    this.dialogRef.close({
-      success: false,
     });
   }
 }

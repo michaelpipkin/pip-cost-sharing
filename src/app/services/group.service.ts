@@ -163,4 +163,10 @@ export class GroupService {
         return new Error(err.message);
       });
   }
+
+  logout() {
+    this.currentGroup.set(null);
+    this.allUserGroups.set([]);
+    this.adminGroupIds.set([]);
+  }
 }

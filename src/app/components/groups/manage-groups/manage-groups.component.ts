@@ -1,10 +1,11 @@
 import { Component, computed, inject, model } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatOption } from '@angular/material/core';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -18,10 +19,8 @@ import {
 } from '@angular/forms';
 import {
   MAT_DIALOG_DATA,
-  MatDialogActions,
-  MatDialogContent,
+  MatDialogModule,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 
 @Component({
@@ -30,18 +29,15 @@ import {
   styleUrl: './manage-groups.component.scss',
   standalone: true,
   imports: [
-    MatDialogTitle,
-    MatDialogContent,
-    MatFormField,
-    MatLabel,
-    MatSelect,
     FormsModule,
-    MatOption,
     ReactiveFormsModule,
-    MatInput,
-    MatError,
-    MatSlideToggle,
-    MatDialogActions,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatInputModule,
+    MatSlideToggleModule,
   ],
 })
 export class ManageGroupsComponent {
@@ -76,6 +72,8 @@ export class ManageGroupsComponent {
       groupName: this.selectedGroup().name,
       active: this.selectedGroup().active,
     });
+    this.editGroupForm.markAsPristine();
+    this.editGroupForm.markAsUntouched();
   }
 
   onSubmit(): void {
@@ -107,9 +105,5 @@ export class ManageGroupsComponent {
         this.editGroupForm.enable();
       })
       .finally(() => this.loading.loadingOff());
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }

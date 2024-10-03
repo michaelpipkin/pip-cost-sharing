@@ -14,7 +14,12 @@
       </mat-select>
     </mat-form-field>
     <div class="help-icon">
-      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      <mat-icon
+        fontSet="material-symbols-outlined"
+        matTooltip="Help"
+        (click)="showHelp()"
+        >help</mat-icon
+      >
     </div>
   </div>
   @if (selectedGroupId() != '') {
@@ -29,13 +34,13 @@
     </div>
   }
   <div class="buttons">
-    <button type="button" class="btn btn-primary me-2" (click)="addGroup()">
-      Create New Group
+    <button mat-flat-button type="button" (click)="addGroup()">
+      New Group
     </button>
-    <button type="button" class="btn btn-secondary me-2" (click)="joinGroup()">
+    <button mat-flat-button type="button" (click)="joinGroup()">
       Join Group
     </button>
-    <button type="button" class="btn btn-info" (click)="manageGroups()">
+    <button mat-flat-button type="button" (click)="manageGroups()">
       Manage Groups
     </button>
   </div>

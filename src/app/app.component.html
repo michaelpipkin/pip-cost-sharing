@@ -1,143 +1,160 @@
-<nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
-  <div class="container-fluid">
-    <a
-      class="navbar-brand"
-      routerLink="home"
-      (click)="menuClick(mainNavbar, hamburger)"
-      >Pip Cost Sharing</a
-    >
-    <button
-      class="navbar-toggler collapsed"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#mainNavbar"
-      aria-controls="mainNavbar"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
-      #hamburger
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="mainNavbar" #mainNavbar>
+<mat-toolbar>
+  <mat-toolbar-row>
+    @if (isSmallScreen()) {
+      <button mat-icon-button [matMenuTriggerFor]="menu">
+        <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
+      </button>
+    }
+    <span id="title">Pip Cost Sharing</span>
+    @if (!isSmallScreen()) {
       @if (isLoggedIn()) {
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a
-              class="nav-link d-flex align-items-center"
-              aria-label="groups"
-              title="Groups"
-              routerLink="groups"
-              (click)="menuClick(mainNavbar, hamburger)"
-            >
-              <mat-icon>groups</mat-icon>&nbsp;Groups
-            </a>
-          </li>
+        <div class="links">
+          <a mat-button routerLink="groups" aria-label="groups" title="Groups">
+            <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
+            >&nbsp;Groups
+          </a>
           @if (currentGroup() != null) {
-            <li class="nav-item">
-              <a
-                class="nav-link d-flex align-items-center"
-                aria-label="members"
-                title="Members"
-                routerLink="members"
-                (click)="menuClick(mainNavbar, hamburger)"
-              >
-                <mat-icon>face</mat-icon>&nbsp;Members
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                class="nav-link d-flex align-items-center"
-                aria-label="categories"
-                title="Categories"
-                routerLink="categories"
-                (click)="menuClick(mainNavbar, hamburger)"
-              >
-                <mat-icon>category</mat-icon>&nbsp;Categories
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                class="nav-link d-flex align-items-center"
-                aria-label="expenses"
-                title="Expenses"
-                routerLink="expenses"
-                (click)="menuClick(mainNavbar, hamburger)"
-              >
-                <mat-icon>attach_money</mat-icon>Expenses
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                class="nav-link d-flex align-items-center"
-                aria-label="memorized"
-                title="Memorized"
-                routerLink="memorized"
-                (click)="menuClick(mainNavbar, hamburger)"
-              >
-                <mat-icon>currency_exchange</mat-icon>&nbsp;Memorized
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                class="nav-link d-flex align-items-center"
-                aria-label="summary"
-                title="Summary"
-                routerLink="summary"
-                (click)="menuClick(mainNavbar, hamburger)"
-              >
-                <mat-icon>compare_arrows</mat-icon>&nbsp;Summary
-              </a>
-            </li>
+            <a
+              mat-button
+              routerLink="members"
+              aria-label="members"
+              title="Members"
+            >
+              <mat-icon fontSet="material-symbols-outlined">face</mat-icon
+              >&nbsp;Members
+            </a>
+            <a
+              mat-button
+              routerLink="categories"
+              aria-label="categories"
+              title="Categories"
+            >
+              <mat-icon fontSet="material-symbols-outlined">category</mat-icon
+              >&nbsp;Categories
+            </a>
+            <a
+              mat-button
+              routerLink="expenses"
+              aria-label="expenses"
+              title="Expenses"
+            >
+              <mat-icon fontSet="material-symbols-outlined"
+                >attach_money</mat-icon
+              >Expenses
+            </a>
+            <a
+              mat-button
+              routerLink="memorized"
+              aria-label="memorized"
+              title="Memorized"
+            >
+              <mat-icon fontSet="material-symbols-outlined"
+                >currency_exchange</mat-icon
+              >&nbsp;Memorized
+            </a>
+            <a
+              mat-button
+              routerLink="summary"
+              aria-label="summary"
+              title="Summary"
+            >
+              <mat-icon fontSet="material-symbols-outlined"
+                >compare_arrows</mat-icon
+              >&nbsp;Summary
+            </a>
           }
-        </ul>
+        </div>
       }
-      <div class="d-flex align-items-center ms-auto">
+      <div class="account links">
         @if (isLoggedIn()) {
-          <ng-container class="nav-item">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a
-                  class="nav-link d-flex align-items-center"
-                  aria-label="profile"
-                  title="Profile"
-                  routerLink="profile"
-                  (click)="menuClick(mainNavbar, hamburger)"
-                >
-                  <mat-icon>account_circle</mat-icon>&nbsp;Profile
-                </a>
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link d-flex align-items-center"
-                  aria-label="log out"
-                  title="Log out"
-                  (click)="logout()"
-                  (click)="menuClick(mainNavbar, hamburger)"
-                >
-                  <mat-icon>logout</mat-icon>&nbsp;Log out
-                </a>
-              </li>
-            </ul>
-          </ng-container>
+          <a
+            mat-button
+            routerLink="profile"
+            aria-label="profile"
+            title="Profile"
+          >
+            <mat-icon fontSet="material-symbols-outlined"
+              >account_circle</mat-icon
+            >&nbsp;Profile
+          </a>
+          <a mat-button (click)="logout()" aria-label="log out" title="Log out">
+            <mat-icon fontSet="material-symbols-outlined">logout</mat-icon
+            >&nbsp;Log out
+          </a>
         } @else {
-          <ng-container class="nav-item">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a
-                  class="nav-link d-flex align-items-center"
-                  routerLink="login"
-                  (click)="menuClick(mainNavbar, hamburger)"
-                >
-                  <mat-icon>login</mat-icon>&nbsp;Log in
-                </a>
-              </li>
-            </ul>
-          </ng-container>
+          <a mat-button routerLink="login">
+            <mat-icon fontSet="material-symbols-outlined">login</mat-icon>
+            <span>Log in</span>
+          </a>
         }
       </div>
-    </div>
+    }
+  </mat-toolbar-row>
+</mat-toolbar>
+
+<mat-menu #menu="matMenu">
+  <div class="menu">
+    @if (isLoggedIn()) {
+      <a mat-menu-item routerLink="groups" aria-label="groups" title="Groups">
+        <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
+        >&nbsp;Groups
+      </a>
+      @if (currentGroup() != null) {
+        <a
+          mat-menu-item
+          routerLink="members"
+          aria-label="members"
+          title="Members"
+        >
+          <mat-icon fontSet="material-symbols-outlined">face</mat-icon
+          >&nbsp;Members
+        </a>
+        <a
+          mat-menu-item
+          routerLink="categories"
+          aria-label="categories"
+          title="Categories"
+        >
+          <mat-icon fontSet="material-symbols-outlined">category</mat-icon
+          >&nbsp;Categories
+        </a>
+        <a
+          mat-menu-item
+          routerLink="expenses"
+          aria-label="expenses"
+          title="Expenses"
+        >
+          <mat-icon fontSet="material-symbols-outlined">attach_money</mat-icon
+          >Expenses
+        </a>
+        <a
+          mat-menu-item
+          routerLink="memorized"
+          aria-label="memorized"
+          title="Memorized"
+        >
+          <mat-icon fontSet="material-symbols-outlined"
+            >currency_exchange</mat-icon
+          >&nbsp;Memorized
+        </a>
+        <a
+          mat-menu-item
+          routerLink="summary"
+          aria-label="summary"
+          title="Summary"
+        >
+          <mat-icon fontSet="material-symbols-outlined">compare_arrows</mat-icon
+          >&nbsp;Summary
+        </a>
+      }
+    } @else {
+      <a mat-menu-item routerLink="login" aria-label="log in" title="Log in">
+        <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
+        in
+      </a>
+    }
   </div>
-</nav>
+</mat-menu>
 <loading />
 <div id="outlet">
   <router-outlet />

@@ -98,12 +98,12 @@
       </div>
     </form>
     <div class="buttons">
-      <button type="button" class="btn btn-primary" (click)="addRow()">
+      <button mat-flat-button type="button" (click)="addRow()">
         Add New Split
       </button>
       <button
+        mat-flat-button
         type="button"
-        class="btn btn-primary"
         (click)="addAllActiveGroupMembers()"
       >
         Add All Members
@@ -201,16 +201,26 @@
   </div>
 </mat-dialog-content>
 <mat-dialog-actions>
-  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
-    Cancel
-  </button>
   <button
+    mat-flat-button
     type="submit"
     defaultButton
-    class="btn btn-primary"
-    [disabled]="!addMemorizedForm.valid || missingSplitMember()"
+    class="btn-tertiary"
+    [disabled]="
+      !addMemorizedForm.valid ||
+      missingSplitMember() ||
+      addMemorizedForm.disabled
+    "
     (click)="onSubmit()"
   >
     Save
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="addMemorizedForm.disabled"
+    [mat-dialog-close]="false"
+  >
+    Cancel
   </button>
 </mat-dialog-actions>
