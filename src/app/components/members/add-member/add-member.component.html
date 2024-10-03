@@ -1,0 +1,39 @@
+<h1 mat-dialog-title>Add Member</h1>
+<form [formGroup]="addMemberForm">
+  <mat-dialog-content class="content">
+    <mat-form-field appearance="fill">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="displayName" />
+      @if (f.displayName.errors?.['required']) {
+        <mat-error> *Required </mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="fill">
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" />
+      @if (f.email.errors?.['required']) {
+        <mat-error> *Required </mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions>
+    <button
+      mat-flat-button
+      type="submit"
+      defaultButton
+      class="btn-tertiary"
+      [disabled]="!addMemberForm.valid || addMemberForm.disabled"
+      (click)="onSubmit()"
+    >
+      Save
+    </button>
+    <button
+      mat-stroked-button
+      [mat-dialog-close]="false"
+      type="button"
+      [disabled]="addMemberForm.disabled"
+    >
+      Cancel
+    </button>
+  </mat-dialog-actions>
+</form>
