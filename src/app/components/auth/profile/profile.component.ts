@@ -1,11 +1,12 @@
 import { Component, inject, model, signal, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Auth } from '@angular/fire/auth';
-import { MatIconButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -23,12 +24,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import {
-  MatError,
-  MatFormField,
-  MatLabel,
-  MatSuffix,
-} from '@angular/material/form-field';
 
 @Component({
   selector: 'app-profile',
@@ -38,15 +33,12 @@ import {
   imports: [
     FormsModule,
     ReactiveFormsModule,
-    MatFormField,
-    MatOption,
-    MatLabel,
-    MatSelect,
-    MatInput,
-    MatError,
-    MatIconButton,
-    MatSuffix,
-    MatIcon,
+    MatFormFieldModule,
+    MatOptionModule,
+    MatSelectModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
   ],
 })
 export class ProfileComponent {
@@ -80,9 +72,16 @@ export class ProfileComponent {
     },
     { validators: this.passwordMatchValidator }
   );
+  groupForm = this.fb.group({
+    groupId: [this.#user()?.defaultGroupId],
+  });
 
   get e() {
     return this.emailForm.controls;
+  }
+
+  get g() {
+    return this.groupForm.controls;
   }
 
   toggleHidePassword() {
@@ -191,9 +190,10 @@ export class ProfileComponent {
   }
 
   saveDefaultGroup(): void {
-    if (this.selectedGroupId() !== null && this.selectedGroupId() !== '') {
+    const selectedGroupId = this.groupForm.value.groupId;
+    if (selectedGroupId !== null && selectedGroupId !== '') {
       this.userService
-        .saveDefaultGroup(this.selectedGroupId())
+        .saveDefaultGroup(selectedGroupId)
         .then(() => {
           this.snackBar.open('Default group updated.', 'Close');
         })

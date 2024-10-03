@@ -1,12 +1,10 @@
 import { FormsModule } from '@angular/forms';
-import { MatIconAnchor, MatIconButton } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatSort, MatSortHeader } from '@angular/material/sort';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatSortModule } from '@angular/material/sort';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Group } from '@models/group';
@@ -20,6 +18,8 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
+import { MatButtonModule } from '@angular/material/button';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   Component,
   computed,
@@ -28,24 +28,8 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import {
-  MatFormField,
-  MatLabel,
-  MatSuffix,
-} from '@angular/material/form-field';
-import {
-  MatCell,
-  MatCellDef,
-  MatColumnDef,
-  MatHeaderCell,
-  MatHeaderCellDef,
-  MatHeaderRow,
-  MatHeaderRowDef,
-  MatNoDataRow,
-  MatRow,
-  MatRowDef,
-  MatTable,
-} from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-members',
@@ -53,29 +37,15 @@ import {
   styleUrl: './members.component.scss',
   standalone: true,
   imports: [
-    MatFormField,
-    MatLabel,
-    MatInput,
     FormsModule,
-    MatIconButton,
-    MatSuffix,
-    MatIcon,
-    MatTooltip,
-    MatSlideToggle,
-    MatTable,
-    MatSort,
-    MatColumnDef,
-    MatHeaderCellDef,
-    MatHeaderCell,
-    MatCellDef,
-    MatCell,
-    MatSortHeader,
-    MatIconAnchor,
-    MatHeaderRowDef,
-    MatHeaderRow,
-    MatRowDef,
-    MatRow,
-    MatNoDataRow,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatSlideToggleModule,
+    MatTableModule,
+    MatSortModule,
     YesNoPipe,
     ActiveInactivePipe,
   ],

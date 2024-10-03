@@ -17,17 +17,23 @@
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary" (click)="close()">
-      Cancel
-    </button>
     <button
+      mat-flat-button
       type="submit"
       defaultButton
-      class="btn btn-primary"
-      [disabled]="!newGroupForm.valid"
+      class="btn-tertiary"
+      [disabled]="!newGroupForm.valid || newGroupForm.disabled"
       (click)="onSubmit()"
     >
       Save
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="newGroupForm.disabled"
+      [mat-dialog-close]="false"
+    >
+      Cancel
     </button>
   </mat-dialog-actions>
 </form>

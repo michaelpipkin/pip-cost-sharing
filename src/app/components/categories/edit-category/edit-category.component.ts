@@ -1,8 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
@@ -17,12 +18,9 @@ import {
 import {
   MAT_DIALOG_DATA,
   MatDialog,
-  MatDialogActions,
-  MatDialogClose,
   MatDialogConfig,
-  MatDialogContent,
+  MatDialogModule,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 
 @Component({
@@ -31,17 +29,13 @@ import {
   styleUrl: './edit-category.component.scss',
   standalone: true,
   imports: [
-    MatDialogTitle,
     FormsModule,
     ReactiveFormsModule,
-    MatDialogContent,
-    MatFormField,
-    MatLabel,
-    MatInput,
-    MatError,
-    MatSlideToggle,
-    MatDialogActions,
-    MatDialogClose,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSlideToggleModule,
+    MatButtonModule,
   ],
 })
 export class EditCategoryComponent {
@@ -105,7 +99,7 @@ export class EditCategoryComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
-        target: `category: ${this.#category.name}`,
+        target: `category: ${this.#category().name}`,
       },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);

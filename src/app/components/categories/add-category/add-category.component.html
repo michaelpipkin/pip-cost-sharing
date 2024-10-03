@@ -10,17 +10,23 @@
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary" mat-dialog-close>
-      Cancel
-    </button>
     <button
+      mat-flat-button
       type="submit"
       defaultButton
-      class="btn btn-primary"
-      [disabled]="!newCategoryForm.valid"
+      class="btn-tertiary"
+      [disabled]="!newCategoryForm.valid || newCategoryForm.disabled"
       (click)="onSubmit()"
     >
       Save
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="false"
+      [disabled]="newCategoryForm.disabled"
+    >
+      Cancel
     </button>
   </mat-dialog-actions>
 </form>

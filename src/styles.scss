@@ -1,7 +1,7 @@
 // Custom Theming for Angular Material
 // For more information: https://material.angular.io/guide/theming
 @use '@angular/material' as mat;
-@use './app/styles/m3-theme.scss' as theme;
+@use './app/styles/m3-green-theme.scss' as theme;
 // Plus imports for other components in your app.
 @import 'firebaseui/dist/firebaseui.css';
 $enable-negative-margins: true;
@@ -36,6 +36,12 @@ a:hover {
   cursor: pointer;
 }
 
+.mat-toolbar,
+.mat-mdc-menu-panel {
+  background: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
+  color: white !important;
+}
+
 mat-error,
 mat-hint {
   font-size: 0.7rem;
@@ -43,6 +49,61 @@ mat-hint {
 
 mat-slide-toggle {
   padding-bottom: 8px;
+}
+
+.footer {
+  position: fixed;
+  width: 100%;
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    primary,
+    40
+  ) !important;
+  bottom: 0px;
+  left: 0px;
+  z-index: 20;
+  color: white;
+  margin: 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: max-content auto;
+  a {
+    color: white;
+    text-decoration: none;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+.btn-secondary:not([disabled]) {
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    secondary,
+    70
+  ) !important;
+  color: mat.get-theme-color(theme.$light-theme, secondary, 30) !important;
+}
+
+.btn-tertiary:not([disabled]) {
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    tertiary,
+    50
+  ) !important;
+}
+
+.btn-danger:not([disabled]) {
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    error,
+    50
+  ) !important;
 }
 
 .mat-mdc-header-row,
@@ -53,10 +114,6 @@ mat-slide-toggle {
 
 .auth-container {
   width: 400px;
-}
-
-.firebaseui-idp-password {
-  background-color: #446e9b !important;
 }
 
 .scrollable-table {
@@ -85,7 +142,6 @@ mat-dialog-actions {
   display: grid !important;
   grid-auto-flow: column;
   justify-items: end;
-  column-gap: 8px;
 }
 
 .container {
@@ -104,6 +160,10 @@ mat-dialog-actions {
   }
 }
 
+.two-line-button {
+  height: 53px;
+}
+
 .table-container {
   display: grid;
   justify-content: center;
@@ -114,10 +174,55 @@ mat-dialog-actions {
   height: 30px;
   width: 30px;
   mat-icon {
-    color: #446e9b;
+    color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
     font-size: 30px;
     height: 30px;
     width: 30px;
+    cursor: pointer;
+
+    &:hover {
+      color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
+    }
+  }
+}
+
+mat-icon.mat-icon-button {
+  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
+  font-size: 30px;
+  height: 30px;
+  width: 30px;
+  cursor: pointer;
+
+  &:hover {
+    color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
+  }
+}
+
+mat-icon.small-icon-button {
+  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
+  font-size: 22px;
+  height: 22px;
+  width: 22px;
+  cursor: pointer;
+
+  &:hover {
+    color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
+  }
+}
+
+.feature-container div {
+  display: grid;
+  color: white;
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    primary,
+    30
+  ) !important;
+  justify-items: center;
+  p {
+    justify-self: center;
+    padding: 0 12px;
+    margin-bottom: 0;
   }
 }
 
@@ -184,10 +289,6 @@ mat-dialog-actions {
 
 .number-field .mat-mdc-form-field-infix {
   max-width: 100px;
-}
-
-.practice-topic .mat-mdc-form-field-infix {
-  width: 400px;
 }
 
 .cell-center {

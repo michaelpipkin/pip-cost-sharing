@@ -1,4 +1,107 @@
-<div class="login">
-  <h2>Sign In</h2>
-  <div id="firebaseui-auth-container" class="auth-container"></div>
+<div class="container">
+  <div class="login" [class.hidden]="step1Complete()">
+    <h2>Sign In</h2>
+    <button mat-flat-button (click)="emailLogin()" class="mb-3">
+      <mat-icon fontSet="material-symbols-outlined" class="me-2">mail</mat-icon>
+      <span class="login-button">Sign in with Email</span>
+    </button>
+    <button mat-stroked-button (click)="googleLogin()">
+      <img
+        class="firebaseui-idp-icon me-2"
+        alt=""
+        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+      />
+      <span class="login-button">Sign in with Google</span>
+    </button>
+  </div>
+  <div class="login" [class.hidden]="!step1Complete()">
+    @if (newAccount()) {
+      <h2>Register</h2>
+    } @else {
+      <h2>Sign In</h2>
+    }
+    <form [formGroup]="emailForm" class="container">
+      <mat-form-field>
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" />
+        @if (e.email?.errors?.required) {
+          <mat-error>Email is required.</mat-error>
+        }
+        @if (e.email?.errors?.email) {
+          <mat-error>Invalid email address.</mat-error>
+        }
+      </mat-form-field>
+      <div class="buttons">
+        <button
+          mat-stroked-button
+          type="button"
+          [class.hidden]="step2Complete()"
+          (click)="resetForm()"
+        >
+          Back
+        </button>
+        <button
+          mat-flat-button
+          [disabled]="emailForm.invalid || emailForm.pristine"
+          [class.hidden]="step2Complete()"
+          (click)="checkEmail()"
+        >
+          Next
+        </button>
+      </div>
+    </form>
+    <form
+      [formGroup]="passwordForm"
+      class="container"
+      [class.hidden]="!step2Complete()"
+      (submit)="emailPasswordLogin()"
+    >
+      <mat-form-field>
+        @if (newAccount()) {
+          <mat-label>Create Password</mat-label>
+        } @else {
+          <mat-label>Password</mat-label>
+        }
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          formControlName="password"
+          (keydown.enter)="
+            $event.preventDefault(); passwordForm.valid && emailPasswordLogin()
+          "
+        />
+        <button
+          mat-icon-button
+          type="button"
+          matSuffix
+          (click)="toggleHidePassword()"
+          [attr.aria-label]="'Hide password'"
+          [attr.aria-pressed]="hidePassword"
+          tabindex="-1"
+        >
+          <mat-icon fontSet="material-symbols-outlined">{{
+            hidePassword() ? 'visibility_off' : 'visibility'
+          }}</mat-icon>
+        </button>
+        @if (p.password?.errors?.required) {
+          <mat-error>Password is required.</mat-error>
+        }
+        @if (p.password?.errors?.minlength) {
+          <mat-error>Password must be at least 6 chars.</mat-error>
+        }
+      </mat-form-field>
+      <div class="buttons">
+        <button mat-stroked-button type="button" (click)="resetForm()">
+          Back
+        </button>
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="passwordForm.invalid || passwordForm.pristine"
+        >
+          Sign In
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

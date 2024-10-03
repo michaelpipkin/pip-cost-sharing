@@ -66,6 +66,7 @@ export class UserService {
   }
 
   logout() {
+    this.groupService.logout();
     this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
 }

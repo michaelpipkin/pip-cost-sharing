@@ -1,52 +1,140 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
+import { Component, inject, model, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import firebase from 'firebase/compat/app';
-import * as firebaseui from 'firebaseui';
-import EmailAuthProvider = firebase.auth.EmailAuthProvider;
-import GoogleAuthProvider = firebase.auth.GoogleAuthProvider;
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import {
+  Auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from '@angular/fire/auth';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   standalone: true,
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
 })
-export class LoginComponent implements OnInit, OnDestroy {
-  ui: firebaseui.auth.AuthUI;
-
+export class LoginComponent {
   auth = inject(Auth);
+  userService = inject(UserService);
+  loading = inject(LoadingService);
   router = inject(Router);
+  fb = inject(FormBuilder);
+  snackbar = inject(MatSnackBar);
 
-  ngOnInit(): void {
-    const uiConfig = {
-      callbacks: {
-        signInSuccessWithAuthResult: function () {
-          return true;
-        },
-      },
-      signInSuccessUrl: '/groups',
-      signInOptions: [
-        {
-          provider: EmailAuthProvider.PROVIDER_ID,
-          requireDisplayName: false,
-        },
-        {
-          provider: GoogleAuthProvider.PROVIDER_ID,
-          requireDisplayName: false,
-        },
-      ],
-    };
-    this.ui = new firebaseui.auth.AuthUI(this.auth);
-    this.ui.start('#firebaseui-auth-container', uiConfig);
-    this.ui.disableAutoSignIn();
+  step1Complete = signal<boolean>(false);
+  step2Complete = signal<boolean>(false);
+  hidePassword = model<boolean>(true);
+  newAccount = model<boolean>(false);
+
+  emailForm = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+  });
+
+  passwordForm = this.fb.group({
+    password: ['', [Validators.required, Validators.minLength(6)]],
+  });
+
+  toggleHidePassword() {
+    this.hidePassword.update((h) => !h);
   }
 
-  ngOnDestroy(): void {
-    this.ui.delete();
+  get e() {
+    return this.emailForm.controls;
   }
 
-  onLoginSuccess() {
-    this.router.navigateByUrl('/groups');
+  get p() {
+    return this.passwordForm.controls;
+  }
+
+  emailLogin() {
+    this.step1Complete.set(true);
+  }
+
+  async checkEmail() {
+    const email = this.emailForm.value.email;
+    const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+    if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
+      this.snackbar.open('Please sign in with Google', 'Close');
+      return;
+    }
+    if (!signInMethods.includes('password')) {
+      // New user
+      this.newAccount.set(true);
+      this.passwordForm.get('displayName')?.setValidators(Validators.required);
+    }
+    this.step2Complete.set(true);
+    this.emailForm.get('email')?.disable();
+  }
+
+  resetForm() {
+    this.emailForm.reset();
+    this.passwordForm.reset();
+    this.emailForm.get('email')?.enable();
+    this.emailForm.get('email')?.setErrors(null);
+    this.emailForm.get('email')?.markAsPristine();
+    this.emailForm.get('email')?.markAsUntouched();
+    this.step1Complete.set(false);
+    this.step2Complete.set(false);
+    this.newAccount.set(false);
+  }
+
+  async emailPasswordLogin() {
+    const email = this.emailForm.value.email;
+    const password = this.passwordForm.value.password;
+    if (this.newAccount()) {
+      this.loading.loadingOn();
+      await createUserWithEmailAndPassword(this.auth, email, password)
+        .then(() => {
+          this.router.navigateByUrl('/groups');
+          this.loading.loadingOff();
+        })
+        .catch((error) => {
+          this.snackbar.open(error.message, 'Close');
+        });
+    } else {
+      await signInWithEmailAndPassword(this.auth, email, password)
+        .then(() => {
+          this.router.navigateByUrl('/groups');
+          this.loading.loadingOff();
+        })
+        .catch((error) => {
+          this.snackbar.open(error.message, 'Close');
+        });
+    }
+  }
+
+  googleLogin() {
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(this.auth, provider)
+      .then(() => {
+        this.router.navigateByUrl('/programs');
+        this.loading.loadingOff();
+      })
+      .catch((error) => {
+        this.snackbar.open(error.message, 'Close');
+      });
   }
 }

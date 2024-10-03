@@ -1,5 +1,6 @@
 import { Component, inject, Signal } from '@angular/core';
-import { MatIcon } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { UserService } from '@services/user.service';
 
@@ -8,7 +9,7 @@ import { UserService } from '@services/user.service';
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   standalone: true,
-  imports: [RouterLink, MatIcon],
+  imports: [RouterLink, MatIconModule, MatButtonModule],
 })
 export class HomeComponent {
   userService = inject(UserService);

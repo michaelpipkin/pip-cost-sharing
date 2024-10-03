@@ -6,10 +6,15 @@
   </p>
 </mat-dialog-content>
 <mat-dialog-actions>
-  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
-    Cancel
-  </button>
-  <button type="button" class="btn btn-danger" [mat-dialog-close]="true">
+  <button
+    mat-flat-button
+    type="button"
+    class="btn-danger"
+    [mat-dialog-close]="true"
+  >
     {{ operation() }}
+  </button>
+  <button mat-stroked-button type="button" [mat-dialog-close]="false">
+    Cancel
   </button>
 </mat-dialog-actions>

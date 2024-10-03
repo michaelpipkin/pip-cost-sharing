@@ -1,12 +1,11 @@
 import { Component, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatOption } from '@angular/material/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatIcon } from '@angular/material/icon';
-import { MatSelect, MatSelectChange } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -16,6 +15,8 @@ import { UserService } from '@services/user.service';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 
 @Component({
   selector: 'app-groups',
@@ -23,13 +24,13 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
   styleUrls: ['./groups.component.scss'],
   standalone: true,
   imports: [
-    MatFormField,
-    MatLabel,
-    MatSelect,
     FormsModule,
-    MatOption,
-    MatTooltip,
-    MatIcon,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatTooltipModule,
+    MatIconModule,
+    MatButtonModule,
   ],
 })
 export class GroupsComponent {

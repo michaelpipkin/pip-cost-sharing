@@ -95,7 +95,7 @@
       </div>
     </form>
     <div class="buttons">
-      <button type="button" class="btn btn-primary" (click)="addRow()">
+      <button mat-flat-button type="button" (click)="addRow()">
         Add New Split
       </button>
     </div>
@@ -192,19 +192,36 @@
   </div>
 </mat-dialog-content>
 <mat-dialog-actions class="me-3">
-  <button type="button" class="btn btn-danger" (click)="delete()">
-    Delete
-  </button>
-  <button type="button" class="btn btn-secondary" [mat-dialog-close]="false">
-    Cancel
-  </button>
   <button
+    mat-flat-button
     type="submit"
     defaultButton
-    class="btn btn-primary"
-    [disabled]="!editMemorizedForm.valid || missingSplitMember()"
+    class="btn-tertiary"
+    [disabled]="
+      !editMemorizedForm.valid ||
+      missingSplitMember() ||
+      editMemorizedForm.pristine ||
+      editMemorizedForm.disabled
+    "
     (click)="onSubmit()"
   >
     Save
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    class="btn-danger"
+    [disabled]="editMemorizedForm.disabled"
+    (click)="delete()"
+  >
+    Delete
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="editMemorizedForm.disabled"
+    [mat-dialog-close]="false"
+  >
+    Cancel
   </button>
 </mat-dialog-actions>

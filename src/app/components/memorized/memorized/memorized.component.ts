@@ -1,13 +1,13 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatIconButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatIcon } from '@angular/material/icon';
-import { MatSelect } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
@@ -25,24 +25,8 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { AddExpenseComponent } from '../../expenses/add-expense/add-expense.component';
 import { AddMemorizedComponent } from '../add-memorized/add-memorized.component';
 import { EditMemorizedComponent } from '../edit-memorized/edit-memorized.component';
-import {
-  MatFormField,
-  MatLabel,
-  MatSuffix,
-} from '@angular/material/form-field';
-import {
-  MatCell,
-  MatCellDef,
-  MatColumnDef,
-  MatHeaderCell,
-  MatHeaderCellDef,
-  MatHeaderRow,
-  MatHeaderRowDef,
-  MatNoDataRow,
-  MatRow,
-  MatRowDef,
-  MatTable,
-} from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTableModule } from '@angular/material/table';
 import {
   animate,
   state,
@@ -67,26 +51,14 @@ import {
   ],
   standalone: true,
   imports: [
-    MatFormField,
-    MatLabel,
-    MatSelect,
     FormsModule,
-    MatOption,
-    MatIconButton,
-    MatSuffix,
-    MatIcon,
-    MatTooltip,
-    MatTable,
-    MatColumnDef,
-    MatHeaderCellDef,
-    MatHeaderCell,
-    MatCellDef,
-    MatCell,
-    MatHeaderRowDef,
-    MatHeaderRow,
-    MatRowDef,
-    MatRow,
-    MatNoDataRow,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatTableModule,
     CurrencyPipe,
     ClearSelectDirective,
   ],

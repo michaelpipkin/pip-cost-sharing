@@ -1,12 +1,15 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatMiniFabButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTable, MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -34,41 +37,12 @@ import {
   Validators,
 } from '@angular/forms';
 import {
-  MatDatepicker,
-  MatDatepickerInput,
-  MatDatepickerToggle,
-} from '@angular/material/datepicker';
-import {
   MAT_DIALOG_DATA,
   MatDialog,
-  MatDialogActions,
-  MatDialogClose,
   MatDialogConfig,
-  MatDialogContent,
+  MatDialogModule,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
-import {
-  MatError,
-  MatFormField,
-  MatHint,
-  MatLabel,
-  MatPrefix,
-  MatSuffix,
-} from '@angular/material/form-field';
-import {
-  MatCell,
-  MatCellDef,
-  MatColumnDef,
-  MatHeaderCell,
-  MatHeaderCellDef,
-  MatHeaderRow,
-  MatHeaderRowDef,
-  MatNoDataRow,
-  MatRow,
-  MatRowDef,
-  MatTable,
-} from '@angular/material/table';
 import {
   Component,
   ElementRef,
@@ -85,41 +59,21 @@ import {
   selector: 'app-edit-memorized',
   standalone: true,
   imports: [
-    FormatCurrencyInputDirective,
-    MatDialogTitle,
-    MatDialogContent,
     FormsModule,
     ReactiveFormsModule,
-    MatFormField,
-    MatLabel,
-    MatSelect,
-    MatOption,
-    MatError,
-    MatInput,
-    MatTooltip,
-    MatDatepickerInput,
-    MatHint,
-    MatDatepickerToggle,
-    MatSuffix,
-    MatDatepicker,
-    MatPrefix,
-    MatMiniFabButton,
-    MatIcon,
-    MatTable,
-    MatColumnDef,
-    MatHeaderCellDef,
-    MatHeaderCell,
-    MatCellDef,
-    MatCell,
-    MatHeaderRowDef,
-    MatHeaderRow,
-    MatRowDef,
-    MatRow,
-    MatNoDataRow,
-    MatDialogActions,
-    MatDialogClose,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatInputModule,
+    MatTooltipModule,
+    MatDatepickerModule,
+    MatIconModule,
+    MatTableModule,
     CurrencyPipe,
     DecimalPipe,
+    FormatCurrencyInputDirective,
   ],
   templateUrl: './edit-memorized.component.html',
   styleUrl: './edit-memorized.component.scss',
@@ -242,6 +196,7 @@ export class EditMemorizedComponent {
     this.editMemorizedForm.patchValue({
       [control]: +e.value,
     });
+    this.editMemorizedForm.markAsDirty();
   }
 
   updateForm(): void {
@@ -282,6 +237,7 @@ export class EditMemorizedComponent {
       }
     }
     this.splitsDataSource.set(splits);
+    this.editMemorizedForm.markAsDirty();
     this.allocateSharedAmounts();
   }
 

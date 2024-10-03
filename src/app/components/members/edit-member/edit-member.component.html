@@ -31,20 +31,37 @@
     </div>
   </mat-dialog-content>
   <mat-dialog-actions>
-    <button type="button" class="btn btn-secondary" (click)="close()">
-      Cancel
-    </button>
-    <button type="button" class="btn btn-warning" (click)="removeMember()">
-      Remove
-    </button>
     <button
+      mat-flat-button
       type="submit"
       defaultButton
-      class="btn btn-primary"
-      [disabled]="!editMemberForm.valid"
+      class="btn-tertiary"
+      [disabled]="
+        !editMemberForm.valid ||
+        editMemberForm.pristine ||
+        editMemberForm.disabled
+      "
       (click)="onSubmit()"
     >
       Save
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      class="btn-danger"
+      (click)="removeMember()"
+      [disabled]="editMemberForm.disabled"
+    >
+      Remove
+    </button>
+
+    <button
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="{ success: false }"
+      [disabled]="editMemberForm.disabled"
+    >
+      Cancel
     </button>
   </mat-dialog-actions>
 </form>

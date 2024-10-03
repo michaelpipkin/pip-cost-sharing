@@ -9,7 +9,11 @@
 .buttons {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  column-gap: 4px;
+  column-gap: 8px;
+  grid-template-rows: auto;
+  button {
+    height: 53px;
+  }
 }
 
 #join-code {

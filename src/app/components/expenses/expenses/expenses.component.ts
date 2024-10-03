@@ -2,17 +2,19 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Analytics } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
-import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
-import { MatOption } from '@angular/material/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatSort, MatSortHeader } from '@angular/material/sort';
-import { MatTooltip } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
+import { MatSortModule } from '@angular/material/sort';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -40,34 +42,6 @@ import {
   model,
 } from '@angular/core';
 import {
-  MatDatepicker,
-  MatDatepickerInput,
-  MatDatepickerToggle,
-} from '@angular/material/datepicker';
-import {
-  MatFormField,
-  MatHint,
-  MatLabel,
-  MatSuffix,
-} from '@angular/material/form-field';
-import {
-  MatCell,
-  MatCellDef,
-  MatColumnDef,
-  MatFooterCell,
-  MatFooterCellDef,
-  MatFooterRow,
-  MatFooterRowDef,
-  MatHeaderCell,
-  MatHeaderCellDef,
-  MatHeaderRow,
-  MatHeaderRowDef,
-  MatNoDataRow,
-  MatRow,
-  MatRowDef,
-  MatTable,
-} from '@angular/material/table';
-import {
   animate,
   state,
   style,
@@ -91,39 +65,18 @@ import {
   ],
   standalone: true,
   imports: [
-    MatFormField,
-    MatLabel,
-    MatSelect,
+    MatFormFieldModule,
+    MatSelectModule,
     FormsModule,
-    MatOption,
-    MatIconButton,
-    MatTooltip,
-    MatSuffix,
-    MatIcon,
-    MatSlideToggle,
-    MatInput,
-    MatDatepickerInput,
-    MatHint,
-    MatDatepickerToggle,
-    MatDatepicker,
-    MatTable,
-    MatSort,
-    MatColumnDef,
-    MatHeaderCellDef,
-    MatHeaderCell,
-    MatCellDef,
-    MatCell,
-    MatFooterCellDef,
-    MatFooterCell,
-    MatSortHeader,
-    MatMiniFabButton,
-    MatHeaderRowDef,
-    MatHeaderRow,
-    MatRowDef,
-    MatRow,
-    MatFooterRowDef,
-    MatFooterRow,
-    MatNoDataRow,
+    MatOptionModule,
+    MatButtonModule,
+    MatTableModule,
+    MatSortModule,
+    MatTooltipModule,
+    MatIconModule,
+    MatSlideToggleModule,
+    MatInputModule,
+    MatDatepickerModule,
     CurrencyPipe,
     DatePipe,
     YesNoPipe,
@@ -132,7 +85,6 @@ import {
   ],
 })
 export class ExpensesComponent {
-  router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);

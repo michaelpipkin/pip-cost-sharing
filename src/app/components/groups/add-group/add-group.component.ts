@@ -1,7 +1,9 @@
 import { Component, inject, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -14,12 +16,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import {
-  MatDialogActions,
-  MatDialogContent,
-  MatDialogRef,
-  MatDialogTitle,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-group',
@@ -27,15 +23,12 @@ import {
   styleUrl: './add-group.component.scss',
   standalone: true,
   imports: [
-    MatDialogTitle,
     FormsModule,
+    MatButtonModule,
+    MatDialogModule,
     ReactiveFormsModule,
-    MatDialogContent,
-    MatFormField,
-    MatLabel,
-    MatInput,
-    MatError,
-    MatDialogActions,
+    MatFormFieldModule,
+    MatInputModule,
   ],
 })
 export class AddGroupComponent {
@@ -90,9 +83,5 @@ export class AddGroupComponent {
         );
         this.newGroupForm.enable();
       });
-  }
-
-  close(): void {
-    this.dialogRef.close(false);
   }
 }
