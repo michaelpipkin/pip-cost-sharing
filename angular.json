@@ -32,8 +32,9 @@
             "tsConfig": "tsconfig.app.json",
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": [
-              "./node_modules/bootswatch/dist/spacelab/bootstrap.min.css",
-              "src/styles.scss"
+              "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "src/styles.scss",
+              "src/app/styles/m3-green-theme.scss"
             ],
             "scripts": [
               "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
@@ -99,8 +100,9 @@
             "karmaConfig": "karma.conf.cjs",
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": [
-              "./node_modules/bootswatch/dist/spacelab/bootstrap.min.css",
-              "src/styles.scss"
+              "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "src/styles.scss",
+              "src/app/styles/m3-green-theme.scss"
             ],
             "scripts": [
               "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
