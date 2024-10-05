@@ -144,6 +144,13 @@ mat-dialog-actions {
   justify-items: end;
 }
 
+.mdc-button {
+  min-height: 36px !important;
+  line-height: 1.15em !important;
+  height: auto !important;
+  padding: 0.5em 1.5em !important;
+}
+
 .container {
   position: relative;
   display: grid;
@@ -160,11 +167,8 @@ mat-dialog-actions {
   }
 }
 
-.two-line-button {
-  height: 53px;
-}
-
 .table-container {
+  margin-top: 8px;
   display: grid;
   justify-content: center;
 }
