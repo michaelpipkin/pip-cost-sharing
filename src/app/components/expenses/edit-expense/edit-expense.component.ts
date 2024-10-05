@@ -22,7 +22,7 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DatePlusMinusDirective } from '@shared/directives/date-plus-minus.directive';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { FirebaseError } from 'firebase/app';
@@ -91,7 +91,7 @@ import {
     CurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
-    DatePlusMinusDirective,
+    DateShortcutKeysDirective,
   ],
 })
 export class EditExpenseComponent implements OnInit {
