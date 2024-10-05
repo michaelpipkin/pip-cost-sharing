@@ -22,6 +22,7 @@ import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
+import { DatePlusMinusDirective } from '@shared/directives/date-plus-minus.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
@@ -80,6 +81,7 @@ import {
     CurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
+    DatePlusMinusDirective,
   ],
 })
 export class AddExpenseComponent implements OnInit {
@@ -210,30 +212,6 @@ export class AddExpenseComponent implements OnInit {
       maxWidth: '80vw',
     };
     this.dialog.open(HelpComponent, dialogConfig);
-  }
-
-  onCalendarKeyPress(e: KeyboardEvent) {
-    if (['-', '+'].includes(e.key)) {
-      const currentDate = new Date(this.datePicker().nativeElement.value);
-      if (currentDate.toString() !== 'Invalid Date') {
-        if (e.key === '-') {
-          const newDate = currentDate.setDate(currentDate.getDate() - 1);
-          this.addExpenseForm.patchValue({
-            date: new Date(newDate),
-          });
-        } else if (e.key === '+') {
-          const newDate = currentDate.setDate(currentDate.getDate() + 1);
-          this.addExpenseForm.patchValue({
-            date: new Date(newDate),
-          });
-        }
-      } else {
-        this.addExpenseForm.patchValue({
-          date: new Date(),
-        });
-      }
-      e.preventDefault();
-    }
   }
 
   getSplitControl(index: number, controlName: string): FormControl {

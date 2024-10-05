@@ -29,8 +29,8 @@
             matInput
             formControlName="date"
             [matDatepicker]="expenseDatePicker"
+            appDatePlusMinus
             #datePicker
-            (keypress)="onCalendarKeyPress($event)"
           />
           <mat-hint>+/- to change date</mat-hint>
           <mat-datepicker-toggle
