@@ -23,7 +23,7 @@
     <form [formGroup]="emailForm" class="container">
       <mat-form-field>
         <mat-label>Email</mat-label>
-        <input matInput formControlName="email" />
+        <input matInput formControlName="email" #emailInput />
         @if (e.email?.errors?.required) {
           <mat-error>Email is required.</mat-error>
         }
@@ -69,6 +69,7 @@
           (keydown.enter)="
             $event.preventDefault(); passwordForm.valid && emailPasswordLogin()
           "
+          #passwordInput
         />
         <button
           mat-icon-button

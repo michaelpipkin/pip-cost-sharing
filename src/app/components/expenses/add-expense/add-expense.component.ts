@@ -22,7 +22,7 @@ import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
-import { DatePlusMinusDirective } from '@shared/directives/date-plus-minus.directive';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firestore from 'firebase/firestore';
@@ -81,7 +81,7 @@ import {
     CurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
-    DatePlusMinusDirective,
+    DateShortcutKeysDirective,
   ],
 })
 export class AddExpenseComponent implements OnInit {
