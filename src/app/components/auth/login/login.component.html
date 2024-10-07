@@ -1,7 +1,12 @@
 <div class="container">
   <div class="login" [class.hidden]="step1Complete()">
     <h2>Sign In</h2>
-    <button mat-flat-button (click)="emailLogin()" class="mb-3">
+    <button
+      mat-raised-button
+      class="btn-primary"
+      (click)="emailLogin()"
+      class="mb-3"
+    >
       <mat-icon fontSet="material-symbols-outlined" class="me-2">mail</mat-icon>
       <span class="login-button">Sign in with Email</span>
     </button>
@@ -41,7 +46,8 @@
           Back
         </button>
         <button
-          mat-flat-button
+          mat-raised-button
+          class="btn-primary"
           [disabled]="emailForm.invalid || emailForm.pristine"
           [class.hidden]="step2Complete()"
           (click)="checkEmail()"
@@ -96,7 +102,8 @@
           Back
         </button>
         <button
-          mat-flat-button
+          mat-raised-button
+          class="btn-primary"
           type="submit"
           [disabled]="passwordForm.invalid || passwordForm.pristine"
         >

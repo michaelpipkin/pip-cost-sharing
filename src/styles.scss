@@ -81,29 +81,40 @@ mat-slide-toggle {
     'opsz' 24;
 }
 
+.btn-primary:not([disabled]) {
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    primary,
+    40
+  ) !important;
+  color: mat.get-theme-color(theme.$light-theme, primary, 100) !important;
+}
+
 .btn-secondary:not([disabled]) {
   background-color: mat.get-theme-color(
     theme.$light-theme,
     secondary,
-    70
+    80
   ) !important;
-  color: mat.get-theme-color(theme.$light-theme, secondary, 30) !important;
+  color: mat.get-theme-color(theme.$light-theme, secondary, 20) !important;
 }
 
 .btn-tertiary:not([disabled]) {
   background-color: mat.get-theme-color(
     theme.$light-theme,
     tertiary,
-    50
+    40
   ) !important;
+  color: mat.get-theme-color(theme.$light-theme, tertiary, 100) !important;
 }
 
 .btn-danger:not([disabled]) {
   background-color: mat.get-theme-color(
     theme.$light-theme,
     error,
-    50
+    40
   ) !important;
+  color: mat.get-theme-color(theme.$light-theme, error, 100) !important;
 }
 
 .mat-mdc-header-row,

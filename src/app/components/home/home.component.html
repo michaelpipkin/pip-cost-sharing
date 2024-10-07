@@ -13,7 +13,13 @@
         costs with your roommates, or easily calculate shares of a dinner out.
       </p>
       @if (!isLoggedIn()) {
-        <a mat-flat-button type="button" class="mb-4" routerLink="/login">
+        <a
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          class="mb-4"
+          routerLink="/login"
+        >
           Sign up for a free account
         </a>
       }

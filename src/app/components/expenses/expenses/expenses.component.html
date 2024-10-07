@@ -104,7 +104,11 @@
       }
       <mat-datepicker #endDatePicker></mat-datepicker>
     </mat-form-field>
-    <button mat-flat-button class="add-button" (click)="addExpense()">
+    <button
+      mat-raised-button
+      class="btn-primary add-button"
+      (click)="addExpense()"
+    >
       Add New Expense
     </button>
   </div>

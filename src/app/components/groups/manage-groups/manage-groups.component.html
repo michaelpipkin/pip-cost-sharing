@@ -31,10 +31,10 @@
 </mat-dialog-content>
 <mat-dialog-actions>
   <button
-    mat-flat-button
+    mat-raised-button
+    class="btn-secondary"
     type="submit"
     defaultButton
-    class="btn-secondary"
     [disabled]="
       !editGroupForm.valid || editGroupForm.pristine || editGroupForm.disabled
     "
