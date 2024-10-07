@@ -27,7 +27,8 @@
     </mat-slide-toggle>
     <div class="add-button">
       <button
-        mat-flat-button
+        mat-raised-button
+        class="btn-primary"
         [class.hidden]="!currentMember()?.groupAdmin"
         (click)="addCategory()"
       >

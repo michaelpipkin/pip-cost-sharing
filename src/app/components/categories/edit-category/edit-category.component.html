@@ -16,10 +16,10 @@
   </mat-dialog-content>
   <mat-dialog-actions>
     <button
-      mat-flat-button
+      mat-raised-button
+      class="btn-secondary"
       type="submit"
       defaultButton
-      class="btn-secondary"
       [disabled]="
         !editCategoryForm.valid ||
         editCategoryForm.pristine ||
@@ -30,7 +30,7 @@
       Save
     </button>
     <button
-      mat-flat-button
+      mat-raised-button
       type="button"
       class="btn-danger"
       [disabled]="editCategoryForm.disabled"

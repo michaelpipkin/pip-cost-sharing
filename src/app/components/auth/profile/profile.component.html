@@ -10,16 +10,17 @@
     </mat-form-field>
     <div class="buttons">
       <button
-        mat-flat-button
-        type="button"
+        mat-raised-button
         class="btn-tertiary"
+        type="button"
         [disabled]="firebaseUser()?.emailVerified"
         (click)="verifyEmail()"
       >
         {{ firebaseUser()?.emailVerified ? 'Email Verified' : 'Verify Email' }}
       </button>
       <button
-        mat-flat-button
+        mat-raised-button
+        class="btn-primary"
         type="submit"
         [disabled]="
           emailForm.invalid ||
@@ -78,7 +79,8 @@
       }
     </mat-form-field>
     <button
-      mat-flat-button
+      mat-raised-button
+      class="btn-primary"
       type="submit"
       [disabled]="
         passwordForm.invalid ||
@@ -100,7 +102,8 @@
       </mat-select>
     </mat-form-field>
     <button
-      mat-flat-button
+      mat-raised-button
+      class="btn-primary"
       type="button"
       [disabled]="selectedGroupId === null || groupForm.pristine"
       (click)="saveDefaultGroup()"

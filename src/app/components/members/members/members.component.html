@@ -28,7 +28,9 @@
   </div>
   @if (currentMember().groupAdmin) {
     <div>
-      <button mat-flat-button (click)="addMember()">Add Member</button>
+      <button mat-raised-button class="btn-primary" (click)="addMember()">
+        Add Member
+      </button>
     </div>
   }
 </div>

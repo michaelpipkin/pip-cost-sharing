@@ -147,12 +147,18 @@
       }
     </div>
     <div class="buttons">
-      <button mat-flat-button type="button" (click)="addRow()">
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        (click)="addRow()"
+      >
         Add New Split
       </button>
       <a
         type="button"
-        mat-flat-button
+        mat-raised-button
+        class="btn-primary"
         [class.hidden]="!hasReceipt"
         [href]="receiptUrl()"
         target="_blank"
@@ -253,10 +259,10 @@
 </mat-dialog-content>
 <mat-dialog-actions class="me-3">
   <button
-    mat-flat-button
+    mat-raised-button
+    class="btn-secondary"
     type="submit"
     defaultButton
-    class="btn-secondary"
     [disabled]="
       !editExpenseForm.valid ||
       missingSplitMember() ||
@@ -268,7 +274,7 @@
     Save
   </button>
   <button
-    mat-flat-button
+    mat-raised-button
     type="button"
     class="btn-danger"
     [disabled]="editExpenseForm.disabled"
