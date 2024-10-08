@@ -3,7 +3,6 @@
 @use '@angular/material' as mat;
 @use './app/styles/m3-green-theme.scss' as theme;
 // Plus imports for other components in your app.
-@import 'firebaseui/dist/firebaseui.css';
 $enable-negative-margins: true;
 
 // Include the common styles for Angular Material. We include this here so that you only
@@ -123,8 +122,12 @@ mat-slide-toggle {
   font-weight: bold !important;
 }
 
-.auth-container {
-  width: 400px;
+.google-g {
+  border: none;
+  display: inline-block;
+  vertical-align: middle;
+  height: 18px;
+  width: 18px;
 }
 
 .scrollable-table {
