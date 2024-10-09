@@ -147,6 +147,19 @@
           >&nbsp;Summary
         </a>
       }
+      <a
+        mat-menu-item
+        routerLink="profile"
+        aria-label="profile"
+        title="Profile"
+      >
+        <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
+        >&nbsp;Profile
+      </a>
+      <a mat-menu-item (click)="logout()" aria-label="log out" title="Log out">
+        <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>&nbsp;Log
+        out
+      </a>
     } @else {
       <a mat-menu-item routerLink="login" aria-label="log in" title="Log in">
         <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log

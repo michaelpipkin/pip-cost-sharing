@@ -165,6 +165,10 @@ mat-dialog-actions {
   padding: 0.5em 1.5em !important;
 }
 
+.mdc-button__label {
+  text-align: center !important;
+}
+
 .container {
   position: relative;
   display: grid;
