@@ -75,7 +75,8 @@ a {
 
 .feature {
   display: grid;
-  grid-template-rows: 64px 64px auto;
+  grid-template-rows: 64px 32px auto;
+  padding: 8px;
 }
 
 .feature-icon {
@@ -89,6 +90,14 @@ a {
 }
 
 .feature-title {
-  align-self: top;
+  display: grid;
   justify-self: center;
+  width: 100%;
+}
+
+.feature-description {
+  display: grid;
+  justify-self: center;
+  width: 100%;
+  padding-bottom: 8px;
 }
