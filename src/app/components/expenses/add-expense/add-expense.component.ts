@@ -187,7 +187,11 @@ export class AddExpenseComponent implements OnInit {
     this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
-        this.select();
+        if (this.value === '0.00') {
+          this.value = '';
+        } else {
+          this.select();
+        }
       });
     });
   }
@@ -221,8 +225,9 @@ export class AddExpenseComponent implements OnInit {
   }
 
   saveValue(e: HTMLInputElement, control: string = ''): void {
+    const value = e.value.replace(/,/g, ''); // Remove commas
     this.addExpenseForm.patchValue({
-      [control]: +e.value,
+      [control]: +value,
     });
   }
 

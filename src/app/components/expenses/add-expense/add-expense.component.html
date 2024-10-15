@@ -51,7 +51,10 @@
             <mat-error> *Required </mat-error>
           }
         </mat-form-field>
-        <mat-form-field id="category-select">
+        <mat-form-field
+          id="category-select"
+          [class.hidden]="activeCategories().length === 1"
+        >
           <mat-label>Category</mat-label>
           <mat-select formControlName="categoryId" name="category">
             @for (category of activeCategories(); track category.id) {
