@@ -3,10 +3,13 @@ import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTable, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
@@ -46,7 +49,6 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -54,8 +56,6 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTable, MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-add-memorized',
@@ -165,7 +165,11 @@ export class AddMemorizedComponent implements OnInit {
     this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
       input.addEventListener('focus', function () {
-        this.select();
+        if (this.value === '0.00') {
+          this.value = '';
+        } else {
+          this.select();
+        }
       });
     });
   }
@@ -199,8 +203,9 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   saveValue(e: HTMLInputElement, control: string = ''): void {
+    const value = e.value.replace(/,/g, ''); // Remove commas
     this.addMemorizedForm.patchValue({
-      [control]: +e.value,
+      [control]: +value,
     });
   }
 

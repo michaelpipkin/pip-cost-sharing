@@ -9,7 +9,11 @@
   <div>
     <mat-form-field id="group-select">
       <mat-label>Select Member</mat-label>
-      <mat-select name="member" [(ngModel)]="selectedMemberId">
+      <mat-select
+        name="member"
+        [(ngModel)]="selectedMemberId"
+        (selectionChange)="resetDetail()"
+      >
         @for (member of activeMembers(); track member.id) {
           <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
         }
@@ -116,7 +120,7 @@
       <tr
         mat-row
         *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
-        class="clickable-row"
+        [class.clickable-row]="categories().length > 1"
         (click)="
           onRowSelect(amountDue.owedToMemberId, amountDue.owedByMemberId)
         "
@@ -129,7 +133,9 @@
     </table>
   </div>
 </div>
-@if (summaryData().length > 0) {
+@if (
+  summaryData().length > 0 && owedToMemberId() !== '' && owedByMemberId() !== ''
+) {
   <div class="table-container">
     <div class="scrollable-table mat-elevation-z8">
       <table mat-table [dataSource]="detailData()">

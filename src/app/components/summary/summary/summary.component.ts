@@ -3,11 +3,14 @@ import { Analytics, logEvent } from '@angular/fire/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
@@ -30,9 +33,6 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-summary',
@@ -218,8 +218,15 @@ export class SummaryComponent {
   }
 
   onRowSelect(owedToMemberId: string, owedByMemberId: string) {
-    this.owedToMemberId.set(owedToMemberId);
-    this.owedByMemberId.set(owedByMemberId);
+    if (this.categories().length > 1) {
+      this.owedToMemberId.set(owedToMemberId);
+      this.owedByMemberId.set(owedByMemberId);
+    }
+  }
+
+  resetDetail(): void {
+    this.owedToMemberId.set('');
+    this.owedByMemberId.set('');
   }
 
   markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {
