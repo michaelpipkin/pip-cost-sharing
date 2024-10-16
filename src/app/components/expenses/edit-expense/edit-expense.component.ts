@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTable, MatTableModule } from '@angular/material/table';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
@@ -40,7 +40,6 @@ import {
   AbstractControl,
   FormArray,
   FormBuilder,
-  FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
@@ -131,55 +130,57 @@ export class EditExpenseComponent implements OnInit {
       .filter((m) => m.active || splitMemberIds.includes(m.id));
   });
 
-  editExpenseForm: FormGroup;
-  splitForm: FormArray;
-
-  fromMemorized = signal<boolean>(false);
   #hasReceipt = signal<boolean>(false);
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
   receiptUrl = model<Url>(null);
-  splitsDataSource = model<Split[]>([]);
 
-  splitsTable = viewChild<MatTable<Split>>('splitsTable');
   datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
-  proportionalAmountField = viewChild<ElementRef>('propAmount');
+  allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
+  memberAmounts = viewChildren<ElementRef>('memberAmount');
+
+  expense = this.data.expense;
+
+  editExpenseForm = this.fb.group({
+    paidByMemberId: [this.expense.paidByMemberId, Validators.required],
+    date: [this.expense.date.toDate(), Validators.required],
+    amount: [
+      this.expense.totalAmount,
+      [Validators.required, this.amountValidator()],
+    ],
+    description: [this.expense.description, Validators.required],
+    categoryId: [this.expense.categoryId, Validators.required],
+    sharedAmount: [this.expense.sharedAmount, Validators.required],
+    allocatedAmount: [this.expense.allocatedAmount, Validators.required],
+    splits: this.fb.array(
+      this.expense.splits.map((s) => {
+        return this.fb.group({
+          owedByMemberId: [s.owedByMemberId, Validators.required],
+          assignedAmount: [s.assignedAmount, Validators.required],
+          allocatedAmount: [s.allocatedAmount],
+        });
+      }),
+      [Validators.required, Validators.minLength(1)]
+    ),
+  });
 
   constructor() {
-    const expense: Expense = this.data.expense;
-    this.#hasReceipt.set(expense.hasReceipt);
-    this.fromMemorized.set(this.data.memorized);
-    this.editExpenseForm = this.fb.group({
-      paidByMemberId: [expense.paidByMemberId, Validators.required],
-      date: [new Date(), Validators.required],
-      amount: [
-        expense.totalAmount,
-        [Validators.required, this.amountValidator()],
-      ],
-      description: [expense.description, Validators.required],
-      categoryId: [expense.categoryId, Validators.required],
-      sharedAmount: [expense.sharedAmount, Validators.required],
-      allocatedAmount: [expense.allocatedAmount, Validators.required],
-    });
-    if (!this.fromMemorized()) {
-      this.editExpenseForm.patchValue({
-        date: expense.date.toDate(),
-      });
-    }
-    let splits: Split[] = [];
-    this.data.expense.splits.forEach((split: Split) => {
-      splits.push(new Split({ ...split }));
-    });
-    this.splitsDataSource.set(splits);
-    this.updateForm();
     afterNextRender(() => {
+      const expense = this.data.expense;
       this.totalAmountField().nativeElement.value =
         this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
-      this.proportionalAmountField().nativeElement.value =
+      this.allocatedAmountField().nativeElement.value =
         this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') || '0.00';
+      this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
+        elementRef.nativeElement.value =
+          this.decimalPipe.transform(
+            expense.splits[index].assignedAmount,
+            '1.2-2'
+          ) || '0.00';
+      });
     });
     afterRender(() => {
       this.addSelectFocus();
@@ -187,6 +188,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.#hasReceipt.set(this.expense.hasReceipt);
     if (this.#hasReceipt()) {
       const storageUrl = `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`;
       getDownloadURL(ref(this.storage, storageUrl))
@@ -216,54 +218,48 @@ export class EditExpenseComponent implements OnInit {
     });
   }
 
+  createSplitFormGroup(): FormGroup {
+    return this.fb.group({
+      owedByMemberId: ['', Validators.required],
+      assignedAmount: ['0.00', Validators.required],
+      allocatedAmount: [0.0],
+    });
+  }
+
   amountValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       return control.value === 0 ? { zeroAmount: true } : null;
     };
   }
 
-  public get e() {
+  get e() {
     return this.editExpenseForm.controls;
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'add-edit-expense',
-        title: 'Add/Edit Expense Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
+  get splitsFormArray(): FormArray {
+    return this.editExpenseForm.get('splits') as FormArray;
   }
 
-  getSplitControl(index: number, controlName: string): FormControl {
-    return (this.splitForm.at(index) as FormGroup).get(
-      controlName
-    ) as FormControl;
-  }
-
-  saveValue(e: HTMLInputElement, control: string = ''): void {
-    const value = e.value.replace(/,/g, ''); // Remove commas
-    this.editExpenseForm.patchValue({
-      [control]: +value,
+  addSplit(): void {
+    this.splitsFormArray.push(this.createSplitFormGroup());
+    // Set the value of the newly created input element to '0.00'
+    setTimeout(() => {
+      const lastInput = this.memberAmounts().find(
+        (i) => i.nativeElement.value === ''
+      );
+      if (lastInput) {
+        lastInput.nativeElement.value = '0.00';
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        lastInput.nativeElement.dispatchEvent(event);
+      }
     });
-    this.editExpenseForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
-  updateForm(): void {
-    this.splitForm = new FormArray(
-      this.splitsDataSource().map(
-        (x: any) =>
-          new FormGroup({
-            owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(
-              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
-            ),
-          })
-      )
-    );
+  removeSplit(index: number): void {
+    this.splitsFormArray.removeAt(index);
+    this.allocateSharedAmounts();
   }
 
   onFileSelected(e): void {
@@ -287,43 +283,9 @@ export class EditExpenseComponent implements OnInit {
     this.fileName.set('');
   }
 
-  addRow(): void {
-    if (this.splitsDataSource().length > 0) {
-      this.saveSplitsData();
-    }
-    this.splitsDataSource.update((ds) => [
-      ...ds,
-      new Split({ assignedAmount: 0, allocatedAmount: 0 }),
-    ]);
-    this.updateForm();
-  }
-
-  saveSplitsData(): void {
-    let splits = [];
-    for (let i = 0; i < this.splitForm?.controls.length; i++) {
-      const split = this.splitForm.controls[i].value;
-      if (split.owedByMemberId !== '') {
-        splits[i] = new Split({
-          owedByMemberId: split.owedByMemberId,
-          assignedAmount: this.stringUtils.toNumber(split.assignedAmount),
-          allocatedAmount: 0,
-        });
-      }
-    }
-    this.splitsDataSource.set(splits);
-    this.editExpenseForm.markAsDirty();
-    this.allocateSharedAmounts();
-  }
-
-  deleteRow(index: number): void {
-    this.splitForm.controls.splice(index, 1);
-    this.saveSplitsData();
-    this.updateForm();
-  }
-
   allocateSharedAmounts(): void {
-    if (this.splitsDataSource().length > 0) {
-      let splits = [...this.splitsDataSource()];
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -331,8 +293,9 @@ export class EditExpenseComponent implements OnInit {
           i++;
         }
       }
-      this.splitsDataSource.set([...splits]);
-      const splitCount: number = splits.length;
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberId !== ''
+      ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
       const totalAmount: number = val.amount;
@@ -349,22 +312,19 @@ export class EditExpenseComponent implements OnInit {
           sharedAmount: sharedAmount,
         });
       }
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
-        }
+      // First, split the shared amount equally among all splits
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
       });
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          if (splitTotal == 0) {
-            split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-          } else {
-            split.allocatedAmount = +(
-              +split.assignedAmount +
-              +split.allocatedAmount +
-              (+split.assignedAmount / splitTotal) * allocatedAmount
-            ).toFixed(2);
-          }
+      splits.forEach((split: Split) => {
+        if (splitTotal == 0) {
+          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
+        } else {
+          split.allocatedAmount = +(
+            +split.assignedAmount +
+            +split.allocatedAmount +
+            (+split.assignedAmount / splitTotal) * allocatedAmount
+          ).toFixed(2);
         }
       });
       if (!this.expenseFullyAllocated() && splitCount > 0) {
@@ -372,10 +332,10 @@ export class EditExpenseComponent implements OnInit {
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
             splits[i].allocatedAmount += 0.01;
-            diff -= 0.01;
+            diff = +(diff - 0.01).toFixed(2);
           } else {
             splits[i].allocatedAmount -= 0.01;
-            diff += 0.01;
+            diff = +(diff + 0.01).toFixed(2);
           }
           if (i < splits.length - 1) {
             i++;
@@ -384,244 +344,158 @@ export class EditExpenseComponent implements OnInit {
           }
         }
       }
-      this.updateForm();
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
     }
   }
 
   getAssignedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.assignedAmount), 0)
       .toFixed(2);
 
   getAllocatedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.allocatedAmount), 0)
       .toFixed(2);
 
   expenseFullyAllocated = (): boolean =>
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
-  missingSplitMember(): boolean {
-    let missing: boolean = false;
-    this.splitForm?.controls.forEach((s) => {
-      if (s.value.owedByMemberId === null) {
-        missing = true;
+  onSubmit(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Confirm Action',
+        confirmationText:
+          'Updating an expense will mark all splits as unpaid. Are you sure you want to continue?',
+        cancelButtonText: 'No',
+        confirmButtonText: 'Yes',
+      },
+    };
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.loading.loadingOn();
+        this.editExpenseForm.disable();
+        const val = this.editExpenseForm.value;
+        const expenseDate = firestore.Timestamp.fromDate(val.date);
+        const changes: Partial<Expense> = {
+          date: expenseDate,
+          description: val.description,
+          categoryId: val.categoryId,
+          paidByMemberId: val.paidByMemberId,
+          sharedAmount: +val.sharedAmount,
+          allocatedAmount: +val.allocatedAmount,
+          totalAmount: +val.amount,
+          hasReceipt: this.#hasReceipt() || !!this.fileName(),
+        };
+        let splits: Partial<Split>[] = [];
+        this.splitsFormArray.value.forEach((s) => {
+          const split: Partial<Split> = {
+            date: expenseDate,
+            categoryId: val.categoryId,
+            assignedAmount: +s.assignedAmount,
+            allocatedAmount: +s.allocatedAmount,
+            paidByMemberId: val.paidByMemberId,
+            owedByMemberId: s.owedByMemberId,
+            paid: s.owedByMemberId == val.paidByMemberId,
+          };
+          splits.push(split);
+        });
+        this.expenseService
+          .updateExpense(
+            this.#currentGroup().id,
+            this.data.expense.id,
+            changes,
+            splits
+          )
+          .then(() => {
+            if (this.receiptFile()) {
+              const fileRef = ref(
+                this.storage,
+                `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
+              );
+              uploadBytes(fileRef, this.receiptFile()).then(() => {
+                logEvent(this.analytics, 'receipt_uploaded');
+              });
+            }
+            this.dialogRef.close({
+              success: true,
+              operation: 'edited',
+            });
+          })
+          .catch((err: Error) => {
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'edit_expense',
+              message: err.message,
+            });
+            this.snackBar.open(
+              'Something went wrong - could not edit expense.',
+              'Close'
+            );
+            this.editExpenseForm.enable();
+          })
+          .finally(() => this.loading.loadingOff());
       }
     });
-    return missing;
-  }
-
-  onSubmit(): void {
-    if (this.fromMemorized()) {
-      this.editExpenseForm.disable();
-      const val = this.editExpenseForm.value;
-      const changes: Partial<Expense> = {
-        description: val.description,
-        categoryId: val.categoryId,
-        paidByMemberId: val.paidByMemberId,
-        sharedAmount: val.sharedAmount,
-        allocatedAmount: val.allocatedAmount,
-        totalAmount: val.amount,
-      };
-      let splits: Partial<Split>[] = [];
-      this.splitsDataSource().forEach((s) => {
-        const split: Partial<Split> = {
-          categoryId: val.categoryId,
-          assignedAmount: s.assignedAmount,
-          allocatedAmount: s.allocatedAmount,
-          paidByMemberId: val.paidByMemberId,
-          owedByMemberId: s.owedByMemberId,
-        };
-        splits.push(split);
-      });
-      this.loading.loadingOn();
-      this.expenseService
-        .updateExpense(
-          this.#currentGroup().id,
-          this.data.expense.id,
-          changes,
-          splits
-        )
-        .then(() => {
-          this.dialogRef.close({
-            success: true,
-            operation: 'edited',
-          });
-        })
-        .catch((err: Error) => {
-          logEvent(this.analytics, 'error', {
-            component: this.constructor.name,
-            action: 'edit_memorized_expense',
-            message: err.message,
-          });
-          this.snackBar.open(
-            'Something went wrong - could not update memorized expense.',
-            'Close'
-          );
-          this.editExpenseForm.enable();
-        })
-        .finally(() => this.loading.loadingOff());
-    } else {
-      const dialogConfig: MatDialogConfig = {
-        data: {
-          dialogTitle: 'Confirm Action',
-          confirmationText:
-            'Updating an expense will mark all splits as unpaid. Are you sure you want to continue?',
-          cancelButtonText: 'No',
-          confirmButtonText: 'Yes',
-        },
-      };
-      const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
-      dialogRef.afterClosed().subscribe((confirm) => {
-        if (confirm) {
-          this.loading.loadingOn();
-          this.editExpenseForm.disable();
-          const val = this.editExpenseForm.value;
-          const expenseDate = firestore.Timestamp.fromDate(val.date);
-          const changes: Partial<Expense> = {
-            date: expenseDate,
-            description: val.description,
-            categoryId: val.categoryId,
-            paidByMemberId: val.paidByMemberId,
-            sharedAmount: +val.sharedAmount,
-            allocatedAmount: +val.allocatedAmount,
-            totalAmount: +val.amount,
-            hasReceipt: this.#hasReceipt() || !!this.fileName(),
-          };
-          let splits: Partial<Split>[] = [];
-          this.splitsDataSource().forEach((s) => {
-            const split: Partial<Split> = {
-              date: expenseDate,
-              categoryId: val.categoryId,
-              assignedAmount: +s.assignedAmount,
-              allocatedAmount: +s.allocatedAmount,
-              paidByMemberId: val.paidByMemberId,
-              owedByMemberId: s.owedByMemberId,
-              paid: s.owedByMemberId == val.paidByMemberId,
-            };
-            splits.push(split);
-          });
-          this.expenseService
-            .updateExpense(
-              this.#currentGroup().id,
-              this.data.expense.id,
-              changes,
-              splits
-            )
-            .then(() => {
-              if (this.receiptFile()) {
-                const fileRef = ref(
-                  this.storage,
-                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
-                );
-                uploadBytes(fileRef, this.receiptFile()).then(() => {
-                  logEvent(this.analytics, 'receipt_uploaded');
-                });
-              }
-              this.dialogRef.close({
-                success: true,
-                operation: 'edited',
-              });
-            })
-            .catch((err: Error) => {
-              logEvent(this.analytics, 'error', {
-                component: this.constructor.name,
-                action: 'edit_expense',
-                message: err.message,
-              });
-              this.snackBar.open(
-                'Something went wrong - could not edit expense.',
-                'Close'
-              );
-              this.editExpenseForm.enable();
-            })
-            .finally(() => this.loading.loadingOff());
-        }
-      });
-    }
   }
 
   delete(): void {
-    if (this.fromMemorized()) {
-      const dialogConfig: MatDialogConfig = {
-        data: {
-          operation: 'Delete',
-          target: `this memorized expense`,
-        },
-      };
-      const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-      dialogRef.afterClosed().subscribe((confirm) => {
-        if (confirm) {
-          this.loading.loadingOn();
-          this.expenseService
-            .deleteExpense(this.#currentGroup().id, this.data.expense.id)
-            .then(() => {
-              if (this.receiptUrl()) {
-                const fileRef = ref(
-                  this.storage,
-                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
-                );
-                deleteObject(fileRef);
-              }
-              this.dialogRef.close({
-                success: true,
-                operation: 'deleted',
-              });
-            })
-            .catch((err: Error) => {
-              logEvent(this.analytics, 'error', {
-                component: this.constructor.name,
-                action: 'delete_memorized_expense',
-                message: err.message,
-              });
-              this.snackBar.open(
-                'Something went wrong - could not delete memorized expense.',
-                'Close'
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        operation: 'Delete',
+        target: `this expense`,
+      },
+    };
+    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.loading.loadingOn();
+        this.expenseService
+          .deleteExpense(this.#currentGroup().id, this.data.expense.id)
+          .then(() => {
+            if (this.receiptUrl()) {
+              const fileRef = ref(
+                this.storage,
+                `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
               );
-            })
-            .finally(() => this.loading.loadingOff());
-        }
-      });
-    } else {
-      const dialogConfig: MatDialogConfig = {
-        data: {
-          operation: 'Delete',
-          target: `this expense`,
-        },
-      };
-      const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-      dialogRef.afterClosed().subscribe((confirm) => {
-        if (confirm) {
-          this.loading.loadingOn();
-          this.expenseService
-            .deleteExpense(this.#currentGroup().id, this.data.expense.id)
-            .then(() => {
-              if (this.receiptUrl()) {
-                const fileRef = ref(
-                  this.storage,
-                  `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
-                );
-                deleteObject(fileRef);
-              }
-              this.dialogRef.close({
-                success: true,
-                operation: 'deleted',
-              });
-            })
-            .catch((err: Error) => {
-              logEvent(this.analytics, 'error', {
-                component: this.constructor.name,
-                action: 'delete_expense',
-                message: err.message,
-              });
-              this.snackBar.open(
-                'Something went wrong - could not delete expense.',
-                'Close'
-              );
-            })
-            .finally(() => this.loading.loadingOff());
-        }
-      });
-    }
+              deleteObject(fileRef);
+            }
+            this.dialogRef.close({
+              success: true,
+              operation: 'deleted',
+            });
+          })
+          .catch((err: Error) => {
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'delete_expense',
+              message: err.message,
+            });
+            this.snackBar.open(
+              'Something went wrong - could not delete expense.',
+              'Close'
+            );
+          })
+          .finally(() => this.loading.loadingOff());
+      }
+    });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'add-edit-expense',
+        title: 'Add/Edit Expense Help',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 }

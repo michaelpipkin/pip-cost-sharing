@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTable, MatTableModule } from '@angular/material/table';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
@@ -44,7 +44,6 @@ import {
   AbstractControl,
   FormArray,
   FormBuilder,
-  FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
@@ -112,56 +111,48 @@ export class AddExpenseComponent implements OnInit {
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
-  splitsDataSource = model<Split[]>([]);
 
-  addExpenseForm: FormGroup;
-  splitForm: FormArray;
-
-  splitsTable = viewChild<MatTable<Split>>('splitsTable');
   datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
   allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
+  memberAmounts = viewChildren<ElementRef>('memberAmount');
+
+  addExpenseForm = this.fb.group({
+    paidByMemberId: [this.currentMember().id, Validators.required],
+    date: [new Date(), Validators.required],
+    amount: [0, [Validators.required, this.amountValidator()]],
+    description: ['', Validators.required],
+    categoryId: ['', Validators.required],
+    sharedAmount: [0.0, Validators.required],
+    allocatedAmount: [0, Validators.required],
+    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
+  });
 
   constructor() {
-    if (this.data.memorized) {
-      const expense: Expense = this.data.expense;
-      this.addExpenseForm = this.fb.group({
-        paidByMemberId: [expense.paidByMemberId, Validators.required],
-        date: [new Date(), Validators.required],
-        amount: [
-          expense.totalAmount,
-          [Validators.required, this.amountValidator()],
-        ],
-        description: [expense.description, Validators.required],
-        categoryId: [expense.categoryId, Validators.required],
-        sharedAmount: [expense.sharedAmount, Validators.required],
-        allocatedAmount: [expense.allocatedAmount, Validators.required],
-      });
-    } else {
-      this.addExpenseForm = this.fb.group({
-        paidByMemberId: [this.currentMember().id, Validators.required],
-        date: [new Date(), Validators.required],
-        amount: [0, [Validators.required, this.amountValidator()]],
-        description: ['', Validators.required],
-        categoryId: ['', Validators.required],
-        sharedAmount: [0.0, Validators.required],
-        allocatedAmount: [0, Validators.required],
-      });
-    }
     afterNextRender(() => {
       if (this.data.memorized) {
+        const expense = this.data.expense;
         this.totalAmountField().nativeElement.value =
-          this.decimalPipe.transform(this.data.expense.totalAmount, '1.2-2') ||
-          '0.00';
+          this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
         this.allocatedAmountField().nativeElement.value =
-          this.decimalPipe.transform(
-            this.data.expense.allocatedAmount,
-            '1.2-2'
-          ) || '0.00';
+          this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') ||
+          '0.00';
+        this.memberAmounts().forEach(
+          (elementRef: ElementRef, index: number) => {
+            elementRef.nativeElement.value =
+              this.decimalPipe.transform(
+                expense.splits[index].assignedAmount,
+                '1.2-2'
+              ) || '0.00';
+          }
+        );
       } else {
         this.totalAmountField().nativeElement.value = '0.00';
         this.allocatedAmountField().nativeElement.value = '0.00';
+        this.memberAmounts().forEach((elementRef: ElementRef) => {
+          elementRef.nativeElement.value = '0.00';
+        });
       }
     });
     afterRender(() => {
@@ -176,8 +167,25 @@ export class AddExpenseComponent implements OnInit {
       });
     }
     if (this.data.memorized) {
-      this.splitsDataSource.set(this.data.expense.splits);
-      this.updateForm();
+      const expense: Expense = this.data.expense;
+      this.addExpenseForm.patchValue({
+        paidByMemberId: expense.paidByMemberId,
+        date: new Date(),
+        amount: expense.totalAmount,
+        description: expense.description,
+        categoryId: expense.categoryId,
+        sharedAmount: expense.sharedAmount,
+        allocatedAmount: expense.allocatedAmount,
+      });
+      expense.splits.forEach((split: Split) => {
+        this.splitsFormArray.push(
+          this.fb.group({
+            owedByMemberId: split.owedByMemberId,
+            assignedAmount: split.assignedAmount,
+            allocatedAmount: split.allocatedAmount,
+          })
+        );
+      });
     } else {
       this.addAllActiveGroupMembers();
     }
@@ -196,53 +204,78 @@ export class AddExpenseComponent implements OnInit {
     });
   }
 
+  createSplitFormGroup(): FormGroup {
+    return this.fb.group({
+      owedByMemberId: ['', Validators.required],
+      assignedAmount: ['0.00', Validators.required],
+      allocatedAmount: [0.0],
+    });
+  }
+
   amountValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       return control.value === 0 ? { zeroAmount: true } : null;
     };
   }
 
-  public get e() {
+  get e() {
     return this.addExpenseForm.controls;
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'add-edit-expense',
-        title: 'Add/Edit Expense Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
+  get splitsFormArray(): FormArray {
+    return this.addExpenseForm.get('splits') as FormArray;
   }
 
-  getSplitControl(index: number, controlName: string): FormControl {
-    return (this.splitForm.at(index) as FormGroup).get(
-      controlName
-    ) as FormControl;
-  }
-
-  saveValue(e: HTMLInputElement, control: string = ''): void {
-    const value = e.value.replace(/,/g, ''); // Remove commas
-    this.addExpenseForm.patchValue({
-      [control]: +value,
+  addSplit(): void {
+    this.splitsFormArray.push(this.createSplitFormGroup());
+    // Set the value of the newly created input element to '0.00'
+    setTimeout(() => {
+      const lastInput = this.memberAmounts().find(
+        (i) => i.nativeElement.value === ''
+      );
+      if (lastInput) {
+        lastInput.nativeElement.value = '0.00';
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        lastInput.nativeElement.dispatchEvent(event);
+      }
     });
+    this.allocateSharedAmounts();
   }
 
-  updateForm(): void {
-    this.splitForm = new FormArray(
-      this.splitsDataSource().map(
-        (x: Split) =>
-          new FormGroup({
-            owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(
-              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
-            ),
-          })
-      )
+  addAllActiveGroupMembers(): void {
+    const existingMemberIds = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMemberId').value
     );
+
+    this.activeMembers().forEach((member: Member) => {
+      if (!existingMemberIds.includes(member.id)) {
+        this.splitsFormArray.push(
+          this.fb.group({
+            owedByMemberId: [member.id, Validators.required],
+            assignedAmount: ['0.00', Validators.required],
+            allocatedAmount: [0.0],
+          })
+        );
+      }
+    });
+    setTimeout(() => {
+      const newInputs = this.memberAmounts().filter(
+        (i) => i.nativeElement.value === ''
+      );
+      newInputs.forEach((input) => {
+        input.nativeElement.value = '0.00';
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        input.nativeElement.dispatchEvent(event);
+      });
+    });
+    this.allocateSharedAmounts();
+  }
+
+  removeSplit(index: number): void {
+    this.splitsFormArray.removeAt(index);
+    this.allocateSharedAmounts();
   }
 
   onFileSelected(e): void {
@@ -266,62 +299,9 @@ export class AddExpenseComponent implements OnInit {
     this.fileName.set('');
   }
 
-  addRow(): void {
-    if (this.splitsDataSource().length > 0) {
-      this.saveSplitsData();
-    }
-    this.splitsDataSource.update((ds) => [
-      ...ds,
-      new Split({ assignedAmount: 0, allocatedAmount: 0 }),
-    ]);
-    this.updateForm();
-  }
-
-  deleteRow(index: number): void {
-    this.splitForm.controls.splice(index, 1);
-    this.saveSplitsData();
-    this.updateForm();
-  }
-
-  addAllActiveGroupMembers(): void {
-    this.activeMembers().forEach((member: Member) => {
-      const existingSplits = this.splitsDataSource().map(
-        (s) => s.owedByMemberId
-      );
-      if (!existingSplits.includes(member.id)) {
-        this.splitsDataSource.update((ds) => [
-          ...ds,
-          new Split({
-            owedByMemberId: member.id,
-            assignedAmount: 0,
-            allocatedAmount: 0,
-          }),
-        ]);
-      }
-    });
-    this.updateForm();
-    this.saveSplitsData();
-  }
-
-  saveSplitsData(): void {
-    let splits = [];
-    for (let i = 0; i < this.splitForm?.controls.length; i++) {
-      const split = this.splitForm.controls[i].value;
-      if (split.owedByMemberId !== '') {
-        splits[i] = new Split({
-          owedByMemberId: split.owedByMemberId,
-          assignedAmount: this.stringUtils.toNumber(split.assignedAmount),
-          allocatedAmount: 0,
-        });
-      }
-    }
-    this.splitsDataSource.set(splits);
-    this.allocateSharedAmounts();
-  }
-
   allocateSharedAmounts(): void {
-    if (this.splitsDataSource().length > 0) {
-      let splits = [...this.splitsDataSource()];
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -329,8 +309,9 @@ export class AddExpenseComponent implements OnInit {
           i++;
         }
       }
-      this.splitsDataSource.set([...splits]);
-      const splitCount: number = splits.length;
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberId !== ''
+      ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addExpenseForm.value;
       const totalAmount: number = val.amount;
@@ -347,22 +328,19 @@ export class AddExpenseComponent implements OnInit {
           sharedAmount: sharedAmount,
         });
       }
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
-        }
+      // First, split the shared amount equally among all splits
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
       });
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          if (splitTotal == 0) {
-            split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-          } else {
-            split.allocatedAmount = +(
-              +split.assignedAmount +
-              +split.allocatedAmount +
-              (+split.assignedAmount / splitTotal) * allocatedAmount
-            ).toFixed(2);
-          }
+      splits.forEach((split: Split) => {
+        if (splitTotal == 0) {
+          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
+        } else {
+          split.allocatedAmount = +(
+            +split.assignedAmount +
+            +split.allocatedAmount +
+            (+split.assignedAmount / splitTotal) * allocatedAmount
+          ).toFixed(2);
         }
       });
       if (!this.expenseFullyAllocated() && splitCount > 0) {
@@ -370,10 +348,10 @@ export class AddExpenseComponent implements OnInit {
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
             splits[i].allocatedAmount += 0.01;
-            diff -= 0.01;
+            diff = +(diff - 0.01).toFixed(2);
           } else {
             splits[i].allocatedAmount -= 0.01;
-            diff += 0.01;
+            diff = +(diff + 0.01).toFixed(2);
           }
           if (i < splits.length - 1) {
             i++;
@@ -382,32 +360,27 @@ export class AddExpenseComponent implements OnInit {
           }
         }
       }
-      this.updateForm();
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
     }
   }
 
   getAssignedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.assignedAmount), 0)
       .toFixed(2);
 
   getAllocatedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.allocatedAmount), 0)
       .toFixed(2);
 
   expenseFullyAllocated = (): boolean =>
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
-
-  missingSplitMember(): boolean {
-    let missing: boolean = false;
-    this.splitForm?.controls.forEach((s) => {
-      if (s.value.owedByMemberId === null) {
-        missing = true;
-      }
-    });
-    return missing;
-  }
 
   onSubmit(): void {
     this.addExpenseForm.disable();
@@ -424,7 +397,7 @@ export class AddExpenseComponent implements OnInit {
       hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
-    this.splitsDataSource().forEach((s: Split) => {
+    this.splitsFormArray.value.forEach((s: Split) => {
       const split: Partial<Split> = {
         date: expenseDate,
         categoryId: val.categoryId,
@@ -464,5 +437,17 @@ export class AddExpenseComponent implements OnInit {
         this.addExpenseForm.enable();
       })
       .finally(() => this.loading.loadingOff());
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'add-edit-expense',
+        title: 'Add/Edit Expense Help',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 }
