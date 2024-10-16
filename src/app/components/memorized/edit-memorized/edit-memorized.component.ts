@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTable, MatTableModule } from '@angular/material/table';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
@@ -28,7 +28,6 @@ import {
   AbstractControl,
   FormArray,
   FormBuilder,
-  FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
@@ -48,7 +47,6 @@ import {
   ElementRef,
   inject,
   Signal,
-  model,
   afterRender,
   computed,
   afterNextRender,
@@ -113,42 +111,50 @@ export class EditMemorizedComponent {
       .groupMembers()
       .filter((m) => m.active || splitMemberIds.includes(m.id));
   });
-
-  editMemorizedForm: FormGroup;
-  splitForm: FormArray;
-
-  splitsDataSource = model<Split[]>([]);
-
-  splitsTable = viewChild<MatTable<Split>>('splitsTable');
   totalAmountField = viewChild<ElementRef>('totalAmount');
   proportionalAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
+  memberAmounts = viewChildren<ElementRef>('memberAmount');
+
+  memorized = this.data.memorized;
+
+  editMemorizedForm = this.fb.group({
+    paidByMemberId: [this.memorized.paidByMemberId, Validators.required],
+    amount: [
+      this.memorized.totalAmount,
+      [Validators.required, this.amountValidator()],
+    ],
+    description: [this.memorized.description, Validators.required],
+    categoryId: [this.memorized.categoryId, Validators.required],
+    sharedAmount: [this.memorized.sharedAmount, Validators.required],
+    allocatedAmount: [this.memorized.allocatedAmount, Validators.required],
+    splits: this.fb.array(
+      this.memorized.splits?.map((s: Split) => {
+        return this.fb.group({
+          owedByMemberId: [s.owedByMemberId, Validators.required],
+          assignedAmount: [s.assignedAmount, Validators.required],
+          allocatedAmount: [s.allocatedAmount],
+        });
+      }),
+      [Validators.required, Validators.minLength(1)]
+    ),
+  });
 
   constructor() {
-    const memorized: Memorized = this.data.memorized;
-    this.editMemorizedForm = this.fb.group({
-      paidByMemberId: [memorized.paidByMemberId, Validators.required],
-      amount: [
-        memorized.totalAmount,
-        [Validators.required, this.amountValidator()],
-      ],
-      description: [memorized.description, Validators.required],
-      categoryId: [memorized.categoryId, Validators.required],
-      sharedAmount: [memorized.sharedAmount, Validators.required],
-      allocatedAmount: [memorized.allocatedAmount, Validators.required],
-    });
-    let splits: Split[] = [];
-    this.data.memorized.splits?.forEach((split: Split) => {
-      splits.push(new Split({ ...split }));
-    });
-    this.splitsDataSource.set(splits);
-    this.updateForm();
     afterNextRender(() => {
+      const memorized = this.data.memorized;
       this.totalAmountField().nativeElement.value =
         this.decimalPipe.transform(memorized.totalAmount, '1.2-2') || '0.00';
       this.proportionalAmountField().nativeElement.value =
         this.decimalPipe.transform(memorized.allocatedAmount, '1.2-2') ||
         '0.00';
+      this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
+        elementRef.nativeElement.value =
+          this.decimalPipe.transform(
+            memorized.splits[index].assignedAmount,
+            '1.2-2'
+          ) || '0.00';
+      });
     });
     afterRender(() => {
       this.addSelectFocus();
@@ -168,93 +174,53 @@ export class EditMemorizedComponent {
     });
   }
 
+  createSplitFormGroup(): FormGroup {
+    return this.fb.group({
+      owedByMemberId: ['', Validators.required],
+      assignedAmount: ['0.00', Validators.required],
+      allocatedAmount: [0.0],
+    });
+  }
+
   amountValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       return control.value === 0 ? { zeroAmount: true } : null;
     };
   }
 
-  public get e() {
+  get e() {
     return this.editMemorizedForm.controls;
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'add-edit-memorized',
-        title: 'Memorized Expense Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
+  get splitsFormArray(): FormArray {
+    return this.editMemorizedForm.get('splits') as FormArray;
   }
 
-  getSplitControl(index: number, controlName: string): FormControl {
-    return (this.splitForm.at(index) as FormGroup).get(
-      controlName
-    ) as FormControl;
-  }
-
-  saveValue(e: HTMLInputElement, control: string = ''): void {
-    const value = e.value.replace(/,/g, ''); // Remove commas
-    this.editMemorizedForm.patchValue({
-      [control]: +value,
-    });
-    this.editMemorizedForm.markAsDirty();
-  }
-
-  updateForm(): void {
-    this.splitForm = new FormArray(
-      this.splitsDataSource().map(
-        (x: any) =>
-          new FormGroup({
-            owedByMemberId: new FormControl(x.owedByMemberId),
-            assignedAmount: new FormControl(
-              this.decimalPipe.transform(x.assignedAmount, '1.2-2') || '0.00'
-            ),
-          })
-      )
-    );
-  }
-
-  addRow(): void {
-    if (this.splitsDataSource().length > 0) {
-      this.saveSplitsData();
-    }
-    this.splitsDataSource.update((ds) => [
-      ...ds,
-      new Split({ assignedAmount: 0, allocatedAmount: 0 }),
-    ]);
-    this.updateForm();
-  }
-
-  saveSplitsData(): void {
-    let splits = [];
-    for (let i = 0; i < this.splitForm?.controls.length; i++) {
-      const split = this.splitForm.controls[i].value;
-      if (split.owedByMemberId !== '') {
-        splits[i] = new Split({
-          owedByMemberId: split.owedByMemberId,
-          assignedAmount: this.stringUtils.toNumber(split.assignedAmount),
-          allocatedAmount: 0,
-        });
+  addSplit(): void {
+    this.splitsFormArray.push(this.createSplitFormGroup());
+    // Set the value of the newly created input element to '0.00'
+    setTimeout(() => {
+      const lastInput = this.memberAmounts().find(
+        (i) => i.nativeElement.value === ''
+      );
+      if (lastInput) {
+        lastInput.nativeElement.value = '0.00';
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        lastInput.nativeElement.dispatchEvent(event);
       }
-    }
-    this.splitsDataSource.set(splits);
-    this.editMemorizedForm.markAsDirty();
+    });
     this.allocateSharedAmounts();
   }
 
-  deleteRow(index: number): void {
-    this.splitForm.controls.splice(index, 1);
-    this.saveSplitsData();
-    this.updateForm();
+  removeSplit(index: number): void {
+    this.splitsFormArray.removeAt(index);
+    this.allocateSharedAmounts();
   }
 
   allocateSharedAmounts(): void {
-    if (this.splitsDataSource().length > 0) {
-      let splits = [...this.splitsDataSource()];
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -262,8 +228,9 @@ export class EditMemorizedComponent {
           i++;
         }
       }
-      this.splitsDataSource.set([...splits]);
-      const splitCount: number = splits.length;
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberId !== ''
+      ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editMemorizedForm.value;
       const totalAmount: number = val.amount;
@@ -280,22 +247,19 @@ export class EditMemorizedComponent {
           sharedAmount: sharedAmount,
         });
       }
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
-        }
+      // First, split the shared amount equally among all splits
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
       });
-      splits.forEach((split) => {
-        if (split.owedByMemberId != '') {
-          if (splitTotal == 0) {
-            split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-          } else {
-            split.allocatedAmount = +(
-              +split.assignedAmount +
-              +split.allocatedAmount +
-              (+split.assignedAmount / splitTotal) * allocatedAmount
-            ).toFixed(2);
-          }
+      splits.forEach((split: Split) => {
+        if (splitTotal == 0) {
+          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
+        } else {
+          split.allocatedAmount = +(
+            +split.assignedAmount +
+            +split.allocatedAmount +
+            (+split.assignedAmount / splitTotal) * allocatedAmount
+          ).toFixed(2);
         }
       });
       if (!this.memorizedFullyAllocated() && splitCount > 0) {
@@ -303,10 +267,10 @@ export class EditMemorizedComponent {
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
             splits[i].allocatedAmount += 0.01;
-            diff -= 0.01;
+            diff = +(diff - 0.01).toFixed(2);
           } else {
             splits[i].allocatedAmount -= 0.01;
-            diff += 0.01;
+            diff = +(diff + 0.01).toFixed(2);
           }
           if (i < splits.length - 1) {
             i++;
@@ -315,32 +279,27 @@ export class EditMemorizedComponent {
           }
         }
       }
-      this.updateForm();
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
     }
   }
 
   getAssignedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.assignedAmount), 0)
       .toFixed(2);
 
   getAllocatedTotal = (): number =>
-    +this.splitsDataSource()
+    +[...this.splitsFormArray.value]
       .reduce((total, s) => (total += +s.allocatedAmount), 0)
       .toFixed(2);
 
   memorizedFullyAllocated = (): boolean =>
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
-
-  missingSplitMember(): boolean {
-    let missing: boolean = false;
-    this.splitForm?.controls.forEach((s) => {
-      if (s.value.owedByMemberId === null) {
-        missing = true;
-      }
-    });
-    return missing;
-  }
 
   onSubmit(): void {
     this.editMemorizedForm.disable();
@@ -354,7 +313,7 @@ export class EditMemorizedComponent {
       totalAmount: val.amount,
     };
     let splits: Partial<Split>[] = [];
-    this.splitsDataSource().forEach((s) => {
+    this.splitsFormArray.value.forEach((s) => {
       const split: Partial<Split> = {
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
@@ -422,5 +381,17 @@ export class EditMemorizedComponent {
           .finally(() => this.loading.loadingOff());
       }
     });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        page: 'add-edit-memorized',
+        title: 'Memorized Expense Help',
+      },
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(HelpComponent, dialogConfig);
   }
 }

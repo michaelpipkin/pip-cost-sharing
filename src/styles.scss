@@ -284,7 +284,8 @@ mat-icon.small-icon-button {
 }
 
 .allocated-amount {
-  font-size: 1.2em;
+  font-size: 1.1em;
+  padding: 0 8px;
 }
 
 .no-wrap {
@@ -402,4 +403,31 @@ span.filename {
   max-width: calc(100% - 58px);
   max-height: 48px;
   overflow: hidden;
+}
+
+.mock-input {
+  display: grid;
+  align-self: start;
+  height: 52px;
+  border-bottom: 1px solid black;
+  margin-bottom: 8px;
+  grid-auto-flow: row;
+  grid-template-columns: max-content;
+  grid-template-rows: 15px 22px;
+}
+
+.mock-label {
+  display: grid;
+  align-items: start;
+  padding: 4px 16px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.mock-value {
+  display: grid;
+  justify-content: end;
+  align-items: center;
+  padding-top: 8px;
+  padding-right: 16px;
 }
