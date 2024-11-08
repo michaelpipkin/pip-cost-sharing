@@ -1,21 +1,19 @@
 <h1 mat-dialog-title>Manage Groups</h1>
 <mat-dialog-content>
-  <div class="content pt-3">
-    <mat-form-field id="group-select">
-      <mat-label>Select Group</mat-label>
-      <mat-select
-        [(ngModel)]="selectedGroup"
-        name="group"
-        (selectionChange)="onSelectGroup()"
-      >
-        @for (group of userAdminGroups(); track group.id) {
-          <mat-option [value]="group">{{ group.name }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-  </div>
   <form [formGroup]="editGroupForm">
-    <div class="content">
+    <div class="content pt-3">
+      <mat-form-field id="group-select">
+        <mat-label>Select Group</mat-label>
+        <mat-select
+          formControlName="groupId"
+          name="group"
+          (selectionChange)="onSelectGroup()"
+        >
+          @for (group of userAdminGroups(); track group.id) {
+            <mat-option [value]="group.id">{{ group.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
       <mat-form-field appearance="fill">
         <mat-label>Group name</mat-label>
         <input matInput formControlName="groupName" />
@@ -26,6 +24,12 @@
     </div>
     <div class="toggle">
       <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
+    </div>
+    <div class="toggle">
+      <mat-slide-toggle formControlName="autoAddMembers"
+        >Automatically add all group<br />
+        members to new expense</mat-slide-toggle
+      >
     </div>
   </form>
 </mat-dialog-content>

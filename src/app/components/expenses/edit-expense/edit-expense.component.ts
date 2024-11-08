@@ -88,7 +88,6 @@ import {
     MatIconModule,
     MatTableModule,
     CurrencyPipe,
-    DecimalPipe,
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
   ],

@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -29,6 +30,7 @@ import {
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSlideToggleModule,
   ],
 })
 export class AddGroupComponent {
@@ -42,6 +44,7 @@ export class AddGroupComponent {
   newGroupForm = this.fb.group({
     groupName: ['', Validators.required],
     displayName: ['', Validators.required],
+    autoAddMembers: [false],
   });
   user: Signal<User> = this.userService.user;
 
@@ -55,6 +58,7 @@ export class AddGroupComponent {
     const newGroup: Partial<Group> = {
       name: val.groupName,
       active: true,
+      autoAddMembers: val.autoAddMembers,
     };
     const newMember: Partial<Member> = {
       userId: this.user().id,

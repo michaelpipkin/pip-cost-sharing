@@ -74,7 +74,6 @@ import {
     MatDatepickerModule,
     MatIconModule,
     CurrencyPipe,
-    DecimalPipe,
     FormatCurrencyInputDirective,
   ],
 })
@@ -138,7 +137,9 @@ export class AddMemorizedComponent implements OnInit {
         categoryId: this.activeCategories()[0].id,
       });
     }
-    this.addAllActiveGroupMembers();
+    if (this.currentGroup().autoAddMembers) {
+      this.addAllActiveGroupMembers();
+    }
   }
 
   addSelectFocus(): void {

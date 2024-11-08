@@ -9,6 +9,7 @@ export interface IGroup {
   members: Member[];
   expenses: Expense[];
   categories: Category[];
+  autoAddMembers: boolean;
 }
 
 export class Group implements IGroup {
@@ -21,4 +22,5 @@ export class Group implements IGroup {
   members: Member[];
   expenses: Expense[];
   categories: Category[];
+  autoAddMembers: boolean;
 }
