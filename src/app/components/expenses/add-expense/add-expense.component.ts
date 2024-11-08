@@ -78,7 +78,6 @@ import {
     MatDatepickerModule,
     MatIconModule,
     CurrencyPipe,
-    DecimalPipe,
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
   ],
@@ -186,7 +185,7 @@ export class AddExpenseComponent implements OnInit {
           })
         );
       });
-    } else {
+    } else if (this.currentGroup().autoAddMembers) {
       this.addAllActiveGroupMembers();
     }
   }

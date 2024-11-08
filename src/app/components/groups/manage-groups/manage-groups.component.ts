@@ -1,4 +1,4 @@
-import { Component, computed, inject, model } from '@angular/core';
+import { Component, computed, inject, model, OnInit } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -8,7 +8,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
-import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import {
@@ -40,14 +39,16 @@ import {
     MatSlideToggleModule,
   ],
 })
-export class ManageGroupsComponent {
+export class ManageGroupsComponent implements OnInit {
   groupService = inject(GroupService);
   dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   fb = inject(FormBuilder);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
   loading = inject(LoadingService);
-  user: User = inject(MAT_DIALOG_DATA);
+  data = inject(MAT_DIALOG_DATA);
+
+  selectedGroup = model<Group>(this.data.group as Group);
 
   userAdminGroups = computed<Group[]>(() => {
     const adminGroupsIds = this.groupService.adminGroupIds();
@@ -57,20 +58,35 @@ export class ManageGroupsComponent {
   });
 
   editGroupForm = this.fb.group({
+    groupId: [''],
     groupName: ['', Validators.required],
     active: [false],
+    autoAddMembers: [false],
   });
 
-  selectedGroup = model<Group>(null);
+  ngOnInit(): void {
+    const group = this.selectedGroup();
+    this.editGroupForm.patchValue({
+      groupId: group.id,
+      groupName: group.name,
+      active: group.active ?? false,
+      autoAddMembers: group.autoAddMembers ?? false,
+    });
+  }
 
   public get f() {
     return this.editGroupForm.controls;
   }
 
   onSelectGroup(): void {
+    const group = this.userAdminGroups().find(
+      (g) => g.id === this.f.groupId.value
+    );
+    this.selectedGroup.set(group);
     this.editGroupForm.patchValue({
       groupName: this.selectedGroup().name,
-      active: this.selectedGroup().active,
+      active: this.selectedGroup().active ?? false,
+      autoAddMembers: this.selectedGroup().autoAddMembers ?? false,
     });
     this.editGroupForm.markAsPristine();
     this.editGroupForm.markAsUntouched();
@@ -82,6 +98,7 @@ export class ManageGroupsComponent {
     const changes: Partial<Group> = {
       name: form.groupName,
       active: form.active,
+      autoAddMembers: form.autoAddMembers,
     };
     this.loading.loadingOn();
     this.groupService

@@ -70,7 +70,6 @@ import {
     MatIconModule,
     MatTableModule,
     CurrencyPipe,
-    DecimalPipe,
     FormatCurrencyInputDirective,
   ],
   templateUrl: './edit-memorized.component.html',

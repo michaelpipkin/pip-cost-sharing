@@ -3,7 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { HelpComponent } from '@components/help/help.component';
@@ -15,8 +17,6 @@ import { UserService } from '@services/user.service';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 
 @Component({
   selector: 'app-groups',
@@ -89,7 +89,7 @@ export class GroupsComponent {
 
   manageGroups(): void {
     const dialogConfig: MatDialogConfig = {
-      data: this.#user(),
+      data: { user: this.#user(), group: this.#currentGroup() },
     };
     const dialogRef = this.dialog.open(ManageGroupsComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
