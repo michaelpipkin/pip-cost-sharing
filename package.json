@@ -63,5 +63,9 @@
     "prettier-eslint-cli": "^8.0.1",
     "schematics-scss-migrate": "^2.3.17",
     "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.27.3",
+    "@rollup/rollup-win32-x64-msvc": "^4.27.3"
   }
 }
