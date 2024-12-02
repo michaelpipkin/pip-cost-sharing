@@ -1,7 +1,9 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import * as crypto from 'crypto';
+import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 
+const db = admin.firestore();
 const smsClient = new SecretManagerServiceClient();
 
 export const getEncryptionKey = async () => {
@@ -17,7 +19,8 @@ export const getEncryptionKey = async () => {
 
 export const encryptApiKey = functions.https.onRequest(
   async (request, response) => {
-    const apiKey: string = request.body.apiKey;
+    const userName: string = request.body.userName;
+    const apiKey: string = crypto.randomUUID().toString();
     const encryptionKey = await getEncryptionKey();
     const iv = crypto.randomBytes(16);
 
@@ -29,7 +32,24 @@ export const encryptApiKey = functions.https.onRequest(
     let encryptedApiKey = cipher.update(apiKey, 'utf8', 'base64');
     encryptedApiKey += cipher.final('base64');
 
-    response.status(200).send({ encryptedApiKey, iv: iv.toString('base64') });
+    const encoder = new TextEncoder();
+    const data = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const apiKeyHash = hashArray
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const apiKeyCollection = db.collection('apiKeys');
+    await apiKeyCollection.add({
+      encryptedApiKey,
+      apiKeyHash,
+      iv: iv.toString('base64'),
+      userName,
+      dateCreated: new Date(),
+    });
+
+    response.status(200).send({ apiKey });
   }
 );
 
