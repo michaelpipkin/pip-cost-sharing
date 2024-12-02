@@ -1,51 +1,55 @@
 import { DecimalPipe } from '@angular/common';
-import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatIconModule } from '@angular/material/icon';
-import { BrowserModule } from '@angular/platform-browser';
-import { provideRouter, TitleStrategy } from '@angular/router';
-import { PageTitleStrategyService } from '@services/page-title-strategy.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { appRoutes } from './app.routes';
-import { FirebaseConfig } from './firebase.config';
-import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
-import { environment } from '../environments/environment';
+import {
+  provideHttpClient,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
 import {
   ApplicationConfig,
   importProvidersFrom,
   provideExperimentalZonelessChangeDetection,
 } from '@angular/core';
 import {
-  BrowserAnimationsModule,
-  provideAnimations,
-} from '@angular/platform-browser/animations';
-import {
-  provideStorage,
-  getStorage,
-  connectStorageEmulator,
-} from '@angular/fire/storage';
+  getAnalytics,
+  provideAnalytics,
+  ScreenTrackingService,
+  UserTrackingService,
+} from '@angular/fire/analytics';
+import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
   provideFirestore,
 } from '@angular/fire/firestore';
 import {
-  getAnalytics,
-  provideAnalytics,
-  ScreenTrackingService,
-  UserTrackingService,
-} from '@angular/fire/analytics';
+  connectStorageEmulator,
+  getStorage,
+  provideStorage,
+} from '@angular/fire/storage';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DEFAULT_OPTIONS,
   MatDialogConfig,
 } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
   MatSnackBarConfig,
 } from '@angular/material/snack-bar';
+import { BrowserModule } from '@angular/platform-browser';
+import {
+  BrowserAnimationsModule,
+  provideAnimations,
+} from '@angular/platform-browser/animations';
+import { provideRouter, TitleStrategy } from '@angular/router';
+import { PageTitleStrategyService } from '@services/page-title-strategy.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import { environment } from '../environments/environment';
+import { appRoutes } from './app.routes';
+import { FirebaseConfig } from './firebase.config';
+import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 
 const useEmulators = environment.useEmulators;
 
@@ -53,6 +57,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideExperimentalZonelessChangeDetection(),
     provideRouter(appRoutes),
+    provideHttpClient(withInterceptorsFromDi()),
     provideAnimations(),
     importProvidersFrom([
       BrowserModule,

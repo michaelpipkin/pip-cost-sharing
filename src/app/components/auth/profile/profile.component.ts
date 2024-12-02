@@ -1,8 +1,16 @@
 import { Component, inject, model, signal, Signal } from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Auth } from '@angular/fire/auth';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -17,13 +25,7 @@ import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import * as firebase from 'firebase/auth';
 import { environment } from 'src/environments/environment';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { GenerateApiKeyComponent } from './generate-api-key/generate-api-key.component';
 
 @Component({
   selector: 'app-profile',
@@ -46,6 +48,7 @@ export class ProfileComponent {
   auth = inject(Auth);
   userService = inject(UserService);
   groupService = inject(GroupService);
+  dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   analytics = inject(Analytics);
@@ -209,6 +212,16 @@ export class ProfileComponent {
           );
         });
     }
+  }
+
+  generateApiKey(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        user: this.#user(),
+      },
+      width: '350px',
+    };
+    this.dialog.open(GenerateApiKeyComponent, dialogConfig);
   }
 
   fixSplits() {

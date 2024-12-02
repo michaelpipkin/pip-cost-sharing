@@ -1,0 +1,38 @@
+<h1 mat-dialog-title>Generate API Key</h1>
+<form [formGroup]="apiForm">
+  <mat-dialog-content class="content">
+    <mat-form-field appearance="fill">
+      <mat-label>User/Organization Name</mat-label>
+      <input matInput formControlName="userName" />
+      @if (f.userName.errors?.['required']) {
+        <mat-error> *Required </mat-error>
+      }
+    </mat-form-field>
+    <div class="mock-input">
+      <span class="mock-label">API Key</span>
+      <span class="mock-value">
+        {{ apiKey() }}
+      </span>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions>
+    <button
+      mat-raised-button
+      class="btn-secondary"
+      type="submit"
+      defaultButton
+      [disabled]="!apiForm.valid || apiForm.disabled"
+      (click)="generateApiKey()"
+    >
+      Generate
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="false"
+      [disabled]="apiForm.disabled"
+    >
+      Close
+    </button>
+  </mat-dialog-actions>
+</form>

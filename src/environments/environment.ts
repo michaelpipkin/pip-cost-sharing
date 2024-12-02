@@ -6,7 +6,12 @@
 export const environment = {
   production: false,
   useEmulators: true,
-  buildDate: new Date('2024-11-08T00:41:53.750Z'),
+  get cloudFunctionsBaseUrl() {
+    return this.useEmulators
+      ? 'http://localhost:5001/pip-cost-sharing/us-central1/api'
+      : 'https://us-central1-pip-cost-sharing.cloudfunctions.net/api';
+  },
+  buildDate: new Date('2024-12-02T21:45:17.884Z')
 };
 
 /*

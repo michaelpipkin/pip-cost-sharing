@@ -53,3 +53,4 @@ seed-data.ts
 .firebase/hosting.*
 
 
+src/app/api.config.ts
