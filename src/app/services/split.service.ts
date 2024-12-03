@@ -1,14 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Expense } from '@models/expense';
 import { Split } from '@models/split';
+import { collection, writeBatch } from 'firebase/firestore';
 import {
-  collection,
-  collectionGroup,
-  getDocs,
-  writeBatch,
-} from 'firebase/firestore';
-import {
-  deleteField,
   doc,
   Firestore,
   onSnapshot,
@@ -72,29 +65,5 @@ export class SplitService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
-  }
-
-  async fixSplits() {
-    const batch = writeBatch(this.fs);
-    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
-    const expenses = expDocs.docs.map(
-      (e) => new Expense({ id: e.id, ...e.data() })
-    );
-    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
-    splitDocs.docs.forEach(async (d) => {
-      const allocatedAmount = +d.data().allocatedAmount.toFixed(2);
-      const expense = expenses.find((e) => e.id === d.data().expenseId);
-      if (!!expense) {
-        const updatedData = {
-          date: expense.date,
-          allocatedAmount: allocatedAmount,
-          groupId: deleteField(),
-        };
-        batch.update(d.ref, updatedData);
-      } else {
-        batch.delete(d.ref);
-      }
-    });
-    batch.commit();
   }
 }
