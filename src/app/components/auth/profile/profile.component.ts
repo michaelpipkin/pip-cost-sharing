@@ -210,12 +210,4 @@ export class ProfileComponent {
         });
     }
   }
-
-  fixSplits() {
-    this.splitService.fixSplits();
-  }
-
-  fixExpenses() {
-    this.expenseService.fixExpenses();
-  }
 }
