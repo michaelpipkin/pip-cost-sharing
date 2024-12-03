@@ -66,3 +66,32 @@ export const decryptApiKey = async (encryptedApiKey: string, iv: string) => {
 
   return decryptedApiKey;
 };
+
+export const validateApiKey = async (apiKey: string) => {
+  const apiKeyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+
+  const apiKeySnapshot = await db
+    .collection('apiKeys')
+    .where('apiKeyHash', '==', apiKeyHash)
+    .get();
+
+  if (apiKeySnapshot.empty) {
+    return false;
+  }
+
+  let authorized = false;
+
+  for (const apiKeyDoc of apiKeySnapshot.docs) {
+    const encryptedApiKey = apiKeyDoc.data().encryptedApiKey;
+    const iv = apiKeyDoc.data().iv;
+
+    const decryptedApiKey = await decryptApiKey(encryptedApiKey, iv);
+
+    if (decryptedApiKey === apiKey) {
+      authorized = true;
+      break;
+    }
+  }
+
+  return authorized;
+};
