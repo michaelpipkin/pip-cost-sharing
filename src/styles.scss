@@ -448,10 +448,18 @@ span.filename {
   white-space: nowrap;
 }
 
-.mock-value {
+.mock-value-right {
   display: grid;
   justify-content: end;
   align-items: center;
   padding-top: 8px;
   padding-right: 16px;
+}
+
+.mock-value-left {
+  display: grid;
+  justify-content: start;
+  align-items: center;
+  padding-top: 8px;
+  padding-left: 16px;
 }
