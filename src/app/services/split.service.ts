@@ -61,8 +61,14 @@ export class SplitService {
         paid: true,
       });
     });
-    history.paidByMemberRef = doc(this.fs, `members/${paidByMemberId}`);
-    history.paidToMemberRef = doc(this.fs, `members/${paidToMemberId}`);
+    history.paidByMemberRef = doc(
+      this.fs,
+      `groups/${groupId}/members/${paidByMemberId}`
+    );
+    history.paidToMemberRef = doc(
+      this.fs,
+      `groups/${groupId}/members/${paidToMemberId}`
+    );
     const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
     return await batch
