@@ -1,13 +1,13 @@
-<div class="page-header">
-  <div></div>
-  <h3>Edit Memorized Expense</h3>
-  <div class="help-icon">
-    <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+<div class="container pt-3 mb-2">
+  <div class="page-header">
+    <div></div>
+    <h3>Edit Memorized Expense</h3>
+    <div class="help-icon">
+      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    </div>
   </div>
-</div>
-<mat-dialog-content>
   @let memberList = memorizedMembers();
-  <div class="container mb-2">
+  <div class="sub-container mb-2">
     <form [formGroup]="editMemorizedForm" id="expense-form">
       <div class="details-1">
         <mat-form-field id="paid-by-select">
@@ -127,11 +127,7 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <button
-                mat-icon-button
-                class="btn-danger"
-                (click)="removeSplit(i)"
-              >
+              <button mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -167,38 +163,38 @@
         }
       </div>
     </form>
+    <div class="form-buttons">
+      <button
+        mat-raised-button
+        class="btn-secondary"
+        type="submit"
+        defaultButton
+        [disabled]="
+          !editMemorizedForm.valid ||
+          editMemorizedForm.pristine ||
+          editMemorizedForm.disabled
+        "
+        (click)="onSubmit()"
+      >
+        Save
+      </button>
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-danger"
+        [disabled]="editMemorizedForm.disabled"
+        (click)="onDelete()"
+      >
+        Delete
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="editMemorizedForm.disabled"
+        (click)="onCancel()"
+      >
+        Cancel
+      </button>
+    </div>
   </div>
-</mat-dialog-content>
-<mat-dialog-actions class="me-3">
-  <button
-    mat-raised-button
-    class="btn-secondary"
-    type="submit"
-    defaultButton
-    [disabled]="
-      !editMemorizedForm.valid ||
-      editMemorizedForm.pristine ||
-      editMemorizedForm.disabled
-    "
-    (click)="onSubmit()"
-  >
-    Save
-  </button>
-  <button
-    mat-raised-button
-    type="button"
-    class="btn-danger"
-    [disabled]="editMemorizedForm.disabled"
-    (click)="delete()"
-  >
-    Delete
-  </button>
-  <button
-    mat-stroked-button
-    type="button"
-    [disabled]="editMemorizedForm.disabled"
-    [mat-dialog-close]="false"
-  >
-    Cancel
-  </button>
-</mat-dialog-actions>
+</div>

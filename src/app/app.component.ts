@@ -17,7 +17,6 @@ import { LoadingComponent } from './shared/loading/loading.component';
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  standalone: true,
   imports: [
     MatButtonModule,
     RouterLink,
@@ -50,7 +49,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.breakpointObserver
-      .observe('(max-width: 964px)')
+      .observe('(max-width: 1059px)')
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });

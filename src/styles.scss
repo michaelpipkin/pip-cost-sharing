@@ -8,7 +8,8 @@ $enable-negative-margins: true;
 // Include the common styles for Angular Material. We include this here so that you only
 // have to load a single css file for Angular Material in your app.
 // Be sure that you only ever include this mixin once!
-@include mat.core();
+@include mat.elevation-classes();
+@include mat.app-background();
 
 // Include theme styles for core and each component used in your app.
 // Alternatively, you can import and @include the theme mixins for each component
@@ -274,6 +275,15 @@ mat-icon.small-icon-button {
 
 .mat-form-field {
   display: block;
+}
+
+.form-buttons {
+  width: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  column-gap: 8px;
+  justify-content: start;
+  margin-top: 8px;
 }
 
 .form-buttons-right button {

@@ -1,11 +1,12 @@
 <div class="container pt-3">
   <div class="page-header">
     <div></div>
-    <h3>{{ currentGroup()?.name }}</h3>
+    <h3>Categories</h3>
     <div class="help-icon">
       <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
     </div>
   </div>
+  <h4>{{ currentGroup()?.name }}</h4>
   <div class="filters">
     <mat-form-field>
       <mat-label>Search by name</mat-label>

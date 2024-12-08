@@ -1,4 +1,19 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { Analytics } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +30,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -31,23 +47,6 @@ import { ClearSelectDirective } from '@shared/directives/clear-select.directive'
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
-import { AddExpenseComponent } from '../add-expense/add-expense.component';
-import { EditExpenseComponent } from '../edit-expense/edit-expense.component';
-import {
-  Component,
-  computed,
-  inject,
-  signal,
-  Signal,
-  model,
-} from '@angular/core';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 
 @Component({
   selector: 'app-expenses',
@@ -63,7 +62,6 @@ import {
       ),
     ]),
   ],
-  standalone: true,
   imports: [
     MatFormFieldModule,
     MatSelectModule,
@@ -92,6 +90,7 @@ export class ExpensesComponent {
   splitService = inject(SplitService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
+  router = inject(Router);
   loading = inject(LoadingService);
   sorter = inject(SortingService);
   storage = inject(Storage);
@@ -188,38 +187,12 @@ export class ExpensesComponent {
   }
 
   onRowClick(expense: Expense): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        expense: expense,
-        memorized: false,
-        groupId: this.currentGroup().id,
-        member: this.currentMember,
-        isGroupAdmin: this.currentMember().groupAdmin,
-      },
-    };
-    const dialogRef = this.dialog.open(EditExpenseComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((res) => {
-      if (res.success) {
-        this.snackBar.open(`Expense ${res.operation}`, 'OK');
-      }
-    });
+    this.loading.loadingOn();
+    this.router.navigate(['/edit-expense', expense.id]);
   }
 
   addExpense(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        groupId: this.currentGroup().id,
-        member: this.currentMember,
-        isGroupAdmin: this.currentMember().groupAdmin,
-        memorized: false,
-      },
-    };
-    const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((res) => {
-      if (res.success) {
-        this.snackBar.open(`Expense ${res.operation}`, 'OK');
-      }
-    });
+    this.router.navigate(['/add-expense'], { state: { memorized: false } });
   }
 
   markSplitPaidUnpaid(split: Split): void {
