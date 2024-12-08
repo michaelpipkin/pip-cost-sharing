@@ -1,14 +1,14 @@
-<div class="page-header">
-  <div></div>
-  <h3>Edit Expense</h3>
-  <div class="help-icon">
-    <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+<div class="container pt-3 mb-2">
+  <div class="page-header">
+    <div></div>
+    <h3>Edit Expense</h3>
+    <div class="help-icon">
+      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    </div>
   </div>
-</div>
-<mat-dialog-content>
   @let memberList = expenseMembers();
-  @let hasReceipt = data.expense.hasReceipt;
-  <div class="container mb-2">
+  @let hasReceipt = expense()?.hasReceipt;
+  <div class="sub-container mb-2">
     <form [formGroup]="editExpenseForm" id="expense-form">
       <div class="details-1">
         <mat-form-field id="paid-by-select">
@@ -111,7 +111,7 @@
         </mat-form-field>
         <div class="mock-input">
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value">
+          <span class="mock-value-right">
             {{ e.sharedAmount.value | currency }}
           </span>
         </div>
@@ -184,11 +184,7 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <button
-                mat-icon-button
-                class="btn-danger"
-                (click)="removeSplit(i)"
-              >
+              <button mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -214,7 +210,7 @@
               </mat-form-field>
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
-                <span class="mock-value">
+                <span class="mock-value-right">
                   {{ splitForm.get('allocatedAmount')?.value | currency }}
                 </span>
               </div>
@@ -224,38 +220,38 @@
         }
       </div>
     </form>
+    <div class="form-buttons">
+      <button
+        mat-raised-button
+        class="btn-secondary"
+        type="submit"
+        defaultButton
+        [disabled]="
+          !editExpenseForm.valid ||
+          editExpenseForm.disabled ||
+          editExpenseForm.pristine
+        "
+        (click)="onSubmit()"
+      >
+        Save
+      </button>
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-danger"
+        [disabled]="editExpenseForm.disabled"
+        (click)="onDelete()"
+      >
+        Delete
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="editExpenseForm.disabled"
+        (click)="onCancel()"
+      >
+        Cancel
+      </button>
+    </div>
   </div>
-</mat-dialog-content>
-<mat-dialog-actions class="me-3">
-  <button
-    mat-raised-button
-    class="btn-secondary"
-    type="submit"
-    defaultButton
-    [disabled]="
-      !editExpenseForm.valid ||
-      editExpenseForm.disabled ||
-      editExpenseForm.pristine
-    "
-    (click)="onSubmit()"
-  >
-    Save
-  </button>
-  <button
-    mat-raised-button
-    type="button"
-    class="btn-danger"
-    [disabled]="editExpenseForm.disabled"
-    (click)="delete()"
-  >
-    Delete
-  </button>
-  <button
-    mat-stroked-button
-    type="button"
-    [disabled]="editExpenseForm.disabled"
-    [mat-dialog-close]="false"
-  >
-    Cancel
-  </button>
-</mat-dialog-actions>
+</div>

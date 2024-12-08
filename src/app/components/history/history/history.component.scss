@@ -1,0 +1,26 @@
+.filters {
+  display: grid;
+  gap: 8px;
+  align-items: baseline;
+  justify-items: center;
+  grid-template-rows: auto;
+  grid-template-columns: max-content max-content;
+}
+
+@media (max-width: 473px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.history-row td {
+  border-bottom-width: 0;
+}
+
+.detail-table tr th {
+  width: 25%;
+}
+
+tr.detail-row {
+  height: 0;
+}

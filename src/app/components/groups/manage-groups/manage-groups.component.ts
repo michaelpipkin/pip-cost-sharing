@@ -23,21 +23,20 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-manage-groups',
-  templateUrl: './manage-groups.component.html',
-  styleUrl: './manage-groups.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatOptionModule,
-    MatInputModule,
-    MatSlideToggleModule,
-  ],
+    selector: 'app-manage-groups',
+    templateUrl: './manage-groups.component.html',
+    styleUrl: './manage-groups.component.scss',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatButtonModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatOptionModule,
+        MatInputModule,
+        MatSlideToggleModule,
+    ]
 })
 export class ManageGroupsComponent implements OnInit {
   groupService = inject(GroupService);

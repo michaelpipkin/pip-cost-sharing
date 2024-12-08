@@ -1,4 +1,12 @@
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,24 +29,17 @@ import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { GroupService } from '@services/group.service';
+import { HistoryService } from '@services/history.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
+import * as firestore from 'firebase/firestore';
 
 @Component({
   selector: 'app-summary',
   templateUrl: './summary.component.html',
   styleUrl: './summary.component.scss',
-  standalone: true,
   imports: [
     FormsModule,
     MatFormFieldModule,
@@ -61,6 +62,7 @@ export class SummaryComponent {
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
   splitService = inject(SplitService);
+  historyService = inject(HistoryService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
@@ -230,6 +232,8 @@ export class SummaryComponent {
   }
 
   markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {
+    this.owedToMemberId.set(owedToMemberId);
+    this.owedByMemberId.set(owedByMemberId);
     var splitsToPay: Split[] = [];
     const memberSplits = this.filteredSplits().filter(
       (s) =>
@@ -249,12 +253,37 @@ export class SummaryComponent {
       },
     };
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
+    dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        this.splitService
-          .paySplitsBetweenMembers(this.currentGroup().id, splitsToPay)
-          .then(() => {
+        let history = {
+          date: firestore.Timestamp.now(),
+          totalPaid: +splitsToPay
+            .reduce(
+              (total, s) =>
+                s.paidByMemberId === owedToMemberId
+                  ? (total += +s.allocatedAmount)
+                  : (total -= +s.allocatedAmount),
+              0
+            )
+            .toFixed(2),
+          lineItems: [],
+        };
+        this.detailData().forEach((split) => {
+          history.lineItems.push({
+            category: this.getCategoryName(split.categoryId),
+            amount: split.amount,
+          });
+        });
+        await this.splitService
+          .paySplitsBetweenMembers(
+            this.currentGroup().id,
+            splitsToPay,
+            owedByMemberId,
+            owedToMemberId,
+            history
+          )
+          .then(async () => {
             this.snackBar.open('Expenses have been marked paid.', 'OK');
           })
           .catch((err: Error) => {

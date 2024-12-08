@@ -32,22 +32,21 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTableModule } from '@angular/material/table';
 
 @Component({
-  selector: 'app-categories',
-  templateUrl: './categories.component.html',
-  styleUrl: './categories.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatIconModule,
-    MatTooltipModule,
-    MatSlideToggleModule,
-    MatTableModule,
-    MatSortModule,
-    ActiveInactivePipe,
-  ],
+    selector: 'app-categories',
+    templateUrl: './categories.component.html',
+    styleUrl: './categories.component.scss',
+    imports: [
+        FormsModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatIconModule,
+        MatTooltipModule,
+        MatSlideToggleModule,
+        MatTableModule,
+        MatSortModule,
+        ActiveInactivePipe,
+    ]
 })
 export class CategoriesComponent {
   router = inject(Router);

@@ -34,23 +34,22 @@ import {
 
 
 @Component({
-  selector: 'app-members',
-  templateUrl: './members.component.html',
-  styleUrl: './members.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTooltipModule,
-    MatSlideToggleModule,
-    MatTableModule,
-    MatSortModule,
-    YesNoPipe,
-    ActiveInactivePipe,
-  ],
+    selector: 'app-members',
+    templateUrl: './members.component.html',
+    styleUrl: './members.component.scss',
+    imports: [
+        FormsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatTooltipModule,
+        MatSlideToggleModule,
+        MatTableModule,
+        MatSortModule,
+        YesNoPipe,
+        ActiveInactivePipe,
+    ]
 })
 export class MembersComponent {
   router = inject(Router);

@@ -19,19 +19,18 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-add-group',
-  templateUrl: './add-group.component.html',
-  styleUrl: './add-group.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSlideToggleModule,
-  ],
+    selector: 'app-add-group',
+    templateUrl: './add-group.component.html',
+    styleUrl: './add-group.component.scss',
+    imports: [
+        FormsModule,
+        MatButtonModule,
+        MatDialogModule,
+        ReactiveFormsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSlideToggleModule,
+    ]
 })
 export class AddGroupComponent {
   dialogRef = inject(MatDialogRef<AddGroupComponent>);

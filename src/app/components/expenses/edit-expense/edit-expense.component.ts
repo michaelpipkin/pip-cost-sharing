@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
@@ -30,6 +31,20 @@ import * as firestore from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { Url } from 'url';
 import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  Signal,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
   deleteObject,
   getDownloadURL,
   ref,
@@ -48,32 +63,15 @@ import {
   Validators,
 } from '@angular/forms';
 import {
-  MAT_DIALOG_DATA,
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
-  MatDialogRef,
 } from '@angular/material/dialog';
-import {
-  Component,
-  ElementRef,
-  inject,
-  OnInit,
-  Signal,
-  model,
-  afterRender,
-  computed,
-  afterNextRender,
-  viewChildren,
-  viewChild,
-  signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-edit-expense',
   templateUrl: './edit-expense.component.html',
   styleUrl: './edit-expense.component.scss',
-  standalone: true,
   imports: [
     FormsModule,
     ReactiveFormsModule,
@@ -93,8 +91,9 @@ import {
   ],
 })
 export class EditExpenseComponent implements OnInit {
-  dialogRef = inject(MatDialogRef<EditExpenseComponent>);
   fb = inject(FormBuilder);
+  router = inject(Router);
+  route = inject(ActivatedRoute);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -106,30 +105,29 @@ export class EditExpenseComponent implements OnInit {
   analytics = inject(Analytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
-  data: any = inject(MAT_DIALOG_DATA);
 
   #currentGroup: Signal<Group> = this.groupService.currentGroup;
+
+  expense = signal<Expense>(null);
 
   categories = computed<Category[]>(() => {
     return this.categoryService
       .groupCategories()
-      .filter((c) => c.active || c.id == this.data.expense.categoryId);
+      .filter((c) => c.active || c.id == this.expense().categoryId);
   });
   expenseMembers = computed<Member[]>(() => {
     return this.memberService
       .groupMembers()
-      .filter((m) => m.active || m.id == this.data.expense.paidByMemberId);
+      .filter((m) => m.active || m.id == this.expense().paidByMemberId);
   });
   splitMembers = computed<Member[]>(() => {
-    const splitMemberIds: string[] = this.data.expense.splits.map(
+    const splitMemberIds: string[] = this.expense().splits.map(
       (s: Split) => s.owedByMemberId
     );
     return this.memberService
       .groupMembers()
       .filter((m) => m.active || splitMemberIds.includes(m.id));
   });
-
-  #hasReceipt = signal<boolean>(false);
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
@@ -141,34 +139,20 @@ export class EditExpenseComponent implements OnInit {
   inputElements = viewChildren<ElementRef>('inputElement');
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
-  expense = this.data.expense;
-
   editExpenseForm = this.fb.group({
-    paidByMemberId: [this.expense.paidByMemberId, Validators.required],
-    date: [this.expense.date.toDate(), Validators.required],
-    amount: [
-      this.expense.totalAmount,
-      [Validators.required, this.amountValidator()],
-    ],
-    description: [this.expense.description, Validators.required],
-    categoryId: [this.expense.categoryId, Validators.required],
-    sharedAmount: [this.expense.sharedAmount, Validators.required],
-    allocatedAmount: [this.expense.allocatedAmount, Validators.required],
-    splits: this.fb.array(
-      this.expense.splits.map((s) => {
-        return this.fb.group({
-          owedByMemberId: [s.owedByMemberId, Validators.required],
-          assignedAmount: [s.assignedAmount, Validators.required],
-          allocatedAmount: [s.allocatedAmount],
-        });
-      }),
-      [Validators.required, Validators.minLength(1)]
-    ),
+    paidByMemberId: ['', Validators.required],
+    date: [new Date(), Validators.required],
+    amount: [0, [Validators.required, this.amountValidator()]],
+    description: ['', Validators.required],
+    categoryId: ['', Validators.required],
+    sharedAmount: [0, Validators.required],
+    allocatedAmount: [0, Validators.required],
+    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
   constructor() {
     afterNextRender(() => {
-      const expense = this.data.expense;
+      const expense = this.expense();
       this.totalAmountField().nativeElement.value =
         this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
       this.allocatedAmountField().nativeElement.value =
@@ -187,9 +171,28 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.#hasReceipt.set(this.expense.hasReceipt);
-    if (this.#hasReceipt()) {
-      const storageUrl = `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`;
+    const expense = this.route.snapshot.data.expense;
+    this.expense.set(expense);
+    this.editExpenseForm.patchValue({
+      paidByMemberId: expense.paidByMemberId,
+      date: expense.date.toDate(),
+      amount: expense.totalAmount,
+      description: expense.description,
+      categoryId: expense.categoryId,
+      sharedAmount: expense.sharedAmount,
+      allocatedAmount: expense.allocatedAmount,
+    });
+    expense.splits.forEach((s: Split) => {
+      this.splits.push(
+        this.fb.group({
+          owedByMemberId: [s.owedByMemberId, Validators.required],
+          assignedAmount: [s.assignedAmount, Validators.required],
+          allocatedAmount: [s.allocatedAmount],
+        })
+      );
+    });
+    if (expense.hasReceipt) {
+      const storageUrl = `groups/${this.#currentGroup().id}/receipts/${expense.id}`;
       getDownloadURL(ref(this.storage, storageUrl))
         .then((url: unknown) => {
           if (!!url) {
@@ -202,6 +205,11 @@ export class EditExpenseComponent implements OnInit {
           }
         });
     }
+    this.loading.loadingOff();
+  }
+
+  get splits(): FormArray {
+    return this.editExpenseForm.get('splits') as FormArray;
   }
 
   addSelectFocus(): void {
@@ -390,7 +398,7 @@ export class EditExpenseComponent implements OnInit {
           sharedAmount: +val.sharedAmount,
           allocatedAmount: +val.allocatedAmount,
           totalAmount: +val.amount,
-          hasReceipt: this.#hasReceipt() || !!this.fileName(),
+          hasReceipt: this.expense().hasReceipt || !!this.fileName(),
         };
         let splits: Partial<Split>[] = [];
         this.splitsFormArray.value.forEach((s) => {
@@ -408,7 +416,7 @@ export class EditExpenseComponent implements OnInit {
         this.expenseService
           .updateExpense(
             this.#currentGroup().id,
-            this.data.expense.id,
+            this.expense().id,
             changes,
             splits
           )
@@ -416,16 +424,14 @@ export class EditExpenseComponent implements OnInit {
             if (this.receiptFile()) {
               const fileRef = ref(
                 this.storage,
-                `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
+                `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
               );
               uploadBytes(fileRef, this.receiptFile()).then(() => {
                 logEvent(this.analytics, 'receipt_uploaded');
               });
             }
-            this.dialogRef.close({
-              success: true,
-              operation: 'edited',
-            });
+            this.snackBar.open('Expense updated successfully.', 'OK');
+            this.router.navigate(['/expenses']);
           })
           .catch((err: Error) => {
             logEvent(this.analytics, 'error', {
@@ -444,7 +450,7 @@ export class EditExpenseComponent implements OnInit {
     });
   }
 
-  delete(): void {
+  onDelete(): void {
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
@@ -456,19 +462,17 @@ export class EditExpenseComponent implements OnInit {
       if (confirm) {
         this.loading.loadingOn();
         this.expenseService
-          .deleteExpense(this.#currentGroup().id, this.data.expense.id)
+          .deleteExpense(this.#currentGroup().id, this.expense().id)
           .then(() => {
             if (this.receiptUrl()) {
               const fileRef = ref(
                 this.storage,
-                `groups/${this.#currentGroup().id}/receipts/${this.data.expense.id}`
+                `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
               );
               deleteObject(fileRef);
             }
-            this.dialogRef.close({
-              success: true,
-              operation: 'deleted',
-            });
+            this.snackBar.open('Expense deleted.', 'OK');
+            this.router.navigate(['/expenses']);
           })
           .catch((err: Error) => {
             logEvent(this.analytics, 'error', {
@@ -484,6 +488,10 @@ export class EditExpenseComponent implements OnInit {
           .finally(() => this.loading.loadingOff());
       }
     });
+  }
+
+  onCancel(): void {
+    this.router.navigate(['/expenses']);
   }
 
   showHelp(): void {

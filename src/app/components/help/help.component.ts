@@ -7,11 +7,10 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-help',
-  templateUrl: './help.component.html',
-  styleUrl: './help.component.scss',
-  standalone: true,
-  imports: [MatDialogContent, MatIcon],
+    selector: 'app-help',
+    templateUrl: './help.component.html',
+    styleUrl: './help.component.scss',
+    imports: [MatDialogContent, MatIcon]
 })
 export class HelpComponent implements OnInit {
   dialogRef = inject(MatDialogRef<HelpComponent>);

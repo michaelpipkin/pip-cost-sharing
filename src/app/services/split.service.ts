@@ -1,14 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Expense } from '@models/expense';
-import { Split } from '@models/split';
 import {
-  collection,
-  collectionGroup,
-  getDocs,
-  writeBatch,
-} from 'firebase/firestore';
-import {
-  deleteField,
   doc,
   Firestore,
   onSnapshot,
@@ -16,6 +7,9 @@ import {
   updateDoc,
   where,
 } from '@angular/fire/firestore';
+import { History } from '@models/history';
+import { Split } from '@models/split';
+import { collection, writeBatch } from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -56,7 +50,10 @@ export class SplitService {
 
   async paySplitsBetweenMembers(
     groupId: string,
-    splits: Split[]
+    splits: Split[],
+    paidByMemberId: string,
+    paidToMemberId: string,
+    history: Partial<History>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
     splits.forEach((split) => {
@@ -64,6 +61,10 @@ export class SplitService {
         paid: true,
       });
     });
+    history.paidByMemberRef = doc(this.fs, `members/${paidByMemberId}`);
+    history.paidToMemberRef = doc(this.fs, `members/${paidToMemberId}`);
+    const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
+    batch.set(newHistoryDoc, history);
     return await batch
       .commit()
       .then(() => {
@@ -72,29 +73,5 @@ export class SplitService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
-  }
-
-  async fixSplits() {
-    const batch = writeBatch(this.fs);
-    const expDocs = await getDocs(collectionGroup(this.fs, `expenses`));
-    const expenses = expDocs.docs.map(
-      (e) => new Expense({ id: e.id, ...e.data() })
-    );
-    const splitDocs = await getDocs(collectionGroup(this.fs, 'splits'));
-    splitDocs.docs.forEach(async (d) => {
-      const allocatedAmount = +d.data().allocatedAmount.toFixed(2);
-      const expense = expenses.find((e) => e.id === d.data().expenseId);
-      if (!!expense) {
-        const updatedData = {
-          date: expense.date,
-          allocatedAmount: allocatedAmount,
-          groupId: deleteField(),
-        };
-        batch.update(d.ref, updatedData);
-      } else {
-        batch.delete(d.ref);
-      }
-    });
-    batch.commit();
   }
 }

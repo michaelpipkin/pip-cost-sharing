@@ -1,45 +1,20 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Analytics, logEvent } from '@angular/fire/analytics';
-import { ref, Storage, uploadBytes } from '@angular/fire/storage';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { HelpComponent } from '@components/help/help.component';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import * as firestore from 'firebase/firestore';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
+  afterNextRender,
+  afterRender,
   Component,
+  computed,
   ElementRef,
   inject,
-  OnInit,
-  Signal,
   model,
-  afterRender,
+  OnInit,
+  signal,
+  Signal,
   viewChild,
   viewChildren,
-  computed,
-  afterNextRender,
 } from '@angular/core';
+import { Analytics, logEvent } from '@angular/fire/analytics';
+import { ref, Storage, uploadBytes } from '@angular/fire/storage';
 import {
   AbstractControl,
   FormArray,
@@ -51,19 +26,44 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
-  MAT_DIALOG_DATA,
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
-  MatDialogRef,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { HelpComponent } from '@components/help/help.component';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import * as firestore from 'firebase/firestore';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
 
 @Component({
   selector: 'app-add-expense',
   templateUrl: './add-expense.component.html',
   styleUrl: './add-expense.component.scss',
-  standalone: true,
   imports: [
     FormsModule,
     ReactiveFormsModule,
@@ -83,9 +83,9 @@ import {
   ],
 })
 export class AddExpenseComponent implements OnInit {
-  dialogRef = inject(MatDialogRef<AddExpenseComponent>);
-  dialog = inject(MatDialog);
   fb = inject(FormBuilder);
+  router = inject(Router);
+  dialog = inject(MatDialog);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -97,12 +97,14 @@ export class AddExpenseComponent implements OnInit {
   analytics = inject(Analytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
-  data: any = inject(MAT_DIALOG_DATA);
 
   currentMember: Signal<Member> = this.memberService.currentMember;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
   #categories: Signal<Category[]> = this.categoryService.groupCategories;
+
+  fromMemorized = signal<boolean>(false);
+  memorizedExpense = signal<Memorized>(null);
 
   activeCategories = computed<Category[]>(() => {
     return this.#categories().filter((c) => c.active);
@@ -129,9 +131,14 @@ export class AddExpenseComponent implements OnInit {
   });
 
   constructor() {
+    const navigation = this.router.getCurrentNavigation();
+    if (navigation?.extras.state.memorized) {
+      this.fromMemorized.set(navigation?.extras.state.memorized);
+      this.memorizedExpense.set(navigation!.extras.state.expense);
+    }
     afterNextRender(() => {
-      if (this.data.memorized) {
-        const expense = this.data.expense;
+      if (this.fromMemorized()) {
+        const expense: Memorized = this.memorizedExpense();
         this.totalAmountField().nativeElement.value =
           this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
         this.allocatedAmountField().nativeElement.value =
@@ -165,8 +172,8 @@ export class AddExpenseComponent implements OnInit {
         categoryId: this.activeCategories()[0].id,
       });
     }
-    if (this.data.memorized) {
-      const expense: Expense = this.data.expense;
+    if (this.fromMemorized()) {
+      const expense: Memorized = this.memorizedExpense();
       this.addExpenseForm.patchValue({
         paidByMemberId: expense.paidByMemberId,
         date: new Date(),
@@ -381,7 +388,7 @@ export class AddExpenseComponent implements OnInit {
   expenseFullyAllocated = (): boolean =>
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
-  onSubmit(): void {
+  onSubmit(saveAndAdd: boolean = false): void {
     this.addExpenseForm.disable();
     const val = this.addExpenseForm.value;
     const expenseDate = firestore.Timestamp.fromDate(val.date);
@@ -421,7 +428,31 @@ export class AddExpenseComponent implements OnInit {
             logEvent(this.analytics, 'receipt_uploaded');
           });
         }
-        this.dialogRef.close({ success: true, operation: 'added' });
+        this.snackBar.open('Expense added.', 'OK');
+        if (saveAndAdd) {
+          this.addExpenseForm.reset();
+          this.splitsFormArray.clear();
+          this.addExpenseForm.patchValue({
+            paidByMemberId: this.currentMember().id,
+            date: new Date(),
+            amount: 0,
+            allocatedAmount: 0,
+          });
+          this.totalAmountField().nativeElement.value = '0.00';
+          this.allocatedAmountField().nativeElement.value = '0.00';
+          this.memberAmounts().forEach((elementRef: ElementRef) => {
+            elementRef.nativeElement.value = '0.00';
+          });
+          this.fileName.set('');
+          this.receiptFile.set(null);
+          this.addExpenseForm.enable();
+          if (this.currentGroup().autoAddMembers) {
+            this.addAllActiveGroupMembers();
+          }
+          this.addSelectFocus();
+        } else {
+          this.router.navigate(['/expenses']);
+        }
       })
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
@@ -436,6 +467,10 @@ export class AddExpenseComponent implements OnInit {
         this.addExpenseForm.enable();
       })
       .finally(() => this.loading.loadingOff());
+  }
+
+  onCancel(): void {
+    this.router.navigate(['/expenses']);
   }
 
   showHelp(): void {

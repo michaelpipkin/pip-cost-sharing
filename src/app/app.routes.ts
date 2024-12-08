@@ -1,21 +1,26 @@
-import { Routes } from '@angular/router';
-import { groupGuard } from '@components/auth/group.guard';
-import { LoginComponent } from '@components/auth/login/login.component';
-import { ProfileComponent } from '@components/auth/profile/profile.component';
-import { CategoriesComponent } from '@components/categories/categories/categories.component';
-import { categoriesResolver } from '@components/categories/categories/categories.resolver';
-import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
-import { expensesResolver } from '@components/expenses/expenses/expenses.resolver';
-import { GroupsComponent } from '@components/groups/groups/groups.component';
-import { HomeComponent } from '@components/home/home.component';
-import { MembersComponent } from '@components/members/members/members.component';
-import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
-import { SummaryComponent } from '@components/summary/summary/summary.component';
 import {
   canActivate,
   redirectLoggedInTo,
   redirectUnauthorizedTo,
 } from '@angular/fire/auth-guard';
+import { Routes } from '@angular/router';
+import { groupGuard } from '@components/auth/group.guard';
+import { LoginComponent } from '@components/auth/login/login.component';
+import { ProfileComponent } from '@components/auth/profile/profile.component';
+import { CategoriesComponent } from '@components/categories/categories/categories.component';
+import { AddExpenseComponent } from '@components/expenses/add-expense/add-expense.component';
+import { editExpenseResolver } from '@components/expenses/edit-expense.resolver';
+import { EditExpenseComponent } from '@components/expenses/edit-expense/edit-expense.component';
+import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
+import { GroupsComponent } from '@components/groups/groups/groups.component';
+import { HistoryComponent } from '@components/history/history/history.component';
+import { HomeComponent } from '@components/home/home.component';
+import { MembersComponent } from '@components/members/members/members.component';
+import { AddMemorizedComponent } from '@components/memorized/add-memorized/add-memorized.component';
+import { editMemorizedResolver } from '@components/memorized/edit-memorized.resolver';
+import { EditMemorizedComponent } from '@components/memorized/edit-memorized/edit-memorized.component';
+import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
+import { SummaryComponent } from '@components/summary/summary/summary.component';
 
 const authGuard = () => redirectUnauthorizedTo(['login']);
 const loggedInGuard = () => redirectLoggedInTo(['profile']);
@@ -52,9 +57,6 @@ export const appRoutes: Routes = [
     component: CategoriesComponent,
     ...canActivate(authGuard),
     canActivate: [groupGuard],
-    resolve: {
-      categories: categoriesResolver,
-    },
   },
   {
     path: 'expenses',
@@ -62,9 +64,21 @@ export const appRoutes: Routes = [
     component: ExpensesComponent,
     ...canActivate(authGuard),
     canActivate: [groupGuard],
-    resolve: {
-      expenses: expensesResolver,
-    },
+  },
+  {
+    path: 'add-expense',
+    title: 'Add Expense',
+    component: AddExpenseComponent,
+    ...canActivate(authGuard),
+    canActivate: [groupGuard],
+  },
+  {
+    path: 'edit-expense/:id',
+    title: 'Edit Expense',
+    component: EditExpenseComponent,
+    resolve: { expense: editExpenseResolver },
+    ...canActivate(authGuard),
+    canActivate: [groupGuard],
   },
   {
     path: 'memorized',
@@ -74,9 +88,31 @@ export const appRoutes: Routes = [
     canActivate: [groupGuard],
   },
   {
+    path: 'add-memorized',
+    title: 'Add Memorized Expense',
+    component: AddMemorizedComponent,
+    ...canActivate(authGuard),
+    canActivate: [groupGuard],
+  },
+  {
+    path: 'edit-memorized/:id',
+    title: 'Edit Memorized Expense',
+    component: EditMemorizedComponent,
+    resolve: { memorized: editMemorizedResolver },
+    ...canActivate(authGuard),
+    canActivate: [groupGuard],
+  },
+  {
     path: 'summary',
     title: 'Summary',
     component: SummaryComponent,
+    ...canActivate(authGuard),
+    canActivate: [groupGuard],
+  },
+  {
+    path: 'history',
+    title: 'History',
+    component: HistoryComponent,
     ...canActivate(authGuard),
     canActivate: [groupGuard],
   },

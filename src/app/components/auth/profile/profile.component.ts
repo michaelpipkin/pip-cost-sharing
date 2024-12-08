@@ -26,20 +26,19 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-profile',
-  templateUrl: './profile.component.html',
-  styleUrls: ['./profile.component.scss'],
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatOptionModule,
-    MatSelectModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-  ],
+    selector: 'app-profile',
+    templateUrl: './profile.component.html',
+    styleUrls: ['./profile.component.scss'],
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatFormFieldModule,
+        MatOptionModule,
+        MatSelectModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+    ]
 })
 export class ProfileComponent {
   fb = inject(FormBuilder);
@@ -209,13 +208,5 @@ export class ProfileComponent {
           );
         });
     }
-  }
-
-  fixSplits() {
-    this.splitService.fixSplits();
-  }
-
-  fixExpenses() {
-    this.expenseService.fixExpenses();
   }
 }

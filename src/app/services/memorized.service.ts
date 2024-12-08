@@ -1,4 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
+import { getDoc, getDocs } from '@firebase/firestore';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import {
@@ -42,6 +43,28 @@ export class MemorizedService {
       });
       this.memorizedExpenses.set(memorizedExpenses);
     });
+  }
+
+  async getMemorized(groupId: string, memorizedId: string): Promise<Memorized> {
+    const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
+    const memorizedDoc = await getDoc(d);
+    if (!memorizedDoc.exists()) {
+      throw new Error('Memorized expense not found');
+    }
+    const memorized = new Memorized({
+      id: memorizedDoc.id,
+      ...memorizedDoc.data(),
+    });
+    const splitRef = collection(d, 'splits');
+    const splitSnap = await getDocs(splitRef);
+    splitSnap.forEach((splitDoc) => {
+      const split: Partial<Split> = {
+        id: splitDoc.id,
+        ...splitDoc.data(),
+      };
+      memorized.splits.push(split);
+    });
+    return memorized;
   }
 
   async addMemorized(
