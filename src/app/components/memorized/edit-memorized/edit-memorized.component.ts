@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -25,6 +26,19 @@ import { FormatCurrencyInputDirective } from '@shared/directives/format-currency
 import { LoadingService } from '@shared/loading/loading.service';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
   AbstractControl,
   FormArray,
   FormBuilder,
@@ -36,26 +50,12 @@ import {
   Validators,
 } from '@angular/forms';
 import {
-  MAT_DIALOG_DATA,
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
-  MatDialogRef,
 } from '@angular/material/dialog';
-import {
-  Component,
-  ElementRef,
-  inject,
-  Signal,
-  afterRender,
-  computed,
-  afterNextRender,
-  viewChildren,
-  viewChild,
-} from '@angular/core';
 @Component({
   selector: 'app-edit-memorized',
-  standalone: true,
   imports: [
     FormsModule,
     ReactiveFormsModule,
@@ -75,9 +75,10 @@ import {
   templateUrl: './edit-memorized.component.html',
   styleUrl: './edit-memorized.component.scss',
 })
-export class EditMemorizedComponent {
-  dialogRef = inject(MatDialogRef<EditMemorizedComponent>);
+export class EditMemorizedComponent implements OnInit {
   fb = inject(FormBuilder);
+  router = inject(Router);
+  route = inject(ActivatedRoute);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -88,22 +89,23 @@ export class EditMemorizedComponent {
   analytics = inject(Analytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
-  data: any = inject(MAT_DIALOG_DATA);
 
   #currentGroup: Signal<Group> = this.groupService.currentGroup;
+
+  memorized = signal<Memorized>(null);
 
   categories = computed<Category[]>(() => {
     return this.categoryService
       .groupCategories()
-      .filter((c) => c.active || c.id == this.data.memorized.categoryId);
+      .filter((c) => c.active || c.id == this.memorized().categoryId);
   });
   memorizedMembers = computed<Member[]>(() => {
     return this.memberService
       .groupMembers()
-      .filter((m) => m.active || m.id == this.data.memorized.paidByMemberId);
+      .filter((m) => m.active || m.id == this.memorized().paidByMemberId);
   });
   splitMembers = computed<Member[]>(() => {
-    const splitMemberIds: string[] = this.data.memorized.splits?.map(
+    const splitMemberIds: string[] = this.memorized().splits?.map(
       (s: Split) => s.owedByMemberId
     );
     return this.memberService
@@ -115,33 +117,19 @@ export class EditMemorizedComponent {
   inputElements = viewChildren<ElementRef>('inputElement');
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
-  memorized = this.data.memorized;
-
   editMemorizedForm = this.fb.group({
-    paidByMemberId: [this.memorized.paidByMemberId, Validators.required],
-    amount: [
-      this.memorized.totalAmount,
-      [Validators.required, this.amountValidator()],
-    ],
-    description: [this.memorized.description, Validators.required],
-    categoryId: [this.memorized.categoryId, Validators.required],
-    sharedAmount: [this.memorized.sharedAmount, Validators.required],
-    allocatedAmount: [this.memorized.allocatedAmount, Validators.required],
-    splits: this.fb.array(
-      this.memorized.splits?.map((s: Split) => {
-        return this.fb.group({
-          owedByMemberId: [s.owedByMemberId, Validators.required],
-          assignedAmount: [s.assignedAmount, Validators.required],
-          allocatedAmount: [s.allocatedAmount],
-        });
-      }),
-      [Validators.required, Validators.minLength(1)]
-    ),
+    paidByMemberId: ['', Validators.required],
+    amount: [0, [Validators.required, this.amountValidator()]],
+    description: ['', Validators.required],
+    categoryId: ['', Validators.required],
+    sharedAmount: [0, Validators.required],
+    allocatedAmount: [0, Validators.required],
+    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
   constructor() {
     afterNextRender(() => {
-      const memorized = this.data.memorized;
+      const memorized = this.memorized();
       this.totalAmountField().nativeElement.value =
         this.decimalPipe.transform(memorized.totalAmount, '1.2-2') || '0.00';
       this.proportionalAmountField().nativeElement.value =
@@ -160,6 +148,29 @@ export class EditMemorizedComponent {
     });
   }
 
+  ngOnInit(): void {
+    const memorized = this.route.snapshot.data.memorized;
+    this.memorized.set(memorized);
+    this.editMemorizedForm.patchValue({
+      paidByMemberId: memorized.paidByMemberId,
+      amount: memorized.totalAmount,
+      description: memorized.description,
+      categoryId: memorized.categoryId,
+      sharedAmount: memorized.sharedAmount,
+      allocatedAmount: memorized.allocatedAmount,
+    });
+    memorized.splits.forEach((s: Split) => {
+      this.splits.push(
+        this.fb.group({
+          owedByMemberId: s.owedByMemberId,
+          assignedAmount: s.assignedAmount,
+          allocatedAmount: s.allocatedAmount,
+        })
+      );
+    });
+    this.loading.loadingOff();
+  }
+
   addSelectFocus(): void {
     this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
@@ -171,6 +182,10 @@ export class EditMemorizedComponent {
         }
       });
     });
+  }
+
+  get splits(): FormArray {
+    return this.editMemorizedForm.get('splits') as FormArray;
   }
 
   createSplitFormGroup(): FormGroup {
@@ -325,12 +340,10 @@ export class EditMemorizedComponent {
     changes.splits = splits;
     this.loading.loadingOn();
     this.memorizedService
-      .updateMemorized(this.#currentGroup().id, this.data.memorized.id, changes)
+      .updateMemorized(this.#currentGroup().id, this.memorized().id, changes)
       .then(() => {
-        this.dialogRef.close({
-          success: true,
-          operation: 'edited',
-        });
+        this.snackBar.open('Memorized expense updated.', 'OK');
+        this.router.navigate(['/memorized']);
       })
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
@@ -347,7 +360,7 @@ export class EditMemorizedComponent {
       .finally(() => this.loading.loadingOff());
   }
 
-  delete(): void {
+  onDelete(): void {
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
@@ -359,12 +372,10 @@ export class EditMemorizedComponent {
       if (confirm) {
         this.loading.loadingOn();
         this.memorizedService
-          .deleteMemorized(this.#currentGroup().id, this.data.memorized.id)
+          .deleteMemorized(this.#currentGroup().id, this.memorized().id)
           .then(() => {
-            this.dialogRef.close({
-              success: true,
-              operation: 'deleted',
-            });
+            this.snackBar.open('Memorized expense deleted.', 'OK');
+            this.router.navigate(['/memorized']);
           })
           .catch((err: Error) => {
             logEvent(this.analytics, 'error', {
@@ -380,6 +391,10 @@ export class EditMemorizedComponent {
           .finally(() => this.loading.loadingOff());
       }
     });
+  }
+
+  onCancel(): void {
+    this.router.navigate(['/memorized']);
   }
 
   showHelp(): void {

@@ -5,6 +5,7 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import {
   doc,
   Firestore,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -44,6 +45,27 @@ export class ExpenseService {
         this.groupExpenses.set(expenses);
       });
     });
+  }
+
+  async getExpense(groupId: string, expenseId: string): Promise<Expense> {
+    const d = doc(this.fs, `groups/${groupId}/expenses/${expenseId}`);
+    const expenseDoc = await getDoc(d);
+    if (!expenseDoc.exists()) {
+      throw new Error('Expense not found');
+    }
+    const expense = new Expense({
+      id: expenseDoc.id,
+      ...expenseDoc.data(),
+    });
+    const splitQuery = query(
+      collection(this.fs, `/groups/${groupId}/splits/`),
+      where('expenseId', '==', expenseId)
+    );
+    const splitDocs = await getDocs(splitQuery);
+    expense.splits = splitDocs.docs.map(
+      (d) => new Split({ id: d.id, ...d.data() })
+    );
+    return expense;
   }
 
   async addExpense(

@@ -1,4 +1,17 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import {
+  collection,
+  collectionGroup,
+  doc,
+  Firestore,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  writeBatch,
+} from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -7,22 +20,10 @@ import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryService } from './category.service';
 import { ExpenseService } from './expense.service';
+import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
 import { MemorizedService } from './memorized.service';
 import { SplitService } from './split.service';
-import {
-  doc,
-  Firestore,
-  getDoc,
-  collectionGroup,
-  query,
-  where,
-  getDocs,
-  collection,
-  writeBatch,
-  onSnapshot,
-  orderBy,
-} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -34,6 +35,7 @@ export class GroupService {
   expensesService = inject(ExpenseService);
   splitsService = inject(SplitService);
   memorizedService = inject(MemorizedService);
+  historyService = inject(HistoryService);
   router = inject(Router);
   loading = inject(LoadingService);
 
@@ -108,6 +110,7 @@ export class GroupService {
     this.expensesService.getExpensesForGroup(groupId);
     this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
+    this.historyService.getHistoryForGroup(groupId);
     this.loading.loadingOff();
   }
 

@@ -21,18 +21,17 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-add-member',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-  ],
-  templateUrl: './add-member.component.html',
-  styleUrl: './add-member.component.scss',
+    selector: 'app-add-member',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+    ],
+    templateUrl: './add-member.component.html',
+    styleUrl: './add-member.component.scss'
 })
 export class AddMemberComponent {
   dialogRef = inject(MatDialogRef<AddMemberComponent>);

@@ -1,9 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  OnInit,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Storage } from '@angular/fire/storage';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -11,6 +39,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -24,40 +53,9 @@ import { MemorizedService } from '@services/memorized.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
-import {
-  Component,
-  ElementRef,
-  inject,
-  OnInit,
-  Signal,
-  afterRender,
-  viewChild,
-  viewChildren,
-  computed,
-  afterNextRender,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-memorized',
-  standalone: true,
   templateUrl: './add-memorized.component.html',
   styleUrl: './add-memorized.component.scss',
   imports: [
@@ -78,8 +76,8 @@ import {
   ],
 })
 export class AddMemorizedComponent implements OnInit {
-  dialogRef = inject(MatDialogRef<AddMemorizedComponent>);
   dialog = inject(MatDialog);
+  router = inject(Router);
   fb = inject(FormBuilder);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -91,7 +89,6 @@ export class AddMemorizedComponent implements OnInit {
   analytics = inject(Analytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
-  data: any = inject(MAT_DIALOG_DATA);
 
   currentMember: Signal<Member> = this.memberService.currentMember;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
@@ -339,10 +336,8 @@ export class AddMemorizedComponent implements OnInit {
     this.memorizedService
       .addMemorized(this.currentGroup().id, memorized)
       .then(() => {
-        this.dialogRef.close({
-          success: true,
-          operation: 'memorized',
-        });
+        this.snackBar.open('Memorized expense added.', 'OK');
+        this.router.navigate(['/memorized']);
       })
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
@@ -357,6 +352,10 @@ export class AddMemorizedComponent implements OnInit {
         this.addMemorizedForm.enable();
       })
       .finally(() => this.loading.loadingOff());
+  }
+
+  onCancel(): void {
+    this.router.navigate(['/memorized']);
   }
 
   showHelp(): void {

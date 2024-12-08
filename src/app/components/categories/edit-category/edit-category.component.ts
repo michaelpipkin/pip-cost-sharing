@@ -24,19 +24,18 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-edit-category',
-  templateUrl: './edit-category.component.html',
-  styleUrl: './edit-category.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSlideToggleModule,
-    MatButtonModule,
-  ],
+    selector: 'app-edit-category',
+    templateUrl: './edit-category.component.html',
+    styleUrl: './edit-category.component.scss',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSlideToggleModule,
+        MatButtonModule,
+    ]
 })
 export class EditCategoryComponent {
   loading = inject(LoadingService);

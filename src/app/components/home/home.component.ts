@@ -5,11 +5,10 @@ import { RouterLink } from '@angular/router';
 import { UserService } from '@services/user.service';
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.scss',
-  standalone: true,
-  imports: [RouterLink, MatIconModule, MatButtonModule],
+    selector: 'app-home',
+    templateUrl: './home.component.html',
+    styleUrl: './home.component.scss',
+    imports: [RouterLink, MatIconModule, MatButtonModule]
 })
 export class HomeComponent {
   userService = inject(UserService);

@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
@@ -22,11 +24,6 @@ import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
-import { AddExpenseComponent } from '../../expenses/add-expense/add-expense.component';
-import { AddMemorizedComponent } from '../add-memorized/add-memorized.component';
-import { EditMemorizedComponent } from '../edit-memorized/edit-memorized.component';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTableModule } from '@angular/material/table';
 import {
   animate,
   state,
@@ -49,7 +46,6 @@ import {
       ),
     ]),
   ],
-  standalone: true,
   imports: [
     FormsModule,
     MatFormFieldModule,
@@ -128,53 +124,17 @@ export class MemorizedComponent {
   }
 
   onRowClick(memorized: Memorized): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        memorized: memorized,
-        groupId: this.currentGroup().id,
-        member: this.currentMember,
-        isGroupAdmin: this.currentMember().groupAdmin,
-      },
-    };
-    const dialogRef = this.dialog.open(EditMemorizedComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((res) => {
-      if (res.success) {
-        this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
-      }
-    });
+    this.loading.loadingOn();
+    this.router.navigate(['/edit-memorized', memorized.id]);
   }
 
   addMemorizedExpense() {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        groupId: this.currentGroup().id,
-        member: this.currentMember,
-        isGroupAdmin: this.currentMember().groupAdmin,
-      },
-    };
-    const dialogRef = this.dialog.open(AddMemorizedComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((res) => {
-      if (res.success) {
-        this.snackBar.open(`Memorized expense ${res.operation}`, 'OK');
-      }
-    });
+    this.router.navigate(['/add-memorized']);
   }
 
   addExpense(expense: Memorized): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        groupId: this.currentGroup().id,
-        member: this.currentMember,
-        isGroupAdmin: this.currentMember().groupAdmin,
-        memorized: true,
-        expense: expense,
-      },
-    };
-    const dialogRef = this.dialog.open(AddExpenseComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result.success) {
-        this.snackBar.open(`Expense ${result.operation}`, 'OK');
-      }
+    this.router.navigate(['/add-expense'], {
+      state: { memorized: true, expense: expense },
     });
   }
 }

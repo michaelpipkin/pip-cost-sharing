@@ -20,18 +20,17 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-add-category',
-  templateUrl: './add-category.component.html',
-  styleUrl: './add-category.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatButtonModule,
-    MatInputModule,
-  ],
+    selector: 'app-add-category',
+    templateUrl: './add-category.component.html',
+    styleUrl: './add-category.component.scss',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatButtonModule,
+        MatInputModule,
+    ]
 })
 export class AddCategoryComponent {
   loading = inject(LoadingService);

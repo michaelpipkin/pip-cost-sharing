@@ -1,6 +1,4 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Split } from '@models/split';
-import { collection, writeBatch } from 'firebase/firestore';
 import {
   doc,
   Firestore,
@@ -9,6 +7,9 @@ import {
   updateDoc,
   where,
 } from '@angular/fire/firestore';
+import { History } from '@models/history';
+import { Split } from '@models/split';
+import { collection, writeBatch } from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -49,7 +50,10 @@ export class SplitService {
 
   async paySplitsBetweenMembers(
     groupId: string,
-    splits: Split[]
+    splits: Split[],
+    paidByMemberId: string,
+    paidToMemberId: string,
+    history: Partial<History>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
     splits.forEach((split) => {
@@ -57,6 +61,10 @@ export class SplitService {
         paid: true,
       });
     });
+    history.paidByMemberRef = doc(this.fs, `members/${paidByMemberId}`);
+    history.paidToMemberRef = doc(this.fs, `members/${paidToMemberId}`);
+    const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
+    batch.set(newHistoryDoc, history);
     return await batch
       .commit()
       .then(() => {

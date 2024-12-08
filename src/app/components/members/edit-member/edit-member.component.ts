@@ -28,20 +28,19 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-edit-member',
-  templateUrl: './edit-member.component.html',
-  styleUrl: './edit-member.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSlideToggleModule,
-    MatTooltipModule,
-  ],
+    selector: 'app-edit-member',
+    templateUrl: './edit-member.component.html',
+    styleUrl: './edit-member.component.scss',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatButtonModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSlideToggleModule,
+        MatTooltipModule,
+    ]
 })
 export class EditMemberComponent {
   dialogRef = inject(MatDialogRef<EditMemberComponent>);

@@ -17,18 +17,17 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-join-group',
-  templateUrl: './join-group.component.html',
-  styleUrl: './join-group.component.scss',
-  standalone: true,
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-  ],
+    selector: 'app-join-group',
+    templateUrl: './join-group.component.html',
+    styleUrl: './join-group.component.scss',
+    imports: [
+        FormsModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+    ]
 })
 export class JoinGroupComponent {
   dialogRef = inject(MatDialogRef<JoinGroupComponent>);

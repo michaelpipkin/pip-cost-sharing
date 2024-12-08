@@ -1,13 +1,14 @@
 <div class="container pt-3">
   <div class="page-header">
     <div></div>
-    <h3>{{ currentGroup()?.name }}</h3>
+    <h3>Summary</h3>
     <div class="help-icon">
       <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
     </div>
   </div>
+  <h4>{{ currentGroup()?.name }}</h4>
   <div>
-    <mat-form-field id="group-select">
+    <mat-form-field id="member-select">
       <mat-label>Select Member</mat-label>
       <mat-select
         name="member"
