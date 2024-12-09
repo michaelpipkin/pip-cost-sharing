@@ -27,7 +27,7 @@
       Active only
     </mat-slide-toggle>
   </div>
-  @if (currentMember().groupAdmin) {
+  @if (currentMember()?.groupAdmin) {
     <div>
       <button mat-raised-button class="btn-primary" (click)="addMember()">
         Add Member
