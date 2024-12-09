@@ -21,7 +21,7 @@ jobs:
       - name: Create Firebase config file
         run: |
           cat << EOF > src/app/firebase.config.ts
-          export const FirebaseConfig = {
+          export const firebaseConfig = {
             apiKey: '${{ secrets.FIREBASE_API_KEY }}',
             authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
             projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
