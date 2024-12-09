@@ -1,8 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
-import { doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { GroupService } from './group.service';
 
 @Injectable({
@@ -12,9 +12,9 @@ export class UserService {
   user = signal<User>(null);
   isLoggedIn = computed(() => !!this.user());
 
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
+  auth = inject(getAuth);
   router = inject(Router);
-  auth = inject(Auth);
   groupService = inject(GroupService);
 
   constructor() {

@@ -1,17 +1,4 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import {
-  collection,
-  collectionGroup,
-  doc,
-  Firestore,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-  writeBatch,
-} from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -24,12 +11,25 @@ import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
 import { MemorizedService } from './memorized.service';
 import { SplitService } from './split.service';
+import {
+  collection,
+  collectionGroup,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GroupService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
   expensesService = inject(ExpenseService);

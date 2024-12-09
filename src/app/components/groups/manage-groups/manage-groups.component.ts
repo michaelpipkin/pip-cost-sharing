@@ -1,5 +1,4 @@
 import { Component, computed, inject, model, OnInit } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -23,27 +23,27 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-manage-groups',
-    templateUrl: './manage-groups.component.html',
-    styleUrl: './manage-groups.component.scss',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatButtonModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatOptionModule,
-        MatInputModule,
-        MatSlideToggleModule,
-    ]
+  selector: 'app-manage-groups',
+  templateUrl: './manage-groups.component.html',
+  styleUrl: './manage-groups.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatInputModule,
+    MatSlideToggleModule,
+  ],
 })
 export class ManageGroupsComponent implements OnInit {
   groupService = inject(GroupService);
   dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   fb = inject(FormBuilder);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   loading = inject(LoadingService);
   data = inject(MAT_DIALOG_DATA);
 

@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  OnInit,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
-import { Storage } from '@angular/fire/storage';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -52,7 +22,37 @@ import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  OnInit,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-memorized',
@@ -76,6 +76,8 @@ import { StringUtils } from 'src/app/utilities/string-utils.service';
   ],
 })
 export class AddMemorizedComponent implements OnInit {
+  storage = inject(getStorage);
+  analytics = inject(getAnalytics);
   dialog = inject(MatDialog);
   router = inject(Router);
   fb = inject(FormBuilder);
@@ -85,8 +87,6 @@ export class AddMemorizedComponent implements OnInit {
   memorizedService = inject(MemorizedService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  storage = inject(Storage);
-  analytics = inject(Analytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
 
@@ -153,8 +153,17 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
+    const existingMemberIds = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMemberId').value
+    );
+    const availableMembers = this.activeMembers().filter(
+      (m) => !existingMemberIds.includes(m.id)
+    );
     return this.fb.group({
-      owedByMemberId: ['', Validators.required],
+      owedByMemberId: [
+        availableMembers.length > 0 ? availableMembers[0].id : '',
+        Validators.required,
+      ],
       assignedAmount: ['0.00', Validators.required],
       allocatedAmount: [0.0],
     });

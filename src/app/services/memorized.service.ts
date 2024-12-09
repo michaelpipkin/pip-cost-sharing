@@ -7,16 +7,16 @@ import {
   collection,
   deleteDoc,
   doc,
-  Firestore,
+  getFirestore,
   onSnapshot,
   updateDoc,
-} from '@angular/fire/firestore';
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemorizedService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
 
   memorizedExpenses = signal<Memorized[]>([]);
 

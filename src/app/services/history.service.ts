@@ -1,18 +1,18 @@
 import { inject, Injectable, signal } from '@angular/core';
+import { History } from '@models/history';
 import {
   collection,
-  Firestore,
+  getFirestore,
   onSnapshot,
   orderBy,
   query,
-} from '@angular/fire/firestore';
-import { History } from '@models/history';
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class HistoryService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
 
   groupHistory = signal<History[]>([]);
 

@@ -1,5 +1,4 @@
 import { Component, inject, Signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -12,6 +11,7 @@ import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormGroup,
@@ -28,19 +28,19 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-edit-member',
-    templateUrl: './edit-member.component.html',
-    styleUrl: './edit-member.component.scss',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatButtonModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSlideToggleModule,
-        MatTooltipModule,
-    ]
+  selector: 'app-edit-member',
+  templateUrl: './edit-member.component.html',
+  styleUrl: './edit-member.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSlideToggleModule,
+    MatTooltipModule,
+  ],
 })
 export class EditMemberComponent {
   dialogRef = inject(MatDialogRef<EditMemberComponent>);
@@ -50,7 +50,7 @@ export class EditMemberComponent {
   memberService = inject(MemberService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   data: any = inject(MAT_DIALOG_DATA);
 
   private member: Member = this.data.member;

@@ -1,21 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import { Analytics } from '@angular/fire/analytics';
-import { Storage } from '@angular/fire/storage';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -47,6 +30,23 @@ import { ClearSelectDirective } from '@shared/directives/clear-select.directive'
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { getAnalytics } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -83,6 +83,8 @@ import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
   ],
 })
 export class ExpensesComponent {
+  storage = inject(getStorage);
+  analytics = inject(getAnalytics);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -93,8 +95,6 @@ export class ExpensesComponent {
   router = inject(Router);
   loading = inject(LoadingService);
   sorter = inject(SortingService);
-  storage = inject(Storage);
-  analytics = inject(Analytics);
 
   members: Signal<Member[]> = this.memberService.groupMembers;
   categories: Signal<Category[]> = this.categoryService.groupCategories;

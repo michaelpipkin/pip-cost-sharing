@@ -1,5 +1,4 @@
 import { Component, inject, signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -9,6 +8,7 @@ import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -24,18 +24,18 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-edit-category',
-    templateUrl: './edit-category.component.html',
-    styleUrl: './edit-category.component.scss',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSlideToggleModule,
-        MatButtonModule,
-    ]
+  selector: 'app-edit-category',
+  templateUrl: './edit-category.component.html',
+  styleUrl: './edit-category.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSlideToggleModule,
+    MatButtonModule,
+  ],
 })
 export class EditCategoryComponent {
   loading = inject(LoadingService);
@@ -44,7 +44,7 @@ export class EditCategoryComponent {
   categoryService = inject(CategoryService);
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   data: { category: Category; groupId: string } = inject(MAT_DIALOG_DATA);
 
   #category = signal<Category>(this.data.category);

@@ -1,5 +1,4 @@
 import { Component, inject, Signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +8,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -17,17 +17,17 @@ import {
 } from '@angular/forms';
 
 @Component({
-    selector: 'app-join-group',
-    templateUrl: './join-group.component.html',
-    styleUrl: './join-group.component.scss',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatButtonModule,
-    ]
+  selector: 'app-join-group',
+  templateUrl: './join-group.component.html',
+  styleUrl: './join-group.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
 })
 export class JoinGroupComponent {
   dialogRef = inject(MatDialogRef<JoinGroupComponent>);
@@ -35,7 +35,7 @@ export class JoinGroupComponent {
   userService = inject(UserService);
   memberService = inject(MemberService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
 
   joinGroupForm = this.fb.group({
     groupId: ['', Validators.required],
