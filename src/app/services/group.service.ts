@@ -82,6 +82,9 @@ export class GroupService {
         this.allUserGroups.set(groups);
         if (!!this.currentGroup()) {
           await this.getGroup(this.currentGroup().id, user.id);
+          if (autoNav && this.router.url === '/') {
+            this.router.navigateByUrl('/expenses');
+          }
         } else {
           if (groups.length === 1 && groups[0].active) {
             await this.getGroup(groups[0].id, user.id).then(() => {
