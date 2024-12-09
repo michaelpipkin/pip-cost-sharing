@@ -5,12 +5,6 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -24,6 +18,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -46,6 +46,13 @@ export class GroupService {
   activeUserGroups = computed<Group[]>(() => {
     return this.allUserGroups().filter((g) => g.active);
   });
+
+  constructor() {
+    const currentGroup = localStorage.getItem('currentGroup');
+    if (currentGroup !== null) {
+      this.currentGroup.set(new Group({ ...JSON.parse(currentGroup) }));
+    }
+  }
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
     const memberQuery = query(
@@ -73,23 +80,27 @@ export class GroupService {
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.allUserGroups.set(groups);
-        if (groups.length === 1 && groups[0].active) {
-          await this.getGroup(groups[0].id, user.id).then(() => {
-            if (autoNav) {
-              autoNav = false;
-              this.router.navigateByUrl('/expenses');
-            }
-          });
-        } else if (user.defaultGroupId !== '') {
-          await this.getGroup(user.defaultGroupId, user.id).then(() => {
-            if (autoNav) {
-              autoNav = false;
-              this.router.navigateByUrl('/expenses');
-            }
-          });
+        if (!!this.currentGroup()) {
+          await this.getGroup(this.currentGroup().id, user.id);
         } else {
-          autoNav = false;
-          this.router.navigateByUrl('/groups');
+          if (groups.length === 1 && groups[0].active) {
+            await this.getGroup(groups[0].id, user.id).then(() => {
+              if (autoNav) {
+                autoNav = false;
+                this.router.navigateByUrl('/expenses');
+              }
+            });
+          } else if (user.defaultGroupId !== '') {
+            await this.getGroup(user.defaultGroupId, user.id).then(() => {
+              if (autoNav) {
+                autoNav = false;
+                this.router.navigateByUrl('/expenses');
+              }
+            });
+          } else {
+            autoNav = false;
+            this.router.navigateByUrl('/groups');
+          }
         }
       });
     });
@@ -98,12 +109,9 @@ export class GroupService {
   async getGroup(groupId: string, userId: string): Promise<void> {
     this.loading.loadingOn();
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    this.currentGroup.set(
-      new Group({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })
-    );
+    const group = new Group({ id: docSnap.id, ...docSnap.data() });
+    this.currentGroup.set(group);
+    localStorage.setItem('currentGroup', JSON.stringify(group));
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
     this.memberService.getMemberByUserId(groupId, userId);
@@ -169,6 +177,7 @@ export class GroupService {
 
   logout() {
     this.currentGroup.set(null);
+    localStorage.removeItem('currentGroup');
     this.allUserGroups.set([]);
     this.adminGroupIds.set([]);
   }

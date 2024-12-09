@@ -1,7 +1,12 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
-import { getAuth } from 'firebase/auth';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+} from 'firebase/auth';
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { GroupService } from './group.service';
 
@@ -14,27 +19,37 @@ export class UserService {
 
   fs = inject(getFirestore);
   auth = inject(getAuth);
+  analytics = inject(getAnalytics);
   router = inject(Router);
   groupService = inject(GroupService);
 
   constructor() {
-    this.auth.onAuthStateChanged((firebaseUser) => {
-      if (!!firebaseUser) {
-        this.getDefaultGroup(firebaseUser.uid).then(async (groupId: string) => {
-          const user = new User({
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            defaultGroupId: groupId,
-          });
-          this.user.set(user);
-          await this.groupService.getUserGroups(user, true);
+    setPersistence(this.auth, browserLocalPersistence)
+      .then(async () => {
+        this.auth.onAuthStateChanged((firebaseUser) => {
+          if (!!firebaseUser) {
+            this.getDefaultGroup(firebaseUser.uid).then(
+              async (groupId: string) => {
+                const user = new User({
+                  id: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  defaultGroupId: groupId,
+                });
+                this.user.set(user);
+                await this.groupService.getUserGroups(user, true);
+              }
+            );
+            return true;
+          } else {
+            this.user.set(null);
+            return false;
+          }
         });
-        return true;
-      } else {
-        this.user.set(null);
-        return false;
-      }
-    });
+      })
+      .catch((error) => {
+        console.error('Error setting persistence', error);
+        logEvent(this.analytics, 'error', { message: error.message });
+      });
   }
 
   async getDefaultGroup(userId: string): Promise<string> {
