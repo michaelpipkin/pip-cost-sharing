@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { CanActivateFn } from '@angular/router';
-import { groupGuard } from './group.guard';
+import { groupGuard } from './guards.guard';
 
 describe('groupGuardGuard', () => {
   const executeGuard: CanActivateFn = (...guardParameters) =>

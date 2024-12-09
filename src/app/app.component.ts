@@ -1,6 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, inject, OnInit, signal, Signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -10,6 +9,7 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 
@@ -34,7 +34,7 @@ export class AppComponent implements OnInit {
   userService = inject(UserService);
   groupService = inject(GroupService);
   router = inject(Router);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   breakpointObserver = inject(BreakpointObserver);
 
   isSmallScreen = signal<boolean>(false);

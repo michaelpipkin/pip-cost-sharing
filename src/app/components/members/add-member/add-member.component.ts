@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -8,30 +7,31 @@ import { Member } from '@models/member';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-add-member',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatButtonModule,
-    ],
-    templateUrl: './add-member.component.html',
-    styleUrl: './add-member.component.scss'
+  selector: 'app-add-member',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
+  templateUrl: './add-member.component.html',
+  styleUrl: './add-member.component.scss',
 })
 export class AddMemberComponent {
   dialogRef = inject(MatDialogRef<AddMemberComponent>);
@@ -40,7 +40,7 @@ export class AddMemberComponent {
   memberService = inject(MemberService);
   groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   data: any = inject(MAT_DIALOG_DATA);
 
   addMemberForm = this.fb.group({

@@ -1,21 +1,22 @@
 import { inject, Injectable, signal } from '@angular/core';
+import { History } from '@models/history';
+import { Split } from '@models/split';
 import {
+  collection,
   doc,
-  Firestore,
+  getFirestore,
   onSnapshot,
   query,
   updateDoc,
   where,
-} from '@angular/fire/firestore';
-import { History } from '@models/history';
-import { Split } from '@models/split';
-import { collection, writeBatch } from 'firebase/firestore';
+  writeBatch,
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SplitService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
 
   unpaidSplits = signal<Split[]>([]);
 

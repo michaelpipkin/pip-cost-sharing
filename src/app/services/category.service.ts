@@ -7,20 +7,20 @@ import {
   deleteDoc,
   doc,
   documentId,
-  Firestore,
   getDocs,
+  getFirestore,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
   where,
-} from '@angular/fire/firestore';
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CategoryService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
   sorter = inject(SortingService);
 
   groupCategories = signal<Category[]>([]);

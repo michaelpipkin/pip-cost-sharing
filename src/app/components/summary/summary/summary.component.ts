@@ -1,13 +1,4 @@
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -34,7 +25,16 @@ import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -66,7 +66,7 @@ export class SummaryComponent {
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
 
   categories: Signal<Category[]> = this.categoryService.groupCategories;
   allMembers: Signal<Member[]> = this.memberService.groupMembers;

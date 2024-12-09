@@ -1,6 +1,4 @@
 import { Component, inject, model, signal, Signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
-import { Auth } from '@angular/fire/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,7 +13,9 @@ import { GroupService } from '@services/group.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { environment } from 'src/environments/environment';
 import {
   FormBuilder,
@@ -26,28 +26,28 @@ import {
 } from '@angular/forms';
 
 @Component({
-    selector: 'app-profile',
-    templateUrl: './profile.component.html',
-    styleUrls: ['./profile.component.scss'],
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatFormFieldModule,
-        MatOptionModule,
-        MatSelectModule,
-        MatInputModule,
-        MatButtonModule,
-        MatIconModule,
-    ]
+  selector: 'app-profile',
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.scss'],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatOptionModule,
+    MatSelectModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+  ],
 })
 export class ProfileComponent {
+  auth = inject(getAuth);
+  analytics = inject(getAnalytics);
   fb = inject(FormBuilder);
-  auth = inject(Auth);
   userService = inject(UserService);
   groupService = inject(GroupService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
   splitService = inject(SplitService);
   expenseService = inject(ExpenseService);
 
