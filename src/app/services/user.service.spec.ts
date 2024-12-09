@@ -1,11 +1,11 @@
 import { TestBed, waitForAsync } from '@angular/core/testing';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { Auth } from '@angular/fire/auth';
-import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { provideRouter } from '@angular/router';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { GroupService } from './group.service';
 import { UserService } from './user.service';
-import { FirebaseConfig } from '../firebase.config';
+import { firebaseConfig } from '../firebase.config';
 
 // Mocks for dependencies
 class MockAuth {}
@@ -14,15 +14,14 @@ describe('UserService', () => {
   let service: UserService;
 
   beforeEach(waitForAsync(() => {
+    const app = initializeApp(firebaseConfig);
+    getFirestore(app);
+    const auth = getAuth(app);
     TestBed.configureTestingModule({
-      imports: [
-        provideFirebaseApp(() => initializeApp(FirebaseConfig)),
-        provideFirestore(() => getFirestore()),
-        provideRouter,
-      ],
+      imports: [provideRouter],
       providers: [
         UserService,
-        { provide: Auth, useClass: MockAuth }, // Provide or mock Auth
+        { provide: auth, useClass: MockAuth }, // Provide or mock Auth
         GroupService,
       ],
     }).compileComponents();

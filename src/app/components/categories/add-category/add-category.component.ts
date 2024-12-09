@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -7,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -20,17 +20,17 @@ import {
 } from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-add-category',
-    templateUrl: './add-category.component.html',
-    styleUrl: './add-category.component.scss',
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatButtonModule,
-        MatInputModule,
-    ]
+  selector: 'app-add-category',
+  templateUrl: './add-category.component.html',
+  styleUrl: './add-category.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatButtonModule,
+    MatInputModule,
+  ],
 })
 export class AddCategoryComponent {
   loading = inject(LoadingService);
@@ -38,7 +38,7 @@ export class AddCategoryComponent {
   fb = inject(FormBuilder);
   categoryService = inject(CategoryService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   groupId: string = inject(MAT_DIALOG_DATA);
 
   newCategoryForm = this.fb.group({

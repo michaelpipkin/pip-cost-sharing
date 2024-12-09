@@ -1,19 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -24,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -35,6 +21,21 @@ import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -73,6 +74,7 @@ export class HistoryComponent {
   historyService = inject(HistoryService);
   dialog = inject(MatDialog);
   sorter = inject(SortingService);
+  snackBar = inject(MatSnackBar);
 
   members: Signal<Member[]> = this.memberService.groupMembers;
   history: Signal<History[]> = this.historyService.groupHistory;
@@ -119,8 +121,21 @@ export class HistoryComponent {
 
   expandedHistory = model<History | null>(null);
 
+  columnsToDisplay: string[] = this.currentMember()?.groupAdmin
+    ? ['date', 'paidTo', 'paidBy', 'amount', 'expand', 'delete']
+    : ['date', 'paidTo', 'paidBy', 'amount', 'expand'];
+
   onExpandClick(history: History): void {
     this.expandedHistory.update((h) => (h === history ? null : history));
+  }
+
+  onDeleteClick(history: History): void {
+    this.historyService
+      .deleteHistory(this.currentGroup().id, history.id)
+      .then(() => {
+        this.expandedHistory.set(null);
+        this.snackBar.open('Payment record deleted', 'OK');
+      });
   }
 
   sortHistory(h: { active: string; direction: string }): void {

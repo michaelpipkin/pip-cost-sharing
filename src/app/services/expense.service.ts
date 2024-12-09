@@ -1,23 +1,24 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { collection, onSnapshot } from 'firebase/firestore';
 import {
+  collection,
   doc,
-  Firestore,
   getDoc,
   getDocs,
+  getFirestore,
+  onSnapshot,
   orderBy,
   query,
   where,
   writeBatch,
-} from '@angular/fire/firestore';
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExpenseService {
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
 
   groupExpenses = signal<Expense[]>([]);
 

@@ -1,5 +1,4 @@
 import { Component, inject, Signal } from '@angular/core';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +10,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -19,18 +19,18 @@ import {
 } from '@angular/forms';
 
 @Component({
-    selector: 'app-add-group',
-    templateUrl: './add-group.component.html',
-    styleUrl: './add-group.component.scss',
-    imports: [
-        FormsModule,
-        MatButtonModule,
-        MatDialogModule,
-        ReactiveFormsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSlideToggleModule,
-    ]
+  selector: 'app-add-group',
+  templateUrl: './add-group.component.html',
+  styleUrl: './add-group.component.scss',
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSlideToggleModule,
+  ],
 })
 export class AddGroupComponent {
   dialogRef = inject(MatDialogRef<AddGroupComponent>);
@@ -38,7 +38,7 @@ export class AddGroupComponent {
   userService = inject(UserService);
   groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
 
   newGroupForm = this.fb.group({
     groupName: ['', Validators.required],

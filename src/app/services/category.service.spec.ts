@@ -1,33 +1,29 @@
 import { TestBed } from '@angular/core/testing';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { FirestoreModule, provideFirestore } from '@angular/fire/firestore';
-import { FirebaseConfig } from '@app/firebase.config';
+import { firebaseConfig } from '@app/firebase.config';
+import { initializeApp } from 'firebase/app';
 import { CategoryService } from './category.service';
 import { SortingService } from './sorting.service';
-import { firestore } from '~/../firestore-setup';
 import {
-  collection,
   addDoc,
-  getDocs,
-  query,
-  where,
+  collection,
   deleteDoc,
   doc,
-} from '@angular/fire/firestore';
+  getDocs,
+  getFirestore,
+  query,
+  where,
+} from 'firebase/firestore';
+import { firestore } from '~/../firestore-setup';
 
 describe('CategoryService', () => {
   let service: CategoryService;
   const groupId = 'test-group';
 
   beforeAll(async () => {
+    const app = initializeApp(firebaseConfig);
+    const firestore = getFirestore(app);
     TestBed.configureTestingModule({
-      imports: [FirestoreModule],
-      providers: [
-        CategoryService,
-        SortingService,
-        provideFirebaseApp(() => initializeApp(FirebaseConfig)),
-        provideFirestore(() => firestore),
-      ],
+      providers: [CategoryService, SortingService],
     });
 
     service = TestBed.inject(CategoryService);

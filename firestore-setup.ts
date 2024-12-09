@@ -1,14 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { FirebaseConfig } from './src/app/firebase.config';
+import { firebaseConfig } from './src/app/firebase.config';
 import { environment } from './src/environments/environment';
 import {
-  initializeFirestore,
   connectFirestoreEmulator,
+  initializeFirestore,
 } from 'firebase/firestore';
 
 const useEmulators = environment.useEmulators;
 
-const app = initializeApp(FirebaseConfig);
+const app = initializeApp(firebaseConfig);
 const firestore = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: useEmulators ? true : false,
 });

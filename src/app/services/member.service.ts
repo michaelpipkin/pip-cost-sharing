@@ -6,16 +6,16 @@ import {
   collection,
   deleteDoc,
   doc,
-  Firestore,
   getDoc,
   getDocs,
+  getFirestore,
   limit,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
   where,
-} from '@angular/fire/firestore';
+} from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +28,7 @@ export class MemberService {
     return this.groupMembers().filter((m) => m.active);
   });
 
-  fs = inject(Firestore);
+  fs = inject(getFirestore);
   sorter = inject(SortingService);
 
   async getMemberByUserId(groupId: string, userId: string): Promise<void> {

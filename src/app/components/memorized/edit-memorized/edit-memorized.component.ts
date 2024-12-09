@@ -1,5 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -24,6 +23,7 @@ import { MemorizedService } from '@services/memorized.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
   afterNextRender,
@@ -86,7 +86,7 @@ export class EditMemorizedComponent implements OnInit {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
-  analytics = inject(Analytics);
+  analytics = inject(getAnalytics);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
 
@@ -189,8 +189,17 @@ export class EditMemorizedComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
+    const existingMemberIds = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMemberId').value
+    );
+    const availableMembers = this.memorizedMembers().filter(
+      (m) => !existingMemberIds.includes(m.id)
+    );
     return this.fb.group({
-      owedByMemberId: ['', Validators.required],
+      owedByMemberId: [
+        availableMembers.length > 0 ? availableMembers[0].id : '',
+        Validators.required,
+      ],
       assignedAmount: ['0.00', Validators.required],
       allocatedAmount: [0.0],
     });

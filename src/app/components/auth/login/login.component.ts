@@ -16,35 +16,35 @@ import {
   viewChild,
 } from '@angular/core';
 import {
-  Auth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from '@angular/fire/auth';
-import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import {
+  createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  getAuth,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from 'firebase/auth';
 
 @Component({
-    selector: 'app-login',
-    templateUrl: './login.component.html',
-    styleUrls: ['./login.component.scss'],
-    imports: [
-        FormsModule,
-        ReactiveFormsModule,
-        MatButtonModule,
-        MatIconModule,
-        MatFormFieldModule,
-        MatInputModule,
-    ]
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss'],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
 })
 export class LoginComponent {
-  auth = inject(Auth);
+  auth = inject(getAuth);
   userService = inject(UserService);
   loading = inject(LoadingService);
   router = inject(Router);
