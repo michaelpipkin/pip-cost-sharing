@@ -1,12 +1,11 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { GroupService } from '@services/group.service';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 export const groupGuard: CanActivateFn = () => {
-  const groupService = inject(GroupService);
   const router = inject(Router);
-  if (groupService.currentGroup() === null) {
+  const currentGroup = localStorage.getItem('currentGroup');
+  if (currentGroup === null) {
     router.navigate(['/groups']);
     return false;
   }
