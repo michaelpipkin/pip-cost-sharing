@@ -1,4 +1,20 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -23,21 +39,6 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -93,6 +94,12 @@ export class HistoryComponent {
   ); // 30 days ago
   endDate = model<Date | null>(null);
 
+  constructor() {
+    effect(() => {
+      this.selectedMemberId.set(this.currentMember()?.id ?? '');
+    });
+  }
+
   filteredHistory = computed<History[]>(
     (selectedMemberId = this.selectedMemberId()) => {
       var filteredHistory = this.history().filter((history: History) => {
@@ -124,9 +131,11 @@ export class HistoryComponent {
 
   expandedHistory = model<History | null>(null);
 
-  columnsToDisplay: string[] = this.currentMember()?.groupAdmin
-    ? ['date', 'paidTo', 'paidBy', 'amount', 'expand', 'delete']
-    : ['date', 'paidTo', 'paidBy', 'amount', 'expand'];
+  columnsToDisplay = computed<string[]>(() => {
+    return this.currentMember()?.groupAdmin
+      ? ['date', 'paidTo', 'paidBy', 'amount', 'expand', 'delete']
+      : ['date', 'paidTo', 'paidBy', 'amount', 'expand'];
+  });
 
   onExpandClick(history: History): void {
     this.expandedHistory.update((h) => (h === history ? null : history));
