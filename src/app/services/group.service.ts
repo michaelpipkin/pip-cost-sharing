@@ -163,6 +163,7 @@ export class GroupService {
       });
       if (this.currentGroup().id === groupId) {
         this.currentGroup.set(null);
+        localStorage.removeItem('currentGroup');
       }
     }
     return await batch
