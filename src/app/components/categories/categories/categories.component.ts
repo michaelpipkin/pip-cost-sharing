@@ -1,11 +1,13 @@
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
+import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { HelpComponent } from '@components/help/help.component';
@@ -24,29 +26,27 @@ import {
   Component,
   computed,
   inject,
+  model,
   signal,
   Signal,
-  model,
 } from '@angular/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTableModule } from '@angular/material/table';
 
 @Component({
-    selector: 'app-categories',
-    templateUrl: './categories.component.html',
-    styleUrl: './categories.component.scss',
-    imports: [
-        FormsModule,
-        MatButtonModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatIconModule,
-        MatTooltipModule,
-        MatSlideToggleModule,
-        MatTableModule,
-        MatSortModule,
-        ActiveInactivePipe,
-    ]
+  selector: 'app-categories',
+  templateUrl: './categories.component.html',
+  styleUrl: './categories.component.scss',
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatSlideToggleModule,
+    MatTableModule,
+    MatSortModule,
+    ActiveInactivePipe,
+  ],
 })
 export class CategoriesComponent {
   router = inject(Router);
