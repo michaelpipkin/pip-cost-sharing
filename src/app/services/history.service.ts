@@ -2,6 +2,8 @@ import { inject, Injectable, signal } from '@angular/core';
 import { History } from '@models/history';
 import {
   collection,
+  deleteDoc,
+  doc,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -32,5 +34,9 @@ export class HistoryService {
       ];
       this.groupHistory.set(history);
     });
+  }
+
+  async deleteHistory(groupId: string, historyId: string): Promise<void> {
+    await deleteDoc(doc(this.fs, `groups/${groupId}/history/${historyId}`));
   }
 }
