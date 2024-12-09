@@ -1,4 +1,13 @@
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -27,14 +36,6 @@ import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.co
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -191,6 +192,12 @@ export class SummaryComponent {
       return detailData;
     }
   );
+
+  constructor() {
+    effect(() => {
+      this.selectedMemberId.set(this.currentMember()?.id ?? '');
+    });
+  }
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
