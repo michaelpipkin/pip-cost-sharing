@@ -21,6 +21,8 @@ import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
 import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@shared/loading/loading.service';
 import {
   animate,
   state,
@@ -74,6 +76,7 @@ export class HistoryComponent {
   historyService = inject(HistoryService);
   dialog = inject(MatDialog);
   sorter = inject(SortingService);
+  loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
   members: Signal<Member[]> = this.memberService.groupMembers;
@@ -130,12 +133,25 @@ export class HistoryComponent {
   }
 
   onDeleteClick(history: History): void {
-    this.historyService
-      .deleteHistory(this.currentGroup().id, history.id)
-      .then(() => {
-        this.expandedHistory.set(null);
-        this.snackBar.open('Payment record deleted', 'OK');
-      });
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        operation: 'Delete',
+        target: 'this payment record',
+      },
+    };
+    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((confirm) => {
+      if (confirm) {
+        this.loading.loadingOn();
+        this.historyService
+          .deleteHistory(this.currentGroup().id, history.id)
+          .then(() => {
+            this.expandedHistory.set(null);
+            this.snackBar.open('Payment record deleted', 'OK');
+          })
+          .finally(() => this.loading.loadingOff());
+      }
+    });
   }
 
   sortHistory(h: { active: string; direction: string }): void {

@@ -22,9 +22,9 @@ import {
 } from '@components/auth/guards.guard';
 
 export const appRoutes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: '/home' },
+  { path: '', pathMatch: 'full', redirectTo: '' },
   {
-    path: 'home',
+    path: '',
     title: 'Home',
     component: HomeComponent,
   },
@@ -108,5 +108,5 @@ export const appRoutes: Routes = [
     component: ProfileComponent,
     canActivate: [authGuard],
   },
-  { path: '**', redirectTo: '/home' },
+  { path: '**', redirectTo: '' },
 ];
