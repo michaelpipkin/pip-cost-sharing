@@ -160,7 +160,7 @@
         <td
           mat-cell
           *matCellDef="let history"
-          [colSpan]="columnsToDisplay.length"
+          [colSpan]="columnsToDisplay().length"
         >
           <div
             [@detailExpand]="
@@ -205,10 +205,13 @@
           </div>
         </td>
       </ng-container>
-      <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+      <tr
+        mat-header-row
+        *matHeaderRowDef="columnsToDisplay(); sticky: true"
+      ></tr>
       <tr
         mat-row
-        *matRowDef="let history; columns: columnsToDisplay"
+        *matRowDef="let history; columns: columnsToDisplay()"
         class="history-row"
         [class.expanded-row]="expandedHistory() === history"
       ></tr>
@@ -218,7 +221,7 @@
         class="detail-row"
       ></tr>
       <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+        <td class="mat-cell" [colSpan]="columnsToDisplay().length">
           No history found for search criteria.
         </td>
       </tr>
