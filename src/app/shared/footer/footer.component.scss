@@ -10,23 +10,16 @@
   padding: 4px;
   display: grid;
   grid-template-columns: max-content auto;
+  align-content: center;
   a {
     color: white;
     text-decoration: none;
   }
 }
 
-.footer-left {
-  display: grid;
-  justify-items: start;
-  align-items: center;
-}
-
 .footer-right {
   display: grid;
-  grid-auto-flow: column;
   justify-items: end;
-  align-items: center;
 }
 
 .no-emulation {

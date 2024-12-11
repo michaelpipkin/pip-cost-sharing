@@ -8,7 +8,7 @@
   </div>
   <h4>{{ currentGroup()?.name }}</h4>
   <div class="filters-1 mb-2">
-    <mat-form-field>
+    <mat-form-field class="clearable-select">
       <mat-label>Filter by payee</mat-label>
       <mat-select #memberSelect name="member" [(ngModel)]="selectedMemberId">
         @for (member of members(); track member.id) {
@@ -17,7 +17,7 @@
       </mat-select>
       @if (selectedMemberId() !== '') {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
@@ -27,7 +27,10 @@
         </button>
       }
     </mat-form-field>
-    <mat-form-field [class.hidden]="categories().length === 1">
+    <mat-form-field
+      class="clearable-select"
+      [class.hidden]="categories().length === 1"
+    >
       <mat-label>Filter by category</mat-label>
       <mat-select
         #categorySelect
@@ -40,7 +43,7 @@
       </mat-select>
       @if (selectedCategoryId() !== '') {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
@@ -67,13 +70,14 @@
         [(ngModel)]="startDate"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="startDatepicker"
-      ></mat-datepicker-toggle>
-      @if (!!startDate()) {
+      @if (!startDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="startDatepicker"
+        ></mat-datepicker-toggle>
+      } @else {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
@@ -88,13 +92,15 @@
       <mat-label>End date</mat-label>
       <input matInput [matDatepicker]="endDatePicker" [(ngModel)]="endDate" />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="endDatePicker"
-      ></mat-datepicker-toggle>
+      @if (!endDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="endDatePicker"
+        ></mat-datepicker-toggle>
+      }
       @if (!!endDate()) {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"

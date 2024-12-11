@@ -30,13 +30,14 @@
         [matDatepicker]="startDatepicker"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="startDatepicker"
-      ></mat-datepicker-toggle>
-      @if (!!startDate()) {
+      @if (!startDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="startDatepicker"
+        ></mat-datepicker-toggle>
+      } @else {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
@@ -51,13 +52,14 @@
       <mat-label>End date</mat-label>
       <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="endDatePicker"
-      ></mat-datepicker-toggle>
-      @if (!!endDate()) {
+      @if (!endDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="endDatePicker"
+        ></mat-datepicker-toggle>
+      } @else {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
