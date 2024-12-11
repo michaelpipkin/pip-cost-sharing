@@ -31,13 +31,14 @@
         (dateChange)="resetHistoryTable()"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="startDatepicker"
-      ></mat-datepicker-toggle>
-      @if (!!startDate()) {
+      @if (!startDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="startDatepicker"
+        ></mat-datepicker-toggle>
+      } @else {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"
@@ -57,13 +58,14 @@
         (dateChange)="resetHistoryTable()"
       />
       <mat-hint>MM/DD/YYYY</mat-hint>
-      <mat-datepicker-toggle
-        matIconSuffix
-        [for]="endDatePicker"
-      ></mat-datepicker-toggle>
-      @if (!!endDate()) {
+      @if (!endDate()) {
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="endDatePicker"
+        ></mat-datepicker-toggle>
+      } @else {
         <button
-          matSuffix
+          matIconSuffix
           tabindex="-1"
           mat-icon-button
           aria-label="Clear"

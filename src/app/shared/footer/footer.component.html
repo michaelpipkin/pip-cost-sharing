@@ -1,5 +1,5 @@
 <div class="footer" [class.no-emulation]="!production() && !emulators()">
-  <div class="footer-left">
+  <div>
     <span>
       &copy; {{ currentYear() }} -
       <a
@@ -16,10 +16,11 @@
       } @else {
         <span>*** DEV :: USING PRODUCTION DATA ***</span>
       }
+    } @else {
+      <span>
+        Version {{ version() }}&nbsp;|&nbsp;Build Date:
+        {{ buildDate() | date: 'yyyy-MM-dd' }}
+      </span>
     }
-    <span>
-      Version {{ version() }}&nbsp;|&nbsp;Build Date:
-      {{ buildDate() | date: 'yyyy-MM-dd' }}
-    </span>
   </div>
 </div>
