@@ -42,6 +42,7 @@
       matSort
       [dataSource]="filteredMembers()"
       (matSortChange)="sortMembers($event)"
+      class="static-table"
     >
       @let columnsToDisplay =
         ['displayName', 'email', 'send', 'active', 'groupAdmin'];
