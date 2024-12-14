@@ -128,6 +128,7 @@
       [dataSource]="filteredExpenses()"
       (matSortChange)="sortExpenses($event)"
       multiTemplateDataRows
+      class="expandable-table"
     >
       @let columnsToDisplay =
         [
@@ -239,7 +240,7 @@
             "
             class="detail-table-container"
           >
-            <table mat-table [dataSource]="expense.splits">
+            <table mat-table [dataSource]="expense.splits" class="static-table">
               @let splitColumnsToDisplay = ['owedBy', 'amount', 'paid', 'mark'];
               <ng-container matColumnDef="id">
                 <th mat-header-cell *matHeaderCellDef>Id</th>
@@ -310,7 +311,7 @@
       <tr
         mat-row
         *matRowDef="let expense; columns: columnsToDisplay"
-        class="expense-row clickable-row"
+        class="expense-row clickable-row expandable-row"
         [class.expanded-row]="expandedExpense() === expense"
         (click)="onRowClick(expense)"
       ></tr>
