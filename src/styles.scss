@@ -416,19 +416,10 @@ input.number-right::-webkit-inner-spin-button {
   transform: scale(0.8) !important;
 }
 
-mat-form-field.clearable-select {
-  position: relative;
-
-  mat-select:not(.mat-mdc-select-empty) {
-    width: calc(100% - 30px);
-  }
-
-  button[matIconSuffix] {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-  }
+.clearable:has(.mat-mdc-form-field-icon-suffix) {
+  width: calc(100%);
+  margin-left: -12px;
+  margin-right: -12px;
 }
 
 .clickable {

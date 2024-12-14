@@ -8,7 +8,7 @@
   </div>
   <h4>{{ currentGroup()?.name }}</h4>
   <div class="filters">
-    <mat-form-field>
+    <mat-form-field class="clearable">
       <mat-label>Search by name</mat-label>
       <input matInput [(ngModel)]="nameFilter" />
       @if (nameFilter() !== '') {
