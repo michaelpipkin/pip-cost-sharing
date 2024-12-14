@@ -115,29 +115,6 @@
           {{ history.totalPaid | currency }}
         </td>
       </ng-container>
-      <ng-container matColumnDef="expand">
-        <th
-          mat-header-cell
-          *matHeaderCellDef
-          aria-label="row actions"
-          class="cell-center"
-        >
-          Details
-        </th>
-        <td mat-cell *matCellDef="let history" class="cell-center">
-          <button
-            mat-icon-button
-            aria-label="expand row"
-            (click)="onExpandClick(history)"
-          >
-            @if (expandedHistory() === history) {
-              <mat-icon>keyboard_arrow_up</mat-icon>
-            } @else {
-              <mat-icon>keyboard_arrow_down</mat-icon>
-            }
-          </button>
-        </td>
-      </ng-container>
       <ng-container matColumnDef="delete">
         <th
           mat-header-cell
@@ -168,18 +145,10 @@
             [@detailExpand]="
               history == expandedHistory() ? 'expanded' : 'collapsed'
             "
+            class="detail-table-container"
           >
-            <table
-              mat-table
-              [dataSource]="history.lineItems"
-              class="detail-table"
-            >
-              @let detailColumnsToDisplay =
-                ['empty1', 'category', 'amount', 'empty2'];
-              <ng-container matColumnDef="empty1">
-                <th mat-header-cell *matHeaderCellDef colspan="2"></th>
-                <td mat-cell *matCellDef="let split" colspan="2"></td>
-              </ng-container>
+            <table mat-table [dataSource]="history.lineItems">
+              @let detailColumnsToDisplay = ['category', 'amount'];
               <ng-container matColumnDef="category">
                 <th mat-header-cell *matHeaderCellDef colspan="2">Category</th>
                 <td mat-cell *matCellDef="let lineItem" colspan="2">
@@ -193,10 +162,6 @@
                 <td mat-cell *matCellDef="let lineItem" class="cell-right">
                   {{ lineItem.amount | currency }}
                 </td>
-              </ng-container>
-              <ng-container matColumnDef="empty2">
-                <th mat-header-cell *matHeaderCellDef></th>
-                <td mat-cell *matCellDef="let split"></td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="detailColumnsToDisplay"></tr>
               <tr
@@ -214,8 +179,9 @@
       <tr
         mat-row
         *matRowDef="let history; columns: columnsToDisplay()"
-        class="history-row"
+        class="history-row clickable-row"
         [class.expanded-row]="expandedHistory() === history"
+        (click)="onExpandClick(history)"
       ></tr>
       <tr
         mat-row

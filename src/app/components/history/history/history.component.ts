@@ -133,8 +133,8 @@ export class HistoryComponent {
 
   columnsToDisplay = computed<string[]>(() => {
     return this.currentMember()?.groupAdmin
-      ? ['date', 'paidTo', 'paidBy', 'amount', 'expand', 'delete']
-      : ['date', 'paidTo', 'paidBy', 'amount', 'expand'];
+      ? ['date', 'paidTo', 'paidBy', 'amount', 'delete']
+      : ['date', 'paidTo', 'paidBy', 'amount'];
   });
 
   onExpandClick(history: History): void {
