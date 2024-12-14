@@ -74,7 +74,7 @@
 </div>
 <div class="table-container">
   <div class="scrollable-table mat-elevation-z8">
-    <table mat-table [dataSource]="summaryData()">
+    <table mat-table [dataSource]="summaryData()" class="static-table">
       @let summaryColumnsToDisplay = ['owedTo', 'owedBy', 'amount', 'markPaid'];
       <ng-container matColumnDef="owedTo">
         <th mat-header-cell *matHeaderCellDef>Owed To</th>
@@ -141,7 +141,7 @@
 ) {
   <div class="table-container">
     <div class="scrollable-table mat-elevation-z8">
-      <table mat-table [dataSource]="detailData()">
+      <table mat-table [dataSource]="detailData()" class="static-table">
         @let detailColumnsToDisplay = ['category', 'amount'];
         <ng-container matColumnDef="category">
           <th mat-header-cell *matHeaderCellDef>Category</th>

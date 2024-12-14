@@ -117,11 +117,11 @@ mat-slide-toggle {
   color: mat.get-theme-color(theme.$light-theme, error, 100) !important;
 }
 
-.mat-mdc-header-row,
-.mat-mdc-footer-row {
-  background-color: #dcdcdc !important;
-  font-weight: bold !important;
-}
+// .mat-mdc-header-row,
+// .mat-mdc-footer-row {
+//   background-color: #dcdcdc !important;
+//   font-weight: bold !important;
+// }
 
 .google-g {
   border: none;
@@ -319,11 +319,38 @@ mat-icon.small-icon-button {
 }
 
 .clickable-row:hover {
-  background-color: lightgray;
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    secondary,
+    80
+  ) !important;
   cursor: pointer;
 }
 
-.allocated-amount {
+table tbody tr td {
+  border-bottom-width: 0 !important;
+}
+
+table thead tr,
+tfoot tr {
+  background-color: mat.get-theme-color(
+    theme.$light-theme,
+    primary,
+    40
+  ) !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.static-table tbody tr:nth-child(odd) {
+  background-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
+}
+
+.expandable-table tbody .expandable-row:nth-child(4n + 1) {
+  background-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
+}
+
+table .allocated-amount {
   font-size: 1.1em;
   padding: 0 8px;
 }

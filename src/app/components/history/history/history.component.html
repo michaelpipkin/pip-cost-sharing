@@ -86,6 +86,7 @@
       [dataSource]="filteredHistory()"
       (matSortChange)="sortHistory($event)"
       multiTemplateDataRows
+      class="expandable-table"
     >
       <ng-container matColumnDef="id">
         <th mat-header-cell *matHeaderCellDef>Id</th>
@@ -147,7 +148,11 @@
             "
             class="detail-table-container"
           >
-            <table mat-table [dataSource]="history.lineItems">
+            <table
+              mat-table
+              [dataSource]="history.lineItems"
+              class="static-table"
+            >
               @let detailColumnsToDisplay = ['category', 'amount'];
               <ng-container matColumnDef="category">
                 <th mat-header-cell *matHeaderCellDef colspan="2">Category</th>
@@ -179,7 +184,7 @@
       <tr
         mat-row
         *matRowDef="let history; columns: columnsToDisplay()"
-        class="history-row clickable-row"
+        class="history-row clickable-row expandable-row"
         [class.expanded-row]="expandedHistory() === history"
         (click)="onExpandClick(history)"
       ></tr>
