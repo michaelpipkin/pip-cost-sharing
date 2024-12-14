@@ -8,7 +8,7 @@
   </div>
   <h4>{{ currentGroup()?.name }}</h4>
   <div class="filters">
-    <mat-form-field class="clearable-select">
+    <mat-form-field class="clearable">
       <mat-label>Filter by payee</mat-label>
       <mat-select #memberSelect name="member" [(ngModel)]="selectedMemberId">
         @for (member of activeMembers(); track member.id) {
@@ -28,7 +28,7 @@
       }
     </mat-form-field>
     <mat-form-field
-      class="clearable-select"
+      class="clearable"
       [class.hidden]="categories().length === 1"
     >
       <mat-label>Filter by category</mat-label>
