@@ -8,29 +8,29 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { HelpComponent } from '@components/help/help.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { AddGroupComponent } from '../add-group/add-group.component';
+import { GroupsHelpComponent } from '../groups-help/groups-help.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
 
 @Component({
-    selector: 'app-groups',
-    templateUrl: './groups.component.html',
-    styleUrls: ['./groups.component.scss'],
-    imports: [
-        FormsModule,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatOptionModule,
-        MatTooltipModule,
-        MatIconModule,
-        MatButtonModule,
-    ]
+  selector: 'app-groups',
+  templateUrl: './groups.component.html',
+  styleUrls: ['./groups.component.scss'],
+  imports: [
+    FormsModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatTooltipModule,
+    MatIconModule,
+    MatButtonModule,
+  ],
 })
 export class GroupsComponent {
   userService = inject(UserService);
@@ -63,18 +63,6 @@ export class GroupsComponent {
     });
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'groups',
-        title: 'Groups Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
-
   onSelectGroup(e: MatSelectChange): void {
     this.groupService.getGroup(e.value, this.#user().id);
   }
@@ -96,5 +84,13 @@ export class GroupsComponent {
         this.snackBar.open(`Group updated`, 'OK');
       }
     });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(GroupsHelpComponent, dialogConfig);
   }
 }

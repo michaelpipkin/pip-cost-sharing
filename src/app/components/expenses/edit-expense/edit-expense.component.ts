@@ -1,35 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { FirebaseError } from 'firebase/app';
-import * as firestore from 'firebase/firestore';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { Url } from 'url';
 import {
   afterNextRender,
   afterRender,
@@ -55,11 +24,39 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { FirebaseError } from 'firebase/app';
+import * as firestore from 'firebase/firestore';
 import {
   deleteObject,
   getDownloadURL,
@@ -67,6 +64,9 @@ import {
   ref,
   uploadBytes,
 } from 'firebase/storage';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { Url } from 'url';
+import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 
 @Component({
   selector: 'app-edit-expense',
@@ -505,13 +505,9 @@ export class EditExpenseComponent implements OnInit {
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'add-edit-expense',
-        title: 'Add/Edit Expense Help',
-      },
       disableClose: false,
       maxWidth: '80vw',
     };
-    this.dialog.open(HelpComponent, dialogConfig);
+    this.dialog.open(AddEditExpenseHelpComponent, dialogConfig);
   }
 }

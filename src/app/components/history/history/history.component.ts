@@ -29,7 +29,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { HelpComponent } from '@components/help/help.component';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -39,6 +38,7 @@ import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { HistoryHelpComponent } from '../history-help/history-help.component';
 
 @Component({
   selector: 'app-history',
@@ -179,13 +179,9 @@ export class HistoryComponent {
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'history',
-        title: 'History Help',
-      },
       disableClose: false,
       maxWidth: '80vw',
     };
-    this.dialog.open(HelpComponent, dialogConfig);
+    this.dialog.open(HistoryHelpComponent, dialogConfig);
   }
 }

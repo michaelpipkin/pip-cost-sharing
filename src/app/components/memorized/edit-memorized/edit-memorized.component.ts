@@ -1,30 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
   afterNextRender,
   afterRender,
@@ -49,11 +23,37 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 @Component({
   selector: 'app-edit-memorized',
   imports: [
@@ -408,13 +408,9 @@ export class EditMemorizedComponent implements OnInit {
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'add-edit-memorized',
-        title: 'Memorized Expense Help',
-      },
       disableClose: false,
       maxWidth: '80vw',
     };
-    this.dialog.open(HelpComponent, dialogConfig);
+    this.dialog.open(AddEditMemorizedHelpComponent, dialogConfig);
   }
 }
