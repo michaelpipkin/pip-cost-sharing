@@ -74,7 +74,12 @@
 </div>
 <div class="table-container">
   <div class="scrollable-table mat-elevation-z8">
-    <table mat-table [dataSource]="summaryData()" class="static-table">
+    <table
+      mat-table
+      [dataSource]="summaryData()"
+      multiTemplateDataRows
+      class="expandable-table"
+    >
       @let summaryColumnsToDisplay = ['owedTo', 'owedBy', 'amount', 'markPaid'];
       <ng-container matColumnDef="owedTo">
         <th mat-header-cell *matHeaderCellDef>Owed To</th>
@@ -98,8 +103,8 @@
         <th mat-header-cell *matHeaderCellDef>Mark Paid</th>
         <td mat-cell *matCellDef="let amountDue" class="cell-center">
           <button
-            mat-mini-fab
             class="btn btn-success"
+            mat-mini-fab
             (click)="
               markExpensesPaid(
                 amountDue.owedToMemberId,
@@ -107,13 +112,50 @@
               )
             "
             title="
-                Mark expenses owed between {{
+                Mark expenses owed to {{
               getMemberName(amountDue.owedToMemberId)
-            }} and {{ getMemberName(amountDue.owedByMemberId) }} as paid.
+            }} from {{ getMemberName(amountDue.owedByMemberId) }} as paid.
               "
           >
             <mat-icon>paid</mat-icon>
           </button>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="expandedDetail">
+        <td
+          mat-cell
+          *matCellDef="let amountDue"
+          [colSpan]="summaryColumnsToDisplay.length"
+        >
+          <div
+            [@detailExpand]="
+              amountDue == expandedDetail() ? 'expanded' : 'collapsed'
+            "
+            class="detail-table-container"
+          >
+            <table mat-table [dataSource]="detailData()" class="static-table">
+              @let detailColumnsToDisplay = ['category', 'amount'];
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef>Category</th>
+                <td mat-cell *matCellDef="let lineItem">
+                  {{ getCategoryName(lineItem.categoryId) }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef class="cell-right">
+                  Amount
+                </th>
+                <td mat-cell *matCellDef="let lineItem" class="cell-right">
+                  {{ lineItem.amount | currency }}
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="detailColumnsToDisplay"></tr>
+              <tr
+                mat-row
+                *matRowDef="let lineItem; columns: detailColumnsToDisplay"
+              ></tr>
+            </table>
+          </div>
         </td>
       </ng-container>
       <tr
@@ -123,10 +165,14 @@
       <tr
         mat-row
         *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
+        class="summary-row clickable-row expandable-row"
         [class.clickable-row]="categories().length > 1"
-        (click)="
-          onRowSelect(amountDue.owedToMemberId, amountDue.owedByMemberId)
-        "
+        (click)="onExpandClick(amountDue)"
+      ></tr>
+      <tr
+        mat-row
+        *matRowDef="let lineItem; columns: ['expandedDetail']"
+        class="detail-row"
       ></tr>
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
@@ -136,39 +182,3 @@
     </table>
   </div>
 </div>
-@if (
-  summaryData().length > 0 && owedToMemberId() !== '' && owedByMemberId() !== ''
-) {
-  <div class="table-container">
-    <div class="scrollable-table mat-elevation-z8">
-      <table mat-table [dataSource]="detailData()" class="static-table">
-        @let detailColumnsToDisplay = ['category', 'amount'];
-        <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef>Category</th>
-          <td mat-cell *matCellDef="let amountDue">
-            {{ getCategoryName(amountDue.categoryId) }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="amount">
-          <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
-          <td mat-cell *matCellDef="let amountDue" class="cell-right">
-            {{ amountDue.amount | currency }}
-          </td>
-        </ng-container>
-        <tr
-          mat-header-row
-          *matHeaderRowDef="detailColumnsToDisplay; sticky: true"
-        ></tr>
-        <tr
-          mat-row
-          *matRowDef="let amountDue; columns: detailColumnsToDisplay"
-        ></tr>
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" [colSpan]="detailColumnsToDisplay.length">
-            Click a row above to view details.
-          </td>
-        </tr>
-      </table>
-    </div>
-  </div>
-}
