@@ -1,3 +1,11 @@
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -10,7 +18,6 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -21,15 +28,8 @@ import { SortingService } from '@services/sorting.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { AddCategoryComponent } from '../add-category/add-category.component';
+import { CategoriesHelpComponent } from '../categories-help/categories-help.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-categories',
@@ -85,18 +85,6 @@ export class CategoriesComponent {
     return categories;
   });
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'categories',
-        title: 'Categories Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
-
   sortCategories(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
     this.sortAsc.set(e.direction == 'asc');
@@ -129,5 +117,13 @@ export class CategoriesComponent {
         }
       });
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(CategoriesHelpComponent, dialogConfig);
   }
 }

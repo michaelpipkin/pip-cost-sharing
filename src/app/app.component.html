@@ -76,22 +76,24 @@
       }
       <div class="account links">
         @if (isLoggedIn()) {
-          <a
-            mat-button
-            routerLink="profile"
-            aria-label="profile"
-            title="Profile"
-          >
+          <a routerLink="help" aria-label="help" matTooltip="Help">
+            <mat-icon fontSet="material-symbols-outlined">help</mat-icon>
+          </a>
+          <a routerLink="profile" aria-label="profile" matTooltip="Profile">
             <mat-icon fontSet="material-symbols-outlined"
               >account_circle</mat-icon
-            >&nbsp;Profile
+            >
           </a>
-          <a mat-button (click)="logout()" aria-label="log out" title="Log out">
-            <mat-icon fontSet="material-symbols-outlined">logout</mat-icon
-            >&nbsp;Log out
+          <a (click)="logout()" aria-label="log out" matTooltip="Log out">
+            <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>
           </a>
         } @else {
-          <a mat-button routerLink="login">
+          <a
+            mat-button
+            routerLink="login"
+            aria-label="log in"
+            matTooltip="Log in"
+          >
             <mat-icon fontSet="material-symbols-outlined">login</mat-icon>
             <span>Log in</span>
           </a>
@@ -165,6 +167,9 @@
           >&nbsp;History
         </a>
       }
+      <a mat-menu-item routerLink="help" aria-label="help" title="Help">
+        <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
+      </a>
       <a
         mat-menu-item
         routerLink="profile"

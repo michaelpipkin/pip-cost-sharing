@@ -21,7 +21,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
 import { AmountDue } from '@models/amount-due';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -36,6 +35,7 @@ import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.co
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
+import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 
 @Component({
   selector: 'app-summary',
@@ -199,18 +199,6 @@ export class SummaryComponent {
     });
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'summary',
-        title: 'Summary Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
-
   clearOwedByToMemberIds(): void {
     this.owedToMemberId.set('');
     this.owedByMemberId.set('');
@@ -307,5 +295,13 @@ export class SummaryComponent {
           .finally(() => this.loading.loadingOff());
       }
     });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(SummaryHelpComponent, dialogConfig);
   }
 }

@@ -1,4 +1,19 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -14,7 +29,6 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
@@ -32,21 +46,7 @@ import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
+import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
 
 @Component({
   selector: 'app-expenses',
@@ -159,18 +159,6 @@ export class ExpensesComponent {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'expenses',
-        title: 'Expenses Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
-
   sortExpenses(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
     this.sortAsc.set(e.direction == 'asc');
@@ -203,5 +191,13 @@ export class ExpensesComponent {
     this.splitService
       .updateSplit(this.currentGroup().id, split.id, changes)
       .then(() => this.loading.loadingOff());
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(ExpensesHelpComponent, dialogConfig);
   }
 }

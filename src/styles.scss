@@ -239,6 +239,37 @@ mat-dialog-actions {
   }
 }
 
+.help-dialog-header {
+  display: grid;
+  grid-template-columns: auto max-content;
+  align-items: center;
+  padding-top: 12px;
+  padding-right: 12px;
+}
+
+.help-header-text {
+  display: grid;
+  justify-items: start;
+  align-items: center;
+  margin-left: 24px;
+}
+
+.help-header-close {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  cursor: pointer;
+}
+
+.help-dialog-content {
+  padding-top: 0;
+
+  p {
+    line-height: 1.3em;
+    font-size: 1.2em;
+  }
+}
+
 mat-icon.mat-icon-button {
   color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
   font-size: 30px;
