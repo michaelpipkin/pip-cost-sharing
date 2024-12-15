@@ -27,6 +27,12 @@ mat-icon {
 .account {
   margin-left: auto;
   margin-right: 0;
+  display: grid;
+  grid-auto-flow: column;
+
+  a {
+    padding-top: 0.5em;
+  }
 }
 
 #title {

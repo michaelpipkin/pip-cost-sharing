@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -26,6 +27,7 @@ import { LoadingComponent } from './shared/loading/loading.component';
     LoadingComponent,
     RouterOutlet,
     FooterComponent,
+    MatTooltipModule,
   ],
 })
 export class AppComponent implements OnInit {
@@ -49,7 +51,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.breakpointObserver
-      .observe('(max-width: 1059px)')
+      .observe('(max-width: 1009px)')
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });
@@ -57,11 +59,5 @@ export class AppComponent implements OnInit {
 
   logout(): void {
     this.userService.logout();
-  }
-
-  menuClick(navBar: HTMLDivElement, hamburger: HTMLButtonElement): void {
-    if (navBar.classList.contains('show')) {
-      hamburger.click();
-    }
   }
 }

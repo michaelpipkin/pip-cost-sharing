@@ -1,4 +1,9 @@
 import { Routes } from '@angular/router';
+import {
+  authGuard,
+  groupGuard,
+  loggedInGuard,
+} from '@components/auth/guards.guard';
 import { LoginComponent } from '@components/auth/login/login.component';
 import { ProfileComponent } from '@components/auth/profile/profile.component';
 import { CategoriesComponent } from '@components/categories/categories/categories.component';
@@ -7,6 +12,7 @@ import { editExpenseResolver } from '@components/expenses/edit-expense.resolver'
 import { EditExpenseComponent } from '@components/expenses/edit-expense/edit-expense.component';
 import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
 import { GroupsComponent } from '@components/groups/groups/groups.component';
+import { HelpComponent } from '@components/help/help.component';
 import { HistoryComponent } from '@components/history/history/history.component';
 import { HomeComponent } from '@components/home/home.component';
 import { MembersComponent } from '@components/members/members/members.component';
@@ -15,11 +21,6 @@ import { editMemorizedResolver } from '@components/memorized/edit-memorized.reso
 import { EditMemorizedComponent } from '@components/memorized/edit-memorized/edit-memorized.component';
 import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
 import { SummaryComponent } from '@components/summary/summary/summary.component';
-import {
-  authGuard,
-  groupGuard,
-  loggedInGuard,
-} from '@components/auth/guards.guard';
 
 export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: '' },
@@ -107,6 +108,11 @@ export const appRoutes: Routes = [
     title: 'Profile',
     component: ProfileComponent,
     canActivate: [authGuard],
+  },
+  {
+    path: 'help',
+    title: 'Help',
+    component: HelpComponent,
   },
   { path: '**', redirectTo: '' },
 ];

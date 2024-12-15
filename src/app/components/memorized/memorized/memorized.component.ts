@@ -1,3 +1,10 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +18,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -24,13 +30,7 @@ import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
+import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
 
 @Component({
   selector: 'app-memorized',
@@ -101,18 +101,6 @@ export class MemorizedComponent {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
 
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'memorized',
-        title: 'Memorized Expenses Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
-
   getMemberName(memberId: string): string {
     const member = this.activeMembers().find((m: Member) => m.id === memberId);
     return member?.displayName ?? '';
@@ -136,5 +124,13 @@ export class MemorizedComponent {
     this.router.navigate(['/add-expense'], {
       state: { memorized: true, expense: expense },
     });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(MemorizedHelpComponent, dialogConfig);
   }
 }

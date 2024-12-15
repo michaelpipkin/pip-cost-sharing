@@ -1,3 +1,11 @@
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -10,7 +18,6 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import { HelpComponent } from '@components/help/help.component';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -23,33 +30,25 @@ import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-
+import { MembersHelpComponent } from '../members-help/members-help.component';
 
 @Component({
-    selector: 'app-members',
-    templateUrl: './members.component.html',
-    styleUrl: './members.component.scss',
-    imports: [
-        FormsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatButtonModule,
-        MatIconModule,
-        MatTooltipModule,
-        MatSlideToggleModule,
-        MatTableModule,
-        MatSortModule,
-        YesNoPipe,
-        ActiveInactivePipe,
-    ]
+  selector: 'app-members',
+  templateUrl: './members.component.html',
+  styleUrl: './members.component.scss',
+  imports: [
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatSlideToggleModule,
+    MatTableModule,
+    MatSortModule,
+    YesNoPipe,
+    ActiveInactivePipe,
+  ],
 })
 export class MembersComponent {
   router = inject(Router);
@@ -84,18 +83,6 @@ export class MembersComponent {
     }
     return members;
   });
-
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        page: 'members',
-        title: 'Members Help',
-      },
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(HelpComponent, dialogConfig);
-  }
 
   sortMembers(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
@@ -133,5 +120,13 @@ export class MembersComponent {
         }
       });
     }
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(MembersHelpComponent, dialogConfig);
   }
 }
