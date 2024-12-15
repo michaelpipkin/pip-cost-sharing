@@ -94,12 +94,6 @@ export class HistoryComponent {
   ); // 30 days ago
   endDate = model<Date | null>(null);
 
-  constructor() {
-    effect(() => {
-      this.selectedMemberId.set(this.currentMember()?.id ?? '');
-    });
-  }
-
   filteredHistory = computed<History[]>(
     (selectedMemberId = this.selectedMemberId()) => {
       var filteredHistory = this.history().filter((history: History) => {
@@ -136,6 +130,12 @@ export class HistoryComponent {
       ? ['date', 'paidTo', 'paidBy', 'amount', 'delete']
       : ['date', 'paidTo', 'paidBy', 'amount'];
   });
+
+  constructor() {
+    effect(() => {
+      this.selectedMemberId.set(this.currentMember()?.id ?? '');
+    });
+  }
 
   onExpandClick(history: History): void {
     this.expandedHistory.update((h) => (h === history ? null : history));

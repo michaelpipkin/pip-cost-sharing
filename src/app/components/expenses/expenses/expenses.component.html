@@ -311,7 +311,7 @@
       <tr
         mat-row
         *matRowDef="let expense; columns: columnsToDisplay"
-        class="expense-row clickable-row expandable-row"
+        class="summary-row clickable-row expandable-row"
         [class.expanded-row]="expandedExpense() === expense"
         (click)="onRowClick(expense)"
       ></tr>
@@ -319,7 +319,7 @@
       <tr
         mat-row
         *matRowDef="let split; columns: ['expandedDetail']"
-        class="split-row"
+        class="detail-row"
       ></tr>
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell" [colSpan]="columnsToDisplay.length">

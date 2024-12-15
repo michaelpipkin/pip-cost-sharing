@@ -1,3 +1,10 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
 import {
   Component,
@@ -41,6 +48,16 @@ import { SummaryHelpComponent } from '../summary-help/summary-help.component';
   selector: 'app-summary',
   templateUrl: './summary.component.html',
   styleUrl: './summary.component.scss',
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed,void', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+      transition(
+        'expanded <=> collapsed',
+        animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')
+      ),
+    ]),
+  ],
   imports: [
     FormsModule,
     MatFormFieldModule,
@@ -70,7 +87,7 @@ export class SummaryComponent {
   analytics = inject(getAnalytics);
 
   categories: Signal<Category[]> = this.categoryService.groupCategories;
-  allMembers: Signal<Member[]> = this.memberService.groupMembers;
+  members: Signal<Member[]> = this.memberService.groupMembers;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
   currentMember: Signal<Member> = this.memberService.currentMember;
   splits: Signal<Split[]> = this.splitService.unpaidSplits;
@@ -116,7 +133,7 @@ export class SummaryComponent {
             s.paidByMemberId == selectedMemberId
           );
         });
-        this.allMembers()
+        this.members()
           .filter((m) => m.id != selectedMemberId)
           .forEach((member) => {
             const owedToSelected = memberSplits
@@ -193,19 +210,22 @@ export class SummaryComponent {
     }
   );
 
+  expandedDetail = model<AmountDue | null>(null);
+
   constructor() {
     effect(() => {
       this.selectedMemberId.set(this.currentMember()?.id ?? '');
     });
   }
 
-  clearOwedByToMemberIds(): void {
-    this.owedToMemberId.set('');
-    this.owedByMemberId.set('');
+  onExpandClick(amountDue: AmountDue): void {
+    this.expandedDetail.update((d) => (d === amountDue ? null : amountDue));
+    this.owedByMemberId.set(amountDue.owedByMemberId);
+    this.owedToMemberId.set(amountDue.owedToMemberId);
   }
 
   getMemberName(memberId: string): string {
-    const member = this.allMembers().find((m) => m.id === memberId);
+    const member = this.members().find((m) => m.id === memberId);
     return member?.displayName ?? '';
   }
 
@@ -214,16 +234,8 @@ export class SummaryComponent {
     return category?.name ?? '';
   }
 
-  onRowSelect(owedToMemberId: string, owedByMemberId: string) {
-    if (this.categories().length > 1) {
-      this.owedToMemberId.set(owedToMemberId);
-      this.owedByMemberId.set(owedByMemberId);
-    }
-  }
-
   resetDetail(): void {
-    this.owedToMemberId.set('');
-    this.owedByMemberId.set('');
+    this.expandedDetail.set(null);
   }
 
   markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {

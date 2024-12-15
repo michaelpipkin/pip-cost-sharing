@@ -117,12 +117,6 @@ mat-slide-toggle {
   color: mat.get-theme-color(theme.$light-theme, error, 100) !important;
 }
 
-// .mat-mdc-header-row,
-// .mat-mdc-footer-row {
-//   background-color: #dcdcdc !important;
-//   font-weight: bold !important;
-// }
-
 .google-g {
   border: none;
   display: inline-block;
@@ -384,6 +378,22 @@ tfoot tr {
 table .allocated-amount {
   font-size: 1.1em;
   padding: 0 8px;
+}
+
+.summary-row td {
+  border-bottom-width: 0;
+}
+
+.detail-table tr th {
+  width: 25%;
+}
+
+tr.detail-row {
+  height: 0;
+}
+
+tr.detail-row:hover {
+  background-color: transparent !important;
 }
 
 .no-wrap {
