@@ -147,7 +147,11 @@
             "
             class="detail-table-container"
           >
-            <table mat-table [dataSource]="expense.splits" class="static-table">
+            <table
+              mat-table
+              [dataSource]="expense.splits"
+              class="static-table info-detail-table"
+            >
               @let splitColumnsToDisplay = ['owedBy', 'amount'];
               <ng-container matColumnDef="id">
                 <th mat-header-cell *matHeaderCellDef>Id</th>

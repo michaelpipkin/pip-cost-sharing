@@ -133,7 +133,11 @@
             "
             class="detail-table-container"
           >
-            <table mat-table [dataSource]="detailData()" class="static-table">
+            <table
+              mat-table
+              [dataSource]="detailData()"
+              class="static-table info-detail-table"
+            >
               @let detailColumnsToDisplay = ['category', 'amount'];
               <ng-container matColumnDef="category">
                 <th mat-header-cell *matHeaderCellDef>Category</th>
