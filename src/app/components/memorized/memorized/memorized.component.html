@@ -67,7 +67,7 @@
       class="expandable-table"
     >
       @let columnsToDisplay =
-        ['paidBy', 'description', 'category', 'amount', 'create', 'expand'];
+        ['paidBy', 'description', 'amount', 'create', 'expand'];
       <ng-container matColumnDef="id">
         <th mat-header-cell *matHeaderCellDef>Id</th>
         <td mat-cell *matCellDef="let expense">{{ expense.id }}</td>
@@ -79,22 +79,10 @@
         </td>
       </ng-container>
       <ng-container matColumnDef="description">
-        <th mat-header-cell *matHeaderCellDef>Description</th>
-        <td mat-cell *matCellDef="let expense">{{ expense.description }}</td>
-      </ng-container>
-      <ng-container matColumnDef="category">
-        <th
-          mat-header-cell
-          *matHeaderCellDef
-          [class.hidden]="categories().length === 1"
-        >
-          Category
-        </th>
-        <td
-          mat-cell
-          *matCellDef="let expense"
-          [class.hidden]="categories().length === 1"
-        >
+        <th mat-header-cell *matHeaderCellDef>Description<br />Category</th>
+        <td mat-cell *matCellDef="let expense">
+          {{ expense.description }}
+          <br />
           {{ getCategoryName(expense.categoryId) }}
         </td>
       </ng-container>
