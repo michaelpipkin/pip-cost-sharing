@@ -375,6 +375,12 @@ tfoot tr {
   background-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
 }
 
+table th,
+td {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
 table .allocated-amount {
   font-size: 1.1em;
   padding: 0 8px;
@@ -427,6 +433,14 @@ tr.detail-row:hover {
 
 .number-field .mat-mdc-form-field-infix {
   max-width: 100px;
+}
+
+.cell-left {
+  text-align: left !important;
+
+  .mat-sort-header-content {
+    text-align: left !important;
+  }
 }
 
 .cell-center {
