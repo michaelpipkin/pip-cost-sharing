@@ -66,8 +66,6 @@
       multiTemplateDataRows
       class="expandable-table"
     >
-      @let columnsToDisplay =
-        ['paidBy', 'description', 'amount', 'create', 'expand'];
       <ng-container matColumnDef="id">
         <th mat-header-cell *matHeaderCellDef>Id</th>
         <td mat-cell *matCellDef="let expense">{{ expense.id }}</td>
@@ -78,11 +76,23 @@
           {{ getMemberName(expense.paidByMemberId) }}
         </td>
       </ng-container>
-      <ng-container matColumnDef="description">
+      <ng-container matColumnDef="description-category">
         <th mat-header-cell *matHeaderCellDef>Description<br />Category</th>
         <td mat-cell *matCellDef="let expense">
           {{ expense.description }}
           <br />
+          {{ getCategoryName(expense.categoryId) }}
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let expense">
+          {{ expense.description }}
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Category</th>
+        <td mat-cell *matCellDef="let expense">
           {{ getCategoryName(expense.categoryId) }}
         </td>
       </ng-container>
@@ -127,7 +137,7 @@
         <td
           mat-cell
           *matCellDef="let expense"
-          [colSpan]="columnsToDisplay.length"
+          [colSpan]="columnsToDisplay().length"
         >
           <div
             [@detailExpand]="
@@ -169,10 +179,13 @@
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="columnsToDisplay; sticky: true"></tr>
+      <tr
+        mat-header-row
+        *matHeaderRowDef="columnsToDisplay(); sticky: true"
+      ></tr>
       <tr
         mat-row
-        *matRowDef="let expense; columns: columnsToDisplay"
+        *matRowDef="let expense; columns: columnsToDisplay()"
         class="summary-row clickable-row expandable-row"
         [class.expanded-row]="expandedExpense === expense"
         (click)="onRowClick(expense)"
@@ -183,7 +196,7 @@
         class="detail-row"
       ></tr>
       <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+        <td class="mat-cell" [colSpan]="columnsToDisplay().length">
           No expenses found for search criteria.
         </td>
       </tr>

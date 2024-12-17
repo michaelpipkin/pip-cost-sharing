@@ -5,12 +5,14 @@ import {
   transition,
   trigger,
 } from '@angular/animations';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
   Component,
   computed,
   inject,
   model,
+  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -82,7 +84,7 @@ import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component'
     ClearSelectDirective,
   ],
 })
-export class ExpensesComponent {
+export class ExpensesComponent implements OnInit {
   storage = inject(getStorage);
   analytics = inject(getAnalytics);
   groupService = inject(GroupService);
@@ -95,6 +97,7 @@ export class ExpensesComponent {
   router = inject(Router);
   loading = inject(LoadingService);
   sorter = inject(SortingService);
+  breakpointObserver = inject(BreakpointObserver);
 
   members: Signal<Member[]> = this.memberService.groupMembers;
   categories: Signal<Category[]> = this.categoryService.groupCategories;
@@ -154,6 +157,36 @@ export class ExpensesComponent {
   );
 
   expandedExpense = model<Expense | null>(null);
+
+  columnsToDisplay = signal<string[]>([]);
+
+  ngOnInit(): void {
+    this.breakpointObserver
+      .observe('(max-width: 1009px)')
+      .subscribe((result) => {
+        if (result.matches) {
+          this.columnsToDisplay.set([
+            'date-paidBy',
+            'description-category',
+            'amount',
+            'receipt',
+            'paid',
+            'expand',
+          ]);
+        } else {
+          this.columnsToDisplay.set([
+            'date',
+            'paidBy',
+            'description',
+            'category',
+            'amount',
+            'receipt',
+            'paid',
+            'expand',
+          ]);
+        }
+      });
+  }
 
   onExpandClick(expense: Expense) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
