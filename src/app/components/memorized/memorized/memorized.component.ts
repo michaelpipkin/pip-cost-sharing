@@ -5,8 +5,17 @@ import {
   transition,
   trigger,
 } from '@angular/animations';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
-import { Component, computed, inject, model, Signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -59,7 +68,7 @@ import { MemorizedHelpComponent } from '../memorized-help/memorized-help.compone
     ClearSelectDirective,
   ],
 })
-export class MemorizedComponent {
+export class MemorizedComponent implements OnInit {
   router = inject(Router);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
@@ -70,6 +79,7 @@ export class MemorizedComponent {
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
+  breakpointObserver = inject(BreakpointObserver);
 
   categories: Signal<Category[]> = this.categoryService.groupCategories;
   currentGroup: Signal<Group> = this.groupService.currentGroup;
@@ -96,6 +106,33 @@ export class MemorizedComponent {
   selectedMemberId = model<string>('');
   selectedCategoryId = model<string>('');
   expandedExpense = model<Memorized | null>(null);
+
+  columnsToDisplay = signal<string[]>([]);
+
+  ngOnInit(): void {
+    this.breakpointObserver
+      .observe('(max-width: 1009px)')
+      .subscribe((result) => {
+        if (result.matches) {
+          this.columnsToDisplay.set([
+            'paidBy',
+            'description-category',
+            'amount',
+            'create',
+            'expand',
+          ]);
+        } else {
+          this.columnsToDisplay.set([
+            'paidBy',
+            'description',
+            'category',
+            'amount',
+            'create',
+            'expand',
+          ]);
+        }
+      });
+  }
 
   onExpandClick(expense: Memorized) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
