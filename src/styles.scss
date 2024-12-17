@@ -551,6 +551,24 @@ span.filename {
 }
 
 .account-tabs {
+  .mat-mdc-tab-label-container {
+    border-bottom-width: 4px !important;
+    border-bottom-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
+  }
+
+  .mat-mdc-tab {
+    padding: 0 8px !important;
+    min-width: 0 !important;
+  }
+
+  .mat-mdc-tab:first-child {
+    padding-left: 0 !important;
+  }
+
+  .mat-mdc-tab:last-child {
+    padding-right: 0 !important;
+  }
+
   .mdc-tab__text-label {
     font-size: 1.2em !important;
     font-weight: bold !important;
