@@ -138,6 +138,12 @@ mat-slide-toggle {
   padding: 0 20%;
 }
 
+@media screen and (max-width: 1009px) {
+  .detail-table-container {
+    padding: 0 10%;
+  }
+}
+
 @media screen and (min-height: 1101px) and (max-height: 1200px) {
   .scrollable-table {
     max-height: 700px;
