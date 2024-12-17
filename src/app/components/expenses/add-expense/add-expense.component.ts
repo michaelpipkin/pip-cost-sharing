@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -59,6 +29,36 @@ import * as firestore from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -103,8 +103,7 @@ export class AddExpenseComponent implements OnInit {
   activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
   #categories: Signal<Category[]> = this.categoryService.groupCategories;
 
-  fromMemorized = signal<boolean>(false);
-  memorizedExpense = signal<Memorized>(null);
+  memorizedExpense = signal<Memorized | null>(null);
 
   activeCategories = computed<Category[]>(() => {
     return this.#categories().filter((c) => c.active);
@@ -132,12 +131,11 @@ export class AddExpenseComponent implements OnInit {
 
   constructor() {
     const navigation = this.router.getCurrentNavigation();
-    if (navigation?.extras.state.memorized) {
-      this.fromMemorized.set(navigation?.extras.state.memorized);
-      this.memorizedExpense.set(navigation!.extras.state.expense);
+    if (navigation?.extras?.state?.expense) {
+      this.memorizedExpense.set(navigation!.extras!.state!.expense);
     }
     afterNextRender(() => {
-      if (this.fromMemorized()) {
+      if (!!this.memorizedExpense()) {
         const expense: Memorized = this.memorizedExpense();
         this.totalAmountField().nativeElement.value =
           this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
@@ -172,7 +170,7 @@ export class AddExpenseComponent implements OnInit {
         categoryId: this.activeCategories()[0].id,
       });
     }
-    if (this.fromMemorized()) {
+    if (!!this.memorizedExpense()) {
       const expense: Memorized = this.memorizedExpense();
       this.addExpenseForm.patchValue({
         paidByMemberId: expense.paidByMemberId,

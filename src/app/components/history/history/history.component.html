@@ -130,7 +130,7 @@
             mat-mini-fab
             class="btn btn-danger"
             aria-label="delete history"
-            (click)="onDeleteClick(history)"
+            (click)="onDeleteClick(history); $event.stopPropagation()"
           >
             <mat-icon>delete</mat-icon>
           </button>

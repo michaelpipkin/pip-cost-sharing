@@ -109,7 +109,8 @@
               markExpensesPaid(
                 amountDue.owedToMemberId,
                 amountDue.owedByMemberId
-              )
+              );
+              $event.stopPropagation()
             "
             title="
                 Mark expenses owed to {{

@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -26,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -40,6 +24,22 @@ import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -66,6 +66,7 @@ import { MemorizedHelpComponent } from '../memorized-help/memorized-help.compone
     MatTableModule,
     CurrencyPipe,
     ClearSelectDirective,
+    RouterLink,
   ],
 })
 export class MemorizedComponent implements OnInit {
@@ -153,13 +154,9 @@ export class MemorizedComponent implements OnInit {
     this.router.navigate(['/edit-memorized', memorized.id]);
   }
 
-  addMemorizedExpense() {
-    this.router.navigate(['/add-memorized']);
-  }
-
   addExpense(expense: Memorized): void {
     this.router.navigate(['/add-expense'], {
-      state: { memorized: true, expense: expense },
+      state: { expense: expense },
     });
   }
 
