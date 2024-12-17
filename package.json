@@ -1,6 +1,6 @@
 {
   "name": "pip-cost-sharing",
-  "version": "1.6.19",
+  "version": "1.6.20",
   "type": "module",
   "scripts": {
     "ng": "ng",

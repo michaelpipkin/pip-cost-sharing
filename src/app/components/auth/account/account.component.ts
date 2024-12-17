@@ -1,4 +1,3 @@
-import { Component, inject, model, signal, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -6,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { ExpenseService } from '@services/expense.service';
@@ -18,6 +18,14 @@ import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { environment } from 'src/environments/environment';
 import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
   FormBuilder,
   FormGroup,
   FormsModule,
@@ -26,9 +34,9 @@ import {
 } from '@angular/forms';
 
 @Component({
-  selector: 'app-profile',
-  templateUrl: './profile.component.html',
-  styleUrls: ['./profile.component.scss'],
+  selector: 'app-account',
+  templateUrl: './account.component.html',
+  styleUrls: ['./account.component.scss'],
   imports: [
     FormsModule,
     ReactiveFormsModule,
@@ -38,9 +46,10 @@ import {
     MatInputModule,
     MatButtonModule,
     MatIconModule,
+    MatTabsModule,
   ],
 })
-export class ProfileComponent {
+export class AccountComponent {
   auth = inject(getAuth);
   analytics = inject(getAnalytics);
   fb = inject(FormBuilder);
@@ -74,6 +83,14 @@ export class ProfileComponent {
   groupForm = this.fb.group({
     groupId: [this.#user()?.defaultGroupId],
   });
+
+  constructor() {
+    effect(() => {
+      this.selectedGroupId.set(this.#user()?.defaultGroupId ?? '');
+      this.groupForm.patchValue({ groupId: this.#user()?.defaultGroupId });
+      this.emailForm.patchValue({ email: this.#user()?.email });
+    });
+  }
 
   get e() {
     return this.emailForm.controls;

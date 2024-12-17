@@ -1,11 +1,6 @@
 import { Routes } from '@angular/router';
-import {
-  authGuard,
-  groupGuard,
-  loggedInGuard,
-} from '@components/auth/guards.guard';
+import { AccountComponent } from '@components/auth/account/account.component';
 import { LoginComponent } from '@components/auth/login/login.component';
-import { ProfileComponent } from '@components/auth/profile/profile.component';
 import { CategoriesComponent } from '@components/categories/categories/categories.component';
 import { AddExpenseComponent } from '@components/expenses/add-expense/add-expense.component';
 import { editExpenseResolver } from '@components/expenses/edit-expense.resolver';
@@ -21,6 +16,11 @@ import { editMemorizedResolver } from '@components/memorized/edit-memorized.reso
 import { EditMemorizedComponent } from '@components/memorized/edit-memorized/edit-memorized.component';
 import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
 import { SummaryComponent } from '@components/summary/summary/summary.component';
+import {
+  authGuard,
+  groupGuard,
+  loggedInGuard,
+} from '@components/auth/guards.guard';
 
 export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: '' },
@@ -104,9 +104,9 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, groupGuard],
   },
   {
-    path: 'profile',
-    title: 'Profile',
-    component: ProfileComponent,
+    path: 'account',
+    title: 'Account',
+    component: AccountComponent,
     canActivate: [authGuard],
   },
   {

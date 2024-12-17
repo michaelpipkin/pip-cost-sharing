@@ -34,7 +34,7 @@ export const loggedInGuard: CanActivateFn = () => {
   return new Promise((resolve) => {
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        resolve(router.navigate(['/profile']));
+        resolve(router.navigate(['/account']));
       } else {
         resolve(true);
       }

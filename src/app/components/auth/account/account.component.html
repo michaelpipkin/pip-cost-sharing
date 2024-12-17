@@ -1,0 +1,122 @@
+<div class="container mt-3">
+  <mat-tab-group dynamicHeight class="account-tabs">
+    <mat-tab label="Update Email Address">
+      <form [formGroup]="emailForm" class="container">
+        <mat-form-field class="email-input">
+          <mat-label>Email Address</mat-label>
+          <input matInput type="email" formControlName="email" />
+          @if (e.email.errors?.['email']) {
+            <mat-error> Invalid email address </mat-error>
+          }
+        </mat-form-field>
+        <div class="buttons">
+          <button
+            mat-raised-button
+            class="btn-tertiary"
+            type="button"
+            [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
+            (click)="verifyEmail()"
+          >
+            {{
+              firebaseUser()?.emailVerified ? 'Email Verified' : 'Verify Email'
+            }}
+          </button>
+          <button
+            mat-raised-button
+            class="btn-primary"
+            type="submit"
+            [disabled]="
+              emailForm.invalid ||
+              e.email?.value === firebaseUser()?.email ||
+              e.email.value === ''
+            "
+            (click)="onSubmitEmail()"
+          >
+            Update Email
+          </button>
+        </div>
+      </form>
+    </mat-tab>
+    <mat-tab label="Change Password">
+      <form [formGroup]="passwordForm" class="container">
+        <mat-form-field>
+          <mat-label>New Password</mat-label>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            autocomplete="new-password"
+            formControlName="password"
+          />
+          <button
+            mat-icon-button
+            matIconSuffix
+            (click)="toggleHidePassword()"
+            [attr.aria-label]="'Hide password'"
+            [attr.aria-pressed]="hidePassword"
+          >
+            <mat-icon>{{
+              hidePassword() ? 'visibility_off' : 'visibility'
+            }}</mat-icon>
+          </button>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Confirm Password</mat-label>
+          <input
+            matInput
+            [type]="hideConfirm() ? 'password' : 'text'"
+            autocomplete="new-password"
+            formControlName="confirmPassword"
+          />
+          <button
+            mat-icon-button
+            matIconSuffix
+            (click)="toggleHideConfirm()"
+            [attr.aria-label]="'Hide password'"
+            [attr.aria-pressed]="hideConfirm"
+          >
+            <mat-icon>{{
+              hideConfirm() ? 'visibility_off' : 'visibility'
+            }}</mat-icon>
+          </button>
+          @if (passwordForm.errors?.['mismatch']) {
+            <mat-error> Passwords do not match. </mat-error>
+          }
+        </mat-form-field>
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="submit"
+          [disabled]="
+            passwordForm.invalid ||
+            passwordForm.controls.confirmPassword.value === ''
+          "
+          (click)="onSubmitPassword()"
+        >
+          Change Password
+        </button>
+      </form>
+    </mat-tab>
+    <mat-tab label="Options">
+      <h4>Select Default Group</h4>
+      <form [formGroup]="groupForm" class="container">
+        <mat-form-field id="group-select">
+          <mat-label>Select Group</mat-label>
+          <mat-select formControlName="groupId" name="group" #groupSelect>
+            @for (group of activeUserGroups(); track group.id) {
+              <mat-option [value]="group.id">{{ group.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          [disabled]="selectedGroupId === null || groupForm.pristine"
+          (click)="saveDefaultGroup()"
+        >
+          Save
+        </button>
+      </form>
+    </mat-tab>
+  </mat-tab-group>
+</div>
