@@ -546,6 +546,33 @@ span.filename {
   overflow: hidden;
 }
 
+.email-input {
+  width: 240px !important;
+}
+
+.account-tabs {
+  .mdc-tab__text-label {
+    font-size: 1.2em !important;
+    font-weight: bold !important;
+  }
+
+  .mat-tab-mdc-body {
+    height: 100%;
+  }
+
+  .mat-mdc-tab-body-wrapper {
+    height: 100%;
+  }
+
+  .mat-mdc-tab-body-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+    justify-items: center;
+    padding: 16px 0;
+  }
+}
+
 .mock-input {
   display: grid;
   align-self: start;
