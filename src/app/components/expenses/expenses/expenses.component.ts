@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -30,7 +14,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
@@ -49,6 +33,22 @@ import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -82,6 +82,7 @@ import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component'
     YesNoPipe,
     YesNoNaPipe,
     ClearSelectDirective,
+    RouterLink,
   ],
 })
 export class ExpensesComponent implements OnInit {
@@ -210,10 +211,6 @@ export class ExpensesComponent implements OnInit {
   onRowClick(expense: Expense): void {
     this.loading.loadingOn();
     this.router.navigate(['/edit-expense', expense.id]);
-  }
-
-  addExpense(): void {
-    this.router.navigate(['/add-expense'], { state: { memorized: false } });
   }
 
   markSplitPaidUnpaid(split: Split): void {
