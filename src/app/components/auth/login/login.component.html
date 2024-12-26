@@ -109,7 +109,11 @@
             (newAccount() && !passedCaptcha())
           "
         >
-          Sign In
+          @if (newAccount()) {
+            Register
+          } @else {
+            Sign In
+          }
         </button>
       </div>
     </form>

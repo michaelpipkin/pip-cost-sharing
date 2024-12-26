@@ -22,6 +22,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -30,7 +31,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
-import { environment } from 'src/environments/environment';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 declare const hcaptcha: any;
 
 @Component({
@@ -54,6 +55,8 @@ export class LoginComponent {
   fb = inject(FormBuilder);
   snackbar = inject(MatSnackBar);
   cdr = inject(ChangeDetectorRef);
+  analytics = inject(getAnalytics);
+  functions = inject(getFunctions);
 
   step1Complete = signal<boolean>(false);
   step2Complete = signal<boolean>(false);
@@ -78,11 +81,22 @@ export class LoginComponent {
       if (this.newAccount()) {
         hcaptcha.render('hcaptcha-container', {
           sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
-          callback: (token: String) => {
-            if (environment.useEmulators) {
-              console.log(token);
+          callback: async (token: String) => {
+            const validateHCaptcha = httpsCallable(
+              this.functions,
+              'validateHCaptcha'
+            );
+            try {
+              const result = await validateHCaptcha({ token: token });
+              if (result.data === 'Success') {
+                this.passedCaptcha.set(true);
+              }
+            } catch (error) {
+              console.error(error);
+              logEvent(this.analytics, 'hCaptcha_error', {
+                error: error.message,
+              });
             }
-            this.passedCaptcha.set(true);
           },
         });
         const intervalId = setInterval(() => {
@@ -149,6 +163,7 @@ export class LoginComponent {
     this.step1Complete.set(false);
     this.step2Complete.set(false);
     this.newAccount.set(false);
+    hcaptcha.reset();
   }
 
   async emailPasswordLogin() {
