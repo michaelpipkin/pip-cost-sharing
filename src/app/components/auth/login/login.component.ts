@@ -1,14 +1,7 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
-import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
   ChangeDetectorRef,
   Component,
+  effect,
   ElementRef,
   inject,
   model,
@@ -21,6 +14,14 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -29,6 +30,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
+import { environment } from 'src/environments/environment';
+declare const hcaptcha: any;
 
 @Component({
   selector: 'app-login',
@@ -67,6 +70,32 @@ export class LoginComponent {
   passwordForm = this.fb.group({
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
+
+  passedCaptcha = signal<boolean>(false);
+
+  constructor() {
+    effect(() => {
+      if (this.newAccount()) {
+        hcaptcha.render('hcaptcha-container', {
+          sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
+          callback: (token: String) => {
+            if (environment.useEmulators) {
+              console.log(token);
+            }
+            this.passedCaptcha.set(true);
+          },
+        });
+        const intervalId = setInterval(() => {
+          if (hcaptcha.getResponse() === '') {
+            this.passedCaptcha.set(false);
+          }
+        }, 5000);
+        return () => {
+          clearInterval(intervalId);
+        };
+      }
+    });
+  }
 
   toggleHidePassword() {
     this.hidePassword.update((h) => !h);

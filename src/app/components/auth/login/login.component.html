@@ -85,13 +85,16 @@
             hidePassword() ? 'visibility_off' : 'visibility'
           }}</mat-icon>
         </button>
-        @if (p.password?.errors?.required) {
-          <mat-error>Password is required.</mat-error>
-        }
-        @if (p.password?.errors?.minlength) {
-          <mat-error>Password must be at least 6 chars.</mat-error>
-        }
       </mat-form-field>
+      @if (newAccount()) {
+        <div id="hcaptcha-container"></div>
+      }
+      @if (p.password?.errors?.required) {
+        <mat-error>Password is required.</mat-error>
+      }
+      @if (p.password?.errors?.minlength) {
+        <mat-error>Password must be at least 6 chars.</mat-error>
+      }
       <div class="buttons">
         <button mat-stroked-button type="button" (click)="resetForm()">
           Back
@@ -100,7 +103,11 @@
           mat-raised-button
           class="btn-primary"
           type="submit"
-          [disabled]="passwordForm.invalid || passwordForm.pristine"
+          [disabled]="
+            passwordForm.invalid ||
+            passwordForm.pristine ||
+            (newAccount() && !passedCaptcha())
+          "
         >
           Sign In
         </button>

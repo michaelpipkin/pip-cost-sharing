@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --host=local.dev.com",
     "kill-ports": "npx kill-port 4000 && npx kill-port 4500 && npx kill-port 5000 && npx kill-port 8080 && npx kill-port 9099 && npx kill-port 9150 && npx kill-port 9199",
     "export-data": "rm seed-data -r -f && firebase emulators:export seed-data",
     "local-dev": "firebase emulators:start --import seed-data",
@@ -41,6 +41,7 @@
     "@angular-devkit/build-angular": "^19.0.5",
     "@angular/cli": "^19.0.5",
     "@angular/compiler-cli": "^19.0.4",
+    "@hcaptcha/types": "^1.0.4",
     "@types/jasmine": "~3.10.0",
     "@types/node": "^12.20.55",
     "@types/string-math": "^1.0.3",
