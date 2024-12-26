@@ -55,3 +55,4 @@ seed-data.ts
 
 src/app/hcaptcha.config.ts
 functions/src/.env
+functions/.env
