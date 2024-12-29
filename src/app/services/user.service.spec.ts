@@ -3,9 +3,9 @@ import { provideRouter } from '@angular/router';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { firebaseConfig } from '../firebase.config.ts';
 import { GroupService } from './group.service';
 import { UserService } from './user.service';
-import { firebaseConfig } from '../firebase.config';
 
 // Mocks for dependencies
 class MockAuth {}

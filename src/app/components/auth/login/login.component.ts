@@ -1,10 +1,10 @@
 import {
   ChangeDetectorRef,
   Component,
-  effect,
   ElementRef,
   inject,
   model,
+  OnInit,
   signal,
   viewChild,
 } from '@angular/core';
@@ -47,7 +47,7 @@ declare const hcaptcha: any;
     MatInputModule,
   ],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   auth = inject(getAuth);
   userService = inject(UserService);
   loading = inject(LoadingService);
@@ -71,44 +71,47 @@ export class LoginComponent {
   });
 
   passwordForm = this.fb.group({
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    password: [''],
   });
 
   passedCaptcha = signal<boolean>(false);
+  hCaptchaWidgetId = signal<string>('');
 
-  constructor() {
-    effect(() => {
-      if (this.newAccount()) {
-        hcaptcha.render('hcaptcha-container', {
-          sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
-          callback: async (token: String) => {
-            const validateHCaptcha = httpsCallable(
-              this.functions,
-              'validateHCaptcha'
-            );
-            try {
-              const result = await validateHCaptcha({ token: token });
-              if (result.data === 'Success') {
-                this.passedCaptcha.set(true);
-              }
-            } catch (error) {
-              console.error(error);
-              logEvent(this.analytics, 'hCaptcha_error', {
-                error: error.message,
-              });
-            }
-          },
-        });
-        const intervalId = setInterval(() => {
-          if (hcaptcha.getResponse() === '') {
-            this.passedCaptcha.set(false);
+  private intervalId: any;
+
+  ngOnInit(): void {
+    const widgetId = hcaptcha.render('hcaptcha-container', {
+      sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
+      callback: async (token: String) => {
+        const validateHCaptcha = httpsCallable(
+          this.functions,
+          'validateHCaptcha'
+        );
+        try {
+          const result = await validateHCaptcha({ token: token });
+          if (result.data === 'Success') {
+            this.passedCaptcha.set(true);
           }
-        }, 5000);
-        return () => {
-          clearInterval(intervalId);
-        };
-      }
+        } catch (error) {
+          console.error(error);
+          logEvent(this.analytics, 'hCaptcha_error', {
+            error: error.message,
+          });
+        }
+      },
     });
+    this.hCaptchaWidgetId.set(widgetId);
+    this.intervalId = setInterval(() => {
+      if (hcaptcha.getResponse() === '') {
+        this.passedCaptcha.set(false);
+      }
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
   }
 
   toggleHidePassword() {
@@ -142,6 +145,9 @@ export class LoginComponent {
       // New user
       this.newAccount.set(true);
       this.passwordForm.get('displayName')?.setValidators(Validators.required);
+      this.passwordForm
+        .get('password')
+        ?.setValidators([Validators.required, Validators.minLength(8)]);
     }
     this.step2Complete.set(true);
     this.emailForm.get('email')?.disable();
@@ -163,7 +169,8 @@ export class LoginComponent {
     this.step1Complete.set(false);
     this.step2Complete.set(false);
     this.newAccount.set(false);
-    hcaptcha.reset();
+    this.passwordForm.get('password')?.clearValidators();
+    hcaptcha.reset(this.hCaptchaWidgetId());
   }
 
   async emailPasswordLogin() {

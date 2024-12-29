@@ -1,8 +1,10 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   Component,
   computed,
   inject,
   model,
+  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -50,7 +52,7 @@ import { MembersHelpComponent } from '../members-help/members-help.component';
     ActiveInactivePipe,
   ],
 })
-export class MembersComponent {
+export class MembersComponent implements OnInit {
   router = inject(Router);
   userService = inject(UserService);
   groupService = inject(GroupService);
@@ -59,6 +61,7 @@ export class MembersComponent {
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
+  breakpointObserver = inject(BreakpointObserver);
 
   user: Signal<User> = this.userService.user;
   currentMember: Signal<Member> = this.memberService.currentMember;
@@ -67,6 +70,7 @@ export class MembersComponent {
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);
+  columnsToDisplay = signal<string[]>([]);
 
   activeOnly = model<boolean>(true);
   nameFilter = model<string>('');
@@ -83,6 +87,29 @@ export class MembersComponent {
     }
     return members;
   });
+
+  ngOnInit(): void {
+    this.breakpointObserver
+      .observe('(max-width: 1009px)')
+      .subscribe((result) => {
+        if (result.matches) {
+          this.columnsToDisplay.set([
+            'nameEmail',
+            'send',
+            'active',
+            'groupAdmin',
+          ]);
+        } else {
+          this.columnsToDisplay.set([
+            'displayName',
+            'email',
+            'send',
+            'active',
+            'groupAdmin',
+          ]);
+        }
+      });
+  }
 
   sortMembers(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
