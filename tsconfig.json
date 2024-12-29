@@ -23,7 +23,7 @@
       "@components/*": ["src/app/components/*"],
       "@app/*": ["src/app/*"]
     },
-    "typeRoots": ["node_modules/@types"]
+    "typeRoots": ["node_modules/@types", "node_modules/@hcaptcha"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false

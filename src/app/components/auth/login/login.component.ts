@@ -1,17 +1,10 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
-import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
   ChangeDetectorRef,
   Component,
   ElementRef,
   inject,
   model,
+  OnInit,
   signal,
   viewChild,
 } from '@angular/core';
@@ -21,6 +14,15 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -29,6 +31,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+declare const hcaptcha: any;
 
 @Component({
   selector: 'app-login',
@@ -43,7 +47,7 @@ import {
     MatInputModule,
   ],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   auth = inject(getAuth);
   userService = inject(UserService);
   loading = inject(LoadingService);
@@ -51,6 +55,8 @@ export class LoginComponent {
   fb = inject(FormBuilder);
   snackbar = inject(MatSnackBar);
   cdr = inject(ChangeDetectorRef);
+  analytics = inject(getAnalytics);
+  functions = inject(getFunctions);
 
   step1Complete = signal<boolean>(false);
   step2Complete = signal<boolean>(false);
@@ -65,8 +71,48 @@ export class LoginComponent {
   });
 
   passwordForm = this.fb.group({
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    password: [''],
   });
+
+  passedCaptcha = signal<boolean>(false);
+  hCaptchaWidgetId = signal<string>('');
+
+  private intervalId: any;
+
+  ngOnInit(): void {
+    const widgetId = hcaptcha.render('hcaptcha-container', {
+      sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
+      callback: async (token: String) => {
+        const validateHCaptcha = httpsCallable(
+          this.functions,
+          'validateHCaptcha'
+        );
+        try {
+          const result = await validateHCaptcha({ token: token });
+          if (result.data === 'Success') {
+            this.passedCaptcha.set(true);
+          }
+        } catch (error) {
+          console.error(error);
+          logEvent(this.analytics, 'hCaptcha_error', {
+            error: error.message,
+          });
+        }
+      },
+    });
+    this.hCaptchaWidgetId.set(widgetId);
+    this.intervalId = setInterval(() => {
+      if (hcaptcha.getResponse() === '') {
+        this.passedCaptcha.set(false);
+      }
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  }
 
   toggleHidePassword() {
     this.hidePassword.update((h) => !h);
@@ -99,6 +145,9 @@ export class LoginComponent {
       // New user
       this.newAccount.set(true);
       this.passwordForm.get('displayName')?.setValidators(Validators.required);
+      this.passwordForm
+        .get('password')
+        ?.setValidators([Validators.required, Validators.minLength(8)]);
     }
     this.step2Complete.set(true);
     this.emailForm.get('email')?.disable();
@@ -120,6 +169,8 @@ export class LoginComponent {
     this.step1Complete.set(false);
     this.step2Complete.set(false);
     this.newAccount.set(false);
+    this.passwordForm.get('password')?.clearValidators();
+    hcaptcha.reset(this.hCaptchaWidgetId());
   }
 
   async emailPasswordLogin() {

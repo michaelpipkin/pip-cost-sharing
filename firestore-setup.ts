@@ -1,10 +1,10 @@
 import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from './src/app/firebase.config';
-import { environment } from './src/environments/environment';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
 } from 'firebase/firestore';
+import { firebaseConfig } from './src/app/firebase.config.ts';
+import { environment } from './src/environments/environment';
 
 const useEmulators = environment.useEmulators;
 
