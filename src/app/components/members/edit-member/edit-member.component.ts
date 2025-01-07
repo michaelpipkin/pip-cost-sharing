@@ -1,5 +1,19 @@
 import { Component, inject, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -12,20 +26,6 @@ import { UserService } from '@services/user.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-member',
@@ -65,7 +65,7 @@ export class EditMemberComponent {
   constructor() {
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
-      email: [this.member.email, [Validators.required, Validators.email]],
+      email: [this.member.email, Validators.email],
       active: [this.member.active],
       groupAdmin: [
         {
