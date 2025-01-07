@@ -12,8 +12,8 @@ export interface IExpense {
   totalAmount: number;
   splits: Split[];
   hasReceipt: boolean;
+  paid: boolean;
   readonly unpaidAmount: number;
-  readonly paid: boolean;
 }
 
 export class Expense implements IExpense {
@@ -30,6 +30,7 @@ export class Expense implements IExpense {
   totalAmount: number;
   splits: Split[];
   hasReceipt: boolean = false;
+  paid: boolean = false;
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
@@ -38,8 +39,5 @@ export class Expense implements IExpense {
       }
     });
     return amount;
-  }
-  get paid(): boolean {
-    return this.unpaidAmount === 0;
   }
 }

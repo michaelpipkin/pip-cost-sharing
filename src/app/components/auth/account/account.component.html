@@ -117,6 +117,16 @@
           Save
         </button>
       </form>
+      @if (!prod()) {
+        <button
+          mat-raised-button
+          class="btn-tertiary"
+          type="button"
+          (click)="fixExpenses()"
+        >
+          Fix Expense Paid Statuses
+        </button>
+      }
     </mat-tab>
   </mat-tab-group>
 </div>

@@ -3,6 +3,7 @@ import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -138,6 +139,31 @@ export class ExpenseService {
       batch.delete(d.ref);
     });
     batch.delete(expenseRef);
+    return await batch
+      .commit()
+      .then(() => {
+        return true;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
+  }
+
+  async updateAllExpensesPaidStatus() {
+    const batch = writeBatch(this.fs);
+    const expenseCollection = collectionGroup(this.fs, 'expenses');
+    const splitsCollection = collectionGroup(this.fs, 'splits');
+    const expenseDocs = await getDocs(expenseCollection);
+    for (const expense of expenseDocs.docs) {
+      const splitsQuery = query(
+        splitsCollection,
+        where('expenseId', '==', expense.id)
+      );
+      const splitsDocs = await getDocs(splitsQuery);
+      const expenseUnpaid =
+        splitsDocs.docs.filter((doc) => !doc.data().paid).length > 0;
+      batch.update(expense.ref, { paid: !expenseUnpaid });
+    }
     return await batch
       .commit()
       .then(() => {

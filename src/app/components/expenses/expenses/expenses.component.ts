@@ -213,13 +213,13 @@ export class ExpensesComponent implements OnInit {
     this.router.navigate(['/edit-expense', expense.id]);
   }
 
-  markSplitPaidUnpaid(split: Split): void {
+  markSplitPaidUnpaid(expense: Expense, split: Split): void {
     const changes = {
       paid: !split.paid,
     };
     this.loading.loadingOn();
     this.splitService
-      .updateSplit(this.currentGroup().id, split.id, changes)
+      .updateSplit(this.currentGroup().id, expense.id, split.id, changes)
       .then(() => this.loading.loadingOff());
   }
 

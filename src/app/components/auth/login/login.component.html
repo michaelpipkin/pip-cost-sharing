@@ -20,7 +20,7 @@
     } @else {
       <h2>Sign In</h2>
     }
-    <form [formGroup]="emailForm" class="container">
+    <form [formGroup]="emailForm" class="container" (submit)="checkEmail()">
       <mat-form-field>
         <mat-label>Email</mat-label>
         <input matInput formControlName="email" #emailInput />
@@ -42,11 +42,10 @@
         </button>
         <button
           mat-raised-button
-          type="button"
+          type="submit"
           class="btn-primary"
           [disabled]="emailForm.invalid || emailForm.pristine"
           [class.hidden]="step2Complete()"
-          (click)="checkEmail()"
         >
           Next
         </button>
