@@ -12,9 +12,6 @@
       <mat-form-field appearance="fill">
         <mat-label>Email</mat-label>
         <input matInput email formControlName="email" />
-        @if (f.email.errors?.['required']) {
-          <mat-error> *Required </mat-error>
-        }
         @if (f.email.errors?.['email']) {
           <mat-error> *Not a valid email address </mat-error>
         }
