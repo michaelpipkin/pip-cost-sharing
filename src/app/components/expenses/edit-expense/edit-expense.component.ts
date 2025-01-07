@@ -407,6 +407,7 @@ export class EditExpenseComponent implements OnInit {
           sharedAmount: +val.sharedAmount,
           allocatedAmount: +val.allocatedAmount,
           totalAmount: +val.amount,
+          paid: false,
           hasReceipt: this.expense().hasReceipt || !!this.fileName(),
         };
         let splits: Partial<Split>[] = [];
