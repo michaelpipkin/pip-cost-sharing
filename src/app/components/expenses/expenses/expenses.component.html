@@ -297,7 +297,8 @@
                       class="btn"
                       [class]="split.paid ? 'btn-danger' : 'btn-success'"
                       (click)="
-                        markSplitPaidUnpaid(split); $event.stopPropagation()
+                        markSplitPaidUnpaid(expense, split);
+                        $event.stopPropagation()
                       "
                       [title]="
                         split.paid ? 'Mark split unpaid' : 'Mark split paid'

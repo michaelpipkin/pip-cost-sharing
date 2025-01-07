@@ -226,4 +226,26 @@ export class AccountComponent {
         });
     }
   }
+
+  fixExpenses(): void {
+    this.loading.loadingOn();
+    this.expenseService
+      .updateAllExpensesPaidStatus()
+      .then(() => {
+        this.loading.loadingOff();
+        this.snackBar.open('Expenses updated.', 'Close');
+      })
+      .catch((err: Error) => {
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'fix_expenses',
+          message: err.message,
+        });
+        this.loading.loadingOff();
+        this.snackBar.open(
+          'Something went wrong - could not update expenses.',
+          'Close'
+        );
+      });
+  }
 }
