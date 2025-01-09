@@ -8,6 +8,7 @@ export interface IMemorized {
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;
+  splitByPercentage: boolean;
   splits: Partial<Split>[];
 }
 
@@ -22,5 +23,6 @@ export class Memorized implements IMemorized {
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;
+  splitByPercentage: boolean = false;
   splits: Partial<Split>[];
 }

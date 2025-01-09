@@ -1,36 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -54,6 +25,36 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 @Component({
   selector: 'app-edit-memorized',
   imports: [
@@ -112,6 +113,9 @@ export class EditMemorizedComponent implements OnInit {
       .groupMembers()
       .filter((m) => m.active || splitMemberIds.includes(m.id));
   });
+
+  splitByPercentage = model<boolean>(false);
+
   totalAmountField = viewChild<ElementRef>('totalAmount');
   proportionalAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
@@ -151,6 +155,7 @@ export class EditMemorizedComponent implements OnInit {
   ngOnInit(): void {
     const memorized = this.route.snapshot.data.memorized;
     this.memorized.set(memorized);
+    this.splitByPercentage.set(memorized.splitByPercentage);
     this.editMemorizedForm.patchValue({
       paidByMemberId: memorized.paidByMemberId,
       amount: memorized.totalAmount,
@@ -164,11 +169,16 @@ export class EditMemorizedComponent implements OnInit {
         this.fb.group({
           owedByMemberId: s.owedByMemberId,
           assignedAmount: s.assignedAmount,
+          percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
         })
       );
     });
     this.loading.loadingOff();
+  }
+
+  get splits(): FormArray {
+    return this.editMemorizedForm.get('splits') as FormArray;
   }
 
   addSelectFocus(): void {
@@ -184,10 +194,6 @@ export class EditMemorizedComponent implements OnInit {
     });
   }
 
-  get splits(): FormArray {
-    return this.editMemorizedForm.get('splits') as FormArray;
-  }
-
   createSplitFormGroup(): FormGroup {
     const existingMemberIds = this.splitsFormArray.controls.map(
       (control) => control.get('owedByMemberId').value
@@ -201,6 +207,7 @@ export class EditMemorizedComponent implements OnInit {
         Validators.required,
       ],
       assignedAmount: ['0.00', Validators.required],
+      percentage: [0.0],
       allocatedAmount: [0.0],
     });
   }
@@ -233,12 +240,37 @@ export class EditMemorizedComponent implements OnInit {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    this.allocateSharedAmounts();
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    this.allocateSharedAmounts();
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  toggleSplitByPercentage(): void {
+    this.splitByPercentage.set(!this.splitByPercentage());
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  updateTotalAmount(): void {
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   allocateSharedAmounts(): void {
@@ -285,8 +317,81 @@ export class EditMemorizedComponent implements OnInit {
           ).toFixed(2);
         }
       });
-      if (!this.memorizedFullyAllocated() && splitCount > 0) {
-        let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
+      const allocatedTotal = +splits
+        .reduce((total, s) => (total += s.allocatedAmount), 0)
+        .toFixed(2);
+      if (allocatedTotal !== totalAmount && splitCount > 0) {
+        let diff = +(totalAmount - allocatedTotal).toFixed(2);
+        for (let i = 0; diff != 0; ) {
+          if (diff > 0) {
+            splits[i].allocatedAmount += 0.01;
+            diff = +(diff - 0.01).toFixed(2);
+          } else {
+            splits[i].allocatedAmount -= 0.01;
+            diff = +(diff + 0.01).toFixed(2);
+          }
+          if (i < splits.length - 1) {
+            i++;
+          } else {
+            i = 0;
+          }
+        }
+      }
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
+    }
+  }
+
+  allocateByPercentage(): void {
+    var totalPercentage: number = 0;
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.value];
+      for (let i = 0; i < splits.length; ) {
+        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+          splits.splice(i, 1);
+        } else {
+          if (i < splits.length - 1) {
+            splits[i].percentage = +splits[i].percentage;
+            totalPercentage += splits[i].percentage;
+          } else {
+            const remainingPercentage: number = +(
+              100 - totalPercentage
+            ).toFixed(2);
+            splits[i].percentage = remainingPercentage;
+            this.splitsFormArray.at(i).patchValue({
+              percentage: remainingPercentage,
+            });
+          }
+          i++;
+        }
+      }
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberId !== ''
+      ).length;
+      const val = this.editMemorizedForm.value;
+      const totalAmount: number = val.amount;
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = +(
+          (totalAmount * +split.percentage) /
+          100
+        ).toFixed(2);
+      });
+      const allocatedTotal: number = +splits
+        .reduce((total, s) => (total += s.allocatedAmount), 0)
+        .toFixed(2);
+      const percentageTotal: number = +splits
+        .reduce((total, s) => (total += s.percentage), 0)
+        .toFixed(2);
+      if (
+        allocatedTotal !== totalAmount &&
+        percentageTotal === 100 &&
+        splitCount > 0
+      ) {
+        let diff = +(totalAmount - allocatedTotal).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
             splits[i].allocatedAmount += 0.01;
@@ -325,6 +430,7 @@ export class EditMemorizedComponent implements OnInit {
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(): void {
+    this.loading.loadingOn();
     this.editMemorizedForm.disable();
     const val = this.editMemorizedForm.value;
     const changes: Partial<Memorized> = {
@@ -334,12 +440,14 @@ export class EditMemorizedComponent implements OnInit {
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,
+      splitByPercentage: this.splitByPercentage(),
     };
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.value.forEach((s) => {
       const split: Partial<Split> = {
         categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
+        percentage: s.percentage,
         allocatedAmount: s.allocatedAmount,
         paidByMemberId: val.paidByMemberId,
         owedByMemberId: s.owedByMemberId,

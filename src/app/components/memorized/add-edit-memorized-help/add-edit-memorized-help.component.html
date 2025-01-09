@@ -9,21 +9,31 @@
     split proportional to the amount for which each member is responsible. The
     evenly shared remainder and the allocated split amount for each member will
     update automatically as you enter/update the total amount, proportional
-    amount, and individual member amounts.
+    amount, and individual member amounts. The proportional amount is only
+    available when splitting by amount, not percentage.
   </p>
   <p>
-    Click the Add New Split button to add a single split line to the expense.
-    You can select the member and enter an amount in the Member Amount field
-    that the member is individually responsible for and should not be split.
-    Click the Add All Members button to automatically insert a split line for
-    each active group member not already listed in the splits table. The form
-    will automatically update the allocated amounts for each member as you
-    change the total amount, proportional amount, or individual amounts for each
-    member.
+    Click the Add New Split button to add a single split line to the expense. By
+    default, an expense is split evenly between all listed members. Click the
+    Split by button to alternate between splitting the expense by dollar amount
+    or by percentage.
   </p>
   <p>
-    You can perform basic arithmetic directly in any amount input field, if
-    needed. (i.e. entering 3*6-2 in the total amount field will evaluate to
-    16.00)
+    If you are splitting by amount, you can enter the amount in the Member
+    Amount field that the member is individually responsible for and should not
+    be split. Click the Add All Members button to automatically insert a split
+    line for each active group member not already listed in the splits table.
+    The form will automatically update the allocated amounts for each member as
+    you change the total amount, proportional amount, or individual amounts for
+    each member.
+  </p>
+  <p>
+    If you are splitting by percentage, the form will automatically adjust the
+    final member's percentage so that the total will always be 100%.
+  </p>
+  <p>
+    You can perform basic arithmetic directly in any amount input field, but not
+    percentage fields. (i.e. entering 3*6-2 in the total amount field will
+    evaluate to 16.00)
   </p>
 </mat-dialog-content>

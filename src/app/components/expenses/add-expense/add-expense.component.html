@@ -84,7 +84,7 @@
             formControlName="amount"
             class="number-right"
             appFormatCurrencyInput
-            (blur)="allocateSharedAmounts()"
+            (blur)="updateTotalAmount()"
           />
           <span matTextPrefix>$</span>
           @if (e.amount.errors?.['required']) {
@@ -98,6 +98,7 @@
           appearance="fill"
           floatLabel="always"
           class="number-field"
+          [class.hidden]="splitByPercentage()"
         >
           <mat-label>Proportional Amount</mat-label>
           <input
@@ -115,7 +116,7 @@
             <mat-error> *Required - Enter 0 if none </mat-error>
           }
         </mat-form-field>
-        <div class="mock-input">
+        <div class="mock-input" [class.hidden]="splitByPercentage()">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
             {{ e.sharedAmount.value | currency }}
@@ -163,6 +164,20 @@
         >
           Add All Members
         </button>
+        <div class="split-type">
+          <span>Split by</span>
+          <button
+            mat-mini-fab
+            class="btn btn-primary"
+            (click)="toggleSplitByPercentage()"
+          >
+            @if (splitByPercentage()) {
+              <mat-icon>percent</mat-icon>
+            } @else {
+              <mat-icon>attach_money</mat-icon>
+            }
+          </button>
+        </div>
       </div>
       <div formArrayName="splits" class="mt-3">
         @for (
@@ -190,25 +205,46 @@
               </button>
             </div>
             <div class="splits-2">
-              <mat-form-field
-                appearance="fill"
-                class="number-field"
-                subscriptSizing="dynamic"
-              >
-                <mat-label>Member Amount</mat-label>
-                <input
-                  matInput
-                  #inputElement
-                  #memberAmount
-                  class="number-right"
-                  parentControlName="splits"
-                  [index]="i"
-                  formControlName="assignedAmount"
-                  appFormatCurrencyInput
-                  (blur)="allocateSharedAmounts()"
-                />
-                <span matTextPrefix>$</span>
-              </mat-form-field>
+              @if (splitByPercentage()) {
+                <mat-form-field
+                  appearance="fill"
+                  class="number-field"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Percentage</mat-label>
+                  <input
+                    matInput
+                    #inputElement
+                    #memberPercentage
+                    class="number-right"
+                    parentControlName="splits"
+                    [index]="i"
+                    formControlName="percentage"
+                    (blur)="allocateByPercentage()"
+                  />
+                  <span matTextSuffix>%</span>
+                </mat-form-field>
+              } @else {
+                <mat-form-field
+                  appearance="fill"
+                  class="number-field"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Member Amount</mat-label>
+                  <input
+                    matInput
+                    #inputElement
+                    #memberAmount
+                    class="number-right"
+                    parentControlName="splits"
+                    [index]="i"
+                    formControlName="assignedAmount"
+                    appFormatCurrencyInput
+                    (blur)="allocateSharedAmounts()"
+                  />
+                  <span matTextPrefix>$</span>
+                </mat-form-field>
+              }
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
                 <span class="mock-value-right">
@@ -227,7 +263,11 @@
         class="btn-secondary"
         type="submit"
         defaultButton
-        [disabled]="!addExpenseForm.valid || addExpenseForm.disabled"
+        [disabled]="
+          !addExpenseForm.valid ||
+          addExpenseForm.disabled ||
+          !expenseFullyAllocated()
+        "
         (click)="onSubmit(false)"
       >
         Save
@@ -237,7 +277,11 @@
           mat-raised-button
           class="btn-secondary"
           type="submit"
-          [disabled]="!addExpenseForm.valid || addExpenseForm.disabled"
+          [disabled]="
+            !addExpenseForm.valid ||
+            addExpenseForm.disabled ||
+            !expenseFullyAllocated()
+          "
           (click)="onSubmit(true)"
         >
           Save & Add Another
