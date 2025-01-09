@@ -55,7 +55,22 @@
   display: grid;
   width: 100%;
   column-gap: 8px;
-  grid-template-columns: 1fr 1fr 2fr;
+  row-gap: 8px;
+  grid-template-columns: 1fr 1fr 1.5fr;
+}
+
+.split-type {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: start;
+
+  span {
+    font-size: 1.1em;
+    font-weight: 600;
+    text-align: end;
+    margin-right: 4px;
+  }
 }
 
 @media (min-width: 474px) and (max-width: 767px) {
@@ -70,7 +85,7 @@
     grid-column-end: span 2;
   }
   .buttons {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
   .splits {
     grid-template-columns: 1fr;

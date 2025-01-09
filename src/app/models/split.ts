@@ -6,6 +6,7 @@ export interface ISplit {
   date: Timestamp;
   categoryId: string;
   assignedAmount: number;
+  percentage: number;
   allocatedAmount: number;
   paidByMemberId: string;
   owedByMemberId: string;
@@ -20,7 +21,8 @@ export class Split implements ISplit {
   expenseId: string;
   date: Timestamp;
   categoryId: string;
-  assignedAmount: number;
+  assignedAmount: number = 0;
+  percentage: number = 0;
   allocatedAmount: number;
   paidByMemberId: string;
   owedByMemberId: string;

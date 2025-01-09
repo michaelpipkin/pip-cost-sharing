@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -59,6 +29,36 @@ import * as firestore from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -111,12 +111,14 @@ export class AddExpenseComponent implements OnInit {
 
   fileName = model<string>('');
   receiptFile = model<File>(null);
+  splitByPercentage = model<boolean>(false);
 
   datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
   allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
   memberAmounts = viewChildren<ElementRef>('memberAmount');
+  memberPercentages = viewChildren<ElementRef>('memberPercentage');
 
   addExpenseForm = this.fb.group({
     paidByMemberId: [this.currentMember()?.id, Validators.required],
@@ -172,6 +174,7 @@ export class AddExpenseComponent implements OnInit {
     }
     if (!!this.memorizedExpense()) {
       const expense: Memorized = this.memorizedExpense();
+      this.splitByPercentage.set(expense.splitByPercentage);
       this.addExpenseForm.patchValue({
         paidByMemberId: expense.paidByMemberId,
         date: new Date(),
@@ -186,6 +189,7 @@ export class AddExpenseComponent implements OnInit {
           this.fb.group({
             owedByMemberId: split.owedByMemberId,
             assignedAmount: split.assignedAmount,
+            percentage: split.percentage,
             allocatedAmount: split.allocatedAmount,
           })
         );
@@ -221,6 +225,7 @@ export class AddExpenseComponent implements OnInit {
         Validators.required,
       ],
       assignedAmount: ['0.00', Validators.required],
+      percentage: [0.0],
       allocatedAmount: [0.0],
     });
   }
@@ -253,7 +258,11 @@ export class AddExpenseComponent implements OnInit {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    this.allocateSharedAmounts();
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   addAllActiveGroupMembers(): void {
@@ -267,6 +276,7 @@ export class AddExpenseComponent implements OnInit {
           this.fb.group({
             owedByMemberId: [member.id, Validators.required],
             assignedAmount: ['0.00', Validators.required],
+            percentage: [0.0],
             allocatedAmount: [0.0],
           })
         );
@@ -283,12 +293,20 @@ export class AddExpenseComponent implements OnInit {
         input.nativeElement.dispatchEvent(event);
       });
     });
-    this.allocateSharedAmounts();
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    this.allocateSharedAmounts();
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   onFileSelected(e): void {
@@ -310,6 +328,23 @@ export class AddExpenseComponent implements OnInit {
   removeFile(): void {
     this.receiptFile.set(null);
     this.fileName.set('');
+  }
+
+  toggleSplitByPercentage(): void {
+    this.splitByPercentage.set(!this.splitByPercentage());
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  updateTotalAmount(): void {
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
   }
 
   allocateSharedAmounts(): void {
@@ -356,8 +391,81 @@ export class AddExpenseComponent implements OnInit {
           ).toFixed(2);
         }
       });
-      if (!this.expenseFullyAllocated() && splitCount > 0) {
-        let diff = +(totalAmount - this.getAllocatedTotal()).toFixed(2);
+      const allocatedTotal = +splits
+        .reduce((total, s) => (total += s.allocatedAmount), 0)
+        .toFixed(2);
+      if (allocatedTotal !== totalAmount && splitCount > 0) {
+        let diff = +(totalAmount - allocatedTotal).toFixed(2);
+        for (let i = 0; diff != 0; ) {
+          if (diff > 0) {
+            splits[i].allocatedAmount += 0.01;
+            diff = +(diff - 0.01).toFixed(2);
+          } else {
+            splits[i].allocatedAmount -= 0.01;
+            diff = +(diff + 0.01).toFixed(2);
+          }
+          if (i < splits.length - 1) {
+            i++;
+          } else {
+            i = 0;
+          }
+        }
+      }
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
+    }
+  }
+
+  allocateByPercentage(): void {
+    var totalPercentage: number = 0;
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.value];
+      for (let i = 0; i < splits.length; ) {
+        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+          splits.splice(i, 1);
+        } else {
+          if (i < splits.length - 1) {
+            splits[i].percentage = +splits[i].percentage;
+            totalPercentage += splits[i].percentage;
+          } else {
+            const remainingPercentage: number = +(
+              100 - totalPercentage
+            ).toFixed(2);
+            splits[i].percentage = remainingPercentage;
+            this.splitsFormArray.at(i).patchValue({
+              percentage: remainingPercentage,
+            });
+          }
+          i++;
+        }
+      }
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberId !== ''
+      ).length;
+      const val = this.addExpenseForm.value;
+      const totalAmount: number = val.amount;
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = +(
+          (totalAmount * +split.percentage) /
+          100
+        ).toFixed(2);
+      });
+      const allocatedTotal: number = +splits
+        .reduce((total, s) => (total += s.allocatedAmount), 0)
+        .toFixed(2);
+      const percentageTotal: number = +splits
+        .reduce((total, s) => (total += s.percentage), 0)
+        .toFixed(2);
+      if (
+        allocatedTotal !== totalAmount &&
+        percentageTotal === 100 &&
+        splitCount > 0
+      ) {
+        let diff = +(totalAmount - allocatedTotal).toFixed(2);
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
             splits[i].allocatedAmount += 0.01;
@@ -407,20 +515,24 @@ export class AddExpenseComponent implements OnInit {
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,
+      splitByPercentage: this.splitByPercentage(),
       hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.value.forEach((s: Split) => {
-      const split: Partial<Split> = {
-        date: expenseDate,
-        categoryId: val.categoryId,
-        assignedAmount: s.assignedAmount,
-        allocatedAmount: s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
-        paid: s.owedByMemberId == val.paidByMemberId,
-      };
-      splits.push(split);
+      if (s.allocatedAmount !== 0) {
+        const split: Partial<Split> = {
+          date: expenseDate,
+          categoryId: val.categoryId,
+          assignedAmount: s.assignedAmount,
+          percentage: s.percentage,
+          allocatedAmount: s.allocatedAmount,
+          paidByMemberId: val.paidByMemberId,
+          owedByMemberId: s.owedByMemberId,
+          paid: s.owedByMemberId == val.paidByMemberId,
+        };
+        splits.push(split);
+      }
     });
     this.loading.loadingOn();
     this.expenseService

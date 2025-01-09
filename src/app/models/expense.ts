@@ -10,6 +10,7 @@ export interface IExpense {
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;
+  splitByPercentage: boolean;
   splits: Split[];
   hasReceipt: boolean;
   paid: boolean;
@@ -28,6 +29,7 @@ export class Expense implements IExpense {
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;
+  splitByPercentage: boolean = false;
   splits: Split[];
   hasReceipt: boolean = false;
   paid: boolean = false;
