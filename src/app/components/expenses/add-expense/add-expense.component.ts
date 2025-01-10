@@ -1,7 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -29,36 +59,6 @@ import * as firestore from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -332,6 +332,7 @@ export class AddExpenseComponent implements OnInit {
 
   toggleSplitByPercentage(): void {
     this.splitByPercentage.set(!this.splitByPercentage());
+    this.addExpenseForm.markAsDirty();
     if (this.splitByPercentage()) {
       this.allocateByPercentage();
     } else {
