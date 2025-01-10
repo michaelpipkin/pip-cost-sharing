@@ -1,13 +1,6 @@
 <div class="footer" [class.no-emulation]="!production() && !emulators()">
   <div>
-    <span>
-      &copy; {{ currentYear() }} -
-      <a
-        href="mailto:michael.a.pipkin@gmail.com"
-        matTooltip="Email the developer"
-        >Michael A. Pipkin</a
-      >
-    </span>
+    <span> &copy; {{ currentYear() }} - Michael A. Pipkin </span>
   </div>
   <div class="footer-right">
     @if (!production()) {

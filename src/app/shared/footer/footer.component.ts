@@ -1,14 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { Component, signal } from '@angular/core';
-import { MatTooltip } from '@angular/material/tooltip';
 import packageJson from 'package.json';
 import { environment } from 'src/environments/environment';
 
 @Component({
-    selector: 'footer',
-    templateUrl: './footer.component.html',
-    styleUrl: './footer.component.scss',
-    imports: [DatePipe, MatTooltip]
+  selector: 'footer',
+  templateUrl: './footer.component.html',
+  styleUrl: './footer.component.scss',
+  imports: [DatePipe],
 })
 export class FooterComponent {
   currentYear = signal<string>(new Date().getFullYear().toString());
