@@ -286,13 +286,13 @@
         <textarea
           matInput
           formControlName="body"
-          maxlength="5000"
+          maxlength="2000"
           rows="5"
         ></textarea>
         @if (f.body.errors?.required) {
           <mat-error> *Required </mat-error>
         }
-        <mat-hint align="end">{{ f.body.value?.length || 0 }}/5000</mat-hint>
+        <mat-hint align="end">{{ f.body.value?.length || 0 }}/2000</mat-hint>
       </mat-form-field>
       <div class="buttons">
         <button
