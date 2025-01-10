@@ -1,7 +1,7 @@
 <div class="container pt-3 mb-2">
   <div class="page-header">
     <div></div>
-    <h3>Help</h3>
+    <h3>Help Topics</h3>
     <div></div>
   </div>
   <mat-accordion>
@@ -260,4 +260,60 @@
       </p>
     </mat-expansion-panel>
   </mat-accordion>
+  <div class="issue-container">
+    <h3>Report an Issue</h3>
+    <form [formGroup]="issueForm" class="issue-form">
+      <mat-form-field appearance="fill" subscriptSizing="dynamic">
+        <mat-label>Title</mat-label>
+        <input matInput formControlName="title" />
+        @if (f.title.errors?.required) {
+          <mat-error> *Required </mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="fill" subscriptSizing="dynamic">
+        <mat-label>Your email address</mat-label>
+        <input matInput formControlName="email" />
+        <mat-hint
+          >Optional - provide your email address if you would like the developer
+          to contact you regarding the issue</mat-hint
+        >
+        @if (f.email.errors?.email) {
+          <mat-error> *Invalid email address </mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="fill">
+        <mat-label>Description</mat-label>
+        <textarea
+          matInput
+          formControlName="body"
+          maxlength="5000"
+          rows="5"
+        ></textarea>
+        @if (f.body.errors?.required) {
+          <mat-error> *Required </mat-error>
+        }
+        <mat-hint align="end">{{ f.body.value?.length || 0 }}/5000</mat-hint>
+      </mat-form-field>
+      <div class="buttons">
+        <button
+          mat-raised-button
+          class="btn-secondary"
+          type="submit"
+          defaultButton
+          [disabled]="!issueForm.valid || issueForm.disabled"
+          (click)="onSubmit()"
+        >
+          Submit
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="issueForm.pristine"
+          (click)="clearForm()"
+        >
+          Clear
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

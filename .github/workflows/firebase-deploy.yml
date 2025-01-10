@@ -32,6 +32,14 @@ jobs:
           };
           EOF
       
+      - name: Create Github config file
+        run: |
+          cat << EOF > src/app/github.config.ts
+          export const githubConfig = {
+            personalAccessToken: '${{ secrets.PERSONAL_ACCESS_TOKEN }}',
+          };
+          EOF
+
       - name: Build Angular App
         run: npm run build:ci
 

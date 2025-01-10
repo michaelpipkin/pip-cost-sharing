@@ -1,5 +1,9 @@
 import { DecimalPipe } from '@angular/common';
 import {
+  provideHttpClient,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
+import {
   ApplicationConfig,
   importProvidersFrom,
   provideExperimentalZonelessChangeDetection,
@@ -63,6 +67,7 @@ export const appConfig: ApplicationConfig = {
     { provide: getAnalytics, useValue: analytics },
     { provide: getFunctions, useValue: functions },
     provideExperimentalZonelessChangeDetection(),
+    provideHttpClient(withInterceptorsFromDi()),
     importProvidersFrom(
       BrowserModule,
       FormsModule,

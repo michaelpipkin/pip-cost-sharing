@@ -1,0 +1,27 @@
+.container {
+  justify-items: start;
+
+  h3 {
+    margin-left: 24px;
+  }
+}
+
+.issue-container {
+  width: 95%;
+  margin-top: 24px;
+}
+
+.issue-form {
+  margin-left: 24px;
+  display: grid;
+  row-gap: 8px;
+  width: 100%;
+  justify-content: stretch;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: max-content max-content auto;
+  justify-items: start;
+  column-gap: 8px;
+}
