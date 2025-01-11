@@ -34,14 +34,14 @@ describe('UserService', () => {
   });
 
   it('should not get a default group', () => {
-    service.getDefaultGroup('').then((groupId: string) => {
+    service.getUserDetails('').then((groupId: string) => {
       expect(groupId).toBe('');
     });
   });
 
   it('should get a default group', () => {
     service
-      .getDefaultGroup('cgrizSOG69QiNquzKOA69ls8clFm')
+      .getUserDetails('cgrizSOG69QiNquzKOA69ls8clFm')
       .then((groupId: string) => {
         expect(groupId).toBe('G5L5nkg25rnJjNYdOrb2');
       });

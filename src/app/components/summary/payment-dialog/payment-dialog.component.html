@@ -1,0 +1,60 @@
+<h1 mat-dialog-title>Record Payment</h1>
+<mat-dialog-content>
+  @if (
+    !!data.venmoId || !!data.paypalId || !!data.cashAppId || !!data.zelleId
+  ) {
+    <p>
+      You can pay {{ data.payToMemberName }} with any of the following methods:
+    </p>
+    <ul style="list-style-type: none">
+      @if (data.venmoId !== '') {
+        <li>
+          <a href="https://www.venmo.com" target="_blank">Venmo</a>:
+          {{ data.venmoId }}
+        </li>
+      }
+      @if (data.paypalId !== '') {
+        <li>
+          <a href="https://www.paypal.com" target="_blank">PayPal</a>:
+          {{ data.paypalId }}
+        </li>
+      }
+      @if (data.cashAppId !== '') {
+        <li>
+          <a href="https://cash.app/" target="_blank">CashApp</a>:
+          {{ data.cashAppId }}
+        </li>
+      }
+      @if (data.zelleId !== '') {
+        <li>
+          <a href="https://www.zellepay.com" target="_blank">Zelle</a>:
+          {{ data.zelleId }}
+        </li>
+      }
+    </ul>
+  } @else {
+    @let name = data.payToMemberName;
+    <p>
+      {{ name }} does not have any saved payment service IDs. Please reach out
+      to {{ name }} find out how to pay them. You can email {{ name }} from the
+      Members page.
+    </p>
+  }
+  <p>
+    After completing payment, return here and click Submit to record the
+    payment.
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button
+    mat-raised-button
+    class="btn-secondary"
+    type="button"
+    [mat-dialog-close]="true"
+  >
+    Submit
+  </button>
+  <button mat-stroked-button type="button" [mat-dialog-close]="false">
+    Cancel
+  </button>
+</mat-dialog-actions>

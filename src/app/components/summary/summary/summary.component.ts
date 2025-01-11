@@ -38,10 +38,11 @@ import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
 import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 
 @Component({
@@ -76,6 +77,7 @@ import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 })
 export class SummaryComponent {
   router = inject(Router);
+  userService = inject(UserService);
   groupService = inject(GroupService);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -238,7 +240,10 @@ export class SummaryComponent {
     this.expandedDetail.set(null);
   }
 
-  markExpensesPaid(owedToMemberId: string, owedByMemberId: string): void {
+  async payExpenses(
+    owedToMemberId: string,
+    owedByMemberId: string
+  ): Promise<void> {
     this.owedToMemberId.set(owedToMemberId);
     this.owedByMemberId.set(owedByMemberId);
     var splitsToPay: Split[] = [];
@@ -250,16 +255,21 @@ export class SummaryComponent {
           s.paidByMemberId == owedByMemberId)
     );
     splitsToPay = memberSplits;
+    let paymentMethods = {};
+    this.loading.loadingOn();
+    await this.userService
+      .getPaymentMethods(this.currentGroup().id, owedToMemberId)
+      .then((methods) => {
+        paymentMethods = methods;
+      })
+      .finally(() => this.loading.loadingOff());
     const dialogConfig: MatDialogConfig = {
       data: {
-        dialogTitle: 'Confirm Action',
-        confirmationText:
-          'Are you sure you want to mark expenses between these members paid?',
-        cancelButtonText: 'No',
-        confirmButtonText: 'Yes',
+        payToMemberName: this.getMemberName(owedToMemberId),
+        ...paymentMethods,
       },
     };
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    const dialogRef = this.dialog.open(PaymentDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();

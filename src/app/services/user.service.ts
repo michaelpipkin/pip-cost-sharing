@@ -28,12 +28,12 @@ export class UserService {
       .then(async () => {
         this.auth.onAuthStateChanged((firebaseUser) => {
           if (!!firebaseUser) {
-            this.getDefaultGroup(firebaseUser.uid).then(
-              async (groupId: string) => {
+            this.getUserDetails(firebaseUser.uid).then(
+              async (userData: Partial<User>) => {
                 const user = new User({
                   id: firebaseUser.uid,
                   email: firebaseUser.email,
-                  defaultGroupId: groupId,
+                  ...userData,
                 });
                 this.user.set(user);
                 await this.groupService.getUserGroups(user, true);
@@ -52,24 +52,24 @@ export class UserService {
       });
   }
 
-  async getDefaultGroup(userId: string): Promise<string> {
+  async getUserDetails(userId: string): Promise<User | null> {
     const docRef = doc(this.fs, `users/${userId}`);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data().defaultGroupId;
+      return new User(docSnap.data());
     } else {
       setDoc(docRef, {
         defaultGroupId: '',
+        venmoId: '',
+        paypalId: '',
+        cashAppId: '',
+        zelleId: '',
       });
-      return '';
+      return null;
     }
   }
 
   async saveDefaultGroup(groupId: string): Promise<void> {
-    this.user.update((u) => ({
-      ...u,
-      defaultGroupId: groupId,
-    }));
     const docRef = doc(this.fs, `users/${this.user().id}`);
     return await setDoc(
       docRef,
@@ -77,7 +77,42 @@ export class UserService {
         defaultGroupId: groupId,
       },
       { merge: true }
-    );
+    ).then(() => {
+      this.user.update((u) => ({
+        ...u,
+        defaultGroupId: groupId,
+      }));
+    });
+  }
+
+  async updateUser(changes: Partial<User>): Promise<void> {
+    const docRef = doc(this.fs, `users/${this.user().id}`);
+    return await setDoc(docRef, changes, { merge: true }).then(() => {
+      this.user.update((u) => ({
+        ...u,
+        ...changes,
+      }));
+    });
+  }
+
+  async getPaymentMethods(groupId: string, memberId: string): Promise<object> {
+    const memberDocRef = doc(this.fs, `groups/${groupId}/members/${memberId}`);
+    return await getDoc(memberDocRef).then(async (memberDoc) => {
+      const userId = memberDoc.data().userId;
+      const userDocRef = doc(this.fs, `users/${userId}`);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        return {
+          venmoId: data.venmoId ?? '',
+          paypalId: data.paypalId ?? '',
+          cashAppId: data.cashAppId ?? '',
+          zelleId: data.zelleId ?? '',
+        };
+      } else {
+        return {};
+      }
+    });
   }
 
   logout() {

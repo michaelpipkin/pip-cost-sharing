@@ -2,6 +2,10 @@ export interface IUser {
   id: string;
   email: string;
   defaultGroupId: string;
+  venmoId?: string;
+  paypalId?: string;
+  cashAppId?: string;
+  zelleId?: string;
 }
 
 export class User implements IUser {
@@ -11,4 +15,8 @@ export class User implements IUser {
   id: string;
   email: string;
   defaultGroupId: string;
+  venmoId?: string = '';
+  paypalId?: string = '';
+  cashAppId?: string = '';
+  zelleId?: string = '';
 }

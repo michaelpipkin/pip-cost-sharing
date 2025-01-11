@@ -1,6 +1,6 @@
 <div class="container mt-3">
   <mat-tab-group dynamicHeight class="account-tabs">
-    <mat-tab label="Update Email Address">
+    <mat-tab label="Account">
       <form [formGroup]="emailForm" class="container">
         <mat-form-field class="email-input">
           <mat-label>Email Address</mat-label>
@@ -36,9 +36,7 @@
           </button>
         </div>
       </form>
-    </mat-tab>
-    <mat-tab label="Change Password">
-      <form [formGroup]="passwordForm" class="container">
+      <form [formGroup]="passwordForm" class="container mt-3">
         <mat-form-field>
           <mat-label>New Password</mat-label>
           <input
@@ -93,6 +91,36 @@
           (click)="onSubmitPassword()"
         >
           Change Password
+        </button>
+      </form>
+    </mat-tab>
+    <mat-tab label="Payment Services">
+      <h4>Payment Service IDs</h4>
+      <form [formGroup]="paymentsForm" class="container payments">
+        <mat-form-field>
+          <mat-label>Venmo</mat-label>
+          <input matInput formControlName="venmoId" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>PayPal</mat-label>
+          <input matInput formControlName="paypalId" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>CashApp</mat-label>
+          <input matInput formControlName="cashAppId" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Zelle</mat-label>
+          <input matInput formControlName="zelleId" />
+        </mat-form-field>
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="submit"
+          [disabled]="paymentsForm.pristine"
+          (click)="onSubmitPayments()"
+        >
+          Save
         </button>
       </form>
     </mat-tab>

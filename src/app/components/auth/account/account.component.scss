@@ -3,3 +3,7 @@
   grid-template-columns: 1fr 1fr;
   column-gap: 8px;
 }
+
+.payments mat-form-field {
+  width: 240px !important;
+}
