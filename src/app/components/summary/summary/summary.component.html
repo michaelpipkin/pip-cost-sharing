@@ -106,22 +106,19 @@
         </td>
       </ng-container>
       <ng-container matColumnDef="markPaid">
-        <th mat-header-cell *matHeaderCellDef>Mark Paid</th>
+        <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
         <td mat-cell *matCellDef="let amountDue" class="cell-center">
           <button
             class="btn btn-success"
             mat-mini-fab
             (click)="
-              markExpensesPaid(
-                amountDue.owedToMemberId,
-                amountDue.owedByMemberId
-              );
+              payExpenses(amountDue.owedToMemberId, amountDue.owedByMemberId);
               $event.stopPropagation()
             "
             title="
-                Mark expenses owed to {{
+                Pay expenses owed to {{
               getMemberName(amountDue.owedToMemberId)
-            }} from {{ getMemberName(amountDue.owedByMemberId) }} as paid.
+            }} from {{ getMemberName(amountDue.owedByMemberId) }}.
               "
           >
             <mat-icon>paid</mat-icon>

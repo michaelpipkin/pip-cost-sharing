@@ -1,3 +1,18 @@
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,21 +32,6 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { environment } from 'src/environments/environment';
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-account',
@@ -83,12 +83,24 @@ export class AccountComponent {
   groupForm = this.fb.group({
     groupId: [this.#user()?.defaultGroupId],
   });
+  paymentsForm = this.fb.group({
+    venmoId: [this.#user()?.venmoId],
+    paypalId: [this.#user()?.paypalId],
+    cashAppId: [this.#user()?.cashAppId],
+    zelleId: [this.#user()?.zelleId],
+  });
 
   constructor() {
     effect(() => {
       this.selectedGroupId.set(this.#user()?.defaultGroupId ?? '');
       this.groupForm.patchValue({ groupId: this.#user()?.defaultGroupId });
       this.emailForm.patchValue({ email: this.#user()?.email });
+      this.paymentsForm.patchValue({
+        venmoId: this.#user()?.venmoId,
+        paypalId: this.#user()?.paypalId,
+        cashAppId: this.#user()?.cashAppId,
+        zelleId: this.#user()?.zelleId,
+      });
     });
   }
 
@@ -98,6 +110,10 @@ export class AccountComponent {
 
   get g() {
     return this.groupForm.controls;
+  }
+
+  get p() {
+    return this.paymentsForm.controls;
   }
 
   toggleHidePassword() {
@@ -203,6 +219,37 @@ export class AccountComponent {
         });
     }
     this.passwordForm.enable();
+  }
+
+  onSubmitPayments(): void {
+    this.loading.loadingOn();
+    this.paymentsForm.disable();
+    const changes = this.paymentsForm.value;
+    this.userService
+      .updateUser({
+        venmoId: changes.venmoId,
+        paypalId: changes.paypalId,
+        cashAppId: changes.cashAppId,
+        zelleId: changes.zelleId,
+      })
+      .then(() => {
+        this.snackBar.open('Payment service IDs updated.', 'OK');
+      })
+      .catch((err: Error) => {
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'update_payments',
+          message: err.message,
+        });
+        this.snackBar.open(
+          'Something went wrong - your payment service IDs could not be updated.',
+          'OK'
+        );
+      })
+      .finally(() => {
+        this.paymentsForm.enable();
+        this.loading.loadingOff();
+      });
   }
 
   saveDefaultGroup(): void {
