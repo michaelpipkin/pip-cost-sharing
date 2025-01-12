@@ -71,14 +71,16 @@
           Send<br />Email
         </th>
         <td mat-cell *matCellDef="let member" class="cell-center">
-          <a
-            mat-icon-button
-            href="mailto:{{ member.email }}"
-            target="_blank"
-            (click)="$event.stopPropagation()"
-          >
-            <mat-icon>email</mat-icon>
-          </a>
+          @if (member.email !== '') {
+            <a
+              mat-icon-button
+              href="mailto:{{ member.email }}"
+              target="_blank"
+              (click)="$event.stopPropagation()"
+            >
+              <mat-icon>email</mat-icon>
+            </a>
+          }
         </td>
       </ng-container>
       <ng-container matColumnDef="active">
