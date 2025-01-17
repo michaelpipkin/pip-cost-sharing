@@ -21,6 +21,7 @@
     "singleProjectMode": true
   },
   "hosting": {
+    "site": "pipsplit",
     "public": "dist/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
