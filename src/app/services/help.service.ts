@@ -19,6 +19,6 @@ export class HelpService {
 
     const issueData = { title, body, assignees: ['michaelpipkin'] };
 
-    return this.http.post(this.apiUrl, issueData, { headers });
+    return this.http.post<object>(this.apiUrl, issueData, { headers });
   }
 }
