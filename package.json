@@ -1,6 +1,6 @@
 {
-  "name": "pip-cost-sharing",
-  "version": "1.6.34",
+  "name": "pipsplit",
+  "version": "1.6.35",
   "type": "module",
   "scripts": {
     "ng": "ng",
