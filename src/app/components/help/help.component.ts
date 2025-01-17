@@ -1,10 +1,4 @@
 import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -14,6 +8,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HelpService } from '@services/help.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-help',
