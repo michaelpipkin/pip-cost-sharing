@@ -1,6 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Member } from '@models/member';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -16,11 +15,13 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class MemberService {
+export class MemberService implements IMemberService {
   currentMember = signal<Member>(null);
   groupMembers = signal<Member[]>([]);
 

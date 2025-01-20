@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { CategoryService } from './category.service';
 import { ExpenseService } from './expense.service';
+import { IGroupService } from './group.service.interface';
 import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
 import { MemorizedService } from './memorized.service';
@@ -28,7 +29,7 @@ import { SplitService } from './split.service';
 @Injectable({
   providedIn: 'root',
 })
-export class GroupService {
+export class GroupService implements IGroupService {
   fs = inject(getFirestore);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
@@ -179,7 +180,7 @@ export class GroupService {
       });
   }
 
-  logout() {
+  logout(): void {
     this.currentGroup.set(null);
     localStorage.removeItem('currentGroup');
     this.allUserGroups.set([]);

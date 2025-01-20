@@ -1,10 +1,4 @@
-export interface ICategory {
-  id: string;
-  name: string;
-  active: boolean;
-}
-
-export class Category implements ICategory {
+export class Category {
   constructor(init?: Partial<Category>) {
     Object.assign(this, init);
   }

@@ -14,11 +14,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ExpenseService {
+export class ExpenseService implements IExpenseService {
   fs = inject(getFirestore);
 
   groupExpenses = signal<Expense[]>([]);
@@ -149,7 +150,7 @@ export class ExpenseService {
       });
   }
 
-  async updateAllExpensesPaidStatus() {
+  async updateAllExpensesPaidStatus(): Promise<boolean | Error> {
     const batch = writeBatch(this.fs);
     const expenseCollection = collectionGroup(this.fs, 'expenses');
     const splitsCollection = collectionGroup(this.fs, 'splits');
