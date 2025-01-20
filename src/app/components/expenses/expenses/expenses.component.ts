@@ -1,5 +1,21 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -33,22 +49,6 @@ import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -170,8 +170,7 @@ export class ExpensesComponent implements OnInit {
             'date-paidBy',
             'description-category',
             'amount',
-            'receipt',
-            'paid',
+            'receipt-paid',
             'expand',
           ]);
         } else {
