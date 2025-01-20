@@ -1,18 +1,6 @@
 import { Split } from './split';
 
-export interface IMemorized {
-  id: string;
-  description: string;
-  categoryId: string;
-  paidByMemberId: string;
-  sharedAmount: number;
-  allocatedAmount: number;
-  totalAmount: number;
-  splitByPercentage: boolean;
-  splits: Partial<Split>[];
-}
-
-export class Memorized implements IMemorized {
+export class Memorized {
   constructor(init?: Partial<Memorized>) {
     Object.assign(this, init);
   }

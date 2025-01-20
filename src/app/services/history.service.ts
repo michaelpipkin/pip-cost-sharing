@@ -9,11 +9,12 @@ import {
   orderBy,
   query,
 } from 'firebase/firestore';
+import { IHistoryService } from './history.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class HistoryService {
+export class HistoryService implements IHistoryService {
   fs = inject(getFirestore);
 
   groupHistory = signal<History[]>([]);

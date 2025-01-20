@@ -1,6 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Category } from '@models/category';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -15,11 +14,13 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { ICategoryService } from './category.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CategoryService {
+export class CategoryService implements ICategoryService {
   fs = inject(getFirestore);
   sorter = inject(SortingService);
 

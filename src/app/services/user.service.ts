@@ -9,11 +9,12 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class UserService {
+export class UserService implements IUserService {
   user = signal<User>(null);
   isLoggedIn = computed(() => !!this.user());
 
@@ -115,7 +116,7 @@ export class UserService {
     });
   }
 
-  logout() {
+  logout(): void {
     this.groupService.logout();
     this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }

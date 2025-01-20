@@ -1,11 +1,12 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { githubConfig } from '@app/github.config';
+import { IHelpService } from './help.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class HelpService {
+export class HelpService implements IHelpService {
   http = inject(HttpClient);
 
   private apiUrl =

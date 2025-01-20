@@ -11,11 +11,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SplitService {
+export class SplitService implements ISplitService {
   fs = inject(getFirestore);
 
   unpaidSplits = signal<Split[]>([]);

@@ -11,16 +11,17 @@ import {
   onSnapshot,
   updateDoc,
 } from 'firebase/firestore';
+import { IMemorizedService } from './memorized.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
-export class MemorizedService {
+export class MemorizedService implements IMemorizedService {
   fs = inject(getFirestore);
 
   memorizedExpenses = signal<Memorized[]>([]);
 
-  getMemorizedExpensesForGroup(groupId: string) {
+  getMemorizedExpensesForGroup(groupId: string): void {
     const q = collection(this.fs, `groups/${groupId}/memorized`);
     onSnapshot(q, (memorizedSnap) => {
       let memorizedExpenses: Memorized[] = [];
