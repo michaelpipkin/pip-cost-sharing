@@ -1,18 +1,3 @@
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -32,6 +17,21 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { environment } from 'src/environments/environment';
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-account',
@@ -62,6 +62,7 @@ export class AccountComponent {
 
   #user: Signal<User> = this.userService.user;
   activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+  isGoogleUser: Signal<boolean> = this.userService.isGoogleUser;
 
   firebaseUser = signal<firebase.User>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
