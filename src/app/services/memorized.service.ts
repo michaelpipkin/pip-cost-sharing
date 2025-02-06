@@ -1,5 +1,4 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { getDoc, getDocs } from '@firebase/firestore';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import {
@@ -7,6 +6,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
+  getDocs,
   getFirestore,
   onSnapshot,
   updateDoc,
