@@ -2,20 +2,21 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
   setPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService implements IUserService {
   user = signal<User>(null);
+  isGoogleUser = signal<boolean>(false);
   isLoggedIn = computed(() => !!this.user());
 
   fs = inject(getFirestore);
@@ -37,6 +38,9 @@ export class UserService implements IUserService {
                   ...userData,
                 });
                 this.user.set(user);
+                this.isGoogleUser.set(
+                  firebaseUser.providerData[0].providerId === 'google.com'
+                );
                 await this.groupService.getUserGroups(user, true);
               }
             );
