@@ -1,4 +1,4 @@
-import { replaceInFile } from 'replace-in-file';
+import { replaceInFileSync } from 'replace-in-file';
 
 const buildDate = new Date();
 
@@ -11,10 +11,11 @@ const options = {
   to: `buildDate: new Date('${buildDate.toISOString()}')`,
   allowEmptyPaths: false,
 };
+
 try {
-  let changedFiles = replaceInFile.sync(options);
-  if (changedFiles == 0) {
-    throw `Please make sure that the file ${options.files} has buildDate`;
+  const changedFiles = replaceInFileSync(options);
+  if (changedFiles.length === 0) {
+    throw `Please make sure that the file(s) ${options.files.join(', ')} have buildDate`;
   }
 
   console.log(`Build date is set to ${buildDate.toDateString()}`);
