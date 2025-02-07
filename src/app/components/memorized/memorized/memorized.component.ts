@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -31,15 +15,31 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
-import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -71,9 +71,9 @@ import { MemorizedHelpComponent } from '../memorized-help/memorized-help.compone
 })
 export class MemorizedComponent implements OnInit {
   router = inject(Router);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
-  categoryService = inject(CategoryService);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
+  categoryStore = inject(CategoryStore);
   expenseService = inject(ExpenseService);
   memorizedService = inject(MemorizedService);
   splitService = inject(SplitService);
@@ -82,11 +82,11 @@ export class MemorizedComponent implements OnInit {
   loading = inject(LoadingService);
   breakpointObserver = inject(BreakpointObserver);
 
-  categories: Signal<Category[]> = this.categoryService.groupCategories;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentMember;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
+  categories: Signal<Category[]> = this.categoryStore.groupCategories;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
   memorizeds: Signal<Memorized[]> = this.memorizedService.memorizedExpenses;
-  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
 
   filteredMemorizeds = computed<Memorized[]>(() => {
     var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {

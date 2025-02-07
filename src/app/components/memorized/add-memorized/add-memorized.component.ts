@@ -1,4 +1,30 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { MemorizedService } from '@services/memorized.service';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 import {
   afterNextRender,
   afterRender,
@@ -23,37 +49,11 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getStorage } from 'firebase/storage';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 
 @Component({
   selector: 'app-add-memorized',
@@ -82,19 +82,19 @@ export class AddMemorizedComponent implements OnInit {
   dialog = inject(MatDialog);
   router = inject(Router);
   fb = inject(FormBuilder);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
-  categoryService = inject(CategoryService);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
+  categoryStore = inject(CategoryStore);
   memorizedService = inject(MemorizedService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   decimalPipe = inject(DecimalPipe);
   stringUtils = inject(StringUtils);
 
-  currentMember: Signal<Member> = this.memberService.currentMember;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
-  #categories: Signal<Category[]> = this.categoryService.groupCategories;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
+  #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
   activeCategories = computed<Category[]>(() => {
     return this.#categories().filter((c) => c.active);

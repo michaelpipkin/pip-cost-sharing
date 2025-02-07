@@ -11,8 +11,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { UserService } from '@services/user.service';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { GroupsHelpComponent } from '../groups-help/groups-help.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
@@ -33,15 +34,16 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
   ],
 })
 export class GroupsComponent {
-  userService = inject(UserService);
+  userStore = inject(UserStore);
+  groupStore = inject(GroupStore);
   groupService = inject(GroupService);
-  memberService = inject(MemberService);
+  memberStore = inject(MemberStore);
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
 
-  #user: Signal<User> = this.userService.user;
-  #currentGroup: Signal<Group> = this.groupService.currentGroup;
-  activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
+  #user: Signal<User> = this.userStore.user;
+  #currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
   selectedGroupId = model<string>(this.#currentGroup()?.id ?? '');
 

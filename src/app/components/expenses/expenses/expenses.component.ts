@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -36,19 +20,35 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -88,9 +88,9 @@ import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component'
 export class ExpensesComponent implements OnInit {
   storage = inject(getStorage);
   analytics = inject(getAnalytics);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
-  categoryService = inject(CategoryService);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
+  categoryStore = inject(CategoryStore);
   expenseService = inject(ExpenseService);
   splitService = inject(SplitService);
   snackBar = inject(MatSnackBar);
@@ -100,10 +100,10 @@ export class ExpensesComponent implements OnInit {
   sorter = inject(SortingService);
   breakpointObserver = inject(BreakpointObserver);
 
-  members: Signal<Member[]> = this.memberService.groupMembers;
-  categories: Signal<Category[]> = this.categoryService.groupCategories;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentMember;
+  members: Signal<Member[]> = this.memberStore.groupMembers;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  categories: Signal<Category[]> = this.categoryStore.groupCategories;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
   expenses: Signal<Expense[]> = this.expenseService.groupExpenses;
 
   sortField = signal<string>('date');

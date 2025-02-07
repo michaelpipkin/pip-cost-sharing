@@ -9,7 +9,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
-import { UserService } from '@services/user.service';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
@@ -35,7 +35,7 @@ import {
 export class AddGroupComponent {
   dialogRef = inject(MatDialogRef<AddGroupComponent>);
   fb = inject(FormBuilder);
-  userService = inject(UserService);
+  userStore = inject(UserStore);
   groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);
   analytics = inject(getAnalytics);
@@ -45,7 +45,7 @@ export class AddGroupComponent {
     displayName: ['', Validators.required],
     autoAddMembers: [false],
   });
-  user: Signal<User> = this.userService.user;
+  user: Signal<User> = this.userStore.user;
 
   public get f() {
     return this.newGroupForm.controls;

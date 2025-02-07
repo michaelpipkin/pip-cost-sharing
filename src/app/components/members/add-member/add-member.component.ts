@@ -6,7 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
-import { UserService } from '@services/user.service';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
@@ -36,7 +36,7 @@ import {
 export class AddMemberComponent {
   dialogRef = inject(MatDialogRef<AddMemberComponent>);
   fb = inject(FormBuilder);
-  userService = inject(UserService);
+  userStore = inject(UserStore);
   memberService = inject(MemberService);
   groupService = inject(GroupService);
   snackBar = inject(MatSnackBar);

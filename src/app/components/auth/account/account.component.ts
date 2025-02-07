@@ -9,10 +9,11 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
@@ -53,16 +54,17 @@ export class AccountComponent {
   auth = inject(getAuth);
   analytics = inject(getAnalytics);
   fb = inject(FormBuilder);
+  userStore = inject(UserStore);
   userService = inject(UserService);
-  groupService = inject(GroupService);
+  groupStore = inject(GroupStore);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   splitService = inject(SplitService);
   expenseService = inject(ExpenseService);
 
-  #user: Signal<User> = this.userService.user;
-  activeUserGroups: Signal<Group[]> = this.groupService.activeUserGroups;
-  isGoogleUser: Signal<boolean> = this.userService.isGoogleUser;
+  #user: Signal<User> = this.userStore.user;
+  activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
+  isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
 
   firebaseUser = signal<firebase.User>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);

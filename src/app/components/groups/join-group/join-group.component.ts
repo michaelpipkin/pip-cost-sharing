@@ -7,7 +7,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberService } from '@services/member.service';
-import { UserService } from '@services/user.service';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
@@ -32,7 +33,8 @@ import {
 export class JoinGroupComponent {
   dialogRef = inject(MatDialogRef<JoinGroupComponent>);
   fb = inject(FormBuilder);
-  userService = inject(UserService);
+  userStore = inject(UserStore);
+  memberStore = inject(MemberStore);
   memberService = inject(MemberService);
   snackBar = inject(MatSnackBar);
   analytics = inject(getAnalytics);
@@ -42,7 +44,7 @@ export class JoinGroupComponent {
     displayName: ['', Validators.required],
   });
 
-  user: Signal<User> = this.userService.user;
+  user: Signal<User> = this.userStore.user;
 
   public get f() {
     return this.joinGroupForm.controls;

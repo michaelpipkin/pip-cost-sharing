@@ -1,20 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -32,13 +16,29 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
-import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
-import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
 import { HistoryHelpComponent } from '../history-help/history-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -72,18 +72,18 @@ import { HistoryHelpComponent } from '../history-help/history-help.component';
   ],
 })
 export class HistoryComponent {
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
   historyService = inject(HistoryService);
   dialog = inject(MatDialog);
   sorter = inject(SortingService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  members: Signal<Member[]> = this.memberService.groupMembers;
+  members: Signal<Member[]> = this.memberStore.groupMembers;
   history: Signal<History[]> = this.historyService.groupHistory;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentMember;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);

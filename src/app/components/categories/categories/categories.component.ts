@@ -1,11 +1,3 @@
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -21,15 +13,23 @@ import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { CategoryService } from '@services/category.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { CategoriesHelpComponent } from '../categories-help/categories-help.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-categories',
@@ -50,17 +50,17 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
 })
 export class CategoriesComponent {
   router = inject(Router);
-  categoryService = inject(CategoryService);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
+  categoryStore = inject(CategoryStore);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
   sorter = inject(SortingService);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
-  currentMember: Signal<Member> = this.memberService.currentMember;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  #categories: Signal<Category[]> = this.categoryService.groupCategories;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);

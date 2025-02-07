@@ -1,10 +1,18 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -18,19 +26,13 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GroupService implements IGroupService {
   fs = inject(getFirestore);
+  groupStore = inject(GroupStore);
   memberService = inject(MemberService);
   categoryService = inject(CategoryService);
   expensesService = inject(ExpenseService);
@@ -40,18 +42,12 @@ export class GroupService implements IGroupService {
   router = inject(Router);
   loading = inject(LoadingService);
 
-  allUserGroups = signal<Group[]>([]);
-  currentGroup = signal<Group>(null);
-  adminGroupIds = signal<string[]>([]);
-
-  activeUserGroups = computed<Group[]>(() => {
-    return this.allUserGroups().filter((g) => g.active);
-  });
-
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');
     if (currentGroup !== null) {
-      this.currentGroup.set(new Group({ ...JSON.parse(currentGroup) }));
+      this.groupStore.setCurrentGroup(
+        new Group({ ...JSON.parse(currentGroup) })
+      );
     }
   }
 
@@ -72,7 +68,7 @@ export class GroupService implements IGroupService {
       const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
       onSnapshot(groupQuery, async (groupQuerySnap) => {
         const userGroupIds = userGroups.map((m) => m.groupId);
-        this.adminGroupIds.set(
+        this.groupStore.setAdminGroupIds(
           userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
         );
         const groups: Group[] = [
@@ -80,9 +76,9 @@ export class GroupService implements IGroupService {
             (d) => new Group({ id: d.id, ...d.data() })
           ),
         ].filter((g) => userGroupIds.includes(g.id));
-        this.allUserGroups.set(groups);
-        if (!!this.currentGroup()) {
-          await this.getGroup(this.currentGroup().id, user.id);
+        this.groupStore.setAllUserGroups(groups);
+        if (!!this.groupStore.currentGroup()) {
+          await this.getGroup(this.groupStore.currentGroup().id, user.id);
           if (autoNav && this.router.url === '/') {
             this.router.navigateByUrl('/expenses');
           }
@@ -114,7 +110,7 @@ export class GroupService implements IGroupService {
     this.loading.loadingOn();
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
     const group = new Group({ id: docSnap.id, ...docSnap.data() });
-    this.currentGroup.set(group);
+    this.groupStore.setCurrentGroup(group);
     localStorage.setItem('currentGroup', JSON.stringify(group));
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
@@ -165,8 +161,8 @@ export class GroupService implements IGroupService {
           batch.update(u.ref, { defaultGroupId: '' });
         });
       });
-      if (this.currentGroup().id === groupId) {
-        this.currentGroup.set(null);
+      if (this.groupStore.currentGroup().id === groupId) {
+        this.groupStore.clearCurrentGroup();
         localStorage.removeItem('currentGroup');
       }
     }
@@ -181,9 +177,9 @@ export class GroupService implements IGroupService {
   }
 
   logout(): void {
-    this.currentGroup.set(null);
+    this.groupStore.clearCurrentGroup();
     localStorage.removeItem('currentGroup');
-    this.allUserGroups.set([]);
-    this.adminGroupIds.set([]);
+    this.groupStore.clearAllUserGroups();
+    this.groupStore.clearAdminGroupIds();
   }
 }

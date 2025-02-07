@@ -1,5 +1,8 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
+import { MemberStore } from '@store/member.store';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -15,20 +18,12 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { IMemberService } from './member.service.interface';
-import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemberService implements IMemberService {
-  currentMember = signal<Member>(null);
-  groupMembers = signal<Member[]>([]);
-
-  activeGroupMembers = computed<Member[]>(() => {
-    return this.groupMembers().filter((m) => m.active);
-  });
-
+  memberStore = inject(MemberStore);
   fs = inject(getFirestore);
   sorter = inject(SortingService);
 
@@ -41,11 +36,11 @@ export class MemberService implements IMemberService {
     await getDocs(q).then((docSnap) => {
       if (!docSnap.empty) {
         const memberDoc = docSnap.docs[0];
-        this.currentMember.set(
+        this.memberStore.setCurrentMember(
           new Member({ id: memberDoc.id, ...memberDoc.data() })
         );
       } else {
-        this.currentMember.set(null);
+        this.memberStore.clearCurrentMember();
       }
     });
   }
@@ -59,7 +54,7 @@ export class MemberService implements IMemberService {
       const groupMembers: Member[] = [
         ...querySnap.docs.map((d) => new Member({ id: d.id, ...d.data() })),
       ];
-      this.groupMembers.set(groupMembers);
+      this.memberStore.setGroupMembers(groupMembers);
     });
   }
 

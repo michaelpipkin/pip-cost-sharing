@@ -39,7 +39,11 @@
             "scripts": [
               "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
             ],
-            "allowedCommonJsDependencies": ["dialog-polyfill"],
+            "allowedCommonJsDependencies": [
+              "dialog-polyfill",
+              "moment",
+              "string-math"
+            ],
             "browser": "src/main.ts"
           },
           "configurations": {
