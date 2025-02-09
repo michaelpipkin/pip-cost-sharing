@@ -21,6 +21,7 @@
       "@services/*": ["src/app/services/*"],
       "@models/*": ["src/app/models/*"],
       "@components/*": ["src/app/components/*"],
+      "@store/*": ["src/app/store/*"],
       "@app/*": ["src/app/*"]
     },
     "typeRoots": ["node_modules/@types", "node_modules/@hcaptcha"]

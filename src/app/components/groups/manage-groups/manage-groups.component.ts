@@ -1,4 +1,4 @@
-import { Component, computed, inject, model, OnInit } from '@angular/core';
+import { Component, inject, model, OnInit, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
@@ -39,6 +40,7 @@ import {
   ],
 })
 export class ManageGroupsComponent implements OnInit {
+  groupStore = inject(GroupStore);
   groupService = inject(GroupService);
   dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   fb = inject(FormBuilder);
@@ -49,12 +51,7 @@ export class ManageGroupsComponent implements OnInit {
 
   selectedGroup = model<Group>(this.data.group as Group);
 
-  userAdminGroups = computed<Group[]>(() => {
-    const adminGroupsIds = this.groupService.adminGroupIds();
-    return this.groupService
-      .allUserGroups()
-      .filter((g) => adminGroupsIds.includes(g.id));
-  });
+  userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
   editGroupForm = this.fb.group({
     groupId: [''],

@@ -8,8 +8,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
 import { User } from '@models/user';
-import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
@@ -33,17 +34,18 @@ import { LoadingComponent } from './shared/loading/loading.component';
 export class AppComponent implements OnInit {
   title = 'Cost Sharing';
 
+  userStore = inject(UserStore);
   userService = inject(UserService);
-  groupService = inject(GroupService);
+  groupStore = inject(GroupStore);
   router = inject(Router);
   analytics = inject(getAnalytics);
   breakpointObserver = inject(BreakpointObserver);
 
   isSmallScreen = signal<boolean>(false);
 
-  user: Signal<User> = this.userService.user;
-  isLoggedIn: Signal<boolean> = this.userService.isLoggedIn;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  user: Signal<User> = this.userStore.user;
+  isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   constructor() {
     logEvent(this.analytics, 'app_initalized');

@@ -1,13 +1,4 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -23,16 +14,25 @@ import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
 import { SortingService } from '@services/sorting.service';
-import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { MembersHelpComponent } from '../members-help/members-help.component';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-members',
@@ -54,19 +54,19 @@ import { MembersHelpComponent } from '../members-help/members-help.component';
 })
 export class MembersComponent implements OnInit {
   router = inject(Router);
-  userService = inject(UserService);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
+  userStore = inject(UserStore);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
   sorter = inject(SortingService);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
   breakpointObserver = inject(BreakpointObserver);
 
-  user: Signal<User> = this.userService.user;
-  currentMember: Signal<Member> = this.memberService.currentMember;
-  #groupMembers: Signal<Member[]> = this.memberService.groupMembers;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
+  user: Signal<User> = this.userStore.user;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  #groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);

@@ -1,19 +1,5 @@
 import { Component, inject, Signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -22,10 +8,25 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberService } from '@services/member.service';
-import { UserService } from '@services/user.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-member',
@@ -46,7 +47,8 @@ export class EditMemberComponent {
   dialogRef = inject(MatDialogRef<EditMemberComponent>);
   fb = inject(FormBuilder);
   dialog = inject(MatDialog);
-  userService = inject(UserService);
+  userStore = inject(UserStore);
+  memberStore = inject(MemberStore);
   memberService = inject(MemberService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
@@ -57,8 +59,8 @@ export class EditMemberComponent {
 
   editMemberForm: FormGroup;
 
-  currentMember: Signal<Member> = this.memberService.currentMember;
-  user: Signal<User> = this.userService.user;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  user: Signal<User> = this.userStore.user;
 
   groupAdminTooltip: string = '';
 

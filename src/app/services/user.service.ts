@@ -1,6 +1,7 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { User } from '@models/user';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { GroupService } from './group.service';
@@ -15,14 +16,11 @@ import {
   providedIn: 'root',
 })
 export class UserService implements IUserService {
-  user = signal<User>(null);
-  isGoogleUser = signal<boolean>(false);
-  isLoggedIn = computed(() => !!this.user());
-
   fs = inject(getFirestore);
   auth = inject(getAuth);
   analytics = inject(getAnalytics);
   router = inject(Router);
+  userStore = inject(UserStore);
   groupService = inject(GroupService);
 
   constructor() {
@@ -37,8 +35,8 @@ export class UserService implements IUserService {
                   email: firebaseUser.email,
                   ...userData,
                 });
-                this.user.set(user);
-                this.isGoogleUser.set(
+                this.userStore.setUser(user);
+                this.userStore.setIsGoogleUser(
                   firebaseUser.providerData[0].providerId === 'google.com'
                 );
                 await this.groupService.getUserGroups(user, true);
@@ -46,7 +44,8 @@ export class UserService implements IUserService {
             );
             return true;
           } else {
-            this.user.set(null);
+            this.userStore.clearUser();
+            this.groupService.logout();
             return false;
           }
         });
@@ -75,7 +74,8 @@ export class UserService implements IUserService {
   }
 
   async saveDefaultGroup(groupId: string): Promise<void> {
-    const docRef = doc(this.fs, `users/${this.user().id}`);
+    const userId = this.userStore.user().id;
+    const docRef = doc(this.fs, `users/${userId}`);
     return await setDoc(
       docRef,
       {
@@ -83,20 +83,15 @@ export class UserService implements IUserService {
       },
       { merge: true }
     ).then(() => {
-      this.user.update((u) => ({
-        ...u,
-        defaultGroupId: groupId,
-      }));
+      this.userStore.updateUser({ defaultGroupId: groupId });
     });
   }
 
   async updateUser(changes: Partial<User>): Promise<void> {
-    const docRef = doc(this.fs, `users/${this.user().id}`);
+    const userId = this.userStore.user().id;
+    const docRef = doc(this.fs, `users/${userId}`);
     return await setDoc(docRef, changes, { merge: true }).then(() => {
-      this.user.update((u) => ({
-        ...u,
-        ...changes,
-      }));
+      this.userStore.updateUser(changes);
     });
   }
 

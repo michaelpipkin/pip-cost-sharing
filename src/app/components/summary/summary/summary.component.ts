@@ -1,20 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -33,17 +17,35 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
-import { MemberService } from '@services/member.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { SplitStore } from '@store/split.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -77,23 +79,25 @@ import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 })
 export class SummaryComponent {
   router = inject(Router);
+  userStore = inject(UserStore);
   userService = inject(UserService);
-  groupService = inject(GroupService);
-  memberService = inject(MemberService);
-  categoryService = inject(CategoryService);
+  groupStore = inject(GroupStore);
+  memberStore = inject(MemberStore);
+  categoryStore = inject(CategoryStore);
   splitService = inject(SplitService);
+  splitStore = inject(SplitStore);
   historyService = inject(HistoryService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
   loading = inject(LoadingService);
   analytics = inject(getAnalytics);
 
-  categories: Signal<Category[]> = this.categoryService.groupCategories;
-  members: Signal<Member[]> = this.memberService.groupMembers;
-  currentGroup: Signal<Group> = this.groupService.currentGroup;
-  currentMember: Signal<Member> = this.memberService.currentMember;
-  splits: Signal<Split[]> = this.splitService.unpaidSplits;
-  activeMembers: Signal<Member[]> = this.memberService.activeGroupMembers;
+  categories: Signal<Category[]> = this.categoryStore.groupCategories;
+  members: Signal<Member[]> = this.memberStore.groupMembers;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentMember: Signal<Member> = this.memberStore.currentMember;
+  splits: Signal<Split[]> = this.splitStore.unpaidSplits;
+  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
   owedToMemberId = signal<string>('');
   owedByMemberId = signal<string>('');
@@ -259,7 +263,7 @@ export class SummaryComponent {
     this.loading.loadingOn();
     await this.userService
       .getPaymentMethods(this.currentGroup().id, owedToMemberId)
-      .then((methods) => {
+      .then((methods: Object) => {
         paymentMethods = methods;
       })
       .finally(() => this.loading.loadingOff());
