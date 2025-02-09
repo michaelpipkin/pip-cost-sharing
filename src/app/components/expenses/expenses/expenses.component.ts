@@ -28,6 +28,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store.';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
@@ -91,6 +92,7 @@ export class ExpensesComponent implements OnInit {
   groupStore = inject(GroupStore);
   memberStore = inject(MemberStore);
   categoryStore = inject(CategoryStore);
+  expenseStore = inject(ExpenseStore);
   expenseService = inject(ExpenseService);
   splitService = inject(SplitService);
   snackBar = inject(MatSnackBar);
@@ -104,7 +106,7 @@ export class ExpensesComponent implements OnInit {
   currentMember: Signal<Member> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  expenses: Signal<Expense[]> = this.expenseService.groupExpenses;
+  expenses: Signal<Expense[]> = this.expenseStore.groupExpenses;
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);

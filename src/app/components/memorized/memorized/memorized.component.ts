@@ -15,14 +15,13 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
-import { ExpenseService } from '@services/expense.service';
-import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
 import {
   animate,
@@ -74,8 +73,7 @@ export class MemorizedComponent implements OnInit {
   groupStore = inject(GroupStore);
   memberStore = inject(MemberStore);
   categoryStore = inject(CategoryStore);
-  expenseService = inject(ExpenseService);
-  memorizedService = inject(MemorizedService);
+  memorizedStore = inject(MemorizedStore);
   splitService = inject(SplitService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
@@ -86,7 +84,7 @@ export class MemorizedComponent implements OnInit {
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  memorizeds: Signal<Memorized[]> = this.memorizedService.memorizedExpenses;
+  memorizeds: Signal<Memorized[]> = this.memorizedStore.memorizedExpenses;
 
   filteredMemorizeds = computed<Memorized[]>(() => {
     var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {

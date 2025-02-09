@@ -21,6 +21,7 @@ import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { HistoryHelpComponent } from '../history-help/history-help.component';
 import {
@@ -75,13 +76,14 @@ export class HistoryComponent {
   groupStore = inject(GroupStore);
   memberStore = inject(MemberStore);
   historyService = inject(HistoryService);
+  historyStore = inject(HistoryStore);
   dialog = inject(MatDialog);
   sorter = inject(SortingService);
   loading = inject(LoadingService);
   snackBar = inject(MatSnackBar);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
-  history: Signal<History[]> = this.historyService.groupHistory;
+  history: Signal<History[]> = this.historyStore.groupHistory;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
   currentMember: Signal<Member> = this.memberStore.currentMember;
 

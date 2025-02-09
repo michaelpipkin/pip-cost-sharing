@@ -1,6 +1,8 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { MemorizedStore } from '@store/memorized.store';
+import { IMemorizedService } from './memorized.service.interface';
 import {
   addDoc,
   collection,
@@ -12,15 +14,13 @@ import {
   onSnapshot,
   updateDoc,
 } from 'firebase/firestore';
-import { IMemorizedService } from './memorized.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemorizedService implements IMemorizedService {
   fs = inject(getFirestore);
-
-  memorizedExpenses = signal<Memorized[]>([]);
+  memorizedStore = inject(MemorizedStore);
 
   getMemorizedExpensesForGroup(groupId: string): void {
     const q = collection(this.fs, `groups/${groupId}/memorized`);
@@ -43,7 +43,7 @@ export class MemorizedService implements IMemorizedService {
         });
         memorizedExpenses.push(memorized);
       });
-      this.memorizedExpenses.set(memorizedExpenses);
+      this.memorizedStore.setMemorizedExpenses(memorizedExpenses);
     });
   }
 

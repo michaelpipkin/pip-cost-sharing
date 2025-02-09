@@ -45,6 +45,7 @@ export class UserService implements IUserService {
             return true;
           } else {
             this.userStore.clearUser();
+            this.groupService.logout();
             return false;
           }
         });

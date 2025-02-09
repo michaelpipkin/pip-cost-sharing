@@ -24,6 +24,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
@@ -84,6 +85,7 @@ export class SummaryComponent {
   memberStore = inject(MemberStore);
   categoryStore = inject(CategoryStore);
   splitService = inject(SplitService);
+  splitStore = inject(SplitStore);
   historyService = inject(HistoryService);
   snackBar = inject(MatSnackBar);
   dialog = inject(MatDialog);
@@ -94,7 +96,7 @@ export class SummaryComponent {
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
   currentMember: Signal<Member> = this.memberStore.currentMember;
-  splits: Signal<Split[]> = this.splitService.unpaidSplits;
+  splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
   owedToMemberId = signal<string>('');

@@ -1,5 +1,7 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
+import { HistoryStore } from '@store/history.store';
+import { IHistoryService } from './history.service.interface';
 import {
   collection,
   deleteDoc,
@@ -9,15 +11,13 @@ import {
   orderBy,
   query,
 } from 'firebase/firestore';
-import { IHistoryService } from './history.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class HistoryService implements IHistoryService {
   fs = inject(getFirestore);
-
-  groupHistory = signal<History[]>([]);
+  historyStore = inject(HistoryStore);
 
   getHistoryForGroup(groupId: string): void {
     const historyQuery = query(
@@ -33,7 +33,7 @@ export class HistoryService implements IHistoryService {
           });
         }),
       ];
-      this.groupHistory.set(history);
+      this.historyStore.setHistory(history);
     });
   }
 
