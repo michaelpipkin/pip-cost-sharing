@@ -1,3 +1,11 @@
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -22,14 +30,6 @@ import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { CategoriesHelpComponent } from '../categories-help/categories-help.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-categories',
@@ -49,14 +49,14 @@ import {
   ],
 })
 export class CategoriesComponent {
-  router = inject(Router);
-  categoryStore = inject(CategoryStore);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  sorter = inject(SortingService);
-  dialog = inject(MatDialog);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
+  protected readonly router = inject(Router);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly sorter = inject(SortingService);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;

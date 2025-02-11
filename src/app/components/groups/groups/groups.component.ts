@@ -34,12 +34,12 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
   ],
 })
 export class GroupsComponent {
-  userStore = inject(UserStore);
-  groupStore = inject(GroupStore);
-  groupService = inject(GroupService);
-  memberStore = inject(MemberStore);
-  dialog = inject(MatDialog);
-  snackBar = inject(MatSnackBar);
+  protected readonly userStore = inject(UserStore);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly groupService = inject(GroupService);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly snackBar = inject(MatSnackBar);
 
   #user: Signal<User> = this.userStore.user;
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;

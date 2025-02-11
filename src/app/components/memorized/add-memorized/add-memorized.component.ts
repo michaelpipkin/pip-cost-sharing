@@ -1,30 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { MemorizedService } from '@services/memorized.service';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getStorage } from 'firebase/storage';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 import {
   afterNextRender,
   afterRender,
@@ -49,11 +23,37 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { MemorizedService } from '@services/memorized.service';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getStorage } from 'firebase/storage';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 
 @Component({
   selector: 'app-add-memorized',
@@ -77,19 +77,19 @@ import {
   ],
 })
 export class AddMemorizedComponent implements OnInit {
-  storage = inject(getStorage);
-  analytics = inject(getAnalytics);
-  dialog = inject(MatDialog);
-  router = inject(Router);
-  fb = inject(FormBuilder);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  memorizedService = inject(MemorizedService);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  decimalPipe = inject(DecimalPipe);
-  stringUtils = inject(StringUtils);
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly router = inject(Router);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly memorizedService = inject(MemorizedService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly stringUtils = inject(StringUtils);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;

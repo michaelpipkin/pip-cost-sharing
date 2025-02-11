@@ -1,7 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterNextRender,
+  afterRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -29,36 +59,6 @@ import * as firestore from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
-import {
-  afterNextRender,
-  afterRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -83,20 +83,20 @@ import {
   ],
 })
 export class AddExpenseComponent implements OnInit {
-  storage = inject(getStorage);
-  analytics = inject(getAnalytics);
-  fb = inject(FormBuilder);
-  router = inject(Router);
-  dialog = inject(MatDialog);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  expenseService = inject(ExpenseService);
-  memorizedService = inject(MemorizedService);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  decimalPipe = inject(DecimalPipe);
-  stringUtils = inject(StringUtils);
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly router = inject(Router);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseService = inject(ExpenseService);
+  protected readonly memorizedService = inject(MemorizedService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly stringUtils = inject(StringUtils);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;

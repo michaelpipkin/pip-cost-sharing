@@ -2,7 +2,6 @@ import { inject, Injectable } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import { ExpenseStore } from '@store/expense.store.';
-import { IExpenseService } from './expense.service.interface';
 import {
   collection,
   collectionGroup,
@@ -16,13 +15,14 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExpenseService implements IExpenseService {
-  fs = inject(getFirestore);
-  expenseStore = inject(ExpenseStore);
+  protected readonly fs = inject(getFirestore);
+  protected readonly expenseStore = inject(ExpenseStore);
 
   getExpensesForGroup(groupId: string): void {
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));

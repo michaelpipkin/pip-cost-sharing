@@ -1,5 +1,21 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -34,22 +50,6 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -87,20 +87,20 @@ import {
   ],
 })
 export class ExpensesComponent implements OnInit {
-  storage = inject(getStorage);
-  analytics = inject(getAnalytics);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  expenseStore = inject(ExpenseStore);
-  expenseService = inject(ExpenseService);
-  splitService = inject(SplitService);
-  snackBar = inject(MatSnackBar);
-  dialog = inject(MatDialog);
-  router = inject(Router);
-  loading = inject(LoadingService);
-  sorter = inject(SortingService);
-  breakpointObserver = inject(BreakpointObserver);
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseStore = inject(ExpenseStore);
+  protected readonly expenseService = inject(ExpenseService);
+  protected readonly splitService = inject(SplitService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly router = inject(Router);
+  protected readonly loading = inject(LoadingService);
+  protected readonly sorter = inject(SortingService);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member> = this.memberStore.currentMember;

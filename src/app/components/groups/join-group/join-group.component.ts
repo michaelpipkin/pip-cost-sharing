@@ -1,4 +1,10 @@
 import { Component, inject, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,12 +16,6 @@ import { MemberService } from '@services/member.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-join-group',
@@ -31,13 +31,13 @@ import {
   ],
 })
 export class JoinGroupComponent {
-  dialogRef = inject(MatDialogRef<JoinGroupComponent>);
-  fb = inject(FormBuilder);
-  userStore = inject(UserStore);
-  memberStore = inject(MemberStore);
-  memberService = inject(MemberService);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
+  protected readonly dialogRef = inject(MatDialogRef<JoinGroupComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly userStore = inject(UserStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly memberService = inject(MemberService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
 
   joinGroupForm = this.fb.group({
     groupId: ['', Validators.required],

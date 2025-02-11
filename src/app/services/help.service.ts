@@ -7,7 +7,7 @@ import { IHelpService } from './help.service.interface';
   providedIn: 'root',
 })
 export class HelpService implements IHelpService {
-  http = inject(HttpClient);
+  protected readonly http = inject(HttpClient);
 
   private apiUrl =
     'https://api.github.com/repos/michaelpipkin/pip-cost-sharing/issues';

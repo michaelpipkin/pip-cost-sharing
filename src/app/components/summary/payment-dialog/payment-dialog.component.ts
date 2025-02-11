@@ -9,7 +9,7 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
   styleUrl: './payment-dialog.component.scss',
 })
 export class PaymentDialogComponent {
-  data: paymentData = inject(MAT_DIALOG_DATA);
+  protected readonly data: paymentData = inject(MAT_DIALOG_DATA);
 }
 
 type paymentData = {

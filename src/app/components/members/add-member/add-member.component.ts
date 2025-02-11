@@ -1,5 +1,16 @@
 import { Component, inject } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,17 +19,6 @@ import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-member',
@@ -34,14 +34,14 @@ import {
   styleUrl: './add-member.component.scss',
 })
 export class AddMemberComponent {
-  dialogRef = inject(MatDialogRef<AddMemberComponent>);
-  fb = inject(FormBuilder);
-  userStore = inject(UserStore);
-  memberService = inject(MemberService);
-  groupService = inject(GroupService);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
-  data: any = inject(MAT_DIALOG_DATA);
+  protected readonly dialogRef = inject(MatDialogRef<AddMemberComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly userStore = inject(UserStore);
+  protected readonly memberService = inject(MemberService);
+  protected readonly groupService = inject(GroupService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   addMemberForm = this.fb.group({
     displayName: ['', Validators.required],

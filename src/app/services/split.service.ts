@@ -2,7 +2,6 @@ import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
-import { ISplitService } from './split.service.interface';
 import {
   collection,
   doc,
@@ -13,13 +12,14 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SplitService implements ISplitService {
-  fs = inject(getFirestore);
-  splitStore = inject(SplitStore);
+  protected readonly fs = inject(getFirestore);
+  protected readonly splitStore = inject(SplitStore);
 
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(

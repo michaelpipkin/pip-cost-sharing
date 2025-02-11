@@ -3,12 +3,12 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { LoadingService } from './loading.service';
 
 @Component({
-    selector: 'loading',
-    templateUrl: './loading.component.html',
-    styleUrls: ['./loading.component.scss'],
-    imports: [MatProgressSpinner]
+  selector: 'loading',
+  templateUrl: './loading.component.html',
+  styleUrls: ['./loading.component.scss'],
+  imports: [MatProgressSpinner],
 })
 export class LoadingComponent {
-  loadingService = inject(LoadingService);
+  protected readonly loadingService = inject(LoadingService);
   loading: Signal<boolean> = this.loadingService.loading;
 }

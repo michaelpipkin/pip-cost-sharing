@@ -1,7 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
 import { HistoryStore } from '@store/history.store';
-import { IHistoryService } from './history.service.interface';
 import {
   collection,
   deleteDoc,
@@ -11,13 +10,14 @@ import {
   orderBy,
   query,
 } from 'firebase/firestore';
+import { IHistoryService } from './history.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class HistoryService implements IHistoryService {
-  fs = inject(getFirestore);
-  historyStore = inject(HistoryStore);
+  protected readonly fs = inject(getFirestore);
+  protected readonly historyStore = inject(HistoryStore);
 
   getHistoryForGroup(groupId: string): void {
     const historyQuery = query(
