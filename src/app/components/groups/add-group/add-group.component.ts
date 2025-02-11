@@ -1,4 +1,10 @@
 import { Component, inject, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,12 +17,6 @@ import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-add-group',
@@ -33,12 +33,12 @@ import {
   ],
 })
 export class AddGroupComponent {
-  dialogRef = inject(MatDialogRef<AddGroupComponent>);
-  fb = inject(FormBuilder);
-  userStore = inject(UserStore);
-  groupService = inject(GroupService);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
+  protected readonly dialogRef = inject(MatDialogRef<AddGroupComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly userStore = inject(UserStore);
+  protected readonly groupService = inject(GroupService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
 
   newGroupForm = this.fb.group({
     groupName: ['', Validators.required],

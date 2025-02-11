@@ -6,13 +6,6 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -26,21 +19,28 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GroupService implements IGroupService {
-  fs = inject(getFirestore);
-  groupStore = inject(GroupStore);
-  memberService = inject(MemberService);
-  categoryService = inject(CategoryService);
-  expensesService = inject(ExpenseService);
-  splitsService = inject(SplitService);
-  memorizedService = inject(MemorizedService);
-  historyService = inject(HistoryService);
-  router = inject(Router);
-  loading = inject(LoadingService);
+  protected readonly fs = inject(getFirestore);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberService = inject(MemberService);
+  protected readonly categoryService = inject(CategoryService);
+  protected readonly expensesService = inject(ExpenseService);
+  protected readonly splitsService = inject(SplitService);
+  protected readonly memorizedService = inject(MemorizedService);
+  protected readonly historyService = inject(HistoryService);
+  protected readonly router = inject(Router);
+  protected readonly loading = inject(LoadingService);
 
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');

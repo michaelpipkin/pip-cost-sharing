@@ -3,25 +3,25 @@ import { Router } from '@angular/router';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
   setPersistence,
 } from 'firebase/auth';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService implements IUserService {
-  fs = inject(getFirestore);
-  auth = inject(getAuth);
-  analytics = inject(getAnalytics);
-  router = inject(Router);
-  userStore = inject(UserStore);
-  groupService = inject(GroupService);
+  protected readonly fs = inject(getFirestore);
+  protected readonly auth = inject(getAuth);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly router = inject(Router);
+  protected readonly userStore = inject(UserStore);
+  protected readonly groupService = inject(GroupService);
 
   constructor() {
     setPersistence(this.auth, browserLocalPersistence)

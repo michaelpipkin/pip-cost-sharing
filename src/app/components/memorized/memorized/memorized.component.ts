@@ -1,5 +1,21 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -23,22 +39,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -69,16 +69,16 @@ import {
   ],
 })
 export class MemorizedComponent implements OnInit {
-  router = inject(Router);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  memorizedStore = inject(MemorizedStore);
-  splitService = inject(SplitService);
-  snackBar = inject(MatSnackBar);
-  dialog = inject(MatDialog);
-  loading = inject(LoadingService);
-  breakpointObserver = inject(BreakpointObserver);
+  protected readonly router = inject(Router);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly memorizedStore = inject(MemorizedStore);
+  protected readonly splitService = inject(SplitService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly loading = inject(LoadingService);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;

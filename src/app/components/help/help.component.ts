@@ -1,4 +1,10 @@
 import { Component, inject } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -8,12 +14,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HelpService } from '@services/help.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-help',
@@ -30,11 +30,11 @@ import {
   ],
 })
 export class HelpComponent {
-  helpService = inject(HelpService);
-  loading = inject(LoadingService);
-  fb = inject(FormBuilder);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
+  protected readonly helpService = inject(HelpService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
 
   issueForm = this.fb.group({
     title: ['', Validators.required],

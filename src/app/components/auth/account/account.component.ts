@@ -1,3 +1,18 @@
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,21 +33,6 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { environment } from 'src/environments/environment';
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 
 @Component({
   selector: 'app-account',
@@ -51,16 +51,16 @@ import {
   ],
 })
 export class AccountComponent {
-  auth = inject(getAuth);
-  analytics = inject(getAnalytics);
-  fb = inject(FormBuilder);
-  userStore = inject(UserStore);
-  userService = inject(UserService);
-  groupStore = inject(GroupStore);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  splitService = inject(SplitService);
-  expenseService = inject(ExpenseService);
+  protected readonly auth = inject(getAuth);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly userStore = inject(UserStore);
+  protected readonly userService = inject(UserService);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly splitService = inject(SplitService);
+  protected readonly expenseService = inject(ExpenseService);
 
   #user: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;

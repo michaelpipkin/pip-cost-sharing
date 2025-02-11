@@ -1,8 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
 import { CategoryStore } from '@store/category.store';
-import { ICategoryService } from './category.service.interface';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -17,14 +15,16 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { ICategoryService } from './category.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CategoryService implements ICategoryService {
-  categoryStore = inject(CategoryStore);
-  fs = inject(getFirestore);
-  sorter = inject(SortingService);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly fs = inject(getFirestore);
+  protected readonly sorter = inject(SortingService);
 
   getGroupCategories(groupId: string): void {
     const c = collection(this.fs, `groups/${groupId}/categories`);

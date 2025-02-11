@@ -11,7 +11,7 @@ import { UserStore } from '@store/user.store';
   imports: [RouterLink, MatIconModule, MatButtonModule],
 })
 export class HomeComponent {
-  userStore = inject(UserStore);
+  protected readonly userStore = inject(UserStore);
 
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
 }

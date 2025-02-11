@@ -1,4 +1,20 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -30,22 +46,6 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -78,19 +78,19 @@ import {
   ],
 })
 export class SummaryComponent {
-  router = inject(Router);
-  userStore = inject(UserStore);
-  userService = inject(UserService);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  splitService = inject(SplitService);
-  splitStore = inject(SplitStore);
-  historyService = inject(HistoryService);
-  snackBar = inject(MatSnackBar);
-  dialog = inject(MatDialog);
-  loading = inject(LoadingService);
-  analytics = inject(getAnalytics);
+  protected readonly router = inject(Router);
+  protected readonly userStore = inject(UserStore);
+  protected readonly userService = inject(UserService);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly splitService = inject(SplitService);
+  protected readonly splitStore = inject(SplitStore);
+  protected readonly historyService = inject(HistoryService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly loading = inject(LoadingService);
+  protected readonly analytics = inject(getAnalytics);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;

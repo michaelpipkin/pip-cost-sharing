@@ -1,4 +1,13 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -24,15 +33,6 @@ import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { MembersHelpComponent } from '../members-help/members-help.component';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-members',
@@ -53,15 +53,15 @@ import {
   ],
 })
 export class MembersComponent implements OnInit {
-  router = inject(Router);
-  userStore = inject(UserStore);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  sorter = inject(SortingService);
-  dialog = inject(MatDialog);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  breakpointObserver = inject(BreakpointObserver);
+  protected readonly router = inject(Router);
+  protected readonly userStore = inject(UserStore);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly sorter = inject(SortingService);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   user: Signal<User> = this.userStore.user;
   currentMember: Signal<Member> = this.memberStore.currentMember;

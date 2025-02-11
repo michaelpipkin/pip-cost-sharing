@@ -1,35 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { ExpenseService } from '@services/expense.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { FirebaseError } from 'firebase/app';
-import * as firestore from 'firebase/firestore';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { Url } from 'url';
-import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 import {
   afterNextRender,
   afterRender,
@@ -55,11 +24,39 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Split } from '@models/split';
+import { ExpenseService } from '@services/expense.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { FirebaseError } from 'firebase/app';
+import * as firestore from 'firebase/firestore';
 import {
   deleteObject,
   getDownloadURL,
@@ -67,6 +64,9 @@ import {
   ref,
   uploadBytes,
 } from 'firebase/storage';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { Url } from 'url';
+import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 
 @Component({
   selector: 'app-edit-expense',
@@ -91,20 +91,20 @@ import {
   ],
 })
 export class EditExpenseComponent implements OnInit {
-  storage = inject(getStorage);
-  analytics = inject(getAnalytics);
-  fb = inject(FormBuilder);
-  router = inject(Router);
-  route = inject(ActivatedRoute);
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  categoryStore = inject(CategoryStore);
-  expenseService = inject(ExpenseService);
-  dialog = inject(MatDialog);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  decimalPipe = inject(DecimalPipe);
-  stringUtils = inject(StringUtils);
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly router = inject(Router);
+  protected readonly route = inject(ActivatedRoute);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseService = inject(ExpenseService);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly stringUtils = inject(StringUtils);
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 

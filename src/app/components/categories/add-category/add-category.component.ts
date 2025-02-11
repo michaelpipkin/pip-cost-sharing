@@ -1,5 +1,16 @@
 import { Component, inject } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,17 +18,6 @@ import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-category',
@@ -33,13 +33,13 @@ import {
   ],
 })
 export class AddCategoryComponent {
-  loading = inject(LoadingService);
-  dialogRef = inject(MatDialogRef<AddCategoryComponent>);
-  fb = inject(FormBuilder);
-  categoryService = inject(CategoryService);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
-  groupId: string = inject(MAT_DIALOG_DATA);
+  protected readonly loading = inject(LoadingService);
+  protected readonly dialogRef = inject(MatDialogRef<AddCategoryComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly categoryService = inject(CategoryService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly groupId: string = inject(MAT_DIALOG_DATA);
 
   newCategoryForm = this.fb.group({
     categoryName: ['', Validators.required],

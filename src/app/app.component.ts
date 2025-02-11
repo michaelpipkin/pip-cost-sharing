@@ -34,12 +34,12 @@ import { LoadingComponent } from './shared/loading/loading.component';
 export class AppComponent implements OnInit {
   title = 'Cost Sharing';
 
-  userStore = inject(UserStore);
-  userService = inject(UserService);
-  groupStore = inject(GroupStore);
-  router = inject(Router);
-  analytics = inject(getAnalytics);
-  breakpointObserver = inject(BreakpointObserver);
+  protected readonly userStore = inject(UserStore);
+  protected readonly userService = inject(UserService);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly router = inject(Router);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   isSmallScreen = signal<boolean>(false);
 

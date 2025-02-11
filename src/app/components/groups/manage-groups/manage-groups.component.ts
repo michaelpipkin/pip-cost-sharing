@@ -1,6 +1,17 @@
 import { Component, inject, model, OnInit, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -11,17 +22,6 @@ import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-manage-groups',
@@ -40,14 +40,14 @@ import {
   ],
 })
 export class ManageGroupsComponent implements OnInit {
-  groupStore = inject(GroupStore);
-  groupService = inject(GroupService);
-  dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
-  fb = inject(FormBuilder);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
-  loading = inject(LoadingService);
-  data = inject(MAT_DIALOG_DATA);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly groupService = inject(GroupService);
+  protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly loading = inject(LoadingService);
+  protected readonly data = inject(MAT_DIALOG_DATA);
 
   selectedGroup = model<Group>(this.data.group as Group);
 

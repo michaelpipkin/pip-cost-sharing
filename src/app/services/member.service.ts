@@ -1,8 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
 import { MemberStore } from '@store/member.store';
-import { IMemberService } from './member.service.interface';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -18,14 +16,16 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemberService implements IMemberService {
-  memberStore = inject(MemberStore);
-  fs = inject(getFirestore);
-  sorter = inject(SortingService);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly fs = inject(getFirestore);
+  protected readonly sorter = inject(SortingService);
 
   async getMemberByUserId(groupId: string, userId: string): Promise<void> {
     const q = query(

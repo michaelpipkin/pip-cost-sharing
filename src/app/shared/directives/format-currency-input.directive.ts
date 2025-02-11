@@ -8,9 +8,11 @@ import { StringUtils } from 'src/app/utilities/string-utils.service';
   standalone: true,
 })
 export class FormatCurrencyInputDirective {
-  stringUtils = inject(StringUtils);
-  decimalPipe = inject(DecimalPipe);
-  formGroupDirective = inject(FormGroupDirective, { optional: true });
+  protected readonly stringUtils = inject(StringUtils);
+  protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly formGroupDirective = inject(FormGroupDirective, {
+    optional: true,
+  });
 
   constructor(private el: ElementRef) {}
 

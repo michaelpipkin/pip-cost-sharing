@@ -1,4 +1,20 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -24,22 +40,6 @@ import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { HistoryHelpComponent } from '../history-help/history-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -73,14 +73,14 @@ import {
   ],
 })
 export class HistoryComponent {
-  groupStore = inject(GroupStore);
-  memberStore = inject(MemberStore);
-  historyService = inject(HistoryService);
-  historyStore = inject(HistoryStore);
-  dialog = inject(MatDialog);
-  sorter = inject(SortingService);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly historyService = inject(HistoryService);
+  protected readonly historyStore = inject(HistoryStore);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly sorter = inject(SortingService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   history: Signal<History[]> = this.historyStore.groupHistory;

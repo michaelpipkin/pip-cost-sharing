@@ -1,13 +1,3 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
-import { LoadingService } from '@shared/loading/loading.service';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   ChangeDetectorRef,
   Component,
@@ -24,6 +14,15 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { LoadingService } from '@shared/loading/loading.service';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -32,6 +31,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 declare const hcaptcha: any;
 
 @Component({
@@ -48,15 +48,15 @@ declare const hcaptcha: any;
   ],
 })
 export class LoginComponent implements OnInit {
-  auth = inject(getAuth);
-  userStore = inject(UserStore);
-  loading = inject(LoadingService);
-  router = inject(Router);
-  fb = inject(FormBuilder);
-  snackbar = inject(MatSnackBar);
-  cdr = inject(ChangeDetectorRef);
-  analytics = inject(getAnalytics);
-  functions = inject(getFunctions);
+  protected readonly auth = inject(getAuth);
+  protected readonly userStore = inject(UserStore);
+  protected readonly loading = inject(LoadingService);
+  protected readonly router = inject(Router);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly cdr = inject(ChangeDetectorRef);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly functions = inject(getFunctions);
 
   step1Complete = signal<boolean>(false);
   step2Complete = signal<boolean>(false);

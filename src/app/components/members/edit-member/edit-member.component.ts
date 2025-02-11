@@ -1,5 +1,19 @@
 import { Component, inject, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -13,20 +27,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-member',
@@ -44,16 +44,16 @@ import {
   ],
 })
 export class EditMemberComponent {
-  dialogRef = inject(MatDialogRef<EditMemberComponent>);
-  fb = inject(FormBuilder);
-  dialog = inject(MatDialog);
-  userStore = inject(UserStore);
-  memberStore = inject(MemberStore);
-  memberService = inject(MemberService);
-  loading = inject(LoadingService);
-  snackBar = inject(MatSnackBar);
-  analytics = inject(getAnalytics);
-  data: any = inject(MAT_DIALOG_DATA);
+  protected readonly dialogRef = inject(MatDialogRef<EditMemberComponent>);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly userStore = inject(UserStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly memberService = inject(MemberService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
+  protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   private member: Member = this.data.member;
 
