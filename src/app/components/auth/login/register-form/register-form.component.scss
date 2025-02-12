@@ -1,0 +1,45 @@
+h2 {
+  margin-bottom: 1em;
+}
+
+.register-form {
+  width: 25em;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .register-form {
+    width: 100%;
+  }
+}
+
+.create-account {
+  justify-self: start;
+}
+
+.register-button {
+  font-size: 1rem !important;
+}
+
+.buttons {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  align-items: baseline;
+
+  button {
+    justify-self: start;
+  }
+
+  a {
+    justify-self: end;
+  }
+}
+
+#hcaptcha-container {
+  justify-self: center;
+}

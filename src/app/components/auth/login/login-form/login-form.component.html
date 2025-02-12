@@ -1,0 +1,46 @@
+<div class="container">
+  <h2>Login</h2>
+  <form [formGroup]="loginForm" class="login-form" (submit)="emailLogin()">
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" #emailInput />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        type="password"
+        formControlName="password"
+        (keydown.enter)="
+          $event.preventDefault(); loginForm.valid && emailLogin()
+        "
+        #passwordInput
+      />
+    </mat-form-field>
+    <div class="buttons">
+      <button mat-raised-button type="submit" class="btn-primary mb-3">
+        <span class="login-button">Login</span>
+      </button>
+      <a class="primary-link" routerLink="forgot-password">Forgot password?</a>
+    </div>
+    <div class="create-account">
+      Don't have an account?
+      <a class="primary-link" routerLink="register">Create one.</a>
+    </div>
+  </form>
+  <div class="divider-with-text">
+    <hr />
+    <span>Or</span>
+    <hr />
+  </div>
+  <div>
+    <button mat-stroked-button (click)="googleLogin()">
+      <img
+        class="google-g me-2"
+        alt=""
+        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+      />
+      <span class="login-button">Sign in with Google</span>
+    </button>
+  </div>
+</div>

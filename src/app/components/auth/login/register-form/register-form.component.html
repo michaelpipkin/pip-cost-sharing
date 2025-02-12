@@ -1,0 +1,74 @@
+<div class="container">
+  <h2>Create Account</h2>
+  <form [formGroup]="registerForm" class="register-form" (submit)="register()">
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" />
+      @if (r.email?.errors?.required) {
+        <mat-error>Email is required.</mat-error>
+      }
+      @if (r.email?.errors?.email) {
+        <mat-error>Invalid email address.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="password"
+      />
+      <button
+        mat-icon-button
+        type="button"
+        matIconSuffix
+        (click)="toggleHidePassword()"
+        [attr.aria-label]="'Hide password'"
+        [attr.aria-pressed]="hidePassword"
+        tabindex="-1"
+      >
+        <mat-icon fontSet="material-symbols-outlined">{{
+          hidePassword() ? 'visibility_off' : 'visibility'
+        }}</mat-icon>
+      </button>
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Confirm Password</mat-label>
+      <input
+        matInput
+        [type]="hideConfirmPassword() ? 'password' : 'text'"
+        formControlName="confirmPassword"
+      />
+      <button
+        mat-icon-button
+        type="button"
+        matIconSuffix
+        (click)="toggleHideConfirmPassword()"
+        [attr.aria-label]="'Hide password'"
+        [attr.aria-pressed]="hideConfirmPassword"
+        tabindex="-1"
+      >
+        <mat-icon fontSet="material-symbols-outlined">{{
+          hideConfirmPassword() ? 'visibility_off' : 'visibility'
+        }}</mat-icon>
+      </button>
+    </mat-form-field>
+    @if (registerForm.errors?.passwordMismatch && r.confirmPassword.touched) {
+      <div class="form-error">Passwords do not match.</div>
+    }
+    <div id="hcaptcha-container"></div>
+    <div class="buttons">
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="submit"
+        [disabled]="
+          registerForm.invalid || registerForm.pristine || !passedCaptcha()
+        "
+      >
+        <span class="register-button">Register</span>
+      </button>
+      <a class="primary-link" routerLink="../">Return to Login</a>
+    </div>
+  </form>
+</div>
