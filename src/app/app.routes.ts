@@ -1,6 +1,15 @@
 import { Routes } from '@angular/router';
 import { AccountComponent } from '@components/auth/account/account.component';
+import {
+  authGuard,
+  groupGuard,
+  loggedInGuard,
+} from '@components/auth/guards.guard';
+import { ForgotPasswordComponent } from '@components/auth/login/forgot-password/forgot-password.component';
+import { LoginFormComponent } from '@components/auth/login/login-form/login-form.component';
 import { LoginComponent } from '@components/auth/login/login.component';
+import { RegisterFormComponent } from '@components/auth/login/register-form/register-form.component';
+import { ResetPasswordComponent } from '@components/auth/login/reset-password/reset-password.component';
 import { CategoriesComponent } from '@components/categories/categories/categories.component';
 import { AddExpenseComponent } from '@components/expenses/add-expense/add-expense.component';
 import { editExpenseResolver } from '@components/expenses/edit-expense.resolver';
@@ -16,11 +25,6 @@ import { editMemorizedResolver } from '@components/memorized/edit-memorized.reso
 import { EditMemorizedComponent } from '@components/memorized/edit-memorized/edit-memorized.component';
 import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
 import { SummaryComponent } from '@components/summary/summary/summary.component';
-import {
-  authGuard,
-  groupGuard,
-  loggedInGuard,
-} from '@components/auth/guards.guard';
 
 export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: '' },
@@ -34,6 +38,20 @@ export const appRoutes: Routes = [
     title: 'Login',
     component: LoginComponent,
     canActivate: [loggedInGuard],
+    children: [
+      { path: '', title: 'Login', component: LoginFormComponent },
+      { path: 'register', title: 'Register', component: RegisterFormComponent },
+      {
+        path: 'forgot-password',
+        title: 'Forgot Password',
+        component: ForgotPasswordComponent,
+      },
+      {
+        path: 'reset-password',
+        title: 'Reset Password',
+        component: ResetPasswordComponent,
+      },
+    ],
   },
   {
     path: 'groups',

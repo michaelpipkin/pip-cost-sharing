@@ -68,10 +68,10 @@ mat-slide-toggle {
   padding: 4px;
   display: grid;
   grid-template-columns: max-content auto;
-  a {
-    color: white;
-    text-decoration: none;
-  }
+}
+
+.primary-link {
+  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
 }
 
 .material-symbols-outlined {
@@ -171,6 +171,11 @@ mat-slide-toggle {
 
 .mat-error {
   font-size: 0.7rem;
+  color: red;
+  margin-top: -20px;
+}
+
+.form-error {
   color: red;
   margin-top: -20px;
 }
