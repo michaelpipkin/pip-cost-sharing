@@ -45,7 +45,7 @@ export class ForgotPasswordComponent {
 
   async forgotPassword() {
     const email = this.forgotPasswordForm.value.email;
-    const resetUrl = `https://${window.location.origin}/login/reset-password`;
+    const resetUrl = `${window.location.origin}/login/reset-password`;
     const actionCodeSettings = {
       url: resetUrl,
     };
