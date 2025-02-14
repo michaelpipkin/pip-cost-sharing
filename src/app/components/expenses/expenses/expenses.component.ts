@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -50,6 +34,22 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -162,6 +162,7 @@ export class ExpensesComponent implements OnInit {
   expandedExpense = model<Expense | null>(null);
 
   columnsToDisplay = signal<string[]>([]);
+  smallScreen = signal<boolean>(false);
 
   ngOnInit(): void {
     this.breakpointObserver
@@ -175,6 +176,7 @@ export class ExpensesComponent implements OnInit {
             'receipt-paid',
             'expand',
           ]);
+          this.smallScreen.set(true);
         } else {
           this.columnsToDisplay.set([
             'date',
@@ -186,6 +188,7 @@ export class ExpensesComponent implements OnInit {
             'paid',
             'expand',
           ]);
+          this.smallScreen.set(false);
         }
       });
   }
