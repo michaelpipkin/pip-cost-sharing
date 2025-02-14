@@ -8,6 +8,13 @@
   grid-template-columns: max-content max-content max-content;
 }
 
+@media screen and (max-width: 1009px) {
+  .expandable-table td,
+  th {
+    padding: 0 6px !important;
+  }
+}
+
 @media (min-width: 474px) and (max-width: 767px) {
   .filters-1 {
     grid-template-columns: max-content max-content;
