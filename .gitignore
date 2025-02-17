@@ -52,7 +52,7 @@ seed-data
 seed-data.ts
 .firebase/hosting.*
 
-
+# Files with sensitive information
 src/app/hcaptcha.config.ts
 functions/src/.env
 functions/.env
