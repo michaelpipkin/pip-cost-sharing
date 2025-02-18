@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, signal } from '@angular/core';
+import { environment } from '@env/environment';
 import packageJson from 'package.json';
-import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'footer',
