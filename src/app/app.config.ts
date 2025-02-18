@@ -26,6 +26,7 @@ import {
   provideAnimations,
 } from '@angular/platform-browser/animations';
 import { provideRouter, TitleStrategy } from '@angular/router';
+import { environment } from '@env/environment';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
@@ -34,7 +35,6 @@ import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
-import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
 import { firebaseConfig } from './firebase.config';
 import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
