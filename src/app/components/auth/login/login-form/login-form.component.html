@@ -4,6 +4,9 @@
     <mat-form-field>
       <mat-label>Email</mat-label>
       <input matInput formControlName="email" #emailInput />
+      @if (l.email.errors?.email) {
+        <mat-error>Invalid email address</mat-error>
+      }
     </mat-form-field>
     <mat-form-field>
       <mat-label>Password</mat-label>

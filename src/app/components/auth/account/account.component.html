@@ -6,7 +6,7 @@
           <mat-form-field class="email-input">
             <mat-label>Email Address</mat-label>
             <input matInput type="email" formControlName="email" />
-            @if (e.email.errors?.['email']) {
+            @if (e.email.errors?.email) {
               <mat-error> Invalid email address </mat-error>
             }
           </mat-form-field>
