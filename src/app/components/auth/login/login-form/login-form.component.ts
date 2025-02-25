@@ -42,7 +42,7 @@ export class LoginFormComponent {
   protected readonly snackbar = inject(MatSnackBar);
 
   loginForm = this.fb.group({
-    email: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
