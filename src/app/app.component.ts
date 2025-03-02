@@ -8,6 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
@@ -34,6 +35,7 @@ import { LoadingComponent } from './shared/loading/loading.component';
 export class AppComponent implements OnInit {
   title = 'Cost Sharing';
 
+  protected readonly themeService = inject(ThemeService);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
@@ -57,6 +59,10 @@ export class AppComponent implements OnInit {
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 
   logout(): void {

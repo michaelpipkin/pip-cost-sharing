@@ -1,0 +1,95 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+@use './m3-green-theme.scss' as light;
+@use './m3-green-dark-theme.scss' as dark;
+
+// Shared tokens map - will be set to either light or dark values
+$tokens: () !default;
+
+// Define semantic tokens that can be used throughout your app
+$light-tokens: (
+  // Surface colors
+  'surface': mat.get-theme-color(light.$light-theme, neutral, 100),
+  'on-surface': mat.get-theme-color(light.$light-theme, neutral, 10),
+  'surface-variant': mat.get-theme-color(light.$light-theme, neutral, 95),
+  // Primary colors
+  'primary': mat.get-theme-color(light.$light-theme, primary, 30),
+  'on-primary': mat.get-theme-color(light.$light-theme, primary, 100),
+  'primary-light': mat.get-theme-color(light.$light-theme, primary, 50),
+  'primary-dark': mat.get-theme-color(light.$light-theme, primary, 30),
+  'primary-extra-light': mat.get-theme-color(light.$light-theme, primary, 80),
+  'max-dark': mat.get-theme-color(light.$light-theme, neutral, 0),
+  'max-light': mat.get-theme-color(light.$light-theme, neutral, 100),
+  // Secondary colors
+  'secondary': mat.get-theme-color(light.$light-theme, secondary, 80),
+  'secondary-light': mat.get-theme-color(light.$light-theme, secondary, 95),
+  'secondary-dark': mat.get-theme-color(light.$light-theme, secondary, 70),
+  'on-secondary': mat.get-theme-color(light.$light-theme, secondary, 20),
+  // Tertiary colors
+  'tertiary': mat.get-theme-color(light.$light-theme, tertiary, 40),
+  'on-tertiary': mat.get-theme-color(light.$light-theme, tertiary, 100),
+  // Error colors
+  'error': mat.get-theme-color(light.$light-theme, error, 40),
+  'on-error': mat.get-theme-color(light.$light-theme, error, 100),
+  // Table colors
+  'table-header': mat.get-theme-color(light.$light-theme, primary, 40),
+  'on-table-header': white,
+  'table-row-odd': mat.get-theme-color(light.$light-theme, secondary, 95),
+  'table-row-hover': mat.get-theme-color(light.$light-theme, secondary, 80),
+  // Border colors
+  'border': #cccccc
+);
+
+$dark-tokens: (
+  // Surface colors
+  'surface': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  'on-surface': mat.get-theme-color(dark.$dark-theme, neutral, 95),
+  'surface-variant': mat.get-theme-color(dark.$dark-theme, neutral, 20),
+  // Primary colors
+  'primary': mat.get-theme-color(dark.$dark-theme, primary, 70),
+  'on-primary': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  'primary-light': mat.get-theme-color(dark.$dark-theme, primary, 80),
+  'primary-dark': mat.get-theme-color(dark.$dark-theme, primary, 60),
+  'primary-extra-light': mat.get-theme-color(dark.$dark-theme, primary, 50),
+  'max-dark': mat.get-theme-color(dark.$dark-theme, neutral, 100),
+  'max-light': mat.get-theme-color(dark.$dark-theme, neutral, 0),
+  // Secondary colors
+  'secondary': mat.get-theme-color(dark.$dark-theme, secondary, 70),
+  'secondary-light': mat.get-theme-color(dark.$dark-theme, secondary, 30),
+  'secondary-dark': mat.get-theme-color(dark.$dark-theme, secondary, 60),
+  'on-secondary': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  // Tertiary colors
+  'tertiary': mat.get-theme-color(dark.$dark-theme, tertiary, 70),
+  'on-tertiary': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  // Error colors
+  'error': mat.get-theme-color(dark.$dark-theme, error, 70),
+  'on-error': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  // Table colors
+  'table-header': mat.get-theme-color(dark.$dark-theme, primary, 70),
+  'on-table-header': mat.get-theme-color(dark.$dark-theme, neutral, 10),
+  'table-row-odd': mat.get-theme-color(dark.$dark-theme, secondary, 30),
+  'table-row-hover': mat.get-theme-color(dark.$dark-theme, secondary, 30),
+  // Border colors
+  'border': #666666
+);
+
+/// Mixin to output CSS custom properties
+@mixin define-color-vars($tokens, $prefix: '') {
+  @each $name, $value in $tokens {
+    --#{$prefix}#{$name}: #{$value};
+  }
+}
+
+// Define mixins for each theme
+@mixin light-theme-vars {
+  @include define-color-vars($light-tokens);
+}
+
+@mixin dark-theme-vars {
+  @include define-color-vars($dark-tokens);
+}
+
+// Function to use CSS variables
+@function color($name) {
+  @return var(--#{$name});
+}
