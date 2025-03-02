@@ -1,12 +1,32 @@
-<mat-toolbar>
+<mat-toolbar class="nav">
   <mat-toolbar-row>
     @if (isSmallScreen()) {
       <button mat-icon-button [matMenuTriggerFor]="menu">
         <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
       </button>
+      <span id="title">PipSplit</span>
+      <div class="account links">
+        <button
+          mat-icon-button
+          (click)="toggleTheme()"
+          [matTooltip]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+        >
+          <mat-icon>
+            {{
+              themeService.currentTheme() === 'light'
+                ? 'dark_mode'
+                : 'light_mode'
+            }}
+          </mat-icon>
+        </button>
+      </div>
     }
-    <span id="title">PipSplit</span>
     @if (!isSmallScreen()) {
+      <span id="title">PipSplit</span>
       @if (isLoggedIn()) {
         <div class="links">
           <a mat-button routerLink="groups" aria-label="groups" title="Groups">
@@ -75,6 +95,23 @@
         </div>
       }
       <div class="account links">
+        <button
+          mat-icon-button
+          (click)="toggleTheme()"
+          [matTooltip]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+        >
+          <mat-icon>
+            {{
+              themeService.currentTheme() === 'light'
+                ? 'dark_mode'
+                : 'light_mode'
+            }}
+          </mat-icon>
+        </button>
         @if (isLoggedIn()) {
           <a routerLink="help" aria-label="help" matTooltip="Help">
             <mat-icon fontSet="material-symbols-outlined">help</mat-icon>

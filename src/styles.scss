@@ -1,7 +1,12 @@
 // Custom Theming for Angular Material
 // For more information: https://material.angular.io/guide/theming
 @use '@angular/material' as mat;
-@use './app/styles/m3-green-theme.scss' as theme;
+
+// Import theme files
+@use './app/styles/m3-green-theme.scss' as light;
+@use './app/styles/m3-green-dark-theme.scss' as dark;
+@use './app/styles/color-tokens.scss' as tokens;
+
 // Plus imports for other components in your app.
 $enable-negative-margins: true;
 
@@ -11,17 +16,11 @@ $enable-negative-margins: true;
 @include mat.elevation-classes();
 @include mat.app-background();
 
-// Include theme styles for core and each component used in your app.
-// Alternatively, you can import and @include the theme mixins for each component
-// that you are using.
-html {
-  @include mat.all-component-themes(theme.$light-theme);
-}
-
-/* You can add global styles to this file, and also import other style files */
+// When we only include all-component-themes once, but control which variant gets applied via CSS classes
 html,
 body {
   height: 100%;
+  margin: 0;
 }
 
 * {
@@ -29,18 +28,254 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
-body {
+// Base light theme (default)
+body.mat-app-background {
+  @include mat.all-component-themes(light.$light-theme);
+}
+
+// Dark theme override
+body.dark-theme.mat-app-background {
+  @include mat.all-component-colors(dark.$dark-theme);
+}
+
+// Apply CSS variables for light theme
+body.light-theme,
+body:not(.dark-theme) {
+  @include tokens.light-theme-vars;
+}
+
+// Apply CSS variables for dark theme
+body.dark-theme {
+  @include tokens.dark-theme-vars;
+}
+
+.btn-primary:not([disabled]) {
+  background-color: tokens.color('primary') !important;
+  color: tokens.color('on-primary') !important;
+}
+
+.btn-secondary:not([disabled]) {
+  background-color: tokens.color('secondary') !important;
+  color: tokens.color('on-secondary') !important;
+}
+
+.btn-tertiary:not([disabled]) {
+  background-color: tokens.color('tertiary') !important;
+  color: tokens.color('on-tertiary') !important;
+}
+
+.btn-danger:not([disabled]) {
+  background-color: tokens.color('error') !important;
+  color: tokens.color('on-error') !important;
+}
+
+.nav {
+  background: tokens.color('primary') !important;
+  color: tokens.color('on-primary') !important;
+
+  mat-icon {
+    // Since the base font-size is already 0.9rem globally, we calculate based on that
+    font-size: 1.5rem !important; // Equivalent to 24px when base is 16px * 0.9
+    height: 1.5rem !important;
+    width: 1.5rem !important;
+    color: tokens.color('on-primary');
+    margin: 0 0.125rem 0 0 !important;
+  }
+
+  .links a {
+    padding-left: 0.375rem !important;
+    padding-right: 0.375rem !important;
+    color: tokens.color('on-primary');
+    line-height: 1.25rem;
+  }
+
+  .links a span {
+    line-height: 1.25rem;
+    font-size: 1.125rem !important; // This is already relative to root
+  }
+
+  .menu a,
+  .menu a mat-icon {
+    color: tokens.color('on-primary');
+    text-decoration: none;
+  }
+
+  .account {
+    margin-left: auto;
+    margin-right: 0;
+    display: grid;
+    grid-auto-flow: column;
+
+    a {
+      padding-top: 0.5rem; // Changed to rem for consistency
+    }
+  }
+}
+
+#title {
+  display: inline-block;
+  margin-right: 0.75rem;
+  line-height: 3rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+#outlet {
+  width: 95vw;
+  margin-left: 2.5vw;
+  padding-bottom: 1.25rem;
+}
+
+.footer {
+  position: fixed;
+  width: 100%;
+  background-color: tokens.color('primary') !important;
+  bottom: 0px;
+  left: 0px;
+  z-index: 20;
+  color: tokens.color('on-primary');
   margin: 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: max-content auto;
+  align-content: center;
+  a {
+    color: tokens.color('on-primary');
+    text-decoration: none;
+  }
+}
+
+.footer-right {
+  display: grid;
+  justify-items: end;
+}
+
+.no-emulation {
+  background-color: #f60 !important;
+}
+
+.primary-link {
+  color: tokens.color('primary') !important;
+}
+
+.help-icon {
+  mat-icon {
+    color: tokens.color('primary') !important;
+
+    &:hover {
+      color: tokens.color('primary-light') !important;
+    }
+  }
+}
+
+.feature-container div {
+  color: tokens.color('on-primary');
+  background-color: tokens.color('primary-dark') !important;
+}
+
+.clickable-row:hover {
+  background-color: tokens.color('secondary') !important;
+}
+
+table thead tr,
+tfoot tr {
+  background-color: tokens.color('primary') !important;
+  color: tokens.color('on-primary') !important;
+}
+
+.static-table tbody tr:nth-child(odd) {
+  background-color: tokens.color('secondary-light');
+}
+
+.expandable-table tbody .expandable-row:nth-child(4n + 1) {
+  background-color: tokens.color('secondary-light');
+}
+
+.account-tabs {
+  .mat-mdc-tab-label-container {
+    border-bottom-color: tokens.color('secondary-light');
+  }
+}
+
+.help-icon {
+  margin-left: 16px;
+  height: 30px;
+  width: 30px;
+  mat-icon {
+    color: tokens.color('primary') !important;
+    font-size: 30px;
+    height: 30px;
+    width: 30px;
+    cursor: pointer;
+
+    &:hover {
+      color: tokens.color('primary-light') !important;
+    }
+  }
+}
+
+mat-icon.mat-icon-button {
+  color: tokens.color('primary') !important;
+  font-size: 30px;
+  height: 30px;
+  width: 30px;
+  cursor: pointer;
+
+  &:hover {
+    color: tokens.color('priamry-light') !important;
+  }
+}
+
+mat-icon.small-icon-button {
+  color: tokens.color('primary') !important;
+  font-size: 22px;
+  height: 22px;
+  width: 22px;
+  cursor: pointer;
+
+  &:hover {
+    color: tokens.color('primary-light') !important;
+  }
+}
+
+.clickable-row:hover {
+  background-color: tokens.color('secondary') !important;
+  cursor: pointer;
+}
+
+table thead tr,
+tfoot tr {
+  background-color: tokens.color('primary') !important;
+  color: tokens.color('on-primary') !important;
+  font-weight: bold;
+}
+
+.feature-container div {
+  display: grid;
+  color: tokens.color('on-primary');
+  background-color: tokens.color('primary-dark') !important;
+  justify-items: center;
+  p {
+    justify-self: center;
+    padding: 0 12px;
+    margin-bottom: 0;
+  }
+}
+
+.account-tabs {
+  .mat-mdc-tab-label-container {
+    border-bottom-width: 4px !important;
+    border-bottom-color: mat.get-theme-color(light.$light-theme, secondary, 95);
+  }
+}
+
+.scrollable-table {
+  border: 12px solid tokens.color('surface');
 }
 
 a:hover {
   cursor: pointer;
-}
-
-.mat-toolbar,
-.mat-mdc-menu-panel {
-  background: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
-  color: white !important;
 }
 
 mat-error,
@@ -55,23 +290,13 @@ mat-slide-toggle {
 .footer {
   position: fixed;
   width: 100%;
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    primary,
-    40
-  ) !important;
   bottom: 0px;
   left: 0px;
   z-index: 20;
-  color: white;
   margin: 0;
   padding: 4px;
   display: grid;
   grid-template-columns: max-content auto;
-}
-
-.primary-link {
-  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
 }
 
 .material-symbols-outlined {
@@ -80,42 +305,6 @@ mat-slide-toggle {
     'wght' 400,
     'GRAD' 0,
     'opsz' 24;
-}
-
-.btn-primary:not([disabled]) {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    primary,
-    40
-  ) !important;
-  color: mat.get-theme-color(theme.$light-theme, primary, 100) !important;
-}
-
-.btn-secondary:not([disabled]) {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    secondary,
-    80
-  ) !important;
-  color: mat.get-theme-color(theme.$light-theme, secondary, 20) !important;
-}
-
-.btn-tertiary:not([disabled]) {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    tertiary,
-    40
-  ) !important;
-  color: mat.get-theme-color(theme.$light-theme, tertiary, 100) !important;
-}
-
-.btn-danger:not([disabled]) {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    error,
-    40
-  ) !important;
-  color: mat.get-theme-color(theme.$light-theme, error, 100) !important;
 }
 
 .google-g {
@@ -129,7 +318,6 @@ mat-slide-toggle {
 .scrollable-table {
   overflow-y: auto;
   max-height: 800px;
-  border: 12px solid white;
   margin-bottom: 24px;
 }
 
@@ -171,12 +359,12 @@ mat-slide-toggle {
 
 .mat-error {
   font-size: 0.7rem;
-  color: red;
+  color: tokens.color('error');
   margin-top: -20px;
 }
 
 .form-error {
-  color: red;
+  color: tokens.color('error');
   margin-top: -20px;
 }
 
@@ -228,23 +416,6 @@ mat-dialog-actions {
   justify-content: center;
 }
 
-.help-icon {
-  margin-left: 16px;
-  height: 30px;
-  width: 30px;
-  mat-icon {
-    color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
-    font-size: 30px;
-    height: 30px;
-    width: 30px;
-    cursor: pointer;
-
-    &:hover {
-      color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
-    }
-  }
-}
-
 .help-dialog-header {
   display: grid;
   grid-template-columns: auto max-content;
@@ -273,46 +444,6 @@ mat-dialog-actions {
   p {
     line-height: 1.3em;
     font-size: 1.2em;
-  }
-}
-
-mat-icon.mat-icon-button {
-  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
-  font-size: 30px;
-  height: 30px;
-  width: 30px;
-  cursor: pointer;
-
-  &:hover {
-    color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
-  }
-}
-
-mat-icon.small-icon-button {
-  color: mat.get-theme-color(theme.$light-theme, primary, 40) !important;
-  font-size: 22px;
-  height: 22px;
-  width: 22px;
-  cursor: pointer;
-
-  &:hover {
-    color: mat.get-theme-color(theme.$light-theme, primary, 50) !important;
-  }
-}
-
-.feature-container div {
-  display: grid;
-  color: white;
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    primary,
-    30
-  ) !important;
-  justify-items: center;
-  p {
-    justify-self: center;
-    padding: 0 12px;
-    margin-bottom: 0;
   }
 }
 
@@ -355,36 +486,8 @@ mat-icon.small-icon-button {
   cursor: pointer;
 }
 
-.clickable-row:hover {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    secondary,
-    80
-  ) !important;
-  cursor: pointer;
-}
-
 table tbody tr td {
   border-bottom-width: 0 !important;
-}
-
-table thead tr,
-tfoot tr {
-  background-color: mat.get-theme-color(
-    theme.$light-theme,
-    primary,
-    40
-  ) !important;
-  color: white !important;
-  font-weight: bold;
-}
-
-.static-table tbody tr:nth-child(odd) {
-  background-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
-}
-
-.expandable-table tbody .expandable-row:nth-child(4n + 1) {
-  background-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
 }
 
 table th,
@@ -423,12 +526,12 @@ tr.detail-row:hover {
 }
 
 .paid-icon {
-  color: green;
+  color: tokens.color('primary');
 }
 
 .paid-icon:hover {
   cursor: pointer;
-  color: chartreuse;
+  color: tokens.color('primary-extra-light');
 }
 
 .help-content {
@@ -561,11 +664,6 @@ span.filename {
 }
 
 .account-tabs {
-  .mat-mdc-tab-label-container {
-    border-bottom-width: 4px !important;
-    border-bottom-color: mat.get-theme-color(theme.$light-theme, secondary, 95);
-  }
-
   .mat-mdc-tab {
     padding: 0 8px !important;
     min-width: 0 !important;
@@ -584,14 +682,6 @@ span.filename {
     font-weight: bold !important;
   }
 
-  // .mat-tab-mdc-body {
-  //   height: 100%;
-  // }
-
-  // .mat-mdc-tab-body-wrapper {
-  //   height: 100%;
-  // }
-
   .mat-mdc-tab-body-content {
     display: grid;
     grid-template-columns: 1fr;
@@ -605,7 +695,7 @@ span.filename {
   display: grid;
   align-self: start;
   height: 52px;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid tokens.color('max-dark');
   margin-bottom: 8px;
   grid-auto-flow: row;
   grid-template-columns: max-content;
