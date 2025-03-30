@@ -26,11 +26,11 @@ import {
   getAuth,
 } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { passwordMatchValidator } from '../password-match-validator';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
 export declare const hcaptcha: any;
 
 @Component({
-  selector: 'app-register-form',
+  selector: 'app-register',
   imports: [
     RouterModule,
     FormsModule,
@@ -40,10 +40,10 @@ export declare const hcaptcha: any;
     MatFormFieldModule,
     MatInputModule,
   ],
-  templateUrl: './register-form.component.html',
-  styleUrl: './register-form.component.scss',
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.scss',
 })
-export class RegisterFormComponent implements OnInit, OnDestroy {
+export class RegisterComponent implements OnInit, OnDestroy {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);

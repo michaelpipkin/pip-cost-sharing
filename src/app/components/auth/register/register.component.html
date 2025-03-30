@@ -1,10 +1,16 @@
 <div class="container">
-  <h2>Reset Password</h2>
-  <form
-    [formGroup]="resetPasswordForm"
-    class="reset-form"
-    (submit)="resetPassword()"
-  >
+  <h2>Create Account</h2>
+  <form [formGroup]="registerForm" class="register" (submit)="register()">
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" />
+      @if (r.email?.errors?.required) {
+        <mat-error>Email is required.</mat-error>
+      }
+      @if (r.email?.errors?.email) {
+        <mat-error>Invalid email address.</mat-error>
+      }
+    </mat-form-field>
     <mat-form-field>
       <mat-label>Password</mat-label>
       <input
@@ -47,21 +53,22 @@
         }}</mat-icon>
       </button>
     </mat-form-field>
-    @if (
-      resetPasswordForm.errors?.passwordMismatch && r.confirmPassword.touched
-    ) {
+    @if (registerForm.errors?.passwordMismatch && r.confirmPassword.touched) {
       <div class="form-error">Passwords do not match.</div>
     }
+    <div id="hcaptcha-container"></div>
     <div class="buttons">
       <button
         mat-raised-button
-        class="btn-primary mb-3"
+        class="btn-primary"
         type="submit"
-        [disabled]="resetPasswordForm.invalid || resetPasswordForm.pristine"
+        [disabled]="
+          registerForm.invalid || registerForm.pristine || !passedCaptcha()
+        "
       >
-        <span class="reset-button">Submit</span>
+        <span class="register-button">Register</span>
       </button>
-      <a class="primary-link" routerLink="../">Return to Login</a>
+      <a class="primary-link" routerLink="../login">Return to Login</a>
     </div>
   </form>
 </div>

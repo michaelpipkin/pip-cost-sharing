@@ -149,11 +149,11 @@ export class MemorizedComponent implements OnInit {
 
   onRowClick(memorized: Memorized): void {
     this.loading.loadingOn();
-    this.router.navigate(['/edit-memorized', memorized.id]);
+    this.router.navigate(['/memorized', memorized.id]);
   }
 
   addExpense(expense: Memorized): void {
-    this.router.navigate(['/add-expense'], {
+    this.router.navigate(['/expenses/add'], {
       state: { expense: expense },
     });
   }

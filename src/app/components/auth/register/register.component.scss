@@ -2,7 +2,7 @@ h2 {
   margin-bottom: 1em;
 }
 
-.register-form {
+.register {
   width: 25em;
 
   mat-form-field {
@@ -11,7 +11,7 @@ h2 {
 }
 
 @media screen and (max-width: 400px) {
-  .register-form {
+  .register {
     width: 100%;
   }
 }
