@@ -116,7 +116,11 @@
           <a routerLink="help" aria-label="help" matTooltip="Help">
             <mat-icon fontSet="material-symbols-outlined">help</mat-icon>
           </a>
-          <a routerLink="account" aria-label="account" matTooltip="Account">
+          <a
+            routerLink="auth/account"
+            aria-label="account"
+            matTooltip="Account"
+          >
             <mat-icon fontSet="material-symbols-outlined"
               >account_circle</mat-icon
             >
@@ -127,7 +131,7 @@
         } @else {
           <a
             mat-button
-            routerLink="login"
+            routerLink="auth/login"
             aria-label="login"
             matTooltip="Login"
           >
@@ -209,7 +213,7 @@
       </a>
       <a
         mat-menu-item
-        routerLink="account"
+        routerLink="auth/account"
         aria-label="account"
         title="Account"
       >
@@ -221,7 +225,7 @@
         out
       </a>
     } @else {
-      <a mat-menu-item routerLink="login" aria-label="login" title="Login">
+      <a mat-menu-item routerLink="auth/login" aria-label="login" title="Login">
         <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
         in
       </a>

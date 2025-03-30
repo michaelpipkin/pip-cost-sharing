@@ -14,7 +14,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { confirmPasswordReset, getAuth } from 'firebase/auth';
-import { passwordMatchValidator } from '../password-match-validator';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
 
 @Component({
   selector: 'app-reset-password',

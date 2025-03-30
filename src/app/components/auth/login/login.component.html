@@ -1,3 +1,51 @@
 <div class="container">
-  <router-outlet></router-outlet>
+  <h2>Login</h2>
+  <form [formGroup]="loginForm" class="login" (submit)="emailLogin()">
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" #emailInput />
+      @if (l.email.errors?.email) {
+        <mat-error>Invalid email address</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        type="password"
+        formControlName="password"
+        (keydown.enter)="
+          $event.preventDefault(); loginForm.valid && emailLogin()
+        "
+        #passwordInput
+      />
+    </mat-form-field>
+    <div class="buttons">
+      <button mat-raised-button type="submit" class="btn-primary mb-3">
+        <span class="login-button">Login</span>
+      </button>
+      <a class="primary-link" routerLink="/auth/forgot-password"
+        >Forgot password?</a
+      >
+    </div>
+    <div class="create-account">
+      Don't have an account?
+      <a class="primary-link" routerLink="/auth/register">Create one.</a>
+    </div>
+  </form>
+  <div class="divider-with-text">
+    <hr />
+    <span>Or</span>
+    <hr />
+  </div>
+  <div>
+    <button mat-stroked-button (click)="googleLogin()">
+      <img
+        class="google-g me-2"
+        alt=""
+        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+      />
+      <span class="login-button">Sign in with Google</span>
+    </button>
+  </div>
 </div>
