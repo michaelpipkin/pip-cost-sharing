@@ -1,192 +1,204 @@
-<div class="container pt-3">
-  <div class="page-header">
-    <div></div>
-    <h3>Summary</h3>
-    <div class="help-icon">
-      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+@if (!splitStore.loaded()) {
+  <div class="container pt-3 mb-2">
+    <h3>Loading summary...</h3>
+  </div>
+} @else {
+  <div class="container pt-3">
+    <div class="page-header">
+      <div></div>
+      <h3>Summary</h3>
+      <div class="help-icon">
+        <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      </div>
+    </div>
+    <h4>{{ currentGroup()?.name }}</h4>
+    <div>
+      <mat-form-field id="member-select">
+        <mat-label>Select Member</mat-label>
+        <mat-select
+          name="member"
+          [(ngModel)]="selectedMemberId"
+          (selectionChange)="resetDetail()"
+        >
+          @for (member of activeMembers(); track member.id) {
+            <mat-option [value]="member.id">{{
+              member.displayName
+            }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="filters mb-2">
+      <mat-form-field
+        appearance="fill"
+        class="datepicker"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>Start date</mat-label>
+        <input
+          matInput
+          [(ngModel)]="startDate"
+          [matDatepicker]="startDatepicker"
+        />
+        @if (!startDate()) {
+          <mat-datepicker-toggle
+            matIconSuffix
+            [for]="startDatepicker"
+          ></mat-datepicker-toggle>
+        } @else {
+          <button
+            matIconSuffix
+            tabindex="-1"
+            mat-icon-button
+            aria-label="Clear"
+            (click)="startDate.set(null)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+        <mat-datepicker #startDatepicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field
+        appearance="fill"
+        class="datepicker"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>End date</mat-label>
+        <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" />
+        @if (!endDate()) {
+          <mat-datepicker-toggle
+            matIconSuffix
+            [for]="endDatePicker"
+          ></mat-datepicker-toggle>
+        } @else {
+          <button
+            matIconSuffix
+            tabindex="-1"
+            mat-icon-button
+            aria-label="Clear"
+            (click)="endDate.set(null)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+        <mat-datepicker #endDatePicker></mat-datepicker>
+      </mat-form-field>
     </div>
   </div>
-  <h4>{{ currentGroup()?.name }}</h4>
-  <div>
-    <mat-form-field id="member-select">
-      <mat-label>Select Member</mat-label>
-      <mat-select
-        name="member"
-        [(ngModel)]="selectedMemberId"
-        (selectionChange)="resetDetail()"
+  <div class="table-container">
+    <div class="scrollable-table mat-elevation-z8">
+      <table
+        mat-table
+        [dataSource]="summaryData()"
+        multiTemplateDataRows
+        class="expandable-table"
       >
-        @for (member of activeMembers(); track member.id) {
-          <mat-option [value]="member.id">{{ member.displayName }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-  </div>
-  <div class="filters mb-2">
-    <mat-form-field
-      appearance="fill"
-      class="datepicker"
-      subscriptSizing="dynamic"
-    >
-      <mat-label>Start date</mat-label>
-      <input
-        matInput
-        [(ngModel)]="startDate"
-        [matDatepicker]="startDatepicker"
-      />
-      @if (!startDate()) {
-        <mat-datepicker-toggle
-          matIconSuffix
-          [for]="startDatepicker"
-        ></mat-datepicker-toggle>
-      } @else {
-        <button
-          matIconSuffix
-          tabindex="-1"
-          mat-icon-button
-          aria-label="Clear"
-          (click)="startDate.set(null)"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-      <mat-datepicker #startDatepicker></mat-datepicker>
-    </mat-form-field>
-    <mat-form-field
-      appearance="fill"
-      class="datepicker"
-      subscriptSizing="dynamic"
-    >
-      <mat-label>End date</mat-label>
-      <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" />
-      @if (!endDate()) {
-        <mat-datepicker-toggle
-          matIconSuffix
-          [for]="endDatePicker"
-        ></mat-datepicker-toggle>
-      } @else {
-        <button
-          matIconSuffix
-          tabindex="-1"
-          mat-icon-button
-          aria-label="Clear"
-          (click)="endDate.set(null)"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-      <mat-datepicker #endDatePicker></mat-datepicker>
-    </mat-form-field>
-  </div>
-</div>
-<div class="table-container">
-  <div class="scrollable-table mat-elevation-z8">
-    <table
-      mat-table
-      [dataSource]="summaryData()"
-      multiTemplateDataRows
-      class="expandable-table"
-    >
-      @let summaryColumnsToDisplay = ['owedTo', 'owedBy', 'amount', 'markPaid'];
-      <ng-container matColumnDef="owedTo">
-        <th mat-header-cell *matHeaderCellDef>Owed To</th>
-        <td mat-cell *matCellDef="let amountDue">
-          {{ getMemberName(amountDue.owedToMemberId) }}
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="owedBy">
-        <th mat-header-cell *matHeaderCellDef>Owed By</th>
-        <td mat-cell *matCellDef="let amountDue">
-          {{ getMemberName(amountDue.owedByMemberId) }}
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="amount">
-        <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
-        <td mat-cell *matCellDef="let amountDue" class="cell-right">
-          {{ amountDue.amount | currency }}
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="markPaid">
-        <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
-        <td mat-cell *matCellDef="let amountDue" class="cell-center">
-          <button
-            class="btn btn-success"
-            mat-mini-fab
-            (click)="
-              payExpenses(amountDue.owedToMemberId, amountDue.owedByMemberId);
-              $event.stopPropagation()
-            "
-            title="
-                Pay expenses owed to {{
-              getMemberName(amountDue.owedToMemberId)
-            }} from {{ getMemberName(amountDue.owedByMemberId) }}.
+        @let summaryColumnsToDisplay =
+          ['owedTo', 'owedBy', 'amount', 'markPaid'];
+        <ng-container matColumnDef="owedTo">
+          <th mat-header-cell *matHeaderCellDef>Owed To</th>
+          <td mat-cell *matCellDef="let amountDue">
+            {{ getMemberName(amountDue.owedToMemberId) }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="owedBy">
+          <th mat-header-cell *matHeaderCellDef>Owed By</th>
+          <td mat-cell *matCellDef="let amountDue">
+            {{ getMemberName(amountDue.owedByMemberId) }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
+          <td mat-cell *matCellDef="let amountDue" class="cell-right">
+            {{ amountDue.amount | currency }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="markPaid">
+          <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
+          <td mat-cell *matCellDef="let amountDue" class="cell-center">
+            <button
+              class="btn btn-success"
+              mat-mini-fab
+              (click)="
+                payExpenses(amountDue.owedToMemberId, amountDue.owedByMemberId);
+                $event.stopPropagation()
               "
-          >
-            <mat-icon>paid</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="expandedDetail">
-        <td
-          mat-cell
-          *matCellDef="let amountDue"
-          [colSpan]="summaryColumnsToDisplay.length"
-        >
-          <div
-            [@detailExpand]="
-              amountDue == expandedDetail() ? 'expanded' : 'collapsed'
-            "
-            class="detail-table-container"
-          >
-            <table
-              mat-table
-              [dataSource]="detailData()"
-              class="static-table info-detail-table"
+              title="
+                Pay expenses owed to {{
+                getMemberName(amountDue.owedToMemberId)
+              }} from {{ getMemberName(amountDue.owedByMemberId) }}.
+              "
             >
-              @let detailColumnsToDisplay = ['category', 'amount'];
-              <ng-container matColumnDef="category">
-                <th mat-header-cell *matHeaderCellDef>Category</th>
-                <td mat-cell *matCellDef="let lineItem">
-                  {{ getCategoryName(lineItem.categoryId) }}
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="amount">
-                <th mat-header-cell *matHeaderCellDef class="cell-right">
-                  Amount
-                </th>
-                <td mat-cell *matCellDef="let lineItem" class="cell-right">
-                  {{ lineItem.amount | currency }}
-                </td>
-              </ng-container>
-              <tr mat-header-row *matHeaderRowDef="detailColumnsToDisplay"></tr>
-              <tr
-                mat-row
-                *matRowDef="let lineItem; columns: detailColumnsToDisplay"
-              ></tr>
-            </table>
-          </div>
-        </td>
-      </ng-container>
-      <tr
-        mat-header-row
-        *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
-      ></tr>
-      <tr
-        mat-row
-        *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
-        class="summary-row clickable-row expandable-row"
-        [class.clickable-row]="categories().length > 1"
-        (click)="onExpandClick(amountDue)"
-      ></tr>
-      <tr
-        mat-row
-        *matRowDef="let lineItem; columns: ['expandedDetail']"
-        class="detail-row"
-      ></tr>
-      <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
-          No outstanding expenses found for selected member.
-        </td>
-      </tr>
-    </table>
+              <mat-icon>paid</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="expandedDetail">
+          <td
+            mat-cell
+            *matCellDef="let amountDue"
+            [colSpan]="summaryColumnsToDisplay.length"
+          >
+            <div
+              [@detailExpand]="
+                amountDue == expandedDetail() ? 'expanded' : 'collapsed'
+              "
+              class="detail-table-container"
+            >
+              <table
+                mat-table
+                [dataSource]="detailData()"
+                class="static-table info-detail-table"
+              >
+                @let detailColumnsToDisplay = ['category', 'amount'];
+                <ng-container matColumnDef="category">
+                  <th mat-header-cell *matHeaderCellDef>Category</th>
+                  <td mat-cell *matCellDef="let lineItem">
+                    {{ getCategoryName(lineItem.categoryId) }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="amount">
+                  <th mat-header-cell *matHeaderCellDef class="cell-right">
+                    Amount
+                  </th>
+                  <td mat-cell *matCellDef="let lineItem" class="cell-right">
+                    {{ lineItem.amount | currency }}
+                  </td>
+                </ng-container>
+                <tr
+                  mat-header-row
+                  *matHeaderRowDef="detailColumnsToDisplay"
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let lineItem; columns: detailColumnsToDisplay"
+                ></tr>
+              </table>
+            </div>
+          </td>
+        </ng-container>
+        <tr
+          mat-header-row
+          *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
+        ></tr>
+        <tr
+          mat-row
+          *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
+          class="summary-row clickable-row expandable-row"
+          [class.clickable-row]="categories().length > 1"
+          (click)="onExpandClick(amountDue)"
+        ></tr>
+        <tr
+          mat-row
+          *matRowDef="let lineItem; columns: ['expandedDetail']"
+          class="detail-row"
+        ></tr>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
+            No outstanding expenses found for selected member.
+          </td>
+        </tr>
+      </table>
+    </div>
   </div>
-</div>
+}

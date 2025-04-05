@@ -3,10 +3,12 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 type SplitState = {
   unpaidSplits: Split[];
+  loaded: boolean;
 };
 
 const initialState: SplitState = {
   unpaidSplits: [],
+  loaded: false,
 };
 
 export const SplitStore = signalStore(
@@ -14,10 +16,10 @@ export const SplitStore = signalStore(
   withState(initialState),
   withMethods((store) => ({
     setSplits: (splits: Split[]) => {
-      patchState(store, { unpaidSplits: splits });
+      patchState(store, { unpaidSplits: splits, loaded: true });
     },
     clearSplits: () => {
-      patchState(store, { unpaidSplits: [] });
+      patchState(store, { unpaidSplits: [], loaded: false });
     },
   }))
 );

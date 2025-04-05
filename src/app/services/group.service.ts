@@ -6,6 +6,13 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -19,13 +26,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -107,7 +107,6 @@ export class GroupService implements IGroupService {
   }
 
   async getGroup(groupId: string, userId: string): Promise<void> {
-    this.loading.loadingOn();
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
     const group = new Group({ id: docSnap.id, ...docSnap.data() });
     this.groupStore.setCurrentGroup(group);
@@ -119,7 +118,6 @@ export class GroupService implements IGroupService {
     this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.historyService.getHistoryForGroup(groupId);
-    this.loading.loadingOff();
   }
 
   async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any> {

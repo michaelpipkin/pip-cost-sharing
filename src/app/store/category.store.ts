@@ -10,10 +10,12 @@ import {
 
 type CategoryState = {
   groupCategories: Category[];
+  loaded: boolean;
 };
 
 const initialState: CategoryState = {
   groupCategories: [],
+  loaded: false,
 };
 
 export const CategoryStore = signalStore(
@@ -21,10 +23,10 @@ export const CategoryStore = signalStore(
   withState(initialState),
   withMethods((store) => ({
     setGroupCategories: (categories: Category[]) => {
-      patchState(store, { groupCategories: categories });
+      patchState(store, { groupCategories: categories, loaded: true });
     },
     clearGroupCategories: () => {
-      patchState(store, { groupCategories: [] });
+      patchState(store, { groupCategories: [], loaded: false });
     },
   })),
   withComputed(({ groupCategories }) => ({

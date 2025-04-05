@@ -11,11 +11,13 @@ import {
 type MemberState = {
   currentMember: Member | null;
   groupMembers: Member[];
+  loaded: boolean;
 };
 
 const initialState: MemberState = {
   currentMember: null,
   groupMembers: [],
+  loaded: false,
 };
 
 export const MemberStore = signalStore(
@@ -29,7 +31,7 @@ export const MemberStore = signalStore(
       patchState(store, { currentMember: null });
     },
     setGroupMembers: (members: Member[]) => {
-      patchState(store, { groupMembers: members });
+      patchState(store, { groupMembers: members, loaded: true });
     },
   })),
   withComputed(({ groupMembers }) => ({

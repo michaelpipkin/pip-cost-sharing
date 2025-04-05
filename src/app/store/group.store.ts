@@ -12,12 +12,14 @@ type GroupState = {
   allUserGroups: Group[];
   currentGroup: Group | null;
   adminGroupIds: string[];
+  loaded: boolean;
 };
 
 const initialState: GroupState = {
   allUserGroups: [],
   currentGroup: null,
   adminGroupIds: [],
+  loaded: false,
 };
 
 export const GroupStore = signalStore(
@@ -25,10 +27,10 @@ export const GroupStore = signalStore(
   withState(initialState),
   withMethods((store) => ({
     setAllUserGroups: (groups: Group[]) => {
-      patchState(store, { allUserGroups: groups });
+      patchState(store, { allUserGroups: groups, loaded: true });
     },
     clearAllUserGroups: () => {
-      patchState(store, { allUserGroups: [] });
+      patchState(store, { allUserGroups: [], loaded: false });
     },
     setCurrentGroup: (group: Group) => {
       patchState(store, { currentGroup: group });
