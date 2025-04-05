@@ -1,4 +1,4 @@
-import { Component, inject, model, Signal } from '@angular/core';
+import { Component, effect, inject, model, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -11,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
@@ -37,6 +38,7 @@ export class GroupsComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly loadingService = inject(LoadingService);
   protected readonly memberStore = inject(MemberStore);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackBar = inject(MatSnackBar);
@@ -46,6 +48,16 @@ export class GroupsComponent {
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
   selectedGroupId = model<string>(this.#currentGroup()?.id ?? '');
+
+  constructor() {
+    effect(() => {
+      if (!this.groupStore.loaded()) {
+        this.loadingService.loadingOn();
+      } else {
+        this.loadingService.loadingOff();
+      }
+    });
+  }
 
   addGroup(): void {
     const dialogRef = this.dialog.open(AddGroupComponent);

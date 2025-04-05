@@ -1,13 +1,4 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -33,6 +24,16 @@ import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { MembersHelpComponent } from '../members-help/members-help.component';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-members',
@@ -87,6 +88,16 @@ export class MembersComponent implements OnInit {
     }
     return members;
   });
+
+  constructor() {
+    effect(() => {
+      if (!this.memberStore.loaded()) {
+        this.loading.loadingOn();
+      } else {
+        this.loading.loadingOff();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.breakpointObserver

@@ -10,10 +10,12 @@ import {
 
 type ExpenseState = {
   groupExpenses: Expense[];
+  loaded: boolean;
 };
 
 const initialState: ExpenseState = {
   groupExpenses: [],
+  loaded: false,
 };
 
 export const ExpenseStore = signalStore(
@@ -21,10 +23,10 @@ export const ExpenseStore = signalStore(
   withState(initialState),
   withMethods((store) => ({
     setGroupExpenses: (expenses: Expense[]) => {
-      patchState(store, { groupExpenses: expenses });
+      patchState(store, { groupExpenses: expenses, loaded: true });
     },
     clearGroupExpenses: () => {
-      patchState(store, { groupExpenses: [] });
+      patchState(store, { groupExpenses: [], loaded: false });
     },
   })),
   withComputed(({ groupExpenses: expenses }) => ({

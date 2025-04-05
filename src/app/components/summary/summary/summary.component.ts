@@ -1,20 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -46,6 +30,22 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -221,6 +221,13 @@ export class SummaryComponent {
   constructor() {
     effect(() => {
       this.selectedMemberId.set(this.currentMember()?.id ?? '');
+    });
+    effect(() => {
+      if (!this.splitStore.loaded()) {
+        this.loading.loadingOn();
+      } else {
+        this.loading.loadingOff();
+      }
     });
   }
 

@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -50,6 +34,23 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -94,6 +95,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly expenseService = inject(ExpenseService);
+  protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -163,6 +165,17 @@ export class ExpensesComponent implements OnInit {
 
   columnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
+
+  constructor() {
+    // Monitor loading state based on expenses store loaded state
+    effect(() => {
+      if (!this.expenseStore.loaded()) {
+        this.loadingService.loadingOn();
+      } else {
+        this.loadingService.loadingOff();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.breakpointObserver

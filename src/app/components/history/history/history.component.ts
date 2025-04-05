@@ -1,20 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -40,6 +24,22 @@ import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { HistoryHelpComponent } from '../history-help/history-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -136,6 +136,13 @@ export class HistoryComponent {
   constructor() {
     effect(() => {
       this.selectedMemberId.set(this.currentMember()?.id ?? '');
+    });
+    effect(() => {
+      if (!this.historyStore.loaded()) {
+        this.loading.loadingOn();
+      } else {
+        this.loading.loadingOff();
+      }
     });
   }
 

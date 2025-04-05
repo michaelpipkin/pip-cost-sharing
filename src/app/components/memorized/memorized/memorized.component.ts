@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -39,6 +23,23 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -107,6 +108,16 @@ export class MemorizedComponent implements OnInit {
   expandedExpense = model<Memorized | null>(null);
 
   columnsToDisplay = signal<string[]>([]);
+
+  constructor() {
+    effect(() => {
+      if (!this.memorizedStore.loaded()) {
+        this.loading.loadingOn();
+      } else {
+        this.loading.loadingOff();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.breakpointObserver

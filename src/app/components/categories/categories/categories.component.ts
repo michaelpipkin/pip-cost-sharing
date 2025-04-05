@@ -1,11 +1,3 @@
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -30,6 +22,15 @@ import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { CategoriesHelpComponent } from '../categories-help/categories-help.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-categories',
@@ -84,6 +85,16 @@ export class CategoriesComponent {
     }
     return categories;
   });
+
+  constructor() {
+    effect(() => {
+      if (!this.categoryStore.loaded()) {
+        this.loading.loadingOn();
+      } else {
+        this.loading.loadingOff();
+      }
+    });
+  }
 
   sortCategories(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
