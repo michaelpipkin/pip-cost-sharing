@@ -1,7 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import {
+  afterEveryRender,
   afterNextRender,
-  afterRender,
   Component,
   computed,
   ElementRef,
@@ -161,7 +161,7 @@ export class AddExpenseComponent implements OnInit {
         });
       }
     });
-    afterRender(() => {
+    afterEveryRender(() => {
       this.addSelectFocus();
     });
   }
