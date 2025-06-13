@@ -94,6 +94,22 @@ body.dark-theme {
     font-size: 1.125rem !important; // This is already relative to root
   }
 
+  .links .mdc-button,
+  .mdc-icon-button {
+    border-radius: 0 !important;
+  }
+
+  .links .mat-mdc-button:hover,
+  .mat-mdc-icon-button:hover {
+    background-color: tokens.color('primary-light') !important;
+    color: tokens.color('on-primary-light');
+  }
+
+  .account.links a:hover {
+    background-color: tokens.color('primary-light') !important;
+    color: tokens.color('on-primary-light');
+  }
+
   .menu a,
   .menu a mat-icon {
     color: tokens.color('on-primary');
