@@ -69,11 +69,7 @@
       >
     </div>
     <div class="filters-2">
-      <mat-form-field
-        appearance="fill"
-        class="datepicker"
-        subscriptSizing="dynamic"
-      >
+      <mat-form-field class="datepicker" subscriptSizing="dynamic">
         <mat-label>Start date</mat-label>
         <input
           matInput
@@ -98,11 +94,7 @@
         }
         <mat-datepicker #startDatepicker></mat-datepicker>
       </mat-form-field>
-      <mat-form-field
-        appearance="fill"
-        class="datepicker"
-        subscriptSizing="dynamic"
-      >
+      <mat-form-field class="datepicker" subscriptSizing="dynamic">
         <mat-label>End date</mat-label>
         <input matInput [matDatepicker]="endDatePicker" [(ngModel)]="endDate" />
         @if (!endDate()) {
@@ -125,7 +117,7 @@
         <mat-datepicker #endDatePicker></mat-datepicker>
       </mat-form-field>
       <button
-        mat-raised-button
+        matButton="elevated"
         class="btn-primary add-button"
         routerLink="/expenses/add"
       >

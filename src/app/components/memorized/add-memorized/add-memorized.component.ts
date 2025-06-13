@@ -1,7 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import {
+  afterEveryRender,
   afterNextRender,
-  afterRender,
   Component,
   computed,
   ElementRef,
@@ -126,7 +126,7 @@ export class AddMemorizedComponent implements OnInit {
         elementRef.nativeElement.value = '0.00';
       });
     });
-    afterRender(() => {
+    afterEveryRender(() => {
       this.addSelectFocus();
     });
   }
