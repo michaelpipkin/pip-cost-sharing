@@ -6,7 +6,7 @@ import {
 import {
   ApplicationConfig,
   importProvidersFrom,
-  provideExperimentalZonelessChangeDetection,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
@@ -66,7 +66,7 @@ export const appConfig: ApplicationConfig = {
     { provide: getStorage, useValue: storage },
     { provide: getAnalytics, useValue: analytics },
     { provide: getFunctions, useValue: functions },
-    provideExperimentalZonelessChangeDetection(),
+    provideZonelessChangeDetection(),
     provideHttpClient(withInterceptorsFromDi()),
     importProvidersFrom(
       BrowserModule,
