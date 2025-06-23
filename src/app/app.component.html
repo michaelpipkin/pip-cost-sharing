@@ -29,13 +29,13 @@
       <span id="title">PipSplit</span>
       @if (isLoggedIn()) {
         <div class="links">
-          <a mat-button routerLink="groups" aria-label="groups" title="Groups">
+          <a matButton routerLink="groups" aria-label="groups" title="Groups">
             <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
             >&nbsp;Groups
           </a>
           @if (currentGroup() != null) {
             <a
-              mat-button
+              matButton
               routerLink="members"
               aria-label="members"
               title="Members"
@@ -44,7 +44,7 @@
               >&nbsp;Members
             </a>
             <a
-              mat-button
+              matButton
               routerLink="categories"
               aria-label="categories"
               title="Categories"
@@ -53,7 +53,7 @@
               >&nbsp;Categories
             </a>
             <a
-              mat-button
+              matButton
               routerLink="expenses"
               aria-label="expenses"
               title="Expenses"
@@ -63,7 +63,7 @@
               >Expenses
             </a>
             <a
-              mat-button
+              matButton
               routerLink="memorized"
               aria-label="memorized"
               title="Memorized"
@@ -73,7 +73,7 @@
               >&nbsp;Memorized
             </a>
             <a
-              mat-button
+              matButton
               routerLink="summary"
               aria-label="summary"
               title="Summary"
@@ -83,7 +83,7 @@
               >&nbsp;Summary
             </a>
             <a
-              mat-button
+              matButton
               routerLink="history"
               aria-label="history"
               title="History"
@@ -139,12 +139,13 @@
           </button>
         } @else {
           <a
-            matIconButton
+            matButton
             [routerLink]="['auth', 'login']"
             aria-label="login"
             matTooltip="Login"
           >
             <mat-icon>login</mat-icon>
+            &nbsp;<span>Log in</span>
           </a>
         }
       </div>
