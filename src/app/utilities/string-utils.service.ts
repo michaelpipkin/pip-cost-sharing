@@ -7,7 +7,7 @@ import stringMath from 'string-math';
 export class StringUtils {
   toNumber(str: string): number {
     try {
-      return stringMath(str);
+      return +stringMath(str).toFixed(2);
     } catch {
       return 0;
     }
