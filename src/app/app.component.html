@@ -7,7 +7,7 @@
       <span id="title">PipSplit</span>
       <div class="account links">
         <button
-          mat-icon-button
+          matIconButton
           (click)="toggleTheme()"
           [matTooltip]="
             themeService.currentTheme() === 'light'
@@ -96,7 +96,7 @@
       }
       <div class="account links">
         <button
-          mat-icon-button
+          matIconButton
           (click)="toggleTheme()"
           [matTooltip]="
             themeService.currentTheme() === 'light'
@@ -113,30 +113,38 @@
           </mat-icon>
         </button>
         @if (isLoggedIn()) {
-          <a routerLink="help" aria-label="help" matTooltip="Help">
-            <mat-icon fontSet="material-symbols-outlined">help</mat-icon>
+          <a
+            matIconButton
+            [routerLink]="['help']"
+            matTooltip="Help"
+            aria-label="help"
+          >
+            <mat-icon>help</mat-icon>
           </a>
           <a
-            routerLink="auth/account"
-            aria-label="account"
+            matIconButton
+            [routerLink]="['auth', 'account']"
             matTooltip="Account"
+            aria-label="account"
           >
-            <mat-icon fontSet="material-symbols-outlined"
-              >account_circle</mat-icon
-            >
+            <mat-icon>account_circle</mat-icon>
           </a>
-          <a (click)="logout()" aria-label="log out" matTooltip="Log out">
-            <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>
-          </a>
+          <button
+            matIconButton
+            (click)="logout()"
+            aria-label="log out"
+            matTooltip="Log out"
+          >
+            <mat-icon>logout</mat-icon>
+          </button>
         } @else {
           <a
-            mat-button
-            routerLink="auth/login"
+            matIconButton
+            [routerLink]="['auth', 'login']"
             aria-label="login"
             matTooltip="Login"
           >
-            <mat-icon fontSet="material-symbols-outlined">login</mat-icon>
-            <span>Login</span>
+            <mat-icon>login</mat-icon>
           </a>
         }
       </div>
