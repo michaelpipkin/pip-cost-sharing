@@ -1,4 +1,5 @@
-import { Timestamp } from 'firebase/firestore';
+import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { Category } from './category';
 import { Split } from './split';
 
 export class Expense {
@@ -9,6 +10,8 @@ export class Expense {
   date: Timestamp;
   description: string;
   categoryId: string;
+  categoryRef: DocumentReference<Category>;
+  categoryName?: string;
   paidByMemberId: string;
   sharedAmount: number;
   allocatedAmount: number;
@@ -17,6 +20,7 @@ export class Expense {
   splits: Split[];
   hasReceipt: boolean = false;
   paid: boolean = false;
+  ref?: DocumentReference<Expense>;
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {

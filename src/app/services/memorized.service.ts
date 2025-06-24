@@ -1,17 +1,19 @@
 import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
 import { MemorizedStore } from '@store/memorized.store';
 import {
   addDoc,
   collection,
+  collectionGroup,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
   getFirestore,
   onSnapshot,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { IMemorizedService } from './memorized.service.interface';
 
@@ -23,27 +25,22 @@ export class MemorizedService implements IMemorizedService {
   protected readonly memorizedStore = inject(MemorizedStore);
 
   getMemorizedExpensesForGroup(groupId: string): void {
-    const q = collection(this.fs, `groups/${groupId}/memorized`);
-    onSnapshot(q, (memorizedSnap) => {
-      let memorizedExpenses: Memorized[] = [];
-      memorizedSnap.forEach((memorizedDoc) => {
-        const memorized = new Memorized({
-          id: memorizedDoc.id,
-          ...memorizedDoc.data(),
-        });
-        const splitRef = collection(memorizedDoc.ref, 'splits');
-        onSnapshot(splitRef, (splitSnap) => {
-          splitSnap.docs.forEach((splitDoc) => {
-            const split: Partial<Split> = {
-              id: splitDoc.id,
-              ...splitDoc.data(),
-            };
-            memorized.splits.push(split);
-          });
-        });
-        memorizedExpenses.push(memorized);
-      });
-      this.memorizedStore.setMemorizedExpenses(memorizedExpenses);
+    const memorizedCollection = collection(
+      this.fs,
+      `groups/${groupId}/memorized`
+    );
+    onSnapshot(memorizedCollection, (snapshot) => {
+      const memorized = [
+        ...snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+              ref: doc.ref,
+            }) as Memorized
+        ),
+      ];
+      this.memorizedStore.setMemorizedExpenses(memorized);
     });
   }
 
@@ -53,20 +50,11 @@ export class MemorizedService implements IMemorizedService {
     if (!memorizedDoc.exists()) {
       throw new Error('Memorized expense not found');
     }
-    const memorized = new Memorized({
+    return {
       id: memorizedDoc.id,
       ...memorizedDoc.data(),
-    });
-    const splitRef = collection(d, 'splits');
-    const splitSnap = await getDocs(splitRef);
-    splitSnap.forEach((splitDoc) => {
-      const split: Partial<Split> = {
-        id: splitDoc.id,
-        ...splitDoc.data(),
-      };
-      memorized.splits.push(split);
-    });
-    return memorized;
+      ref: memorizedDoc.ref,
+    } as Memorized;
   }
 
   async addMemorized(
@@ -89,5 +77,65 @@ export class MemorizedService implements IMemorizedService {
   async deleteMemorized(groupId: string, memorizedId: string): Promise<any> {
     const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
     return await deleteDoc(d);
+  }
+
+  async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all memorized documents across all groups
+      const memorizedCollection = collectionGroup(this.fs, 'memorized');
+      const memorizedDocs = await getDocs(memorizedCollection);
+
+      for (const memorizedDoc of memorizedDocs.docs) {
+        const memorizedData = memorizedDoc.data();
+
+        // Skip if already migrated (no categoryId or categoryRef already exists)
+        if (!memorizedData.categoryId || memorizedData.categoryRef) {
+          continue;
+        }
+
+        // Extract groupId from the document path
+        // Path: groups/{groupId}/memorized/{memorizedId}
+        const pathSegments = memorizedDoc.ref.path.split('/');
+        const groupId = pathSegments[1];
+
+        // Create the category document reference
+        const categoryRef = doc(
+          this.fs,
+          `groups/${groupId}/categories/${memorizedData.categoryId}`
+        );
+
+        // Clean up the splits array by removing categoryId from each split
+        const cleanedSplits =
+          memorizedData.splits?.map((split: any) => {
+            const { categoryId, ...cleanSplit } = split;
+            return cleanSplit;
+          }) || [];
+
+        // Update the document: add categoryRef, remove categoryId, and update splits
+        batch.update(memorizedDoc.ref, {
+          categoryRef: categoryRef,
+          categoryId: deleteField(), // This removes the field
+          splits: cleanedSplits, // Replace the splits array with cleaned version
+        });
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log('Successfully migrated all memorized documents');
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating memorized documents:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
   }
 }

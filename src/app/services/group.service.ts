@@ -6,13 +6,6 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -26,6 +19,13 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -73,7 +73,7 @@ export class GroupService implements IGroupService {
         );
         const groups: Group[] = [
           ...groupQuerySnap.docs.map(
-            (d) => new Group({ id: d.id, ...d.data() })
+            (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Group
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.groupStore.setAllUserGroups(groups);
@@ -108,7 +108,11 @@ export class GroupService implements IGroupService {
 
   async getGroup(groupId: string, userId: string): Promise<void> {
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    const group = new Group({ id: docSnap.id, ...docSnap.data() });
+    const group = {
+      id: docSnap.id,
+      ...docSnap.data(),
+      ref: docSnap.ref,
+    } as Group;
     this.groupStore.setCurrentGroup(group);
     localStorage.setItem('currentGroup', JSON.stringify(group));
     this.categoryService.getGroupCategories(groupId);

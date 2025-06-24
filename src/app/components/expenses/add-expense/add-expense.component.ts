@@ -46,6 +46,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
@@ -56,6 +57,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
@@ -91,12 +93,15 @@ export class AddExpenseComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
+
+  compareCategories = this.categoryService.compareCategoryRefs;
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -125,7 +130,7 @@ export class AddExpenseComponent implements OnInit {
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    categoryId: ['', Validators.required],
+    category: [null as DocumentReference<Category>, Validators.required],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -169,7 +174,7 @@ export class AddExpenseComponent implements OnInit {
   ngOnInit(): void {
     if (this.activeCategories().length == 1) {
       this.addExpenseForm.patchValue({
-        categoryId: this.activeCategories()[0].id,
+        category: this.activeCategories()[0].ref,
       });
     }
     if (!!this.memorizedExpense()) {
@@ -180,7 +185,7 @@ export class AddExpenseComponent implements OnInit {
         date: new Date(),
         amount: expense.totalAmount,
         description: expense.description,
-        categoryId: expense.categoryId,
+        category: expense.categoryRef,
         sharedAmount: expense.sharedAmount,
         allocatedAmount: expense.allocatedAmount,
       });
@@ -511,7 +516,7 @@ export class AddExpenseComponent implements OnInit {
     const expense: Partial<Expense> = {
       date: expenseDate,
       description: val.description,
-      categoryId: val.categoryId,
+      categoryRef: val.category,
       paidByMemberId: val.paidByMemberId,
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
@@ -524,7 +529,7 @@ export class AddExpenseComponent implements OnInit {
       if (s.allocatedAmount !== 0) {
         const split: Partial<Split> = {
           date: expenseDate,
-          categoryId: val.categoryId,
+          categoryRef: val.category,
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,

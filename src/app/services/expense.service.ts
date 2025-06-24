@@ -5,6 +5,7 @@ import { ExpenseStore } from '@store/expense.store.';
 import {
   collection,
   collectionGroup,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -28,23 +29,62 @@ export class ExpenseService implements IExpenseService {
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     onSnapshot(splitQuery, (splitQuerySnap) => {
       const splits = [
-        ...splitQuerySnap.docs.map((d) => new Split({ id: d.id, ...d.data() })),
+        ...splitQuerySnap.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
+        ),
       ];
+
       const expenseQuery = query(
         collection(this.fs, `groups/${groupId}/expenses`),
         orderBy('date')
       );
-      onSnapshot(expenseQuery, (expenseQuerySnap) => {
+
+      onSnapshot(expenseQuery, async (expenseQuerySnap) => {
+        // First, collect all unique category document references
+        const categoryRefs = new Set<string>();
+        expenseQuerySnap.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.categoryRef) {
+            categoryRefs.add(data.categoryRef.id);
+          }
+        });
+
+        // Fetch all category names in parallel
+        const categoryPromises = Array.from(categoryRefs).map(
+          async (categoryId) => {
+            const categoryDoc = await getDoc(
+              doc(this.fs, `groups/${groupId}/categories/${categoryId}`)
+            );
+            return {
+              id: categoryId,
+              name: categoryDoc.exists()
+                ? categoryDoc.data().name
+                : 'Unknown Category',
+            };
+          }
+        );
+
+        const categories = await Promise.all(categoryPromises);
+        const categoryMap = new Map(
+          categories.map((cat) => [cat.id, cat.name])
+        );
+
+        // Now build expenses with category names
         const expenses = [
-          ...expenseQuerySnap.docs.map(
-            (d) =>
-              new Expense({
-                id: d.id,
-                ...d.data(),
-                splits: splits.filter((s) => s.expenseId === d.id),
-              })
-          ),
+          ...expenseQuerySnap.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              ref: doc.ref,
+              categoryName: data.categoryRef
+                ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
+                : '',
+              splits: splits.filter((s) => s.expenseId === doc.id),
+            } as Expense;
+          }),
         ];
+
         this.expenseStore.setGroupExpenses(expenses);
       });
     });
@@ -56,17 +96,18 @@ export class ExpenseService implements IExpenseService {
     if (!expenseDoc.exists()) {
       throw new Error('Expense not found');
     }
-    const expense = new Expense({
+    const expense = {
       id: expenseDoc.id,
       ...expenseDoc.data(),
-    });
+      ref: expenseDoc.ref,
+    } as Expense;
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
       where('expenseId', '==', expenseId)
     );
     const splitDocs = await getDocs(splitQuery);
     expense.splits = splitDocs.docs.map(
-      (d) => new Split({ id: d.id, ...d.data() })
+      (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
     );
     return expense;
   }
@@ -173,5 +214,57 @@ export class ExpenseService implements IExpenseService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
+  }
+
+  async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all expense documents across all groups
+      const expensesCollection = collectionGroup(this.fs, 'expenses');
+      const expenseDocs = await getDocs(expensesCollection);
+
+      for (const expenseDoc of expenseDocs.docs) {
+        const expenseData = expenseDoc.data();
+
+        // Skip if already migrated (no categoryId or categoryRef already exists)
+        if (!expenseData.categoryId || expenseData.categoryRef) {
+          continue;
+        }
+
+        // Extract groupId from the document path
+        // Path: groups/{groupId}/expenses/{expenseId}
+        const pathSegments = expenseDoc.ref.path.split('/');
+        const groupId = pathSegments[1];
+
+        // Create the category document reference
+        const categoryRef = doc(
+          this.fs,
+          `groups/${groupId}/categories/${expenseData.categoryId}`
+        );
+
+        // Update the document: add categoryRef and remove categoryId
+        batch.update(expenseDoc.ref, {
+          categoryRef: categoryRef,
+          categoryId: deleteField(), // This removes the field
+        });
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log('Successfully migrated all expense documents');
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating expense documents:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
   }
 }

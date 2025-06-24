@@ -1,5 +1,22 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -22,24 +39,8 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
+import { DocumentReference } from 'firebase/firestore';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -94,17 +95,17 @@ export class MemorizedComponent implements OnInit {
           (this.selectedMemberId() != ''
             ? this.selectedMemberId()
             : memorized.paidByMemberId) &&
-        memorized.categoryId ==
-          (this.selectedCategoryId() != ''
-            ? this.selectedCategoryId()
-            : memorized.categoryId)
+        memorized.categoryRef.path ==
+          (!!this.selectedCategory()
+            ? this.selectedCategory().path
+            : memorized.categoryRef.path)
       );
     });
     return filteredMemorized;
   });
 
   selectedMemberId = model<string>('');
-  selectedCategoryId = model<string>('');
+  selectedCategory = model<DocumentReference<Category> | null>(null);
   expandedExpense = model<Memorized | null>(null);
 
   columnsToDisplay = signal<string[]>([]);

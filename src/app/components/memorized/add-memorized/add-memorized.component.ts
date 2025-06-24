@@ -44,6 +44,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { MemorizedService } from '@services/memorized.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -51,6 +52,7 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
@@ -85,11 +87,14 @@ export class AddMemorizedComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
+
+  compareCategories = this.categoryService.compareCategoryRefs;
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -112,7 +117,7 @@ export class AddMemorizedComponent implements OnInit {
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    categoryId: ['', Validators.required],
+    category: [null as DocumentReference<Category>, Validators.required],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -134,7 +139,7 @@ export class AddMemorizedComponent implements OnInit {
   ngOnInit(): void {
     if (this.activeCategories().length == 1) {
       this.addMemorizedForm.patchValue({
-        categoryId: this.activeCategories()[0].id,
+        category: this.activeCategories()[0].ref,
       });
     }
     if (this.currentGroup().autoAddMembers) {
@@ -431,7 +436,7 @@ export class AddMemorizedComponent implements OnInit {
     const val = this.addMemorizedForm.value;
     const memorized: Partial<Memorized> = {
       description: val.description,
-      categoryId: val.categoryId,
+      categoryRef: val.category,
       paidByMemberId: val.paidByMemberId,
       sharedAmount: +val.sharedAmount,
       allocatedAmount: +val.allocatedAmount,
@@ -441,7 +446,6 @@ export class AddMemorizedComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.value.forEach((s: Split) => {
       const split: Partial<Split> = {
-        categoryId: val.categoryId,
         assignedAmount: +s.assignedAmount,
         percentage: +s.percentage,
         allocatedAmount: +s.allocatedAmount,

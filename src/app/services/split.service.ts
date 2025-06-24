@@ -1,10 +1,12 @@
 import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
+import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
 import {
   collection,
   doc,
+  DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -29,10 +31,11 @@ export class SplitService implements ISplitService {
     onSnapshot(splitsQuery, (splitsQuerySnap) => {
       const splits = [
         ...splitsQuerySnap.docs.map((d) => {
-          return new Split({
+          return {
             id: d.id,
             ...d.data(),
-          });
+            ref: d.ref,
+          } as Split;
         }),
       ];
       this.splitStore.setSplits(splits);
@@ -105,11 +108,11 @@ export class SplitService implements ISplitService {
     history.paidByMemberRef = doc(
       this.fs,
       `groups/${groupId}/members/${paidByMemberId}`
-    );
+    ) as DocumentReference<Member>;
     history.paidToMemberRef = doc(
       this.fs,
       `groups/${groupId}/members/${paidToMemberId}`
-    );
+    ) as DocumentReference<Member>;
     const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
     return await batch

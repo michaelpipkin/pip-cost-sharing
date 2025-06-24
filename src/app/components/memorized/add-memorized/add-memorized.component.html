@@ -37,12 +37,18 @@
           [class.hidden]="activeCategories().length === 1"
         >
           <mat-label>Category</mat-label>
-          <mat-select formControlName="categoryId" name="category">
-            @for (category of activeCategories(); track category.id) {
-              <mat-option [value]="category.id">{{ category.name }}</mat-option>
+          <mat-select
+            formControlName="category"
+            name="category"
+            [compareWith]="compareCategories"
+          >
+            @for (category of activeCategories(); track category.ref) {
+              <mat-option [value]="category.ref">{{
+                category.name
+              }}</mat-option>
             }
           </mat-select>
-          @if (e.categoryId.errors?.['required']) {
+          @if (e.category.errors?.['required']) {
             <mat-error> *Required </mat-error>
           }
         </mat-form-field>

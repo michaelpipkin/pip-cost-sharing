@@ -60,7 +60,7 @@ export class UserService implements IUserService {
     const docRef = doc(this.fs, `users/${userId}`);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return new User(docSnap.data());
+      return { id: docSnap.id, ...docSnap.data(), ref: docRef } as User;
     } else {
       setDoc(docRef, {
         defaultGroupId: '',

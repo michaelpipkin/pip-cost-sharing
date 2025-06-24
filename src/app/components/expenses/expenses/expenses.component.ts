@@ -1,5 +1,22 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -20,6 +37,7 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
@@ -32,25 +50,9 @@ import { ExpenseStore } from '@store/expense.store.';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -93,6 +95,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
@@ -115,7 +118,7 @@ export class ExpensesComponent implements OnInit {
 
   unpaidOnly = model<boolean>(true);
   selectedMemberId = model<string>('');
-  selectedCategoryId = model<string>('');
+  selectedCategory = model<DocumentReference | null>(null);
   startDate = model<Date | null>(null);
   endDate = model<Date | null>(null);
 
@@ -123,17 +126,17 @@ export class ExpensesComponent implements OnInit {
     (
       unpaidOnly: boolean = this.unpaidOnly(),
       selectedMemberId: string = this.selectedMemberId(),
-      selectedCategoryId: string = this.selectedCategoryId()
+      selectedCategory: DocumentReference | null = this.selectedCategory()
     ) => {
       var filteredExpenses = this.expenses().filter((expense: Expense) => {
         return (
           (!expense.paid || expense.paid != unpaidOnly) &&
           expense.paidByMemberId ==
-            (selectedMemberId != ''
-              ? selectedMemberId
-              : expense.paidByMemberId) &&
-          expense.categoryId ==
-            (selectedCategoryId != '' ? selectedCategoryId : expense.categoryId)
+            (!!selectedMemberId ? selectedMemberId : expense.paidByMemberId) &&
+          expense.categoryRef.path ==
+            (!!selectedCategory
+              ? selectedCategory.path
+              : expense.categoryRef.path)
         );
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {

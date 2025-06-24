@@ -42,19 +42,20 @@
         <mat-select
           #categorySelect
           name="category"
-          [(ngModel)]="selectedCategoryId"
+          [(ngModel)]="selectedCategory"
         >
-          @for (category of categories(); track category.id) {
-            <mat-option [value]="category.id">{{ category.name }}</mat-option>
+          @for (category of categories(); track category.ref) {
+            <mat-option [value]="category.ref">{{ category.name }}</mat-option>
           }
         </mat-select>
-        @if (selectedCategoryId() !== '') {
+        @if (selectedCategory() !== null) {
           <button
             matIconSuffix
             tabindex="-1"
             mat-icon-button
             aria-label="Clear"
             [appClearSelect]="categorySelect"
+            [clearValue]="null"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -88,7 +89,7 @@
           <td mat-cell *matCellDef="let expense">
             {{ expense.description }}
             <br />
-            {{ getCategoryName(expense.categoryId) }}
+            {{ getCategoryName(expense.categoryRef.id) }}
           </td>
         </ng-container>
         <ng-container matColumnDef="description">
@@ -100,7 +101,7 @@
         <ng-container matColumnDef="category">
           <th mat-header-cell *matHeaderCellDef>Category</th>
           <td mat-cell *matCellDef="let expense">
-            {{ getCategoryName(expense.categoryId) }}
+            {{ getCategoryName(expense.categoryRef.id) }}
           </td>
         </ng-container>
         <ng-container matColumnDef="amount">

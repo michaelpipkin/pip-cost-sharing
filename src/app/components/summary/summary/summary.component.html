@@ -154,7 +154,7 @@
                 <ng-container matColumnDef="category">
                   <th mat-header-cell *matHeaderCellDef>Category</th>
                   <td mat-cell *matCellDef="let lineItem">
-                    {{ getCategoryName(lineItem.categoryId) }}
+                    {{ getCategoryName(lineItem.categoryRef.id) }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="amount">

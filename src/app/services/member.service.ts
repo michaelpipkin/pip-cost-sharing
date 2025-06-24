@@ -36,9 +36,11 @@ export class MemberService implements IMemberService {
     await getDocs(q).then((docSnap) => {
       if (!docSnap.empty) {
         const memberDoc = docSnap.docs[0];
-        this.memberStore.setCurrentMember(
-          new Member({ id: memberDoc.id, ...memberDoc.data() })
-        );
+        this.memberStore.setCurrentMember({
+          id: memberDoc.id,
+          ...memberDoc.data(),
+          ref: memberDoc.ref,
+        } as Member);
       } else {
         this.memberStore.clearCurrentMember();
       }
@@ -52,7 +54,14 @@ export class MemberService implements IMemberService {
     );
     onSnapshot(q, (querySnap) => {
       const groupMembers: Member[] = [
-        ...querySnap.docs.map((d) => new Member({ id: d.id, ...d.data() })),
+        ...querySnap.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+              ref: doc.ref,
+            }) as Member
+        ),
       ];
       this.memberStore.setGroupMembers(groupMembers);
     });

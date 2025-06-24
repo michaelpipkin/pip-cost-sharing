@@ -26,11 +26,12 @@ export class HistoryService implements IHistoryService {
     );
     onSnapshot(historyQuery, (historyQuerySnap) => {
       const history = [
-        ...historyQuerySnap.docs.map((d) => {
-          return new History({
-            id: d.id,
-            ...d.data(),
-          });
+        ...historyQuerySnap.docs.map((doc) => {
+          return {
+            id: doc.id,
+            ...doc.data(),
+            ref: doc.ref,
+          } as History;
         }),
       ];
       this.historyStore.setHistory(history);

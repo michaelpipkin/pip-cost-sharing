@@ -45,6 +45,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
@@ -53,6 +54,7 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 @Component({
@@ -83,6 +85,7 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -91,6 +94,8 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
 
+  compareCategories = this.categoryService.compareCategoryRefs;
+
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   memorized = signal<Memorized>(null);
@@ -98,7 +103,7 @@ export class EditMemorizedComponent implements OnInit {
   categories = computed<Category[]>(() => {
     return this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.id == this.memorized().categoryId);
+      .filter((c) => c.active || c.ref == this.memorized().categoryRef);
   });
   memorizedMembers = computed<Member[]>(() => {
     return this.memberStore
@@ -125,7 +130,7 @@ export class EditMemorizedComponent implements OnInit {
     paidByMemberId: ['', Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    categoryId: ['', Validators.required],
+    category: [null as DocumentReference<Category>, Validators.required],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -160,7 +165,7 @@ export class EditMemorizedComponent implements OnInit {
       paidByMemberId: memorized.paidByMemberId,
       amount: memorized.totalAmount,
       description: memorized.description,
-      categoryId: memorized.categoryId,
+      category: memorized.categoryRef,
       sharedAmount: memorized.sharedAmount,
       allocatedAmount: memorized.allocatedAmount,
     });
@@ -436,7 +441,7 @@ export class EditMemorizedComponent implements OnInit {
     const val = this.editMemorizedForm.value;
     const changes: Partial<Memorized> = {
       description: val.description,
-      categoryId: val.categoryId,
+      categoryRef: val.category,
       paidByMemberId: val.paidByMemberId,
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
@@ -446,7 +451,6 @@ export class EditMemorizedComponent implements OnInit {
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.value.forEach((s) => {
       const split: Partial<Split> = {
-        categoryId: val.categoryId,
         assignedAmount: s.assignedAmount,
         percentage: s.percentage,
         allocatedAmount: s.allocatedAmount,

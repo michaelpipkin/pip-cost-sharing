@@ -1,3 +1,5 @@
+import { DocumentReference } from 'firebase/firestore';
+
 export class User {
   constructor(init?: Partial<User>) {
     Object.assign(this, init);
@@ -9,4 +11,5 @@ export class User {
   paypalId?: string = '';
   cashAppId?: string = '';
   zelleId?: string = '';
+  ref?: DocumentReference<User>;
 }

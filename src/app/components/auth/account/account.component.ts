@@ -25,6 +25,7 @@ import { environment } from '@env/environment';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { ExpenseService } from '@services/expense.service';
+import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -61,6 +62,7 @@ export class AccountComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly splitService = inject(SplitService);
   protected readonly expenseService = inject(ExpenseService);
+  protected readonly memorizedService = inject(MemorizedService);
 
   #user: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
@@ -277,23 +279,25 @@ export class AccountComponent {
     }
   }
 
-  fixExpenses(): void {
+  async updateData(): Promise<void> {
     this.loading.loadingOn();
-    this.expenseService
-      .updateAllExpensesPaidStatus()
+    await Promise.all([
+      this.expenseService.migrateCategoryIdsToRefs(),
+      this.memorizedService.migrateCategoryIdsToRefs(),
+    ])
       .then(() => {
         this.loading.loadingOff();
-        this.snackBar.open('Expenses updated.', 'Close');
+        this.snackBar.open('Data updated.', 'Close');
       })
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
-          action: 'fix_expenses',
+          action: 'data_update',
           message: err.message,
         });
         this.loading.loadingOff();
         this.snackBar.open(
-          'Something went wrong - could not update expenses.',
+          'Something went wrong - could not update data.',
           'Close'
         );
       });

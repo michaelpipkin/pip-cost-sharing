@@ -45,6 +45,7 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
@@ -57,6 +58,7 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import {
   deleteObject,
   getDownloadURL,
@@ -99,12 +101,15 @@ export class EditExpenseComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
+
+  compareCategories = this.categoryService.compareCategoryRefs;
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
@@ -113,7 +118,7 @@ export class EditExpenseComponent implements OnInit {
   categories = computed<Category[]>(() => {
     return this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.id == this.expense().categoryId);
+      .filter((c) => c.active || c.ref == this.expense().categoryRef);
   });
   expenseMembers = computed<Member[]>(() => {
     return this.memberStore
@@ -145,7 +150,7 @@ export class EditExpenseComponent implements OnInit {
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    categoryId: ['', Validators.required],
+    category: [null as DocumentReference<Category>, Validators.required],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -172,7 +177,7 @@ export class EditExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const expense = this.route.snapshot.data.expense;
+    const expense: Expense = this.route.snapshot.data.expense;
     this.expense.set(expense);
     this.splitByPercentage.set(expense.splitByPercentage);
     this.editExpenseForm.patchValue({
@@ -180,7 +185,7 @@ export class EditExpenseComponent implements OnInit {
       date: expense.date.toDate(),
       amount: expense.totalAmount,
       description: expense.description,
-      categoryId: expense.categoryId,
+      category: expense.categoryRef,
       sharedAmount: expense.sharedAmount,
       allocatedAmount: expense.allocatedAmount,
     });
@@ -505,7 +510,7 @@ export class EditExpenseComponent implements OnInit {
         const changes: Partial<Expense> = {
           date: expenseDate,
           description: val.description,
-          categoryId: val.categoryId,
+          categoryRef: val.category,
           paidByMemberId: val.paidByMemberId,
           sharedAmount: +val.sharedAmount,
           allocatedAmount: +val.allocatedAmount,
@@ -518,7 +523,7 @@ export class EditExpenseComponent implements OnInit {
         this.splitsFormArray.value.forEach((s) => {
           const split: Partial<Split> = {
             date: expenseDate,
-            categoryId: val.categoryId,
+            categoryRef: val.category,
             assignedAmount: +s.assignedAmount,
             percentage: +s.percentage,
             allocatedAmount: +s.allocatedAmount,

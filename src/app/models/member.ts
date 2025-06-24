@@ -1,3 +1,5 @@
+import { DocumentReference } from 'firebase/firestore';
+
 export class Member {
   constructor(init?: Partial<Member>) {
     Object.assign(this, init);
@@ -8,4 +10,5 @@ export class Member {
   email: string;
   active: boolean;
   groupAdmin: boolean;
+  ref?: DocumentReference<Member>;
 }

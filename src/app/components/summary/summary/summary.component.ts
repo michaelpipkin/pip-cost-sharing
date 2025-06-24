@@ -1,4 +1,20 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -30,22 +46,6 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -188,25 +188,27 @@ export class SummaryComponent {
       );
       categories.forEach((category) => {
         if (
-          memberSplits.filter((f) => f.categoryId == category.id).length > 0
+          memberSplits.filter(
+            (split: Split) => split.categoryRef == category.ref
+          ).length > 0
         ) {
           const owedToMember1 = memberSplits
             .filter(
-              (s) =>
+              (s: Split) =>
                 s.paidByMemberId == owedToMemberId &&
-                s.categoryId == category.id
+                s.categoryRef == category.ref
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           const owedToMember2 = memberSplits
             .filter(
-              (s) =>
+              (s: Split) =>
                 s.paidByMemberId == owedByMemberId &&
-                s.categoryId == category.id
+                s.categoryRef == category.ref
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           detailData.push(
             new AmountDue({
-              categoryId: category.id,
+              categoryRef: category.ref,
               amount: owedToMember1 - owedToMember2,
             })
           );
@@ -299,7 +301,7 @@ export class SummaryComponent {
         };
         this.detailData().forEach((split) => {
           history.lineItems.push({
-            category: this.getCategoryName(split.categoryId),
+            category: this.getCategoryName(split.categoryRef.id),
             amount: split.amount,
           });
         });
