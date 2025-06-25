@@ -518,6 +518,7 @@ export class AddExpenseComponent implements OnInit {
       description: val.description,
       categoryRef: val.category,
       paidByMemberId: val.paidByMemberId,
+      paid: false,
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,

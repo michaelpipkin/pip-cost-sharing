@@ -10,7 +10,6 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
   Component,
   computed,
-  effect,
   inject,
   model,
   OnInit,
@@ -46,7 +45,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
-import { ExpenseStore } from '@store/expense.store.';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
@@ -96,7 +94,6 @@ export class ExpensesComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
@@ -111,8 +108,9 @@ export class ExpensesComponent implements OnInit {
   currentMember: Signal<Member> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  expenses: Signal<Expense[]> = this.expenseStore.groupExpenses;
 
+  expenses = signal<Expense[]>([]);
+  initialLoad = signal<boolean>(true);
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
@@ -169,17 +167,6 @@ export class ExpensesComponent implements OnInit {
   columnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
 
-  constructor() {
-    // Monitor loading state based on expenses store loaded state
-    effect(() => {
-      if (!this.expenseStore.loaded()) {
-        this.loadingService.loadingOn();
-      } else {
-        this.loadingService.loadingOff();
-      }
-    });
-  }
-
   ngOnInit(): void {
     this.breakpointObserver
       .observe('(max-width: 1009px)')
@@ -206,6 +193,20 @@ export class ExpensesComponent implements OnInit {
           ]);
           this.smallScreen.set(false);
         }
+      });
+    this.loading.loadingOn();
+    this.expenseService
+      .getExpensesForGroup(this.currentGroup().id)
+      .then((expenses: Expense[]) => {
+        this.expenses.set(expenses);
+        this.loading.loadingOff();
+      })
+      .catch((error) => {
+        console.error('Error fetching expenses:', error);
+      })
+      .finally(() => {
+        this.initialLoad.set(false);
+        this.loading.loadingOff();
       });
   }
 

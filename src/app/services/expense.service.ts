@@ -10,12 +10,12 @@ import {
   getDoc,
   getDocs,
   getFirestore,
-  onSnapshot,
   orderBy,
   query,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
 import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
@@ -24,70 +24,41 @@ import { IExpenseService } from './expense.service.interface';
 export class ExpenseService implements IExpenseService {
   protected readonly fs = inject(getFirestore);
   protected readonly expenseStore = inject(ExpenseStore);
+  protected readonly categoryService = inject(CategoryService);
 
-  getExpensesForGroup(groupId: string): void {
+  async getExpensesForGroup(groupId: string): Promise<Expense[]> {
+    // Get splits first
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
-    onSnapshot(splitQuery, (splitQuerySnap) => {
-      const splits = [
-        ...splitQuerySnap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
-        ),
-      ];
+    const splitSnap = await getDocs(splitQuery);
+    const splits = splitSnap.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
+    );
 
-      const expenseQuery = query(
-        collection(this.fs, `groups/${groupId}/expenses`),
-        orderBy('date')
-      );
+    // Get expenses
+    const expenseQuery = query(
+      collection(this.fs, `groups/${groupId}/expenses`),
+      orderBy('date')
+    );
+    const expenseSnap = await getDocs(expenseQuery);
 
-      onSnapshot(expenseQuery, async (expenseQuerySnap) => {
-        // First, collect all unique category document references
-        const categoryRefs = new Set<string>();
-        expenseQuerySnap.docs.forEach((doc) => {
-          const data = doc.data();
-          if (data.categoryRef) {
-            categoryRefs.add(data.categoryRef.id);
-          }
-        });
+    // Get category map
+    const categoryMap = await this.categoryService.getCategoryMap(groupId);
 
-        // Fetch all category names in parallel
-        const categoryPromises = Array.from(categoryRefs).map(
-          async (categoryId) => {
-            const categoryDoc = await getDoc(
-              doc(this.fs, `groups/${groupId}/categories/${categoryId}`)
-            );
-            return {
-              id: categoryId,
-              name: categoryDoc.exists()
-                ? categoryDoc.data().name
-                : 'Unknown Category',
-            };
-          }
-        );
-
-        const categories = await Promise.all(categoryPromises);
-        const categoryMap = new Map(
-          categories.map((cat) => [cat.id, cat.name])
-        );
-
-        // Now build expenses with category names
-        const expenses = [
-          ...expenseQuerySnap.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              ref: doc.ref,
-              categoryName: data.categoryRef
-                ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
-                : '',
-              splits: splits.filter((s) => s.expenseId === doc.id),
-            } as Expense;
-          }),
-        ];
-
-        this.expenseStore.setGroupExpenses(expenses);
-      });
+    // Build and return expenses
+    const expenses = expenseSnap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        ref: doc.ref,
+        categoryName: data.categoryRef
+          ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
+          : '',
+        splits: splits.filter((s) => s.expenseId === doc.id),
+      } as Expense;
     });
+
+    return expenses;
   }
 
   async getExpense(groupId: string, expenseId: string): Promise<Expense> {

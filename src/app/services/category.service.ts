@@ -39,6 +39,20 @@ export class CategoryService implements ICategoryService {
     });
   }
 
+  async getCategoryMap(groupId: string): Promise<Map<string, string>> {
+    const categoriesQuery = query(
+      collection(this.fs, `groups/${groupId}/categories`)
+    );
+    const categoriesSnap = await getDocs(categoriesQuery);
+
+    const categoryMap = new Map<string, string>();
+    categoriesSnap.docs.forEach((doc) => {
+      categoryMap.set(doc.id, doc.data().name);
+    });
+
+    return categoryMap;
+  }
+
   async addCategory(
     groupId: string,
     category: Partial<Category>

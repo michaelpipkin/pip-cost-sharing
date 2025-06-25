@@ -20,7 +20,6 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
 import { IGroupService } from './group.service.interface';
 import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
@@ -35,7 +34,6 @@ export class GroupService implements IGroupService {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly expensesService = inject(ExpenseService);
   protected readonly splitsService = inject(SplitService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly historyService = inject(HistoryService);
@@ -118,7 +116,6 @@ export class GroupService implements IGroupService {
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
     this.memberService.getMemberByUserId(groupId, userId);
-    this.expensesService.getExpensesForGroup(groupId);
     this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.historyService.getHistoryForGroup(groupId);
