@@ -7,6 +7,7 @@ import {
   collectionGroup,
   deleteField,
   doc,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -31,7 +32,12 @@ export class ExpenseService implements IExpenseService {
     const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     const splitSnap = await getDocs(splitQuery);
     const splits = splitSnap.docs.map(
-      (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
+      (doc) =>
+        new Split({
+          id: doc.id,
+          ...doc.data(),
+          ref: doc.ref as DocumentReference<Split>,
+        })
     );
 
     // Get expenses
@@ -47,15 +53,15 @@ export class ExpenseService implements IExpenseService {
     // Build and return expenses
     const expenses = expenseSnap.docs.map((doc) => {
       const data = doc.data();
-      return {
+      return new Expense({
         id: doc.id,
         ...data,
-        ref: doc.ref,
+        ref: doc.ref as DocumentReference<Expense>,
         categoryName: data.categoryRef
           ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
           : '',
         splits: splits.filter((s) => s.expenseId === doc.id),
-      } as Expense;
+      });
     });
 
     return expenses;

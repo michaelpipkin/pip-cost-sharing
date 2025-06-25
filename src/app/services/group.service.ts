@@ -10,6 +10,7 @@ import {
   collection,
   collectionGroup,
   doc,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -71,7 +72,12 @@ export class GroupService implements IGroupService {
         );
         const groups: Group[] = [
           ...groupQuerySnap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Group
+            (doc) =>
+              new Group({
+                id: doc.id,
+                ...doc.data(),
+                ref: doc.ref as DocumentReference<Group>,
+              })
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.groupStore.setAllUserGroups(groups);

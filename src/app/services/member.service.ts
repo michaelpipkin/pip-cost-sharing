@@ -6,6 +6,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -56,11 +57,11 @@ export class MemberService implements IMemberService {
       const groupMembers: Member[] = [
         ...querySnap.docs.map(
           (doc) =>
-            ({
+            new Member({
               id: doc.id,
               ...doc.data(),
-              ref: doc.ref,
-            }) as Member
+              ref: doc.ref as DocumentReference<Member>,
+            })
         ),
       ];
       this.memberStore.setGroupMembers(groupMembers);

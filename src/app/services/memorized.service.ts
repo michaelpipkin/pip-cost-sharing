@@ -8,6 +8,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -33,11 +34,11 @@ export class MemorizedService implements IMemorizedService {
       const memorized = [
         ...snapshot.docs.map(
           (doc) =>
-            ({
+            new Memorized({
               id: doc.id,
               ...doc.data(),
-              ref: doc.ref,
-            }) as Memorized
+              ref: doc.ref as DocumentReference<Memorized>,
+            })
         ),
       ];
       this.memorizedStore.setMemorizedExpenses(memorized);

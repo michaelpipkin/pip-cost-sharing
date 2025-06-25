@@ -32,7 +32,12 @@ export class CategoryService implements ICategoryService {
     onSnapshot(q, (querySnap) => {
       const categories = [
         ...querySnap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Category
+          (doc) =>
+            new Category({
+              id: doc.id,
+              ...doc.data(),
+              ref: doc.ref as DocumentReference<Category>,
+            })
         ),
       ];
       this.categoryStore.setGroupCategories(categories);
