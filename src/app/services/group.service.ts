@@ -53,7 +53,7 @@ export class GroupService implements IGroupService {
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
-      where('userId', '==', user.id)
+      where('userRef', '==', user.ref)
     );
     onSnapshot(memberQuery, (memberQuerySnap) => {
       const userGroups: { groupId: string; groupAdmin: boolean }[] = [
@@ -82,20 +82,20 @@ export class GroupService implements IGroupService {
         ].filter((g) => userGroupIds.includes(g.id));
         this.groupStore.setAllUserGroups(groups);
         if (!!this.groupStore.currentGroup()) {
-          await this.getGroup(this.groupStore.currentGroup().id, user.id);
+          await this.getGroup(this.groupStore.currentGroup().id, user.ref);
           if (autoNav && this.router.url === '/') {
             this.router.navigateByUrl('/expenses');
           }
         } else {
           if (groups.length === 1 && groups[0].active) {
-            await this.getGroup(groups[0].id, user.id).then(() => {
+            await this.getGroup(groups[0].id, user.ref).then(() => {
               if (autoNav) {
                 autoNav = false;
                 this.router.navigateByUrl('/expenses');
               }
             });
           } else if (user.defaultGroupId !== '') {
-            await this.getGroup(user.defaultGroupId, user.id).then(() => {
+            await this.getGroup(user.defaultGroupId, user.ref).then(() => {
               if (autoNav) {
                 autoNav = false;
                 this.router.navigateByUrl('/expenses');
@@ -110,7 +110,10 @@ export class GroupService implements IGroupService {
     });
   }
 
-  async getGroup(groupId: string, userId: string): Promise<void> {
+  async getGroup(
+    groupId: string,
+    userRef: DocumentReference<User>
+  ): Promise<void> {
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
     const group = {
       id: docSnap.id,
@@ -121,7 +124,7 @@ export class GroupService implements IGroupService {
     localStorage.setItem('currentGroup', JSON.stringify(group));
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
-    this.memberService.getMemberByUserId(groupId, userId);
+    this.memberService.getMemberByUserRef(groupId, userRef);
     this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.historyService.getHistoryForGroup(groupId);
@@ -151,22 +154,24 @@ export class GroupService implements IGroupService {
       });
   }
 
-  async updateGroup(groupId: string, changes: Partial<Group>): Promise<any> {
+  async updateGroup(
+    groupRef: DocumentReference<Group>,
+    changes: Partial<Group>
+  ): Promise<any> {
     const batch = writeBatch(this.fs);
-    const groupRef = doc(this.fs, `groups/${groupId}`);
     batch.update(groupRef, changes);
     if (!changes.active) {
       const usersRef = collection(this.fs, 'users');
       const usersQuery = query(
         usersRef,
-        where('defaultGroupId', '==', groupId)
+        where('defaultGroupId', '==', groupRef.id)
       );
       await getDocs(usersQuery).then((users) => {
         users.forEach((u) => {
           batch.update(u.ref, { defaultGroupId: '' });
         });
       });
-      if (this.groupStore.currentGroup().id === groupId) {
+      if (this.groupStore.currentGroup().id === groupRef.id) {
         this.groupStore.clearCurrentGroup();
         localStorage.removeItem('currentGroup');
       }

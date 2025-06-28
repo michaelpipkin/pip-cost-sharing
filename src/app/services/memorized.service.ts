@@ -91,35 +91,48 @@ export class MemorizedService implements IMemorizedService {
       for (const memorizedDoc of memorizedDocs.docs) {
         const memorizedData = memorizedDoc.data();
 
-        // Skip if already migrated (no categoryId or categoryRef already exists)
-        if (!memorizedData.categoryId || memorizedData.categoryRef) {
-          continue;
-        }
-
         // Extract groupId from the document path
         // Path: groups/{groupId}/memorized/{memorizedId}
         const pathSegments = memorizedDoc.ref.path.split('/');
         const groupId = pathSegments[1];
 
-        // Create the category document reference
-        const categoryRef = doc(
-          this.fs,
-          `groups/${groupId}/categories/${memorizedData.categoryId}`
-        );
+        // Skip if already migrated category
+        if (memorizedData.categoryId || !memorizedData.categoryRef) {
+          // Create the category document reference
+          const categoryRef = doc(
+            this.fs,
+            `groups/${groupId}/categories/${memorizedData.categoryId}`
+          );
 
-        // Clean up the splits array by removing categoryId from each split
-        const cleanedSplits =
-          memorizedData.splits?.map((split: any) => {
-            const { categoryId, ...cleanSplit } = split;
-            return cleanSplit;
-          }) || [];
+          // Clean up the splits array by removing categoryId from each split
+          const cleanedSplits =
+            memorizedData.splits?.map((split: any) => {
+              const { categoryId, ...cleanSplit } = split;
+              return cleanSplit;
+            }) || [];
 
-        // Update the document: add categoryRef, remove categoryId, and update splits
-        batch.update(memorizedDoc.ref, {
-          categoryRef: categoryRef,
-          categoryId: deleteField(), // This removes the field
-          splits: cleanedSplits, // Replace the splits array with cleaned version
-        });
+          // Update the document: add categoryRef, remove categoryId, and update splits
+          batch.update(memorizedDoc.ref, {
+            categoryRef: categoryRef,
+            categoryId: deleteField(), // This removes the field
+            splits: cleanedSplits, // Replace the splits array with cleaned version
+          });
+        }
+
+        // Skip if already migrated paidByMember
+        if (memorizedData.paidByMemberId || !memorizedData.paidByMemberRef) {
+          // Create the paidByMember document reference
+          const paidByMemberRef = doc(
+            this.fs,
+            `groups/${groupId}/members/${memorizedData.paidByMemberId}`
+          );
+
+          // Update the document: add categoryRef and remove categoryId
+          batch.update(memorizedDoc.ref, {
+            paidByMemberRef: paidByMemberRef,
+            paidByMemberId: deleteField(), // This removes the field
+          });
+        }
       }
 
       return await batch

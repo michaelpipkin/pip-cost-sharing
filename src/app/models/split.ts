@@ -1,6 +1,7 @@
 import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { Category } from './category';
 import { Expense } from './expense';
+import { Member } from './member';
 
 export class Split {
   constructor(init?: Partial<Split>) {
@@ -16,7 +17,9 @@ export class Split {
   percentage: number = 0;
   allocatedAmount: number;
   paidByMemberId: string;
+  paidByMemberRef: DocumentReference<Member>;
   owedByMemberId: string;
+  owedByMemberRef: DocumentReference<Member>;
   paid: boolean = false;
   ref?: DocumentReference<Split>;
 }

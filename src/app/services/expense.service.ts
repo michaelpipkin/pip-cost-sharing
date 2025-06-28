@@ -204,27 +204,37 @@ export class ExpenseService implements IExpenseService {
       for (const expenseDoc of expenseDocs.docs) {
         const expenseData = expenseDoc.data();
 
-        // Skip if already migrated (no categoryId or categoryRef already exists)
-        if (!expenseData.categoryId || expenseData.categoryRef) {
-          continue;
-        }
-
         // Extract groupId from the document path
         // Path: groups/{groupId}/expenses/{expenseId}
         const pathSegments = expenseDoc.ref.path.split('/');
         const groupId = pathSegments[1];
 
-        // Create the category document reference
-        const categoryRef = doc(
-          this.fs,
-          `groups/${groupId}/categories/${expenseData.categoryId}`
-        );
+        const updates: any = {};
 
-        // Update the document: add categoryRef and remove categoryId
-        batch.update(expenseDoc.ref, {
-          categoryRef: categoryRef,
-          categoryId: deleteField(), // This removes the field
-        });
+        // Migrate categoryId to categoryRef
+        if (expenseData.categoryId && !expenseData.categoryRef) {
+          const categoryRef = doc(
+            this.fs,
+            `groups/${groupId}/categories/${expenseData.categoryId}`
+          );
+          updates.categoryRef = categoryRef;
+          updates.categoryId = deleteField();
+        }
+
+        // Migrate paidByMemberId to paidByMemberRef
+        if (expenseData.paidByMemberId && !expenseData.paidByMemberRef) {
+          const paidByMemberRef = doc(
+            this.fs,
+            `groups/${groupId}/members/${expenseData.paidByMemberId}`
+          );
+          updates.paidByMemberRef = paidByMemberRef;
+          updates.paidByMemberId = deleteField();
+        }
+
+        // Only update if there are changes to make
+        if (Object.keys(updates).length > 0) {
+          batch.update(expenseDoc.ref, updates);
+        }
       }
 
       return await batch

@@ -96,7 +96,7 @@ export class EditMemberComponent {
     };
     this.loading.loadingOn();
     this.memberService
-      .updateMember(this.data.groupId, this.member.id, changes)
+      .updateMember(this.member.ref, changes)
       .then((res) => {
         if (res?.name === 'Error') {
           this.snackBar.open(res.message, 'Close');
@@ -135,7 +135,7 @@ export class EditMemberComponent {
       if (confirm) {
         this.loading.loadingOn();
         this.memberService
-          .removeMemberFromGroup(this.data.groupId, this.member.id)
+          .removeMemberFromGroup(this.data.groupId, this.member.ref)
           .then((res) => {
             if (res?.name === 'Error') {
               this.snackBar.open(res.message, 'Close');

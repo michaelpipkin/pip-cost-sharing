@@ -133,9 +133,9 @@
       <form [formGroup]="groupForm" class="container">
         <mat-form-field id="group-select">
           <mat-label>Select Group</mat-label>
-          <mat-select formControlName="groupId" name="group" #groupSelect>
-            @for (group of activeUserGroups(); track group.id) {
-              <mat-option [value]="group.id">{{ group.name }}</mat-option>
+          <mat-select formControlName="groupRef" name="group" #groupSelect>
+            @for (group of activeUserGroups(); track group.ref) {
+              <mat-option [value]="group.ref">{{ group.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>

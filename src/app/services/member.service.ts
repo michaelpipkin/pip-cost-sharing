@@ -1,10 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
+import { User } from '@models/user';
 import { MemberStore } from '@store/member.store';
 import {
   addDoc,
   collection,
+  collectionGroup,
   deleteDoc,
+  deleteField,
   doc,
   DocumentReference,
   getDoc,
@@ -16,6 +19,7 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { IMemberService } from './member.service.interface';
 import { SortingService } from './sorting.service';
@@ -28,10 +32,13 @@ export class MemberService implements IMemberService {
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
 
-  async getMemberByUserId(groupId: string, userId: string): Promise<void> {
+  async getMemberByUserRef(
+    groupId: string,
+    userRef: DocumentReference<User>
+  ): Promise<void> {
     const q = query(
       collection(this.fs, `groups/${groupId}/members`),
-      where('userId', '==', userId),
+      where('userRef', '==', userRef),
       limit(1)
     );
     await getDocs(q).then((docSnap) => {
@@ -125,28 +132,73 @@ export class MemberService implements IMemberService {
   }
 
   async updateMember(
-    groupId: string,
-    memberId: string,
+    memberRef: DocumentReference<Member>,
     changes: Partial<Member>
   ): Promise<any> {
-    const docRef = doc(this.fs, `/groups/${groupId}/members/${memberId}`);
-    return await updateDoc(docRef, changes);
+    return await updateDoc(memberRef, changes);
   }
 
-  async removeMemberFromGroup(groupId: string, memberId: string): Promise<any> {
+  async removeMemberFromGroup(
+    groupId: string,
+    memberRef: DocumentReference<Member>
+  ): Promise<any> {
     const splits = await getDocs(
       collection(this.fs, `groups/${groupId}/splits`)
     );
     const memberSplit = splits.docs.find(
       (doc) =>
-        doc.data().owedByMemberId == memberId ||
-        doc.data().paidByMemberId == memberId
+        doc.data().owedByMemberRef == memberRef ||
+        doc.data().paidByMemberRef == memberRef
     );
     if (!!memberSplit) {
       return new Error(
         'This member has existing splits and cannot be deleted.'
       );
     }
-    return deleteDoc(doc(this.fs, `groups/${groupId}/members/${memberId}`));
+    return deleteDoc(memberRef);
+  }
+
+  async migrateUserIdsToRefs(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all expense documents across all groups
+      const membersCollection = collectionGroup(this.fs, 'members');
+      const memberDocs = await getDocs(membersCollection);
+
+      for (const memberDoc of memberDocs.docs) {
+        const memberData = memberDoc.data();
+
+        // Skip if already migrated (no memberId or memberRef already exists)
+        if (!memberData.userId || memberData.userRef) {
+          continue;
+        }
+
+        // Create the user document reference
+        const userRef = doc(this.fs, `users/${memberData.userId}`);
+
+        // Update the document: add userRef and remove userId
+        batch.update(memberDoc.ref, {
+          userRef: userRef,
+          userId: deleteField(), // This removes the field
+        });
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log('Successfully migrated all member documents');
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating member documents:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
   }
 }

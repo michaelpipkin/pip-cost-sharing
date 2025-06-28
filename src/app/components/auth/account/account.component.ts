@@ -25,6 +25,7 @@ import { environment } from '@env/environment';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { ExpenseService } from '@services/expense.service';
+import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
@@ -63,6 +64,7 @@ export class AccountComponent {
   protected readonly splitService = inject(SplitService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
+  protected readonly memberService = inject(MemberService);
 
   #user: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
@@ -86,7 +88,7 @@ export class AccountComponent {
     { validators: this.passwordMatchValidator }
   );
   groupForm = this.fb.group({
-    groupId: [this.#user()?.defaultGroupId],
+    groupRef: [this.#user()?.defaultGroupRef],
   });
   paymentsForm = this.fb.group({
     venmoId: [this.#user()?.venmoId],
@@ -98,7 +100,7 @@ export class AccountComponent {
   constructor() {
     effect(() => {
       this.selectedGroupId.set(this.#user()?.defaultGroupId ?? '');
-      this.groupForm.patchValue({ groupId: this.#user()?.defaultGroupId });
+      this.groupForm.patchValue({ groupRef: this.#user()?.defaultGroupRef });
       this.emailForm.patchValue({ email: this.#user()?.email });
       this.paymentsForm.patchValue({
         venmoId: this.#user()?.venmoId,
@@ -258,10 +260,10 @@ export class AccountComponent {
   }
 
   saveDefaultGroup(): void {
-    const selectedGroupId = this.groupForm.value.groupId;
-    if (selectedGroupId !== null && selectedGroupId !== '') {
+    const selectedGroup = this.groupForm.value.groupRef;
+    if (selectedGroup !== null) {
       this.userService
-        .saveDefaultGroup(selectedGroupId)
+        .saveDefaultGroup(selectedGroup)
         .then(() => {
           this.snackBar.open('Default group updated.', 'Close');
         })
@@ -284,6 +286,9 @@ export class AccountComponent {
     await Promise.all([
       this.expenseService.migrateCategoryIdsToRefs(),
       this.memorizedService.migrateCategoryIdsToRefs(),
+      this.userService.migrateGroupIdsToRefs(),
+      this.memberService.migrateUserIdsToRefs(),
+      this.splitService.migrateFieldIdsToRefs(),
     ])
       .then(() => {
         this.loading.loadingOff();
