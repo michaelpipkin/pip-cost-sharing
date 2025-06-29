@@ -60,7 +60,7 @@ export class ExpenseService implements IExpenseService {
         categoryName: data.categoryRef
           ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
           : '',
-        splits: splits.filter((s) => s.expenseId === doc.id),
+        splits: splits.filter((s) => s.expenseRef.eq(doc.ref)),
       });
     });
 
@@ -68,8 +68,11 @@ export class ExpenseService implements IExpenseService {
   }
 
   async getExpense(groupId: string, expenseId: string): Promise<Expense> {
-    const d = doc(this.fs, `groups/${groupId}/expenses/${expenseId}`);
-    const expenseDoc = await getDoc(d);
+    const expenseReference = doc(
+      this.fs,
+      `groups/${groupId}/expenses/${expenseId}`
+    );
+    const expenseDoc = await getDoc(expenseReference);
     if (!expenseDoc.exists()) {
       throw new Error('Expense not found');
     }
@@ -80,7 +83,7 @@ export class ExpenseService implements IExpenseService {
     } as Expense;
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseId', '==', expenseId)
+      where('expenseRef', '==', expenseReference as DocumentReference<Expense>)
     );
     const splitDocs = await getDocs(splitQuery);
     expense.splits = splitDocs.docs.map(
@@ -98,7 +101,7 @@ export class ExpenseService implements IExpenseService {
     const expenseRef = doc(collection(this.fs, `/groups/${groupId}/expenses`));
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
-      split.expenseId = expenseRef.id;
+      split.expenseRef = expenseRef as DocumentReference<Expense>;
       const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
       batch.set(splitRef, split);
     });
@@ -119,10 +122,8 @@ export class ExpenseService implements IExpenseService {
     splits: Partial<Split>[]
   ): Promise<any> {
     const batch = writeBatch(this.fs);
-    batch.update(
-      doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`),
-      changes
-    );
+    const expenseRef = doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`);
+    batch.update(expenseRef, changes);
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
       where('expenseId', '==', expenseId)
@@ -132,7 +133,7 @@ export class ExpenseService implements IExpenseService {
       batch.delete(d.ref);
     });
     splits.forEach((split) => {
-      split.expenseId = expenseId;
+      split.expenseRef = expenseRef as DocumentReference<Expense>;
       const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
       batch.set(splitRef, split);
     });

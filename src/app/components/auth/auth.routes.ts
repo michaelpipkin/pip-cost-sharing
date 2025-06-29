@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthMainComponent } from '@components/auth/auth-main/auth-main.component';
-import { loggedInGuard } from './guards.guard';
+import { authGuard, loggedInGuard } from './guards.guard';
 
 export const authRoutes: Routes = [
   {
@@ -32,6 +32,7 @@ export const authRoutes: Routes = [
           import(
             '@components/auth/forgot-password/forgot-password.component'
           ).then((m) => m.ForgotPasswordComponent),
+        canActivate: [loggedInGuard],
       },
       {
         path: 'reset-password',
@@ -40,6 +41,7 @@ export const authRoutes: Routes = [
           import(
             '@components/auth/reset-password/reset-password.component'
           ).then((m) => m.ResetPasswordComponent),
+        canActivate: [loggedInGuard],
       },
       {
         path: 'account',
@@ -48,6 +50,7 @@ export const authRoutes: Routes = [
           import('@components/auth/account/account.component').then(
             (m) => m.AccountComponent
           ),
+        canActivate: [authGuard],
       },
     ],
   },

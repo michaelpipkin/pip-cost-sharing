@@ -102,12 +102,4 @@ export class CategoryService implements ICategoryService {
       return await deleteDoc(categoryRef);
     });
   }
-
-  compareCategoryRefs(
-    ref1: DocumentReference<Category>,
-    ref2: DocumentReference<Category>
-  ): boolean {
-    if (!ref1 || !ref2) return ref1 === ref2;
-    return ref1.path === ref2.path;
-  }
 }

@@ -60,7 +60,7 @@ export class AddGroupComponent {
       autoAddMembers: val.autoAddMembers,
     };
     const newMember: Partial<Member> = {
-      userId: this.user().id,
+      userRef: this.user().ref,
       displayName: val.displayName,
       email: this.user().email,
       active: true,

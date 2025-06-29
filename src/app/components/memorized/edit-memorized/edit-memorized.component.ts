@@ -48,6 +48,7 @@ import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -57,6 +58,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
+
 @Component({
   selector: 'app-edit-memorized',
   imports: [
@@ -74,6 +76,7 @@ import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-ed
     MatTableModule,
     CurrencyPipe,
     FormatCurrencyInputDirective,
+    DocRefCompareDirective,
   ],
   templateUrl: './edit-memorized.component.html',
   styleUrl: './edit-memorized.component.scss',
@@ -94,8 +97,6 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
 
-  compareCategories = this.categoryService.compareCategoryRefs;
-
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   memorized = signal<Memorized>(null);
@@ -103,20 +104,19 @@ export class EditMemorizedComponent implements OnInit {
   categories = computed<Category[]>(() => {
     return this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.ref == this.memorized().categoryRef);
+      .filter((c) => c.active || c.ref.eq(this.memorized().categoryRef));
   });
   memorizedMembers = computed<Member[]>(() => {
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || m.id == this.memorized().paidByMemberId);
+      .filter((m) => m.active || m.ref.eq(this.memorized().paidByMemberRef));
   });
   splitMembers = computed<Member[]>(() => {
-    const splitMemberIds: string[] = this.memorized().splits?.map(
-      (s: Split) => s.owedByMemberId
-    );
+    const splitMembers: DocumentReference<Member>[] =
+      this.memorized().splits?.map((s: Split) => s.owedByMemberRef);
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || splitMemberIds.includes(m.id));
+      .filter((m) => m.active || splitMembers.includes(m.ref));
   });
 
   splitByPercentage = model<boolean>(false);
@@ -127,7 +127,7 @@ export class EditMemorizedComponent implements OnInit {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   editMemorizedForm = this.fb.group({
-    paidByMemberId: ['', Validators.required],
+    paidByMember: [null as DocumentReference<Member>, Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
     category: [null as DocumentReference<Category>, Validators.required],
@@ -162,7 +162,7 @@ export class EditMemorizedComponent implements OnInit {
     this.memorized.set(memorized);
     this.splitByPercentage.set(memorized.splitByPercentage);
     this.editMemorizedForm.patchValue({
-      paidByMemberId: memorized.paidByMemberId,
+      paidByMember: memorized.paidByMemberRef,
       amount: memorized.totalAmount,
       description: memorized.description,
       category: memorized.categoryRef,
@@ -172,7 +172,7 @@ export class EditMemorizedComponent implements OnInit {
     memorized.splits.forEach((s: Split) => {
       this.splits.push(
         this.fb.group({
-          owedByMemberId: s.owedByMemberId,
+          owedByMember: s.owedByMemberRef,
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
@@ -200,15 +200,15 @@ export class EditMemorizedComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
-    const existingMemberIds = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberId').value
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMember').value.id
     );
     const availableMembers = this.memorizedMembers().filter(
-      (m) => !existingMemberIds.includes(m.id)
+      (m) => !existingMembers.includes(m.id)
     );
     return this.fb.group({
-      owedByMemberId: [
-        availableMembers.length > 0 ? availableMembers[0].id : '',
+      owedByMember: [
+        availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
       assignedAmount: ['0.00', Validators.required],
@@ -250,6 +250,7 @@ export class EditMemorizedComponent implements OnInit {
     } else {
       this.allocateSharedAmounts();
     }
+    this.editMemorizedForm.markAsDirty();
   }
 
   removeSplit(index: number): void {
@@ -259,6 +260,7 @@ export class EditMemorizedComponent implements OnInit {
     } else {
       this.allocateSharedAmounts();
     }
+    this.editMemorizedForm.markAsDirty();
   }
 
   toggleSplitByPercentage(): void {
@@ -281,16 +283,16 @@ export class EditMemorizedComponent implements OnInit {
 
   allocateSharedAmounts(): void {
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           i++;
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMemberRef !== null
       ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editMemorizedForm.value;
@@ -355,9 +357,9 @@ export class EditMemorizedComponent implements OnInit {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
@@ -376,7 +378,7 @@ export class EditMemorizedComponent implements OnInit {
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMember !== null
       ).length;
       const val = this.editMemorizedForm.value;
       const totalAmount: number = val.amount;
@@ -442,20 +444,20 @@ export class EditMemorizedComponent implements OnInit {
     const changes: Partial<Memorized> = {
       description: val.description,
       categoryRef: val.category,
-      paidByMemberId: val.paidByMemberId,
+      paidByMemberRef: val.paidByMember,
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,
       splitByPercentage: this.splitByPercentage(),
     };
-    let splits: Partial<Split>[] = [];
+    let splits = [];
     this.splitsFormArray.value.forEach((s) => {
-      const split: Partial<Split> = {
+      const split = {
         assignedAmount: s.assignedAmount,
         percentage: s.percentage,
         allocatedAmount: s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
+        paidByMemberRef: val.paidByMember,
+        owedByMemberRef: s.owedByMember,
       };
       splits.push(split);
     });

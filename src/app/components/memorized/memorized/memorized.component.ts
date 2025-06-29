@@ -34,6 +34,7 @@ import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -68,6 +69,7 @@ import { MemorizedHelpComponent } from '../memorized-help/memorized-help.compone
     CurrencyPipe,
     ClearSelectDirective,
     RouterLink,
+    DocRefCompareDirective,
   ],
 })
 export class MemorizedComponent implements OnInit {
@@ -91,10 +93,10 @@ export class MemorizedComponent implements OnInit {
   filteredMemorizeds = computed<Memorized[]>(() => {
     var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {
       return (
-        memorized.paidByMemberId ==
-          (this.selectedMemberId() != ''
-            ? this.selectedMemberId()
-            : memorized.paidByMemberId) &&
+        memorized.paidByMemberRef.path ==
+          (!!this.selectedMember()
+            ? this.selectedMember().path
+            : memorized.paidByMemberRef.path) &&
         memorized.categoryRef.path ==
           (!!this.selectedCategory()
             ? this.selectedCategory().path
@@ -104,7 +106,7 @@ export class MemorizedComponent implements OnInit {
     return filteredMemorized;
   });
 
-  selectedMemberId = model<string>('');
+  selectedMember = model<DocumentReference<Member>>(null);
   selectedCategory = model<DocumentReference<Category> | null>(null);
   expandedExpense = model<Memorized | null>(null);
 

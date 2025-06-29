@@ -94,8 +94,8 @@ export class GroupService implements IGroupService {
                 this.router.navigateByUrl('/expenses');
               }
             });
-          } else if (user.defaultGroupId !== '') {
-            await this.getGroup(user.defaultGroupId, user.ref).then(() => {
+          } else if (user.defaultGroupRef !== null) {
+            await this.getGroup(user.defaultGroupRef.id, user.ref).then(() => {
               if (autoNav) {
                 autoNav = false;
                 this.router.navigateByUrl('/expenses');

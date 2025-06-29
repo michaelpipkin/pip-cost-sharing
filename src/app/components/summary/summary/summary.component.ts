@@ -36,6 +36,7 @@ import { Split } from '@models/split';
 import { HistoryService } from '@services/history.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -43,7 +44,7 @@ import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import * as firestore from 'firebase/firestore';
+import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 
@@ -75,6 +76,7 @@ import { SummaryHelpComponent } from '../summary-help/summary-help.component';
     MatDatepickerModule,
     MatTableModule,
     CurrencyPipe,
+    DocRefCompareDirective,
   ],
 })
 export class SummaryComponent {
@@ -99,10 +101,12 @@ export class SummaryComponent {
   splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
-  owedToMemberId = signal<string>('');
-  owedByMemberId = signal<string>('');
+  owedToMember = signal<DocumentReference<Member>>(null);
+  owedByMember = signal<DocumentReference<Member>>(null);
 
-  selectedMemberId = model<string>(this.currentMember()?.id ?? '');
+  selectedMember = model<DocumentReference<Member>>(
+    this.currentMember()?.ref ?? null
+  );
   startDate = model<Date | null>(null);
   endDate = model<Date | null>(null);
 
@@ -128,39 +132,41 @@ export class SummaryComponent {
 
   summaryData = computed(
     (
-      selectedMemberId: string = this.selectedMemberId(),
+      selectedMember: DocumentReference<Member> = this.selectedMember(),
       splits: Split[] = this.filteredSplits()
     ) => {
       var summaryData: AmountDue[] = [];
       if (splits.length > 0) {
         var memberSplits = splits.filter((s) => {
           return (
-            s.owedByMemberId == selectedMemberId ||
-            s.paidByMemberId == selectedMemberId
+            s.owedByMemberRef.eq(selectedMember) ||
+            s.paidByMemberRef.eq(selectedMember)
           );
         });
         this.members()
-          .filter((m) => m.id != selectedMemberId)
+          .filter((m) => !m.ref.eq(selectedMember))
           .forEach((member) => {
-            const owedToSelected = memberSplits
-              .filter((m) => m.owedByMemberId == member.id)
-              .reduce((total, split) => (total += split.allocatedAmount), 0);
-            const owedBySelected = memberSplits
-              .filter((m) => m.paidByMemberId == member.id)
-              .reduce((total, split) => (total += split.allocatedAmount), 0);
+            const owedToSelected = +memberSplits
+              .filter((m) => m.owedByMemberRef.eq(member.ref))
+              .reduce((total, split) => (total += split.allocatedAmount), 0)
+              .toFixed(2);
+            const owedBySelected = +memberSplits
+              .filter((m) => m.paidByMemberRef.eq(member.ref))
+              .reduce((total, split) => (total += split.allocatedAmount), 0)
+              .toFixed(2);
             if (owedToSelected > owedBySelected) {
               summaryData.push(
                 new AmountDue({
-                  owedByMemberId: member.id,
-                  owedToMemberId: selectedMemberId,
+                  owedByMemberRef: member.ref,
+                  owedToMemberRef: selectedMember,
                   amount: owedToSelected - owedBySelected,
                 })
               );
             } else if (owedBySelected > owedToSelected) {
               summaryData.push(
                 new AmountDue({
-                  owedToMemberId: member.id,
-                  owedByMemberId: selectedMemberId,
+                  owedToMemberRef: member.ref,
+                  owedByMemberRef: selectedMember,
                   amount: owedBySelected - owedToSelected,
                 })
               );
@@ -173,37 +179,37 @@ export class SummaryComponent {
 
   detailData = computed(
     (
-      owedToMemberId: string = this.owedToMemberId(),
-      owedByMemberId: string = this.owedByMemberId(),
+      owedToMember: DocumentReference<Member> = this.owedToMember(),
+      owedByMember: DocumentReference<Member> = this.owedByMember(),
       splits: Split[] = this.filteredSplits(),
       categories: Category[] = this.categories()
     ) => {
       var detailData: AmountDue[] = [];
       const memberSplits = splits.filter(
         (s) =>
-          (s.owedByMemberId == owedToMemberId ||
-            s.paidByMemberId == owedToMemberId) &&
-          (s.owedByMemberId == owedByMemberId ||
-            s.paidByMemberId == owedByMemberId)
+          (s.owedByMemberRef.eq(owedToMember) ||
+            s.paidByMemberRef.eq(owedToMember)) &&
+          (s.owedByMemberRef.eq(owedByMember) ||
+            s.paidByMemberRef.eq(owedByMember))
       );
       categories.forEach((category) => {
         if (
-          memberSplits.filter(
-            (split: Split) => split.categoryRef == category.ref
+          memberSplits.filter((split: Split) =>
+            split.categoryRef.eq(category.ref)
           ).length > 0
         ) {
           const owedToMember1 = memberSplits
             .filter(
               (s: Split) =>
-                s.paidByMemberId == owedToMemberId &&
-                s.categoryRef == category.ref
+                s.paidByMemberRef.eq(owedToMember) &&
+                s.categoryRef.eq(category.ref)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           const owedToMember2 = memberSplits
             .filter(
               (s: Split) =>
-                s.paidByMemberId == owedByMemberId &&
-                s.categoryRef == category.ref
+                s.paidByMemberRef.eq(owedByMember) &&
+                s.categoryRef.eq(category.ref)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           detailData.push(
@@ -222,7 +228,7 @@ export class SummaryComponent {
 
   constructor() {
     effect(() => {
-      this.selectedMemberId.set(this.currentMember()?.id ?? '');
+      this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
     effect(() => {
       if (!this.splitStore.loaded()) {
@@ -235,8 +241,8 @@ export class SummaryComponent {
 
   onExpandClick(amountDue: AmountDue): void {
     this.expandedDetail.update((d) => (d === amountDue ? null : amountDue));
-    this.owedByMemberId.set(amountDue.owedByMemberId);
-    this.owedToMemberId.set(amountDue.owedToMemberId);
+    this.owedByMember.set(amountDue.owedByMemberRef);
+    this.owedToMember.set(amountDue.owedToMemberRef);
   }
 
   getMemberName(memberId: string): string {
@@ -254,31 +260,31 @@ export class SummaryComponent {
   }
 
   async payExpenses(
-    owedToMemberId: string,
-    owedByMemberId: string
+    owedToMember: DocumentReference<Member>,
+    owedByMember: DocumentReference<Member>
   ): Promise<void> {
-    this.owedToMemberId.set(owedToMemberId);
-    this.owedByMemberId.set(owedByMemberId);
+    this.owedToMember.set(owedToMember);
+    this.owedByMember.set(owedByMember);
     var splitsToPay: Split[] = [];
     const memberSplits = this.filteredSplits().filter(
       (s) =>
-        (s.owedByMemberId == owedByMemberId &&
-          s.paidByMemberId == owedToMemberId) ||
-        (s.owedByMemberId == owedToMemberId &&
-          s.paidByMemberId == owedByMemberId)
+        (s.owedByMemberRef.eq(owedByMember) &&
+          s.paidByMemberRef.eq(owedToMember)) ||
+        (s.owedByMemberRef.eq(owedToMember) &&
+          s.paidByMemberRef.eq(owedByMember))
     );
     splitsToPay = memberSplits;
     let paymentMethods = {};
     this.loading.loadingOn();
     await this.userService
-      .getPaymentMethods(this.currentGroup().id, owedToMemberId)
+      .getPaymentMethods(owedToMember)
       .then((methods: Object) => {
         paymentMethods = methods;
       })
       .finally(() => this.loading.loadingOff());
     const dialogConfig: MatDialogConfig = {
       data: {
-        payToMemberName: this.getMemberName(owedToMemberId),
+        payToMemberName: this.getMemberName(owedToMember.id),
         ...paymentMethods,
       },
     };
@@ -287,11 +293,13 @@ export class SummaryComponent {
       if (confirm) {
         this.loading.loadingOn();
         let history = {
-          date: firestore.Timestamp.now(),
+          paidByMemberRef: owedByMember,
+          paidToMemberRef: owedToMember,
+          date: Timestamp.now(),
           totalPaid: +splitsToPay
             .reduce(
               (total, s) =>
-                s.paidByMemberId === owedToMemberId
+                s.paidByMemberRef.eq(owedToMember)
                   ? (total += +s.allocatedAmount)
                   : (total -= +s.allocatedAmount),
               0
@@ -306,13 +314,7 @@ export class SummaryComponent {
           });
         });
         await this.splitService
-          .paySplitsBetweenMembers(
-            this.currentGroup().id,
-            splitsToPay,
-            owedByMemberId,
-            owedToMemberId,
-            history
-          )
+          .paySplitsBetweenMembers(this.currentGroup().id, splitsToPay, history)
           .then(async () => {
             this.snackBar.open('Expenses have been marked paid.', 'OK');
           })

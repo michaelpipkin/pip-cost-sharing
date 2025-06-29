@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
-import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
 import {
@@ -8,7 +7,6 @@ import {
   collectionGroup,
   deleteField,
   doc,
-  DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -76,8 +74,6 @@ export class SplitService implements ISplitService {
   async paySplitsBetweenMembers(
     groupId: string,
     splits: Split[],
-    paidByMemberId: string,
-    paidToMemberId: string,
     history: Partial<History>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
@@ -90,7 +86,7 @@ export class SplitService implements ISplitService {
       // Query for related splits
       const splitsQuery = query(
         collection(this.fs, `groups/${groupId}/splits`),
-        where('expenseId', '==', split.expenseId)
+        where('expenseRef', '==', split.expenseRef)
       );
       const splitsQuerySnap = await getDocs(splitsQuery);
 
@@ -101,20 +97,8 @@ export class SplitService implements ISplitService {
         ).length === 0;
 
       // Update the expense document
-      const expenseRef = doc(
-        this.fs,
-        `groups/${groupId}/expenses/${split.expenseId}`
-      );
-      batch.update(expenseRef, { paid: expensePaid });
+      batch.update(split.expenseRef, { paid: expensePaid });
     }
-    history.paidByMemberRef = doc(
-      this.fs,
-      `groups/${groupId}/members/${paidByMemberId}`
-    ) as DocumentReference<Member>;
-    history.paidToMemberRef = doc(
-      this.fs,
-      `groups/${groupId}/members/${paidToMemberId}`
-    ) as DocumentReference<Member>;
     const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
     return await batch

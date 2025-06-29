@@ -7,7 +7,7 @@ export class User {
   }
   id: string;
   email: string;
-  defaultGroupId?: string;
+  //defaultGroupId?: string;
   defaultGroupRef?: DocumentReference<Group> | null;
   venmoId?: string = '';
   paypalId?: string = '';

@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Group } from '@models/group';
+import { Member } from '@models/member';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -110,12 +111,12 @@ export class UserService implements IUserService {
     });
   }
 
-  async getPaymentMethods(groupId: string, memberId: string): Promise<object> {
-    const memberDocRef = doc(this.fs, `groups/${groupId}/members/${memberId}`);
-    return await getDoc(memberDocRef).then(async (memberDoc) => {
-      const userId = memberDoc.data().userId;
-      const userDocRef = doc(this.fs, `users/${userId}`);
-      const userDocSnap = await getDoc(userDocRef);
+  async getPaymentMethods(
+    memberRef: DocumentReference<Member>
+  ): Promise<object> {
+    return await getDoc(memberRef).then(async (memberDoc) => {
+      const userRef = memberDoc.data().userRef;
+      const userDocSnap = await getDoc(userRef);
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
         return {
@@ -152,7 +153,7 @@ export class UserService implements IUserService {
         }
 
         // Create the group document reference
-        const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}}`);
+        const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}`);
 
         // Update the document: add groupRef and remove groupId
         batch.update(userDoc.ref, {

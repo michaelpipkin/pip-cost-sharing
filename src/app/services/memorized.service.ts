@@ -96,42 +96,78 @@ export class MemorizedService implements IMemorizedService {
         const pathSegments = memorizedDoc.ref.path.split('/');
         const groupId = pathSegments[1];
 
-        // Skip if already migrated category
-        if (memorizedData.categoryId || !memorizedData.categoryRef) {
-          // Create the category document reference
+        const updates: any = {};
+
+        // Migrate categoryId to categoryRef (main document level)
+        if (memorizedData.categoryId && !memorizedData.categoryRef) {
           const categoryRef = doc(
             this.fs,
             `groups/${groupId}/categories/${memorizedData.categoryId}`
           );
-
-          // Clean up the splits array by removing categoryId from each split
-          const cleanedSplits =
-            memorizedData.splits?.map((split: any) => {
-              const { categoryId, ...cleanSplit } = split;
-              return cleanSplit;
-            }) || [];
-
-          // Update the document: add categoryRef, remove categoryId, and update splits
-          batch.update(memorizedDoc.ref, {
-            categoryRef: categoryRef,
-            categoryId: deleteField(), // This removes the field
-            splits: cleanedSplits, // Replace the splits array with cleaned version
-          });
+          updates.categoryRef = categoryRef;
+          updates.categoryId = deleteField();
         }
 
-        // Skip if already migrated paidByMember
-        if (memorizedData.paidByMemberId || !memorizedData.paidByMemberRef) {
-          // Create the paidByMember document reference
+        // Migrate paidByMemberId to paidByMemberRef (main document level)
+        if (memorizedData.paidByMemberId && !memorizedData.paidByMemberRef) {
           const paidByMemberRef = doc(
             this.fs,
             `groups/${groupId}/members/${memorizedData.paidByMemberId}`
           );
+          updates.paidByMemberRef = paidByMemberRef;
+          updates.paidByMemberId = deleteField();
+        }
 
-          // Update the document: add categoryRef and remove categoryId
-          batch.update(memorizedDoc.ref, {
-            paidByMemberRef: paidByMemberRef,
-            paidByMemberId: deleteField(), // This removes the field
+        // Always check and migrate splits array if it exists
+        if (memorizedData.splits && Array.isArray(memorizedData.splits)) {
+          let splitsNeedUpdate = false;
+
+          const updatedSplits = memorizedData.splits.map((split: any) => {
+            const updatedSplit = { ...split };
+            let splitChanged = false;
+
+            // Remove categoryId if it exists
+            if (split.categoryId) {
+              delete updatedSplit.categoryId;
+              splitChanged = true;
+            }
+
+            // Migrate owedByMemberId to owedByMemberRef
+            if (split.owedByMemberId && !split.owedByMemberRef) {
+              updatedSplit.owedByMemberRef = doc(
+                this.fs,
+                `groups/${groupId}/members/${split.owedByMemberId}`
+              );
+              delete updatedSplit.owedByMemberId;
+              splitChanged = true;
+            }
+
+            // Migrate paidByMemberId to paidByMemberRef
+            if (split.paidByMemberId && !split.paidByMemberRef) {
+              updatedSplit.paidByMemberRef = doc(
+                this.fs,
+                `groups/${groupId}/members/${split.paidByMemberId}`
+              );
+              delete updatedSplit.paidByMemberId;
+              splitChanged = true;
+            }
+
+            if (splitChanged) {
+              splitsNeedUpdate = true;
+            }
+
+            return updatedSplit;
           });
+
+          // Only update splits if any split needed changes
+          if (splitsNeedUpdate) {
+            updates.splits = updatedSplits;
+          }
+        }
+
+        // Only update if there are changes to make
+        if (Object.keys(updates).length > 0) {
+          batch.update(memorizedDoc.ref, updates);
         }
       }
 

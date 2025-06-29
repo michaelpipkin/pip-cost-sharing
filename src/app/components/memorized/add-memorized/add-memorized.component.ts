@@ -46,6 +46,7 @@ import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { MemorizedService } from '@services/memorized.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -76,6 +77,7 @@ import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-ed
     MatIconModule,
     CurrencyPipe,
     FormatCurrencyInputDirective,
+    DocRefCompareDirective,
   ],
 })
 export class AddMemorizedComponent implements OnInit {
@@ -94,8 +96,6 @@ export class AddMemorizedComponent implements OnInit {
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
 
-  compareCategories = this.categoryService.compareCategoryRefs;
-
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
@@ -113,7 +113,7 @@ export class AddMemorizedComponent implements OnInit {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   addMemorizedForm = this.fb.group({
-    paidByMemberId: [this.currentMember().id, Validators.required],
+    paidByMember: [this.currentMember().ref, Validators.required],
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
@@ -161,15 +161,15 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
-    const existingMemberIds = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberId').value
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMember').value.id
     );
     const availableMembers = this.activeMembers().filter(
-      (m) => !existingMemberIds.includes(m.id)
+      (m) => !existingMembers.includes(m.id)
     );
     return this.fb.group({
-      owedByMemberId: [
-        availableMembers.length > 0 ? availableMembers[0].id : '',
+      owedByMember: [
+        availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
       assignedAmount: ['0.00', Validators.required],
@@ -214,15 +214,15 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   addAllActiveGroupMembers(): void {
-    const existingMemberIds = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberId').value
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMember').value.id
     );
 
     this.activeMembers().forEach((member: Member) => {
-      if (!existingMemberIds.includes(member.id)) {
+      if (!existingMembers.includes(member.id)) {
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMemberId: [member.id, Validators.required],
+            owedByMember: [member.ref, Validators.required],
             assignedAmount: ['0.00', Validators.required],
             percentage: [0.0],
             allocatedAmount: [0.0],
@@ -277,16 +277,16 @@ export class AddMemorizedComponent implements OnInit {
 
   allocateSharedAmounts(): void {
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           i++;
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMemberRef !== null
       ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addMemorizedForm.value;
@@ -351,9 +351,9 @@ export class AddMemorizedComponent implements OnInit {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
@@ -372,7 +372,7 @@ export class AddMemorizedComponent implements OnInit {
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMember !== null
       ).length;
       const val = this.addMemorizedForm.value;
       const totalAmount: number = val.amount;
@@ -437,20 +437,20 @@ export class AddMemorizedComponent implements OnInit {
     const memorized: Partial<Memorized> = {
       description: val.description,
       categoryRef: val.category,
-      paidByMemberId: val.paidByMemberId,
+      paidByMemberRef: val.paidByMember,
       sharedAmount: +val.sharedAmount,
       allocatedAmount: +val.allocatedAmount,
       totalAmount: +val.amount,
       splitByPercentage: this.splitByPercentage(),
     };
-    let splits: Partial<Split>[] = [];
-    this.splitsFormArray.value.forEach((s: Split) => {
-      const split: Partial<Split> = {
+    let splits = [];
+    this.splitsFormArray.value.forEach((s) => {
+      const split = {
         assignedAmount: +s.assignedAmount,
         percentage: +s.percentage,
         allocatedAmount: +s.allocatedAmount,
-        paidByMemberId: val.paidByMemberId,
-        owedByMemberId: s.owedByMemberId,
+        paidByMemberRef: val.paidByMember,
+        owedByMemberRef: s.owedByMember,
       };
       splits.push(split);
     });

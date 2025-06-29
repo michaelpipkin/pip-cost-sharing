@@ -8,17 +8,17 @@ export class Split {
     Object.assign(this, init);
   }
   id: string;
-  expenseId: string;
+  // expenseId: string;
   expenseRef: DocumentReference<Expense>;
   date: Timestamp;
-  categoryId: string;
+  // categoryId: string;
   categoryRef: DocumentReference<Category>;
   assignedAmount: number = 0;
   percentage: number = 0;
   allocatedAmount: number;
-  paidByMemberId: string;
+  // paidByMemberId: string;
   paidByMemberRef: DocumentReference<Member>;
-  owedByMemberId: string;
+  // owedByMemberId: string;
   owedByMemberRef: DocumentReference<Member>;
   paid: boolean = false;
   ref?: DocumentReference<Split>;

@@ -10,10 +10,10 @@ export class Expense {
   id: string;
   date: Timestamp;
   description: string;
-  categoryId: string;
+  //categoryId: string;
   categoryRef: DocumentReference<Category>;
   categoryName?: string;
-  paidByMemberId: string;
+  //paidByMemberId: string;
   paidByMemberRef: DocumentReference<Member>;
   sharedAmount: number;
   allocatedAmount: number;
@@ -26,7 +26,7 @@ export class Expense {
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
-      if (!split.paid && !(split.owedByMemberRef === this.paidByMemberRef)) {
+      if (!split.paid && !split.owedByMemberRef.eq(this.paidByMemberRef)) {
         amount += split.allocatedAmount;
       }
     });

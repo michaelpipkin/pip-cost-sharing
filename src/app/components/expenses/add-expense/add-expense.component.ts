@@ -50,6 +50,7 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -82,6 +83,7 @@ import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-e
     CurrencyPipe,
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
+    DocRefCompareDirective,
   ],
 })
 export class AddExpenseComponent implements OnInit {
@@ -100,8 +102,6 @@ export class AddExpenseComponent implements OnInit {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
-
-  compareCategories = this.categoryService.compareCategoryRefs;
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -126,7 +126,7 @@ export class AddExpenseComponent implements OnInit {
   memberPercentages = viewChildren<ElementRef>('memberPercentage');
 
   addExpenseForm = this.fb.group({
-    paidByMemberId: [this.currentMember()?.id, Validators.required],
+    paidByMember: [this.currentMember()?.ref, Validators.required],
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
@@ -181,7 +181,7 @@ export class AddExpenseComponent implements OnInit {
       const expense: Memorized = this.memorizedExpense();
       this.splitByPercentage.set(expense.splitByPercentage);
       this.addExpenseForm.patchValue({
-        paidByMemberId: expense.paidByMemberId,
+        paidByMember: expense.paidByMemberRef,
         date: new Date(),
         amount: expense.totalAmount,
         description: expense.description,
@@ -192,7 +192,7 @@ export class AddExpenseComponent implements OnInit {
       expense.splits.forEach((split: Split) => {
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMemberId: split.owedByMemberId,
+            owedByMember: split.owedByMemberRef,
             assignedAmount: split.assignedAmount,
             percentage: split.percentage,
             allocatedAmount: split.allocatedAmount,
@@ -218,15 +218,15 @@ export class AddExpenseComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
-    const existingMemberIds = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberId').value
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMember').value.id
     );
     const availableMembers = this.activeMembers().filter(
-      (m) => !existingMemberIds.includes(m.id)
+      (member) => !existingMembers.includes(member.id)
     );
     return this.fb.group({
-      owedByMemberId: [
-        availableMembers.length > 0 ? availableMembers[0].id : '',
+      owedByMember: [
+        availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
       assignedAmount: ['0.00', Validators.required],
@@ -271,15 +271,15 @@ export class AddExpenseComponent implements OnInit {
   }
 
   addAllActiveGroupMembers(): void {
-    const existingMemberIds = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberId').value
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMember').value.id
     );
 
     this.activeMembers().forEach((member: Member) => {
-      if (!existingMemberIds.includes(member.id)) {
+      if (!existingMembers.includes(member.id)) {
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMemberId: [member.id, Validators.required],
+            owedByMember: [member.ref, Validators.required],
             assignedAmount: ['0.00', Validators.required],
             percentage: [0.0],
             allocatedAmount: [0.0],
@@ -355,16 +355,16 @@ export class AddExpenseComponent implements OnInit {
 
   allocateSharedAmounts(): void {
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           i++;
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMemberRef !== null
       ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addExpenseForm.value;
@@ -431,7 +431,7 @@ export class AddExpenseComponent implements OnInit {
     if (this.splitsFormArray.length > 0) {
       let splits: Split[] = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberId && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
@@ -450,7 +450,7 @@ export class AddExpenseComponent implements OnInit {
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMemberId !== ''
+        (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.addExpenseForm.value;
       const totalAmount: number = val.amount;
@@ -517,7 +517,7 @@ export class AddExpenseComponent implements OnInit {
       date: expenseDate,
       description: val.description,
       categoryRef: val.category,
-      paidByMemberId: val.paidByMemberId,
+      paidByMemberRef: val.paidByMember,
       paid: false,
       sharedAmount: val.sharedAmount,
       allocatedAmount: val.allocatedAmount,
@@ -526,7 +526,7 @@ export class AddExpenseComponent implements OnInit {
       hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
-    this.splitsFormArray.value.forEach((s: Split) => {
+    this.splitsFormArray.value.forEach((s) => {
       if (s.allocatedAmount !== 0) {
         const split: Partial<Split> = {
           date: expenseDate,
@@ -534,9 +534,9 @@ export class AddExpenseComponent implements OnInit {
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
-          paidByMemberId: val.paidByMemberId,
-          owedByMemberId: s.owedByMemberId,
-          paid: s.owedByMemberId == val.paidByMemberId,
+          paidByMemberRef: val.paidByMember,
+          owedByMemberRef: s.owedByMember,
+          paid: s.owedByMember.eq(val.paidByMember),
         };
         splits.push(split);
       }
@@ -559,7 +559,7 @@ export class AddExpenseComponent implements OnInit {
           this.addExpenseForm.reset();
           this.splitsFormArray.clear();
           this.addExpenseForm.patchValue({
-            paidByMemberId: this.currentMember().id,
+            paidByMember: this.currentMember().ref,
             date: new Date(),
             amount: 0,
             allocatedAmount: 0,

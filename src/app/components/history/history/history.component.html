@@ -17,11 +17,12 @@
         <mat-label>Select Member</mat-label>
         <mat-select
           name="member"
-          [(ngModel)]="selectedMemberId"
+          [(ngModel)]="selectedMember"
           (selectionChange)="resetHistoryTable()"
+          docRefCompare
         >
-          @for (member of members(); track member.id) {
-            <mat-option [value]="member.id">{{
+          @for (member of members(); track member.ref) {
+            <mat-option [value]="member.ref">{{
               member.displayName
             }}</mat-option>
           }

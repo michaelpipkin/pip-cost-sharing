@@ -133,7 +133,12 @@
       <form [formGroup]="groupForm" class="container">
         <mat-form-field id="group-select">
           <mat-label>Select Group</mat-label>
-          <mat-select formControlName="groupRef" name="group" #groupSelect>
+          <mat-select
+            formControlName="groupRef"
+            name="group"
+            #groupSelect
+            docRefCompare
+          >
             @for (group of activeUserGroups(); track group.ref) {
               <mat-option [value]="group.ref">{{ group.name }}</mat-option>
             }
@@ -143,7 +148,7 @@
           mat-raised-button
           class="btn-primary"
           type="button"
-          [disabled]="selectedGroupId === null || groupForm.pristine"
+          [disabled]="selectedGroup === null || groupForm.pristine"
           (click)="saveDefaultGroup()"
         >
           Save

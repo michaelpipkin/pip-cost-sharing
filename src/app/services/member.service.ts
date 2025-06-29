@@ -85,7 +85,7 @@ export class MemberService implements IMemberService {
     }
     const userIdQuery = query(
       collection(this.fs, `groups/${groupId}/members`),
-      where('userId', '==', member.userId)
+      where('userRef', '==', member.userRef)
     );
     const idSnapshot = await getDocs(userIdQuery);
     if (!idSnapshot.empty) {
@@ -99,7 +99,7 @@ export class MemberService implements IMemberService {
     if (!emailSnapshot.empty) {
       const userRef = emailSnapshot.docs[0].ref;
       const existingUser = emailSnapshot.docs[0].data();
-      existingUser.userId = member.userId;
+      existingUser.userRef = member.userRef;
       existingUser.displayName = member.displayName;
       existingUser.active = true;
       return await updateDoc(userRef, existingUser);
@@ -147,8 +147,8 @@ export class MemberService implements IMemberService {
     );
     const memberSplit = splits.docs.find(
       (doc) =>
-        doc.data().owedByMemberRef == memberRef ||
-        doc.data().paidByMemberRef == memberRef
+        doc.data().owedByMemberRef.eq(memberRef) ||
+        doc.data().paidByMemberRef.eq(memberRef)
     );
     if (!!memberSplit) {
       return new Error(

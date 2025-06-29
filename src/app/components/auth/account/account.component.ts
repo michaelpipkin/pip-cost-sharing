@@ -29,12 +29,14 @@ import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
+import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-account',
@@ -50,6 +52,7 @@ import { getAuth } from 'firebase/auth';
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
+    DocRefCompareDirective,
   ],
 })
 export class AccountComponent {
@@ -66,19 +69,21 @@ export class AccountComponent {
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly memberService = inject(MemberService);
 
-  #user: Signal<User> = this.userStore.user;
+  currentUser: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
 
   firebaseUser = signal<firebase.User>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
 
-  selectedGroupId = model<string>(this.#user()?.defaultGroupId ?? '');
+  selectedGroup = model<DocumentReference | null>(
+    this.currentUser()?.defaultGroupRef ?? null
+  );
   hidePassword = model<boolean>(true);
   hideConfirm = model<boolean>(true);
 
   emailForm = this.fb.group({
-    email: [this.#user()?.email, Validators.email],
+    email: [this.currentUser()?.email, Validators.email],
   });
   passwordForm = this.fb.group(
     {
@@ -88,25 +93,27 @@ export class AccountComponent {
     { validators: this.passwordMatchValidator }
   );
   groupForm = this.fb.group({
-    groupRef: [this.#user()?.defaultGroupRef],
+    groupRef: [this.currentUser()?.defaultGroupRef],
   });
   paymentsForm = this.fb.group({
-    venmoId: [this.#user()?.venmoId],
-    paypalId: [this.#user()?.paypalId],
-    cashAppId: [this.#user()?.cashAppId],
-    zelleId: [this.#user()?.zelleId],
+    venmoId: [this.currentUser()?.venmoId],
+    paypalId: [this.currentUser()?.paypalId],
+    cashAppId: [this.currentUser()?.cashAppId],
+    zelleId: [this.currentUser()?.zelleId],
   });
 
   constructor() {
     effect(() => {
-      this.selectedGroupId.set(this.#user()?.defaultGroupId ?? '');
-      this.groupForm.patchValue({ groupRef: this.#user()?.defaultGroupRef });
-      this.emailForm.patchValue({ email: this.#user()?.email });
+      this.selectedGroup.set(this.currentUser()?.defaultGroupRef ?? null);
+      this.groupForm.patchValue({
+        groupRef: this.currentUser()?.defaultGroupRef,
+      });
+      this.emailForm.patchValue({ email: this.currentUser()?.email });
       this.paymentsForm.patchValue({
-        venmoId: this.#user()?.venmoId,
-        paypalId: this.#user()?.paypalId,
-        cashAppId: this.#user()?.cashAppId,
-        zelleId: this.#user()?.zelleId,
+        venmoId: this.currentUser()?.venmoId,
+        paypalId: this.currentUser()?.paypalId,
+        cashAppId: this.currentUser()?.cashAppId,
+        zelleId: this.currentUser()?.zelleId,
       });
     });
   }

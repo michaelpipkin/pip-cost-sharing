@@ -72,11 +72,11 @@ export class EditMemberComponent {
       groupAdmin: [
         {
           value: this.member.groupAdmin,
-          disabled: this.member.userId === this.user().id,
+          disabled: this.member.userRef.eq(this.user().ref),
         },
       ],
     });
-    if (this.member.userId == this.user().id) {
+    if (this.member.userRef.eq(this.user().ref)) {
       this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
     }
   }
