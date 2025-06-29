@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -62,6 +32,36 @@ import { DocumentReference } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -510,7 +510,7 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(saveAndAdd: boolean = false): void {
-    this.addExpenseForm.disable();
+    this.loading.loadingOn();
     const val = this.addExpenseForm.value;
     const expenseDate = firestore.Timestamp.fromDate(val.date);
     const expense: Partial<Expense> = {
@@ -541,7 +541,6 @@ export class AddExpenseComponent implements OnInit {
         splits.push(split);
       }
     });
-    this.loading.loadingOn();
     this.expenseService
       .addExpense(this.currentGroup().id, expense, splits)
       .then((expenseId: string) => {
@@ -590,7 +589,6 @@ export class AddExpenseComponent implements OnInit {
           'Something went wrong - could not save expense.',
           'Close'
         );
-        this.addExpenseForm.enable();
       })
       .finally(() => this.loading.loadingOff());
   }

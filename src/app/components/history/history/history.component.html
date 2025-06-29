@@ -54,6 +54,7 @@
             mat-icon-button
             aria-label="Clear"
             (click)="startDate.set(null); resetHistoryTable()"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -84,6 +85,7 @@
             mat-icon-button
             aria-label="Clear"
             (click)="endDate.set(null); resetHistoryTable()"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>

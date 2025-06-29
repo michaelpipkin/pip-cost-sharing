@@ -1,22 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -42,6 +25,23 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { DocumentReference } from 'firebase/firestore';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-memorized',
@@ -106,7 +106,7 @@ export class MemorizedComponent implements OnInit {
     return filteredMemorized;
   });
 
-  selectedMember = model<DocumentReference<Member>>(null);
+  selectedMember = model<DocumentReference<Member | null>>(null);
   selectedCategory = model<DocumentReference<Category> | null>(null);
   expandedExpense = model<Memorized | null>(null);
 

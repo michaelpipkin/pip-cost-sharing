@@ -34,6 +34,8 @@
             mat-icon-button
             aria-label="Clear"
             [appClearSelect]="memberSelect"
+            [clearValue]="null"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -62,6 +64,7 @@
             aria-label="Clear"
             [appClearSelect]="categorySelect"
             [clearValue]="null"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -95,6 +98,7 @@
             mat-icon-button
             aria-label="Clear"
             (click)="startDate.set(null)"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -117,6 +121,7 @@
             mat-icon-button
             aria-label="Clear"
             (click)="endDate.set(null)"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>

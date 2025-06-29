@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -52,6 +36,22 @@ import { getAnalytics } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -119,7 +119,9 @@ export class ExpensesComponent implements OnInit {
   unpaidOnly = model<boolean>(true);
   selectedMember = model<DocumentReference | null>(null);
   selectedCategory = model<DocumentReference | null>(null);
-  startDate = model<Date | null>(null);
+  startDate = model<Date | null>(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  ); // 30 days ago
   endDate = model<Date | null>(null);
 
   filteredExpenses = computed(

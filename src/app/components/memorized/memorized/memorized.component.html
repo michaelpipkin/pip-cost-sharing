@@ -15,20 +15,27 @@
     <div class="filters">
       <mat-form-field class="clearable">
         <mat-label>Filter by payee</mat-label>
-        <mat-select #memberSelect name="member" [(ngModel)]="selectedMember">
-          @for (member of activeMembers(); track member.id) {
-            <mat-option [value]="member.id">{{
+        <mat-select
+          #memberSelect
+          name="member"
+          [(ngModel)]="selectedMember"
+          docRefCompare
+        >
+          @for (member of activeMembers(); track member.ref) {
+            <mat-option [value]="member.ref">{{
               member.displayName
             }}</mat-option>
           }
         </mat-select>
-        @if (selectedMember() !== '') {
+        @if (selectedMember() !== null) {
           <button
             matIconSuffix
             tabindex="-1"
             mat-icon-button
             aria-label="Clear"
             [appClearSelect]="memberSelect"
+            [clearValue]="null"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -57,6 +64,7 @@
             aria-label="Clear"
             [appClearSelect]="categorySelect"
             [clearValue]="null"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>

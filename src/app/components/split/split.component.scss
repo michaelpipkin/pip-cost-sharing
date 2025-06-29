@@ -1,0 +1,157 @@
+.sub-container {
+  justify-items: start;
+}
+
+.evenly-shared-amt {
+  line-height: 3em;
+}
+
+#split-form {
+  width: 100%;
+}
+
+.details-3 {
+  display: grid;
+  column-gap: 8px;
+  align-items: baseline;
+  grid-template-columns: max-content max-content max-content;
+}
+
+.splits {
+  display: grid;
+  column-gap: 8px;
+  grid-template-columns: max-content auto;
+  align-items: baseline;
+}
+
+.splits-1 {
+  display: grid;
+  column-gap: 8px;
+  grid-template-columns: max-content auto;
+  align-items: baseline;
+}
+
+.splits-2 {
+  display: grid;
+  column-gap: 8px;
+  grid-template-columns: max-content max-content;
+  align-items: baseline;
+}
+
+.buttons {
+  display: grid;
+  width: 100%;
+  column-gap: 8px;
+  row-gap: 8px;
+  grid-template-columns: 1fr 1fr 1.5fr;
+}
+
+.split-type {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: start;
+
+  span {
+    font-size: 1.1em;
+    font-weight: 600;
+    text-align: end;
+    margin-right: 4px;
+  }
+}
+
+@media (min-width: 474px) and (max-width: 767px) {
+  .details-3 {
+    grid-template-columns: max-content max-content;
+  }
+  .evenly-shared-amt {
+    grid-column-start: 1;
+    grid-column-end: span 2;
+  }
+  .buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+  .splits {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 473px) {
+  .details-3 {
+    grid-template-columns: max-content;
+  }
+  .buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+  .splits {
+    grid-template-columns: 1fr;
+  }
+}
+
+.number-field {
+  width: 150px;
+}
+
+// Add these styles to your split.component.scss file
+
+.summary-container {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.summary-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h4 {
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
+.summary-content {
+  margin-bottom: 16px;
+}
+
+.summary-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 4px 0;
+
+  &:not(:last-child) {
+    margin-bottom: 4px;
+  }
+}
+
+.summary-label {
+  font-weight: 500;
+}
+
+.summary-value {
+  font-weight: 600;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.summary-divider {
+  margin: 12px 0;
+  border: none;
+  border-top: 2px solid #333;
+}
+
+.summary-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 8px;
+  justify-items: center;
+
+  @media (max-width: 473px) {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+}

@@ -8,6 +8,7 @@ import { HistoryComponent } from '@components/history/history/history.component'
 import { HomeComponent } from '@components/home/home.component';
 import { MembersComponent } from '@components/members/members/members.component';
 import { memorizedRoutes } from '@components/memorized/memorized-routes';
+import { SplitComponent } from '@components/split/split.component';
 import { SummaryComponent } from '@components/summary/summary/summary.component';
 
 export const appRoutes: Routes = [
@@ -58,6 +59,11 @@ export const appRoutes: Routes = [
     path: 'help',
     title: 'Help',
     component: HelpComponent,
+  },
+  {
+    path: 'split',
+    title: 'Split Expense',
+    component: SplitComponent,
   },
   { path: '**', redirectTo: '' },
 ];
