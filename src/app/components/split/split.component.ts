@@ -1,15 +1,4 @@
 import { CurrencyPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
-import { Split } from '@models/split';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import {
   afterEveryRender,
   afterNextRender,
@@ -32,6 +21,17 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
+import { Split } from '@models/split';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 
 @Component({
   selector: 'app-split',
@@ -332,8 +332,12 @@ export class SplitComponent {
 
     let summaryText = `Total: ${this.formatCurrency(totalAmount)}\n`;
 
+    if (!this.splitByPercentage() && formValue.sharedAmount > 0) {
+      summaryText += `Evenl shared amount: ${this.formatCurrency(formValue.sharedAmount)}\n`;
+    }
+
     if (!this.splitByPercentage() && allocatedAmount > 0) {
-      summaryText += `Proportional amount: ${this.formatCurrency(allocatedAmount)}\n`;
+      summaryText += `Proportional amount (tax, tip, etc.): ${this.formatCurrency(allocatedAmount)}\n`;
     }
 
     summaryText += '=============\n';
@@ -351,17 +355,16 @@ export class SplitComponent {
           const proportionalAmount = this.calculateProportionalAmount(split);
           const sharedPortionAmount = this.calculateSharedPortion();
 
-          summaryText += `${split.owedBy}:\n`;
+          summaryText += `${split.owedBy}: ${this.formatCurrency(split.allocatedAmount)}\n`;
           if (assignedAmount > 0) {
-            summaryText += `  Manual: ${this.formatCurrency(assignedAmount)}\n`;
-          }
-          if (proportionalAmount > 0) {
-            summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+            summaryText += `  Personal: ${this.formatCurrency(assignedAmount)}\n`;
           }
           if (sharedPortionAmount > 0) {
             summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
           }
-          summaryText += `  Total: ${this.formatCurrency(split.allocatedAmount)}\n`;
+          if (proportionalAmount > 0) {
+            summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+          }
         }
       }
     });
