@@ -4,22 +4,32 @@
   </div>
   <div class="top-section">
     <div></div>
-    <div class="description">
+    <div class="app-details">
       <p class="summary">
         Enter and track shared expenses for an unlimited number of groups.
       </p>
-      <p class="mb-5">
+      <p class="mb-3">
         Split expenses with friends for your weekend getaway, track monthly
         costs with your roommates, or easily calculate shares of a dinner out.
       </p>
+    </div>
+    <div class="buttons">
       @if (!isLoggedIn()) {
         <a
           mat-raised-button
           class="btn-primary mb-4"
           type="button"
-          routerLink="/login"
+          [routerLink]="['auth', 'login']"
         >
           Login or sign up now for a free account
+        </a>
+        <a
+          matButton="elevated"
+          class="btn-primary mb-4"
+          type="button"
+          [routerLink]="['split']"
+        >
+          Split an expense now
         </a>
       }
     </div>

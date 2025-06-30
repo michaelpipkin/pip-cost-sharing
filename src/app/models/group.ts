@@ -1,3 +1,4 @@
+import { DocumentReference } from 'firebase/firestore';
 import { Category } from './category';
 import { Expense } from './expense';
 import { Member } from './member';
@@ -13,4 +14,5 @@ export class Group {
   expenses: Expense[];
   categories: Category[];
   autoAddMembers: boolean;
+  ref?: DocumentReference<Group>;
 }

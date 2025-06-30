@@ -1,14 +1,23 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
+import { Split } from '@models/split';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import {
   afterEveryRender,
   afterNextRender,
   Component,
-  computed,
   ElementRef,
   inject,
   model,
-  OnInit,
-  Signal,
+  signal,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -23,87 +32,31 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
 
 @Component({
-  selector: 'app-add-memorized',
-  templateUrl: './add-memorized.component.html',
-  styleUrl: './add-memorized.component.scss',
+  selector: 'app-split',
   imports: [
     FormsModule,
     ReactiveFormsModule,
-    MatDialogModule,
     MatTableModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatSelectModule,
     MatOptionModule,
     MatInputModule,
     MatTooltipModule,
-    MatDatepickerModule,
     MatIconModule,
     CurrencyPipe,
     FormatCurrencyInputDirective,
-    DocRefCompareDirective,
+    RouterLink,
   ],
+  templateUrl: './split.component.html',
+  styleUrl: './split.component.scss',
 })
-export class AddMemorizedComponent implements OnInit {
-  protected readonly storage = inject(getStorage);
-  protected readonly analytics = inject(getAnalytics);
-  protected readonly dialog = inject(MatDialog);
-  protected readonly router = inject(Router);
+export class SplitComponent {
   protected readonly fb = inject(FormBuilder);
-  protected readonly groupStore = inject(GroupStore);
-  protected readonly memberStore = inject(MemberStore);
-  protected readonly categoryStore = inject(CategoryStore);
-  protected readonly categoryService = inject(CategoryService);
-  protected readonly memorizedService = inject(MemorizedService);
-  protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
-  protected readonly decimalPipe = inject(DecimalPipe);
-  protected readonly stringUtils = inject(StringUtils);
 
-  currentMember: Signal<Member> = this.memberStore.currentMember;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
-  #categories: Signal<Category[]> = this.categoryStore.groupCategories;
-
-  activeCategories = computed<Category[]>(() => {
-    return this.#categories().filter((c) => c.active);
-  });
+  submitted = signal<boolean>(false);
 
   splitByPercentage = model<boolean>(false);
 
@@ -111,13 +64,10 @@ export class AddMemorizedComponent implements OnInit {
   allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
   memberAmounts = viewChildren<ElementRef>('memberAmount');
+  memberPercentages = viewChildren<ElementRef>('memberPercentage');
 
-  addMemorizedForm = this.fb.group({
-    paidByMember: [this.currentMember().ref, Validators.required],
-    date: [new Date(), Validators.required],
+  expenseForm = this.fb.group({
     amount: [0, [Validators.required, this.amountValidator()]],
-    description: ['', Validators.required],
-    category: [null as DocumentReference<Category>, Validators.required],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -136,17 +86,6 @@ export class AddMemorizedComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    if (this.activeCategories().length == 1) {
-      this.addMemorizedForm.patchValue({
-        category: this.activeCategories()[0].ref,
-      });
-    }
-    if (this.currentGroup().autoAddMembers) {
-      this.addAllActiveGroupMembers();
-    }
-  }
-
   addSelectFocus(): void {
     this.inputElements().forEach((elementRef: ElementRef<any>) => {
       const input = elementRef.nativeElement as HTMLInputElement;
@@ -161,17 +100,8 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   createSplitFormGroup(): FormGroup {
-    const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMember').value.id
-    );
-    const availableMembers = this.activeMembers().filter(
-      (m) => !existingMembers.includes(m.id)
-    );
     return this.fb.group({
-      owedByMember: [
-        availableMembers.length > 0 ? availableMembers[0].ref : null,
-        Validators.required,
-      ],
+      owedBy: ['', Validators.required],
       assignedAmount: ['0.00', Validators.required],
       percentage: [0.0],
       allocatedAmount: [0.0],
@@ -185,11 +115,11 @@ export class AddMemorizedComponent implements OnInit {
   }
 
   get e() {
-    return this.addMemorizedForm.controls;
+    return this.expenseForm.controls;
   }
 
   get splitsFormArray(): FormArray {
-    return this.addMemorizedForm.get('splits') as FormArray;
+    return this.expenseForm.get('splits') as FormArray;
   }
 
   addSplit(): void {
@@ -213,41 +143,6 @@ export class AddMemorizedComponent implements OnInit {
     }
   }
 
-  addAllActiveGroupMembers(): void {
-    const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMember').value.id
-    );
-
-    this.activeMembers().forEach((member: Member) => {
-      if (!existingMembers.includes(member.id)) {
-        this.splitsFormArray.push(
-          this.fb.group({
-            owedByMember: [member.ref, Validators.required],
-            assignedAmount: ['0.00', Validators.required],
-            percentage: [0.0],
-            allocatedAmount: [0.0],
-          })
-        );
-      }
-    });
-    setTimeout(() => {
-      const newInputs = this.memberAmounts().filter(
-        (i) => i.nativeElement.value === ''
-      );
-      newInputs.forEach((input) => {
-        input.nativeElement.value = '0.00';
-        // Manually trigger the input event to update the mat-label
-        const event = new Event('input', { bubbles: true });
-        input.nativeElement.dispatchEvent(event);
-      });
-    });
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
-  }
-
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
     if (this.splitByPercentage()) {
@@ -259,7 +154,6 @@ export class AddMemorizedComponent implements OnInit {
 
   toggleSplitByPercentage(): void {
     this.splitByPercentage.set(!this.splitByPercentage());
-    this.addMemorizedForm.markAsDirty();
     if (this.splitByPercentage()) {
       this.allocateByPercentage();
     } else {
@@ -279,17 +173,15 @@ export class AddMemorizedComponent implements OnInit {
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedBy && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           i++;
         }
       }
-      const splitCount: number = splits.filter(
-        (s) => s.owedByMemberRef !== null
-      ).length;
+      const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const splitTotal: number = this.getAssignedTotal();
-      const val = this.addMemorizedForm.value;
+      const val = this.expenseForm.value;
       const totalAmount: number = val.amount;
       let sharedAmount: number = val.sharedAmount;
       const allocatedAmount: number = val.allocatedAmount;
@@ -300,7 +192,7 @@ export class AddMemorizedComponent implements OnInit {
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
         sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
-        this.addMemorizedForm.patchValue({
+        this.expenseForm.patchValue({
           sharedAmount: sharedAmount,
         });
       }
@@ -353,7 +245,7 @@ export class AddMemorizedComponent implements OnInit {
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedBy && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
@@ -371,10 +263,8 @@ export class AddMemorizedComponent implements OnInit {
           i++;
         }
       }
-      const splitCount: number = splits.filter(
-        (s) => s.owedByMember !== null
-      ).length;
-      const val = this.addMemorizedForm.value;
+      const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
+      const val = this.expenseForm.value;
       const totalAmount: number = val.amount;
       splits.forEach((split: Split) => {
         split.allocatedAmount = +(
@@ -428,64 +318,112 @@ export class AddMemorizedComponent implements OnInit {
       .reduce((total, s) => (total += +s.allocatedAmount), 0)
       .toFixed(2);
 
-  memorizedFullyAllocated = (): boolean =>
-    this.addMemorizedForm.value.amount == this.getAllocatedTotal();
+  expenseFullyAllocated = (): boolean =>
+    this.expenseForm.value.amount == this.getAllocatedTotal();
 
   onSubmit(): void {
-    this.addMemorizedForm.disable();
-    const val = this.addMemorizedForm.value;
-    const memorized: Partial<Memorized> = {
-      description: val.description,
-      categoryRef: val.category,
-      paidByMemberRef: val.paidByMember,
-      sharedAmount: +val.sharedAmount,
-      allocatedAmount: +val.allocatedAmount,
-      totalAmount: +val.amount,
-      splitByPercentage: this.splitByPercentage(),
-    };
-    let splits = [];
-    this.splitsFormArray.value.forEach((s) => {
-      const split = {
-        assignedAmount: +s.assignedAmount,
-        percentage: +s.percentage,
-        allocatedAmount: +s.allocatedAmount,
-        paidByMemberRef: val.paidByMember,
-        owedByMemberRef: s.owedByMember,
-      };
-      splits.push(split);
+    this.submitted.set(true);
+  }
+
+  generateSummaryText(): string {
+    const formValue = this.expenseForm.value;
+    const totalAmount = formValue.amount || 0;
+    const allocatedAmount = formValue.allocatedAmount || 0;
+
+    let summaryText = `Total: ${this.formatCurrency(totalAmount)}\n`;
+
+    if (!this.splitByPercentage() && allocatedAmount > 0) {
+      summaryText += `Proportional amount: ${this.formatCurrency(allocatedAmount)}\n`;
+    }
+
+    summaryText += '=============\n';
+
+    // Add each person's allocation with breakdown
+    this.splitsFormArray.controls.forEach((splitControl) => {
+      const split = splitControl.value;
+      if (split.owedBy && split.owedBy.trim()) {
+        if (this.splitByPercentage()) {
+          // Show percentage and total for percentage splits
+          summaryText += `${split.owedBy} (${split.percentage}%): ${this.formatCurrency(split.allocatedAmount)}\n`;
+        } else {
+          // Show breakdown for dollar amount splits
+          const assignedAmount = split.assignedAmount || 0;
+          const proportionalAmount = this.calculateProportionalAmount(split);
+          const sharedPortionAmount = this.calculateSharedPortion();
+
+          summaryText += `${split.owedBy}:\n`;
+          if (assignedAmount > 0) {
+            summaryText += `  Manual: ${this.formatCurrency(assignedAmount)}\n`;
+          }
+          if (proportionalAmount > 0) {
+            summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+          }
+          if (sharedPortionAmount > 0) {
+            summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
+          }
+          summaryText += `  Total: ${this.formatCurrency(split.allocatedAmount)}\n`;
+        }
+      }
     });
-    memorized.splits = splits;
-    this.loading.loadingOn();
-    this.memorizedService
-      .addMemorized(this.currentGroup().id, memorized)
+
+    return summaryText.trim();
+  }
+
+  // Helper methods to calculate breakdown amounts
+  private calculateProportionalAmount(split: any): number {
+    const formValue = this.expenseForm.value;
+    const allocatedAmount = formValue.allocatedAmount || 0;
+    const splitTotal = this.getAssignedTotal();
+    const assignedAmount = split.assignedAmount || 0;
+
+    if (splitTotal === 0 || allocatedAmount === 0) return 0;
+    return +((assignedAmount / splitTotal) * allocatedAmount).toFixed(2);
+  }
+
+  private calculateSharedPortion(): number {
+    const formValue = this.expenseForm.value;
+    const sharedAmount = formValue.sharedAmount || 0;
+    const splitCount = this.splitsFormArray.controls.filter(
+      (control) => control.value.owedBy && control.value.owedBy.trim()
+    ).length;
+
+    if (splitCount === 0) return 0;
+    return +(sharedAmount / splitCount).toFixed(2);
+  }
+
+  // Helper method to format currency
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  }
+
+  // Method to copy summary to clipboard
+  copySummaryToClipboard(): void {
+    const summaryText = this.generateSummaryText();
+    navigator.clipboard
+      .writeText(summaryText)
       .then(() => {
-        this.snackBar.open('Memorized expense added.', 'OK');
-        this.router.navigate(['/memorized']);
-      })
-      .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'memorize_expense',
-          message: err.message,
+        this.snackBar.open('Summary copied to clipboard', 'OK', {
+          duration: 2000,
         });
-        this.snackBar.open(
-          'Something went wrong - could not memorize expense.',
-          'Close'
-        );
-        this.addMemorizedForm.enable();
       })
-      .finally(() => this.loading.loadingOff());
+      .catch(() => {
+        this.snackBar.open('Failed to copy summary', 'OK', {
+          duration: 2000,
+        });
+      });
   }
 
-  onCancel(): void {
-    this.router.navigate(['/memorized']);
-  }
-
-  showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
-      disableClose: false,
-      maxWidth: '80vw',
-    };
-    this.dialog.open(AddEditMemorizedHelpComponent, dialogConfig);
+  resetForm(): void {
+    this.expenseForm.reset({
+      amount: 0,
+      sharedAmount: 0,
+      allocatedAmount: 0,
+    });
+    this.splitsFormArray.clear();
+    this.submitted.set(false);
+    this.splitByPercentage.set(false);
   }
 }

@@ -1,4 +1,5 @@
 import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { Member } from './member';
 
 export class History {
   constructor(init?: Partial<History>) {
@@ -6,8 +7,9 @@ export class History {
   }
   id: string;
   date: Timestamp;
-  paidByMemberRef: DocumentReference;
-  paidToMemberRef: DocumentReference;
-  toalPaid: number;
+  paidByMemberRef: DocumentReference<Member>;
+  paidToMemberRef: DocumentReference<Member>;
+  totalPaid: number;
   lineItems: { category: string; amount: number }[];
+  ref?: DocumentReference<History>;
 }

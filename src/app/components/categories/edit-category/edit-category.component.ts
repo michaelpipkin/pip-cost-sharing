@@ -45,8 +45,7 @@ export class EditCategoryComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
-  protected readonly data: { category: Category; groupId: string } =
-    inject(MAT_DIALOG_DATA);
+  protected readonly data: { category: Category } = inject(MAT_DIALOG_DATA);
 
   #category = signal<Category>(this.data.category);
 
@@ -68,7 +67,7 @@ export class EditCategoryComponent {
     };
     this.loading.loadingOn();
     this.categoryService
-      .updateCategory(this.data.groupId, this.#category().id, changes)
+      .updateCategory(this.#category().ref, changes)
       .then((res) => {
         if (res?.name === 'Error') {
           this.snackBar.open(res.message, 'Close');
@@ -107,7 +106,7 @@ export class EditCategoryComponent {
       if (confirm) {
         this.loading.loadingOn();
         this.categoryService
-          .deleteCategory(this.data.groupId, this.#category().id)
+          .deleteCategory(this.#category().ref)
           .then((res) => {
             if (res?.name === 'Error') {
               this.snackBar.open(res.message, 'Close');

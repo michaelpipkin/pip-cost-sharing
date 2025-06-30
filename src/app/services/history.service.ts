@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  DocumentReference,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -26,10 +27,11 @@ export class HistoryService implements IHistoryService {
     );
     onSnapshot(historyQuery, (historyQuerySnap) => {
       const history = [
-        ...historyQuerySnap.docs.map((d) => {
+        ...historyQuerySnap.docs.map((doc) => {
           return new History({
-            id: d.id,
-            ...d.data(),
+            id: doc.id,
+            ...doc.data(),
+            ref: doc.ref as DocumentReference<History>,
           });
         }),
       ];

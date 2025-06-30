@@ -6,17 +6,11 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
-import { CategoryService } from './category.service';
-import { ExpenseService } from './expense.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
   doc,
+  DocumentReference,
   getDoc,
   getDocs,
   getFirestore,
@@ -26,6 +20,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -35,7 +35,6 @@ export class GroupService implements IGroupService {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly expensesService = inject(ExpenseService);
   protected readonly splitsService = inject(SplitService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly historyService = inject(HistoryService);
@@ -54,7 +53,7 @@ export class GroupService implements IGroupService {
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
     const memberQuery = query(
       collectionGroup(this.fs, 'members'),
-      where('userId', '==', user.id)
+      where('userRef', '==', user.ref)
     );
     onSnapshot(memberQuery, (memberQuerySnap) => {
       const userGroups: { groupId: string; groupAdmin: boolean }[] = [
@@ -73,25 +72,30 @@ export class GroupService implements IGroupService {
         );
         const groups: Group[] = [
           ...groupQuerySnap.docs.map(
-            (d) => new Group({ id: d.id, ...d.data() })
+            (doc) =>
+              new Group({
+                id: doc.id,
+                ...doc.data(),
+                ref: doc.ref as DocumentReference<Group>,
+              })
           ),
         ].filter((g) => userGroupIds.includes(g.id));
         this.groupStore.setAllUserGroups(groups);
         if (!!this.groupStore.currentGroup()) {
-          await this.getGroup(this.groupStore.currentGroup().id, user.id);
+          await this.getGroup(this.groupStore.currentGroup().id, user.ref);
           if (autoNav && this.router.url === '/') {
             this.router.navigateByUrl('/expenses');
           }
         } else {
           if (groups.length === 1 && groups[0].active) {
-            await this.getGroup(groups[0].id, user.id).then(() => {
+            await this.getGroup(groups[0].id, user.ref).then(() => {
               if (autoNav) {
                 autoNav = false;
                 this.router.navigateByUrl('/expenses');
               }
             });
-          } else if (user.defaultGroupId !== '') {
-            await this.getGroup(user.defaultGroupId, user.id).then(() => {
+          } else if (user.defaultGroupRef !== null) {
+            await this.getGroup(user.defaultGroupRef.id, user.ref).then(() => {
               if (autoNav) {
                 autoNav = false;
                 this.router.navigateByUrl('/expenses');
@@ -106,15 +110,21 @@ export class GroupService implements IGroupService {
     });
   }
 
-  async getGroup(groupId: string, userId: string): Promise<void> {
+  async getGroup(
+    groupId: string,
+    userRef: DocumentReference<User>
+  ): Promise<void> {
     const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    const group = new Group({ id: docSnap.id, ...docSnap.data() });
+    const group = {
+      id: docSnap.id,
+      ...docSnap.data(),
+      ref: docSnap.ref,
+    } as Group;
     this.groupStore.setCurrentGroup(group);
     localStorage.setItem('currentGroup', JSON.stringify(group));
     this.categoryService.getGroupCategories(groupId);
     this.memberService.getGroupMembers(groupId);
-    this.memberService.getMemberByUserId(groupId, userId);
-    this.expensesService.getExpensesForGroup(groupId);
+    this.memberService.getMemberByUserRef(groupId, userRef);
     this.memorizedService.getMemorizedExpensesForGroup(groupId);
     this.splitsService.getUnpaidSplitsForGroup(groupId);
     this.historyService.getHistoryForGroup(groupId);
@@ -144,22 +154,24 @@ export class GroupService implements IGroupService {
       });
   }
 
-  async updateGroup(groupId: string, changes: Partial<Group>): Promise<any> {
+  async updateGroup(
+    groupRef: DocumentReference<Group>,
+    changes: Partial<Group>
+  ): Promise<any> {
     const batch = writeBatch(this.fs);
-    const groupRef = doc(this.fs, `groups/${groupId}`);
     batch.update(groupRef, changes);
     if (!changes.active) {
       const usersRef = collection(this.fs, 'users');
       const usersQuery = query(
         usersRef,
-        where('defaultGroupId', '==', groupId)
+        where('defaultGroupId', '==', groupRef.id)
       );
       await getDocs(usersQuery).then((users) => {
         users.forEach((u) => {
           batch.update(u.ref, { defaultGroupId: '' });
         });
       });
-      if (this.groupStore.currentGroup().id === groupId) {
+      if (this.groupStore.currentGroup().id === groupRef.id) {
         this.groupStore.clearCurrentGroup();
         localStorage.removeItem('currentGroup');
       }

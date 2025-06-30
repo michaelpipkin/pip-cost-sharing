@@ -78,7 +78,7 @@ export class GroupsComponent {
   }
 
   onSelectGroup(e: MatSelectChange): void {
-    this.groupService.getGroup(e.value, this.#user().id);
+    this.groupService.getGroup(e.value, this.#user().ref);
   }
 
   copyGroupCode(): void {

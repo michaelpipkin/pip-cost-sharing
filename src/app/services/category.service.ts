@@ -5,8 +5,8 @@ import {
   addDoc,
   collection,
   deleteDoc,
-  doc,
   documentId,
+  DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -31,10 +31,31 @@ export class CategoryService implements ICategoryService {
     const q = query(c, orderBy('name'));
     onSnapshot(q, (querySnap) => {
       const categories = [
-        ...querySnap.docs.map((d) => new Category({ id: d.id, ...d.data() })),
+        ...querySnap.docs.map(
+          (doc) =>
+            new Category({
+              id: doc.id,
+              ...doc.data(),
+              ref: doc.ref as DocumentReference<Category>,
+            })
+        ),
       ];
       this.categoryStore.setGroupCategories(categories);
     });
+  }
+
+  async getCategoryMap(groupId: string): Promise<Map<string, string>> {
+    const categoriesQuery = query(
+      collection(this.fs, `groups/${groupId}/categories`)
+    );
+    const categoriesSnap = await getDocs(categoriesQuery);
+
+    const categoryMap = new Map<string, string>();
+    categoriesSnap.docs.forEach((doc) => {
+      categoryMap.set(doc.id, doc.data().name);
+    });
+
+    return categoryMap;
   }
 
   async addCategory(
@@ -52,39 +73,33 @@ export class CategoryService implements ICategoryService {
   }
 
   async updateCategory(
-    groupId: string,
-    categoryId: string,
+    categoryRef: DocumentReference<Category>,
     changes: Partial<Category>
   ): Promise<any> {
-    const c = collection(this.fs, `groups/${groupId}/categories`);
     const q = query(
-      c,
+      categoryRef.parent,
       where('name', '==', changes.name),
-      where(documentId(), '!=', categoryId)
+      where(documentId(), '!=', categoryRef.id)
     );
     return await getDocs(q).then(async (snap) => {
       if (snap.size > 0) {
         return new Error('This category already exists.');
       }
-      return await updateDoc(
-        doc(this.fs, `groups/${groupId}/categories/${categoryId}`),
-        changes
-      );
+      return await updateDoc(categoryRef, changes);
     });
   }
 
-  async deleteCategory(groupId: string, categoryId: string): Promise<any> {
+  async deleteCategory(categoryRef: DocumentReference<Category>): Promise<any> {
+    const groupId = categoryRef.parent.parent?.id;
     const c = collection(this.fs, `groups/${groupId}/expenses`);
-    const q = query(c, where('categoryId', '==', categoryId));
+    const q = query(c, where('categoryRef', '==', categoryRef));
     return await getDocs(q).then(async (snap) => {
       if (snap.size > 0) {
         return new Error(
           'This category is assigned to expenses and cannot be deleted.'
         );
       }
-      return await deleteDoc(
-        doc(this.fs, `/groups/${groupId}/categories/${categoryId}`)
-      );
+      return await deleteDoc(categoryRef);
     });
   }
 }

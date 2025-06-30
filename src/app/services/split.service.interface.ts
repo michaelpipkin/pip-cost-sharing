@@ -12,8 +12,6 @@ export interface ISplitService {
   paySplitsBetweenMembers(
     groupId: string,
     splits: Split[],
-    paidByMemberId: string,
-    paidToMemberId: string,
     history: Partial<History>
   ): Promise<any>;
 }

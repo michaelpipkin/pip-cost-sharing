@@ -1,0 +1,300 @@
+<div class="container pt-3 mb-2">
+  <div class="page-header">
+    <div></div>
+    <h3>Split Expense</h3>
+  </div>
+  @if (!submitted()) {
+    <div class="sub-container mb-2">
+      <form [formGroup]="expenseForm" id="split-form">
+        <div class="details-3">
+          <mat-form-field
+            appearance="fill"
+            floatLabel="always"
+            class="number-field"
+          >
+            <mat-label>Total Amount</mat-label>
+            <input
+              matInput
+              #inputElement
+              #totalAmount
+              formControlName="amount"
+              class="number-right"
+              appFormatCurrencyInput
+              (blur)="updateTotalAmount()"
+            />
+            <span matTextPrefix>$</span>
+            @if (e.amount.errors?.['required']) {
+              <mat-error> *Required </mat-error>
+            }
+            @if (e.amount.errors?.['zeroAmount']) {
+              <mat-error> Cannot be zero </mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field
+            appearance="fill"
+            floatLabel="always"
+            class="number-field"
+            [class.hidden]="splitByPercentage()"
+          >
+            <mat-label>Proportional Amount</mat-label>
+            <input
+              matInput
+              #inputElement
+              #propAmount
+              formControlName="allocatedAmount"
+              class="number-right"
+              appFormatCurrencyInput
+              (blur)="allocateSharedAmounts()"
+            />
+            <span matTextPrefix>$</span>
+            <mat-hint>Tax, tip, etc.</mat-hint>
+            @if (e.allocatedAmount.errors?.['required']) {
+              <mat-error> *Required - Enter 0 if none </mat-error>
+            }
+          </mat-form-field>
+          <div class="mock-input" [class.hidden]="splitByPercentage()">
+            <span class="mock-label">Evenly Shared Remainder</span>
+            <span class="mock-value-right">
+              {{ e.sharedAmount.value | currency }}
+            </span>
+          </div>
+        </div>
+        <div class="buttons">
+          <button
+            mat-raised-button
+            class="btn-primary"
+            type="button"
+            (click)="addSplit()"
+          >
+            Add New Split
+          </button>
+          <div class="split-type">
+            <span>Split by</span>
+            <button
+              mat-mini-fab
+              class="btn btn-primary"
+              (click)="toggleSplitByPercentage()"
+            >
+              @if (splitByPercentage()) {
+                <mat-icon>percent</mat-icon>
+              } @else {
+                <mat-icon>attach_money</mat-icon>
+              }
+            </button>
+          </div>
+        </div>
+        <div formArrayName="splits" class="mt-3">
+          @for (
+            splitForm of splitsFormArray.controls;
+            track splitForm;
+            let i = $index
+          ) {
+            <div [formGroupName]="i" class="splits">
+              <div class="splits-1">
+                <mat-form-field id="split-member" subscriptSizing="dynamic">
+                  <mat-label>Name</mat-label>
+                  <input
+                    matInput
+                    formControlName="owedBy"
+                    (blur)="updateTotalAmount()"
+                  />
+                </mat-form-field>
+                <button
+                  mat-mini-fab
+                  class="btn-danger"
+                  (click)="removeSplit(i)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="splits-2">
+                @if (splitByPercentage()) {
+                  <mat-form-field
+                    appearance="fill"
+                    class="number-field"
+                    subscriptSizing="dynamic"
+                  >
+                    <mat-label>Percentage</mat-label>
+                    <input
+                      matInput
+                      #inputElement
+                      #memberPercentage
+                      class="number-right"
+                      parentControlName="splits"
+                      [index]="i"
+                      formControlName="percentage"
+                      (blur)="allocateByPercentage()"
+                    />
+                    <span matTextSuffix>%</span>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field
+                    appearance="fill"
+                    class="number-field"
+                    subscriptSizing="dynamic"
+                  >
+                    <mat-label>Member Amount</mat-label>
+                    <input
+                      matInput
+                      #inputElement
+                      #memberAmount
+                      class="number-right"
+                      parentControlName="splits"
+                      [index]="i"
+                      formControlName="assignedAmount"
+                      appFormatCurrencyInput
+                      (blur)="allocateSharedAmounts()"
+                    />
+                    <span matTextPrefix>$</span>
+                  </mat-form-field>
+                }
+                <div class="mock-input">
+                  <span class="mock-label">Allocated Amount</span>
+                  <span class="mock-value-right">
+                    {{ splitForm.get('allocatedAmount').value | currency }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <hr />
+          }
+        </div>
+      </form>
+      <div class="form-buttons">
+        <button
+          mat-raised-button
+          class="btn-secondary"
+          type="submit"
+          defaultButton
+          [disabled]="
+            !expenseForm.valid ||
+            expenseForm.disabled ||
+            !expenseFullyAllocated()
+          "
+          (click)="onSubmit()"
+        >
+          Generate Summary
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="expenseForm.disabled"
+          [routerLink]="['/']"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="summary-container">
+      <div class="summary-header">
+        <h4>Expense Summary</h4>
+        <button
+          mat-mini-fab
+          class="btn btn-primary ms-3"
+          matTooltip="Copy summary to clipboard"
+          (click)="copySummaryToClipboard()"
+        >
+          <mat-icon>content_copy</mat-icon>
+        </button>
+      </div>
+      <div class="summary-content">
+        <div class="summary-line">
+          <span class="summary-label">Total:</span>
+          <span class="summary-value">{{ e.amount.value | currency }}</span>
+        </div>
+        @if (!splitByPercentage() && e.sharedAmount.value > 0) {
+          <div class="summary-line">
+            <span class="summary-label">Evenly shared amount:</span>
+            <span class="summary-value">{{
+              e.sharedAmount.value | currency
+            }}</span>
+          </div>
+        }
+        @if (!splitByPercentage() && e.allocatedAmount.value > 0) {
+          <div class="summary-line">
+            <span class="summary-label">Proportional amount:</span>
+            <span class="summary-value">{{
+              e.allocatedAmount.value | currency
+            }}</span>
+          </div>
+        }
+        <hr class="summary-divider" />
+        @for (
+          splitForm of splitsFormArray.controls;
+          track splitForm;
+          let i = $index
+        ) {
+          @if (splitForm.get('owedBy')?.value?.trim()) {
+            @if (splitByPercentage()) {
+              <!-- Percentage split display -->
+              <div class="summary-line">
+                <span class="summary-label"
+                  >{{ splitForm.get('owedBy')?.value }} ({{
+                    splitForm.get('percentage')?.value
+                  }}%):</span
+                >
+                <span class="summary-value">{{
+                  splitForm.get('allocatedAmount')?.value | currency
+                }}</span>
+              </div>
+            } @else {
+              <!-- Dollar amount split display with breakdown -->
+              <div class="summary-person">
+                <div class="summary-line person-name">
+                  <span class="summary-label"
+                    >{{ splitForm.get('owedBy')?.value }}:</span
+                  >
+                  <span class="summary-value">{{
+                    splitForm.get('allocatedAmount')?.value | currency
+                  }}</span>
+                </div>
+                <div class="summary-breakdown">
+                  @if (splitForm.get('assignedAmount')?.value > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label">Personal:</span>
+                      <span class="summary-value">{{
+                        splitForm.get('assignedAmount')?.value | currency
+                      }}</span>
+                    </div>
+                  }
+                  @if (calculateSharedPortion(splitForm.value) > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label">Shared:</span>
+                      <span class="summary-value">{{
+                        calculateSharedPortion(splitForm.value) | currency
+                      }}</span>
+                    </div>
+                  }
+                  @if (calculateProportionalAmount(splitForm.value) > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label"
+                        >Proportional (tax, tip, etc):</span
+                      >
+                      <span class="summary-value">{{
+                        calculateProportionalAmount(splitForm.value) | currency
+                      }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          }
+        }
+      </div>
+      <div class="summary-buttons">
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          (click)="submitted.set(false)"
+        >
+          Edit Split
+        </button>
+        <button mat-stroked-button type="button" (click)="resetForm()">
+          Start Over
+        </button>
+      </div>
+    </div>
+  }
+</div>

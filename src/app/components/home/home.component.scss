@@ -1,3 +1,11 @@
+.app-details {
+  grid-area: app-details;
+}
+
+.buttons {
+  grid-area: buttons;
+}
+
 .home-container {
   padding: 16px 15% 0;
 }
@@ -39,13 +47,24 @@
   display: grid;
   grid-template-columns: 1fr 4fr 3fr 1fr;
   justify-content: center;
+  grid-template-areas:
+    '. app-details image .'
+    '. buttons image .';
 }
 
-.description {
-  align-self: flex-start;
+@media (max-width: 600px) {
+  .top-section {
+    grid-template-columns: 1fr 2fr 2fr 1fr;
+    row-gap: 1em;
+    grid-template-rows: auto;
+    grid-template-areas:
+      '. app-details image .'
+      '. buttons buttons .';
+  }
 }
 
 .image {
+  grid-area: image;
   display: grid;
   margin-left: 20px;
   align-self: self-start;

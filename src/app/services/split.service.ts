@@ -4,6 +4,8 @@ import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
 import {
   collection,
+  collectionGroup,
+  deleteField,
   doc,
   getDocs,
   getFirestore,
@@ -29,10 +31,11 @@ export class SplitService implements ISplitService {
     onSnapshot(splitsQuery, (splitsQuerySnap) => {
       const splits = [
         ...splitsQuerySnap.docs.map((d) => {
-          return new Split({
+          return {
             id: d.id,
             ...d.data(),
-          });
+            ref: d.ref,
+          } as Split;
         }),
       ];
       this.splitStore.setSplits(splits);
@@ -71,8 +74,6 @@ export class SplitService implements ISplitService {
   async paySplitsBetweenMembers(
     groupId: string,
     splits: Split[],
-    paidByMemberId: string,
-    paidToMemberId: string,
     history: Partial<History>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
@@ -85,7 +86,7 @@ export class SplitService implements ISplitService {
       // Query for related splits
       const splitsQuery = query(
         collection(this.fs, `groups/${groupId}/splits`),
-        where('expenseId', '==', split.expenseId)
+        where('expenseRef', '==', split.expenseRef)
       );
       const splitsQuerySnap = await getDocs(splitsQuery);
 
@@ -96,20 +97,8 @@ export class SplitService implements ISplitService {
         ).length === 0;
 
       // Update the expense document
-      const expenseRef = doc(
-        this.fs,
-        `groups/${groupId}/expenses/${split.expenseId}`
-      );
-      batch.update(expenseRef, { paid: expensePaid });
+      batch.update(split.expenseRef, { paid: expensePaid });
     }
-    history.paidByMemberRef = doc(
-      this.fs,
-      `groups/${groupId}/members/${paidByMemberId}`
-    );
-    history.paidToMemberRef = doc(
-      this.fs,
-      `groups/${groupId}/members/${paidToMemberId}`
-    );
     const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
     return await batch
@@ -120,5 +109,87 @@ export class SplitService implements ISplitService {
       .catch((err: Error) => {
         return new Error(err.message);
       });
+  }
+
+  async migrateFieldIdsToRefs(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all split documents across all groups
+      const splitsCollection = collectionGroup(this.fs, 'splits');
+      const splitDocs = await getDocs(splitsCollection);
+
+      for (const splitDoc of splitDocs.docs) {
+        const splitData = splitDoc.data();
+
+        // Extract groupId from the document path
+        // Path: groups/{groupId}/splits/{splitId}
+        const pathSegments = splitDoc.ref.path.split('/');
+        const groupId = pathSegments[1];
+
+        const updates: any = {};
+
+        // Migrate expenseId to expenseRef
+        if (splitData.expenseId && !splitData.expenseRef) {
+          const expenseRef = doc(
+            this.fs,
+            `groups/${groupId}/expenses/${splitData.expenseId}`
+          );
+          updates.expenseRef = expenseRef;
+          updates.expenseId = deleteField();
+        }
+
+        // Migrate categoryId to categoryRef
+        if (splitData.categoryId && !splitData.categoryRef) {
+          const categoryRef = doc(
+            this.fs,
+            `groups/${groupId}/categories/${splitData.categoryId}`
+          );
+          updates.categoryRef = categoryRef;
+          updates.categoryId = deleteField();
+        }
+
+        // Migrate paidByMemberId to paidByMemberRef
+        if (splitData.paidByMemberId && !splitData.paidByMemberRef) {
+          const paidByMemberRef = doc(
+            this.fs,
+            `groups/${groupId}/members/${splitData.paidByMemberId}`
+          );
+          updates.paidByMemberRef = paidByMemberRef;
+          updates.paidByMemberId = deleteField();
+        }
+
+        // Migrate owedByMemberId to owedByMemberRef
+        if (splitData.owedByMemberId && !splitData.owedByMemberRef) {
+          const owedByMemberRef = doc(
+            this.fs,
+            `groups/${groupId}/members/${splitData.owedByMemberId}`
+          );
+          updates.owedByMemberRef = owedByMemberRef;
+          updates.owedByMemberId = deleteField();
+        }
+
+        // Only update if there are changes to make
+        if (Object.keys(updates).length > 0) {
+          batch.update(splitDoc.ref, updates);
+        }
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log('Successfully migrated all split documents');
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating split documents:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
   }
 }

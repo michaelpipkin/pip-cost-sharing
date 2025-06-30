@@ -56,7 +56,7 @@ export class AddMemberComponent {
     this.addMemberForm.disable();
     const val = this.addMemberForm.value;
     const newMember: Partial<Member> = {
-      userId: '',
+      userRef: null,
       displayName: val.displayName,
       email: val.email,
       active: true,
