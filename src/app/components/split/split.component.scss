@@ -129,6 +129,39 @@
   }
 }
 
+.summary-person {
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.person-name {
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+.summary-breakdown {
+  margin-left: 16px;
+}
+
+.breakdown-line {
+  font-size: 0.9em;
+  color: #666;
+  padding: 2px 0;
+
+  .summary-label {
+    font-weight: 400;
+  }
+
+  .summary-value {
+    font-weight: 500;
+  }
+}
+
 .summary-label {
   font-weight: 500;
 }

@@ -27,8 +27,8 @@
     }
     @if (!isSmallScreen()) {
       <span id="title">PipSplit</span>
-      @if (isLoggedIn()) {
-        <div class="links">
+      <div class="links">
+        @if (isLoggedIn()) {
           <a matButton routerLink="groups" aria-label="groups" title="Groups">
             <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
             >&nbsp;Groups
@@ -91,19 +91,18 @@
               <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
               >&nbsp;History
             </a>
-            <a
-              matButton
-              routerLink="split"
-              aria-label="split expense"
-              title="Split Expense"
-            >
-              <mat-icon fontSet="material-symbols-outlined"
-                >arrow_split</mat-icon
-              >&nbsp;Split Expense
-            </a>
           }
-        </div>
-      }
+        }
+        <a
+          matButton
+          routerLink="split"
+          aria-label="split expense"
+          title="Split Expense"
+        >
+          <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
+          >&nbsp;Split
+        </a>
+      </div>
       <div class="account links">
         <button
           matIconButton
@@ -226,6 +225,15 @@
           <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
           >&nbsp;History
         </a>
+        <a
+          mat-menu-item
+          routerLink="split"
+          aria-label="split expense"
+          title="Split expense"
+        >
+          <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
+          >&nbsp;Split
+        </a>
       }
       <a mat-menu-item routerLink="help" aria-label="help" title="Help">
         <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
@@ -244,6 +252,15 @@
         out
       </a>
     } @else {
+      <a
+        mat-menu-item
+        routerLink="split"
+        aria-label="split expense"
+        title="Split expense"
+      >
+        <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
+        >&nbsp;Split
+      </a>
       <a mat-menu-item routerLink="auth/login" aria-label="login" title="Login">
         <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
         in

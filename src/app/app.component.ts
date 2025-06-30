@@ -55,7 +55,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.breakpointObserver
-      .observe('(max-width: 1009px)')
+      .observe('(max-width: 1088px)')
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });

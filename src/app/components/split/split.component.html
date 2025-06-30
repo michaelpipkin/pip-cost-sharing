@@ -191,7 +191,7 @@
         <h4>Expense Summary</h4>
         <button
           mat-mini-fab
-          class="btn btn-primary ms-2"
+          class="btn btn-primary ms-3"
           matTooltip="Copy summary to clipboard"
           (click)="copySummaryToClipboard()"
         >
@@ -203,6 +203,14 @@
           <span class="summary-label">Total:</span>
           <span class="summary-value">{{ e.amount.value | currency }}</span>
         </div>
+        @if (!splitByPercentage() && e.sharedAmount.value > 0) {
+          <div class="summary-line">
+            <span class="summary-label">Evenly shared amount:</span>
+            <span class="summary-value">{{
+              e.sharedAmount.value | currency
+            }}</span>
+          </div>
+        }
         @if (!splitByPercentage() && e.allocatedAmount.value > 0) {
           <div class="summary-line">
             <span class="summary-label">Proportional amount:</span>
@@ -218,14 +226,59 @@
           let i = $index
         ) {
           @if (splitForm.get('owedBy')?.value?.trim()) {
-            <div class="summary-line">
-              <span class="summary-label"
-                >{{ splitForm.get('owedBy')?.value }}:</span
-              >
-              <span class="summary-value">{{
-                splitForm.get('allocatedAmount')?.value | currency
-              }}</span>
-            </div>
+            @if (splitByPercentage()) {
+              <!-- Percentage split display -->
+              <div class="summary-line">
+                <span class="summary-label"
+                  >{{ splitForm.get('owedBy')?.value }} ({{
+                    splitForm.get('percentage')?.value
+                  }}%):</span
+                >
+                <span class="summary-value">{{
+                  splitForm.get('allocatedAmount')?.value | currency
+                }}</span>
+              </div>
+            } @else {
+              <!-- Dollar amount split display with breakdown -->
+              <div class="summary-person">
+                <div class="summary-line person-name">
+                  <span class="summary-label"
+                    >{{ splitForm.get('owedBy')?.value }}:</span
+                  >
+                  <span class="summary-value">{{
+                    splitForm.get('allocatedAmount')?.value | currency
+                  }}</span>
+                </div>
+                <div class="summary-breakdown">
+                  @if (splitForm.get('assignedAmount')?.value > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label">Personal:</span>
+                      <span class="summary-value">{{
+                        splitForm.get('assignedAmount')?.value | currency
+                      }}</span>
+                    </div>
+                  }
+                  @if (calculateSharedPortion(splitForm.value) > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label">Shared:</span>
+                      <span class="summary-value">{{
+                        calculateSharedPortion(splitForm.value) | currency
+                      }}</span>
+                    </div>
+                  }
+                  @if (calculateProportionalAmount(splitForm.value) > 0) {
+                    <div class="summary-line breakdown-line">
+                      <span class="summary-label"
+                        >Proportional (tax, tip, etc):</span
+                      >
+                      <span class="summary-value">{{
+                        calculateProportionalAmount(splitForm.value) | currency
+                      }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           }
         }
       </div>

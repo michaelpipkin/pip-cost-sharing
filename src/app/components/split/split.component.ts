@@ -338,15 +338,57 @@ export class SplitComponent {
 
     summaryText += '=============\n';
 
-    // Add each person's allocation
+    // Add each person's allocation with breakdown
     this.splitsFormArray.controls.forEach((splitControl) => {
       const split = splitControl.value;
       if (split.owedBy && split.owedBy.trim()) {
-        summaryText += `${split.owedBy}: ${this.formatCurrency(split.allocatedAmount)}\n`;
+        if (this.splitByPercentage()) {
+          // Show percentage and total for percentage splits
+          summaryText += `${split.owedBy} (${split.percentage}%): ${this.formatCurrency(split.allocatedAmount)}\n`;
+        } else {
+          // Show breakdown for dollar amount splits
+          const assignedAmount = split.assignedAmount || 0;
+          const proportionalAmount = this.calculateProportionalAmount(split);
+          const sharedPortionAmount = this.calculateSharedPortion();
+
+          summaryText += `${split.owedBy}:\n`;
+          if (assignedAmount > 0) {
+            summaryText += `  Manual: ${this.formatCurrency(assignedAmount)}\n`;
+          }
+          if (proportionalAmount > 0) {
+            summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+          }
+          if (sharedPortionAmount > 0) {
+            summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
+          }
+          summaryText += `  Total: ${this.formatCurrency(split.allocatedAmount)}\n`;
+        }
       }
     });
 
     return summaryText.trim();
+  }
+
+  // Helper methods to calculate breakdown amounts
+  private calculateProportionalAmount(split: any): number {
+    const formValue = this.expenseForm.value;
+    const allocatedAmount = formValue.allocatedAmount || 0;
+    const splitTotal = this.getAssignedTotal();
+    const assignedAmount = split.assignedAmount || 0;
+
+    if (splitTotal === 0 || allocatedAmount === 0) return 0;
+    return +((assignedAmount / splitTotal) * allocatedAmount).toFixed(2);
+  }
+
+  private calculateSharedPortion(): number {
+    const formValue = this.expenseForm.value;
+    const sharedAmount = formValue.sharedAmount || 0;
+    const splitCount = this.splitsFormArray.controls.filter(
+      (control) => control.value.owedBy && control.value.owedBy.trim()
+    ).length;
+
+    if (splitCount === 0) return 0;
+    return +(sharedAmount / splitCount).toFixed(2);
   }
 
   // Helper method to format currency
