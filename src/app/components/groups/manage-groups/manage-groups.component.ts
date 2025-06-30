@@ -98,7 +98,7 @@ export class ManageGroupsComponent implements OnInit {
     };
     this.loading.loadingOn();
     this.groupService
-      .updateGroup(this.selectedGroup().id, changes)
+      .updateGroup(this.selectedGroup().ref, changes)
       .then(() => {
         this.dialogRef.close({
           success: true,

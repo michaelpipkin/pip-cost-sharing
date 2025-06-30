@@ -12,41 +12,20 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "useDefineForClassFields": false,
-    "lib": [
-      "ES2022",
-      "dom"
-    ],
+    "lib": ["ES2022", "dom"],
     "paths": {
-      "@env/*": [
-        "src/environments/*"
-      ],
-      "@shared/*": [
-        "src/app/shared/*"
-      ],
-      "@services/*": [
-        "src/app/services/*"
-      ],
-      "@models/*": [
-        "src/app/models/*"
-      ],
-      "@components/*": [
-        "src/app/components/*"
-      ],
-      "@store/*": [
-        "src/app/store/*"
-      ],
-      "@app/*": [
-        "src/app/*"
-      ]
+      "@env/*": ["src/environments/*"],
+      "@shared/*": ["src/app/shared/*"],
+      "@services/*": ["src/app/services/*"],
+      "@models/*": ["src/app/models/*"],
+      "@components/*": ["src/app/components/*"],
+      "@store/*": ["src/app/store/*"],
+      "@utilities/*": ["src/app/utilities/*"],
+      "@app/*": ["src/app/*"]
     },
-    "typeRoots": [
-      "node_modules/@types",
-      "node_modules/@hcaptcha"
-    ]
+    "typeRoots": ["node_modules/@types", "node_modules/@hcaptcha"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false

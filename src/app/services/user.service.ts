@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -8,7 +10,17 @@ import {
   getAuth,
   setPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import {
+  collectionGroup,
+  deleteField,
+  doc,
+  DocumentReference,
+  getDoc,
+  getDocs,
+  getFirestore,
+  setDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import { GroupService } from './group.service';
 import { IUserService } from './user.service.interface';
 
@@ -60,10 +72,14 @@ export class UserService implements IUserService {
     const docRef = doc(this.fs, `users/${userId}`);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return new User(docSnap.data());
+      return new User({
+        id: docSnap.id,
+        ...docSnap.data(),
+        ref: docRef as DocumentReference<User>,
+      });
     } else {
       setDoc(docRef, {
-        defaultGroupId: '',
+        defaultGroupRef: null,
         venmoId: '',
         paypalId: '',
         cashAppId: '',
@@ -73,17 +89,17 @@ export class UserService implements IUserService {
     }
   }
 
-  async saveDefaultGroup(groupId: string): Promise<void> {
+  async saveDefaultGroup(groupRef: DocumentReference<Group>): Promise<void> {
     const userId = this.userStore.user().id;
     const docRef = doc(this.fs, `users/${userId}`);
     return await setDoc(
       docRef,
       {
-        defaultGroupId: groupId,
+        defaultGroupRef: groupRef,
       },
       { merge: true }
     ).then(() => {
-      this.userStore.updateUser({ defaultGroupId: groupId });
+      this.userStore.updateUser({ defaultGroupRef: groupRef });
     });
   }
 
@@ -95,12 +111,12 @@ export class UserService implements IUserService {
     });
   }
 
-  async getPaymentMethods(groupId: string, memberId: string): Promise<object> {
-    const memberDocRef = doc(this.fs, `groups/${groupId}/members/${memberId}`);
-    return await getDoc(memberDocRef).then(async (memberDoc) => {
-      const userId = memberDoc.data().userId;
-      const userDocRef = doc(this.fs, `users/${userId}`);
-      const userDocSnap = await getDoc(userDocRef);
+  async getPaymentMethods(
+    memberRef: DocumentReference<Member>
+  ): Promise<object> {
+    return await getDoc(memberRef).then(async (memberDoc) => {
+      const userRef = memberDoc.data().userRef;
+      const userDocSnap = await getDoc(userRef);
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
         return {
@@ -118,5 +134,49 @@ export class UserService implements IUserService {
   logout(): void {
     this.groupService.logout();
     this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
+  }
+
+  async migrateGroupIdsToRefs(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all user documents
+      const usersCollection = collectionGroup(this.fs, 'users');
+      const userDocs = await getDocs(usersCollection);
+
+      for (const userDoc of userDocs.docs) {
+        const userData = userDoc.data();
+
+        // Skip if already migrated (no groupId or groupRef already exists)
+        if (!userData.defaultGroupId || userData.defaultGroupRef) {
+          continue;
+        }
+
+        // Create the group document reference
+        const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}`);
+
+        // Update the document: add groupRef and remove groupId
+        batch.update(userDoc.ref, {
+          defaultGroupRef: groupRef,
+          defaultGroupId: deleteField(), // This removes the field
+        });
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log('Successfully migrated all user documents');
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating user documents:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
   }
 }

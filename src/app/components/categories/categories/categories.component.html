@@ -23,6 +23,7 @@
             mat-icon-button
             aria-label="Clear"
             (click)="nameFilter.set('')"
+            [matTooltip]="'Clear'"
           >
             <mat-icon>close</mat-icon>
           </button>
@@ -51,11 +52,6 @@
           (matSortChange)="sortCategories($event)"
           class="static-table"
         >
-          @let columnsToDisplay = ['name', 'active'];
-          <ng-container matColumnDef="id">
-            <th mat-header-cell *matHeaderCellDef>Id</th>
-            <td mat-cell *matCellDef="let category">{{ category.id }}</td>
-          </ng-container>
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
             <td mat-cell *matCellDef="let category">{{ category.name }}</td>
@@ -68,11 +64,11 @@
           </ng-container>
           <tr
             mat-header-row
-            *matHeaderRowDef="columnsToDisplay; sticky: true"
+            *matHeaderRowDef="displayedColumns(); sticky: true"
           ></tr>
           <tr
             mat-row
-            *matRowDef="let myRowData; columns: columnsToDisplay"
+            *matRowDef="let myRowData; columns: displayedColumns()"
             (click)="onRowClick(myRowData)"
             [class.clickable-row]="currentMember()?.groupAdmin"
           ></tr>

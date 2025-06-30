@@ -20,18 +20,20 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
-import { ExpenseStore } from '@store/expense.store.';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
 import {
@@ -44,7 +46,6 @@ import {
 import {
   Component,
   computed,
-  effect,
   inject,
   model,
   OnInit,
@@ -85,6 +86,7 @@ import {
     YesNoNaPipe,
     ClearSelectDirective,
     RouterLink,
+    DocRefCompareDirective,
   ],
 })
 export class ExpensesComponent implements OnInit {
@@ -93,7 +95,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
-  protected readonly expenseStore = inject(ExpenseStore);
+  protected readonly categoryService = inject(CategoryService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
@@ -108,32 +110,37 @@ export class ExpensesComponent implements OnInit {
   currentMember: Signal<Member> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  expenses: Signal<Expense[]> = this.expenseStore.groupExpenses;
 
+  expenses = signal<Expense[]>([]);
+  initialLoad = signal<boolean>(true);
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
   unpaidOnly = model<boolean>(true);
-  selectedMemberId = model<string>('');
-  selectedCategoryId = model<string>('');
-  startDate = model<Date | null>(null);
+  selectedMember = model<DocumentReference | null>(null);
+  selectedCategory = model<DocumentReference | null>(null);
+  startDate = model<Date | null>(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  ); // 30 days ago
   endDate = model<Date | null>(null);
 
   filteredExpenses = computed(
     (
       unpaidOnly: boolean = this.unpaidOnly(),
-      selectedMemberId: string = this.selectedMemberId(),
-      selectedCategoryId: string = this.selectedCategoryId()
+      selectedMember: DocumentReference | null = this.selectedMember(),
+      selectedCategory: DocumentReference | null = this.selectedCategory()
     ) => {
       var filteredExpenses = this.expenses().filter((expense: Expense) => {
         return (
           (!expense.paid || expense.paid != unpaidOnly) &&
-          expense.paidByMemberId ==
-            (selectedMemberId != ''
-              ? selectedMemberId
-              : expense.paidByMemberId) &&
-          expense.categoryId ==
-            (selectedCategoryId != '' ? selectedCategoryId : expense.categoryId)
+          expense.paidByMemberRef.path ==
+            (!!selectedMember
+              ? selectedMember.path
+              : expense.paidByMemberRef.path) &&
+          expense.categoryRef.path ==
+            (!!selectedCategory
+              ? selectedCategory.path
+              : expense.categoryRef.path)
         );
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
@@ -166,17 +173,6 @@ export class ExpensesComponent implements OnInit {
   columnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
 
-  constructor() {
-    // Monitor loading state based on expenses store loaded state
-    effect(() => {
-      if (!this.expenseStore.loaded()) {
-        this.loadingService.loadingOn();
-      } else {
-        this.loadingService.loadingOff();
-      }
-    });
-  }
-
   ngOnInit(): void {
     this.breakpointObserver
       .observe('(max-width: 1009px)')
@@ -203,6 +199,20 @@ export class ExpensesComponent implements OnInit {
           ]);
           this.smallScreen.set(false);
         }
+      });
+    this.loading.loadingOn();
+    this.expenseService
+      .getExpensesForGroup(this.currentGroup().id)
+      .then((expenses: Expense[]) => {
+        this.expenses.set(expenses);
+        this.loading.loadingOff();
+      })
+      .catch((error) => {
+        console.error('Error fetching expenses:', error);
+      })
+      .finally(() => {
+        this.initialLoad.set(false);
+        this.loading.loadingOff();
       });
   }
 

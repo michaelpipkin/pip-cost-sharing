@@ -54,7 +54,7 @@ export class JoinGroupComponent {
     this.joinGroupForm.disable();
     const val = this.joinGroupForm.value;
     const newMember: Partial<Member> = {
-      userId: this.user().id,
+      userRef: this.user().ref,
       displayName: val.displayName,
       email: this.user().email,
       active: true,

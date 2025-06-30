@@ -17,11 +17,13 @@ import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { SplitService } from '@services/split.service';
 import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
+import { DocumentReference } from 'firebase/firestore';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
 import {
   animate,
@@ -67,6 +69,7 @@ import {
     CurrencyPipe,
     ClearSelectDirective,
     RouterLink,
+    DocRefCompareDirective,
   ],
 })
 export class MemorizedComponent implements OnInit {
@@ -90,21 +93,21 @@ export class MemorizedComponent implements OnInit {
   filteredMemorizeds = computed<Memorized[]>(() => {
     var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {
       return (
-        memorized.paidByMemberId ==
-          (this.selectedMemberId() != ''
-            ? this.selectedMemberId()
-            : memorized.paidByMemberId) &&
-        memorized.categoryId ==
-          (this.selectedCategoryId() != ''
-            ? this.selectedCategoryId()
-            : memorized.categoryId)
+        memorized.paidByMemberRef.path ==
+          (!!this.selectedMember()
+            ? this.selectedMember().path
+            : memorized.paidByMemberRef.path) &&
+        memorized.categoryRef.path ==
+          (!!this.selectedCategory()
+            ? this.selectedCategory().path
+            : memorized.categoryRef.path)
       );
     });
     return filteredMemorized;
   });
 
-  selectedMemberId = model<string>('');
-  selectedCategoryId = model<string>('');
+  selectedMember = model<DocumentReference<Member | null>>(null);
+  selectedCategory = model<DocumentReference<Category> | null>(null);
   expandedExpense = model<Memorized | null>(null);
 
   columnsToDisplay = signal<string[]>([]);

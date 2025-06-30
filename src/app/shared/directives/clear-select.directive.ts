@@ -7,11 +7,12 @@ import { MatSelect } from '@angular/material/select';
 })
 export class ClearSelectDirective {
   appClearSelect = input<MatSelect>();
+  clearValue = input<any>('');
 
   @HostListener('click')
   onClick() {
     if (this.appClearSelect) {
-      this.appClearSelect().value = '';
+      this.appClearSelect().value = this.clearValue();
       setTimeout(() => {
         this.appClearSelect().close();
       }, 10);

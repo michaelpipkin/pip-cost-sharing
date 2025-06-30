@@ -17,9 +17,17 @@
           mat-raised-button
           class="btn-primary mb-4"
           type="button"
-          routerLink="/login"
+          [routerLink]="['auth', 'login']"
         >
           Login or sign up now for a free account
+        </a>
+        <a
+          matButton="elevated"
+          class="btn-primary mb-4"
+          type="button"
+          [routerLink]="['split']"
+        >
+          Split an expense now
         </a>
       }
     </div>

@@ -1,4 +1,20 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -19,27 +35,13 @@ import { Member } from '@models/member';
 import { HistoryService } from '@services/history.service';
 import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { DocumentReference } from 'firebase/firestore';
 import { HistoryHelpComponent } from '../history-help/history-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-history',
@@ -70,6 +72,7 @@ import {
     MatDatepickerModule,
     CurrencyPipe,
     DatePipe,
+    DocRefCompareDirective,
   ],
 })
 export class HistoryComponent {
@@ -90,18 +93,20 @@ export class HistoryComponent {
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
-  selectedMemberId = model<string>(this.currentMember()?.id ?? '');
+  selectedMember = model<DocumentReference<Member>>(
+    this.currentMember()?.ref ?? null
+  );
   startDate = model<Date | null>(
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   ); // 30 days ago
   endDate = model<Date | null>(null);
 
   filteredHistory = computed<History[]>(
-    (selectedMemberId = this.selectedMemberId()) => {
+    (selectedMember = this.selectedMember()) => {
       var filteredHistory = this.history().filter((history: History) => {
         return (
-          history.paidByMemberRef.id === selectedMemberId ||
-          history.paidToMemberRef.id === selectedMemberId
+          history.paidByMemberRef.eq(selectedMember) ||
+          history.paidToMemberRef.eq(selectedMember)
         );
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
@@ -135,7 +140,7 @@ export class HistoryComponent {
 
   constructor() {
     effect(() => {
-      this.selectedMemberId.set(this.currentMember()?.id ?? '');
+      this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
     effect(() => {
       if (!this.historyStore.loaded()) {
