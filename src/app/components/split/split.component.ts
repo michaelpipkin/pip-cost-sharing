@@ -333,7 +333,7 @@ export class SplitComponent {
     let summaryText = `Total: ${this.formatCurrency(totalAmount)}\n`;
 
     if (!this.splitByPercentage() && formValue.sharedAmount > 0) {
-      summaryText += `Evenl shared amount: ${this.formatCurrency(formValue.sharedAmount)}\n`;
+      summaryText += `Evenly shared amount: ${this.formatCurrency(formValue.sharedAmount)}\n`;
     }
 
     if (!this.splitByPercentage() && allocatedAmount > 0) {
