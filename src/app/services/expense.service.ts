@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import { ExpenseStore } from '@store/expense.store.';
+import { CategoryService } from './category.service';
+import { IExpenseService } from './expense.service.interface';
 import {
   collection,
   collectionGroup,
@@ -16,8 +18,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { CategoryService } from './category.service';
-import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -76,11 +76,11 @@ export class ExpenseService implements IExpenseService {
     if (!expenseDoc.exists()) {
       throw new Error('Expense not found');
     }
-    const expense = {
+    const expense = new Expense({
       id: expenseDoc.id,
       ...expenseDoc.data(),
-      ref: expenseDoc.ref,
-    } as Expense;
+      ref: expenseDoc.ref as DocumentReference<Expense>,
+    });
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
       where('expenseRef', '==', expenseReference as DocumentReference<Expense>)

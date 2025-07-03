@@ -2,11 +2,13 @@ import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
+import { ISplitService } from './split.service.interface';
 import {
   collection,
   collectionGroup,
   deleteField,
   doc,
+  DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -14,7 +16,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -31,11 +32,11 @@ export class SplitService implements ISplitService {
     onSnapshot(splitsQuery, (splitsQuerySnap) => {
       const splits = [
         ...splitsQuerySnap.docs.map((d) => {
-          return {
+          return new Split({
             id: d.id,
             ...d.data(),
-            ref: d.ref,
-          } as Split;
+            ref: d.ref as DocumentReference<Split>,
+          });
         }),
       ];
       this.splitStore.setSplits(splits);
