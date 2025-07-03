@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
 import { MemorizedStore } from '@store/memorized.store';
+import { IMemorizedService } from './memorized.service.interface';
 import {
   addDoc,
   collection,
@@ -16,7 +17,6 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { IMemorizedService } from './memorized.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -51,11 +51,11 @@ export class MemorizedService implements IMemorizedService {
     if (!memorizedDoc.exists()) {
       throw new Error('Memorized expense not found');
     }
-    return {
+    return new Memorized({
       id: memorizedDoc.id,
       ...memorizedDoc.data(),
-      ref: memorizedDoc.ref,
-    } as Memorized;
+      ref: memorizedDoc.ref as DocumentReference<Memorized>,
+    });
   }
 
   async addMemorized(

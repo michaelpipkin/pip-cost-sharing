@@ -40,6 +40,11 @@ testem.log
 *.vsidx
 src/app/firebase.config.ts
 
+# Testing
+/playwright-report/
+/test-results/
+/playwright/.cache/
+
 # System files
 .DS_Store
 Thumbs.db
