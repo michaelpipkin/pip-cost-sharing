@@ -103,11 +103,13 @@ body.dark-theme {
   .mat-mdc-icon-button:hover {
     background-color: tokens.color('primary-light') !important;
     color: tokens.color('on-primary-light');
+    border-radius: 0.5em !important;
   }
 
   .account.links a:hover {
     background-color: tokens.color('primary-light') !important;
     color: tokens.color('on-primary-light');
+    border-radius: 0.5em !important;
   }
 
   .menu a,

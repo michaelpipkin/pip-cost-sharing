@@ -6,7 +6,6 @@ export class Member {
     Object.assign(this, init);
   }
   id: string;
-  //userId: string;
   userRef: DocumentReference<User>;
   displayName: string;
   email: string;

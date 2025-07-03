@@ -10,10 +10,8 @@ export class Expense {
   id: string;
   date: Timestamp;
   description: string;
-  //categoryId: string;
   categoryRef: DocumentReference<Category>;
   categoryName?: string;
-  //paidByMemberId: string;
   paidByMemberRef: DocumentReference<Member>;
   sharedAmount: number;
   allocatedAmount: number;
