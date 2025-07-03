@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
-import { ExpenseStore } from '@store/expense.store.';
+import { ExpenseStore } from '@store/expense.store';
 import { CategoryService } from './category.service';
 import { IExpenseService } from './expense.service.interface';
 import {
