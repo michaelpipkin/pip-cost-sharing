@@ -3,7 +3,7 @@
   <form [formGroup]="registerForm" class="register" (submit)="register()">
     <mat-form-field>
       <mat-label>Email</mat-label>
-      <input matInput formControlName="email" />
+      <input matInput type="email" formControlName="email" />
       @if (r.email?.errors?.required) {
         <mat-error>Email is required.</mat-error>
       }
