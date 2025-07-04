@@ -1,10 +1,12 @@
-name: Deploy to Firebase Hosting on push
+name: CI/CD Pipeline
 on:
   push:
     branches:
       - main
+  pull_request:
+    # Run tests on any PR, regardless of target branch
 jobs:
-  build_and_deploy:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -20,8 +22,88 @@ jobs:
         with:
           version: 10.2.0
 
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile # Use pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Firebase config file
+        run: |
+          cat << EOF > src/app/firebase.config.ts
+          export const firebaseConfig = {
+            apiKey: 'fake-api-key',
+            authDomain: 'fake-auth-domain',
+            projectId: 'pip-cost-sharing',
+            storageBucket: 'fake-storage-bucket',
+            messagingSenderId: 'fake-sender-id',
+            appId: 'fake-app-id',
+            measurementId: 'fake-measurement-id',
+          };
+          EOF
+      
+      - name: Create Github config file
+        run: |
+          cat << EOF > src/app/github.config.ts
+          export const githubConfig = {
+            personalAccessToken: 'fake-token',
+          };
+          EOF
+
+      - name: Install Playwright Browsers
+        run: pnpm e2e:install
+
+      - name: Run E2E Tests
+        run: pnpm e2e:ci
+        env:
+          CI: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.2.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Create Firebase config file
         run: |
