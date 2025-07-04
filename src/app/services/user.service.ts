@@ -5,6 +5,8 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -21,8 +23,6 @@ import {
   setDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -85,7 +85,15 @@ export class UserService implements IUserService {
         cashAppId: '',
         zelleId: '',
       });
-      return null;
+      return new User({
+        id: userId,
+        defaultGroupRef: null,
+        venmoId: '',
+        paypalId: '',
+        cashAppId: '',
+        zelleId: '',
+        ref: docRef as DocumentReference<User>,
+      });
     }
   }
 

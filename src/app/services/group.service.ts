@@ -64,6 +64,12 @@ export class GroupService implements IGroupService {
           };
         }),
       ];
+      if (userGroups.length === 0) {
+        this.groupStore.setAllUserGroups([]);
+        autoNav = false;
+        this.router.navigateByUrl('/groups');
+        return;
+      }
       const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
       onSnapshot(groupQuery, async (groupQuerySnap) => {
         const userGroupIds = userGroups.map((m) => m.groupId);
