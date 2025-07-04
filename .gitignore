@@ -44,6 +44,7 @@ src/app/firebase.config.ts
 /playwright-report/
 /test-results/
 /playwright/.cache/
+/e2e/screenshots/
 
 # System files
 .DS_Store
