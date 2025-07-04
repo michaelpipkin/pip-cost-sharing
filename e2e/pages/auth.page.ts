@@ -151,8 +151,9 @@ export class AuthPage extends BasePage {
    */
   async isLoggedIn(): Promise<boolean> {
     try {
-      // Wait a moment for UI to settle after potential state changes
-      await this.page.waitForTimeout(1500);
+      // Wait longer in CI environments for UI to settle after potential state changes
+      const waitTime = process.env.CI ? 3000 : 1500;
+      await this.page.waitForTimeout(waitTime);
 
       // Check for the three elements guaranteed to be visible to any logged-in user:
       // 1. Logout button - always visible when logged in
@@ -167,6 +168,18 @@ export class AuthPage extends BasePage {
       const groupsLink = this.page.locator(
         'a[routerlink="groups"], a[href="/groups"]'
       );
+
+      // Wait for at least one authenticated element to appear (with longer timeout in CI)
+      const authTimeout = process.env.CI ? 10000 : 5000;
+      try {
+        await Promise.race([
+          logoutButton.waitFor({ state: 'visible', timeout: authTimeout }),
+          accountButton.waitFor({ state: 'visible', timeout: authTimeout }),
+          groupsLink.waitFor({ state: 'visible', timeout: authTimeout }),
+        ]);
+      } catch {
+        // If none appear within timeout, continue with normal checks
+      }
 
       // Check for elements that appear when isLoggedIn() is false
       const loginButton = this.page.locator(
