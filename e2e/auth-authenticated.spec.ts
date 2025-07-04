@@ -24,8 +24,32 @@ test.describe('Authentication - Authenticated User Tests', () => {
     // This will create a user in Firebase Auth emulator and login
     await authPage.createAndLoginTestUser();
 
+    // Wait for potential redirects and UI updates after login
+    await preserveDataFirebasePage.waitForTimeout(3000);
+
+    // Check URL - we should be redirected away from login page after successful login
+    const currentUrl = preserveDataFirebasePage.url();
+    console.log('Current URL after login:', currentUrl);
+
     // Check that we're logged in (adjust based on your app's behavior)
     const isLoggedIn = await authPage.isLoggedIn();
+    console.log('Is logged in result:', isLoggedIn);
+
+    // Additional debug: check what's visible on the page
+    const pageContent = await preserveDataFirebasePage.textContent('body');
+    console.log(
+      'Page contains "logout":',
+      pageContent?.toLowerCase().includes('logout')
+    );
+    console.log(
+      'Page contains "account":',
+      pageContent?.toLowerCase().includes('account')
+    );
+    console.log(
+      'Page contains "groups":',
+      pageContent?.toLowerCase().includes('groups')
+    );
+
     expect(isLoggedIn).toBeTruthy();
   });
 
