@@ -22,6 +22,7 @@
     "e2e:install": "playwright install",
     "e2e:ci": "cross-env CI=true playwright test",
     "e2e:ci:headed": "cross-env CI=true playwright test --headed",
+    "e2e:ci:fast": "cross-env CI=true playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium",
     "e2e:local": "playwright test",
     "e2e:local:headed": "playwright test --headed",
     "e2e:with-firebase": "echo 'Make sure Firebase emulators are running (pnpm emu:data)' && playwright test",
