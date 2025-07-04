@@ -20,7 +20,28 @@ Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.
 
 ## Running end-to-end tests
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+This project uses Playwright for end-to-end testing with Firebase emulator integration. The testing setup supports two environments:
+
+### Local Development Environment (with hCaptcha)
+- Uses `local.dev.com:4200` for hCaptcha compatibility
+- Requires adding `127.0.0.1 local.dev.com` to your hosts file
+- Run tests: `pnpm e2e` or `pnpm e2e:local`
+- Run with UI: `pnpm e2e:headed` or `pnpm e2e:local:headed`
+
+### CI/CD Environment
+- Uses `localhost:4200`
+- Automatically starts Angular dev server
+- Run tests: `pnpm e2e:ci`
+- Run with UI: `pnpm e2e:ci:headed`
+
+### Other Testing Commands
+- `pnpm e2e:debug` - Run tests in debug mode
+- `pnpm e2e:ui` - Run tests in Playwright UI mode
+- `pnpm e2e:report` - View test reports
+- `pnpm e2e:install` - Install Playwright browsers
+
+### Firebase Emulator Integration
+Tests automatically start and configure Firebase emulators. For tests requiring authentication, use the `firebasePage` fixture which includes Firebase emulator configuration.
 
 ## Further help
 
