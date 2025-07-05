@@ -74,9 +74,21 @@ jobs:
         run: pnpm e2e:install --with-deps
 
       - name: Install Firebase CLI
+        if: |
+          github.event_name == 'push' ||
+          (!contains(github.event.pull_request.title, '[skip e2e]') &&
+           !contains(github.event.pull_request.title, '[skip tests]') &&
+           !contains(github.event.pull_request.title, '[no e2e]') &&
+           !contains(github.event.pull_request.title, 'chore:'))
         run: npm install -g firebase-tools
 
       - name: Start Firebase Emulators
+        if: |
+          github.event_name == 'push' ||
+          (!contains(github.event.pull_request.title, '[skip e2e]') &&
+           !contains(github.event.pull_request.title, '[skip tests]') &&
+           !contains(github.event.pull_request.title, '[no e2e]') &&
+           !contains(github.event.pull_request.title, 'chore:'))
         run: |
           firebase emulators:start --only auth,firestore &
           echo "Waiting for emulators to start..."
@@ -86,6 +98,12 @@ jobs:
           echo "Firebase emulators are ready!"
 
       - name: Run Core E2E Tests Only
+        if: |
+          github.event_name == 'push' ||
+          (!contains(github.event.pull_request.title, '[skip e2e]') &&
+           !contains(github.event.pull_request.title, '[skip tests]') &&
+           !contains(github.event.pull_request.title, '[no e2e]') &&
+           !contains(github.event.pull_request.title, 'chore:'))
         run: pnpm e2e:ci:fast
         env:
           CI: true
