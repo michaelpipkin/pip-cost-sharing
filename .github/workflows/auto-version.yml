@@ -88,16 +88,17 @@ jobs:
         run: |
           # Fetch the latest dev branch
           git fetch origin dev
-          # Create a temporary branch from dev
-          git checkout -b temp-version-update origin/dev
-          # Cherry-pick the version bump commit
-          git cherry-pick HEAD~1
-          # Push the changes to dev
-          git push origin temp-version-update:dev
+          # Switch to dev branch
+          git checkout dev
+          # Apply the same version change to dev
+          npm --no-git-tag-version version patch
+          # Commit the change to dev
+          git add package.json
+          git commit -m "chore: bump version from ${{ steps.current-version.outputs.version }} to ${{ steps.new-version.outputs.version }}"
+          # Push to dev
+          git push origin dev
           # Switch back to the original branch
           git checkout ${{ github.head_ref }}
-          # Clean up the temporary branch
-          git branch -D temp-version-update
 
       - name: Comment on PR
         uses: actions/github-script@v7
