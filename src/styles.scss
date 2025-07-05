@@ -747,3 +747,11 @@ span.filename {
 .firebase-emulator-warning {
   display: none !important;
 }
+
+.mat-sort-header-arrow {
+  color: tokens.color('on-primary') !important;
+}
+
+.mat-sort-header:hover .mat-sort-header-arrow {
+  opacity: 0.9 !important;
+}
