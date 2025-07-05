@@ -58,7 +58,7 @@ jobs:
 
       - name: Increment patch version
         if: steps.version-check.outputs.skip == 'false'
-        run: pnpm --no-git-tag-version version patch
+        run: npm --no-git-tag-version version patch
 
       - name: Get new version
         if: steps.version-check.outputs.skip == 'false'
