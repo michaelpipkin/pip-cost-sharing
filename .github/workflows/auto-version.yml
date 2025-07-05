@@ -7,13 +7,18 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   auto-version:
     runs-on: ubuntu-latest
     # Only run if the PR doesn't already have a version bump
     if: |
-      !contains(github.event.pull_request.title, 'version') &&
-      !contains(github.event.pull_request.title, 'bump') &&
+      !contains(github.event.pull_request.title, 'version bump') &&
+      !contains(github.event.pull_request.title, 'bump version') &&
+      !contains(github.event.pull_request.title, 'chore: bump') &&
       !contains(github.event.pull_request.title, 'release')
     
     steps:
@@ -57,7 +62,7 @@ jobs:
 
       - name: Increment patch version
         if: steps.version-check.outputs.skip == 'false'
-        run: pnpm --no-git-tag-version version patch
+        run: npm --no-git-tag-version version patch
 
       - name: Get new version
         if: steps.version-check.outputs.skip == 'false'
