@@ -40,6 +40,7 @@
           matInput
           [(ngModel)]="startDate"
           [matDatepicker]="startDatepicker"
+          appDateShortcutKeys
         />
         @if (!startDate()) {
           <mat-datepicker-toggle
@@ -66,7 +67,12 @@
         subscriptSizing="dynamic"
       >
         <mat-label>End date</mat-label>
-        <input matInput [(ngModel)]="endDate" [matDatepicker]="endDatePicker" />
+        <input
+          matInput
+          [(ngModel)]="endDate"
+          [matDatepicker]="endDatePicker"
+          appDateShortcutKeys
+        />
         @if (!endDate()) {
           <mat-datepicker-toggle
             matIconSuffix

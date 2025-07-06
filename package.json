@@ -25,6 +25,8 @@
     "e2e:ci:fast": "cross-env CI=true playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium",
     "e2e:local": "playwright test",
     "e2e:local:headed": "playwright test --headed",
+    "e2e:local:fast": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium",
+    "e2e:local:fast:headed": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium --headed",
     "e2e:with-firebase": "echo 'Make sure Firebase emulators are running (pnpm emu:data)' && playwright test",
     "test:full": "concurrently --kill-others --success first \"pnpm emu:data\" \"wait-on http://localhost:8080 && playwright test\""
   },

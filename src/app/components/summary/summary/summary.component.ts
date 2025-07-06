@@ -1,20 +1,4 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -36,6 +20,7 @@ import { Split } from '@models/split';
 import { HistoryService } from '@services/history.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -47,6 +32,22 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SummaryHelpComponent } from '../summary-help/summary-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-summary',
@@ -77,6 +78,7 @@ import { SummaryHelpComponent } from '../summary-help/summary-help.component';
     MatTableModule,
     CurrencyPipe,
     DocRefCompareDirective,
+    DateShortcutKeysDirective,
   ],
 })
 export class SummaryComponent {

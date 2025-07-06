@@ -651,6 +651,10 @@ input.number-right::-webkit-inner-spin-button {
   margin-right: -12px;
 }
 
+.mat-mdc-text-field-wrapper:has(.mat-mdc-form-field-icon-suffix) {
+  margin-right: 17px !important;
+}
+
 .clickable {
   cursor: pointer;
 }
