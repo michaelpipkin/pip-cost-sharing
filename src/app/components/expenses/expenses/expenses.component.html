@@ -12,79 +12,14 @@
       </div>
     </div>
     <h4>{{ currentGroup()?.name }}</h4>
-    <div class="filters-1 mb-2">
-      <mat-form-field class="clearable">
-        <mat-label>Filter by payee</mat-label>
-        <mat-select
-          #memberSelect
-          name="member"
-          [(ngModel)]="selectedMember"
-          docRefCompare
-        >
-          @for (member of members(); track member.ref) {
-            <mat-option [value]="member.ref">{{
-              member.displayName
-            }}</mat-option>
-          }
-        </mat-select>
-        @if (selectedMember() !== null) {
-          <button
-            matIconSuffix
-            tabindex="-1"
-            mat-icon-button
-            aria-label="Clear"
-            [appClearSelect]="memberSelect"
-            [clearValue]="null"
-            [matTooltip]="'Clear'"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </mat-form-field>
-      <mat-form-field
-        class="clearable"
-        [class.hidden]="categories().length === 1"
-      >
-        <mat-label>Filter by category</mat-label>
-        <mat-select
-          #categorySelect
-          name="category"
-          [(ngModel)]="selectedCategory"
-          docRefCompare
-        >
-          @for (category of categories(); track category.ref) {
-            <mat-option [value]="category.ref">{{ category.name }}</mat-option>
-          }
-        </mat-select>
-        @if (selectedCategory() !== null) {
-          <button
-            matIconSuffix
-            tabindex="-1"
-            mat-icon-button
-            aria-label="Clear"
-            [appClearSelect]="categorySelect"
-            [clearValue]="null"
-            [matTooltip]="'Clear'"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </mat-form-field>
-      <mat-slide-toggle
-        #unpaidToggle
-        class="unpaid-toggle"
-        [checked]="true"
-        [(ngModel)]="unpaidOnly"
-        >Unpaid only</mat-slide-toggle
-      >
-    </div>
-    <div class="filters-2">
+    <div class="filters-1">
       <mat-form-field class="datepicker" subscriptSizing="dynamic">
         <mat-label>Start date</mat-label>
         <input
           matInput
           [matDatepicker]="startDatepicker"
           [(ngModel)]="startDate"
+          appDateShortcutKeys
         />
         @if (!startDate()) {
           <mat-datepicker-toggle
@@ -107,7 +42,12 @@
       </mat-form-field>
       <mat-form-field class="datepicker" subscriptSizing="dynamic">
         <mat-label>End date</mat-label>
-        <input matInput [matDatepicker]="endDatePicker" [(ngModel)]="endDate" />
+        <input
+          matInput
+          [matDatepicker]="endDatePicker"
+          [(ngModel)]="endDate"
+          appDateShortcutKeys
+        />
         @if (!endDate()) {
           <mat-datepicker-toggle
             matIconSuffix
@@ -128,6 +68,52 @@
         }
         <mat-datepicker #endDatePicker></mat-datepicker>
       </mat-form-field>
+      <button
+        matButton="elevated"
+        type="button"
+        class="btn-primary fetch-button"
+        (click)="onFetchExpensesClick()"
+      >
+        Fetch Expenses
+      </button>
+    </div>
+    <div class="filters-2">
+      <mat-form-field
+        class="clearable"
+        id="search-field"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>{{
+          searchFocused()
+            ? 'Search by payer, description, or category'
+            : 'Search'
+        }}</mat-label>
+        <input
+          matInput
+          [(ngModel)]="searchText"
+          (focus)="onSearchFocus()"
+          (blur)="onSearchBlur()"
+        />
+        @if (searchText() !== '') {
+          <button
+            matIconSuffix
+            tabindex="-1"
+            mat-icon-button
+            aria-label="Clear"
+            (click)="searchText.set('')"
+            [matTooltip]="'Clear'"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+      <mat-slide-toggle
+        #unpaidToggle
+        class="unpaid-toggle"
+        [checked]="true"
+        [(ngModel)]="unpaidOnly"
+        >Unpaid only</mat-slide-toggle
+      >
       <button
         matButton="elevated"
         class="btn-primary add-button"
@@ -182,7 +168,7 @@
             <td mat-footer-cell *matFooterCellDef></td>
           </ng-container>
           <ng-container matColumnDef="paidBy">
-            <th mat-header-cell *matHeaderCellDef>Paid By</th>
+            <th mat-header-cell *matHeaderCellDef>Payer</th>
             <td mat-cell *matCellDef="let expense">
               {{ getMemberName(expense.paidByMemberRef.id) }}
             </td>

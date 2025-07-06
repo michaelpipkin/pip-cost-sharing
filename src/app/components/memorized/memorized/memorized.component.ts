@@ -6,6 +6,7 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
@@ -16,14 +17,11 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { SplitService } from '@services/split.service';
-import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
-import { DocumentReference } from 'firebase/firestore';
 import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
 import {
   animate,
@@ -66,10 +64,9 @@ import {
     MatIconModule,
     MatTooltipModule,
     MatTableModule,
+    MatInputModule,
     CurrencyPipe,
-    ClearSelectDirective,
     RouterLink,
-    DocRefCompareDirective,
   ],
 })
 export class MemorizedComponent implements OnInit {
@@ -84,30 +81,38 @@ export class MemorizedComponent implements OnInit {
   protected readonly loading = inject(LoadingService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
+  members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member> = this.memberStore.currentMember;
-  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
   memorizeds: Signal<Memorized[]> = this.memorizedStore.memorizedExpenses;
 
-  filteredMemorizeds = computed<Memorized[]>(() => {
-    var filteredMemorized = this.memorizeds().filter((memorized: Memorized) => {
-      return (
-        memorized.paidByMemberRef.path ==
-          (!!this.selectedMember()
-            ? this.selectedMember().path
-            : memorized.paidByMemberRef.path) &&
-        memorized.categoryRef.path ==
-          (!!this.selectedCategory()
-            ? this.selectedCategory().path
-            : memorized.categoryRef.path)
-      );
-    });
-    return filteredMemorized;
-  });
+  searchText = model<string>('');
+  searchFocused = model<boolean>(false);
 
-  selectedMember = model<DocumentReference<Member | null>>(null);
-  selectedCategory = model<DocumentReference<Category> | null>(null);
+  filteredMemorizeds = computed<Memorized[]>(
+    (searchText: string = this.searchText()) => {
+      var filteredMemorized = this.memorizeds().filter(
+        (memorized: Memorized) => {
+          return (
+            !searchText ||
+            memorized.description
+              .toLowerCase()
+              .includes(searchText.toLowerCase()) ||
+            this.members()
+              .find((m) => m.ref.eq(memorized.paidByMemberRef))
+              ?.displayName.toLowerCase()
+              .includes(searchText.toLowerCase()) ||
+            this.categories()
+              .find((c) => c.ref.eq(memorized.categoryRef))
+              ?.name.toLowerCase()
+              .includes(searchText.toLowerCase())
+          );
+        }
+      );
+      return filteredMemorized;
+    }
+  );
   expandedExpense = model<Memorized | null>(null);
 
   columnsToDisplay = signal<string[]>([]);
@@ -147,12 +152,22 @@ export class MemorizedComponent implements OnInit {
       });
   }
 
+  onSearchFocus() {
+    this.searchFocused.set(true);
+  }
+
+  onSearchBlur() {
+    if (!this.searchText()) {
+      this.searchFocused.set(false);
+    }
+  }
+
   onExpandClick(expense: Memorized) {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
 
   getMemberName(memberId: string): string {
-    const member = this.activeMembers().find((m: Member) => m.id === memberId);
+    const member = this.members().find((m: Member) => m.id === memberId);
     return member?.displayName ?? '';
   }
 

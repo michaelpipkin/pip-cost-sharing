@@ -73,7 +73,7 @@
             [class.clickable-row]="currentMember()?.groupAdmin"
           ></tr>
           <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+            <td class="mat-cell" [colSpan]="columnsToDisplay?.length">
               No categories found matching "{{ nameFilter() }}".
             </td>
           </tr>

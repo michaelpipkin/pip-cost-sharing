@@ -1,11 +1,16 @@
 .filters-1,
 .filters-2 {
   display: grid;
-  gap: 8px;
+  gap: 1em;
   align-items: baseline;
   justify-items: center;
   grid-template-rows: auto;
   grid-template-columns: max-content max-content max-content;
+  margin-bottom: 1em;
+}
+
+#search-field {
+  min-width: 230px;
 }
 
 @media screen and (max-width: 1009px) {
@@ -19,16 +24,15 @@
   .filters-1 {
     grid-template-columns: max-content max-content;
   }
-  .unpaid-toggle {
-    grid-column-start: 1;
-    grid-column-end: span 2;
-  }
   .filters-2 {
     grid-template-columns: max-content max-content;
   }
-  .add-button {
+  .add-button,
+  .unpaid-toggle,
+  .fetch-button {
     grid-column-start: 1;
     grid-column-end: span 2;
+    padding-bottom: 0;
   }
 }
 

@@ -1,8 +1,13 @@
 .filters {
   display: grid;
-  gap: 8px;
+  gap: 1em;
   align-items: baseline;
   justify-items: center;
+  grid-template-columns: max-content max-content;
+}
+
+#search-field {
+  min-width: 230px;
 }
 
 @media (max-width: 473px) {
