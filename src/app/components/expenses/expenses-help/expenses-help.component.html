@@ -4,10 +4,19 @@
 </div>
 <mat-dialog-content class="help-dialog-content">
   <p>
-    By default, the expenses page shows all unpaid expenses. You can use the
-    filter dropdowns to filter expenses by payee, category, or both. You can
-    also toggle off Unpaid only to view all expenses. Clicking the Date header
-    will toggle sorting the table in ascending or descending date order.
+    By default, the expenses page loads expenses from the last 30 days. You can
+    change the start and end dates, then click the Fetch Expenses button to
+    retrieve expenses for that date range. Be aware that clearing both dates and
+    fetching all expenses for the group may take a while.
+  </p>
+  <p>
+    You can filter the expenses by payer, description, or category using the
+    search box. Clicking the Unpaid only toggle will alternate between showing
+    all expenses or only those with unpaid splits.
+  </p>
+  <p>
+    Clicking the Date header will toggle sorting the table in ascending or
+    descending date order.
   </p>
   <p>
     Click the Splits arrow on any row to expand the split detail for that

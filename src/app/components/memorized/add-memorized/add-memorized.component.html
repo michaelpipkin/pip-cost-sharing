@@ -11,7 +11,7 @@
     <form [formGroup]="addMemorizedForm" id="expense-form">
       <div class="details-1">
         <mat-form-field id="paid-by-select">
-          <mat-label>Paid by</mat-label>
+          <mat-label>Payer</mat-label>
           <mat-select formControlName="paidByMember" name="group" docRefCompare>
             @for (member of members; track member.ref) {
               <mat-option [value]="member.ref">{{

@@ -27,9 +27,19 @@ export class ExpenseService implements IExpenseService {
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
 
-  async getExpensesForGroup(groupId: string): Promise<Expense[]> {
-    // Get splits first
-    const splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
+  async getGroupExpensesByDateRange(
+    groupId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Expense[]> {
+    // Get splits
+    let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
+    if (startDate) {
+      splitQuery = query(splitQuery, where('date', '>=', startDate));
+    }
+    if (endDate) {
+      splitQuery = query(splitQuery, where('date', '<=', endDate));
+    }
     const splitSnap = await getDocs(splitQuery);
     const splits = splitSnap.docs.map(
       (doc) =>
@@ -41,10 +51,14 @@ export class ExpenseService implements IExpenseService {
     );
 
     // Get expenses
-    const expenseQuery = query(
-      collection(this.fs, `groups/${groupId}/expenses`),
-      orderBy('date')
-    );
+    let expenseQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
+    if (startDate) {
+      expenseQuery = query(expenseQuery, where('date', '>=', startDate));
+    }
+    if (endDate) {
+      expenseQuery = query(expenseQuery, where('date', '<=', endDate));
+    }
+    expenseQuery = query(expenseQuery, orderBy('date'));
     const expenseSnap = await getDocs(expenseQuery);
 
     // Get category map

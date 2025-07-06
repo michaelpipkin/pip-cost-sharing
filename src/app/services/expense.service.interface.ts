@@ -2,7 +2,11 @@ import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 
 export interface IExpenseService {
-  getExpensesForGroup(groupId: string): void;
+  getGroupExpensesByDateRange(
+    groupId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Expense[]>;
   addExpense(
     groupId: string,
     expense: Partial<Expense>,

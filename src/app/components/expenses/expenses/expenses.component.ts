@@ -24,8 +24,8 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
-import { ClearSelectDirective } from '@shared/directives/clear-select.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
@@ -33,7 +33,6 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
 import {
@@ -84,9 +83,8 @@ import {
     DatePipe,
     YesNoPipe,
     YesNoNaPipe,
-    ClearSelectDirective,
     RouterLink,
-    DocRefCompareDirective,
+    DateShortcutKeysDirective,
   ],
 })
 export class ExpensesComponent implements OnInit {
@@ -116,9 +114,9 @@ export class ExpensesComponent implements OnInit {
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
+  searchText = model<string>('');
+  searchFocused = model<boolean>(false);
   unpaidOnly = model<boolean>(true);
-  selectedMember = model<DocumentReference | null>(null);
-  selectedCategory = model<DocumentReference | null>(null);
   startDate = model<Date | null>(
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   ); // 30 days ago
@@ -127,32 +125,25 @@ export class ExpensesComponent implements OnInit {
   filteredExpenses = computed(
     (
       unpaidOnly: boolean = this.unpaidOnly(),
-      selectedMember: DocumentReference | null = this.selectedMember(),
-      selectedCategory: DocumentReference | null = this.selectedCategory()
+      searchText: string = this.searchText()
     ) => {
       var filteredExpenses = this.expenses().filter((expense: Expense) => {
         return (
           (!expense.paid || expense.paid != unpaidOnly) &&
-          expense.paidByMemberRef.path ==
-            (!!selectedMember
-              ? selectedMember.path
-              : expense.paidByMemberRef.path) &&
-          expense.categoryRef.path ==
-            (!!selectedCategory
-              ? selectedCategory.path
-              : expense.categoryRef.path)
+          (!searchText ||
+            expense.description
+              .toLowerCase()
+              .includes(searchText.toLowerCase()) ||
+            this.members()
+              .find((m) => m.ref.eq(expense.paidByMemberRef))
+              ?.displayName.toLowerCase()
+              .includes(searchText.toLowerCase()) ||
+            this.categories()
+              .find((c) => c.ref.eq(expense.categoryRef))
+              ?.name.toLowerCase()
+              .includes(searchText.toLowerCase()))
         );
       });
-      if (this.startDate() !== undefined && this.startDate() !== null) {
-        filteredExpenses = filteredExpenses.filter((expense: Expense) => {
-          return expense.date.toDate() >= this.startDate();
-        });
-      }
-      if (this.endDate() !== undefined && this.endDate() !== null) {
-        filteredExpenses = filteredExpenses.filter((expense: Expense) => {
-          return expense.date.toDate() <= this.endDate();
-        });
-      }
       if (filteredExpenses.length > 0) {
         filteredExpenses = this.sorter.sort(
           filteredExpenses,
@@ -173,7 +164,7 @@ export class ExpensesComponent implements OnInit {
   columnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.breakpointObserver
       .observe('(max-width: 1009px)')
       .subscribe((result) => {
@@ -200,20 +191,60 @@ export class ExpensesComponent implements OnInit {
           this.smallScreen.set(false);
         }
       });
+    await this.loadExpenses().finally(() => {
+      this.initialLoad.set(false);
+    });
+  }
+
+  async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
-    this.expenseService
-      .getExpensesForGroup(this.currentGroup().id)
+    await this.expenseService
+      .getGroupExpensesByDateRange(
+        this.currentGroup().id,
+        this.startDate(),
+        this.endDate()
+      )
       .then((expenses: Expense[]) => {
         this.expenses.set(expenses);
-        this.loading.loadingOff();
       })
       .catch((error) => {
         console.error('Error fetching expenses:', error);
       })
       .finally(() => {
-        this.initialLoad.set(false);
         this.loading.loadingOff();
       });
+  }
+
+  onFetchExpensesClick(): void {
+    if (!this.startDate() && !this.endDate()) {
+      const dialogConfig: MatDialogConfig = {
+        data: {
+          dialogTitle: 'Confirm Fetch All Expenses',
+          confirmationText:
+            'Fetching all expenses with no start or end date may take a long time. Are you sure you want to continue?',
+          cancelButtonText: 'No',
+          confirmButtonText: 'Yes',
+        },
+      };
+      const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+      dialogRef.afterClosed().subscribe((confirm) => {
+        if (confirm) {
+          this.loadExpenses();
+        }
+      });
+    } else {
+      this.loadExpenses();
+    }
+  }
+
+  onSearchFocus() {
+    this.searchFocused.set(true);
+  }
+
+  onSearchBlur() {
+    if (!this.searchText()) {
+      this.searchFocused.set(false);
+    }
   }
 
   onExpandClick(expense: Expense) {
@@ -221,7 +252,7 @@ export class ExpensesComponent implements OnInit {
   }
 
   sortExpenses(e: { active: string; direction: string }): void {
-    this.sortField.set(e.active);
+    // this.sortField.set(e.active);
     this.sortAsc.set(e.direction == 'asc');
   }
 
