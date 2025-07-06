@@ -77,17 +77,18 @@ jobs:
         id: skip-check
         if: github.event_name == 'push'
         run: |
-          # Check the last commit message for skip keywords
-          last_commit_msg=$(git log -1 --pretty=format:"%s")
-          if [[ "$last_commit_msg" == *"[skip e2e]"* ]] || \
-             [[ "$last_commit_msg" == *"[skip tests]"* ]] || \
-             [[ "$last_commit_msg" == *"[no e2e]"* ]] || \
-             [[ "$last_commit_msg" == *"chore:"* ]]; then
+          # Check the last commit message (subject + body) for skip keywords
+          last_commit_full=$(git log -1 --pretty=format:"%s%n%b")
+          echo "Checking commit message: $last_commit_full"
+          if [[ "$last_commit_full" == *"[skip e2e]"* ]] || \
+             [[ "$last_commit_full" == *"[skip tests]"* ]] || \
+             [[ "$last_commit_full" == *"[no e2e]"* ]] || \
+             [[ "$last_commit_full" == *"chore:"* ]]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "Skipping e2e tests based on commit message: $last_commit_msg"
+            echo "Skipping e2e tests based on commit message containing skip keywords"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Running e2e tests for commit: $last_commit_msg"
+            echo "Running e2e tests - no skip keywords found in commit message"
           fi
 
       - name: Install Firebase CLI
