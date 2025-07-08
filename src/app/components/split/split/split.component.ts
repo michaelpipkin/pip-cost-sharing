@@ -1,4 +1,17 @@
 import { CurrencyPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
+import { Split } from '@models/split';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { SplitHelpComponent } from '../split-help/split-help.component';
 import {
   afterEveryRender,
   afterNextRender,
@@ -21,17 +34,6 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
-import { Split } from '@models/split';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 
 @Component({
   selector: 'app-split',
@@ -55,6 +57,7 @@ import { FormatCurrencyInputDirective } from '@shared/directives/format-currency
 export class SplitComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
+  protected readonly dialog = inject(MatDialog);
 
   submitted = signal<boolean>(false);
 
@@ -428,5 +431,13 @@ export class SplitComponent {
     this.splitsFormArray.clear();
     this.submitted.set(false);
     this.splitByPercentage.set(false);
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '80vw',
+    };
+    this.dialog.open(SplitHelpComponent, dialogConfig);
   }
 }
