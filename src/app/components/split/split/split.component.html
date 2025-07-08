@@ -2,6 +2,9 @@
   <div class="page-header">
     <div></div>
     <h3>Split Expense</h3>
+    <div class="help-icon">
+      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    </div>
   </div>
   @if (!submitted()) {
     <div class="sub-container mb-2">
