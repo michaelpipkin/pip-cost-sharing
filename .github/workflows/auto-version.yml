@@ -3,7 +3,7 @@ name: Auto Version Increment
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened]
     branches:
       - main
 
