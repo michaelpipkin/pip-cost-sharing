@@ -14,7 +14,7 @@ import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
+import { SerializableMemorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
@@ -108,7 +108,7 @@ export class AddExpenseComponent implements OnInit {
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
   #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
-  memorizedExpense = signal<Memorized | null>(null);
+  memorizedExpense = signal<SerializableMemorized | null>(null);
 
   activeCategories = computed<Category[]>(() => {
     return this.#categories().filter((c) => c.active);
@@ -143,7 +143,7 @@ export class AddExpenseComponent implements OnInit {
     }
     afterNextRender(() => {
       if (!!this.memorizedExpense()) {
-        const expense: Memorized = this.memorizedExpense();
+        const expense: SerializableMemorized = this.memorizedExpense();
         this.totalAmountField().nativeElement.value =
           this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
         this.allocatedAmountField().nativeElement.value =
@@ -178,21 +178,36 @@ export class AddExpenseComponent implements OnInit {
       });
     }
     if (!!this.memorizedExpense()) {
-      const expense: Memorized = this.memorizedExpense();
+      const expense: SerializableMemorized = this.memorizedExpense();
       this.splitByPercentage.set(expense.splitByPercentage);
+
+      // Find the category and member by ID
+      const category = this.#categories().find(
+        (c) => c.id === expense.categoryId
+      );
+      const paidByMember = this.activeMembers().find(
+        (m) => m.id === expense.paidByMemberId
+      );
+
       this.addExpenseForm.patchValue({
-        paidByMember: expense.paidByMemberRef,
+        paidByMember: paidByMember?.ref,
         date: new Date(),
         amount: expense.totalAmount,
         description: expense.description,
-        category: expense.categoryRef,
+        category: category?.ref,
         sharedAmount: expense.sharedAmount,
         allocatedAmount: expense.allocatedAmount,
       });
-      expense.splits.forEach((split: Split) => {
+
+      expense.splits.forEach((split) => {
+        // Find the member by ID
+        const owedByMember = this.activeMembers().find(
+          (m) => m.id === split.owedByMemberId
+        );
+
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMember: split.owedByMemberRef,
+            owedByMember: owedByMember?.ref,
             assignedAmount: split.assignedAmount,
             percentage: split.percentage,
             allocatedAmount: split.allocatedAmount,

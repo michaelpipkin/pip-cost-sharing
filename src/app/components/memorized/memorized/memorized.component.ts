@@ -15,7 +15,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
+import { Memorized, SerializableMemorized } from '@models/memorized';
 import { SplitService } from '@services/split.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -182,8 +182,26 @@ export class MemorizedComponent implements OnInit {
   }
 
   addExpense(expense: Memorized): void {
+    // Create a serializable version of the expense by converting DocumentReferences to IDs
+    const serializableExpense: SerializableMemorized = {
+      id: expense.id,
+      description: expense.description,
+      categoryId: expense.categoryRef.id,
+      paidByMemberId: expense.paidByMemberRef.id,
+      sharedAmount: expense.sharedAmount,
+      allocatedAmount: expense.allocatedAmount,
+      totalAmount: expense.totalAmount,
+      splitByPercentage: expense.splitByPercentage,
+      splits: expense.splits.map((split) => ({
+        assignedAmount: split.assignedAmount,
+        percentage: split.percentage,
+        allocatedAmount: split.allocatedAmount,
+        owedByMemberId: split.owedByMemberRef?.id,
+      })),
+    };
+
     this.router.navigate(['/expenses/add'], {
-      state: { expense: expense },
+      state: { expense: serializableExpense },
     });
   }
 
