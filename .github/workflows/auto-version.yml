@@ -90,8 +90,8 @@ jobs:
           git fetch origin dev
           # Switch to dev branch
           git checkout dev
-          # Apply the same version change to dev
-          npm --no-git-tag-version version patch
+          # Update package.json with the new version (same as PR branch)
+          npm version ${{ steps.new-version.outputs.version }} --no-git-tag-version
           # Commit the change to dev
           git add package.json
           git commit -m "chore: bump version from ${{ steps.current-version.outputs.version }} to ${{ steps.new-version.outputs.version }}"
