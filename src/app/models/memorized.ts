@@ -18,3 +18,21 @@ export class Memorized {
   splits: Partial<Split>[];
   ref?: DocumentReference<Memorized>;
 }
+
+// Serializable version for router state
+export interface SerializableMemorized {
+  id: string;
+  description: string;
+  categoryId: string;
+  paidByMemberId: string;
+  sharedAmount: number;
+  allocatedAmount: number;
+  totalAmount: number;
+  splitByPercentage: boolean;
+  splits: {
+    assignedAmount: number;
+    percentage: number;
+    allocatedAmount: number;
+    owedByMemberId?: string;
+  }[];
+}

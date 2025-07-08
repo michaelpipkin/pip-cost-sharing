@@ -10,70 +10,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Skip entire job for PRs with skip keywords in title
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' &&
+       !contains(github.event.pull_request.title, '[skip e2e]') &&
+       !contains(github.event.pull_request.title, '[skip tests]') &&
+       !contains(github.event.pull_request.title, '[no e2e]') &&
+       !contains(github.event.pull_request.title, 'chore:'))
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10.2.0
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }} # github-actions-ignore
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Create Firebase config file
-        run: |
-          cat << EOF > src/app/firebase.config.ts
-          export const firebaseConfig = {
-            apiKey: 'fake-api-key',
-            authDomain: 'fake-auth-domain',
-            projectId: 'pip-cost-sharing',
-            storageBucket: 'fake-storage-bucket',
-            messagingSenderId: 'fake-sender-id',
-            appId: 'fake-app-id',
-            measurementId: 'fake-measurement-id',
-          };
-          EOF
-      
-      - name: Create Github config file
-        run: |
-          cat << EOF > src/app/github.config.ts
-          export const githubConfig = {
-            personalAccessToken: 'fake-token',
-          };
-          EOF
-
-      - name: Install Playwright Browsers
-        run: pnpm e2e:install --with-deps
-
-      - name: Check if tests should be skipped
+      - name: Check if tests should be skipped (push events only)
         id: skip-check
         if: github.event_name == 'push'
         run: |
@@ -91,24 +40,80 @@ jobs:
             echo "Running e2e tests - no skip keywords found in commit message"
           fi
 
+      - name: Setup Node.js
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.2.0
+
+      - name: Get pnpm store directory
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }} # github-actions-ignore
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache Playwright browsers
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install dependencies
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Firebase config file
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        run: |
+          cat << EOF > src/app/firebase.config.ts
+          export const firebaseConfig = {
+            apiKey: 'fake-api-key',
+            authDomain: 'fake-auth-domain',
+            projectId: 'pip-cost-sharing',
+            storageBucket: 'fake-storage-bucket',
+            messagingSenderId: 'fake-sender-id',
+            appId: 'fake-app-id',
+            measurementId: 'fake-measurement-id',
+          };
+          EOF
+      
+      - name: Create Github config file
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        run: |
+          cat << EOF > src/app/github.config.ts
+          export const githubConfig = {
+            personalAccessToken: 'fake-token',
+          };
+          EOF
+
+      - name: Install Playwright Browsers
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        run: pnpm e2e:install --with-deps
+
       - name: Install Firebase CLI
-        if: |
-          (github.event_name == 'pull_request' &&
-           !contains(github.event.pull_request.title, '[skip e2e]') &&
-           !contains(github.event.pull_request.title, '[skip tests]') &&
-           !contains(github.event.pull_request.title, '[no e2e]') &&
-           !contains(github.event.pull_request.title, 'chore:')) ||
-          (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: npm install -g firebase-tools
 
       - name: Start Firebase Emulators
-        if: |
-          (github.event_name == 'pull_request' &&
-           !contains(github.event.pull_request.title, '[skip e2e]') &&
-           !contains(github.event.pull_request.title, '[skip tests]') &&
-           !contains(github.event.pull_request.title, '[no e2e]') &&
-           !contains(github.event.pull_request.title, 'chore:')) ||
-          (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: |
           firebase emulators:start --only auth,firestore &
           echo "Waiting for emulators to start..."
@@ -118,13 +123,7 @@ jobs:
           echo "Firebase emulators are ready!"
 
       - name: Run Core E2E Tests Only
-        if: |
-          (github.event_name == 'pull_request' &&
-           !contains(github.event.pull_request.title, '[skip e2e]') &&
-           !contains(github.event.pull_request.title, '[skip tests]') &&
-           !contains(github.event.pull_request.title, '[no e2e]') &&
-           !contains(github.event.pull_request.title, 'chore:')) ||
-          (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: pnpm e2e:ci:fast
         env:
           CI: true
