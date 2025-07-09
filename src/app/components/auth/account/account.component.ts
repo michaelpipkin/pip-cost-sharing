@@ -288,30 +288,30 @@ export class AccountComponent {
     }
   }
 
-  async updateData(): Promise<void> {
-    this.loading.loadingOn();
-    await Promise.all([
-      this.expenseService.migrateCategoryIdsToRefs(),
-      this.memorizedService.migrateCategoryIdsToRefs(),
-      this.userService.migrateGroupIdsToRefs(),
-      this.memberService.migrateUserIdsToRefs(),
-      this.splitService.migrateFieldIdsToRefs(),
-    ])
-      .then(() => {
-        this.loading.loadingOff();
-        this.snackBar.open('Data updated.', 'Close');
-      })
-      .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'data_update',
-          message: err.message,
-        });
-        this.loading.loadingOff();
-        this.snackBar.open(
-          'Something went wrong - could not update data.',
-          'Close'
-        );
-      });
-  }
+  // async updateData(): Promise<void> {
+  // this.loading.loadingOn();
+  // await Promise.all([
+  //   this.expenseService.migrateCategoryIdsToRefs(),
+  //   this.memorizedService.migrateCategoryIdsToRefs(),
+  //   this.userService.migrateGroupIdsToRefs(),
+  //   this.memberService.migrateUserIdsToRefs(),
+  //   this.splitService.migrateFieldIdsToRefs(),
+  // ])
+  //   .then(() => {
+  //     this.loading.loadingOff();
+  //     this.snackBar.open('Data updated.', 'Close');
+  //   })
+  //   .catch((err: Error) => {
+  //     logEvent(this.analytics, 'error', {
+  //       component: this.constructor.name,
+  //       action: 'data_update',
+  //       message: err.message,
+  //     });
+  //     this.loading.loadingOff();
+  //     this.snackBar.open(
+  //       'Something went wrong - could not update data.',
+  //       'Close'
+  //     );
+  //   });
+  // }
 }

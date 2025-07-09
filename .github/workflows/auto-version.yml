@@ -90,13 +90,22 @@ jobs:
           git fetch origin dev
           # Switch to dev branch
           git checkout dev
-          # Update package.json with the new version (same as PR branch)
-          npm version ${{ steps.new-version.outputs.version }} --no-git-tag-version
-          # Commit the change to dev
-          git add package.json
-          git commit -m "chore: bump version from ${{ steps.current-version.outputs.version }} to ${{ steps.new-version.outputs.version }}"
-          # Push to dev
-          git push origin dev
+          # Check if dev branch already has the new version
+          current_dev_version=$(node -p "require('./package.json').version")
+          target_version="${{ steps.new-version.outputs.version }}"
+          
+          if [ "$current_dev_version" = "$target_version" ]; then
+            echo "Dev branch already has version $target_version, skipping update"
+          else
+            echo "Updating dev branch from $current_dev_version to $target_version"
+            # Update package.json with the new version (same as PR branch)
+            npm version $target_version --no-git-tag-version
+            # Commit the change to dev
+            git add package.json
+            git commit -m "chore: bump version from $current_dev_version to $target_version"
+            # Push to dev
+            git push origin dev
+          fi
           # Switch back to the original branch
           git checkout ${{ github.head_ref }}
 
