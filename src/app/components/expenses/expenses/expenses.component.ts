@@ -48,7 +48,7 @@ import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { getAnalytics } from 'firebase/analytics';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
 
@@ -208,7 +208,9 @@ export class ExpensesComponent implements OnInit {
         this.expenses.set(expenses);
       })
       .catch((error) => {
-        console.error('Error fetching expenses:', error);
+        logEvent(this.analytics, 'fetch_expenses_error', {
+          error: error.message,
+        });
       })
       .finally(() => {
         this.loading.loadingOff();

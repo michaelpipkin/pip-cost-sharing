@@ -5,8 +5,6 @@ import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
 import {
   collection,
-  collectionGroup,
-  deleteField,
   doc,
   DocumentReference,
   getDocs,
@@ -112,85 +110,87 @@ export class SplitService implements ISplitService {
       });
   }
 
-  async migrateFieldIdsToRefs(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // Migration method to update split documents
 
-    try {
-      // Query all split documents across all groups
-      const splitsCollection = collectionGroup(this.fs, 'splits');
-      const splitDocs = await getDocs(splitsCollection);
+  // async migrateFieldIdsToRefs(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-      for (const splitDoc of splitDocs.docs) {
-        const splitData = splitDoc.data();
+  //   try {
+  //     // Query all split documents across all groups
+  //     const splitsCollection = collectionGroup(this.fs, 'splits');
+  //     const splitDocs = await getDocs(splitsCollection);
 
-        // Extract groupId from the document path
-        // Path: groups/{groupId}/splits/{splitId}
-        const pathSegments = splitDoc.ref.path.split('/');
-        const groupId = pathSegments[1];
+  //     for (const splitDoc of splitDocs.docs) {
+  //       const splitData = splitDoc.data();
 
-        const updates: any = {};
+  //       // Extract groupId from the document path
+  //       // Path: groups/{groupId}/splits/{splitId}
+  //       const pathSegments = splitDoc.ref.path.split('/');
+  //       const groupId = pathSegments[1];
 
-        // Migrate expenseId to expenseRef
-        if (splitData.expenseId && !splitData.expenseRef) {
-          const expenseRef = doc(
-            this.fs,
-            `groups/${groupId}/expenses/${splitData.expenseId}`
-          );
-          updates.expenseRef = expenseRef;
-          updates.expenseId = deleteField();
-        }
+  //       const updates: any = {};
 
-        // Migrate categoryId to categoryRef
-        if (splitData.categoryId && !splitData.categoryRef) {
-          const categoryRef = doc(
-            this.fs,
-            `groups/${groupId}/categories/${splitData.categoryId}`
-          );
-          updates.categoryRef = categoryRef;
-          updates.categoryId = deleteField();
-        }
+  //       // Migrate expenseId to expenseRef
+  //       if (splitData.expenseId && !splitData.expenseRef) {
+  //         const expenseRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/expenses/${splitData.expenseId}`
+  //         );
+  //         updates.expenseRef = expenseRef;
+  //         updates.expenseId = deleteField();
+  //       }
 
-        // Migrate paidByMemberId to paidByMemberRef
-        if (splitData.paidByMemberId && !splitData.paidByMemberRef) {
-          const paidByMemberRef = doc(
-            this.fs,
-            `groups/${groupId}/members/${splitData.paidByMemberId}`
-          );
-          updates.paidByMemberRef = paidByMemberRef;
-          updates.paidByMemberId = deleteField();
-        }
+  //       // Migrate categoryId to categoryRef
+  //       if (splitData.categoryId && !splitData.categoryRef) {
+  //         const categoryRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/categories/${splitData.categoryId}`
+  //         );
+  //         updates.categoryRef = categoryRef;
+  //         updates.categoryId = deleteField();
+  //       }
 
-        // Migrate owedByMemberId to owedByMemberRef
-        if (splitData.owedByMemberId && !splitData.owedByMemberRef) {
-          const owedByMemberRef = doc(
-            this.fs,
-            `groups/${groupId}/members/${splitData.owedByMemberId}`
-          );
-          updates.owedByMemberRef = owedByMemberRef;
-          updates.owedByMemberId = deleteField();
-        }
+  //       // Migrate paidByMemberId to paidByMemberRef
+  //       if (splitData.paidByMemberId && !splitData.paidByMemberRef) {
+  //         const paidByMemberRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/members/${splitData.paidByMemberId}`
+  //         );
+  //         updates.paidByMemberRef = paidByMemberRef;
+  //         updates.paidByMemberId = deleteField();
+  //       }
 
-        // Only update if there are changes to make
-        if (Object.keys(updates).length > 0) {
-          batch.update(splitDoc.ref, updates);
-        }
-      }
+  //       // Migrate owedByMemberId to owedByMemberRef
+  //       if (splitData.owedByMemberId && !splitData.owedByMemberRef) {
+  //         const owedByMemberRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/members/${splitData.owedByMemberId}`
+  //         );
+  //         updates.owedByMemberRef = owedByMemberRef;
+  //         updates.owedByMemberId = deleteField();
+  //       }
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log('Successfully migrated all split documents');
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating split documents:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //       // Only update if there are changes to make
+  //       if (Object.keys(updates).length > 0) {
+  //         batch.update(splitDoc.ref, updates);
+  //       }
+  //     }
+
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log('Successfully migrated all split documents');
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating split documents:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 }
