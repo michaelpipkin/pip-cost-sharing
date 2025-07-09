@@ -24,5 +24,5 @@ export interface IExpenseService {
   deleteExpense(
     groupId: string,
     expenseRef: DocumentReference<Expense>
-  ): Promise<void>;
+  ): Promise<any>;
 }

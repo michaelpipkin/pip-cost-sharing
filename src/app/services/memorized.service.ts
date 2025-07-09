@@ -4,17 +4,13 @@ import { MemorizedStore } from '@store/memorized.store';
 import {
   addDoc,
   collection,
-  collectionGroup,
   deleteDoc,
-  deleteField,
   doc,
   DocumentReference,
   getDoc,
-  getDocs,
   getFirestore,
   onSnapshot,
   updateDoc,
-  writeBatch,
 } from 'firebase/firestore';
 import { IMemorizedService } from './memorized.service.interface';
 
@@ -79,112 +75,114 @@ export class MemorizedService implements IMemorizedService {
     return await deleteDoc(memorizedRef);
   }
 
-  async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // Migration method to update categoryId and paidByMemberId to refs
 
-    try {
-      // Query all memorized documents across all groups
-      const memorizedCollection = collectionGroup(this.fs, 'memorized');
-      const memorizedDocs = await getDocs(memorizedCollection);
+  // async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-      for (const memorizedDoc of memorizedDocs.docs) {
-        const memorizedData = memorizedDoc.data();
+  //   try {
+  //     // Query all memorized documents across all groups
+  //     const memorizedCollection = collectionGroup(this.fs, 'memorized');
+  //     const memorizedDocs = await getDocs(memorizedCollection);
 
-        // Extract groupId from the document path
-        // Path: groups/{groupId}/memorized/{memorizedId}
-        const pathSegments = memorizedDoc.ref.path.split('/');
-        const groupId = pathSegments[1];
+  //     for (const memorizedDoc of memorizedDocs.docs) {
+  //       const memorizedData = memorizedDoc.data();
 
-        const updates: any = {};
+  //       // Extract groupId from the document path
+  //       // Path: groups/{groupId}/memorized/{memorizedId}
+  //       const pathSegments = memorizedDoc.ref.path.split('/');
+  //       const groupId = pathSegments[1];
 
-        // Migrate categoryId to categoryRef (main document level)
-        if (memorizedData.categoryId && !memorizedData.categoryRef) {
-          const categoryRef = doc(
-            this.fs,
-            `groups/${groupId}/categories/${memorizedData.categoryId}`
-          );
-          updates.categoryRef = categoryRef;
-          updates.categoryId = deleteField();
-        }
+  //       const updates: any = {};
 
-        // Migrate paidByMemberId to paidByMemberRef (main document level)
-        if (memorizedData.paidByMemberId && !memorizedData.paidByMemberRef) {
-          const paidByMemberRef = doc(
-            this.fs,
-            `groups/${groupId}/members/${memorizedData.paidByMemberId}`
-          );
-          updates.paidByMemberRef = paidByMemberRef;
-          updates.paidByMemberId = deleteField();
-        }
+  //       // Migrate categoryId to categoryRef (main document level)
+  //       if (memorizedData.categoryId && !memorizedData.categoryRef) {
+  //         const categoryRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/categories/${memorizedData.categoryId}`
+  //         );
+  //         updates.categoryRef = categoryRef;
+  //         updates.categoryId = deleteField();
+  //       }
 
-        // Always check and migrate splits array if it exists
-        if (memorizedData.splits && Array.isArray(memorizedData.splits)) {
-          let splitsNeedUpdate = false;
+  //       // Migrate paidByMemberId to paidByMemberRef (main document level)
+  //       if (memorizedData.paidByMemberId && !memorizedData.paidByMemberRef) {
+  //         const paidByMemberRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/members/${memorizedData.paidByMemberId}`
+  //         );
+  //         updates.paidByMemberRef = paidByMemberRef;
+  //         updates.paidByMemberId = deleteField();
+  //       }
 
-          const updatedSplits = memorizedData.splits.map((split: any) => {
-            const updatedSplit = { ...split };
-            let splitChanged = false;
+  //       // Always check and migrate splits array if it exists
+  //       if (memorizedData.splits && Array.isArray(memorizedData.splits)) {
+  //         let splitsNeedUpdate = false;
 
-            // Remove categoryId if it exists
-            if (split.categoryId) {
-              delete updatedSplit.categoryId;
-              splitChanged = true;
-            }
+  //         const updatedSplits = memorizedData.splits.map((split: any) => {
+  //           const updatedSplit = { ...split };
+  //           let splitChanged = false;
 
-            // Migrate owedByMemberId to owedByMemberRef
-            if (split.owedByMemberId && !split.owedByMemberRef) {
-              updatedSplit.owedByMemberRef = doc(
-                this.fs,
-                `groups/${groupId}/members/${split.owedByMemberId}`
-              );
-              delete updatedSplit.owedByMemberId;
-              splitChanged = true;
-            }
+  //           // Remove categoryId if it exists
+  //           if (split.categoryId) {
+  //             delete updatedSplit.categoryId;
+  //             splitChanged = true;
+  //           }
 
-            // Migrate paidByMemberId to paidByMemberRef
-            if (split.paidByMemberId && !split.paidByMemberRef) {
-              updatedSplit.paidByMemberRef = doc(
-                this.fs,
-                `groups/${groupId}/members/${split.paidByMemberId}`
-              );
-              delete updatedSplit.paidByMemberId;
-              splitChanged = true;
-            }
+  //           // Migrate owedByMemberId to owedByMemberRef
+  //           if (split.owedByMemberId && !split.owedByMemberRef) {
+  //             updatedSplit.owedByMemberRef = doc(
+  //               this.fs,
+  //               `groups/${groupId}/members/${split.owedByMemberId}`
+  //             );
+  //             delete updatedSplit.owedByMemberId;
+  //             splitChanged = true;
+  //           }
 
-            if (splitChanged) {
-              splitsNeedUpdate = true;
-            }
+  //           // Migrate paidByMemberId to paidByMemberRef
+  //           if (split.paidByMemberId && !split.paidByMemberRef) {
+  //             updatedSplit.paidByMemberRef = doc(
+  //               this.fs,
+  //               `groups/${groupId}/members/${split.paidByMemberId}`
+  //             );
+  //             delete updatedSplit.paidByMemberId;
+  //             splitChanged = true;
+  //           }
 
-            return updatedSplit;
-          });
+  //           if (splitChanged) {
+  //             splitsNeedUpdate = true;
+  //           }
 
-          // Only update splits if any split needed changes
-          if (splitsNeedUpdate) {
-            updates.splits = updatedSplits;
-          }
-        }
+  //           return updatedSplit;
+  //         });
 
-        // Only update if there are changes to make
-        if (Object.keys(updates).length > 0) {
-          batch.update(memorizedDoc.ref, updates);
-        }
-      }
+  //         // Only update splits if any split needed changes
+  //         if (splitsNeedUpdate) {
+  //           updates.splits = updatedSplits;
+  //         }
+  //       }
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log('Successfully migrated all memorized documents');
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating memorized documents:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //       // Only update if there are changes to make
+  //       if (Object.keys(updates).length > 0) {
+  //         batch.update(memorizedDoc.ref, updates);
+  //       }
+  //     }
+
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log('Successfully migrated all memorized documents');
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating memorized documents:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 }

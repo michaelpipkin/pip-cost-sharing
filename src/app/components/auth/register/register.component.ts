@@ -87,7 +87,6 @@ export class RegisterComponent implements OnInit, OnDestroy {
             }, 90000);
           }
         } catch (error) {
-          console.error(error);
           logEvent(this.analytics, 'hCaptcha_error', {
             error: error.message,
           });

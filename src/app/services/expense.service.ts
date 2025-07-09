@@ -5,8 +5,6 @@ import { ExpenseStore } from '@store/expense.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
-  collectionGroup,
-  deleteField,
   doc,
   DocumentReference,
   getDoc,
@@ -146,8 +144,10 @@ export class ExpenseService implements IExpenseService {
             `groups/${groupId}/receipts/${expenseRef.id}`
           );
           // Attempt to delete the uploaded receipt if batch commit fails
-          deleteObject(storageRef).catch((deleteErr) => {
-            console.error('Failed to delete receipt:', deleteErr);
+          deleteObject(storageRef).catch((error) => {
+            logEvent(this.analytics, 'delete_receipt_error', {
+              error: error.message,
+            });
           });
         }
         return new Error(err.message);
@@ -170,8 +170,10 @@ export class ExpenseService implements IExpenseService {
         await uploadBytes(storageRef, receipt);
         changes.receiptPath = storageRef.fullPath; // Store the path as a string
         logEvent(this.analytics, 'receipt_uploaded');
-      } catch (uploadError) {
-        console.error('Failed to upload receipt:', uploadError);
+      } catch (error) {
+        logEvent(this.analytics, 'receipt_upload_failed', {
+          error: error.message,
+        });
         return new Error('Failed to upload receipt');
       }
     }
@@ -203,11 +205,10 @@ export class ExpenseService implements IExpenseService {
             this.storage,
             `groups/${groupId}/receipts/${expenseRef.id}`
           );
-          deleteObject(storageRef).catch((deleteErr) => {
-            console.error(
-              'Failed to delete receipt after batch failure:',
-              deleteErr
-            );
+          deleteObject(storageRef).catch((error) => {
+            logEvent(this.analytics, 'delete_receipt_after_batch_failure', {
+              error: error.message,
+            });
           });
         }
         return new Error(err.message);
@@ -237,8 +238,10 @@ export class ExpenseService implements IExpenseService {
         // If the expense had a receipt, delete it from storage
         if (receiptPath) {
           const receiptRef = ref(this.storage, receiptPath);
-          deleteObject(receiptRef).catch((deleteErr) => {
-            console.error('Failed to delete receipt:', deleteErr);
+          deleteObject(receiptRef).catch((error) => {
+            logEvent(this.analytics, 'delete_receipt_error', {
+              error: error.message,
+            });
           });
         }
         return true;
@@ -250,157 +253,157 @@ export class ExpenseService implements IExpenseService {
 
   // Utilities for data integrity and migration
 
-  async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-    try {
-      // Query all expense documents across all groups
-      const expensesCollection = collectionGroup(this.fs, 'expenses');
-      const expenseDocs = await getDocs(expensesCollection);
+  //   try {
+  //     // Query all expense documents across all groups
+  //     const expensesCollection = collectionGroup(this.fs, 'expenses');
+  //     const expenseDocs = await getDocs(expensesCollection);
 
-      for (const expenseDoc of expenseDocs.docs) {
-        const expenseData = expenseDoc.data();
+  //     for (const expenseDoc of expenseDocs.docs) {
+  //       const expenseData = expenseDoc.data();
 
-        // Extract groupId from the document path
-        // Path: groups/{groupId}/expenses/{expenseId}
-        const pathSegments = expenseDoc.ref.path.split('/');
-        const groupId = pathSegments[1];
+  //       // Extract groupId from the document path
+  //       // Path: groups/{groupId}/expenses/{expenseId}
+  //       const pathSegments = expenseDoc.ref.path.split('/');
+  //       const groupId = pathSegments[1];
 
-        const updates: any = {};
+  //       const updates: any = {};
 
-        // Migrate categoryId to categoryRef
-        if (expenseData.categoryId && !expenseData.categoryRef) {
-          const categoryRef = doc(
-            this.fs,
-            `groups/${groupId}/categories/${expenseData.categoryId}`
-          );
-          updates.categoryRef = categoryRef;
-          updates.categoryId = deleteField();
-        }
+  //       // Migrate categoryId to categoryRef
+  //       if (expenseData.categoryId && !expenseData.categoryRef) {
+  //         const categoryRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/categories/${expenseData.categoryId}`
+  //         );
+  //         updates.categoryRef = categoryRef;
+  //         updates.categoryId = deleteField();
+  //       }
 
-        // Migrate paidByMemberId to paidByMemberRef
-        if (expenseData.paidByMemberId && !expenseData.paidByMemberRef) {
-          const paidByMemberRef = doc(
-            this.fs,
-            `groups/${groupId}/members/${expenseData.paidByMemberId}`
-          );
-          updates.paidByMemberRef = paidByMemberRef;
-          updates.paidByMemberId = deleteField();
-        }
+  //       // Migrate paidByMemberId to paidByMemberRef
+  //       if (expenseData.paidByMemberId && !expenseData.paidByMemberRef) {
+  //         const paidByMemberRef = doc(
+  //           this.fs,
+  //           `groups/${groupId}/members/${expenseData.paidByMemberId}`
+  //         );
+  //         updates.paidByMemberRef = paidByMemberRef;
+  //         updates.paidByMemberId = deleteField();
+  //       }
 
-        // Only update if there are changes to make
-        if (Object.keys(updates).length > 0) {
-          batch.update(expenseDoc.ref, updates);
-        }
-      }
+  //       // Only update if there are changes to make
+  //       if (Object.keys(updates).length > 0) {
+  //         batch.update(expenseDoc.ref, updates);
+  //       }
+  //     }
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log('Successfully migrated all expense documents');
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating expense documents:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log('Successfully migrated all expense documents');
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating expense documents:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 
-  async migrateReceiptRefToReceiptPath(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // async migrateReceiptRefToReceiptPath(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-    try {
-      // Query all expense documents across all groups
-      const expensesCollection = collectionGroup(this.fs, 'expenses');
-      const expenseDocs = await getDocs(expensesCollection);
+  //   try {
+  //     // Query all expense documents across all groups
+  //     const expensesCollection = collectionGroup(this.fs, 'expenses');
+  //     const expenseDocs = await getDocs(expensesCollection);
 
-      for (const expenseDoc of expenseDocs.docs) {
-        const expenseData = expenseDoc.data();
+  //     for (const expenseDoc of expenseDocs.docs) {
+  //       const expenseData = expenseDoc.data();
 
-        // Check if this document has the old receiptRef field
-        if (expenseData.receiptRef && !expenseData.receiptPath) {
-          // Extract the storage path from the receiptRef
-          // receiptRef should be something like "groups/{groupId}/receipts/{expenseId}"
-          const receiptRef = expenseData.receiptRef;
-          let receiptPath: string | null = null;
+  //       // Check if this document has the old receiptRef field
+  //       if (expenseData.receiptRef && !expenseData.receiptPath) {
+  //         // Extract the storage path from the receiptRef
+  //         // receiptRef should be something like "groups/{groupId}/receipts/{expenseId}"
+  //         const receiptRef = expenseData.receiptRef;
+  //         let receiptPath: string | null = null;
 
-          // If receiptRef is a string, use it directly
-          if (typeof receiptRef === 'string') {
-            receiptPath = receiptRef;
-          } else if (
-            receiptRef &&
-            typeof receiptRef === 'object' &&
-            receiptRef._location
-          ) {
-            // If it's a StorageReference object with _location
-            receiptPath = receiptRef._location.path;
-          } else if (
-            receiptRef &&
-            typeof receiptRef === 'object' &&
-            receiptRef.fullPath
-          ) {
-            // If it's a StorageReference object with fullPath
-            receiptPath = receiptRef.fullPath;
-          }
+  //         // If receiptRef is a string, use it directly
+  //         if (typeof receiptRef === 'string') {
+  //           receiptPath = receiptRef;
+  //         } else if (
+  //           receiptRef &&
+  //           typeof receiptRef === 'object' &&
+  //           receiptRef._location
+  //         ) {
+  //           // If it's a StorageReference object with _location
+  //           receiptPath = receiptRef._location.path;
+  //         } else if (
+  //           receiptRef &&
+  //           typeof receiptRef === 'object' &&
+  //           receiptRef.fullPath
+  //         ) {
+  //           // If it's a StorageReference object with fullPath
+  //           receiptPath = receiptRef.fullPath;
+  //         }
 
-          if (receiptPath) {
-            // Update the document: add receiptPath and remove receiptRef
-            batch.update(expenseDoc.ref, {
-              receiptPath: receiptPath,
-              receiptRef: deleteField(), // Remove the old field
-            });
-          }
-        }
-      }
+  //         if (receiptPath) {
+  //           // Update the document: add receiptPath and remove receiptRef
+  //           batch.update(expenseDoc.ref, {
+  //             receiptPath: receiptPath,
+  //             receiptRef: deleteField(), // Remove the old field
+  //           });
+  //         }
+  //       }
+  //     }
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log(
-            'Successfully migrated all expense receiptRef fields to receiptPath'
-          );
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating expense receiptRef fields:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during receiptRef migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log(
+  //           'Successfully migrated all expense receiptRef fields to receiptPath'
+  //         );
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating expense receiptRef fields:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during receiptRef migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 
-  async updateAllExpensesPaidStatus(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
-    const expenseCollection = collectionGroup(this.fs, 'expenses');
-    const splitsCollection = collectionGroup(this.fs, 'splits');
-    const expenseDocs = await getDocs(expenseCollection);
-    for (const expense of expenseDocs.docs) {
-      const splitsQuery = query(
-        splitsCollection,
-        where('expenseId', '==', expense.id)
-      );
-      const splitsDocs = await getDocs(splitsQuery);
-      const expenseUnpaid =
-        splitsDocs.docs.filter((doc) => !doc.data().paid).length > 0;
-      batch.update(expense.ref, { paid: !expenseUnpaid });
-    }
-    return await batch
-      .commit()
-      .then(() => {
-        return true;
-      })
-      .catch((err: Error) => {
-        return new Error(err.message);
-      });
-  }
+  // async updateAllExpensesPaidStatus(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
+  //   const expenseCollection = collectionGroup(this.fs, 'expenses');
+  //   const splitsCollection = collectionGroup(this.fs, 'splits');
+  //   const expenseDocs = await getDocs(expenseCollection);
+  //   for (const expense of expenseDocs.docs) {
+  //     const splitsQuery = query(
+  //       splitsCollection,
+  //       where('expenseId', '==', expense.id)
+  //     );
+  //     const splitsDocs = await getDocs(splitsQuery);
+  //     const expenseUnpaid =
+  //       splitsDocs.docs.filter((doc) => !doc.data().paid).length > 0;
+  //     batch.update(expense.ref, { paid: !expenseUnpaid });
+  //   }
+  //   return await batch
+  //     .commit()
+  //     .then(() => {
+  //       return true;
+  //     })
+  //     .catch((err: Error) => {
+  //       return new Error(err.message);
+  //     });
+  // }
 }
