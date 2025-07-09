@@ -5,24 +5,20 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
   setPersistence,
 } from 'firebase/auth';
 import {
-  collectionGroup,
-  deleteField,
   doc,
   DocumentReference,
   getDoc,
-  getDocs,
   getFirestore,
   setDoc,
-  writeBatch,
 } from 'firebase/firestore';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -63,7 +59,6 @@ export class UserService implements IUserService {
         });
       })
       .catch((error) => {
-        console.error('Error setting persistence', error);
         logEvent(this.analytics, 'error', { message: error.message });
       });
   }
@@ -144,47 +139,49 @@ export class UserService implements IUserService {
     this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
 
-  async migrateGroupIdsToRefs(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // Migration method to update groupId to groupRef in user documents
 
-    try {
-      // Query all user documents
-      const usersCollection = collectionGroup(this.fs, 'users');
-      const userDocs = await getDocs(usersCollection);
+  // async migrateGroupIdsToRefs(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-      for (const userDoc of userDocs.docs) {
-        const userData = userDoc.data();
+  //   try {
+  //     // Query all user documents
+  //     const usersCollection = collectionGroup(this.fs, 'users');
+  //     const userDocs = await getDocs(usersCollection);
 
-        // Skip if already migrated (no groupId or groupRef already exists)
-        if (!userData.defaultGroupId || userData.defaultGroupRef) {
-          continue;
-        }
+  //     for (const userDoc of userDocs.docs) {
+  //       const userData = userDoc.data();
 
-        // Create the group document reference
-        const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}`);
+  //       // Skip if already migrated (no groupId or groupRef already exists)
+  //       if (!userData.defaultGroupId || userData.defaultGroupRef) {
+  //         continue;
+  //       }
 
-        // Update the document: add groupRef and remove groupId
-        batch.update(userDoc.ref, {
-          defaultGroupRef: groupRef,
-          defaultGroupId: deleteField(), // This removes the field
-        });
-      }
+  //       // Create the group document reference
+  //       const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}`);
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log('Successfully migrated all user documents');
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating user documents:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //       // Update the document: add groupRef and remove groupId
+  //       batch.update(userDoc.ref, {
+  //         defaultGroupRef: groupRef,
+  //         defaultGroupId: deleteField(), // This removes the field
+  //       });
+  //     }
+
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log('Successfully migrated all user documents');
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating user documents:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 }

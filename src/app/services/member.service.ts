@@ -2,14 +2,10 @@ import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberStore } from '@store/member.store';
-import { IMemberService } from './member.service.interface';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
-  collectionGroup,
   deleteDoc,
-  deleteField,
   doc,
   DocumentReference,
   getDoc,
@@ -21,8 +17,9 @@ import {
   query,
   updateDoc,
   where,
-  writeBatch,
 } from 'firebase/firestore';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
@@ -160,47 +157,49 @@ export class MemberService implements IMemberService {
     return deleteDoc(memberRef);
   }
 
-  async migrateUserIdsToRefs(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
+  // Migration method to update userId to userRef in member documents
 
-    try {
-      // Query all expense documents across all groups
-      const membersCollection = collectionGroup(this.fs, 'members');
-      const memberDocs = await getDocs(membersCollection);
+  // async migrateUserIdsToRefs(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
 
-      for (const memberDoc of memberDocs.docs) {
-        const memberData = memberDoc.data();
+  //   try {
+  //     // Query all expense documents across all groups
+  //     const membersCollection = collectionGroup(this.fs, 'members');
+  //     const memberDocs = await getDocs(membersCollection);
 
-        // Skip if already migrated (no memberId or memberRef already exists)
-        if (!memberData.userId || memberData.userRef) {
-          continue;
-        }
+  //     for (const memberDoc of memberDocs.docs) {
+  //       const memberData = memberDoc.data();
 
-        // Create the user document reference
-        const userRef = doc(this.fs, `users/${memberData.userId}`);
+  //       // Skip if already migrated (no memberId or memberRef already exists)
+  //       if (!memberData.userId || memberData.userRef) {
+  //         continue;
+  //       }
 
-        // Update the document: add userRef and remove userId
-        batch.update(memberDoc.ref, {
-          userRef: userRef,
-          userId: deleteField(), // This removes the field
-        });
-      }
+  //       // Create the user document reference
+  //       const userRef = doc(this.fs, `users/${memberData.userId}`);
 
-      return await batch
-        .commit()
-        .then(() => {
-          console.log('Successfully migrated all member documents');
-          return true;
-        })
-        .catch((err: Error) => {
-          console.error('Error migrating member documents:', err);
-          return new Error(err.message);
-        });
-    } catch (error) {
-      console.error('Error during migration:', error);
-      return new Error(
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
-  }
+  //       // Update the document: add userRef and remove userId
+  //       batch.update(memberDoc.ref, {
+  //         userRef: userRef,
+  //         userId: deleteField(), // This removes the field
+  //       });
+  //     }
+
+  //     return await batch
+  //       .commit()
+  //       .then(() => {
+  //         console.log('Successfully migrated all member documents');
+  //         return true;
+  //       })
+  //       .catch((err: Error) => {
+  //         console.error('Error migrating member documents:', err);
+  //         return new Error(err.message);
+  //       });
+  //   } catch (error) {
+  //     console.error('Error during migration:', error);
+  //     return new Error(
+  //       error instanceof Error ? error.message : 'Unknown error occurred'
+  //     );
+  //   }
+  // }
 }
