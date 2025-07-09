@@ -62,10 +62,10 @@ export const deleteOldPaidExpenses = functions.scheduler.onSchedule(
               await receipt.delete();
               console.log(`Successfully deleted file: ${filePath}`);
 
-              // Update the hasReceipt property to false
-              await expenseRef.update({ hasReceipt: false });
+              // Update the receiptPath property to null
+              await expenseRef.update({ receiptPath: null });
               console.log(
-                `Updated hasReceipt to false for expense: ${expensePath}`
+                `Updated receiptPath to null for expense: ${expensePath}`
               );
             }
           } else {

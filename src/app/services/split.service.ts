@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
+import { Expense } from '@models/expense';
 import { History } from '@models/history';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
-import { ISplitService } from './split.service.interface';
 import {
   collection,
   collectionGroup,
@@ -16,6 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -45,22 +46,21 @@ export class SplitService implements ISplitService {
 
   async updateSplit(
     groupId: string,
-    expenseId: string,
-    splitId: string,
+    expenseRef: DocumentReference<Expense>,
+    splitRef: DocumentReference<Split>,
     changes: Partial<Split>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
-    batch.update(doc(this.fs, `groups/${groupId}/splits/${splitId}`), changes);
+    batch.update(splitRef, changes);
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
-      where('expenseId', '==', expenseId)
+      where('expenseRef', '==', expenseRef)
     );
     const splitsQuerySnap = await getDocs(splitsQuery);
     const expensePaid =
       splitsQuerySnap.docs.filter(
-        (doc) => doc.id !== splitId && !doc.data().paid
+        (doc) => doc.ref !== splitRef && !doc.data().paid
       ).length === 0 && changes.paid;
-    const expenseRef = doc(this.fs, `groups/${groupId}/expenses/${expenseId}`);
     batch.update(expenseRef, { paid: expensePaid });
     return await batch
       .commit()

@@ -2,8 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import { ExpenseStore } from '@store/expense.store';
-import { CategoryService } from './category.service';
-import { IExpenseService } from './expense.service.interface';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
   collectionGroup,
@@ -18,12 +17,17 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { deleteObject, getStorage, ref, uploadBytes } from 'firebase/storage';
+import { CategoryService } from './category.service';
+import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExpenseService implements IExpenseService {
   protected readonly fs = inject(getFirestore);
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(getAnalytics);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
 
@@ -109,10 +113,21 @@ export class ExpenseService implements IExpenseService {
   async addExpense(
     groupId: string,
     expense: Partial<Expense>,
-    splits: Partial<Split>[]
-  ): Promise<any> {
+    splits: Partial<Split>[],
+    receipt: File | null = null
+  ): Promise<DocumentReference<Expense> | Error> {
     const batch = writeBatch(this.fs);
     const expenseRef = doc(collection(this.fs, `/groups/${groupId}/expenses`));
+    if (receipt) {
+      const storageRef = ref(
+        this.storage,
+        `groups/${groupId}/receipts/${expenseRef.id}`
+      );
+      expense.receiptPath = storageRef.fullPath; // Store the path as a string
+      await uploadBytes(storageRef, receipt).then(() => {
+        logEvent(this.analytics, 'receipt_uploaded');
+      });
+    }
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
       split.expenseRef = expenseRef as DocumentReference<Expense>;
@@ -122,25 +137,50 @@ export class ExpenseService implements IExpenseService {
     return await batch
       .commit()
       .then(() => {
-        return expenseRef.id;
+        return expenseRef as DocumentReference<Expense>;
       })
       .catch((err: Error) => {
+        if (receipt) {
+          const storageRef = ref(
+            this.storage,
+            `groups/${groupId}/receipts/${expenseRef.id}`
+          );
+          // Attempt to delete the uploaded receipt if batch commit fails
+          deleteObject(storageRef).catch((deleteErr) => {
+            console.error('Failed to delete receipt:', deleteErr);
+          });
+        }
         return new Error(err.message);
       });
   }
 
   async updateExpense(
     groupId: string,
-    expenseId: string,
+    expenseRef: DocumentReference<Expense>,
     changes: Partial<Expense>,
-    splits: Partial<Split>[]
+    splits: Partial<Split>[],
+    receipt: File | null = null
   ): Promise<any> {
+    if (receipt) {
+      const storageRef = ref(
+        this.storage,
+        `groups/${groupId}/receipts/${expenseRef.id}`
+      );
+      try {
+        await uploadBytes(storageRef, receipt);
+        changes.receiptPath = storageRef.fullPath; // Store the path as a string
+        logEvent(this.analytics, 'receipt_uploaded');
+      } catch (uploadError) {
+        console.error('Failed to upload receipt:', uploadError);
+        return new Error('Failed to upload receipt');
+      }
+    }
+
     const batch = writeBatch(this.fs);
-    const expenseRef = doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`);
     batch.update(expenseRef, changes);
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseId', '==', expenseId)
+      where('expenseRef', '==', expenseRef)
     );
     const queryDocs = await getDocs(splitQuery);
     queryDocs.forEach((d) => {
@@ -157,16 +197,34 @@ export class ExpenseService implements IExpenseService {
         return true;
       })
       .catch((err: Error) => {
+        // If batch commit fails and we uploaded a new receipt, clean it up
+        if (receipt) {
+          const storageRef = ref(
+            this.storage,
+            `groups/${groupId}/receipts/${expenseRef.id}`
+          );
+          deleteObject(storageRef).catch((deleteErr) => {
+            console.error(
+              'Failed to delete receipt after batch failure:',
+              deleteErr
+            );
+          });
+        }
         return new Error(err.message);
       });
   }
 
-  async deleteExpense(groupId: string, expenseId: string): Promise<any> {
+  async deleteExpense(
+    groupId: string,
+    expenseRef: DocumentReference<Expense>
+  ): Promise<any> {
+    const expenseDoc = await getDoc(expenseRef);
+    const receiptPath: string | undefined =
+      expenseDoc.exists() && expenseDoc.data()?.receiptPath;
     const batch = writeBatch(this.fs);
-    const expenseRef = doc(this.fs, `/groups/${groupId}/expenses/${expenseId}`);
     const splitQuery = query(
       collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseId', '==', expenseId)
+      where('expenseRef', '==', expenseRef)
     );
     const queryDocs = await getDocs(splitQuery);
     queryDocs.forEach((d) => {
@@ -176,6 +234,13 @@ export class ExpenseService implements IExpenseService {
     return await batch
       .commit()
       .then(() => {
+        // If the expense had a receipt, delete it from storage
+        if (receiptPath) {
+          const receiptRef = ref(this.storage, receiptPath);
+          deleteObject(receiptRef).catch((deleteErr) => {
+            console.error('Failed to delete receipt:', deleteErr);
+          });
+        }
         return true;
       })
       .catch((err: Error) => {
@@ -183,30 +248,7 @@ export class ExpenseService implements IExpenseService {
       });
   }
 
-  async updateAllExpensesPaidStatus(): Promise<boolean | Error> {
-    const batch = writeBatch(this.fs);
-    const expenseCollection = collectionGroup(this.fs, 'expenses');
-    const splitsCollection = collectionGroup(this.fs, 'splits');
-    const expenseDocs = await getDocs(expenseCollection);
-    for (const expense of expenseDocs.docs) {
-      const splitsQuery = query(
-        splitsCollection,
-        where('expenseId', '==', expense.id)
-      );
-      const splitsDocs = await getDocs(splitsQuery);
-      const expenseUnpaid =
-        splitsDocs.docs.filter((doc) => !doc.data().paid).length > 0;
-      batch.update(expense.ref, { paid: !expenseUnpaid });
-    }
-    return await batch
-      .commit()
-      .then(() => {
-        return true;
-      })
-      .catch((err: Error) => {
-        return new Error(err.message);
-      });
-  }
+  // Utilities for data integrity and migration
 
   async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
     const batch = writeBatch(this.fs);
@@ -268,5 +310,97 @@ export class ExpenseService implements IExpenseService {
         error instanceof Error ? error.message : 'Unknown error occurred'
       );
     }
+  }
+
+  async migrateReceiptRefToReceiptPath(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+
+    try {
+      // Query all expense documents across all groups
+      const expensesCollection = collectionGroup(this.fs, 'expenses');
+      const expenseDocs = await getDocs(expensesCollection);
+
+      for (const expenseDoc of expenseDocs.docs) {
+        const expenseData = expenseDoc.data();
+
+        // Check if this document has the old receiptRef field
+        if (expenseData.receiptRef && !expenseData.receiptPath) {
+          // Extract the storage path from the receiptRef
+          // receiptRef should be something like "groups/{groupId}/receipts/{expenseId}"
+          const receiptRef = expenseData.receiptRef;
+          let receiptPath: string | null = null;
+
+          // If receiptRef is a string, use it directly
+          if (typeof receiptRef === 'string') {
+            receiptPath = receiptRef;
+          } else if (
+            receiptRef &&
+            typeof receiptRef === 'object' &&
+            receiptRef._location
+          ) {
+            // If it's a StorageReference object with _location
+            receiptPath = receiptRef._location.path;
+          } else if (
+            receiptRef &&
+            typeof receiptRef === 'object' &&
+            receiptRef.fullPath
+          ) {
+            // If it's a StorageReference object with fullPath
+            receiptPath = receiptRef.fullPath;
+          }
+
+          if (receiptPath) {
+            // Update the document: add receiptPath and remove receiptRef
+            batch.update(expenseDoc.ref, {
+              receiptPath: receiptPath,
+              receiptRef: deleteField(), // Remove the old field
+            });
+          }
+        }
+      }
+
+      return await batch
+        .commit()
+        .then(() => {
+          console.log(
+            'Successfully migrated all expense receiptRef fields to receiptPath'
+          );
+          return true;
+        })
+        .catch((err: Error) => {
+          console.error('Error migrating expense receiptRef fields:', err);
+          return new Error(err.message);
+        });
+    } catch (error) {
+      console.error('Error during receiptRef migration:', error);
+      return new Error(
+        error instanceof Error ? error.message : 'Unknown error occurred'
+      );
+    }
+  }
+
+  async updateAllExpensesPaidStatus(): Promise<boolean | Error> {
+    const batch = writeBatch(this.fs);
+    const expenseCollection = collectionGroup(this.fs, 'expenses');
+    const splitsCollection = collectionGroup(this.fs, 'splits');
+    const expenseDocs = await getDocs(expenseCollection);
+    for (const expense of expenseDocs.docs) {
+      const splitsQuery = query(
+        splitsCollection,
+        where('expenseId', '==', expense.id)
+      );
+      const splitsDocs = await getDocs(splitsQuery);
+      const expenseUnpaid =
+        splitsDocs.docs.filter((doc) => !doc.data().paid).length > 0;
+      batch.update(expense.ref, { paid: !expenseUnpaid });
+    }
+    return await batch
+      .commit()
+      .then(() => {
+        return true;
+      })
+      .catch((err: Error) => {
+        return new Error(err.message);
+      });
   }
 }

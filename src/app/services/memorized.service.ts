@@ -1,7 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
 import { MemorizedStore } from '@store/memorized.store';
-import { IMemorizedService } from './memorized.service.interface';
 import {
   addDoc,
   collection,
@@ -17,6 +16,7 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
+import { IMemorizedService } from './memorized.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -67,17 +67,16 @@ export class MemorizedService implements IMemorizedService {
   }
 
   async updateMemorized(
-    groupId: string,
-    memorizedId: string,
+    memorizedRef: DocumentReference<Memorized>,
     changes: Partial<Memorized>
   ): Promise<any> {
-    const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
-    return await updateDoc(d, changes);
+    return await updateDoc(memorizedRef, changes);
   }
 
-  async deleteMemorized(groupId: string, memorizedId: string): Promise<any> {
-    const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
-    return await deleteDoc(d);
+  async deleteMemorized(
+    memorizedRef: DocumentReference<Memorized>
+  ): Promise<any> {
+    return await deleteDoc(memorizedRef);
   }
 
   async migrateCategoryIdsToRefs(): Promise<boolean | Error> {

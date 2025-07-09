@@ -1,4 +1,5 @@
 import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { getStorage, ref, StorageReference } from 'firebase/storage';
 import { Category } from './category';
 import { Member } from './member';
 import { Split } from './split';
@@ -18,9 +19,15 @@ export class Expense {
   totalAmount: number;
   splitByPercentage: boolean = false;
   splits: Split[];
-  hasReceipt: boolean = false;
+  // hasReceipt: boolean = false;
+  receiptPath?: string | null; // Store the storage path as a string
   paid: boolean = false;
   ref?: DocumentReference<Expense>;
+
+  get receiptRef(): StorageReference | null {
+    if (!this.receiptPath) return null;
+    return ref(getStorage(), this.receiptPath);
+  }
   get unpaidAmount(): number {
     let amount = 0;
     this.splits.forEach((split) => {
