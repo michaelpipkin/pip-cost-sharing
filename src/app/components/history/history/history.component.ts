@@ -167,7 +167,7 @@ export class HistoryComponent {
       if (confirm) {
         this.loading.loadingOn();
         this.historyService
-          .deleteHistory(this.currentGroup().id, history.id)
+          .deleteHistory(history.ref)
           .then(() => {
             this.expandedHistory.set(null);
             this.snackBar.open('Payment record deleted', 'OK');

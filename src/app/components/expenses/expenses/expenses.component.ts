@@ -1,5 +1,21 @@
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -35,22 +51,6 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -271,14 +271,27 @@ export class ExpensesComponent implements OnInit {
     this.router.navigate(['/expenses', expense.id]);
   }
 
-  markSplitPaidUnpaid(expense: Expense, split: Split): void {
+  async markSplitPaidUnpaid(expense: Expense, split: Split): Promise<void> {
     const changes = {
       paid: !split.paid,
     };
     this.loading.loadingOn();
-    this.splitService
-      .updateSplit(this.currentGroup().id, expense.id, split.id, changes)
-      .then(() => this.loading.loadingOff());
+    await this.splitService
+      .updateSplit(this.currentGroup().id, expense.ref, split.ref, changes)
+      .then(() => {
+        const splits = this.expandedExpense().splits;
+        const updatedSplit = splits.find((s) => s.ref.eq(split.ref));
+        updatedSplit.paid = !updatedSplit.paid;
+        this.onExpandClick(expense);
+        this.snackBar.open(
+          `Split ${updatedSplit.paid ? 'marked as paid' : 'marked as unpaid'}`,
+          'Close',
+          { duration: 3000 }
+        );
+      })
+      .finally(() => {
+        this.loading.loadingOff();
+      });
   }
 
   showHelp(): void {
