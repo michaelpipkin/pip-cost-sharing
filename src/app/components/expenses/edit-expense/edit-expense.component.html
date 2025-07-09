@@ -7,7 +7,7 @@
     </div>
   </div>
   @let memberList = expenseMembers();
-  @let hasReceipt = expense()?.hasReceipt;
+  @let hasReceipt = !!receiptUrl();
   <div class="sub-container mb-2">
     <form [formGroup]="editExpenseForm" id="expense-form">
       <div class="details-1">
@@ -195,7 +195,7 @@
               <mat-form-field id="split-member" subscriptSizing="dynamic">
                 <mat-label>Member</mat-label>
                 <mat-select
-                  formControlName="owedByMember"
+                  formControlName="owedByMemberRef"
                   (selectionChange)="allocateSharedAmounts()"
                   docRefCompare
                 >

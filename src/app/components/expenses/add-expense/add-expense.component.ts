@@ -1,7 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -29,39 +59,9 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { DocumentReference } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes } from 'firebase/storage';
+import { getStorage } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -115,7 +115,7 @@ export class AddExpenseComponent implements OnInit {
   });
 
   fileName = model<string>('');
-  receiptFile = model<File>(null);
+  receiptFile = model<File | null>(null);
   splitByPercentage = model<boolean>(false);
 
   datePicker = viewChild<ElementRef>('datePicker');
@@ -538,7 +538,7 @@ export class AddExpenseComponent implements OnInit {
       allocatedAmount: val.allocatedAmount,
       totalAmount: val.amount,
       splitByPercentage: this.splitByPercentage(),
-      hasReceipt: !!this.fileName(),
+      // hasReceipt: !!this.fileName(),
     };
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.value.forEach((s) => {
@@ -557,17 +557,8 @@ export class AddExpenseComponent implements OnInit {
       }
     });
     this.expenseService
-      .addExpense(this.currentGroup().id, expense, splits)
-      .then((expenseId: string) => {
-        if (this.receiptFile()) {
-          const fileRef = ref(
-            this.storage,
-            `groups/${this.currentGroup().id}/receipts/${expenseId}`
-          );
-          uploadBytes(fileRef, this.receiptFile()).then(() => {
-            logEvent(this.analytics, 'receipt_uploaded');
-          });
-        }
+      .addExpense(this.currentGroup().id, expense, splits, this.receiptFile())
+      .then(() => {
         this.snackBar.open('Expense added.', 'OK');
         if (saveAndAdd) {
           this.addExpenseForm.reset();

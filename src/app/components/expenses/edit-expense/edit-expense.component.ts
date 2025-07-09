@@ -65,7 +65,6 @@ import {
   getDownloadURL,
   getStorage,
   ref,
-  uploadBytes,
 } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { Url } from 'url';
@@ -135,7 +134,7 @@ export class EditExpenseComponent implements OnInit {
   });
 
   fileName = model<string>('');
-  receiptFile = model<File>(null);
+  receiptFile = model<File | null>(null);
   receiptUrl = model<Url>(null);
   splitByPercentage = model<boolean>(false);
 
@@ -192,16 +191,15 @@ export class EditExpenseComponent implements OnInit {
     expense.splits.forEach((s: Split) => {
       this.splits.push(
         this.fb.group({
-          owedByMember: s.owedByMemberRef,
+          owedByMemberRef: s.owedByMemberRef,
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
         })
       );
     });
-    if (expense.hasReceipt) {
-      const storageUrl = `groups/${this.#currentGroup().id}/receipts/${expense.id}`;
-      getDownloadURL(ref(this.storage, storageUrl))
+    if (expense.receiptRef) {
+      getDownloadURL(expense.receiptRef)
         .then((url: unknown) => {
           if (!!url) {
             this.receiptUrl.set(<Url>url);
@@ -235,13 +233,13 @@ export class EditExpenseComponent implements OnInit {
 
   createSplitFormGroup(): FormGroup {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMember').value.id
+      (control) => control.get('owedByMemberRef').value.id
     );
     const availableMembers = this.expenseMembers().filter(
       (m) => !existingMembers.includes(m.id)
     );
     return this.fb.group({
-      owedByMember: [
+      owedByMemberRef: [
         availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
@@ -341,14 +339,14 @@ export class EditExpenseComponent implements OnInit {
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           i++;
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMember !== null
+        (s) => s.owedByMemberRef !== null
       ).length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
@@ -415,7 +413,7 @@ export class EditExpenseComponent implements OnInit {
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
@@ -434,7 +432,7 @@ export class EditExpenseComponent implements OnInit {
         }
       }
       const splitCount: number = splits.filter(
-        (s) => s.owedByMember !== null
+        (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.editExpenseForm.value;
       const totalAmount: number = val.amount;
@@ -520,7 +518,7 @@ export class EditExpenseComponent implements OnInit {
           totalAmount: +val.amount,
           splitByPercentage: this.splitByPercentage(),
           paid: false,
-          hasReceipt: this.expense().hasReceipt || !!this.fileName(),
+          // hasReceipt: this.expense().hasReceipt || !!this.fileName(),
         };
         let splits: Partial<Split>[] = [];
         this.splitsFormArray.value.forEach((s) => {
@@ -539,20 +537,12 @@ export class EditExpenseComponent implements OnInit {
         this.expenseService
           .updateExpense(
             this.#currentGroup().id,
-            this.expense().id,
+            this.expense().ref,
             changes,
-            splits
+            splits,
+            this.receiptFile()
           )
           .then(() => {
-            if (this.receiptFile()) {
-              const fileRef = ref(
-                this.storage,
-                `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
-              );
-              uploadBytes(fileRef, this.receiptFile()).then(() => {
-                logEvent(this.analytics, 'receipt_uploaded');
-              });
-            }
             this.snackBar.open('Expense updated successfully.', 'OK');
             this.router.navigate(['/expenses']);
           })
@@ -585,7 +575,7 @@ export class EditExpenseComponent implements OnInit {
       if (confirm) {
         this.loading.loadingOn();
         this.expenseService
-          .deleteExpense(this.#currentGroup().id, this.expense().id)
+          .deleteExpense(this.#currentGroup().id, this.expense().ref)
           .then(() => {
             if (this.receiptUrl()) {
               const fileRef = ref(

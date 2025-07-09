@@ -4,7 +4,6 @@ import { HistoryStore } from '@store/history.store';
 import {
   collection,
   deleteDoc,
-  doc,
   DocumentReference,
   getFirestore,
   onSnapshot,
@@ -39,7 +38,7 @@ export class HistoryService implements IHistoryService {
     });
   }
 
-  async deleteHistory(groupId: string, historyId: string): Promise<void> {
-    await deleteDoc(doc(this.fs, `groups/${groupId}/history/${historyId}`));
+  async deleteHistory(historyRef: DocumentReference<History>): Promise<void> {
+    await deleteDoc(historyRef);
   }
 }

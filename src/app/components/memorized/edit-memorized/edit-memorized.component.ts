@@ -464,7 +464,7 @@ export class EditMemorizedComponent implements OnInit {
     changes.splits = splits;
     this.loading.loadingOn();
     this.memorizedService
-      .updateMemorized(this.#currentGroup().id, this.memorized().id, changes)
+      .updateMemorized(this.memorized().ref, changes)
       .then(() => {
         this.snackBar.open('Memorized expense updated.', 'OK');
         this.router.navigate(['/memorized']);
@@ -496,7 +496,7 @@ export class EditMemorizedComponent implements OnInit {
       if (confirm) {
         this.loading.loadingOn();
         this.memorizedService
-          .deleteMemorized(this.#currentGroup().id, this.memorized().id)
+          .deleteMemorized(this.memorized().ref)
           .then(() => {
             this.snackBar.open('Memorized expense deleted.', 'OK');
             this.router.navigate(['/memorized']);
