@@ -19,11 +19,13 @@ export class Expense {
   totalAmount: number;
   splitByPercentage: boolean = false;
   splits: Split[];
-  // hasReceipt: boolean = false;
   receiptPath?: string | null; // Store the storage path as a string
   paid: boolean = false;
   ref?: DocumentReference<Expense>;
 
+  get hasReceipt(): boolean {
+    return !!this.receiptPath;
+  }
   get receiptRef(): StorageReference | null {
     if (!this.receiptPath) return null;
     return ref(getStorage(), this.receiptPath);
