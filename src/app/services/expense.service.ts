@@ -253,6 +253,34 @@ export class ExpenseService implements IExpenseService {
 
   // Utilities for data integrity and migration
 
+  // async removeHasReceiptField(): Promise<boolean | Error> {
+  //   const batch = writeBatch(this.fs);
+  //   const expensesCollection = collectionGroup(this.fs, 'expenses');
+  //   const expenseDocs = await getDocs(expensesCollection);
+
+  //   for (const expenseDoc of expenseDocs.docs) {
+  //     batch.update(expenseDoc.ref, {
+  //       hasReceipt: deleteField(),
+  //     });
+  //   }
+
+  //   return await batch
+  //     .commit()
+  //     .then(() => {
+  //       console.log(
+  //         'Successfully removed hasReceipt field from all expense documents'
+  //       );
+  //       return true;
+  //     })
+  //     .catch((err: Error) => {
+  //       console.error(
+  //         'Error removing hasReceipt field from expense documents:',
+  //         err
+  //       );
+  //       return new Error(err.message);
+  //     });
+  // }
+
   // async migrateCategoryIdsToRefs(): Promise<boolean | Error> {
   //   const batch = writeBatch(this.fs);
 
