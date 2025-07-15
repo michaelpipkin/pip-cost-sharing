@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  Signal,
-  signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -60,15 +30,45 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
 import { DocumentReference } from 'firebase/firestore';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { Url } from 'url';
+import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  Signal,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import {
   deleteObject,
   getDownloadURL,
   getStorage,
   ref,
 } from 'firebase/storage';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { Url } from 'url';
-import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 
 @Component({
   selector: 'app-edit-expense',
@@ -351,33 +351,32 @@ export class EditExpenseComponent implements OnInit {
       const splitTotal: number = this.getAssignedTotal();
       const val = this.editExpenseForm.value;
       const totalAmount: number = val.amount;
-      let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = val.allocatedAmount;
+      let evenlySharedAmount: number = val.sharedAmount;
+      const proportionalAmount: number = val.allocatedAmount;
       const totalSharedSplits: number = +(
-        sharedAmount +
-        allocatedAmount +
+        evenlySharedAmount +
+        proportionalAmount +
         splitTotal
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
-        sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
+        evenlySharedAmount = +(totalAmount - splitTotal - proportionalAmount).toFixed(2);
         this.editExpenseForm.patchValue({
-          sharedAmount: sharedAmount,
+          sharedAmount: evenlySharedAmount,
         });
       }
-      // First, split the shared amount equally among all splits
       splits.forEach((split: Split) => {
-        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
+        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
       });
       splits.forEach((split: Split) => {
-        if (splitTotal == 0) {
-          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-        } else {
-          split.allocatedAmount = +(
-            +split.assignedAmount +
-            +split.allocatedAmount +
-            (+split.assignedAmount / splitTotal) * allocatedAmount
-          ).toFixed(2);
+        if (totalAmount === proportionalAmount) {
+          return;
         }
+        const baseSplit: number =
+          +split.assignedAmount + +split.allocatedAmount;
+        split.allocatedAmount = +(
+          baseSplit +
+          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
+        ).toFixed(2);
       });
       const allocatedTotal = +splits
         .reduce((total, s) => (total += s.allocatedAmount), 0)

@@ -186,33 +186,36 @@ export class SplitComponent {
       const splitTotal: number = this.getAssignedTotal();
       const val = this.expenseForm.value;
       const totalAmount: number = val.amount;
-      let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = val.allocatedAmount;
+      let evenlySharedAmount: number = val.sharedAmount;
+      const proportionalAmount: number = val.allocatedAmount;
       const totalSharedSplits: number = +(
-        sharedAmount +
-        allocatedAmount +
+        evenlySharedAmount +
+        proportionalAmount +
         splitTotal
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
-        sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
+        evenlySharedAmount = +(
+          totalAmount -
+          splitTotal -
+          proportionalAmount
+        ).toFixed(2);
         this.expenseForm.patchValue({
-          sharedAmount: sharedAmount,
+          sharedAmount: evenlySharedAmount,
         });
       }
-      // First, split the shared amount equally among all splits
       splits.forEach((split: Split) => {
-        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
+        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
       });
       splits.forEach((split: Split) => {
-        if (splitTotal == 0) {
-          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-        } else {
-          split.allocatedAmount = +(
-            +split.assignedAmount +
-            +split.allocatedAmount +
-            (+split.assignedAmount / splitTotal) * allocatedAmount
-          ).toFixed(2);
+        if (totalAmount === proportionalAmount) {
+          return;
         }
+        const baseSplit: number =
+          +split.assignedAmount + +split.allocatedAmount;
+        split.allocatedAmount = +(
+          baseSplit +
+          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
+        ).toFixed(2);
       });
       const allocatedTotal = +splits
         .reduce((total, s) => (total += s.allocatedAmount), 0)
@@ -378,12 +381,17 @@ export class SplitComponent {
   // Helper methods to calculate breakdown amounts
   private calculateProportionalAmount(split: any): number {
     const formValue = this.expenseForm.value;
-    const allocatedAmount = formValue.allocatedAmount || 0;
-    const splitTotal = this.getAssignedTotal();
-    const assignedAmount = split.assignedAmount || 0;
+    const totalAmount = formValue.amount || 0;
+    const proportionalAmount = formValue.allocatedAmount || 0;
+    const baseAmount: number = totalAmount - proportionalAmount;
+    const evenlySharedAmount: number =
+      (formValue.sharedAmount || 0) / (this.splitsFormArray.length || 1);
 
-    if (splitTotal === 0 || allocatedAmount === 0) return 0;
-    return +((assignedAmount / splitTotal) * allocatedAmount).toFixed(2);
+    const memberProportionalAmount: number =
+      (((+split.assignedAmount || 0) + evenlySharedAmount) / baseAmount) *
+      proportionalAmount;
+
+    return +memberProportionalAmount.toFixed(2);
   }
 
   private calculateSharedPortion(): number {
