@@ -1,36 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -57,6 +28,35 @@ import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditMemorizedHelpComponent } from '../add-edit-memorized-help/add-edit-memorized-help.component';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-memorized',
@@ -291,33 +291,36 @@ export class AddMemorizedComponent implements OnInit {
       const splitTotal: number = this.getAssignedTotal();
       const val = this.addMemorizedForm.value;
       const totalAmount: number = val.amount;
-      let sharedAmount: number = val.sharedAmount;
-      const allocatedAmount: number = val.allocatedAmount;
+      let evenlySharedAmount: number = val.sharedAmount;
+      const proportionalAmount: number = val.allocatedAmount;
       const totalSharedSplits: number = +(
-        sharedAmount +
-        allocatedAmount +
+        evenlySharedAmount +
+        proportionalAmount +
         splitTotal
       ).toFixed(2);
       if (totalAmount != totalSharedSplits) {
-        sharedAmount = +(totalAmount - splitTotal - allocatedAmount).toFixed(2);
+        evenlySharedAmount = +(
+          totalAmount -
+          splitTotal -
+          proportionalAmount
+        ).toFixed(2);
         this.addMemorizedForm.patchValue({
-          sharedAmount: sharedAmount,
+          sharedAmount: evenlySharedAmount,
         });
       }
-      // First, split the shared amount equally among all splits
       splits.forEach((split: Split) => {
-        split.allocatedAmount = +(sharedAmount / splitCount).toFixed(2);
+        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
       });
       splits.forEach((split: Split) => {
-        if (splitTotal == 0) {
-          split.allocatedAmount += +(allocatedAmount / splitCount).toFixed(2);
-        } else {
-          split.allocatedAmount = +(
-            +split.assignedAmount +
-            +split.allocatedAmount +
-            (+split.assignedAmount / splitTotal) * allocatedAmount
-          ).toFixed(2);
+        if (totalAmount === proportionalAmount) {
+          return;
         }
+        const baseSplit: number =
+          +split.assignedAmount + +split.allocatedAmount;
+        split.allocatedAmount = +(
+          baseSplit +
+          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
+        ).toFixed(2);
       });
       const allocatedTotal = +splits
         .reduce((total, s) => (total += s.allocatedAmount), 0)
