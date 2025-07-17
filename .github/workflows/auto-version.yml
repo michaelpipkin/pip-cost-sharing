@@ -13,15 +13,12 @@ permissions:
   checks: read
 
 jobs:
-  # First run tests to ensure code quality before version bump
+  # First run tests to ensure code quality before version bump (only if not skipped)
   test:
     runs-on: ubuntu-latest
-    # Skip entire job for PRs with skip keywords in title
+    # Only run tests if not being skipped
     if: |
-      !contains(github.event.pull_request.title, '[skip e2e]') &&
-      !contains(github.event.pull_request.title, '[skip tests]') &&
-      !contains(github.event.pull_request.title, '[no e2e]') &&
-      !contains(github.event.pull_request.title, 'chore:')
+      !contains(github.event.pull_request.title, '[skip tests]')
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -119,10 +116,11 @@ jobs:
 
   auto-version:
     runs-on: ubuntu-latest
-    needs: test
-    # Only run if tests passed and PR doesn't already have a version bump
+    # Always run version bump, but depend on test results if tests were run
+    needs: [test]
     if: |
-      needs.test.result == 'success' &&
+      always() &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       !contains(github.event.pull_request.title, 'version bump') &&
       !contains(github.event.pull_request.title, 'bump version') &&
       !contains(github.event.pull_request.title, 'chore: bump') &&
@@ -195,9 +193,16 @@ jobs:
         with:
           script: |
             const wasSkipped = '${{ steps.version-check.outputs.skip }}' === 'true';
-            const body = wasSkipped 
-              ? `ℹ️ **Version Bump Skipped**\n\nVersion bump was skipped because the last commit already contains a version bump.`
-              : `🚀 **Auto Version Bump**\n\nTests passed! Version automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
+            const testsWereSkipped = '${{ needs.test.result }}' === 'skipped';
+            
+            let body;
+            if (wasSkipped) {
+              body = `ℹ️ **Version Bump Skipped**\n\nVersion bump was skipped because the last commit already contains a version bump.`;
+            } else if (testsWereSkipped) {
+              body = `🚀 **Auto Version Bump (Tests Skipped)**\n\nTests were skipped via \`[skip tests]\` in PR title. Version automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
+            } else {
+              body = `🚀 **Auto Version Bump**\n\nTests passed! Version automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
+            }
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
