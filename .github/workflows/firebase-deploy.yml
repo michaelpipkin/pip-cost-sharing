@@ -180,60 +180,49 @@ jobs:
 
       - name: Create PR to merge release into main
         if: steps.deploy.outcome == 'success'
-        uses: actions/github-script@v7
         id: create-pr
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            try {
-              // Check if there's already an open PR from release to main
-              const { data: existingPRs } = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head: 'release',
-                base: 'main',
-                state: 'open'
-              });
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          # Check if there's already an open PR from release to main
+          existing_pr=$(gh pr list --head release --base main --state open --json number --jq '.[0].number // empty')
+          
+          if [ -n "$existing_pr" ]; then
+            echo "Found existing PR #$existing_pr from release to main"
+            pr_number=$existing_pr
+          else
+            # Create a new PR from release to main
+            pr_number=$(gh pr create \
+              --title "chore: merge release to main after successful deployment" \
+              --body "🚀 **Automated Release Merge**
 
-              let prNumber;
-              
-              if (existingPRs.length > 0) {
-                prNumber = existingPRs[0].number;
-                console.log(`Found existing PR #${prNumber} from release to main`);
-              } else {
-                // Create a new PR from release to main
-                const { data: pr } = await github.rest.pulls.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: 'chore: merge release to main after successful deployment',
-                  head: 'release',
-                  base: 'main',
-                  body: `🚀 **Automated Release Merge**\n\nThis PR was automatically created after successful deployment to production.\n\n✅ Deployment successful\n✅ All tests passed\n✅ Version incremented\n\nThis merge ensures the main branch contains only successfully deployed code.`
-                });
-                prNumber = pr.number;
-                console.log(`Created new PR #${prNumber} from release to main`);
-              }
+          This PR was automatically created after successful deployment to production.
 
-              // Auto-merge the PR
-              await github.rest.pulls.merge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                commit_title: 'chore: merge release to main after successful deployment',
-                commit_message: 'Automated merge after successful production deployment',
-                merge_method: 'merge'
-              });
+          ✅ Deployment successful
+          ✅ All tests passed  
+          ✅ Version incremented
 
-              console.log(`Successfully merged PR #${prNumber}`);
-              return prNumber;
-            } catch (error) {
-              console.error('Error creating/merging PR:', error);
-              core.setFailed(`Failed to create or merge PR: ${error.message}`);
-              throw error;
-            }
+          This merge ensures the main branch contains only successfully deployed code." \
+              --head release \
+              --base main \
+              --assignee @me \
+              --json number --jq '.number')
+            echo "Created new PR #$pr_number from release to main"
+          fi
+          
+          # Try to auto-merge the PR
+          if gh pr merge $pr_number --merge --delete-branch=false; then
+            echo "Successfully merged PR #$pr_number"
+            echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+            echo "merge_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "Failed to auto-merge PR #$pr_number - may need manual approval"
+            echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+            echo "merge_success=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create deployment success comment
-        if: steps.deploy.outcome == 'success' && steps.create-pr.outcome == 'success'
+        if: steps.deploy.outcome == 'success' && steps.create-pr.outputs.merge_success == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -250,7 +239,7 @@ jobs:
             
             if (prs.length > 0 && prs[0].merged_at) {
               const pr = prs[0];
-              const mergedPrNumber = '${{ steps.create-pr.outputs.result }}';
+              const mergedPrNumber = '${{ steps.create-pr.outputs.pr_number }}';
               await github.rest.issues.createComment({
                 issue_number: pr.number,
                 owner: context.repo.owner,
@@ -289,7 +278,7 @@ jobs:
             core.setFailed('Deployment to Firebase failed')
 
       - name: Handle merge failure
-        if: steps.deploy.outcome == 'success' && steps.create-pr.outcome == 'failure'
+        if: steps.deploy.outcome == 'success' && steps.create-pr.outputs.merge_success == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -306,13 +295,14 @@ jobs:
             
             if (prs.length > 0 && prs[0].merged_at) {
               const pr = prs[0];
+              const prNumber = '${{ steps.create-pr.outputs.pr_number }}';
               await github.rest.issues.createComment({
                 issue_number: pr.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `⚠️ **Deployment Successful, but Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n❌ Failed to create/merge PR to main branch\n\n**Manual Action Required**: Please manually create a PR from \`release\` to \`main\` branch to update the main branch with the deployed code.`
+                body: `⚠️ **Deployment Successful, but Auto-Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed (likely due to branch protection requiring manual approval).\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n⚠️ PR #${prNumber} created but needs manual merge\n\n**Action Required**: Please manually approve and merge PR #${prNumber} to update the main branch with the deployed code.`
               });
             }
             
             // Set warning but don't fail the entire workflow since deployment succeeded
-            core.warning('Deployment succeeded but merge to main failed - manual intervention required')
+            core.warning('Deployment succeeded but auto-merge failed - manual intervention required for PR #${{ steps.create-pr.outputs.pr_number }}')
