@@ -1,7 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -30,38 +60,9 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firestore from 'firebase/firestore';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { AllocationUtilsService } from 'src/app/utilities/allocation-utils.service';
 import { StringUtils } from 'src/app/utilities/string-utils.service';
 import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-expense',
@@ -102,6 +103,7 @@ export class AddExpenseComponent implements OnInit {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
+  protected readonly allocationUtils = inject(AllocationUtilsService);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -207,7 +209,7 @@ export class AddExpenseComponent implements OnInit {
 
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMember: owedByMember?.ref,
+            owedByMemberRef: owedByMember?.ref,
             assignedAmount: split.assignedAmount,
             percentage: split.percentage,
             allocatedAmount: split.allocatedAmount,
@@ -234,13 +236,13 @@ export class AddExpenseComponent implements OnInit {
 
   createSplitFormGroup(): FormGroup {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMember').value.id
+      (control) => control.get('owedByMemberRef').value.id
     );
     const availableMembers = this.activeMembers().filter(
       (member) => !existingMembers.includes(member.id)
     );
     return this.fb.group({
-      owedByMember: [
+      owedByMemberRef: [
         availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
@@ -287,14 +289,14 @@ export class AddExpenseComponent implements OnInit {
 
   addAllActiveGroupMembers(): void {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMember').value.id
+      (control) => control.get('owedByMemberRef').value.id
     );
 
     this.activeMembers().forEach((member: Member) => {
       if (!existingMembers.includes(member.id)) {
         this.splitsFormArray.push(
           this.fb.group({
-            owedByMember: [member.ref, Validators.required],
+            owedByMemberRef: [member.ref, Validators.required],
             assignedAmount: ['0.00', Validators.required],
             percentage: [0.0],
             allocatedAmount: [0.0],
@@ -369,79 +371,37 @@ export class AddExpenseComponent implements OnInit {
   }
 
   allocateSharedAmounts(): void {
-    if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.value];
-      for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMember && splits[i].assignedAmount === 0) {
-          splits.splice(i, 1);
-        } else {
-          i++;
-        }
-      }
-      const splitCount: number = splits.filter(
-        (s) => s.owedByMemberRef !== null
-      ).length;
-      const splitTotal: number = this.getAssignedTotal();
-      const val = this.addExpenseForm.value;
-      const totalAmount: number = val.amount;
-      let evenlySharedAmount: number = val.sharedAmount;
-      const proportionalAmount: number = val.allocatedAmount;
-      const totalSharedSplits: number = +(
-        evenlySharedAmount +
-        proportionalAmount +
-        splitTotal
-      ).toFixed(2);
-      if (totalAmount != totalSharedSplits) {
-        evenlySharedAmount = +(
-          totalAmount -
-          splitTotal -
-          proportionalAmount
-        ).toFixed(2);
-        this.addExpenseForm.patchValue({
-          sharedAmount: evenlySharedAmount,
-        });
-      }
-      splits.forEach((split: Split) => {
-        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
-      });
-      splits.forEach((split: Split) => {
-        if (totalAmount === proportionalAmount) {
-          return;
-        }
-        const baseSplit: number =
-          +split.assignedAmount + +split.allocatedAmount;
-        split.allocatedAmount = +(
-          baseSplit +
-          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
-        ).toFixed(2);
-      });
-      const allocatedTotal = +splits
-        .reduce((total, s) => (total += s.allocatedAmount), 0)
-        .toFixed(2);
-      if (allocatedTotal !== totalAmount && splitCount > 0) {
-        let diff = +(totalAmount - allocatedTotal).toFixed(2);
-        for (let i = 0; diff != 0; ) {
-          if (diff > 0) {
-            splits[i].allocatedAmount += 0.01;
-            diff = +(diff - 0.01).toFixed(2);
-          } else {
-            splits[i].allocatedAmount -= 0.01;
-            diff = +(diff + 0.01).toFixed(2);
-          }
-          if (i < splits.length - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-        }
-      }
-      // Patch the allocatedAmount back into the form array
-      splits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
-          allocatedAmount: split.allocatedAmount,
-        });
+    if (this.splitsFormArray.length === 0) {
+      return;
+    }
+
+    const val = this.addExpenseForm.value;
+    const input = {
+      totalAmount: val.amount,
+      sharedAmount: val.sharedAmount,
+      allocatedAmount: val.allocatedAmount,
+      splits: this.splitsFormArray.value.map((split) => ({
+        owedByMemberRef: split.owedByMemberRef,
+        assignedAmount: split.assignedAmount,
+        percentage: split.percentage,
+        allocatedAmount: split.allocatedAmount,
+      })),
+    };
+
+    const result = this.allocationUtils.allocateSharedAmounts(input);
+
+    // Update the form with the adjusted shared amount if it changed
+    if (result.adjustedSharedAmount !== val.sharedAmount) {
+      this.addExpenseForm.patchValue({
+        sharedAmount: result.adjustedSharedAmount,
       });
     }
+
+    // Apply the allocation results to the form array
+    this.allocationUtils.applyAllocationToFormArray(
+      this.splitsFormArray,
+      result
+    );
   }
 
   allocateByPercentage(): void {
@@ -552,8 +512,8 @@ export class AddExpenseComponent implements OnInit {
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
           paidByMemberRef: val.paidByMember,
-          owedByMemberRef: s.owedByMember,
-          paid: s.owedByMember.eq(val.paidByMember),
+          owedByMemberRef: s.owedByMemberRef,
+          paid: s.owedByMemberRef.eq(val.paidByMember),
         };
         splits.push(split);
       }
