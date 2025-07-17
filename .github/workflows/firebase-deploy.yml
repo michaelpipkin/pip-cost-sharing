@@ -11,8 +11,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Run the test job on PRs to release branch
-    if: github.base_ref == 'release'
+    # Run the test job on PRs to release branch OR pushes to release branch
+    if: |
+      github.base_ref == 'release' || 
+      github.ref == 'refs/heads/release'
     outputs:
       skip: ${{ steps.skip-check.outputs.skip }}
     steps:
