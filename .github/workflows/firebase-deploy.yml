@@ -120,7 +120,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -178,18 +178,22 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+      - name: Setup SSH Deploy Key
+        if: steps.deploy.outcome == 'success'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+
       - name: Merge release to main branch
         if: steps.deploy.outcome == 'success'
         id: merge-to-main
-        env:
-          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          # Configure git with the PAT
+          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Set up authentication for git operations
-          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git
+          # Set up SSH authentication for git operations
+          git remote set-url origin git@github.com:${{ github.repository }}.git
           
           # Fetch the latest main branch
           git fetch origin main
@@ -232,7 +236,7 @@ jobs:
                 issue_number: pr.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged directly to main\n✅ Main branch now contains the latest deployed code`
+                body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged to main using deploy key\n✅ Main branch now contains the latest deployed code`
               });
             }
 
@@ -287,7 +291,7 @@ jobs:
                 issue_number: pr.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `⚠️ **Deployment Successful, but Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed (likely due to branch protection or permission issues).\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n❌ Failed to merge release to main branch\n\n**Action Required**: Please manually create a PR from \`release\` to \`main\` branch to update the main branch with the deployed code.`
+                body: `⚠️ **Deployment Successful, but Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n❌ Failed to merge release to main branch\n\n**Action Required**: Please manually create a PR from \`release\` to \`main\` branch to update the main branch with the deployed code.`
               });
             }
             
