@@ -13,24 +13,13 @@ permissions:
   checks: read
 
 jobs:
-  # First run tests to ensure code quality before version bump
+  # First run tests to ensure code quality before version bump (only if not skipped)
   test:
     runs-on: ubuntu-latest
-    # Always run the test job on PRs to release branch
-    outputs:
-      skip: ${{ steps.skip-check.outputs.skip }}
+    # Only run tests if not being skipped
+    if: |
+      !contains(github.event.pull_request.title, '[skip tests]')
     steps:
-      - name: Check if tests should be skipped
-        id: skip-check
-        run: |
-          if [[ "${{ github.event.pull_request.title }}" == *"[skip tests]"* ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "✅ Tests will be skipped due to [skip tests] in PR title"
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "✅ Tests will run normally"
-          fi
-
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
@@ -93,15 +82,12 @@ jobs:
           EOF
 
       - name: Install Playwright Browsers
-        if: steps.skip-check.outputs.skip == 'false'
         run: pnpm e2e:install --with-deps
 
       - name: Install Firebase CLI
-        if: steps.skip-check.outputs.skip == 'false'
         run: npm install -g firebase-tools
 
       - name: Start Firebase Emulators
-        if: steps.skip-check.outputs.skip == 'false'
         run: |
           firebase emulators:start --only auth,firestore &
           echo "Waiting for emulators to start..."
@@ -111,38 +97,30 @@ jobs:
           echo "Firebase emulators are ready!"
 
       - name: Run Core E2E Tests Only
-        if: steps.skip-check.outputs.skip == 'false'
         run: pnpm e2e:ci:fast
         env:
           CI: true
 
       - name: Stop Firebase Emulators
-        if: always() && steps.skip-check.outputs.skip == 'false'
+        if: always()
         run: |
           pkill -f firebase || true
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
-        if: always() && steps.skip-check.outputs.skip == 'false'
+        if: always()
         with:
           name: playwright-report-version-check
           path: playwright-report/
           retention-days: 30
 
-      - name: Mark tests as skipped
-        if: steps.skip-check.outputs.skip == 'true'
-        run: |
-          echo "✅ Tests skipped as requested via [skip tests] in PR title"
-          echo "Job marked as successful to satisfy branch protection requirements"
-          echo "Setup steps completed successfully - dependencies and environment verified"
-
   auto-version:
     runs-on: ubuntu-latest
-    # Always run version bump after test job completes successfully
+    # Always run version bump, but depend on test results if tests were run
     needs: [test]
     if: |
       always() &&
-      needs.test.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       !contains(github.event.pull_request.title, 'version bump') &&
       !contains(github.event.pull_request.title, 'bump version') &&
       !contains(github.event.pull_request.title, 'chore: bump') &&
@@ -215,7 +193,7 @@ jobs:
         with:
           script: |
             const wasSkipped = '${{ steps.version-check.outputs.skip }}' === 'true';
-            const testsWereSkipped = '${{ needs.test.outputs.skip }}' === 'true';
+            const testsWereSkipped = '${{ needs.test.result }}' === 'skipped';
             
             let body;
             if (wasSkipped) {
