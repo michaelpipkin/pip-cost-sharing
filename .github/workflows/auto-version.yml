@@ -18,10 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     # Skip entire job for PRs with skip keywords in title
     if: |
-      !contains(github.event.pull_request.title, '[skip e2e]') &&
-      !contains(github.event.pull_request.title, '[skip tests]') &&
-      !contains(github.event.pull_request.title, '[no e2e]') &&
-      !contains(github.event.pull_request.title, 'chore:')
+      !contains(github.event.pull_request.title, '[skip tests]')
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
