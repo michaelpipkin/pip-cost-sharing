@@ -180,9 +180,20 @@ jobs:
 
       - name: Setup SSH Deploy Key
         if: steps.deploy.outcome == 'success'
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+        run: |
+          # Create SSH directory
+          mkdir -p ~/.ssh
+          
+          # Add the private key
+          echo "${{ secrets.DEPLOY_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          # Start SSH agent and add the key
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/deploy_key
+          
+          # Add GitHub to known hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Merge release to main branch
         if: steps.deploy.outcome == 'success'
@@ -212,6 +223,16 @@ jobs:
             echo "Failed to push merge to main branch"
             echo "merge_success=false" >> $GITHUB_OUTPUT
             exit 1
+          fi
+
+      - name: Cleanup SSH key
+        if: always() && steps.deploy.outcome == 'success'
+        run: |
+          # Remove the private key file
+          rm -f ~/.ssh/deploy_key
+          # Kill the SSH agent if it's running
+          if [ -n "$SSH_AGENT_PID" ]; then
+            ssh-agent -k
           fi
 
       - name: Create deployment success comment
