@@ -4,62 +4,41 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main
+      - release
   pull_request:
-    # Run tests on any PR, regardless of target branch
+    branches:
+      - release
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Skip entire job for PRs with skip keywords in title
+    # Only run tests on PRs to release branch
     if: |
-      github.event_name == 'push' || 
-      (github.event_name == 'pull_request' &&
-       !contains(github.event.pull_request.title, '[skip e2e]') &&
-       !contains(github.event.pull_request.title, '[skip tests]') &&
-       !contains(github.event.pull_request.title, '[no e2e]') &&
-       !contains(github.event.pull_request.title, 'chore:'))
+      github.event_name == 'pull_request' &&
+      github.base_ref == 'release' &&
+      !contains(github.event.pull_request.title, '[skip e2e]') &&
+      !contains(github.event.pull_request.title, '[skip tests]') &&
+      !contains(github.event.pull_request.title, '[no e2e]') &&
+      !contains(github.event.pull_request.title, 'chore:')
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Check if tests should be skipped (push events only)
-        id: skip-check
-        if: github.event_name == 'push'
-        run: |
-          # Check the last commit message (subject + body) for skip keywords
-          last_commit_full=$(git log -1 --pretty=format:"%s%n%b")
-          echo "Checking commit message: $last_commit_full"
-          if [[ "$last_commit_full" == *"[skip e2e]"* ]] || \
-             [[ "$last_commit_full" == *"[skip tests]"* ]] || \
-             [[ "$last_commit_full" == *"[no e2e]"* ]] || \
-             [[ "$last_commit_full" == *"chore:"* ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "Skipping e2e tests based on commit message containing skip keywords"
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Running e2e tests - no skip keywords found in commit message"
-          fi
-
       - name: Setup Node.js
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install pnpm
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         uses: pnpm/action-setup@v2
         with:
           version: 10.2.0
 
       - name: Get pnpm store directory
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }} # github-actions-ignore
@@ -68,7 +47,6 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Cache Playwright browsers
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -77,11 +55,9 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install dependencies
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: pnpm install --frozen-lockfile
 
       - name: Create Firebase config file
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: |
           cat << EOF > src/app/firebase.config.ts
           export const firebaseConfig = {
@@ -96,7 +72,6 @@ jobs:
           EOF
       
       - name: Create Github config file
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: |
           cat << EOF > src/app/github.config.ts
           export const githubConfig = {
@@ -105,15 +80,12 @@ jobs:
           EOF
 
       - name: Install Playwright Browsers
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: pnpm e2e:install --with-deps
 
       - name: Install Firebase CLI
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: npm install -g firebase-tools
 
       - name: Start Firebase Emulators
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: |
           firebase emulators:start --only auth,firestore &
           echo "Waiting for emulators to start..."
@@ -123,7 +95,6 @@ jobs:
           echo "Firebase emulators are ready!"
 
       - name: Run Core E2E Tests Only
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && steps.skip-check.outputs.skip != 'true')
         run: pnpm e2e:ci:fast
         env:
           CI: true
@@ -141,13 +112,19 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-  build_and_deploy:
+  deploy_and_merge:
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main'
+    # Only run when pushing to release branch (i.e., when PR is merged)
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -191,8 +168,82 @@ jobs:
         run: pnpm add -g firebase-tools
         
       - name: Deploy to Firebase Hosting
+        id: deploy
         uses: FirebaseExtended/action-hosting-deploy@v0 
         with:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: 'pip-cost-sharing'
           channelId: live
+
+      - name: Configure Git for merge
+        if: steps.deploy.outcome == 'success'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Merge to main branch
+        if: steps.deploy.outcome == 'success'
+        run: |
+          # Fetch the latest main branch
+          git fetch origin main
+          # Switch to main branch
+          git checkout main
+          # Merge release branch into main
+          git merge origin/release --no-ff -m "chore: merge release to main after successful deployment"
+          # Push the updated main branch
+          git push origin main
+
+      - name: Create deployment success comment
+        if: steps.deploy.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find the most recent merged PR to release branch
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'release',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 1
+            });
+            
+            if (prs.length > 0 && prs[0].merged_at) {
+              const pr = prs[0];
+              await github.rest.issues.createComment({
+                issue_number: pr.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged to main\n✅ Main branch now contains the latest deployed code`
+              });
+            }
+
+      - name: Handle deployment failure
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find the most recent merged PR to release branch
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'release',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 1
+            });
+            
+            if (prs.length > 0 && prs[0].merged_at) {
+              const pr = prs[0];
+              await github.rest.issues.createComment({
+                issue_number: pr.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `❌ **Deployment Failed!**\n\nThe deployment to production failed. The code was NOT merged to the main branch.\n\n⚠️ Please check the deployment logs and fix any issues before attempting another deployment.\n⚠️ Main branch remains unchanged and contains only successfully deployed code.`
+              });
+            }
+            
+            // Also fail the workflow to make the failure visible
+            core.setFailed('Deployment to Firebase failed')
