@@ -191,8 +191,8 @@ jobs:
             echo "Found existing PR #$existing_pr from release to main"
             pr_number=$existing_pr
           else
-            # Create a new PR from release to main
-            pr_number=$(gh pr create \
+            # Create a new PR from release to main and capture the URL
+            pr_url=$(gh pr create \
               --title "chore: merge release to main after successful deployment" \
               --body "🚀 **Automated Release Merge**
 
@@ -205,8 +205,10 @@ jobs:
           This merge ensures the main branch contains only successfully deployed code." \
               --head release \
               --base main \
-              --assignee @me \
-              --json number --jq '.number')
+              --assignee @me)
+            
+            # Extract PR number from URL (format: https://github.com/owner/repo/pull/123)
+            pr_number=$(echo "$pr_url" | sed 's/.*\/pull\/\([0-9]*\).*/\1/')
             echo "Created new PR #$pr_number from release to main"
           fi
           
