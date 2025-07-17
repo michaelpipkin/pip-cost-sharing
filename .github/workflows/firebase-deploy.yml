@@ -11,22 +11,33 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Always run the test job on PRs to release branch
-    if: |
-      github.event_name == 'pull_request' &&
-      github.base_ref == 'release'
+    # Run the test job on PRs to release branch
+    if: github.base_ref == 'release'
     outputs:
       skip: ${{ steps.skip-check.outputs.skip }}
     steps:
       - name: Check if tests should be skipped
         id: skip-check
         run: |
-          if [[ "${{ github.event.pull_request.title }}" == *"[skip tests]"* ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "✅ Tests will be skipped due to [skip tests] in PR title"
+          # For pull requests, check the PR title
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "${{ github.event.pull_request.title }}" == *"[skip tests]"* ]]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+              echo "✅ Tests will be skipped due to [skip tests] in PR title"
+            else
+              echo "skip=false" >> $GITHUB_OUTPUT
+              echo "✅ Tests will run normally"
+            fi
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "✅ Tests will run normally"
+            # For push events, check the commit message
+            commit_msg=$(git log -1 --pretty=format:"%s")
+            if [[ "$commit_msg" == *"[skip tests]"* ]]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+              echo "✅ Tests will be skipped due to [skip tests] in commit message"
+            else
+              echo "skip=false" >> $GITHUB_OUTPUT
+              echo "✅ Tests will run normally"
+            fi
           fi
 
       - name: Checkout Repo
