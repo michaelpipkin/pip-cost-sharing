@@ -184,16 +184,28 @@ jobs:
           # Create SSH directory
           mkdir -p ~/.ssh
           
-          # Add the private key
+          # Add the private key (preserve newlines)
           echo "${{ secrets.DEPLOY_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           
-          # Start SSH agent and add the key
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/deploy_key
+          # Debug: Check if key file was created correctly
+          echo "Key file size: $(wc -c < ~/.ssh/deploy_key)"
+          echo "Key file first line: $(head -1 ~/.ssh/deploy_key)"
+          echo "Key file last line: $(tail -1 ~/.ssh/deploy_key)"
           
           # Add GitHub to known hosts
           ssh-keyscan github.com >> ~/.ssh/known_hosts
+          
+          # Start SSH agent and add the key
+          eval "$(ssh-agent -s)"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          
+          # Add the key to the agent
+          ssh-add ~/.ssh/deploy_key
+          
+          # Test SSH connection
+          ssh -T git@github.com || echo "SSH test completed (exit code $?)"
 
       - name: Merge release to main branch
         if: steps.deploy.outcome == 'success'
