@@ -1,7 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  Signal,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -30,45 +60,16 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
 import { DocumentReference } from 'firebase/firestore';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { Url } from 'url';
-import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  Signal,
-  signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import {
   deleteObject,
   getDownloadURL,
   getStorage,
   ref,
 } from 'firebase/storage';
+import { AllocationUtilsService } from 'src/app/utilities/allocation-utils.service';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { Url } from 'url';
+import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 
 @Component({
   selector: 'app-edit-expense',
@@ -109,6 +110,7 @@ export class EditExpenseComponent implements OnInit {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
+  protected readonly allocationUtils = inject(AllocationUtilsService);
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
@@ -336,75 +338,37 @@ export class EditExpenseComponent implements OnInit {
   }
 
   allocateSharedAmounts(): void {
-    if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.value];
-      for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
-          splits.splice(i, 1);
-        } else {
-          i++;
-        }
-      }
-      const splitCount: number = splits.filter(
-        (s) => s.owedByMemberRef !== null
-      ).length;
-      const splitTotal: number = this.getAssignedTotal();
-      const val = this.editExpenseForm.value;
-      const totalAmount: number = val.amount;
-      let evenlySharedAmount: number = val.sharedAmount;
-      const proportionalAmount: number = val.allocatedAmount;
-      const totalSharedSplits: number = +(
-        evenlySharedAmount +
-        proportionalAmount +
-        splitTotal
-      ).toFixed(2);
-      if (totalAmount != totalSharedSplits) {
-        evenlySharedAmount = +(totalAmount - splitTotal - proportionalAmount).toFixed(2);
-        this.editExpenseForm.patchValue({
-          sharedAmount: evenlySharedAmount,
-        });
-      }
-      splits.forEach((split: Split) => {
-        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
-      });
-      splits.forEach((split: Split) => {
-        if (totalAmount === proportionalAmount) {
-          return;
-        }
-        const baseSplit: number =
-          +split.assignedAmount + +split.allocatedAmount;
-        split.allocatedAmount = +(
-          baseSplit +
-          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
-        ).toFixed(2);
-      });
-      const allocatedTotal = +splits
-        .reduce((total, s) => (total += s.allocatedAmount), 0)
-        .toFixed(2);
-      if (allocatedTotal !== totalAmount && splitCount > 0) {
-        let diff = +(totalAmount - allocatedTotal).toFixed(2);
-        for (let i = 0; diff != 0; ) {
-          if (diff > 0) {
-            splits[i].allocatedAmount += 0.01;
-            diff = +(diff - 0.01).toFixed(2);
-          } else {
-            splits[i].allocatedAmount -= 0.01;
-            diff = +(diff + 0.01).toFixed(2);
-          }
-          if (i < splits.length - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-        }
-      }
-      // Patch the allocatedAmount back into the form array
-      splits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
-          allocatedAmount: split.allocatedAmount,
-        });
+    if (this.splitsFormArray.length === 0) {
+      return;
+    }
+
+    const val = this.editExpenseForm.value;
+    const input = {
+      totalAmount: val.amount,
+      sharedAmount: val.sharedAmount,
+      allocatedAmount: val.allocatedAmount,
+      splits: this.splitsFormArray.value.map((split) => ({
+        owedByMemberRef: split.owedByMemberRef,
+        assignedAmount: split.assignedAmount,
+        percentage: split.percentage,
+        allocatedAmount: split.allocatedAmount,
+      })),
+    };
+
+    const result = this.allocationUtils.allocateSharedAmounts(input);
+
+    // Update the form with the adjusted shared amount if it changed
+    if (result.adjustedSharedAmount !== val.sharedAmount) {
+      this.editExpenseForm.patchValue({
+        sharedAmount: result.adjustedSharedAmount,
       });
     }
+
+    // Apply the allocation results to the form array
+    this.allocationUtils.applyAllocationToFormArray(
+      this.splitsFormArray,
+      result
+    );
   }
 
   allocateByPercentage(): void {
