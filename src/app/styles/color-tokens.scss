@@ -35,6 +35,7 @@ $light-tokens: (
   'table-header': mat.get-theme-color(light.$light-theme, primary, 40),
   'on-table-header': white,
   'table-row-odd': mat.get-theme-color(light.$light-theme, secondary, 95),
+  'table-row-even': mat.get-theme-color(light.$light-theme, secondary, 99),
   'table-row-hover': mat.get-theme-color(light.$light-theme, secondary, 80),
   // Border colors
   'border': #cccccc
@@ -68,6 +69,7 @@ $dark-tokens: (
   'table-header': mat.get-theme-color(dark.$dark-theme, primary, 70),
   'on-table-header': mat.get-theme-color(dark.$dark-theme, neutral, 10),
   'table-row-odd': mat.get-theme-color(dark.$dark-theme, secondary, 30),
+  'table-row-even': mat.get-theme-color(dark.$dark-theme, neutral, 6),
   'table-row-hover': mat.get-theme-color(dark.$dark-theme, secondary, 30),
   // Border colors
   'border': #666666

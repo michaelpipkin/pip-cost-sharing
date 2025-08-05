@@ -277,7 +277,7 @@
                   class="static-table"
                 >
                   @let splitColumnsToDisplay =
-                    ['owedBy', 'amount', 'paid', 'mark'];
+                    ['owedBy', 'amount', 'paid', 'mark', 'copy'];
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Id</th>
                     <td mat-cell *matCellDef="let split">{{ split.id }}</td>
@@ -336,6 +336,37 @@
                           "
                         >
                           <mat-icon>paid</mat-icon>
+                        </button>
+                      }
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="copy">
+                    <th
+                      mat-header-cell
+                      *matHeaderCellDef
+                      class="cell-center copy-header"
+                      style="width: 60px"
+                    ></th>
+                    <td
+                      mat-cell
+                      *matCellDef="let split; first as isFirst"
+                      class="cell-center copy-cell"
+                      [attr.rowspan]="isFirst ? expense.splits.length : null"
+                      [style.vertical-align]="isFirst ? 'middle' : null"
+                      [style.display]="isFirst ? 'table-cell' : 'none'"
+                    >
+                      @if (isFirst) {
+                        <span>Copy</span>
+                        <button
+                          mat-mini-fab
+                          class="btn btn-tertiary mt-2"
+                          (click)="
+                            copyExpenseSummaryToClipboard(expense);
+                            $event.stopPropagation()
+                          "
+                          title="Copy expense summary"
+                        >
+                          <mat-icon>content_copy</mat-icon>
                         </button>
                       }
                     </td>
