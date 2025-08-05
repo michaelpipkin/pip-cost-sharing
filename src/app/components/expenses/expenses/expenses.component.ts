@@ -1,21 +1,5 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -51,6 +35,22 @@ import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-expenses',
@@ -302,5 +302,111 @@ export class ExpensesComponent implements OnInit {
       maxWidth: '80vw',
     };
     this.dialog.open(ExpensesHelpComponent, dialogConfig);
+  }
+
+  copyExpenseSummaryToClipboard(expense: Expense): void {
+    const summaryText = this.generateExpenseSummaryText(expense);
+    navigator.clipboard
+      .writeText(summaryText)
+      .then(() => {
+        this.snackBar.open('Expense summary copied to clipboard', 'OK', {
+          duration: 2000,
+        });
+      })
+      .catch(() => {
+        this.snackBar.open('Failed to copy expense summary', 'OK', {
+          duration: 2000,
+        });
+      });
+  }
+
+  private generateExpenseSummaryText(expense: Expense): string {
+    const payer = this.getMemberName(expense.paidByMemberRef.id);
+    const category = expense.categoryName;
+    const date = expense.date.toDate().toLocaleDateString();
+
+    let summaryText = `Date: ${date}\n`;
+    summaryText += `Description: ${expense.description}\n`;
+    summaryText += `Category: ${category}\n`;
+    summaryText += `Paid by: ${payer}\n`;
+    summaryText += `Total: ${this.formatCurrency(expense.totalAmount)}\n`;
+
+    // Add breakdown information similar to split component
+    if (!expense.splitByPercentage && expense.sharedAmount > 0) {
+      summaryText += `Evenly shared amount: ${this.formatCurrency(expense.sharedAmount)}\n`;
+    }
+
+    if (!expense.splitByPercentage && expense.allocatedAmount > 0) {
+      summaryText += `Proportional amount (tax, tip, etc.): ${this.formatCurrency(expense.allocatedAmount)}\n`;
+    }
+
+    summaryText += '=============\n';
+
+    // Add each person's allocation with detailed breakdown
+    expense.splits.forEach((split) => {
+      const owedBy = this.getMemberName(split.owedByMemberRef.id);
+      const paidStatus = split.paid ? ' (Paid)' : ' (Unpaid)';
+
+      if (expense.splitByPercentage) {
+        // Show percentage and total for percentage splits
+        summaryText += `${owedBy} (${split.percentage}%): ${this.formatCurrency(split.allocatedAmount)}${paidStatus}\n`;
+      } else {
+        // Show detailed breakdown for dollar amount splits
+        const assignedAmount = split.assignedAmount || 0;
+        const proportionalAmount = this.calculateProportionalAmountForSplit(
+          expense,
+          split
+        );
+        const sharedPortionAmount =
+          this.calculateSharedPortionForSplit(expense);
+
+        summaryText += `${owedBy}: ${this.formatCurrency(split.allocatedAmount)}${paidStatus}\n`;
+
+        if (assignedAmount > 0) {
+          summaryText += `  Personal: ${this.formatCurrency(assignedAmount)}\n`;
+        }
+        if (sharedPortionAmount > 0) {
+          summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
+        }
+        if (proportionalAmount > 0) {
+          summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+        }
+      }
+    });
+
+    return summaryText.trim();
+  }
+
+  // Helper methods to calculate breakdown amounts for existing expenses
+  private calculateProportionalAmountForSplit(
+    expense: Expense,
+    split: Split
+  ): number {
+    if (expense.allocatedAmount === 0) return 0;
+
+    const baseAmount: number = expense.totalAmount - expense.allocatedAmount;
+    const evenlySharedAmount: number =
+      expense.sharedAmount / expense.splits.length;
+
+    if (baseAmount === 0) return 0;
+
+    const memberProportionalAmount: number =
+      (((split.assignedAmount || 0) + evenlySharedAmount) / baseAmount) *
+      expense.allocatedAmount;
+
+    return +memberProportionalAmount.toFixed(2);
+  }
+
+  private calculateSharedPortionForSplit(expense: Expense): number {
+    if (expense.sharedAmount === 0 || expense.splits.length === 0) return 0;
+    return +(expense.sharedAmount / expense.splits.length).toFixed(2);
+  }
+
+  // Helper method to format currency
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
   }
 }
