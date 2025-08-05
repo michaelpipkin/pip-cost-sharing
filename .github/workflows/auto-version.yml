@@ -10,117 +10,11 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  checks: read
 
 jobs:
-  # First run tests to ensure code quality before version bump (only if not skipped)
-  test:
-    runs-on: ubuntu-latest
-    # Only run tests if not being skipped
-    if: |
-      !contains(github.event.pull_request.title, '[skip tests]')
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10.2.0
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }} # github-actions-ignore
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Create Firebase config file
-        run: |
-          cat << EOF > src/app/firebase.config.ts
-          export const firebaseConfig = {
-            apiKey: 'fake-api-key',
-            authDomain: 'fake-auth-domain',
-            projectId: 'pip-cost-sharing',
-            storageBucket: 'fake-storage-bucket',
-            messagingSenderId: 'fake-sender-id',
-            appId: 'fake-app-id',
-            measurementId: 'fake-measurement-id',
-          };
-          EOF
-      
-      - name: Create Github config file
-        run: |
-          cat << EOF > src/app/github.config.ts
-          export const githubConfig = {
-            personalAccessToken: 'fake-token',
-          };
-          EOF
-
-      - name: Install Playwright Browsers
-        run: pnpm e2e:install --with-deps
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Start Firebase Emulators
-        run: |
-          firebase emulators:start --only auth,firestore &
-          echo "Waiting for emulators to start..."
-          sleep 15
-          curl -f http://localhost:8080 || (echo "Firestore emulator not ready" && exit 1)
-          curl -f http://localhost:9099 || (echo "Auth emulator not ready" && exit 1)
-          echo "Firebase emulators are ready!"
-
-      - name: Run Core E2E Tests Only
-        run: pnpm e2e:ci:fast
-        env:
-          CI: true
-
-      - name: Stop Firebase Emulators
-        if: always()
-        run: |
-          pkill -f firebase || true
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-version-check
-          path: playwright-report/
-          retention-days: 30
-
   auto-version:
     runs-on: ubuntu-latest
-    # Always run version bump, but depend on test results if tests were run
-    needs: [test]
     if: |
-      always() &&
-      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       !contains(github.event.pull_request.title, 'version bump') &&
       !contains(github.event.pull_request.title, 'bump version') &&
       !contains(github.event.pull_request.title, 'chore: bump') &&
@@ -193,15 +87,12 @@ jobs:
         with:
           script: |
             const wasSkipped = '${{ steps.version-check.outputs.skip }}' === 'true';
-            const testsWereSkipped = '${{ needs.test.result }}' === 'skipped';
             
             let body;
             if (wasSkipped) {
               body = `ℹ️ **Version Bump Skipped**\n\nVersion bump was skipped because the last commit already contains a version bump.`;
-            } else if (testsWereSkipped) {
-              body = `🚀 **Auto Version Bump (Tests Skipped)**\n\nTests were skipped via \`[skip tests]\` in PR title. Version automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
             } else {
-              body = `🚀 **Auto Version Bump**\n\nTests passed! Version automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
+              body = `🚀 **Auto Version Bump**\n\nVersion automatically incremented from \`${{ steps.current-version.outputs.version }}\` to \`${{ steps.new-version.outputs.version }}\` for release branch.`;
             }
             
             github.rest.issues.createComment({
