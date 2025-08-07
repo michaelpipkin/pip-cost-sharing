@@ -11,7 +11,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Split } from '@models/split';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { SplitHelpComponent } from '../split-help/split-help.component';
 import {
   afterEveryRender,
   afterNextRender,
@@ -34,6 +33,10 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-split',
@@ -442,10 +445,11 @@ export class SplitComponent {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'split' },
     };
-    this.dialog.open(SplitHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }

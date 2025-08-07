@@ -31,7 +31,6 @@ import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
-import { SummaryHelpComponent } from '../summary-help/summary-help.component';
 import {
   animate,
   state,
@@ -48,6 +47,10 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '../../help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -337,10 +340,11 @@ export class SummaryComponent {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'summary' },
     };
-    this.dialog.open(SummaryHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }

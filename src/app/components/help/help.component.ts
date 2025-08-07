@@ -1,10 +1,4 @@
 import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -14,6 +8,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HelpService } from '@services/help.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  HelpContentService,
+  HelpSection,
+} from '@services/help-content.service';
 
 @Component({
   selector: 'app-help',
@@ -31,16 +35,23 @@ import { getAnalytics } from 'firebase/analytics';
 })
 export class HelpComponent {
   protected readonly helpService = inject(HelpService);
+  private readonly helpContentService = inject(HelpContentService);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
+
+  helpSections: HelpSection[] = [];
 
   issueForm = this.fb.group({
     title: ['', Validators.required],
     body: ['', Validators.required],
     email: ['', Validators.email],
   });
+
+  constructor() {
+    this.helpSections = this.helpContentService.getAllHelpSections();
+  }
 
   public get f() {
     return this.issueForm.controls;
