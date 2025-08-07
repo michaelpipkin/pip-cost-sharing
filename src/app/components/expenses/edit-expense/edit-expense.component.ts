@@ -1,37 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import {
-  afterEveryRender,
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  model,
-  OnInit,
-  Signal,
-  signal,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -60,16 +30,49 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import * as firestore from 'firebase/firestore';
 import { DocumentReference } from 'firebase/firestore';
+import { AllocationUtilsService } from 'src/app/utilities/allocation-utils.service';
+import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { Url } from 'url';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  model,
+  OnInit,
+  Signal,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 import {
   deleteObject,
   getDownloadURL,
   getStorage,
   ref,
 } from 'firebase/storage';
-import { AllocationUtilsService } from 'src/app/utilities/allocation-utils.service';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
-import { Url } from 'url';
-import { AddEditExpenseHelpComponent } from '../add-edit-expense-help/add-edit-expense-help.component';
 
 @Component({
   selector: 'app-edit-expense',
@@ -571,10 +574,11 @@ export class EditExpenseComponent implements OnInit {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'add-edit-expenses' },
     };
-    this.dialog.open(AddEditExpenseHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }

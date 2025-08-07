@@ -1,12 +1,3 @@
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -29,8 +20,20 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
-import { CategoriesHelpComponent } from '../categories-help/categories-help.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-categories',
@@ -132,10 +135,11 @@ export class CategoriesComponent {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'categories' },
     };
-    this.dialog.open(CategoriesHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }
