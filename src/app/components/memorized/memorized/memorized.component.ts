@@ -22,7 +22,6 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
-import { MemorizedHelpComponent } from '../memorized-help/memorized-help.component';
 import {
   animate,
   state,
@@ -40,6 +39,10 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-memorized',
@@ -206,10 +209,11 @@ export class MemorizedComponent implements OnInit {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'memorized' },
     };
-    this.dialog.open(MemorizedHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }

@@ -1,0 +1,11 @@
+<div class="help-dialog-header">
+  <h4 class="help-header-text">{{ displayTitle }} Help</h4>
+  <mat-icon mat-dialog-close class="help-header-close">close</mat-icon>
+</div>
+<mat-dialog-content class="help-dialog-content">
+  @if (helpSection) {
+    @for (paragraph of helpSection.content; track $index) {
+      <p>{{ paragraph }}</p>
+    }
+  }
+</mat-dialog-content>

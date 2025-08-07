@@ -16,9 +16,12 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AddGroupComponent } from '../add-group/add-group.component';
-import { GroupsHelpComponent } from '../groups-help/groups-help.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-groups',
@@ -101,10 +104,11 @@ export class GroupsComponent {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'groups' },
     };
-    this.dialog.open(GroupsHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 }

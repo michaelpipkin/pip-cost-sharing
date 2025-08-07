@@ -34,7 +34,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
-import { ExpensesHelpComponent } from '../expenses-help/expenses-help.component';
 import {
   animate,
   state,
@@ -51,6 +50,10 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '../../help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-expenses',
@@ -297,11 +300,12 @@ export class ExpensesComponent implements OnInit {
   }
 
   showHelp(): void {
-    const dialogConfig: MatDialogConfig = {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
+      data: { sectionId: 'expenses' },
     };
-    this.dialog.open(ExpensesHelpComponent, dialogConfig);
+    this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
   copyExpenseSummaryToClipboard(expense: Expense): void {
