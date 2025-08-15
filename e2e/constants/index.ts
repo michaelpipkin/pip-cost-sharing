@@ -4,6 +4,8 @@ export const TEST_CONFIG = {
   baseUrl: process.env.CI
     ? 'http://localhost:4200'
     : 'http://local.dev.com:4200',
+  // Clipboard functionality is blocked on non-localhost HTTP domains
+  supportsClipboard: process.env.CI || process.env.USE_LOCALHOST === 'true',
   timeout: {
     short: 5000,
     medium: 10000,

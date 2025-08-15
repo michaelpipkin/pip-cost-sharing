@@ -1,22 +1,32 @@
-<h1 mat-dialog-title>Add New Group</h1>
+<h1 mat-dialog-title data-testid="add-group-title">Add New Group</h1>
 <form [formGroup]="newGroupForm">
   <mat-dialog-content class="content">
     <mat-form-field appearance="fill">
       <mat-label>Group name</mat-label>
-      <input matInput formControlName="groupName" />
+      <input
+        matInput
+        formControlName="groupName"
+        data-testid="group-name-input"
+      />
       @if (f.groupName.errors?.['required']) {
         <mat-error> *Required </mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill">
       <mat-label>Your name in the group</mat-label>
-      <input matInput formControlName="displayName" />
+      <input
+        matInput
+        formControlName="displayName"
+        data-testid="display-name-input"
+      />
       @if (f.displayName.errors?.['required']) {
         <mat-error> *Required </mat-error>
       }
     </mat-form-field>
     <div class="toggle">
-      <mat-slide-toggle formControlName="autoAddMembers"
+      <mat-slide-toggle
+        formControlName="autoAddMembers"
+        data-testid="auto-add-members-toggle"
         >Automatically add all group<br />
         members to new expenses</mat-slide-toggle
       >
@@ -24,6 +34,7 @@
   </mat-dialog-content>
   <mat-dialog-actions>
     <button
+      data-testid="add-group-save-button"
       mat-raised-button
       class="btn-secondary"
       type="submit"
@@ -34,6 +45,7 @@
       Save
     </button>
     <button
+      data-testid="add-group-cancel-button"
       mat-stroked-button
       type="button"
       [disabled]="newGroupForm.disabled"
