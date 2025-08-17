@@ -6,12 +6,6 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
-import { CategoryService } from './category.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -26,6 +20,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -172,10 +172,9 @@ export class GroupService implements IGroupService {
         usersRef,
         where('defaultGroupId', '==', groupRef.id)
       );
-      await getDocs(usersQuery).then((users) => {
-        users.forEach((u) => {
-          batch.update(u.ref, { defaultGroupId: '' });
-        });
+      const users = await getDocs(usersQuery);
+      users.forEach((u) => {
+        batch.update(u.ref, { defaultGroupId: '' });
       });
       if (this.groupStore.currentGroup().id === groupRef.id) {
         this.groupStore.clearCurrentGroup();

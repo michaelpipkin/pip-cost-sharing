@@ -76,18 +76,29 @@ export class SplitService implements ISplitService {
     history: Partial<History>
   ): Promise<any> {
     const batch = writeBatch(this.fs);
-    for (const split of splits) {
+
+    // Build all split queries in parallel
+    const splitQueries = splits.map((split) =>
+      query(
+        collection(this.fs, `groups/${groupId}/splits`),
+        where('expenseRef', '==', split.expenseRef)
+      )
+    );
+
+    // Execute all queries in parallel
+    const splitQueryResults = await Promise.all(
+      splitQueries.map((query) => getDocs(query))
+    );
+
+    // Process each split with its corresponding query result
+    for (let i = 0; i < splits.length; i++) {
+      const split = splits[i];
+      const splitsQuerySnap = splitQueryResults[i];
+
       // Update the split document to mark it as paid
       batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
         paid: true,
       });
-
-      // Query for related splits
-      const splitsQuery = query(
-        collection(this.fs, `groups/${groupId}/splits`),
-        where('expenseRef', '==', split.expenseRef)
-      );
-      const splitsQuerySnap = await getDocs(splitsQuery);
 
       // Determine if the expense is paid
       const expensePaid =
@@ -98,6 +109,7 @@ export class SplitService implements ISplitService {
       // Update the expense document
       batch.update(split.expenseRef, { paid: expensePaid });
     }
+
     const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
     return await batch
