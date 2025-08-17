@@ -78,23 +78,29 @@ export class MemberService implements IMemberService {
     groupId: string,
     member: Partial<Member>
   ): Promise<any> {
-    const groupSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    if (!groupSnap.exists()) {
-      return new Error('Group code not found!');
-    }
+    // Build queries
     const userIdQuery = query(
       collection(this.fs, `groups/${groupId}/members`),
       where('userRef', '==', member.userRef)
     );
-    const idSnapshot = await getDocs(userIdQuery);
-    if (!idSnapshot.empty) {
-      return new Error('You are already a member of that group!');
-    }
     const emailQuery = query(
       collection(this.fs, `groups/${groupId}/members`),
       where('email', '==', member.email)
     );
-    const emailSnapshot = await getDocs(emailQuery);
+
+    // Execute all queries in parallel
+    const [groupSnap, idSnapshot, emailSnapshot] = await Promise.all([
+      getDoc(doc(this.fs, `groups/${groupId}`)),
+      getDocs(userIdQuery),
+      getDocs(emailQuery),
+    ]);
+
+    if (!groupSnap.exists()) {
+      return new Error('Group code not found!');
+    }
+    if (!idSnapshot.empty) {
+      return new Error('You are already a member of that group!');
+    }
     if (!emailSnapshot.empty) {
       const userRef = emailSnapshot.docs[0].ref;
       const existingUser = emailSnapshot.docs[0].data();
