@@ -117,21 +117,25 @@ export class UserService implements IUserService {
   async getPaymentMethods(
     memberRef: DocumentReference<Member>
   ): Promise<object> {
-    return await getDoc(memberRef).then(async (memberDoc) => {
-      const userRef = memberDoc.data().userRef;
-      const userDocSnap = await getDoc(userRef);
-      if (userDocSnap.exists()) {
-        const data = userDocSnap.data();
-        return {
-          venmoId: data.venmoId ?? '',
-          paypalId: data.paypalId ?? '',
-          cashAppId: data.cashAppId ?? '',
-          zelleId: data.zelleId ?? '',
-        };
-      } else {
-        return {};
-      }
-    });
+    const memberDoc = await getDoc(memberRef);
+    if (!memberDoc.exists()) {
+      return {};
+    }
+
+    const userRef = memberDoc.data().userRef;
+    const userDocSnap = await getDoc(userRef);
+
+    if (userDocSnap.exists()) {
+      const data = userDocSnap.data();
+      return {
+        venmoId: data.venmoId ?? '',
+        paypalId: data.paypalId ?? '',
+        cashAppId: data.cashAppId ?? '',
+        zelleId: data.zelleId ?? '',
+      };
+    } else {
+      return {};
+    }
   }
 
   logout(): void {

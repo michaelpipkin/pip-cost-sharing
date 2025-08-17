@@ -64,12 +64,12 @@ export class CategoryService implements ICategoryService {
   ): Promise<any> {
     const c = collection(this.fs, `groups/${groupId}/categories`);
     const q = query(c, where('name', '==', category.name));
-    return await getDocs(q).then(async (snap) => {
-      if (snap.size > 0) {
-        return new Error('This category already exists.');
-      }
-      return await addDoc(c, category);
-    });
+    const snap = await getDocs(q);
+
+    if (snap.size > 0) {
+      return new Error('This category already exists.');
+    }
+    return await addDoc(c, category);
   }
 
   async updateCategory(
@@ -81,12 +81,12 @@ export class CategoryService implements ICategoryService {
       where('name', '==', changes.name),
       where(documentId(), '!=', categoryRef.id)
     );
-    return await getDocs(q).then(async (snap) => {
-      if (snap.size > 0) {
-        return new Error('This category already exists.');
-      }
-      return await updateDoc(categoryRef, changes);
-    });
+    const snap = await getDocs(q);
+
+    if (snap.size > 0) {
+      return new Error('This category already exists.');
+    }
+    return await updateDoc(categoryRef, changes);
   }
 
   async deleteCategory(categoryRef: DocumentReference<Category>): Promise<any> {

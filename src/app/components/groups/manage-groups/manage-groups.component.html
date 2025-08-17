@@ -1,32 +1,47 @@
-<h1 mat-dialog-title>Manage Groups</h1>
+<h1 mat-dialog-title data-testid="manage-groups-title">Manage Groups</h1>
 <mat-dialog-content>
   <form [formGroup]="editGroupForm">
     <div class="content pt-3">
       <mat-form-field id="group-select">
         <mat-label>Select Group</mat-label>
         <mat-select
+          data-testid="manage-group-select"
           formControlName="groupId"
           name="group"
           (selectionChange)="onSelectGroup()"
         >
           @for (group of userAdminGroups(); track group.id) {
-            <mat-option [value]="group.id">{{ group.name }}</mat-option>
+            <mat-option
+              [value]="group.id"
+              [attr.data-testid]="'manage-group-option-' + group.id"
+              >{{ group.name }}</mat-option
+            >
           }
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="fill">
         <mat-label>Group name</mat-label>
-        <input matInput formControlName="groupName" />
+        <input
+          matInput
+          formControlName="groupName"
+          data-testid="manage-group-name-input"
+        />
         @if (f.groupName.errors?.['required']) {
           <mat-error> *Required </mat-error>
         }
       </mat-form-field>
     </div>
     <div class="toggle">
-      <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
+      <mat-slide-toggle
+        formControlName="active"
+        data-testid="manage-active-toggle"
+        >Active</mat-slide-toggle
+      >
     </div>
     <div class="toggle">
-      <mat-slide-toggle formControlName="autoAddMembers"
+      <mat-slide-toggle
+        formControlName="autoAddMembers"
+        data-testid="manage-auto-add-toggle"
         >Automatically add all group<br />
         members to new expenses</mat-slide-toggle
       >
@@ -35,6 +50,7 @@
 </mat-dialog-content>
 <mat-dialog-actions>
   <button
+    data-testid="manage-groups-save-button"
     mat-raised-button
     class="btn-secondary"
     type="submit"
@@ -47,6 +63,7 @@
     Save
   </button>
   <button
+    data-testid="manage-groups-cancel-button"
     mat-stroked-button
     type="button"
     [mat-dialog-close]="false"

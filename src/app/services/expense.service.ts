@@ -34,7 +34,7 @@ export class ExpenseService implements IExpenseService {
     startDate?: Date,
     endDate?: Date
   ): Promise<Expense[]> {
-    // Get splits
+    // Build split query
     let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
     if (startDate) {
       splitQuery = query(splitQuery, where('date', '>=', startDate));
@@ -42,17 +42,8 @@ export class ExpenseService implements IExpenseService {
     if (endDate) {
       splitQuery = query(splitQuery, where('date', '<=', endDate));
     }
-    const splitSnap = await getDocs(splitQuery);
-    const splits = splitSnap.docs.map(
-      (doc) =>
-        new Split({
-          id: doc.id,
-          ...doc.data(),
-          ref: doc.ref as DocumentReference<Split>,
-        })
-    );
 
-    // Get expenses
+    // Build expense query
     let expenseQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
     if (startDate) {
       expenseQuery = query(expenseQuery, where('date', '>=', startDate));
@@ -61,10 +52,23 @@ export class ExpenseService implements IExpenseService {
       expenseQuery = query(expenseQuery, where('date', '<=', endDate));
     }
     expenseQuery = query(expenseQuery, orderBy('date'));
-    const expenseSnap = await getDocs(expenseQuery);
 
-    // Get category map
-    const categoryMap = await this.categoryService.getCategoryMap(groupId);
+    // Execute all queries in parallel
+    const [splitSnap, expenseSnap, categoryMap] = await Promise.all([
+      getDocs(splitQuery),
+      getDocs(expenseQuery),
+      this.categoryService.getCategoryMap(groupId),
+    ]);
+
+    // Process splits
+    const splits = splitSnap.docs.map(
+      (doc) =>
+        new Split({
+          id: doc.id,
+          ...doc.data(),
+          ref: doc.ref as DocumentReference<Split>,
+        })
+    );
 
     // Build and return expenses
     const expenses = expenseSnap.docs.map((doc) => {
@@ -88,23 +92,33 @@ export class ExpenseService implements IExpenseService {
       this.fs,
       `groups/${groupId}/expenses/${expenseId}`
     );
-    const expenseDoc = await getDoc(expenseReference);
+
+    // Build split query
+    const splitQuery = query(
+      collection(this.fs, `/groups/${groupId}/splits/`),
+      where('expenseRef', '==', expenseReference as DocumentReference<Expense>)
+    );
+
+    // Execute both queries in parallel
+    const [expenseDoc, splitDocs] = await Promise.all([
+      getDoc(expenseReference),
+      getDocs(splitQuery),
+    ]);
+
     if (!expenseDoc.exists()) {
       throw new Error('Expense not found');
     }
+
     const expense = new Expense({
       id: expenseDoc.id,
       ...expenseDoc.data(),
       ref: expenseDoc.ref as DocumentReference<Expense>,
     });
-    const splitQuery = query(
-      collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseRef', '==', expenseReference as DocumentReference<Expense>)
-    );
-    const splitDocs = await getDocs(splitQuery);
+
     expense.splits = splitDocs.docs.map(
       (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
     );
+
     return expense;
   }
 

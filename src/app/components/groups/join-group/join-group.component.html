@@ -1,16 +1,24 @@
-<h1 mat-dialog-title>Join Group</h1>
+<h1 mat-dialog-title data-testid="join-group-title">Join Group</h1>
 <form [formGroup]="joinGroupForm">
   <mat-dialog-content class="content">
     <mat-form-field appearance="fill">
       <mat-label>Group join code</mat-label>
-      <input matInput formControlName="groupId" />
+      <input
+        matInput
+        formControlName="groupId"
+        data-testid="group-code-input"
+      />
       @if (f.groupId.errors?.['required']) {
         <mat-error> *Required </mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill">
       <mat-label>Your name in the group</mat-label>
-      <input matInput formControlName="displayName" />
+      <input
+        matInput
+        formControlName="displayName"
+        data-testid="join-display-name-input"
+      />
       @if (f.displayName.errors?.['required']) {
         <mat-error> *Required </mat-error>
       }
@@ -18,6 +26,7 @@
   </mat-dialog-content>
   <mat-dialog-actions>
     <button
+      data-testid="join-group-save-button"
       mat-raised-button
       class="btn-secondary"
       type="submit"
@@ -28,6 +37,7 @@
       Save
     </button>
     <button
+      data-testid="join-group-cancel-button"
       mat-stroked-button
       [mat-dialog-close]="false"
       type="button"
