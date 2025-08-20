@@ -13,7 +13,7 @@
     </div>
     <h4>{{ currentGroup()?.name }}</h4>
     <div>
-      <mat-form-field id="member-select">
+      <mat-form-field id="member-select" subscriptSizing="dynamic" class="mb-3">
         <mat-label>Select Member</mat-label>
         <mat-select
           name="member"
@@ -94,123 +94,129 @@
       </mat-form-field>
     </div>
   </div>
-  <div class="table-container">
-    <div class="scrollable-table mat-elevation-z8">
-      <table
-        mat-table
-        [dataSource]="summaryData()"
-        multiTemplateDataRows
-        class="expandable-table"
-      >
-        @let summaryColumnsToDisplay =
-          ['owedTo', 'owedBy', 'amount', 'markPaid'];
-        <ng-container matColumnDef="owedTo">
-          <th mat-header-cell *matHeaderCellDef>Owed To</th>
-          <td mat-cell *matCellDef="let amountDue">
-            {{ getMemberName(amountDue.owedToMemberRef.id) }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="owedBy">
-          <th mat-header-cell *matHeaderCellDef>Owed By</th>
-          <td mat-cell *matCellDef="let amountDue">
-            {{ getMemberName(amountDue.owedByMemberRef.id) }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="amount">
-          <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
-          <td mat-cell *matCellDef="let amountDue" class="cell-right">
-            {{ amountDue.amount | currency }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="markPaid">
-          <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
-          <td mat-cell *matCellDef="let amountDue" class="cell-center">
-            <button
-              class="btn btn-success"
-              mat-mini-fab
-              (click)="
-                payExpenses(
-                  amountDue.owedToMemberRef,
-                  amountDue.owedByMemberRef
-                );
-                $event.stopPropagation()
-              "
-              title="
+  @if (summaryData()?.length > 0) {
+    <div class="table-container">
+      <div class="scrollable-table mat-elevation-z8">
+        <table
+          mat-table
+          [dataSource]="summaryData()"
+          multiTemplateDataRows
+          class="expandable-table"
+        >
+          @let summaryColumnsToDisplay =
+            ['owedTo', 'owedBy', 'amount', 'markPaid'];
+          <ng-container matColumnDef="owedTo">
+            <th mat-header-cell *matHeaderCellDef>Owed To</th>
+            <td mat-cell *matCellDef="let amountDue">
+              {{ getMemberName(amountDue.owedToMemberRef.id) }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="owedBy">
+            <th mat-header-cell *matHeaderCellDef>Owed By</th>
+            <td mat-cell *matCellDef="let amountDue">
+              {{ getMemberName(amountDue.owedByMemberRef.id) }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef class="cell-right">Amount</th>
+            <td mat-cell *matCellDef="let amountDue" class="cell-right">
+              {{ amountDue.amount | currency }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="markPaid">
+            <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
+            <td mat-cell *matCellDef="let amountDue" class="cell-center">
+              <button
+                class="btn btn-success"
+                mat-mini-fab
+                (click)="
+                  payExpenses(
+                    amountDue.owedToMemberRef,
+                    amountDue.owedByMemberRef
+                  );
+                  $event.stopPropagation()
+                "
+                title="
                 Pay expenses owed to {{
-                getMemberName(amountDue.owedToMemberRef.id)
-              }} from {{ getMemberName(amountDue.owedByMemberRef.id) }}.
+                  getMemberName(amountDue.owedToMemberRef.id)
+                }} from {{ getMemberName(amountDue.owedByMemberRef.id) }}.
               "
-            >
-              <mat-icon>paid</mat-icon>
-            </button>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="expandedDetail">
-          <td
-            mat-cell
-            *matCellDef="let amountDue"
-            [colSpan]="summaryColumnsToDisplay.length"
-          >
-            <div
-              [@detailExpand]="
-                amountDue == expandedDetail() ? 'expanded' : 'collapsed'
-              "
-              class="detail-table-container"
-            >
-              <table
-                mat-table
-                [dataSource]="detailData()"
-                class="static-table info-detail-table"
               >
-                @let detailColumnsToDisplay = ['category', 'amount'];
-                <ng-container matColumnDef="category">
-                  <th mat-header-cell *matHeaderCellDef>Category</th>
-                  <td mat-cell *matCellDef="let lineItem">
-                    {{ getCategoryName(lineItem.categoryRef.id) }}
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="amount">
-                  <th mat-header-cell *matHeaderCellDef class="cell-right">
-                    Amount
-                  </th>
-                  <td mat-cell *matCellDef="let lineItem" class="cell-right">
-                    {{ lineItem.amount | currency }}
-                  </td>
-                </ng-container>
-                <tr
-                  mat-header-row
-                  *matHeaderRowDef="detailColumnsToDisplay"
-                ></tr>
-                <tr
-                  mat-row
-                  *matRowDef="let lineItem; columns: detailColumnsToDisplay"
-                ></tr>
-              </table>
-            </div>
-          </td>
-        </ng-container>
-        <tr
-          mat-header-row
-          *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
-        ></tr>
-        <tr
-          mat-row
-          *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
-          class="summary-row clickable-row expandable-row"
-          [class.clickable-row]="categories().length > 1"
-          (click)="onExpandClick(amountDue)"
-        ></tr>
-        <tr
-          mat-row
-          *matRowDef="let lineItem; columns: ['expandedDetail']"
-          class="detail-row"
-        ></tr>
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
-            No outstanding expenses found for selected member.
-          </td>
-        </tr>
-      </table>
+                <mat-icon>paid</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="expandedDetail">
+            <td
+              mat-cell
+              *matCellDef="let amountDue"
+              [colSpan]="summaryColumnsToDisplay.length"
+            >
+              <div
+                [@detailExpand]="
+                  amountDue == expandedDetail() ? 'expanded' : 'collapsed'
+                "
+                class="detail-table-container"
+              >
+                <table
+                  mat-table
+                  [dataSource]="detailData()"
+                  class="static-table info-detail-table"
+                >
+                  @let detailColumnsToDisplay = ['category', 'amount'];
+                  <ng-container matColumnDef="category">
+                    <th mat-header-cell *matHeaderCellDef>Category</th>
+                    <td mat-cell *matCellDef="let lineItem">
+                      {{ getCategoryName(lineItem.categoryRef.id) }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="amount">
+                    <th mat-header-cell *matHeaderCellDef class="cell-right">
+                      Amount
+                    </th>
+                    <td mat-cell *matCellDef="let lineItem" class="cell-right">
+                      {{ lineItem.amount | currency }}
+                    </td>
+                  </ng-container>
+                  <tr
+                    mat-header-row
+                    *matHeaderRowDef="detailColumnsToDisplay"
+                  ></tr>
+                  <tr
+                    mat-row
+                    *matRowDef="let lineItem; columns: detailColumnsToDisplay"
+                  ></tr>
+                </table>
+              </div>
+            </td>
+          </ng-container>
+          <tr
+            mat-header-row
+            *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
+          ></tr>
+          <tr
+            mat-row
+            *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
+            class="summary-row clickable-row expandable-row"
+            [class.clickable-row]="categories().length > 1"
+            (click)="onExpandClick(amountDue)"
+          ></tr>
+          <tr
+            mat-row
+            *matRowDef="let lineItem; columns: ['expandedDetail']"
+            class="detail-row"
+          ></tr>
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
+              No outstanding expenses found for selected member.
+            </td>
+          </tr>
+        </table>
+      </div>
     </div>
-  </div>
+  } @else {
+    <div class="container pt-3 mb-2">
+      <h5>No outstanding expenses found for selected member.</h5>
+    </div>
+  }
 }
