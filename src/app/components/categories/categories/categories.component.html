@@ -13,14 +13,14 @@
     </div>
     <h4>{{ currentGroup()?.name }}</h4>
     <div class="filters">
-      <mat-form-field class="clearable">
+      <mat-form-field class="clearable" subscriptSizing="dynamic">
         <mat-label>Search by name</mat-label>
-        <input matInput [(ngModel)]="nameFilter" />
+        <input matInput type="text" [(ngModel)]="nameFilter" />
         @if (nameFilter() !== '') {
           <button
-            matIconSuffix
+            matSuffix
+            matIconButton
             tabindex="-1"
-            mat-icon-button
             aria-label="Clear"
             (click)="nameFilter.set('')"
             [matTooltip]="'Clear'"
@@ -32,53 +32,56 @@
       <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly">
         Active only
       </mat-slide-toggle>
-      <div class="add-button">
-        <button
-          mat-raised-button
-          class="btn-primary"
-          [class.hidden]="!currentMember()?.groupAdmin"
-          (click)="addCategory()"
-        >
-          Add Category
-        </button>
-      </div>
     </div>
-    <div class="table-container">
-      <div class="scrollable-table mat-elevation-z8">
-        <table
-          mat-table
-          matSort
-          [dataSource]="filteredCategories()"
-          (matSortChange)="sortCategories($event)"
-          class="static-table"
-        >
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-            <td mat-cell *matCellDef="let category">{{ category.name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="active">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let category">
-              {{ category.active | activeInactive }}
-            </td>
-          </ng-container>
-          <tr
-            mat-header-row
-            *matHeaderRowDef="displayedColumns(); sticky: true"
-          ></tr>
-          <tr
-            mat-row
-            *matRowDef="let myRowData; columns: displayedColumns()"
-            (click)="onRowClick(myRowData)"
-            [class.clickable-row]="currentMember()?.groupAdmin"
-          ></tr>
-          <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell" [colSpan]="columnsToDisplay?.length">
-              No categories found matching "{{ nameFilter() }}".
-            </td>
-          </tr>
-        </table>
-      </div>
+    <div>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        [class.hidden]="!currentMember()?.groupAdmin"
+        (click)="addCategory()"
+      >
+        Add Category
+      </button>
     </div>
+    @if (filteredCategories()?.length > 0) {
+      <div class="table-container">
+        <div class="scrollable-table mat-elevation-z8">
+          <table
+            mat-table
+            matSort
+            [dataSource]="filteredCategories()"
+            (matSortChange)="sortCategories($event)"
+            class="static-table"
+          >
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Category
+              </th>
+              <td mat-cell *matCellDef="let category">{{ category.name }}</td>
+            </ng-container>
+            <ng-container matColumnDef="active">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let category">
+                {{ category.active | activeInactive }}
+              </td>
+            </ng-container>
+            <tr
+              mat-header-row
+              *matHeaderRowDef="displayedColumns(); sticky: true"
+            ></tr>
+            <tr
+              mat-row
+              *matRowDef="let myRowData; columns: displayedColumns()"
+              (click)="onRowClick(myRowData)"
+              [class.clickable-row]="currentMember()?.groupAdmin"
+            ></tr>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <div class="container pt-3 mb-2">
+        <h5>No categories found</h5>
+      </div>
+    }
   </div>
 }
