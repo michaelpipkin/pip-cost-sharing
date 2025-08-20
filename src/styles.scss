@@ -73,6 +73,12 @@ body.dark-theme {
   background: tokens.color('primary') !important;
   color: tokens.color('on-primary') !important;
 
+  mat-toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   mat-icon {
     // Since the base font-size is already 0.9rem globally, we calculate based on that
     font-size: 1.5rem !important; // Equivalent to 24px when base is 16px * 0.9
@@ -104,6 +110,12 @@ body.dark-theme {
     background-color: tokens.color('primary-light') !important;
     color: tokens.color('on-primary-light');
     border-radius: 0.5em !important;
+  }
+
+  .account.links {
+    display: flex;
+    gap: 0.1rem;
+    align-items: center;
   }
 
   .account.links a:hover {
@@ -557,6 +569,14 @@ tr.detail-row:hover {
   overflow-y: auto;
 }
 
+.filters {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .datepicker {
   width: 130px;
   .mat-mdc-form-field-infix {
@@ -645,14 +665,8 @@ input.number-right::-webkit-inner-spin-button {
   transform: scale(0.8) !important;
 }
 
-.clearable:has(.mat-mdc-form-field-icon-suffix) {
-  width: calc(100%);
-  margin-left: -12px;
-  margin-right: -12px;
-}
-
-.mat-mdc-text-field-wrapper:has(.mat-mdc-form-field-icon-suffix) {
-  margin-right: 17px !important;
+.clearable {
+  flex: 0 0 212px;
 }
 
 .clickable {
