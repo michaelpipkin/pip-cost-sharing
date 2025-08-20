@@ -9,7 +9,7 @@
   @if (!submitted()) {
     <div class="sub-container mb-2">
       <form [formGroup]="expenseForm" id="split-form">
-        <div class="details-3">
+        <div class="details">
           <mat-form-field
             appearance="fill"
             floatLabel="always"
@@ -110,53 +110,51 @@
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>
-              <div class="splits-2">
-                @if (splitByPercentage()) {
-                  <mat-form-field
-                    appearance="fill"
-                    class="number-field"
-                    subscriptSizing="dynamic"
-                  >
-                    <mat-label>Percentage</mat-label>
-                    <input
-                      matInput
-                      #inputElement
-                      #memberPercentage
-                      class="number-right"
-                      parentControlName="splits"
-                      [index]="i"
-                      formControlName="percentage"
-                      (blur)="allocateByPercentage()"
-                    />
-                    <span matTextSuffix>%</span>
-                  </mat-form-field>
-                } @else {
-                  <mat-form-field
-                    appearance="fill"
-                    class="number-field"
-                    subscriptSizing="dynamic"
-                  >
-                    <mat-label>Member Amount</mat-label>
-                    <input
-                      matInput
-                      #inputElement
-                      #memberAmount
-                      class="number-right"
-                      parentControlName="splits"
-                      [index]="i"
-                      formControlName="assignedAmount"
-                      appFormatCurrencyInput
-                      (blur)="allocateSharedAmounts()"
-                    />
-                    <span matTextPrefix>$</span>
-                  </mat-form-field>
-                }
-                <div class="mock-input">
-                  <span class="mock-label">Allocated Amount</span>
-                  <span class="mock-value-right">
-                    {{ splitForm.get('allocatedAmount').value | currency }}
-                  </span>
-                </div>
+              @if (splitByPercentage()) {
+                <mat-form-field
+                  appearance="fill"
+                  class="number-field"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Percentage</mat-label>
+                  <input
+                    matInput
+                    #inputElement
+                    #memberPercentage
+                    class="number-right"
+                    parentControlName="splits"
+                    [index]="i"
+                    formControlName="percentage"
+                    (blur)="allocateByPercentage()"
+                  />
+                  <span matTextSuffix>%</span>
+                </mat-form-field>
+              } @else {
+                <mat-form-field
+                  appearance="fill"
+                  class="number-field"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Member Amount</mat-label>
+                  <input
+                    matInput
+                    #inputElement
+                    #memberAmount
+                    class="number-right"
+                    parentControlName="splits"
+                    [index]="i"
+                    formControlName="assignedAmount"
+                    appFormatCurrencyInput
+                    (blur)="allocateSharedAmounts()"
+                  />
+                  <span matTextPrefix>$</span>
+                </mat-form-field>
+              }
+              <div class="mock-input">
+                <span class="mock-label">Allocated Amount</span>
+                <span class="mock-value-right">
+                  {{ splitForm.get('allocatedAmount').value | currency }}
+                </span>
               </div>
             </div>
             <hr />
