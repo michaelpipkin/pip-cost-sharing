@@ -1,20 +1,11 @@
-.container {
-  width: 360px;
-}
-
 .page-header {
   align-items: baseline;
-}
-
-.buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  column-gap: 8px;
-  grid-template-rows: auto;
 }
 
 #join-code {
   font-size: 1.1rem;
   font-weight: bold;
-  cursor: copy;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
