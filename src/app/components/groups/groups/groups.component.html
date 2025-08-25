@@ -4,9 +4,13 @@
   </div>
 } @else {
   <div class="container pt-3">
-    <div class="page-header">
+    <div class="page-header mb-3">
       <div></div>
-      <mat-form-field id="group-select" data-testid="group-select-field">
+      <mat-form-field
+        id="group-select"
+        data-testid="group-select-field"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Select Group</mat-label>
         <mat-select
           data-testid="group-select"
@@ -35,17 +39,17 @@
     </div>
     @if (selectedGroupId() != '') {
       <div class="mb-4">
-        <span
-          id="join-code"
-          data-testid="join-code"
-          matTooltip="Click to copy group join code"
-          (click)="copyGroupCode()"
-        >
+        <span id="join-code" data-testid="join-code">
           Group join code: {{ selectedGroupId() }}
+          <mat-icon
+            matTooltip="Copy group join code to clipboard"
+            (click)="copyGroupCode()"
+            >content_copy</mat-icon
+          >
         </span>
       </div>
     }
-    <div class="buttons">
+    <div class="flex-wrap fw-center row-gap">
       <button
         data-testid="new-group-button"
         mat-raised-button
