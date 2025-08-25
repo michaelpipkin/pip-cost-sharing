@@ -7,9 +7,9 @@
     </div>
   </div>
   @if (!submitted()) {
-    <div class="sub-container mb-2">
+    <div class="mb-2">
       <form [formGroup]="expenseForm" id="split-form">
-        <div class="details">
+        <div class="flex-wrap fw-start">
           <mat-form-field
             appearance="fill"
             floatLabel="always"
@@ -62,7 +62,7 @@
             </span>
           </div>
         </div>
-        <div class="buttons">
+        <div class="flex-wrap fw-start row-gap">
           <button
             mat-raised-button
             class="btn-primary"
@@ -71,20 +71,20 @@
           >
             Add New Split
           </button>
-          <div class="split-type">
-            <span>Split by</span>
-            <button
-              mat-mini-fab
-              class="btn btn-primary"
-              (click)="toggleSplitByPercentage()"
-            >
-              @if (splitByPercentage()) {
-                <mat-icon>percent</mat-icon>
-              } @else {
-                <mat-icon>attach_money</mat-icon>
-              }
-            </button>
-          </div>
+          <button
+            mat-raised-button
+            extended
+            class="btn-primary"
+            type="button"
+            (click)="toggleSplitByPercentage()"
+          >
+            {{
+              splitByPercentage() ? 'Split by percentage' : 'Split by amount'
+            }}
+            <mat-icon>
+              {{ splitByPercentage() ? 'percent' : 'attach_money' }}
+            </mat-icon>
+          </button>
         </div>
         <div formArrayName="splits" class="mt-3">
           @for (
@@ -92,7 +92,7 @@
             track splitForm;
             let i = $index
           ) {
-            <div [formGroupName]="i" class="splits">
+            <div [formGroupName]="i" class="flex-wrap fw-start row-gap">
               <div class="splits-1">
                 <mat-form-field id="split-member" subscriptSizing="dynamic">
                   <mat-label>Name</mat-label>
@@ -110,58 +110,62 @@
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>
-              @if (splitByPercentage()) {
-                <mat-form-field
-                  appearance="fill"
-                  class="number-field"
-                  subscriptSizing="dynamic"
-                >
-                  <mat-label>Percentage</mat-label>
-                  <input
-                    matInput
-                    #inputElement
-                    #memberPercentage
-                    class="number-right"
-                    parentControlName="splits"
-                    [index]="i"
-                    formControlName="percentage"
-                    (blur)="allocateByPercentage()"
-                  />
-                  <span matTextSuffix>%</span>
-                </mat-form-field>
-              } @else {
-                <mat-form-field
-                  appearance="fill"
-                  class="number-field"
-                  subscriptSizing="dynamic"
-                >
-                  <mat-label>Member Amount</mat-label>
-                  <input
-                    matInput
-                    #inputElement
-                    #memberAmount
-                    class="number-right"
-                    parentControlName="splits"
-                    [index]="i"
-                    formControlName="assignedAmount"
-                    appFormatCurrencyInput
-                    (blur)="allocateSharedAmounts()"
-                  />
-                  <span matTextPrefix>$</span>
-                </mat-form-field>
-              }
-              <div class="mock-input">
-                <span class="mock-label">Allocated Amount</span>
-                <span class="mock-value-right">
-                  {{ splitForm.get('allocatedAmount').value | currency }}
-                </span>
+              <div class="flex-wrap fw-start row-gap">
+                @if (splitByPercentage()) {
+                  <mat-form-field
+                    appearance="fill"
+                    class="number-field no-subscript"
+                    subscriptSizing="dynamic"
+                  >
+                    <mat-label>Percentage</mat-label>
+                    <input
+                      matInput
+                      #inputElement
+                      #memberPercentage
+                      class="number-right"
+                      parentControlName="splits"
+                      [index]="i"
+                      formControlName="percentage"
+                      (blur)="allocateByPercentage()"
+                    />
+                    <span matTextSuffix>%</span>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field
+                    appearance="fill"
+                    class="number-field no-subscript"
+                    subscriptSizing="dynamic"
+                  >
+                    <mat-label>Member Amount</mat-label>
+                    <input
+                      matInput
+                      #inputElement
+                      #memberAmount
+                      class="number-right"
+                      parentControlName="splits"
+                      [index]="i"
+                      formControlName="assignedAmount"
+                      appFormatCurrencyInput
+                      (blur)="allocateSharedAmounts()"
+                    />
+                    <span matTextPrefix>$</span>
+                  </mat-form-field>
+                }
+                <div class="mock-input">
+                  <span class="mock-label">Allocated Amount</span>
+                  <span class="mock-value-right">
+                    {{ splitForm.get('allocatedAmount').value | currency }}
+                  </span>
+                </div>
               </div>
             </div>
-            <hr />
+            @if (i < splitsFormArray.length - 1) {
+              <hr />
+            }
           }
         </div>
       </form>
-      <div class="form-buttons">
+      <div class="flex-wrap fw-start row-gap mt-3">
         <button
           mat-raised-button
           class="btn-secondary"

@@ -1,32 +1,3 @@
-.sub-container {
-  justify-items: start;
-}
-
-.evenly-shared-amt {
-  line-height: 3em;
-}
-
-#split-form {
-  width: 100%;
-}
-
-.details,
-.buttons,
-.splits {
-  display: flex;
-  gap: 0.5rem;
-  align-items: baseline;
-  justify-content: start;
-  flex-wrap: wrap;
-}
-
-.splits-1 {
-  display: grid;
-  column-gap: 0.5rem;
-  align-items: baseline;
-  grid-template-columns: max-content max-content;
-}
-
 .split-type {
   display: grid;
   grid-auto-flow: column;
@@ -41,11 +12,12 @@
   }
 }
 
-.number-field {
-  width: 150px;
+.splits-1 {
+  display: grid;
+  column-gap: 0.5rem;
+  align-items: baseline;
+  grid-template-columns: max-content max-content;
 }
-
-// Add these styles to your split.component.scss file
 
 .summary-container {
   margin-top: 16px;

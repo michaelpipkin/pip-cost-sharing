@@ -10,10 +10,14 @@
   @let hasReceipt = !!receiptUrl();
   <div class="sub-container mb-2">
     <form [formGroup]="editExpenseForm" id="expense-form">
-      <div class="details-1">
+      <div class="flex-wrap fw-start">
         <mat-form-field id="paid-by-select">
           <mat-label>Payer</mat-label>
-          <mat-select formControlName="paidByMember" name="group" docRefCompare>
+          <mat-select
+            formControlName="paidByMember"
+            name="paidByMember"
+            docRefCompare
+          >
             @for (member of memberList; track member.ref) {
               <mat-option [value]="member.ref">{{
                 member.displayName
@@ -48,7 +52,7 @@
           }
         </mat-form-field>
       </div>
-      <div class="details-2">
+      <div class="flex-wrap fw-start">
         <mat-form-field appearance="fill" id="description">
           <mat-label>Description</mat-label>
           <input matInput formControlName="description" />
@@ -73,7 +77,7 @@
           }
         </mat-form-field>
       </div>
-      <div class="details-3">
+      <div class="flex-wrap fw-start">
         <mat-form-field
           appearance="fill"
           floatLabel="always"
@@ -123,7 +127,7 @@
           </span>
         </div>
       </div>
-      <div class="attachment-container">
+      <div class="mb-3">
         @if (!!fileName()) {
           <div (click)="removeFile()" class="attachment">
             <button mat-mini-fab class="btn btn-danger">
@@ -151,7 +155,7 @@
           </div>
         }
       </div>
-      <div class="buttons">
+      <div class="flex-wrap fw-start row-gap">
         <button
           mat-raised-button
           class="btn-primary"
@@ -169,20 +173,18 @@
           target="_blank"
           >View Receipt</a
         >
-        <div class="split-type">
-          <span>Split by</span>
-          <button
-            mat-mini-fab
-            class="btn btn-primary"
-            (click)="toggleSplitByPercentage()"
-          >
-            @if (splitByPercentage()) {
-              <mat-icon>percent</mat-icon>
-            } @else {
-              <mat-icon>attach_money</mat-icon>
-            }
-          </button>
-        </div>
+        <button
+          mat-raised-button
+          extended
+          class="btn-primary"
+          type="button"
+          (click)="toggleSplitByPercentage()"
+        >
+          {{ splitByPercentage() ? 'Split by percentage' : 'Split by amount' }}
+          <mat-icon>
+            {{ splitByPercentage() ? 'percent' : 'attach_money' }}
+          </mat-icon>
+        </button>
       </div>
       <div formArrayName="splits" class="mt-3">
         @for (
@@ -190,7 +192,7 @@
           track splitForm;
           let i = $index
         ) {
-          <div [formGroupName]="i" class="splits">
+          <div [formGroupName]="i" class="flex-wrap fw-start row-gap">
             <div class="splits-1">
               <mat-form-field id="split-member" subscriptSizing="dynamic">
                 <mat-label>Member</mat-label>
@@ -210,11 +212,11 @@
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
-            <div class="splits-2">
+            <div class="flex-wrap fw-start row-gap">
               @if (splitByPercentage()) {
                 <mat-form-field
                   appearance="fill"
-                  class="number-field"
+                  class="number-field no-subscript"
                   subscriptSizing="dynamic"
                 >
                   <mat-label>Percentage</mat-label>
@@ -233,7 +235,7 @@
               } @else {
                 <mat-form-field
                   appearance="fill"
-                  class="number-field"
+                  class="number-field no-subscript"
                   subscriptSizing="dynamic"
                 >
                   <mat-label>Member Amount</mat-label>
@@ -259,11 +261,13 @@
               </div>
             </div>
           </div>
-          <hr />
+          @if (i < splitsFormArray.length - 1) {
+            <hr />
+          }
         }
       </div>
     </form>
-    <div class="form-buttons">
+    <div class="flex-wrap fw-start row-gap mt-3">
       <button
         mat-raised-button
         class="btn-secondary"

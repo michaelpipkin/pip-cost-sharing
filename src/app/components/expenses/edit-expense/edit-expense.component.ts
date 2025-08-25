@@ -203,7 +203,7 @@ export class EditExpenseComponent implements OnInit {
         })
       );
     });
-    if (expense.receiptRef) {
+    if (expense.hasReceipt) {
       getDownloadURL(expense.receiptRef)
         .then((url: unknown) => {
           if (!!url) {

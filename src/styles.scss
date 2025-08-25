@@ -157,6 +157,26 @@ body.dark-theme {
   padding-bottom: 1.25rem;
 }
 
+.flex-wrap {
+  display: flex;
+  column-gap: 1rem;
+  flex-wrap: wrap;
+
+  &.fw-start {
+    justify-content: flex-start;
+  }
+  &.fw-center {
+    justify-content: center;
+  }
+  &.fw-end {
+    justify-content: flex-end;
+  }
+
+  &.row-gap {
+    row-gap: 1rem;
+  }
+}
+
 .footer {
   position: fixed;
   width: 100%;
@@ -253,7 +273,7 @@ mat-icon.mat-icon-button {
   cursor: pointer;
 
   &:hover {
-    color: tokens.color('priamry-light') !important;
+    color: tokens.color('primary-light') !important;
   }
 }
 
@@ -588,8 +608,16 @@ tr.detail-row:hover {
   width: 140px;
 }
 
+.number-field {
+  width: 150px;
+}
+
 .number-field .mat-mdc-form-field-infix {
   max-width: 100px;
+}
+
+.no-subscript {
+  height: 52px;
 }
 
 .cell-left {
