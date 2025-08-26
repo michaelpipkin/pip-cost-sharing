@@ -368,7 +368,7 @@ export class SummaryComponent {
     const owedTo = this.getMemberName(amountDue.owedToMemberRef.id);
     const owedBy = this.getMemberName(amountDue.owedByMemberRef.id);
 
-    let summaryText = `Expense Summary\n`;
+    let summaryText = `Expenses Summary\n`;
     summaryText += `${owedBy} owes ${owedTo} ${this.formatCurrency(amountDue.amount)}\n\n`;
 
     // Add category breakdown
