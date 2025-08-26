@@ -202,4 +202,66 @@ export class HistoryComponent {
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
+
+  copyHistoryToClipboard(history: History): void {
+    const summaryText = this.generateHistoryText(history);
+    navigator.clipboard
+      .writeText(summaryText)
+      .then(() => {
+        this.snackBar.open('Payment history copied to clipboard', 'OK', {
+          duration: 2000,
+        });
+      })
+      .catch(() => {
+        this.snackBar.open('Failed to copy payment history', 'OK', {
+          duration: 2000,
+        });
+      });
+  }
+
+  private generateHistoryText(history: History): string {
+    const paidBy = this.getMemberName(history.paidByMemberRef.id);
+    const paidTo = this.getMemberName(history.paidToMemberRef.id);
+    const date = history.date.toDate().toLocaleDateString();
+
+    let summaryText = `Payment History\n`;
+    summaryText += `${paidBy} paid ${paidTo} ${this.formatCurrency(history.totalPaid)} on ${date}\n\n`;
+
+    // Add category breakdown
+    if (history.lineItems && history.lineItems.length > 0) {
+      summaryText += `Breakdown by Category:\n`;
+
+      // Calculate the maximum line length for alignment
+      let maxLineLength = 0;
+      const categoryLines: { name: string; amount: string }[] = [];
+
+      history.lineItems.forEach((lineItem) => {
+        const categoryName = lineItem.category;
+        const formattedAmount = this.formatCurrency(lineItem.amount);
+        const lineLength = categoryName.length + 2 + formattedAmount.length; // +2 for ": "
+        maxLineLength = Math.max(maxLineLength, lineLength);
+        categoryLines.push({ name: categoryName, amount: formattedAmount });
+      });
+
+      summaryText += `${'='.repeat(maxLineLength + 1)}\n`;
+
+      // Add padded category lines
+      categoryLines.forEach((line) => {
+        const spacesNeeded =
+          maxLineLength - line.name.length - line.amount.length;
+        const padding = ' '.repeat(spacesNeeded);
+        summaryText += `${line.name}:${padding}${line.amount}\n`;
+      });
+    }
+
+    return summaryText.trim();
+  }
+
+  // Helper method to format currency
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  }
 }

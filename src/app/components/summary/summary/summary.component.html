@@ -162,7 +162,12 @@
                   <table
                     mat-table
                     [dataSource]="detailData()"
+                    (click)="
+                      copySummaryToClipboard(amountDue);
+                      $event.stopPropagation()
+                    "
                     class="static-table info-detail-table"
+                    matTooltip="Click to copy summary to clipboard"
                   >
                     @let detailColumnsToDisplay = ['category', 'amount'];
                     <ng-container matColumnDef="category">
