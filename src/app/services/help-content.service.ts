@@ -93,6 +93,7 @@ export class HelpContentService {
       content: [
         'Select a group member from the dropdown list to view the total amount owed by that member to the other group members, and to that member from the other group members. If you wish to see a summary of expenses for a specific date range, you can enter the start date, end date, or both.',
         'After selecting a group member and optionally entering filter dates, if any outstanding expenses are found, you can click on a row in the table to see the category breakdown of the expenses owed between the two members.',
+        'Click on a row to expand the category breakdown for that expense. You can click on the expanded detail to copy a summary of the expense with the breakdown to the clipboard for easy sharing.',
         "Click the paid icon on any row to pay all splits owed between those two group members. If you've added your various payment service handles on the account page, those services and your handles will appear in the payment dialog, so the payer knows how to send payment. Once payment is completed, click submit to mark the expenses as paid. Please note this action can only be undone by viewing the expenses on the expenses page and clicking the paid icon one split at a time. Marking expenses paid in this way will create a history record of the payment with the amount broken down by category. The history of payments can be viewed on the history page.",
       ],
     },
@@ -101,7 +102,7 @@ export class HelpContentService {
       title: 'History',
       content: [
         'Select a group member from the dropdown list to view a history of payments made to and from that member.',
-        'Click on any row to view a breakdown of the amounts by category for the payment.',
+        'Click on any row to view a breakdown of the amounts by category for the payment. Clicking the detail breakdown will copy a summary of the payment to the clipboard for easy sharing.',
         'Group admins may delete history records. Payment history records are informational only -- deleting a payment history record does not mark the associated expenses as unpaid.',
       ],
     },
