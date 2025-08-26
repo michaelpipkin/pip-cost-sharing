@@ -39,9 +39,7 @@
               "src/styles.scss",
               "src/app/styles/m3-green-theme.scss"
             ],
-            "scripts": [
-              "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
-            ],
+            "scripts": [],
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
               "moment",
@@ -113,9 +111,7 @@
               "src/styles.scss",
               "src/app/styles/m3-green-theme.scss"
             ],
-            "scripts": [
-              "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
-            ]
+            "scripts": []
           }
         }
       }
