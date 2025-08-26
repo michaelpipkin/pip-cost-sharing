@@ -22,7 +22,7 @@
       "@models/*": ["src/app/models/*"],
       "@components/*": ["src/app/components/*"],
       "@store/*": ["src/app/store/*"],
-      "@utilities/*": ["src/app/utilities/*"],
+      "@utils/*": ["src/app/utilities/*"],
       "@app/*": ["src/app/*"]
     }
   },

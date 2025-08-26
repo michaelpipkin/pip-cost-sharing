@@ -1,37 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { SerializableMemorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import * as firestore from 'firebase/firestore';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { AllocationUtilsService } from 'src/app/utilities/allocation-utils.service';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
 import {
   afterEveryRender,
   afterNextRender,
@@ -57,15 +24,48 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { SerializableMemorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import * as firestore from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-add-expense',

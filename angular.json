@@ -29,9 +29,6 @@
               "base": "dist"
             },
             "index": "src/index.html",
-            "polyfills": [
-              "src/polyfills.ts"
-            ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/favicon.ico",
@@ -42,9 +39,7 @@
               "src/styles.scss",
               "src/app/styles/m3-green-theme.scss"
             ],
-            "scripts": [
-              "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
-            ],
+            "scripts": [],
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
               "moment",
@@ -105,9 +100,6 @@
           "builder": "@angular/build:karma",
           "options": {
             "main": "src/test.ts",
-            "polyfills": [
-              "src/polyfills.ts"
-            ],
             "tsConfig": "tsconfig.spec.json",
             "karmaConfig": "karma.conf.cjs",
             "assets": [
@@ -119,9 +111,7 @@
               "src/styles.scss",
               "src/app/styles/m3-green-theme.scss"
             ],
-            "scripts": [
-              "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
-            ]
+            "scripts": []
           }
         }
       }
