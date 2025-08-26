@@ -347,4 +347,49 @@ export class SummaryComponent {
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
+
+  copySummaryToClipboard(amountDue: AmountDue): void {
+    const summaryText = this.generateSummaryText(amountDue);
+    navigator.clipboard
+      .writeText(summaryText)
+      .then(() => {
+        this.snackBar.open('Summary copied to clipboard', 'OK', {
+          duration: 2000,
+        });
+      })
+      .catch(() => {
+        this.snackBar.open('Failed to copy summary', 'OK', {
+          duration: 2000,
+        });
+      });
+  }
+
+  private generateSummaryText(amountDue: AmountDue): string {
+    const owedTo = this.getMemberName(amountDue.owedToMemberRef.id);
+    const owedBy = this.getMemberName(amountDue.owedByMemberRef.id);
+
+    let summaryText = `Expense Summary\n`;
+    summaryText += `${owedBy} owes ${owedTo} ${this.formatCurrency(amountDue.amount)}\n\n`;
+
+    // Add category breakdown
+    const categoryDetails = this.detailData();
+    if (categoryDetails.length > 0) {
+      summaryText += `Breakdown by Category:\n`;
+      summaryText += `=============\n`;
+      categoryDetails.forEach((detail) => {
+        const categoryName = this.getCategoryName(detail.categoryRef.id);
+        summaryText += `${categoryName}: ${this.formatCurrency(detail.amount)}\n`;
+      });
+    }
+
+    return summaryText.trim();
+  }
+
+  // Helper method to format currency
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  }
 }
