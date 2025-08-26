@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { FormArray, FormGroupDirective } from '@angular/forms';
-import { StringUtils } from 'src/app/utilities/string-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
 
 @Directive({
   selector: '[appFormatCurrencyInput]',
