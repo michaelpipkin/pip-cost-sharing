@@ -375,10 +375,27 @@ export class SummaryComponent {
     const categoryDetails = this.detailData();
     if (categoryDetails.length > 0) {
       summaryText += `Breakdown by Category:\n`;
-      summaryText += `=============\n`;
+
+      // Calculate the maximum line length for alignment
+      let maxLineLength = 0;
+      const categoryLines: { name: string; amount: string }[] = [];
+
       categoryDetails.forEach((detail) => {
         const categoryName = this.getCategoryName(detail.categoryRef.id);
-        summaryText += `${categoryName}: ${this.formatCurrency(detail.amount)}\n`;
+        const formattedAmount = this.formatCurrency(detail.amount);
+        const lineLength = categoryName.length + 2 + formattedAmount.length; // +2 for ": "
+        maxLineLength = Math.max(maxLineLength, lineLength);
+        categoryLines.push({ name: categoryName, amount: formattedAmount });
+      });
+
+      summaryText += `${'='.repeat(maxLineLength + 1)}\n`;
+
+      // Add padded category lines
+      categoryLines.forEach((line) => {
+        const spacesNeeded =
+          maxLineLength - line.name.length - line.amount.length;
+        const padding = ' '.repeat(spacesNeeded);
+        summaryText += `${line.name}:${padding}${line.amount}\n`;
       });
     }
 
