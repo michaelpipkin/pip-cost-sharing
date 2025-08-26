@@ -7,7 +7,7 @@
     "start": "ng serve --host=local.dev.com",
     "start:ci": "ng serve",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
-    "export-data": "rm seed-data -r -f && firebase emulators:export seed-data",
+    "emu:export": "rm seed-data -r -f && firebase emulators:export seed-data",
     "emu:no-data": "firebase emulators:start",
     "emu:data": "firebase emulators:start --import seed-data",
     "get-indexes": "firebase firestore:indexes",
