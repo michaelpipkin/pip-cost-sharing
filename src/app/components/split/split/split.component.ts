@@ -349,33 +349,82 @@ export class SplitComponent {
       summaryText += `Proportional amount (tax, tip, etc.): ${this.formatCurrency(allocatedAmount)}\n`;
     }
 
-    summaryText += '=============\n';
+    // Collect all lines for alignment calculation
+    const splitLines: { text: string; amount: string; isIndented: boolean }[] =
+      [];
 
-    // Add each person's allocation with breakdown
+    // First pass: collect all lines and calculate max lengths
     this.splitsFormArray.controls.forEach((splitControl) => {
       const split = splitControl.value;
       if (split.owedBy && split.owedBy.trim()) {
         if (this.splitByPercentage()) {
           // Show percentage and total for percentage splits
-          summaryText += `${split.owedBy} (${split.percentage}%): ${this.formatCurrency(split.allocatedAmount)}\n`;
+          const lineText = `${split.owedBy} (${split.percentage}%)`;
+          const amount = this.formatCurrency(split.allocatedAmount);
+          splitLines.push({ text: lineText, amount, isIndented: false });
         } else {
           // Show breakdown for dollar amount splits
           const assignedAmount = split.assignedAmount || 0;
           const proportionalAmount = this.calculateProportionalAmount(split);
           const sharedPortionAmount = this.calculateSharedPortion();
 
-          summaryText += `${split.owedBy}: ${this.formatCurrency(split.allocatedAmount)}\n`;
+          // Main split line
+          splitLines.push({
+            text: split.owedBy,
+            amount: this.formatCurrency(split.allocatedAmount),
+            isIndented: false,
+          });
+
+          // Breakdown lines (indented)
           if (assignedAmount > 0) {
-            summaryText += `  Personal: ${this.formatCurrency(assignedAmount)}\n`;
+            splitLines.push({
+              text: '  Personal',
+              amount: this.formatCurrency(assignedAmount),
+              isIndented: true,
+            });
           }
           if (sharedPortionAmount > 0) {
-            summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
+            splitLines.push({
+              text: '  Shared',
+              amount: this.formatCurrency(sharedPortionAmount),
+              isIndented: true,
+            });
           }
           if (proportionalAmount > 0) {
-            summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+            splitLines.push({
+              text: '  Proportional',
+              amount: this.formatCurrency(proportionalAmount),
+              isIndented: true,
+            });
           }
         }
       }
+    });
+
+    // Calculate max line lengths for alignment
+    let maxMainLineLength = 0;
+    let maxIndentedLineLength = 0;
+
+    splitLines.forEach((line) => {
+      const lineLength = line.text.length + 2 + line.amount.length; // +2 for ": "
+      if (line.isIndented) {
+        maxIndentedLineLength = Math.max(maxIndentedLineLength, lineLength);
+      } else {
+        maxMainLineLength = Math.max(maxMainLineLength, lineLength);
+      }
+    });
+
+    // Use the overall maximum for better alignment when we have mixed line types
+    const overallMaxLength = Math.max(maxMainLineLength, maxIndentedLineLength);
+
+    summaryText += `${'='.repeat(overallMaxLength + 1)}\n`;
+
+    // Second pass: add properly aligned lines
+    splitLines.forEach((line) => {
+      const spacesNeeded =
+        overallMaxLength - line.text.length - line.amount.length;
+      const padding = ' '.repeat(spacesNeeded);
+      summaryText += `${line.text}:${padding}${line.amount}\n`;
     });
 
     return summaryText.trim();

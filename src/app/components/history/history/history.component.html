@@ -168,6 +168,12 @@
                     mat-table
                     [dataSource]="history.lineItems"
                     class="static-table info-detail-table"
+                    (click)="
+                      copyHistoryToClipboard(history); $event.stopPropagation()
+                    "
+                    matTooltip="Click to copy payment summary"
+                    [matTooltipDisabled]="false"
+                    #tableTooltip="matTooltip"
                   >
                     @let detailColumnsToDisplay = ['category', 'amount'];
                     <ng-container matColumnDef="category">
@@ -186,6 +192,10 @@
                         mat-cell
                         *matCellDef="let lineItem"
                         class="cell-right"
+                        (mouseenter)="tableTooltip.disabled = true"
+                        (mouseleave)="
+                          tableTooltip.disabled = false; tableTooltip.show()
+                        "
                       >
                         {{ lineItem.amount | currency }}
                       </td>

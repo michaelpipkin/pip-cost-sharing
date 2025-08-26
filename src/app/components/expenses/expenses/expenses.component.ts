@@ -344,16 +344,26 @@ export class ExpensesComponent implements OnInit {
       summaryText += `Proportional amount (tax, tip, etc.): ${this.formatCurrency(expense.allocatedAmount)}\n`;
     }
 
-    summaryText += '=============\n';
+    // Collect all lines for alignment calculation
+    const splitLines: { text: string; amount: string; isIndented: boolean }[] =
+      [];
 
-    // Add each person's allocation with detailed breakdown
+    // First pass: collect all lines and calculate max lengths
     expense.splits.forEach((split) => {
       const owedBy = this.getMemberName(split.owedByMemberRef.id);
-      const paidStatus = split.paid ? ' (Paid)' : ' (Unpaid)';
+      // Only show paid status if the person who owes is different from the person who paid
+      const showPaidStatus = !expense.paidByMemberRef.eq(split.owedByMemberRef);
+      const paidStatus = showPaidStatus
+        ? split.paid
+          ? ' (Paid)'
+          : ' (Unpaid)'
+        : '';
 
       if (expense.splitByPercentage) {
         // Show percentage and total for percentage splits
-        summaryText += `${owedBy} (${split.percentage}%): ${this.formatCurrency(split.allocatedAmount)}${paidStatus}\n`;
+        const lineText = `${owedBy}${paidStatus} (${split.percentage}%)`;
+        const amount = this.formatCurrency(split.allocatedAmount);
+        splitLines.push({ text: lineText, amount, isIndented: false });
       } else {
         // Show detailed breakdown for dollar amount splits
         const assignedAmount = split.assignedAmount || 0;
@@ -364,18 +374,62 @@ export class ExpensesComponent implements OnInit {
         const sharedPortionAmount =
           this.calculateSharedPortionForSplit(expense);
 
-        summaryText += `${owedBy}: ${this.formatCurrency(split.allocatedAmount)}${paidStatus}\n`;
+        // Main split line
+        splitLines.push({
+          text: `${owedBy}${paidStatus}`,
+          amount: this.formatCurrency(split.allocatedAmount),
+          isIndented: false,
+        });
 
+        // Breakdown lines (indented)
         if (assignedAmount > 0) {
-          summaryText += `  Personal: ${this.formatCurrency(assignedAmount)}\n`;
+          splitLines.push({
+            text: '  Personal',
+            amount: this.formatCurrency(assignedAmount),
+            isIndented: true,
+          });
         }
         if (sharedPortionAmount > 0) {
-          summaryText += `  Shared: ${this.formatCurrency(sharedPortionAmount)}\n`;
+          splitLines.push({
+            text: '  Shared',
+            amount: this.formatCurrency(sharedPortionAmount),
+            isIndented: true,
+          });
         }
         if (proportionalAmount > 0) {
-          summaryText += `  Proportional: ${this.formatCurrency(proportionalAmount)}\n`;
+          splitLines.push({
+            text: '  Proportional',
+            amount: this.formatCurrency(proportionalAmount),
+            isIndented: true,
+          });
         }
       }
+    });
+
+    // Calculate max line lengths for alignment
+    let maxMainLineLength = 0;
+    let maxIndentedLineLength = 0;
+
+    splitLines.forEach((line) => {
+      const lineLength = line.text.length + 2 + line.amount.length; // +2 for ": "
+      if (line.isIndented) {
+        maxIndentedLineLength = Math.max(maxIndentedLineLength, lineLength);
+      } else {
+        maxMainLineLength = Math.max(maxMainLineLength, lineLength);
+      }
+    });
+
+    // Use the overall maximum for better alignment when we have mixed line types
+    const overallMaxLength = Math.max(maxMainLineLength, maxIndentedLineLength);
+
+    summaryText += `${'='.repeat(overallMaxLength + 1)}\n`;
+
+    // Second pass: add properly aligned lines
+    splitLines.forEach((line) => {
+      const spacesNeeded =
+        overallMaxLength - line.text.length - line.amount.length;
+      const padding = ' '.repeat(spacesNeeded);
+      summaryText += `${line.text}:${padding}${line.amount}\n`;
     });
 
     return summaryText.trim();
