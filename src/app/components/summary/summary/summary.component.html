@@ -153,51 +153,59 @@
                 *matCellDef="let amountDue"
                 [colSpan]="summaryColumnsToDisplay.length"
               >
-                <div
-                  [@detailExpand]="
-                    amountDue == expandedDetail() ? 'expanded' : 'collapsed'
-                  "
-                  class="detail-table-container"
-                >
-                  <table
-                    mat-table
-                    [dataSource]="detailData()"
-                    (click)="
-                      copySummaryToClipboard(amountDue);
-                      $event.stopPropagation()
-                    "
-                    class="static-table info-detail-table"
-                    matTooltip="Click to copy summary to clipboard"
+                @if (amountDue == expandedDetail()) {
+                  <div
+                    class="detail-table-container"
+                    animate.enter="detail-expand"
+                    animate.leave="detail-collapse"
                   >
-                    @let detailColumnsToDisplay = ['category', 'amount'];
-                    <ng-container matColumnDef="category">
-                      <th mat-header-cell *matHeaderCellDef>Category</th>
-                      <td mat-cell *matCellDef="let lineItem">
-                        {{ getCategoryName(lineItem.categoryRef.id) }}
-                      </td>
-                    </ng-container>
-                    <ng-container matColumnDef="amount">
-                      <th mat-header-cell *matHeaderCellDef class="cell-right">
-                        Amount
-                      </th>
-                      <td
-                        mat-cell
-                        *matCellDef="let lineItem"
-                        class="cell-right"
-                      >
-                        {{ lineItem.amount | currency }}
-                      </td>
-                    </ng-container>
-                    <tr
-                      mat-header-row
-                      *matHeaderRowDef="detailColumnsToDisplay"
-                    ></tr>
-                    <tr
-                      mat-row
-                      *matRowDef="let lineItem; columns: detailColumnsToDisplay"
-                    ></tr>
-                  </table>
-                </div>
+                    <table
+                      mat-table
+                      [dataSource]="detailData()"
+                      (click)="
+                        copySummaryToClipboard(amountDue);
+                        $event.stopPropagation()
+                      "
+                      class="static-table info-detail-table"
+                      matTooltip="Click to copy summary to clipboard"
+                    >
+                      @let detailColumnsToDisplay = ['category', 'amount'];
+                      <ng-container matColumnDef="category">
+                        <th mat-header-cell *matHeaderCellDef>Category</th>
+                        <td mat-cell *matCellDef="let lineItem">
+                          {{ getCategoryName(lineItem.categoryRef.id) }}
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="amount">
+                        <th
+                          mat-header-cell
+                          *matHeaderCellDef
+                          class="cell-right"
+                        >
+                          Amount
+                        </th>
+                        <td
+                          mat-cell
+                          *matCellDef="let lineItem"
+                          class="cell-right"
+                        >
+                          {{ lineItem.amount | currency }}
+                        </td>
+                      </ng-container>
+                      <tr
+                        mat-header-row
+                        *matHeaderRowDef="detailColumnsToDisplay"
+                      ></tr>
+                      <tr
+                        mat-row
+                        *matRowDef="
+                          let lineItem;
+                          columns: detailColumnsToDisplay
+                        "
+                      ></tr>
+                    </table>
+                  </div>
+                }
               </td>
             </ng-container>
             <tr

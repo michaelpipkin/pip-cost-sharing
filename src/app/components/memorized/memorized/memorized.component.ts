@@ -1,5 +1,15 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -12,6 +22,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -22,42 +36,11 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-memorized',
   templateUrl: './memorized.component.html',
   styleUrl: './memorized.component.scss',
-  animations: [
-    trigger('detailExpand', [
-      state('collapsed,void', style({ height: '0px', minHeight: '0' })),
-      state('expanded', style({ height: '*' })),
-      transition(
-        'expanded <=> collapsed',
-        animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')
-      ),
-    ]),
-  ],
   imports: [
     FormsModule,
     MatFormFieldModule,
