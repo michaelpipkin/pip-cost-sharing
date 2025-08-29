@@ -212,6 +212,48 @@ body.dark-theme {
   padding: 0 20%;
 }
 
+// Animation classes for expand/collapse (Angular 20.2+ animate.enter/leave)
+.detail-table-container {
+  overflow: hidden;
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  // For enter animation - smooth slide down
+  &.detail-expand {
+    animation: expand-in 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  // For leave animation - smooth slide up
+  &.detail-collapse {
+    animation: collapse-out 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes expand-in {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    max-height: 1000px; /* Large enough to accommodate content */
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collapse-out {
+  from {
+    max-height: 1000px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
 @media screen and (max-width: 1009px) {
   .detail-table-container {
     padding: 0 10%;

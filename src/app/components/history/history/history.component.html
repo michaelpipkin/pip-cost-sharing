@@ -158,58 +158,67 @@
                 *matCellDef="let history"
                 [colSpan]="columnsToDisplay().length"
               >
-                <div
-                  [@detailExpand]="
-                    history == expandedHistory() ? 'expanded' : 'collapsed'
-                  "
-                  class="detail-table-container"
-                >
-                  <table
-                    mat-table
-                    [dataSource]="history.lineItems"
-                    class="static-table info-detail-table"
-                    (click)="
-                      copyHistoryToClipboard(history); $event.stopPropagation()
-                    "
-                    matTooltip="Click to copy payment summary"
-                    [matTooltipDisabled]="false"
-                    #tableTooltip="matTooltip"
+                @if (history == expandedHistory()) {
+                  <div
+                    class="detail-table-container"
+                    animate.enter="detail-expand"
+                    animate.leave="detail-collapse"
                   >
-                    @let detailColumnsToDisplay = ['category', 'amount'];
-                    <ng-container matColumnDef="category">
-                      <th mat-header-cell *matHeaderCellDef colspan="2">
-                        Category
-                      </th>
-                      <td mat-cell *matCellDef="let lineItem" colspan="2">
-                        {{ lineItem.category }}
-                      </td>
-                    </ng-container>
-                    <ng-container matColumnDef="amount">
-                      <th mat-header-cell *matHeaderCellDef class="cell-right">
-                        Amount
-                      </th>
-                      <td
-                        mat-cell
-                        *matCellDef="let lineItem"
-                        class="cell-right"
-                        (mouseenter)="tableTooltip.disabled = true"
-                        (mouseleave)="
-                          tableTooltip.disabled = false; tableTooltip.show()
+                    <table
+                      mat-table
+                      [dataSource]="history.lineItems"
+                      class="static-table info-detail-table"
+                      (click)="
+                        copyHistoryToClipboard(history);
+                        $event.stopPropagation()
+                      "
+                      matTooltip="Click to copy payment summary"
+                      [matTooltipDisabled]="false"
+                      #tableTooltip="matTooltip"
+                    >
+                      @let detailColumnsToDisplay = ['category', 'amount'];
+                      <ng-container matColumnDef="category">
+                        <th mat-header-cell *matHeaderCellDef colspan="2">
+                          Category
+                        </th>
+                        <td mat-cell *matCellDef="let lineItem" colspan="2">
+                          {{ lineItem.category }}
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="amount">
+                        <th
+                          mat-header-cell
+                          *matHeaderCellDef
+                          class="cell-right"
+                        >
+                          Amount
+                        </th>
+                        <td
+                          mat-cell
+                          *matCellDef="let lineItem"
+                          class="cell-right"
+                          (mouseenter)="tableTooltip.disabled = true"
+                          (mouseleave)="
+                            tableTooltip.disabled = false; tableTooltip.show()
+                          "
+                        >
+                          {{ lineItem.amount | currency }}
+                        </td>
+                      </ng-container>
+                      <tr
+                        mat-header-row
+                        *matHeaderRowDef="detailColumnsToDisplay"
+                      ></tr>
+                      <tr
+                        mat-row
+                        *matRowDef="
+                          let lineItem;
+                          columns: detailColumnsToDisplay
                         "
-                      >
-                        {{ lineItem.amount | currency }}
-                      </td>
-                    </ng-container>
-                    <tr
-                      mat-header-row
-                      *matHeaderRowDef="detailColumnsToDisplay"
-                    ></tr>
-                    <tr
-                      mat-row
-                      *matRowDef="let lineItem; columns: detailColumnsToDisplay"
-                    ></tr>
-                  </table>
-                </div>
+                      ></tr>
+                    </table>
+                  </div>
+                }
               </td>
             </ng-container>
             <tr
