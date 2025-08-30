@@ -96,7 +96,7 @@ export class ExpensesComponent implements OnInit {
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   expenses = signal<Expense[]>([]);
-  initialLoad = signal<boolean>(true);
+  isLoaded = signal<boolean>(false);
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
@@ -177,9 +177,7 @@ export class ExpensesComponent implements OnInit {
           this.smallScreen.set(false);
         }
       });
-    await this.loadExpenses().finally(() => {
-      this.initialLoad.set(false);
-    });
+    await this.loadExpenses();
   }
 
   async loadExpenses(): Promise<void> {
@@ -192,6 +190,7 @@ export class ExpensesComponent implements OnInit {
       )
       .then((expenses: Expense[]) => {
         this.expenses.set(expenses);
+        this.isLoaded.set(true);
       })
       .catch((error) => {
         logEvent(this.analytics, 'fetch_expenses_error', {

@@ -4,8 +4,19 @@
   </div>
 } @else {
   <div class="container pt-3">
-    <div class="page-header mb-3">
+    <div class="page-header">
       <div></div>
+      <h3>Groups</h3>
+      <div class="help-icon">
+        <mat-icon
+          data-testid="help-button"
+          matTooltip="Help"
+          (click)="showHelp()"
+          >help</mat-icon
+        >
+      </div>
+    </div>
+    <div class="mb-4">
       <mat-form-field
         id="group-select"
         data-testid="group-select-field"
@@ -27,15 +38,6 @@
           }
         </mat-select>
       </mat-form-field>
-      <div class="help-icon">
-        <mat-icon
-          data-testid="help-button"
-          fontSet="material-symbols-outlined"
-          matTooltip="Help"
-          (click)="showHelp()"
-          >help</mat-icon
-        >
-      </div>
     </div>
     @if (selectedGroupId() != '') {
       <div class="mb-4">
