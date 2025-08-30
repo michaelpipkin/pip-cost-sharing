@@ -1,8 +1,4 @@
-@if (initialLoad()) {
-  <div class="container pt-3">
-    <h3>Loading expenses...</h3>
-  </div>
-} @else {
+@defer (when isLoaded()) {
   <div class="container with-table pt-3 mb-2">
     <div class="page-header">
       <div></div>
@@ -426,5 +422,10 @@
         <h5>No expenses found</h5>
       </div>
     }
+  </div>
+} @placeholder {
+  <div class="placeholder-content">
+    <mat-icon class="placeholder-icon">hourglass_empty</mat-icon>
+    <h3 class="placeholder-text">Loading expenses...</h3>
   </div>
 }

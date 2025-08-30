@@ -195,7 +195,7 @@ export class MemorizedComponent implements OnInit {
     const dialogConfig: MatDialogConfig<HelpDialogData> = {
       disableClose: false,
       maxWidth: '80vw',
-      data: { sectionId: 'memorized' },
+      data: { sectionId: 'memorized-expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
