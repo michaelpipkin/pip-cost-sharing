@@ -118,7 +118,7 @@ export class AddMemorizedComponent implements OnInit {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   addMemorizedForm = this.fb.group({
-    paidByMember: [this.currentMember().ref, Validators.required],
+    paidByMember: [this.currentMember()?.ref, Validators.required],
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],

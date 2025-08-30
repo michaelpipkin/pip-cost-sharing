@@ -76,7 +76,7 @@ export class HelpContentService {
       ],
     },
     {
-      id: 'add-edit-memorized-expenses',
+      id: 'add-edit-memorized',
       title: 'Add & Edit Memorized Expenses',
       content: [
         'Enter or edit a memorized expense with this form.',

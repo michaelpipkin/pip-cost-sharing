@@ -257,6 +257,7 @@ body.dark-theme {
   h3 {
     margin: 0;
   }
+  height: 3rem;
 }
 
 .header {
@@ -545,16 +546,54 @@ mat-slide-toggle {
   padding-left: 16px;
 }
 
+/* ==========================================================================
+   LOADING STATES
+   ========================================================================== */
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  min-height: 200px;
+}
+
+.placeholder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem !important;
+  width: 4rem !important;
+  height: 4rem !important;
+  color: var(--outline);
+  margin-bottom: 1rem;
+}
+
+.placeholder-text {
+  color: var(--outline);
+  font-size: 1rem;
+  margin: 0;
+}
+
 /* ========================================
    ICON STYLES
 ======================================== */
 
 .help-icon {
+  margin-left: 0.5rem;
+  height: 1.5rem;
+
   mat-icon {
     color: tokens.color('primary') !important;
+    height: 3rem;
+    width: 3rem;
+    font-size: 2rem;
 
     &:hover {
       color: tokens.color('primary-light') !important;
+      cursor: pointer;
     }
   }
 }
