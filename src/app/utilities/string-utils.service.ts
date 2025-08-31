@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import stringMath from 'string-math';
+import { evaluate } from 'mathjs';
 
 @Injectable({
   providedIn: 'root',
@@ -7,7 +7,8 @@ import stringMath from 'string-math';
 export class StringUtils {
   toNumber(str: string): number {
     try {
-      return +stringMath(str).toFixed(2);
+      const result = evaluate(str);
+      return +Number(result).toFixed(2);
     } catch {
       return 0;
     }
