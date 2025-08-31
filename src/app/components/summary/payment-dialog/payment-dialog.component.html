@@ -5,30 +5,72 @@
   ) {
     <p>
       You can pay {{ data.payToMemberName }} with any of the following methods:
+      <br />
+      (Clicking a link will also copy the user ID to your clipboard.)
     </p>
-    <ul style="list-style-type: none">
+    <ul style="list-style-type: none" class="grid-list">
       @if (data.venmoId !== '') {
         <li>
-          <a href="https://www.venmo.com" target="_blank">Venmo</a>:
+          <a
+            href="https://www.venmo.com"
+            target="_blank"
+            (click)="copyPaymentIdToClipboard(data.venmoId)"
+            >Venmo</a
+          >:
           {{ data.venmoId }}
+          <mat-icon
+            matTooltip="Copy Venmo ID"
+            (click)="copyPaymentIdToClipboard(data.venmoId)"
+            >content_copy</mat-icon
+          >
         </li>
       }
       @if (data.paypalId !== '') {
         <li>
-          <a href="https://www.paypal.com" target="_blank">PayPal</a>:
+          <a
+            href="https://www.paypal.com"
+            target="_blank"
+            (click)="copyPaymentIdToClipboard(data.paypalId)"
+            >PayPal</a
+          >:
           {{ data.paypalId }}
+          <mat-icon
+            matTooltip="Copy PayPal ID"
+            (click)="copyPaymentIdToClipboard(data.paypalId)"
+            >content_copy</mat-icon
+          >
         </li>
       }
       @if (data.cashAppId !== '') {
         <li>
-          <a href="https://cash.app/" target="_blank">CashApp</a>:
+          <a
+            href="https://cash.app/"
+            target="_blank"
+            (click)="copyPaymentIdToClipboard(data.cashAppId)"
+            >CashApp</a
+          >:
           {{ data.cashAppId }}
+          <mat-icon
+            matTooltip="Copy CashApp ID"
+            (click)="copyPaymentIdToClipboard(data.cashAppId)"
+            >content_copy</mat-icon
+          >
         </li>
       }
       @if (data.zelleId !== '') {
         <li>
-          <a href="https://www.zellepay.com" target="_blank">Zelle</a>:
+          <a
+            href="https://www.zellepay.com"
+            target="_blank"
+            (click)="copyPaymentIdToClipboard(data.zelleId)"
+            >Zelle</a
+          >:
           {{ data.zelleId }}
+          <mat-icon
+            matTooltip="Copy Zelle ID"
+            (click)="copyPaymentIdToClipboard(data.zelleId)"
+            >content_copy</mat-icon
+          >
         </li>
       }
     </ul>
