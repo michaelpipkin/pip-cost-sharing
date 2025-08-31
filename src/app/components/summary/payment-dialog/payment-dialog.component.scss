@@ -1,0 +1,10 @@
+.grid-list li {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  margin-bottom: 0.5rem;
+
+  mat-icon {
+    cursor: pointer;
+    margin-left: 0.5rem;
+  }
+}
