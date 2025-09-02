@@ -38,20 +38,19 @@ export class MemberService implements IMemberService {
       where('userRef', '==', userRef),
       limit(1)
     );
-    await getDocs(q).then((docSnap) => {
-      if (!docSnap.empty) {
-        const memberDoc = docSnap.docs[0];
-        this.memberStore.setCurrentMember(
-          new Member({
-            id: memberDoc.id,
-            ...memberDoc.data(),
-            ref: memberDoc.ref as DocumentReference<Member>,
-          })
-        );
-      } else {
-        this.memberStore.clearCurrentMember();
-      }
-    });
+    const docSnap = await getDocs(q);
+    if (!docSnap.empty) {
+      const memberDoc = docSnap.docs[0];
+      this.memberStore.setCurrentMember(
+        new Member({
+          id: memberDoc.id,
+          ...memberDoc.data(),
+          ref: memberDoc.ref as DocumentReference<Member>,
+        })
+      );
+    } else {
+      this.memberStore.clearCurrentMember();
+    }
   }
 
   getGroupMembers(groupId: string): void {

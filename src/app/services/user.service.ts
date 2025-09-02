@@ -109,9 +109,8 @@ export class UserService implements IUserService {
   async updateUser(changes: Partial<User>): Promise<void> {
     const userId = this.userStore.user().id;
     const docRef = doc(this.fs, `users/${userId}`);
-    return await setDoc(docRef, changes, { merge: true }).then(() => {
-      this.userStore.updateUser(changes);
-    });
+    await setDoc(docRef, changes, { merge: true });
+    this.userStore.updateUser(changes);
   }
 
   async getPaymentMethods(
