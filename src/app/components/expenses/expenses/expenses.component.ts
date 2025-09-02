@@ -266,12 +266,9 @@ export class ExpensesComponent implements OnInit {
     await this.splitService
       .updateSplit(this.currentGroup().id, expense.ref, split.ref, changes)
       .then(() => {
-        const splits = this.expandedExpense().splits;
-        const updatedSplit = splits.find((s) => s.ref.eq(split.ref));
-        updatedSplit.paid = !updatedSplit.paid;
-        this.onExpandClick(expense);
+        this.loadExpenses();
         this.snackBar.open(
-          `Split ${updatedSplit.paid ? 'marked as paid' : 'marked as unpaid'}`,
+          `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}`,
           'Close',
           { duration: 3000 }
         );

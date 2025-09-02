@@ -495,7 +495,7 @@ export class EditExpenseComponent implements OnInit {
             allocatedAmount: +s.allocatedAmount,
             paidByMemberRef: val.paidByMember,
             owedByMemberRef: s.owedByMemberRef,
-            paid: s.owedByMemberRef == val.paidByMember,
+            paid: s.owedByMemberRef.eq(val.paidByMember),
           };
           splits.push(split);
         });
