@@ -3,6 +3,7 @@ import { Expense } from '@models/expense';
 import { History } from '@models/history';
 import { Split } from '@models/split';
 import { SplitStore } from '@store/split.store';
+import { ISplitService } from './split.service.interface';
 import {
   collection,
   doc,
@@ -14,7 +15,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -57,7 +57,7 @@ export class SplitService implements ISplitService {
     const splitsQuerySnap = await getDocs(splitsQuery);
     const expensePaid =
       splitsQuerySnap.docs.filter(
-        (doc) => doc.ref !== splitRef && !doc.data().paid
+        (doc) => !doc.ref.eq(splitRef) && !doc.data().paid
       ).length === 0 && changes.paid;
     batch.update(expenseRef, { paid: expensePaid });
     return await batch
