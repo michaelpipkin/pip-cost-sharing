@@ -3,6 +3,9 @@ import { Expense } from '@models/expense';
 import { Split } from '@models/split';
 import { ExpenseStore } from '@store/expense.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { deleteObject, getStorage, ref, uploadBytes } from 'firebase/storage';
+import { CategoryService } from './category.service';
+import { IExpenseService } from './expense.service.interface';
 import {
   collection,
   doc,
@@ -15,9 +18,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { deleteObject, getStorage, ref, uploadBytes } from 'firebase/storage';
-import { CategoryService } from './category.service';
-import { IExpenseService } from './expense.service.interface';
 
 @Injectable({
   providedIn: 'root',
