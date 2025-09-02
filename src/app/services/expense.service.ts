@@ -136,9 +136,8 @@ export class ExpenseService implements IExpenseService {
         `groups/${groupId}/receipts/${expenseRef.id}`
       );
       expense.receiptPath = storageRef.fullPath; // Store the path as a string
-      await uploadBytes(storageRef, receipt).then(() => {
-        logEvent(this.analytics, 'receipt_uploaded');
-      });
+      await uploadBytes(storageRef, receipt);
+      logEvent(this.analytics, 'receipt_uploaded');
     }
     batch.set(expenseRef, expense);
     splits.forEach((split) => {
