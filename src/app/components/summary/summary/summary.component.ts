@@ -264,12 +264,11 @@ export class SummaryComponent {
     splitsToPay = memberSplits;
     let paymentMethods = {};
     this.loading.loadingOn();
-    await this.userService
-      .getPaymentMethods(owedToMember)
-      .then((methods: Object) => {
-        paymentMethods = methods;
-      })
-      .finally(() => this.loading.loadingOff());
+    try {
+      paymentMethods = await this.userService.getPaymentMethods(owedToMember);
+    } finally {
+      this.loading.loadingOff();
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         payToMemberName: this.getMemberName(owedToMember.id),
@@ -301,23 +300,26 @@ export class SummaryComponent {
             amount: split.amount,
           });
         });
-        await this.splitService
-          .paySplitsBetweenMembers(this.currentGroup().id, splitsToPay, history)
-          .then(async () => {
-            this.snackBar.open('Expenses have been marked paid.', 'OK');
-          })
-          .catch((err: Error) => {
-            logEvent(this.analytics, 'error', {
-              component: this.constructor.name,
-              action: 'mark_expenses_paid',
-              message: err.message,
-            });
-            this.snackBar.open(
-              'Something went wrong - could not mark expenses paid.',
-              'Close'
-            );
-          })
-          .finally(() => this.loading.loadingOff());
+        try {
+          await this.splitService.paySplitsBetweenMembers(
+            this.currentGroup().id,
+            splitsToPay,
+            history
+          );
+          this.snackBar.open('Expenses have been marked paid.', 'OK');
+        } catch (err: any) {
+          logEvent(this.analytics, 'error', {
+            component: this.constructor.name,
+            action: 'mark_expenses_paid',
+            message: err.message,
+          });
+          this.snackBar.open(
+            'Something went wrong - could not mark expenses paid.',
+            'Close'
+          );
+        } finally {
+          this.loading.loadingOff();
+        }
       }
     });
   }

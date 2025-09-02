@@ -182,24 +182,22 @@ export class ExpensesComponent implements OnInit {
 
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
-    await this.expenseService
-      .getGroupExpensesByDateRange(
-        this.currentGroup().id,
-        this.startDate(),
-        this.endDate()
-      )
-      .then((expenses: Expense[]) => {
-        this.expenses.set(expenses);
-        this.isLoaded.set(true);
-      })
-      .catch((error) => {
-        logEvent(this.analytics, 'fetch_expenses_error', {
-          error: error.message,
-        });
-      })
-      .finally(() => {
-        this.loading.loadingOff();
+    try {
+      const expenses: Expense[] =
+        await this.expenseService.getGroupExpensesByDateRange(
+          this.currentGroup().id,
+          this.startDate(),
+          this.endDate()
+        );
+      this.expenses.set(expenses);
+      this.isLoaded.set(true);
+    } catch (error) {
+      logEvent(this.analytics, 'fetch_expenses_error', {
+        error: error.message,
       });
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onFetchExpensesClick(): void {
@@ -263,19 +261,22 @@ export class ExpensesComponent implements OnInit {
       paid: !split.paid,
     };
     this.loading.loadingOn();
-    await this.splitService
-      .updateSplit(this.currentGroup().id, expense.ref, split.ref, changes)
-      .then(() => {
-        this.loadExpenses();
-        this.snackBar.open(
-          `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}`,
-          'Close',
-          { duration: 3000 }
-        );
-      })
-      .finally(() => {
-        this.loading.loadingOff();
-      });
+    try {
+      await this.splitService.updateSplit(
+        this.currentGroup().id,
+        expense.ref,
+        split.ref,
+        changes
+      );
+      this.loadExpenses();
+      this.snackBar.open(
+        `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}`,
+        'Close',
+        { duration: 3000 }
+      );
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   showHelp(): void {

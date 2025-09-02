@@ -94,19 +94,17 @@ export class GroupService implements IGroupService {
           }
         } else {
           if (groups.length === 1 && groups[0].active) {
-            await this.getGroup(groups[0].id, user.ref).then(() => {
-              if (autoNav) {
-                autoNav = false;
-                this.router.navigateByUrl('/expenses');
-              }
-            });
+            await this.getGroup(groups[0].id, user.ref);
+            if (autoNav) {
+              autoNav = false;
+              this.router.navigateByUrl('/expenses');
+            }
           } else if (user.defaultGroupRef !== null) {
-            await this.getGroup(user.defaultGroupRef.id, user.ref).then(() => {
-              if (autoNav) {
-                autoNav = false;
-                this.router.navigateByUrl('/expenses');
-              }
-            });
+            await this.getGroup(user.defaultGroupRef.id, user.ref);
+            if (autoNav) {
+              autoNav = false;
+              this.router.navigateByUrl('/expenses');
+            }
           } else {
             autoNav = false;
             this.router.navigateByUrl('/groups');

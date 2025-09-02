@@ -93,13 +93,12 @@ export class CategoryService implements ICategoryService {
     const groupId = categoryRef.parent.parent?.id;
     const c = collection(this.fs, `groups/${groupId}/expenses`);
     const q = query(c, where('categoryRef', '==', categoryRef));
-    return await getDocs(q).then(async (snap) => {
-      if (snap.size > 0) {
-        return new Error(
-          'This category is assigned to expenses and cannot be deleted.'
-        );
-      }
-      return await deleteDoc(categoryRef);
-    });
+    const snap = await getDocs(q);
+    if (snap.size > 0) {
+      return new Error(
+        'This category is assigned to expenses and cannot be deleted.'
+      );
+    }
+    return await deleteDoc(categoryRef);
   }
 }
