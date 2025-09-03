@@ -179,7 +179,7 @@ export class EditExpenseComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const expense: Expense = this.route.snapshot.data.expense;
     this.expense.set(expense);
     this.splitByPercentage.set(expense.splitByPercentage);
@@ -203,17 +203,37 @@ export class EditExpenseComponent implements OnInit {
       );
     });
     if (expense.hasReceipt) {
-      getDownloadURL(expense.receiptRef)
-        .then((url: unknown) => {
-          if (!!url) {
-            this.receiptUrl.set(<string>url);
-          }
-        })
-        .catch((err: FirebaseError) => {
-          if (err.code !== 'storage/object-not-found') {
+      try {
+        const url = await getDownloadURL(expense.receiptRef);
+        if (!!url) {
+          this.receiptUrl.set(<string>url);
+        }
+      } catch (error) {
+        if (error instanceof FirebaseError) {
+          if (error.code !== 'storage/object-not-found') {
             logEvent(this.analytics, 'receipt-retrieval-error');
+          } else {
+            this.snackBar.open(error.message, 'Close');
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'firebase_receipt_retrieval',
+              message: error.message,
+            });
           }
-        });
+        } else if (error instanceof Error) {
+          this.snackBar.open(error.message, 'Close');
+          logEvent(this.analytics, 'error', {
+            component: this.constructor.name,
+            action: 'firebase_receipt_retrieval',
+            message: error.message,
+          });
+        } else {
+          this.snackBar.open(
+            'Something went wrong - could not retrieve receipt.',
+            'Close'
+          );
+        }
+      }
     }
     this.loading.loadingOff();
   }
@@ -456,7 +476,7 @@ export class EditExpenseComponent implements OnInit {
   expenseFullyAllocated = (): boolean =>
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Action',
@@ -467,10 +487,9 @@ export class EditExpenseComponent implements OnInit {
       },
     };
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
+    dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        this.editExpenseForm.disable();
         const val = this.editExpenseForm.value;
         const expenseDate = firestore.Timestamp.fromDate(val.date);
         const changes: Partial<Expense> = {
@@ -483,7 +502,6 @@ export class EditExpenseComponent implements OnInit {
           totalAmount: +val.amount,
           splitByPercentage: this.splitByPercentage(),
           paid: false,
-          // hasReceipt: this.expense().hasReceipt || !!this.fileName(),
         };
         let splits: Partial<Split>[] = [];
         this.splitsFormArray.value.forEach((s) => {
@@ -499,31 +517,33 @@ export class EditExpenseComponent implements OnInit {
           };
           splits.push(split);
         });
-        this.expenseService
-          .updateExpense(
+        try {
+          await this.expenseService.updateExpense(
             this.#currentGroup().id,
             this.expense().ref,
             changes,
             splits,
             this.receiptFile()
-          )
-          .then(() => {
-            this.snackBar.open('Expense updated successfully.', 'OK');
-            this.router.navigate(['/expenses']);
-          })
-          .catch((err: Error) => {
+          );
+          this.snackBar.open('Expense updated successfully.', 'OK');
+          this.router.navigate(['/expenses']);
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackBar.open(error.message, 'Close');
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'edit_expense',
-              message: err.message,
+              message: error.message,
             });
+          } else {
             this.snackBar.open(
               'Something went wrong - could not edit expense.',
               'Close'
             );
-            this.editExpenseForm.enable();
-          })
-          .finally(() => this.loading.loadingOff());
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
       }
     });
   }
@@ -536,34 +556,40 @@ export class EditExpenseComponent implements OnInit {
       },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
+    dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        this.expenseService
-          .deleteExpense(this.#currentGroup().id, this.expense().ref)
-          .then(() => {
-            if (this.receiptUrl()) {
-              const fileRef = ref(
-                this.storage,
-                `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
-              );
-              deleteObject(fileRef);
-            }
-            this.snackBar.open('Expense deleted.', 'OK');
-            this.router.navigate(['/expenses']);
-          })
-          .catch((err: Error) => {
+        try {
+          await this.expenseService.deleteExpense(
+            this.#currentGroup().id,
+            this.expense().ref
+          );
+          if (this.receiptUrl()) {
+            const fileRef = ref(
+              this.storage,
+              `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
+            );
+            await deleteObject(fileRef);
+          }
+          this.snackBar.open('Expense deleted.', 'OK');
+          this.router.navigate(['/expenses']);
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackBar.open(error.message, 'Close');
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'delete_expense',
-              message: err.message,
+              message: error.message,
             });
+          } else {
             this.snackBar.open(
               'Something went wrong - could not delete expense.',
               'Close'
             );
-          })
-          .finally(() => this.loading.loadingOff());
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
       }
     });
   }

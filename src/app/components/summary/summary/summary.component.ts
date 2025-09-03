@@ -1,13 +1,4 @@
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -39,11 +30,20 @@ import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
-import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -333,20 +333,27 @@ export class SummaryComponent {
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
-  copySummaryToClipboard(amountDue: AmountDue): void {
+  async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {
     const summaryText = this.generateSummaryText(amountDue);
-    navigator.clipboard
-      .writeText(summaryText)
-      .then(() => {
-        this.snackBar.open('Summary copied to clipboard', 'OK', {
-          duration: 2000,
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      this.snackBar.open('Summary copied to clipboard', 'OK', {
+        duration: 2000,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'copy_summary_to_clipboard',
+          message: error.message,
         });
-      })
-      .catch(() => {
+      } else {
         this.snackBar.open('Failed to copy summary', 'OK', {
           duration: 2000,
         });
-      });
+      }
+    }
   }
 
   private generateSummaryText(amountDue: AmountDue): string {

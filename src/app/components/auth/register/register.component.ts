@@ -1,3 +1,13 @@
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router, RouterModule } from '@angular/router';
+import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
 import {
   Component,
   inject,
@@ -12,21 +22,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, RouterModule } from '@angular/router';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   getAuth,
 } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
 export declare const hcaptcha: any;
 
 @Component({
@@ -48,7 +48,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly functions = inject(getFunctions);
 
@@ -121,7 +121,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
     const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
     if (signInMethods.length > 0 && signInMethods.includes('password')) {
       this.loading.loadingOff();
-      this.snackbar.open(
+      this.snackBar.open(
         'Account already exists for this email address',
         'Close'
       );
@@ -132,7 +132,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
           this.router.navigateByUrl('/groups');
         })
         .catch((error) => {
-          this.snackbar.open(error.message, 'Close');
+          this.snackBar.open(error.message, 'Close');
         })
         .finally(() => {
           this.loading.loadingOff();

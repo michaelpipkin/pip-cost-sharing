@@ -1,14 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -43,6 +34,15 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -288,20 +288,27 @@ export class ExpensesComponent implements OnInit {
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
-  copyExpenseSummaryToClipboard(expense: Expense): void {
+  async copyExpenseSummaryToClipboard(expense: Expense): Promise<void> {
     const summaryText = this.generateExpenseSummaryText(expense);
-    navigator.clipboard
-      .writeText(summaryText)
-      .then(() => {
-        this.snackBar.open('Expense summary copied to clipboard', 'OK', {
-          duration: 2000,
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      this.snackBar.open('Expense summary copied to clipboard', 'OK', {
+        duration: 2000,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'copy_expense_summary_to_clipboard',
+          message: error.message,
         });
-      })
-      .catch(() => {
+      } else {
         this.snackBar.open('Failed to copy expense summary', 'OK', {
           duration: 2000,
         });
-      });
+      }
+    }
   }
 
   private generateExpenseSummaryText(expense: Expense): string {

@@ -11,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Split } from '@models/split';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   afterEveryRender,
   afterNextRender,
@@ -61,6 +62,7 @@ export class SplitComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
+  protected readonly analytics = inject(getAnalytics);
 
   submitted = signal<boolean>(false);
 
@@ -466,20 +468,27 @@ export class SplitComponent {
   }
 
   // Method to copy summary to clipboard
-  copySummaryToClipboard(): void {
+  async copySummaryToClipboard(): Promise<void> {
     const summaryText = this.generateSummaryText();
-    navigator.clipboard
-      .writeText(summaryText)
-      .then(() => {
-        this.snackBar.open('Summary copied to clipboard', 'OK', {
-          duration: 2000,
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      this.snackBar.open('Summary copied to clipboard', 'OK', {
+        duration: 2000,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'copy_expense_summary_to_clipboard',
+          message: error.message,
         });
-      })
-      .catch(() => {
+      } else {
         this.snackBar.open('Failed to copy summary', 'OK', {
           duration: 2000,
         });
-      });
+      }
+    }
   }
 
   resetForm(): void {

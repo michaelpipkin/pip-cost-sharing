@@ -1,10 +1,4 @@
 import { Component, inject, model, OnInit, signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +9,12 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { confirmPasswordReset, getAuth } from 'firebase/auth';
 import { passwordMatchValidator } from '../auth-main/password-match-validator';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-reset-password',
@@ -36,7 +36,7 @@ export class ResetPasswordComponent implements OnInit {
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   oobCode = signal<string>('');
@@ -78,19 +78,19 @@ export class ResetPasswordComponent implements OnInit {
     this.loading.loadingOn();
     await confirmPasswordReset(this.auth, this.oobCode(), password)
       .then(() => {
-        this.snackbar.open('Password reset successfully', 'Close');
+        this.snackBar.open('Password reset successfully', 'Close');
         this.router.navigate(['/login']);
       })
       .catch((error) => {
         if (error?.code === 'auth/invalid-action-code') {
-          this.snackbar.open('Invalid reset link', 'Close');
+          this.snackBar.open('Invalid reset link', 'Close');
         } else if (error?.code === 'auth/expired-action-code') {
-          this.snackbar.open('Reset link expired', 'Close');
+          this.snackBar.open('Reset link expired', 'Close');
         } else {
           logEvent(this.analytics, 'reset_password_error', {
             error: error.message,
           });
-          this.snackbar.open(error.message, 'Close');
+          this.snackBar.open(error.message, 'Close');
         }
       })
       .finally(() => {
