@@ -5,6 +5,8 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -17,8 +19,6 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -32,108 +32,164 @@ export class UserService implements IUserService {
   protected readonly groupService = inject(GroupService);
 
   constructor() {
-    setPersistence(this.auth, browserLocalPersistence)
-      .then(async () => {
-        this.auth.onAuthStateChanged((firebaseUser) => {
-          if (!!firebaseUser) {
-            this.getUserDetails(firebaseUser.uid).then(
-              async (userData: Partial<User>) => {
-                const user = new User({
-                  id: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  ...userData,
-                });
-                this.userStore.setUser(user);
-                this.userStore.setIsGoogleUser(
-                  firebaseUser.providerData[0].providerId === 'google.com'
-                );
-                await this.groupService.getUserGroups(user, true);
-              }
-            );
-            return true;
-          } else {
-            this.userStore.clearUser();
-            this.groupService.logout();
-            return false;
-          }
-        });
-      })
-      .catch((error) => {
-        logEvent(this.analytics, 'error', { message: error.message });
-      });
+    this.initializeAuth();
   }
 
-  async getUserDetails(userId: string): Promise<User | null> {
-    const docRef = doc(this.fs, `users/${userId}`);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return new User({
-        id: docSnap.id,
-        ...docSnap.data(),
-        ref: docRef as DocumentReference<User>,
+  private async initializeAuth(): Promise<void> {
+    try {
+      await setPersistence(this.auth, browserLocalPersistence);
+      this.auth.onAuthStateChanged(async (firebaseUser) => {
+        if (!!firebaseUser) {
+          try {
+            const userData = await this.createUserIfNotExists(firebaseUser.uid);
+            const user = new User({
+              id: firebaseUser.uid,
+              email: firebaseUser.email,
+              ...userData,
+            });
+            this.userStore.setUser(user);
+            this.userStore.setIsGoogleUser(
+              firebaseUser.providerData[0].providerId === 'google.com'
+            );
+            await this.groupService.getUserGroups(user, true);
+          } catch (error) {
+            logEvent(this.analytics, 'error', { 
+              message: 'Failed to initialize user', 
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        } else {
+          this.userStore.clearUser();
+          this.groupService.logout();
+        }
       });
-    } else {
-      setDoc(docRef, {
-        defaultGroupRef: null,
-        venmoId: '',
-        paypalId: '',
-        cashAppId: '',
-        zelleId: '',
-      });
-      return new User({
-        id: userId,
-        defaultGroupRef: null,
-        venmoId: '',
-        paypalId: '',
-        cashAppId: '',
-        zelleId: '',
-        ref: docRef as DocumentReference<User>,
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to set auth persistence',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
 
+  async getUserDetails(userId: string): Promise<User | null> {
+    try {
+      const docRef = doc(this.fs, `users/${userId}`);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return new User({
+          id: docSnap.id,
+          ...docSnap.data(),
+          ref: docRef as DocumentReference<User>,
+        });
+      }
+      return null;
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to get user details',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
+  async createUserIfNotExists(userId: string): Promise<User> {
+    try {
+      const existingUser = await this.getUserDetails(userId);
+      if (existingUser) {
+        return existingUser;
+      }
+
+      const docRef = doc(this.fs, `users/${userId}`);
+      const defaultUserData = {
+        defaultGroupRef: null,
+        venmoId: '',
+        paypalId: '',
+        cashAppId: '',
+        zelleId: '',
+      };
+      
+      await setDoc(docRef, defaultUserData);
+      return new User({
+        id: userId,
+        ...defaultUserData,
+        ref: docRef as DocumentReference<User>,
+      });
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to create user',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
   async saveDefaultGroup(groupRef: DocumentReference<Group>): Promise<void> {
-    const userId = this.userStore.user().id;
-    const docRef = doc(this.fs, `users/${userId}`);
-    return await setDoc(
-      docRef,
-      {
-        defaultGroupRef: groupRef,
-      },
-      { merge: true }
-    ).then(() => {
+    try {
+      const userId = this.userStore.user().id;
+      const docRef = doc(this.fs, `users/${userId}`);
+      await setDoc(
+        docRef,
+        {
+          defaultGroupRef: groupRef,
+        },
+        { merge: true }
+      );
       this.userStore.updateUser({ defaultGroupRef: groupRef });
-    });
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to save default group',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async updateUser(changes: Partial<User>): Promise<void> {
-    const userId = this.userStore.user().id;
-    const docRef = doc(this.fs, `users/${userId}`);
-    await setDoc(docRef, changes, { merge: true });
-    this.userStore.updateUser(changes);
+    try {
+      const userId = this.userStore.user().id;
+      const docRef = doc(this.fs, `users/${userId}`);
+      await setDoc(docRef, changes, { merge: true });
+      this.userStore.updateUser(changes);
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to update user',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async getPaymentMethods(
     memberRef: DocumentReference<Member>
   ): Promise<object> {
-    const memberDoc = await getDoc(memberRef);
-    if (!memberDoc.exists()) {
-      return {};
-    }
+    try {
+      const memberDoc = await getDoc(memberRef);
+      if (!memberDoc.exists()) {
+        return {};
+      }
 
-    const userRef = memberDoc.data().userRef;
-    const userDocSnap = await getDoc(userRef);
+      const userRef = memberDoc.data().userRef;
+      const userDocSnap = await getDoc(userRef);
 
-    if (userDocSnap.exists()) {
-      const data = userDocSnap.data();
-      return {
-        venmoId: data.venmoId ?? '',
-        paypalId: data.paypalId ?? '',
-        cashAppId: data.cashAppId ?? '',
-        zelleId: data.zelleId ?? '',
-      };
-    } else {
-      return {};
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        return {
+          venmoId: data.venmoId ?? '',
+          paypalId: data.paypalId ?? '',
+          cashAppId: data.cashAppId ?? '',
+          zelleId: data.zelleId ?? '',
+        };
+      } else {
+        return {};
+      }
+    } catch (error) {
+      logEvent(this.analytics, 'error', { 
+        message: 'Failed to get payment methods',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
     }
   }
 

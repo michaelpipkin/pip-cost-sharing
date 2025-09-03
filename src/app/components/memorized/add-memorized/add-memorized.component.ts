@@ -1,4 +1,33 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import {
   afterEveryRender,
   afterNextRender,
@@ -23,44 +52,15 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-add-memorized',
@@ -397,8 +397,7 @@ export class AddMemorizedComponent implements OnInit {
   memorizedFullyAllocated = (): boolean =>
     this.addMemorizedForm.value.amount == this.getAllocatedTotal();
 
-  onSubmit(): void {
-    this.addMemorizedForm.disable();
+  async onSubmit(): Promise<void> {
     const val = this.addMemorizedForm.value;
     const memorized: Partial<Memorized> = {
       description: val.description,
@@ -422,25 +421,30 @@ export class AddMemorizedComponent implements OnInit {
     });
     memorized.splits = splits;
     this.loading.loadingOn();
-    this.memorizedService
-      .addMemorized(this.currentGroup().id, memorized)
-      .then(() => {
-        this.snackBar.open('Memorized expense added.', 'OK');
-        this.router.navigate(['/memorized']);
-      })
-      .catch((err: Error) => {
+    try {
+      await this.memorizedService.addMemorized(
+        this.currentGroup().id,
+        memorized
+      );
+      this.snackBar.open('Memorized expense added.', 'OK');
+      this.router.navigate(['/memorized']);
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'memorize_expense',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not memorize expense.',
           'Close'
         );
-        this.addMemorizedForm.enable();
-      })
-      .finally(() => this.loading.loadingOff());
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onCancel(): void {

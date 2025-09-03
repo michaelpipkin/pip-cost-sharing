@@ -1,4 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { SerializableMemorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import * as firestore from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import {
   afterEveryRender,
   afterNextRender,
@@ -24,48 +57,15 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { SerializableMemorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import * as firestore from 'firebase/firestore';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-add-expense',
@@ -490,7 +490,7 @@ export class AddExpenseComponent implements OnInit {
   expenseFullyAllocated = (): boolean =>
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
-  onSubmit(saveAndAdd: boolean = false): void {
+  async onSubmit(saveAndAdd: boolean = false): Promise<void> {
     this.loading.loadingOn();
     const val = this.addExpenseForm.value;
     const expenseDate = firestore.Timestamp.fromDate(val.date);
@@ -521,47 +521,55 @@ export class AddExpenseComponent implements OnInit {
         splits.push(split);
       }
     });
-    this.expenseService
-      .addExpense(this.currentGroup().id, expense, splits, this.receiptFile())
-      .then(() => {
-        this.snackBar.open('Expense added.', 'OK');
-        if (saveAndAdd) {
-          this.addExpenseForm.reset();
-          this.splitsFormArray.clear();
-          this.addExpenseForm.patchValue({
-            paidByMember: this.currentMember().ref,
-            date: new Date(),
-            amount: 0,
-            allocatedAmount: 0,
-          });
-          this.totalAmountField().nativeElement.value = '0.00';
-          this.allocatedAmountField().nativeElement.value = '0.00';
-          this.memberAmounts().forEach((elementRef: ElementRef) => {
-            elementRef.nativeElement.value = '0.00';
-          });
-          this.fileName.set('');
-          this.receiptFile.set(null);
-          this.addExpenseForm.enable();
-          if (this.currentGroup().autoAddMembers) {
-            this.addAllActiveGroupMembers();
-          }
-          this.addSelectFocus();
-        } else {
-          this.router.navigate(['/expenses']);
+    try {
+      await this.expenseService.addExpense(
+        this.currentGroup().id,
+        expense,
+        splits,
+        this.receiptFile()
+      );
+      this.snackBar.open('Expense added.', 'OK');
+      if (saveAndAdd) {
+        this.addExpenseForm.reset();
+        this.splitsFormArray.clear();
+        this.addExpenseForm.patchValue({
+          paidByMember: this.currentMember().ref,
+          date: new Date(),
+          amount: 0,
+          allocatedAmount: 0,
+        });
+        this.totalAmountField().nativeElement.value = '0.00';
+        this.allocatedAmountField().nativeElement.value = '0.00';
+        this.memberAmounts().forEach((elementRef: ElementRef) => {
+          elementRef.nativeElement.value = '0.00';
+        });
+        this.fileName.set('');
+        this.receiptFile.set(null);
+        this.addExpenseForm.enable();
+        if (this.currentGroup().autoAddMembers) {
+          this.addAllActiveGroupMembers();
         }
-      })
-      .catch((err: Error) => {
+        this.addSelectFocus();
+      } else {
+        this.router.navigate(['/expenses']);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_expense',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not save expense.',
           'Close'
         );
-      })
-      .finally(() => this.loading.loadingOff());
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onCancel(): void {

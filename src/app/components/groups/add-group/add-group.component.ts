@@ -1,10 +1,4 @@
 import { Component, inject, Signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,8 +9,15 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { GroupService } from '@services/group.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-add-group',
@@ -33,6 +34,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
   ],
 })
 export class AddGroupComponent {
+  protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddGroupComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
@@ -51,8 +53,8 @@ export class AddGroupComponent {
     return this.newGroupForm.controls;
   }
 
-  onSubmit(): void {
-    this.newGroupForm.disable();
+  async onSubmit(): Promise<void> {
+    this.loading.loadingOn();
     const val = this.newGroupForm.value;
     const newGroup: Partial<Group> = {
       name: val.groupName,
@@ -66,25 +68,25 @@ export class AddGroupComponent {
       active: true,
       groupAdmin: true,
     };
-    this.groupService
-      .addGroup(newGroup, newMember)
-      .then(() => {
-        this.dialogRef.close(true);
-      })
-      .catch((err: Error) => {
+    try {
+      await this.groupService.addGroup(newGroup, newMember);
+      this.dialogRef.close(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_group',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not add group.',
-          'Close',
-          {
-            verticalPosition: 'top',
-          }
+          'Close'
         );
-        this.newGroupForm.enable();
-      });
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 }

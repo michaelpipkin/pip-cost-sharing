@@ -31,7 +31,7 @@ export class GroupsPage extends BasePage {
 
   // Generic elements
   readonly formErrors: Locator;
-  readonly snackbar: Locator;
+  readonly snackBar: Locator;
 
   // Manage Groups Dialog elements
   readonly manageGroupsDialog: Locator;
@@ -87,7 +87,7 @@ export class GroupsPage extends BasePage {
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.locator('simple-snack-bar');
+    this.snackBar = page.locator('simple-snack-bar');
   }
 
   async goto(): Promise<void> {
@@ -130,10 +130,10 @@ export class GroupsPage extends BasePage {
     await this.joinCodeSpan.click();
     await this.page.waitForTimeout(1000);
 
-    const snackbarVisible = await this.snackbar.isVisible();
-    if (snackbarVisible) {
-      const snackbarText = await this.snackbar.textContent();
-      expect(snackbarText).toMatch(/copied|clipboard|blocked/i);
+    const snackBarVisible = await this.snackBar.isVisible();
+    if (snackBarVisible) {
+      const snackBarText = await this.snackBar.textContent();
+      expect(snackBarText).toMatch(/copied|clipboard|blocked/i);
     }
   }
 

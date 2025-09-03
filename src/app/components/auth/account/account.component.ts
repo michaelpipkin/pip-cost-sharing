@@ -1,18 +1,3 @@
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -37,6 +22,21 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import * as firebase from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { DocumentReference } from 'firebase/firestore';
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 
 @Component({
   selector: 'app-account',
@@ -235,56 +235,60 @@ export class AccountComponent {
     this.passwordForm.enable();
   }
 
-  onSubmitPayments(): void {
-    this.loading.loadingOn();
-    this.paymentsForm.disable();
+  async onSubmitPayments(): Promise<void> {
     const changes = this.paymentsForm.value;
-    this.userService
-      .updateUser({
+    this.loading.loadingOn();
+    try {
+      await this.userService.updateUser({
         venmoId: changes.venmoId,
         paypalId: changes.paypalId,
         cashAppId: changes.cashAppId,
         zelleId: changes.zelleId,
-      })
-      .then(() => {
-        this.snackBar.open('Payment service IDs updated.', 'OK');
-      })
-      .catch((err: Error) => {
+      });
+      this.snackBar.open('Payment service IDs updated.', 'OK');
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'update_payments',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
-          'Something went wrong - your payment service IDs could not be updated.',
-          'OK'
+          'Something went wrong - could not update payment service IDs.',
+          'Close'
         );
-      })
-      .finally(() => {
-        this.paymentsForm.enable();
-        this.loading.loadingOff();
-      });
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
-  saveDefaultGroup(): void {
+  async saveDefaultGroup(): Promise<void> {
     const selectedGroup = this.groupForm.value.groupRef;
     if (selectedGroup !== null) {
-      this.userService
-        .saveDefaultGroup(selectedGroup)
-        .then(() => {
-          this.snackBar.open('Default group updated.', 'Close');
-        })
-        .catch((err: Error) => {
+      this.loading.loadingOn();
+      try {
+        await this.userService.saveDefaultGroup(selectedGroup);
+        this.snackBar.open('Default group updated.', 'Close');
+      } catch (error) {
+        if (error instanceof Error) {
+          this.snackBar.open(error.message, 'Close');
           logEvent(this.analytics, 'error', {
             component: this.constructor.name,
             action: 'edit_group',
-            message: err.message,
+            message: error.message,
           });
+        } else {
           this.snackBar.open(
             'Something went wrong - could not update default group.',
             'Close'
           );
-        });
+        }
+      } finally {
+        this.loading.loadingOff();
+      }
     }
   }
 
