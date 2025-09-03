@@ -7,7 +7,7 @@ import { evaluate } from 'mathjs';
 export class StringUtils {
   toNumber(str: string): number {
     try {
-      const result = evaluate(str);
+      const result = evaluate(str === '' ? '0' : str);
       return +Number(result).toFixed(2);
     } catch {
       return 0;

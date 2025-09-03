@@ -1,17 +1,6 @@
 import { Component, inject, model, OnInit, Signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -22,6 +11,17 @@ import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-manage-groups',
@@ -88,8 +88,7 @@ export class ManageGroupsComponent implements OnInit {
     this.editGroupForm.markAsUntouched();
   }
 
-  onSubmit(): void {
-    this.editGroupForm.disable();
+  async onSubmit(): Promise<void> {
     const form = this.editGroupForm.value;
     const changes: Partial<Group> = {
       name: form.groupName,
@@ -97,26 +96,28 @@ export class ManageGroupsComponent implements OnInit {
       autoAddMembers: form.autoAddMembers,
     };
     this.loading.loadingOn();
-    this.groupService
-      .updateGroup(this.selectedGroup().ref, changes)
-      .then(() => {
-        this.dialogRef.close({
-          success: true,
-          operation: 'saved',
-        });
-      })
-      .catch((err: Error) => {
+    try {
+      await this.groupService.updateGroup(this.selectedGroup().ref, changes);
+      this.dialogRef.close({
+        success: true,
+        operation: 'saved',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_group',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not edit group.',
           'Close'
         );
-        this.editGroupForm.enable();
-      })
-      .finally(() => this.loading.loadingOff());
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 }

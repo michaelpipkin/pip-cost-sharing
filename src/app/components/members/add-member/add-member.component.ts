@@ -1,24 +1,25 @@
 import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-member',
@@ -34,6 +35,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
   styleUrl: './add-member.component.scss',
 })
 export class AddMemberComponent {
+  protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddMemberComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
@@ -52,8 +54,7 @@ export class AddMemberComponent {
     return this.addMemberForm.controls;
   }
 
-  onSubmit(): void {
-    this.addMemberForm.disable();
+  async onSubmit(): Promise<void> {
     const val = this.addMemberForm.value;
     const newMember: Partial<Member> = {
       userRef: null,
@@ -62,32 +63,29 @@ export class AddMemberComponent {
       active: true,
       groupAdmin: false,
     };
-    this.memberService
-      .addManualMemberToGroup(this.data.groupId, newMember)
-      .then((res) => {
-        if (res.name === 'Error') {
-          this.snackBar.open(res.message, 'Close', {
-            verticalPosition: 'top',
-          });
-          this.addMemberForm.enable();
-        } else {
-          this.dialogRef.close(true);
-        }
-      })
-      .catch((err: Error) => {
+    this.loading.loadingOn();
+    try {
+      await this.memberService.addManualMemberToGroup(
+        this.data.groupId,
+        newMember
+      );
+      this.dialogRef.close(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_member',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not add member.',
-          'Close',
-          {
-            verticalPosition: 'top',
-          }
+          'Close'
         );
-        this.addMemberForm.enable();
-      });
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 }

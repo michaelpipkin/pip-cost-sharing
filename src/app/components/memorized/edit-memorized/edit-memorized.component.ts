@@ -1,4 +1,33 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import {
   afterEveryRender,
   afterNextRender,
@@ -24,44 +53,15 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-edit-memorized',
@@ -403,9 +403,7 @@ export class EditMemorizedComponent implements OnInit {
   memorizedFullyAllocated = (): boolean =>
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
 
-  onSubmit(): void {
-    this.loading.loadingOn();
-    this.editMemorizedForm.disable();
+  async onSubmit(): Promise<void> {
     const val = this.editMemorizedForm.value;
     const changes: Partial<Memorized> = {
       description: val.description,
@@ -429,25 +427,30 @@ export class EditMemorizedComponent implements OnInit {
     });
     changes.splits = splits;
     this.loading.loadingOn();
-    this.memorizedService
-      .updateMemorized(this.memorized().ref, changes)
-      .then(() => {
-        this.snackBar.open('Memorized expense updated.', 'OK');
-        this.router.navigate(['/memorized']);
-      })
-      .catch((err: Error) => {
+    try {
+      await this.memorizedService.updateMemorized(
+        this.memorized().ref,
+        changes
+      );
+      this.snackBar.open('Memorized expense updated.', 'OK');
+      this.router.navigate(['/memorized']);
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_memorized_expense',
-          message: err.message,
+          message: error.message,
         });
+      } else {
         this.snackBar.open(
           'Something went wrong - could not update memorized expense.',
           'Close'
         );
-        this.editMemorizedForm.enable();
-      })
-      .finally(() => this.loading.loadingOff());
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onDelete(): void {
@@ -458,27 +461,30 @@ export class EditMemorizedComponent implements OnInit {
       },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
+    dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        this.memorizedService
-          .deleteMemorized(this.memorized().ref)
-          .then(() => {
-            this.snackBar.open('Memorized expense deleted.', 'OK');
-            this.router.navigate(['/memorized']);
-          })
-          .catch((err: Error) => {
+        try {
+          await this.memorizedService.deleteMemorized(this.memorized().ref);
+          this.snackBar.open('Memorized expense deleted.', 'OK');
+          this.router.navigate(['/memorized']);
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackBar.open(error.message, 'Close');
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'delete_memorized_expense',
-              message: err.message,
+              message: error.message,
             });
+          } else {
             this.snackBar.open(
               'Something went wrong - could not delete memorized expense.',
               'Close'
             );
-          })
-          .finally(() => this.loading.loadingOff());
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
       }
     });
   }

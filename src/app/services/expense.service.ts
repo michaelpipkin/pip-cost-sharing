@@ -34,92 +34,115 @@ export class ExpenseService implements IExpenseService {
     startDate?: Date,
     endDate?: Date
   ): Promise<Expense[]> {
-    // Build split query
-    let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
-    if (startDate) {
-      splitQuery = query(splitQuery, where('date', '>=', startDate));
-    }
-    if (endDate) {
-      splitQuery = query(splitQuery, where('date', '<=', endDate));
-    }
+    try {
+      // Build split query
+      let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
+      if (startDate) {
+        splitQuery = query(splitQuery, where('date', '>=', startDate));
+      }
+      if (endDate) {
+        splitQuery = query(splitQuery, where('date', '<=', endDate));
+      }
 
-    // Build expense query
-    let expenseQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
-    if (startDate) {
-      expenseQuery = query(expenseQuery, where('date', '>=', startDate));
-    }
-    if (endDate) {
-      expenseQuery = query(expenseQuery, where('date', '<=', endDate));
-    }
-    expenseQuery = query(expenseQuery, orderBy('date'));
+      // Build expense query
+      let expenseQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
+      if (startDate) {
+        expenseQuery = query(expenseQuery, where('date', '>=', startDate));
+      }
+      if (endDate) {
+        expenseQuery = query(expenseQuery, where('date', '<=', endDate));
+      }
+      expenseQuery = query(expenseQuery, orderBy('date'));
 
-    // Execute all queries in parallel
-    const [splitSnap, expenseSnap, categoryMap] = await Promise.all([
-      getDocs(splitQuery),
-      getDocs(expenseQuery),
-      this.categoryService.getCategoryMap(groupId),
-    ]);
+      // Execute all queries in parallel
+      const [splitSnap, expenseSnap, categoryMap] = await Promise.all([
+        getDocs(splitQuery),
+        getDocs(expenseQuery),
+        this.categoryService.getCategoryMap(groupId),
+      ]);
 
-    // Process splits
-    const splits = splitSnap.docs.map(
-      (doc) =>
-        new Split({
+      // Process splits
+      const splits = splitSnap.docs.map(
+        (doc) =>
+          new Split({
+            id: doc.id,
+            ...doc.data(),
+            ref: doc.ref as DocumentReference<Split>,
+          })
+      );
+
+      // Build and return expenses
+      const expenses = expenseSnap.docs.map((doc) => {
+        const data = doc.data();
+        return new Expense({
           id: doc.id,
-          ...doc.data(),
-          ref: doc.ref as DocumentReference<Split>,
-        })
-    );
-
-    // Build and return expenses
-    const expenses = expenseSnap.docs.map((doc) => {
-      const data = doc.data();
-      return new Expense({
-        id: doc.id,
-        ...data,
-        ref: doc.ref as DocumentReference<Expense>,
-        categoryName: data.categoryRef
-          ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
-          : '',
-        splits: splits.filter((s) => s.expenseRef.eq(doc.ref)),
+          ...data,
+          ref: doc.ref as DocumentReference<Expense>,
+          categoryName: data.categoryRef
+            ? categoryMap.get(data.categoryRef.id) || 'Unknown Category'
+            : '',
+          splits: splits.filter((s) => s.expenseRef.eq(doc.ref)),
+        });
       });
-    });
 
-    return expenses;
+      return expenses;
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'ExpenseService',
+        method: 'getGroupExpensesByDateRange',
+        message: 'Failed to get group expenses by date range',
+        groupId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async getExpense(groupId: string, expenseId: string): Promise<Expense> {
-    const expenseReference = doc(
-      this.fs,
-      `groups/${groupId}/expenses/${expenseId}`
-    );
+    try {
+      const expenseReference = doc(
+        this.fs,
+        `groups/${groupId}/expenses/${expenseId}`
+      );
 
-    // Build split query
-    const splitQuery = query(
-      collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseRef', '==', expenseReference as DocumentReference<Expense>)
-    );
+      // Build split query
+      const splitQuery = query(
+        collection(this.fs, `/groups/${groupId}/splits/`),
+        where('expenseRef', '==', expenseReference as DocumentReference<Expense>)
+      );
 
-    // Execute both queries in parallel
-    const [expenseDoc, splitDocs] = await Promise.all([
-      getDoc(expenseReference),
-      getDocs(splitQuery),
-    ]);
+      // Execute both queries in parallel
+      const [expenseDoc, splitDocs] = await Promise.all([
+        getDoc(expenseReference),
+        getDocs(splitQuery),
+      ]);
 
-    if (!expenseDoc.exists()) {
-      throw new Error('Expense not found');
+      if (!expenseDoc.exists()) {
+        throw new Error('Expense not found');
+      }
+
+      const expense = new Expense({
+        id: expenseDoc.id,
+        ...expenseDoc.data(),
+        ref: expenseDoc.ref as DocumentReference<Expense>,
+      });
+
+      expense.splits = splitDocs.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
+      );
+
+      return expense;
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'ExpenseService',
+        method: 'getExpense',
+        message: 'Failed to get expense',
+        groupId,
+        expenseId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
     }
-
-    const expense = new Expense({
-      id: expenseDoc.id,
-      ...expenseDoc.data(),
-      ref: expenseDoc.ref as DocumentReference<Expense>,
-    });
-
-    expense.splits = splitDocs.docs.map(
-      (doc) => ({ id: doc.id, ...doc.data(), ref: doc.ref }) as Split
-    );
-
-    return expense;
   }
 
   async addExpense(
@@ -127,44 +150,55 @@ export class ExpenseService implements IExpenseService {
     expense: Partial<Expense>,
     splits: Partial<Split>[],
     receipt: File | null = null
-  ): Promise<DocumentReference<Expense> | Error> {
+  ): Promise<DocumentReference<Expense>> {
     const batch = writeBatch(this.fs);
     const expenseRef = doc(collection(this.fs, `/groups/${groupId}/expenses`));
-    if (receipt) {
-      const storageRef = ref(
-        this.storage,
-        `groups/${groupId}/receipts/${expenseRef.id}`
-      );
-      expense.receiptPath = storageRef.fullPath; // Store the path as a string
-      await uploadBytes(storageRef, receipt);
-      logEvent(this.analytics, 'receipt_uploaded');
-    }
-    batch.set(expenseRef, expense);
-    splits.forEach((split) => {
-      split.expenseRef = expenseRef as DocumentReference<Expense>;
-      const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
-      batch.set(splitRef, split);
-    });
-    return await batch
-      .commit()
-      .then(() => {
-        return expenseRef as DocumentReference<Expense>;
-      })
-      .catch((err: Error) => {
-        if (receipt) {
-          const storageRef = ref(
-            this.storage,
-            `groups/${groupId}/receipts/${expenseRef.id}`
-          );
-          // Attempt to delete the uploaded receipt if batch commit fails
-          deleteObject(storageRef).catch((error) => {
-            logEvent(this.analytics, 'delete_receipt_error', {
-              error: error.message,
-            });
-          });
-        }
-        return new Error(err.message);
+    
+    try {
+      // Upload receipt if provided
+      if (receipt) {
+        const storageRef = ref(
+          this.storage,
+          `groups/${groupId}/receipts/${expenseRef.id}`
+        );
+        expense.receiptPath = storageRef.fullPath;
+        await uploadBytes(storageRef, receipt);
+        logEvent(this.analytics, 'receipt_uploaded');
+      }
+      
+      // Set expense and splits in batch
+      batch.set(expenseRef, expense);
+      splits.forEach((split) => {
+        split.expenseRef = expenseRef as DocumentReference<Expense>;
+        const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
+        batch.set(splitRef, split);
       });
+      
+      await batch.commit();
+      return expenseRef as DocumentReference<Expense>;
+    } catch (error) {
+      // Clean up uploaded receipt if batch commit fails
+      if (receipt) {
+        const storageRef = ref(
+          this.storage,
+          `groups/${groupId}/receipts/${expenseRef.id}`
+        );
+        deleteObject(storageRef).catch((deleteError) => {
+          logEvent(this.analytics, 'delete_receipt_error', {
+            error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+          });
+        });
+      }
+      
+      logEvent(this.analytics, 'error', {
+        service: 'ExpenseService',
+        method: 'addExpense',
+        message: 'Failed to add expense',
+        groupId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async updateExpense(
@@ -173,95 +207,118 @@ export class ExpenseService implements IExpenseService {
     changes: Partial<Expense>,
     splits: Partial<Split>[],
     receipt: File | null = null
-  ): Promise<any> {
-    if (receipt) {
-      const storageRef = ref(
-        this.storage,
-        `groups/${groupId}/receipts/${expenseRef.id}`
-      );
-      try {
-        await uploadBytes(storageRef, receipt);
-        changes.receiptPath = storageRef.fullPath; // Store the path as a string
-        logEvent(this.analytics, 'receipt_uploaded');
-      } catch (error) {
-        logEvent(this.analytics, 'receipt_upload_failed', {
-          error: error.message,
-        });
-        return new Error('Failed to upload receipt');
-      }
-    }
-
-    const batch = writeBatch(this.fs);
-    batch.update(expenseRef, changes);
-    const splitQuery = query(
-      collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseRef', '==', expenseRef)
-    );
-    const queryDocs = await getDocs(splitQuery);
-    queryDocs.forEach((d) => {
-      batch.delete(d.ref);
-    });
-    splits.forEach((split) => {
-      split.expenseRef = expenseRef as DocumentReference<Expense>;
-      const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
-      batch.set(splitRef, split);
-    });
-    return await batch
-      .commit()
-      .then(() => {
-        return true;
-      })
-      .catch((err: Error) => {
-        // If batch commit fails and we uploaded a new receipt, clean it up
-        if (receipt) {
-          const storageRef = ref(
-            this.storage,
-            `groups/${groupId}/receipts/${expenseRef.id}`
-          );
-          deleteObject(storageRef).catch((error) => {
-            logEvent(this.analytics, 'delete_receipt_after_batch_failure', {
-              error: error.message,
-            });
+  ): Promise<void> {
+    try {
+      // Upload receipt if provided
+      if (receipt) {
+        const storageRef = ref(
+          this.storage,
+          `groups/${groupId}/receipts/${expenseRef.id}`
+        );
+        try {
+          await uploadBytes(storageRef, receipt);
+          changes.receiptPath = storageRef.fullPath;
+          logEvent(this.analytics, 'receipt_uploaded');
+        } catch (error) {
+          logEvent(this.analytics, 'receipt_upload_failed', {
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
+          throw new Error('Failed to upload receipt');
         }
-        return new Error(err.message);
+      }
+
+      const batch = writeBatch(this.fs);
+      batch.update(expenseRef, changes);
+      
+      // Delete existing splits and add new ones
+      const splitQuery = query(
+        collection(this.fs, `/groups/${groupId}/splits/`),
+        where('expenseRef', '==', expenseRef)
+      );
+      const queryDocs = await getDocs(splitQuery);
+      queryDocs.forEach((d) => {
+        batch.delete(d.ref);
       });
+      
+      splits.forEach((split) => {
+        split.expenseRef = expenseRef as DocumentReference<Expense>;
+        const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
+        batch.set(splitRef, split);
+      });
+      
+      await batch.commit();
+    } catch (error) {
+      // Clean up uploaded receipt if batch commit fails
+      if (receipt) {
+        const storageRef = ref(
+          this.storage,
+          `groups/${groupId}/receipts/${expenseRef.id}`
+        );
+        deleteObject(storageRef).catch((deleteError) => {
+          logEvent(this.analytics, 'delete_receipt_after_batch_failure', {
+            error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+          });
+        });
+      }
+      
+      logEvent(this.analytics, 'error', {
+        service: 'ExpenseService',
+        method: 'updateExpense',
+        message: 'Failed to update expense',
+        groupId,
+        expenseId: expenseRef.id,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async deleteExpense(
     groupId: string,
     expenseRef: DocumentReference<Expense>
-  ): Promise<any> {
-    const expenseDoc = await getDoc(expenseRef);
-    const receiptPath: string | undefined =
-      expenseDoc.exists() && expenseDoc.data()?.receiptPath;
-    const batch = writeBatch(this.fs);
-    const splitQuery = query(
-      collection(this.fs, `/groups/${groupId}/splits/`),
-      where('expenseRef', '==', expenseRef)
-    );
-    const queryDocs = await getDocs(splitQuery);
-    queryDocs.forEach((d) => {
-      batch.delete(d.ref);
-    });
-    batch.delete(expenseRef);
-    return await batch
-      .commit()
-      .then(() => {
-        // If the expense had a receipt, delete it from storage
-        if (receiptPath) {
-          const receiptRef = ref(this.storage, receiptPath);
-          deleteObject(receiptRef).catch((error) => {
-            logEvent(this.analytics, 'delete_receipt_error', {
-              error: error.message,
-            });
-          });
-        }
-        return true;
-      })
-      .catch((err: Error) => {
-        return new Error(err.message);
+  ): Promise<void> {
+    try {
+      const expenseDoc = await getDoc(expenseRef);
+      const receiptPath: string | undefined =
+        expenseDoc.exists() && expenseDoc.data()?.receiptPath;
+        
+      const batch = writeBatch(this.fs);
+      
+      // Delete associated splits
+      const splitQuery = query(
+        collection(this.fs, `/groups/${groupId}/splits/`),
+        where('expenseRef', '==', expenseRef)
+      );
+      const queryDocs = await getDocs(splitQuery);
+      queryDocs.forEach((d) => {
+        batch.delete(d.ref);
       });
+      
+      // Delete the expense
+      batch.delete(expenseRef);
+      
+      await batch.commit();
+      
+      // Delete receipt from storage if it exists
+      if (receiptPath) {
+        const receiptRef = ref(this.storage, receiptPath);
+        deleteObject(receiptRef).catch((error) => {
+          logEvent(this.analytics, 'delete_receipt_error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        });
+      }
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'ExpenseService',
+        method: 'deleteExpense',
+        message: 'Failed to delete expense',
+        groupId,
+        expenseId: expenseRef.id,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   // Utilities for data integrity and migration

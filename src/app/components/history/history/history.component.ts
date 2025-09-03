@@ -1,13 +1,4 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -22,10 +13,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -37,7 +24,21 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-history',
@@ -70,6 +71,7 @@ export class HistoryComponent {
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
+  protected readonly analytics = inject(getAnalytics);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   history: Signal<History[]> = this.historyStore.groupHistory;
@@ -149,16 +151,30 @@ export class HistoryComponent {
       },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((confirm) => {
+    dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        this.historyService
-          .deleteHistory(history.ref)
-          .then(() => {
-            this.expandedHistory.set(null);
-            this.snackBar.open('Payment record deleted', 'OK');
-          })
-          .finally(() => this.loading.loadingOff());
+        try {
+          await this.historyService.deleteHistory(history.ref);
+          this.expandedHistory.set(null);
+          this.snackBar.open('Payment record deleted', 'OK');
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackBar.open(error.message, 'Close');
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'delete_history',
+              message: error.message,
+            });
+          } else {
+            this.snackBar.open(
+              'Something went wrong - could not delete payment record.',
+              'Close'
+            );
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
       }
     });
   }
@@ -186,20 +202,27 @@ export class HistoryComponent {
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
-  copyHistoryToClipboard(history: History): void {
+  async copyHistoryToClipboard(history: History): Promise<void> {
     const summaryText = this.generateHistoryText(history);
-    navigator.clipboard
-      .writeText(summaryText)
-      .then(() => {
-        this.snackBar.open('Payment history copied to clipboard', 'OK', {
-          duration: 2000,
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      this.snackBar.open('Payment history copied to clipboard', 'OK', {
+        duration: 2000,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'copy_history_to_clipboard',
+          message: error.message,
         });
-      })
-      .catch(() => {
+      } else {
         this.snackBar.open('Failed to copy payment history', 'OK', {
           duration: 2000,
         });
-      });
+      }
+    }
   }
 
   private generateHistoryText(history: History): string {

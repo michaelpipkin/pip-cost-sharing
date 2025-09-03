@@ -6,6 +6,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
   collectionGroup,
@@ -40,6 +41,7 @@ export class GroupService implements IGroupService {
   protected readonly historyService = inject(HistoryService);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
+  protected readonly analytics = inject(getAnalytics);
 
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');
@@ -51,142 +53,225 @@ export class GroupService implements IGroupService {
   }
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
-    const memberQuery = query(
-      collectionGroup(this.fs, 'members'),
-      where('userRef', '==', user.ref)
-    );
-    onSnapshot(memberQuery, (memberQuerySnap) => {
-      const userGroups: { groupId: string; groupAdmin: boolean }[] = [
-        ...memberQuerySnap.docs.map((d) => {
-          return {
-            groupId: d.ref.parent.parent.id,
-            groupAdmin: d.data().groupAdmin,
-          };
-        }),
-      ];
-      if (userGroups.length === 0) {
-        this.groupStore.setAllUserGroups([]);
-        autoNav = false;
-        this.router.navigateByUrl('/groups');
-        return;
-      }
-      const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
-      onSnapshot(groupQuery, async (groupQuerySnap) => {
-        const userGroupIds = userGroups.map((m) => m.groupId);
-        this.groupStore.setAdminGroupIds(
-          userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
-        );
-        const groups: Group[] = [
-          ...groupQuerySnap.docs.map(
-            (doc) =>
-              new Group({
-                id: doc.id,
-                ...doc.data(),
-                ref: doc.ref as DocumentReference<Group>,
-              })
-          ),
-        ].filter((g) => userGroupIds.includes(g.id));
-        this.groupStore.setAllUserGroups(groups);
-        if (!!this.groupStore.currentGroup()) {
-          await this.getGroup(this.groupStore.currentGroup().id, user.ref);
-          if (autoNav && this.router.url === '/') {
-            this.router.navigateByUrl('/expenses');
-          }
-        } else {
-          if (groups.length === 1 && groups[0].active) {
-            await this.getGroup(groups[0].id, user.ref);
-            if (autoNav) {
+    try {
+      const memberQuery = query(
+        collectionGroup(this.fs, 'members'),
+        where('userRef', '==', user.ref)
+      );
+      
+      onSnapshot(
+        memberQuery, 
+        (memberQuerySnap) => {
+          try {
+            const userGroups: { groupId: string; groupAdmin: boolean }[] = 
+              memberQuerySnap.docs.map((d) => ({
+                groupId: d.ref.parent.parent.id,
+                groupAdmin: d.data().groupAdmin,
+              }));
+              
+            if (userGroups.length === 0) {
+              this.groupStore.setAllUserGroups([]);
               autoNav = false;
-              this.router.navigateByUrl('/expenses');
+              this.router.navigateByUrl('/groups');
+              return;
             }
-          } else if (user.defaultGroupRef !== null) {
-            await this.getGroup(user.defaultGroupRef.id, user.ref);
-            if (autoNav) {
-              autoNav = false;
-              this.router.navigateByUrl('/expenses');
-            }
-          } else {
-            autoNav = false;
-            this.router.navigateByUrl('/groups');
+            
+            const groupQuery = query(collection(this.fs, 'groups'), orderBy('name'));
+            onSnapshot(
+              groupQuery, 
+              async (groupQuerySnap) => {
+                try {
+                  const userGroupIds = userGroups.map((m) => m.groupId);
+                  this.groupStore.setAdminGroupIds(
+                    userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
+                  );
+                  
+                  const groups: Group[] = groupQuerySnap.docs
+                    .map((doc) => new Group({
+                      id: doc.id,
+                      ...doc.data(),
+                      ref: doc.ref as DocumentReference<Group>,
+                    }))
+                    .filter((g) => userGroupIds.includes(g.id));
+                    
+                  this.groupStore.setAllUserGroups(groups);
+                  
+                  if (!!this.groupStore.currentGroup()) {
+                    await this.getGroup(this.groupStore.currentGroup().id, user.ref);
+                    if (autoNav && this.router.url === '/') {
+                      this.router.navigateByUrl('/expenses');
+                    }
+                  } else {
+                    if (groups.length === 1 && groups[0].active) {
+                      await this.getGroup(groups[0].id, user.ref);
+                      if (autoNav) {
+                        autoNav = false;
+                        this.router.navigateByUrl('/expenses');
+                      }
+                    } else if (user.defaultGroupRef !== null) {
+                      await this.getGroup(user.defaultGroupRef.id, user.ref);
+                      if (autoNav) {
+                        autoNav = false;
+                        this.router.navigateByUrl('/expenses');
+                      }
+                    } else {
+                      autoNav = false;
+                      this.router.navigateByUrl('/groups');
+                    }
+                  }
+                } catch (error) {
+                  logEvent(this.analytics, 'error', {
+                    service: 'GroupService',
+                    method: 'getUserGroups',
+                    message: 'Failed to process groups snapshot',
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                  });
+                }
+              },
+              (error) => {
+                logEvent(this.analytics, 'error', {
+                  service: 'GroupService',
+                  method: 'getUserGroups',
+                  message: 'Failed to listen to groups',
+                  error: error instanceof Error ? error.message : 'Unknown error'
+                });
+              }
+            );
+          } catch (error) {
+            logEvent(this.analytics, 'error', {
+              service: 'GroupService',
+              method: 'getUserGroups',
+              message: 'Failed to process members snapshot',
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
           }
+        },
+        (error) => {
+          logEvent(this.analytics, 'error', {
+            service: 'GroupService',
+            method: 'getUserGroups',
+            message: 'Failed to listen to members',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
         }
+      );
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'getUserGroups',
+        message: 'Failed to initialize user groups query',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
-    });
+      throw error;
+    }
   }
 
   async getGroup(
     groupId: string,
     userRef: DocumentReference<User>
   ): Promise<void> {
-    const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
-    const group = new Group({
-      id: docSnap.id,
-      ...docSnap.data(),
-      ref: docSnap.ref as DocumentReference<Group>,
-    });
-    this.groupStore.setCurrentGroup(group);
-    localStorage.setItem('currentGroup', JSON.stringify(group));
-    this.categoryService.getGroupCategories(groupId);
-    this.memberService.getGroupMembers(groupId);
-    this.memberService.getMemberByUserRef(groupId, userRef);
-    this.memorizedService.getMemorizedExpensesForGroup(groupId);
-    this.splitsService.getUnpaidSplitsForGroup(groupId);
-    this.historyService.getHistoryForGroup(groupId);
+    try {
+      const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
+      
+      if (!docSnap.exists()) {
+        throw new Error(`Group with ID ${groupId} not found`);
+      }
+      
+      const group = new Group({
+        id: docSnap.id,
+        ...docSnap.data(),
+        ref: docSnap.ref as DocumentReference<Group>,
+      });
+      
+      this.groupStore.setCurrentGroup(group);
+      localStorage.setItem('currentGroup', JSON.stringify(group));
+      
+      // Initialize group-related data
+      this.categoryService.getGroupCategories(groupId);
+      this.memberService.getGroupMembers(groupId);
+      this.memberService.getMemberByUserRef(groupId, userRef);
+      this.memorizedService.getMemorizedExpensesForGroup(groupId);
+      this.splitsService.getUnpaidSplitsForGroup(groupId);
+      this.historyService.getHistoryForGroup(groupId);
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'getGroup',
+        message: 'Failed to get group',
+        groupId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
-  async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any> {
-    const batch = writeBatch(this.fs);
-    const groupRef = doc(collection(this.fs, 'groups'));
-    batch.set(groupRef, group);
-    const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
-    batch.set(memberRef, member);
-    const categoryRef = doc(
-      collection(this.fs, `groups/${groupRef.id}/categories`)
-    );
-    const category: Partial<Category> = {
-      name: 'Default',
-      active: true,
-    };
-    batch.set(categoryRef, category);
-    return await batch
-      .commit()
-      .then(() => {
-        return true;
-      })
-      .catch((err: Error) => {
-        return new Error(err.message);
+  async addGroup(group: Partial<Group>, member: Partial<Member>): Promise<DocumentReference<Group>> {
+    try {
+      const batch = writeBatch(this.fs);
+      const groupRef = doc(collection(this.fs, 'groups'));
+      
+      batch.set(groupRef, group);
+      
+      const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
+      batch.set(memberRef, member);
+      
+      const categoryRef = doc(collection(this.fs, `groups/${groupRef.id}/categories`));
+      const category: Partial<Category> = {
+        name: 'Default',
+        active: true,
+      };
+      batch.set(categoryRef, category);
+      
+      await batch.commit();
+      return groupRef as DocumentReference<Group>;
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'addGroup',
+        message: 'Failed to add group',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
+      throw error;
+    }
   }
 
   async updateGroup(
     groupRef: DocumentReference<Group>,
     changes: Partial<Group>
-  ): Promise<any> {
-    const batch = writeBatch(this.fs);
-    batch.update(groupRef, changes);
-    if (!changes.active) {
-      const usersRef = collection(this.fs, 'users');
-      const usersQuery = query(
-        usersRef,
-        where('defaultGroupId', '==', groupRef.id)
-      );
-      const users = await getDocs(usersQuery);
-      users.forEach((u) => {
-        batch.update(u.ref, { defaultGroupId: '' });
-      });
-      if (this.groupStore.currentGroup().id === groupRef.id) {
-        this.groupStore.clearCurrentGroup();
-        localStorage.removeItem('currentGroup');
+  ): Promise<void> {
+    try {
+      const batch = writeBatch(this.fs);
+      batch.update(groupRef, changes);
+      
+      // If deactivating the group, clear it as default for all users
+      if (!changes.active) {
+        const usersRef = collection(this.fs, 'users');
+        const usersQuery = query(
+          usersRef,
+          where('defaultGroupId', '==', groupRef.id)
+        );
+        const users = await getDocs(usersQuery);
+        users.forEach((u) => {
+          batch.update(u.ref, { defaultGroupId: '' });
+        });
+        
+        // Clear current group if it's the one being deactivated
+        if (this.groupStore.currentGroup().id === groupRef.id) {
+          this.groupStore.clearCurrentGroup();
+          localStorage.removeItem('currentGroup');
+        }
       }
-    }
-    return await batch
-      .commit()
-      .then(() => {
-        return true;
-      })
-      .catch((err: Error) => {
-        return new Error(err.message);
+      
+      await batch.commit();
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'updateGroup',
+        message: 'Failed to update group',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
+      throw error;
+    }
   }
 
   logout(): void {
