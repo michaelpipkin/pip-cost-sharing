@@ -1,5 +1,16 @@
 import { Component, inject } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,17 +18,6 @@ import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-add-category',
@@ -50,12 +50,12 @@ export class AddCategoryComponent {
   }
 
   async onSubmit(): Promise<void> {
-    this.loading.loadingOn();
     const categoryName = this.newCategoryForm.value.categoryName;
     const newCategory: Partial<Category> = {
       name: categoryName,
       active: true,
     };
+    this.loading.loadingOn();
     try {
       await this.categoryService.addCategory(this.groupId, newCategory);
       this.dialogRef.close(true);

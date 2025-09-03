@@ -63,3 +63,4 @@ src/app/hcaptcha.config.ts
 functions/src/.env
 functions/.env
 src/app/github.config.ts
+CLAUDE.md
