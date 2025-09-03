@@ -1,4 +1,13 @@
 import { CurrencyPipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -30,20 +39,11 @@ import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
-import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -278,7 +278,6 @@ export class SummaryComponent {
     const dialogRef = this.dialog.open(PaymentDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         let history = {
           paidByMemberRef: owedByMember,
           paidToMemberRef: owedToMember,
@@ -300,6 +299,7 @@ export class SummaryComponent {
             amount: split.amount,
           });
         });
+        this.loading.loadingOn();
         try {
           await this.splitService.paySplitsBetweenMembers(
             this.currentGroup().id,
