@@ -1,25 +1,27 @@
-<div class="container home-container">
-  <div class="align-self-center mt-2 mb-4">
-    <p class="app-title">Welcome to PipSplit!</p>
+<div class="container home-container" data-testid="home-container">
+  <div class="align-self-center mt-2 mb-4" data-testid="welcome-section">
+    <p class="app-title" data-testid="welcome-title">Welcome to PipSplit!</p>
   </div>
-  <div class="top-section">
+  <div class="top-section" data-testid="hero-section">
     <div></div>
-    <div class="app-details">
-      <p class="summary">
+    <div class="app-details" data-testid="app-description">
+      <p class="summary" data-testid="app-summary">
         Enter and track shared expenses for an unlimited number of groups.
       </p>
-      <p class="mb-3">
+      <p class="mb-3" data-testid="app-details-text">
         Split expenses with friends for your weekend getaway, track monthly
         costs with your roommates, or easily calculate shares of a dinner out.
       </p>
     </div>
-    <div class="buttons">
+    <div class="buttons" data-testid="action-buttons">
       @if (!isLoggedIn()) {
         <a
           mat-raised-button
           class="btn-primary mb-4"
           type="button"
           [routerLink]="['auth', 'login']"
+          data-testid="signup-login-button"
+          aria-label="Login or sign up for a free account"
         >
           Login or sign up now for a free account
         </a>
@@ -28,51 +30,66 @@
           class="btn-primary mb-4"
           type="button"
           [routerLink]="['split']"
+          data-testid="split-expense-button"
+          aria-label="Split an expense now"
         >
           Split an expense now
         </a>
       }
     </div>
-    <div class="image">
+    <div class="image" data-testid="hero-image-section">
       <img
         id="logo"
         src="/assets/images/exchange_money.svg"
         alt="Designed by Freepik"
+        data-testid="hero-image"
       />
-      <span
+      <span data-testid="image-attribution"
         >Designed by
-        <a href="https://www.freepik.com" target="_blank">Freepik</a></span
+        <a
+          href="https://www.freepik.com"
+          target="_blank"
+          aria-label="Visit Freepik website"
+          data-testid="freepik-link"
+          >Freepik</a
+        ></span
       >
     </div>
     <div></div>
   </div>
-  <div class="feature-container mt-4 mb-5">
-    <div class="feature">
-      <div class="feature-icon">
+  <div class="feature-container mt-4 mb-5" data-testid="features-section">
+    <div class="feature" data-testid="feature-categorize">
+      <div class="feature-icon" data-testid="feature-icon-categorize">
         <mat-icon>category</mat-icon>
       </div>
-      <div class="feature-title">
+      <div class="feature-title" data-testid="feature-title-categorize">
         <p>
           <strong>Categorize Expenses</strong>
         </p>
       </div>
-      <div class="feature-description">
+      <div
+        class="feature-description"
+        data-testid="feature-description-categorize"
+      >
         <p>
           Create as many categories as needed for your group. Categorize and
           view expenses by category, payer, and date range.
         </p>
       </div>
     </div>
-    <div class="feature">
-      <div class="feature-icon">
+    <div class="feature" data-testid="feature-summary">
+      <div class="feature-icon" data-testid="feature-icon-summary">
         <mat-icon>attach_money</mat-icon>
       </div>
-      <div class="feature-title">
+      <div class="feature-title" data-testid="feature-title-summary">
         <p>
           <strong>See a summary breakdown</strong>
         </p>
       </div>
-      <div class="feature-description">
+      <div
+        class="feature-description"
+        data-testid="feature-description-summary"
+      >
         <p>
           View a summary of expenses owed between group members, and view the
           detail of the expenses by category. Mark expenses paid one at a time,
@@ -80,16 +97,19 @@
         </p>
       </div>
     </div>
-    <div class="feature">
-      <div class="feature-icon">
+    <div class="feature" data-testid="feature-memorize">
+      <div class="feature-icon" data-testid="feature-icon-memorize">
         <mat-icon>currency_exchange</mat-icon>
       </div>
-      <div class="feature-title">
+      <div class="feature-title" data-testid="feature-title-memorize">
         <p>
           <strong>Memorize Recurring Expenses</strong>
         </p>
       </div>
-      <div class="feature-description">
+      <div
+        class="feature-description"
+        data-testid="feature-description-memorize"
+      >
         <p>
           If your group has regularly recurring expenses, you can memorize them
           for easy entry whenever needed.

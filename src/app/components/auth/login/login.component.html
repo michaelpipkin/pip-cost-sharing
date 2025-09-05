@@ -1,14 +1,27 @@
-<div class="container">
-  <h2>Login</h2>
-  <form [formGroup]="loginForm" class="login" (submit)="emailLogin()">
-    <mat-form-field>
+<div class="container" data-testid="login-container">
+  <h2 data-testid="login-title">Login</h2>
+  <form
+    [formGroup]="loginForm"
+    class="login"
+    (submit)="emailLogin()"
+    data-testid="login-form"
+    aria-label="Login form"
+  >
+    <mat-form-field data-testid="email-field">
       <mat-label>Email</mat-label>
-      <input matInput type="email" formControlName="email" #emailInput />
+      <input
+        matInput
+        type="email"
+        formControlName="email"
+        #emailInput
+        data-testid="email-input"
+        aria-label="Email address"
+      />
       @if (l.email.errors?.email) {
-        <mat-error>Invalid email address</mat-error>
+        <mat-error data-testid="email-error">Invalid email address</mat-error>
       }
     </mat-form-field>
-    <mat-form-field>
+    <mat-form-field data-testid="password-field">
       <mat-label>Password</mat-label>
       <input
         matInput
@@ -18,32 +31,56 @@
           $event.preventDefault(); loginForm.valid && emailLogin()
         "
         #passwordInput
+        data-testid="password-input"
+        aria-label="Password"
       />
     </mat-form-field>
-    <div class="buttons">
-      <button mat-raised-button type="submit" class="btn-primary mb-3">
+    <div class="buttons" data-testid="login-buttons">
+      <button
+        mat-raised-button
+        type="submit"
+        class="btn-primary mb-3"
+        data-testid="login-submit-button"
+        aria-label="Login to your account"
+      >
         <span class="login-button">Login</span>
       </button>
-      <a class="primary-link" routerLink="/auth/forgot-password"
+      <a
+        class="primary-link"
+        routerLink="/auth/forgot-password"
+        data-testid="forgot-password-link"
+        aria-label="Forgot password?"
         >Forgot password?</a
       >
     </div>
-    <div class="create-account">
+    <div class="create-account" data-testid="create-account-section">
       Don't have an account?
-      <a class="primary-link" routerLink="/auth/register">Create one.</a>
+      <a
+        class="primary-link"
+        routerLink="/auth/register"
+        data-testid="register-link"
+        aria-label="Create a new account"
+        >Create one.</a
+      >
     </div>
   </form>
-  <div class="divider-with-text">
+  <div class="divider-with-text" data-testid="login-divider">
     <hr />
     <span>Or</span>
     <hr />
   </div>
-  <div>
-    <button mat-stroked-button (click)="googleLogin()">
+  <div data-testid="google-login-section">
+    <button
+      mat-stroked-button
+      (click)="googleLogin()"
+      data-testid="google-login-button"
+      aria-label="Sign in with Google"
+    >
       <img
         class="google-g me-2"
-        alt=""
+        alt="Google logo"
         src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+        data-testid="google-logo"
       />
       <span class="login-button">Sign in with Google</span>
     </button>

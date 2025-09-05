@@ -1,19 +1,19 @@
 @if (!splitStore.loaded()) {
-  <div class="container pt-3">
-    <h3>Loading summary...</h3>
+  <div class="container pt-3" data-testid="summary-loading-container">
+    <h3 data-testid="loading-summary-message">Loading summary...</h3>
   </div>
 } @else {
-  <div class="container with-table pt-3">
-    <div class="page-header">
+  <div class="container with-table pt-3" data-testid="summary-main-container">
+    <div class="page-header" data-testid="summary-page-header">
       <div></div>
-      <h3>Summary</h3>
-      <div class="help-icon">
-        <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      <h3 data-testid="summary-page-title">Summary</h3>
+      <div class="help-icon" data-testid="summary-help-icon-container">
+        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="summary-help-button" aria-label="Show help for summary">help</mat-icon>
       </div>
     </div>
-    <h4>{{ currentGroup()?.name }}</h4>
+    <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div>
-      <mat-form-field id="member-select" subscriptSizing="dynamic" class="mb-3">
+      <mat-form-field id="member-select" subscriptSizing="dynamic" class="mb-3" data-testid="summary-member-field">
         <mat-label>Select Member</mat-label>
         <mat-select
           name="member"

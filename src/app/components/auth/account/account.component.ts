@@ -19,8 +19,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import * as firebase from 'firebase/auth';
-import { getAuth } from 'firebase/auth';
+import { getAuth, User as FirebaseUser, sendEmailVerification, updateEmail, updatePassword } from 'firebase/auth';
 import { DocumentReference } from 'firebase/firestore';
 import {
   Component,
@@ -73,7 +72,7 @@ export class AccountComponent {
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
 
-  firebaseUser = signal<firebase.User>(this.auth.currentUser);
+  firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
 
   selectedGroup = model<DocumentReference | null>(
@@ -145,8 +144,7 @@ export class AccountComponent {
   }
 
   async verifyEmail(): Promise<void> {
-    firebase
-      .sendEmailVerification(this.firebaseUser())
+    sendEmailVerification(this.firebaseUser())
       .then(() => {
         this.snackBar.open(
           'Check your email to verify your email address.',
@@ -176,8 +174,7 @@ export class AccountComponent {
     this.emailForm.disable();
     const newEmail = this.emailForm.value.email;
     if (newEmail !== this.firebaseUser().email) {
-      firebase
-        .updateEmail(this.firebaseUser(), newEmail)
+      updateEmail(this.firebaseUser(), newEmail)
         .then(() => {
           this.snackBar.open('Your email address has been updated.', 'Close', {
             verticalPosition: 'top',
@@ -215,8 +212,7 @@ export class AccountComponent {
     this.passwordForm.disable();
     const changes = this.passwordForm.value;
     if (changes.password !== '') {
-      firebase
-        .updatePassword(this.firebaseUser(), changes.password)
+      updatePassword(this.firebaseUser(), changes.password)
         .then(() => {
           this.snackBar.open('Your password has been updated.', 'Close', {
             verticalPosition: 'top',

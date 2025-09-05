@@ -1,21 +1,21 @@
 @if (!memberStore.loaded()) {
-  <div class="container pt-3">
-    <h3>Loading members...</h3>
+  <div class="container pt-3" data-testid="members-loading-container">
+    <h3 data-testid="loading-members-message">Loading members...</h3>
   </div>
 } @else {
-  <div class="container with-table pt-3">
-    <div class="page-header">
+  <div class="container with-table pt-3" data-testid="members-main-container">
+    <div class="page-header" data-testid="members-page-header">
       <div></div>
-      <h3>Members</h3>
-      <div class="help-icon">
-        <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      <h3 data-testid="members-page-title">Members</h3>
+      <div class="help-icon" data-testid="members-help-icon-container">
+        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="members-help-button" aria-label="Show help for members">help</mat-icon>
       </div>
     </div>
-    <h4>{{ currentGroup()?.name }}</h4>
-    <div class="filters">
-      <mat-form-field class="clearable" subscriptSizing="dynamic">
+    <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
+    <div class="filters" data-testid="member-filters">
+      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="member-search-field">
         <mat-label>Search by name or email</mat-label>
-        <input matInput [(ngModel)]="nameFilter" />
+        <input matInput [(ngModel)]="nameFilter" data-testid="member-search-input" aria-label="Search members by name or email" />
         @if (nameFilter() !== '') {
           <button
             matSuffix
@@ -24,24 +24,25 @@
             aria-label="Clear"
             (click)="nameFilter.set('')"
             [matTooltip]="'Clear'"
+            data-testid="clear-member-search-button"
           >
             <mat-icon>close</mat-icon>
           </button>
         }
       </mat-form-field>
-      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly">
+      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-members-only-toggle" aria-label="Show active members only">
         Active only
       </mat-slide-toggle>
     </div>
     @if (currentMember()?.groupAdmin) {
       <div>
-        <button mat-raised-button class="btn-primary" (click)="addMember()">
+        <button mat-raised-button class="btn-primary" (click)="addMember()" data-testid="add-member-button" aria-label="Add new member to group">
           Add Member
         </button>
       </div>
     }
     @if (filteredMembers()?.length > 0) {
-      <div class="table-container mat-elevation-z8">
+      <div class="table-container mat-elevation-z8" data-testid="members-table-container">
         <div class="scrollable-table">
           <table
             mat-table
@@ -49,6 +50,8 @@
             [dataSource]="filteredMembers()"
             (matSortChange)="sortMembers($event)"
             class="static-table"
+            data-testid="members-table"
+            aria-label="Members table"
           >
             <ng-container matColumnDef="id">
               <th mat-header-cell *matHeaderCellDef>Id</th>
@@ -85,6 +88,8 @@
                     href="mailto:{{ member.email }}"
                     target="_blank"
                     (click)="$event.stopPropagation()"
+                    [attr.data-testid]="'email-member-' + member.id"
+                    [attr.aria-label]="'Send email to ' + member.displayName"
                   >
                     <mat-icon>email</mat-icon>
                   </a>
@@ -114,13 +119,15 @@
               [class.clickable-row]="
                 currentMember()?.groupAdmin || user()?.id == member.userId
               "
+              [attr.data-testid]="'member-row-' + member.id"
+              [attr.aria-label]="'Member: ' + member.displayName"
             ></tr>
           </table>
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No members found</h5>
+      <div class="container pt-3" data-testid="no-members-container">
+        <h5 data-testid="no-members-message">No members found</h5>
       </div>
     }
   </div>

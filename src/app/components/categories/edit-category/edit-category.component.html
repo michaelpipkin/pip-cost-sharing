@@ -1,20 +1,20 @@
-<h1 mat-dialog-title>Edit Category</h1>
-<form [formGroup]="editCategoryForm">
-  <mat-dialog-content>
-    <div class="content">
-      <mat-form-field appearance="fill">
+<h1 mat-dialog-title data-testid="edit-category-title">Edit Category</h1>
+<form [formGroup]="editCategoryForm" data-testid="edit-category-form" aria-label="Edit category form">
+  <mat-dialog-content data-testid="edit-category-content">
+    <div class="content" data-testid="edit-category-fields">
+      <mat-form-field appearance="fill" data-testid="edit-category-name-field">
         <mat-label>Category name</mat-label>
-        <input matInput formControlName="categoryName" />
+        <input matInput formControlName="categoryName" data-testid="edit-category-name-input" aria-label="Category name" />
         @if (f.categoryName.errors?.['required']) {
-          <mat-error> *Required </mat-error>
+          <mat-error data-testid="edit-category-name-error"> *Required </mat-error>
         }
       </mat-form-field>
     </div>
-    <div class="toggle">
-      <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
+    <div class="toggle" data-testid="edit-category-toggles">
+      <mat-slide-toggle formControlName="active" data-testid="edit-category-active-toggle" aria-label="Category is active">Active</mat-slide-toggle>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions>
+  <mat-dialog-actions data-testid="edit-category-actions">
     <button
       mat-raised-button
       class="btn-secondary"
@@ -26,6 +26,8 @@
         editCategoryForm.disabled
       "
       (click)="onSubmit()"
+      data-testid="edit-category-save-button"
+      aria-label="Save category changes"
     >
       Save
     </button>
@@ -35,6 +37,8 @@
       class="btn-danger"
       [disabled]="editCategoryForm.disabled"
       (click)="deleteCategory()"
+      data-testid="delete-category-button"
+      aria-label="Delete category"
     >
       Delete
     </button>
@@ -43,6 +47,8 @@
       type="button"
       [disabled]="editCategoryForm.disabled"
       [mat-dialog-close]="{ success: false }"
+      data-testid="edit-category-cancel-button"
+      aria-label="Cancel editing category"
     >
       Cancel
     </button>

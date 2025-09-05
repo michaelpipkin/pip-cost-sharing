@@ -19,6 +19,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 
 @Component({
   selector: 'app-login',
@@ -61,7 +62,7 @@ export class LoginComponent {
         return;
       } else {
         await signInWithEmailAndPassword(this.auth, email, password);
-        this.router.navigateByUrl('/groups');
+        // Navigation will be handled automatically by auth state change
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
@@ -76,7 +77,7 @@ export class LoginComponent {
       const provider = new GoogleAuthProvider();
       signInWithPopup(this.auth, provider)
         .then(() => {
-          this.router.navigateByUrl('/groups');
+          // Navigation will be handled automatically by auth state change
         })
         .catch((error) => {
           this.snackBar.open(error.message, 'Close');

@@ -1,15 +1,15 @@
-<div class="container pt-3">
-  <div class="page-header">
+<div class="container pt-3" data-testid="edit-expense-container">
+  <div class="page-header" data-testid="edit-expense-page-header">
     <div></div>
-    <h3>Edit Expense</h3>
-    <div class="help-icon">
-      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    <h3 data-testid="edit-expense-page-title">Edit Expense</h3>
+    <div class="help-icon" data-testid="edit-expense-help-icon-container">
+      <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="edit-expense-help-button" aria-label="Show help for editing expenses">help</mat-icon>
     </div>
   </div>
   @let memberList = expenseMembers();
   @let hasReceipt = !!receiptUrl();
   <div class="sub-container mb-2">
-    <form [formGroup]="editExpenseForm" id="expense-form">
+    <form [formGroup]="editExpenseForm" id="expense-form" data-testid="edit-expense-form" aria-label="Edit expense form">
       <div class="flex-wrap fw-start">
         <mat-form-field id="paid-by-select">
           <mat-label>Payer</mat-label>

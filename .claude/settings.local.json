@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ng build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

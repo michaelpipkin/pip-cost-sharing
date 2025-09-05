@@ -1,14 +1,25 @@
-<div class="container pt-3">
-  <div class="page-header">
+<div class="container pt-3" data-testid="split-expense-container">
+  <div class="page-header" data-testid="split-page-header">
     <div></div>
-    <h3>Split Expense</h3>
-    <div class="help-icon">
-      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    <h3 data-testid="split-page-title">Split Expense</h3>
+    <div class="help-icon" data-testid="split-help-icon-container">
+      <mat-icon
+        matTooltip="Help"
+        (click)="showHelp()"
+        data-testid="split-help-button"
+        aria-label="Show help for splitting expenses"
+        >help</mat-icon
+      >
     </div>
   </div>
   @if (!submitted()) {
     <div class="mb-2">
-      <form [formGroup]="expenseForm" id="split-form">
+      <form
+        [formGroup]="expenseForm"
+        id="split-form"
+        data-testid="split-expense-form"
+        aria-label="Split expense form"
+      >
         <div class="flex-wrap fw-start">
           <mat-form-field
             appearance="fill"

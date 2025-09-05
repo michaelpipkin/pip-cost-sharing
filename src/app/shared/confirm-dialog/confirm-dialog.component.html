@@ -1,17 +1,19 @@
-<h1 mat-dialog-title>{{ data.dialogTitle }}</h1>
-<mat-dialog-content>
-  <p>{{ data.confirmationText }}</p>
+<h1 mat-dialog-title data-test-id="dialog-title">{{ data.dialogTitle }}</h1>
+<mat-dialog-content data-test-id="dialog-content">
+  <p data-test-id="confirmation-text">{{ data.confirmationText }}</p>
 </mat-dialog-content>
-<mat-dialog-actions>
+<mat-dialog-actions data-test-id="dialog-actions">
   <button
     mat-raised-button
     class="btn-secondary"
     type="button"
     [mat-dialog-close]="true"
+    data-test-id="confirm-button"
+    [aria-label]="data.confirmButtonText"
   >
     {{ data.confirmButtonText }}
   </button>
-  <button mat-stroked-button type="button" [mat-dialog-close]="false">
+  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-test-id="cancel-button" [aria-label]="data.cancelButtonText">
     {{ data.cancelButtonText }}
   </button>
 </mat-dialog-actions>
