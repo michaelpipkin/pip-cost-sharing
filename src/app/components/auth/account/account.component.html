@@ -1,22 +1,24 @@
-<div class="container mt-3">
-  <mat-tab-group dynamicHeight class="account-tabs">
+<div class="container mt-3" data-testid="account-container">
+  <mat-tab-group dynamicHeight class="account-tabs" data-testid="account-tabs">
     @if (!isGoogleUser()) {
-      <mat-tab label="Account">
-        <form [formGroup]="emailForm" class="container">
-          <mat-form-field class="email-input">
+      <mat-tab label="Account" data-testid="account-tab">
+        <form [formGroup]="emailForm" class="container" data-testid="email-form" aria-label="Update email form">
+          <mat-form-field class="email-input" data-testid="account-email-field">
             <mat-label>Email Address</mat-label>
-            <input matInput type="email" formControlName="email" />
+            <input matInput type="email" formControlName="email" data-testid="account-email-input" aria-label="Email address" />
             @if (e.email.errors?.email) {
-              <mat-error> Invalid email address </mat-error>
+              <mat-error data-testid="account-email-error"> Invalid email address </mat-error>
             }
           </mat-form-field>
-          <div class="buttons">
+          <div class="buttons" data-testid="email-buttons">
             <button
               mat-raised-button
               class="btn-tertiary"
               type="button"
               [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
               (click)="verifyEmail()"
+              data-testid="verify-email-button"
+              [aria-label]="firebaseUser()?.emailVerified ? 'Email already verified' : 'Send email verification'"
             >
               {{
                 firebaseUser()?.emailVerified
@@ -34,19 +36,23 @@
                 e.email.value === ''
               "
               (click)="onSubmitEmail()"
+              data-testid="update-email-button"
+              aria-label="Update email address"
             >
               Update Email
             </button>
           </div>
         </form>
-        <form [formGroup]="passwordForm" class="container mt-3">
-          <mat-form-field>
+        <form [formGroup]="passwordForm" class="container mt-3" data-testid="password-form" aria-label="Change password form">
+          <mat-form-field data-testid="new-password-field">
             <mat-label>New Password</mat-label>
             <input
               matInput
               [type]="hidePassword() ? 'password' : 'text'"
               autocomplete="new-password"
               formControlName="password"
+              data-testid="new-password-input"
+              aria-label="Enter new password"
             />
             <button
               mat-icon-button
@@ -54,6 +60,7 @@
               (click)="toggleHidePassword()"
               [attr.aria-label]="'Hide password'"
               [attr.aria-pressed]="hidePassword"
+              data-testid="toggle-new-password-visibility"
             >
               <mat-icon>{{
                 hidePassword() ? 'visibility_off' : 'visibility'
@@ -98,24 +105,24 @@
         </form>
       </mat-tab>
     }
-    <mat-tab label="Payment Services">
-      <h4>Payment Service IDs</h4>
-      <form [formGroup]="paymentsForm" class="container payments">
-        <mat-form-field>
+    <mat-tab label="Payment Services" data-testid="payment-services-tab">
+      <h4 data-testid="payment-services-title">Payment Service IDs</h4>
+      <form [formGroup]="paymentsForm" class="container payments" data-testid="payments-form" aria-label="Payment service IDs form">
+        <mat-form-field data-testid="venmo-field">
           <mat-label>Venmo</mat-label>
-          <input matInput formControlName="venmoId" />
+          <input matInput formControlName="venmoId" data-testid="venmo-input" aria-label="Venmo ID" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field data-testid="paypal-field">
           <mat-label>PayPal</mat-label>
-          <input matInput formControlName="paypalId" />
+          <input matInput formControlName="paypalId" data-testid="paypal-input" aria-label="PayPal ID" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field data-testid="cashapp-field">
           <mat-label>CashApp</mat-label>
-          <input matInput formControlName="cashAppId" />
+          <input matInput formControlName="cashAppId" data-testid="cashapp-input" aria-label="CashApp ID" />
         </mat-form-field>
-        <mat-form-field>
+        <mat-form-field data-testid="zelle-field">
           <mat-label>Zelle</mat-label>
-          <input matInput formControlName="zelleId" />
+          <input matInput formControlName="zelleId" data-testid="zelle-input" aria-label="Zelle ID" />
         </mat-form-field>
         <button
           mat-raised-button
@@ -123,24 +130,28 @@
           type="submit"
           [disabled]="paymentsForm.pristine"
           (click)="onSubmitPayments()"
+          data-testid="save-payments-button"
+          aria-label="Save payment service IDs"
         >
           Save
         </button>
       </form>
     </mat-tab>
-    <mat-tab label="Options">
-      <h4>Select Default Group</h4>
-      <form [formGroup]="groupForm" class="container">
-        <mat-form-field id="group-select">
+    <mat-tab label="Options" data-testid="options-tab">
+      <h4 data-testid="default-group-title">Select Default Group</h4>
+      <form [formGroup]="groupForm" class="container" data-testid="default-group-form" aria-label="Select default group form">
+        <mat-form-field id="group-select" data-testid="default-group-field">
           <mat-label>Select Group</mat-label>
           <mat-select
             formControlName="groupRef"
             name="group"
             #groupSelect
             docRefCompare
+            data-testid="default-group-select"
+            aria-label="Select default group"
           >
             @for (group of activeUserGroups(); track group.ref) {
-              <mat-option [value]="group.ref">{{ group.name }}</mat-option>
+              <mat-option [value]="group.ref" [attr.data-testid]="'default-group-option-' + group.id">{{ group.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -150,6 +161,8 @@
           type="button"
           [disabled]="selectedGroup === null || groupForm.pristine"
           (click)="saveDefaultGroup()"
+          data-testid="save-default-group-button"
+          aria-label="Save default group selection"
         >
           Save
         </button>

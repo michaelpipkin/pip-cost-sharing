@@ -1,9 +1,21 @@
-<div class="container">
-  <h2>Create Account</h2>
-  <form [formGroup]="registerForm" class="register" (submit)="register()">
-    <mat-form-field>
+<div class="container" data-testid="register-container">
+  <h2 data-testid="register-title">Create Account</h2>
+  <form
+    [formGroup]="registerForm"
+    class="register"
+    (submit)="register()"
+    data-testid="register-form"
+    aria-label="Create account form"
+  >
+    <mat-form-field data-testid="register-email-field">
       <mat-label>Email</mat-label>
-      <input matInput type="email" formControlName="email" />
+      <input
+        matInput
+        type="email"
+        formControlName="email"
+        data-testid="register-email-input"
+        aria-label="Email address"
+      />
       @if (r.email?.errors?.required) {
         <mat-error>Email is required.</mat-error>
       }

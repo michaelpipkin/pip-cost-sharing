@@ -1,14 +1,14 @@
 @defer (when isLoaded()) {
-  <div class="container with-table pt-3 mb-2">
-    <div class="page-header">
+  <div class="container with-table pt-3 mb-2" data-testid="expenses-container">
+    <div class="page-header" data-testid="expenses-page-header">
       <div></div>
-      <h3>Expenses</h3>
-      <div class="help-icon">
-        <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      <h3 data-testid="expenses-page-title">Expenses</h3>
+      <div class="help-icon" data-testid="expenses-help-icon-container">
+        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="expenses-help-button" aria-label="Show help for expenses">help</mat-icon>
       </div>
     </div>
-    <h4>{{ currentGroup()?.name }}</h4>
-    <div class="filters">
+    <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
+    <div class="filters" data-testid="expense-filters">
       <mat-form-field class="datepicker" subscriptSizing="dynamic">
         <mat-label>Start date</mat-label>
         <input

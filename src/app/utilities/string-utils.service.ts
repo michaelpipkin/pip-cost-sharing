@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { evaluate } from 'mathjs';
 
 @Injectable({
   providedIn: 'root',
@@ -11,7 +10,17 @@ export class StringUtils {
         return 0;
       }
 
-      const result = evaluate(str);
+      // Simple math expression evaluator using Function constructor
+      // Sanitize input to only allow numbers, basic operators, parentheses, and decimals
+      const sanitized = str.replace(/[^0-9+\-*/().\s]/g, '');
+      
+      if (sanitized !== str) {
+        // If sanitization changed the string, it contained invalid characters
+        return 0;
+      }
+
+      // Use Function constructor to safely evaluate simple math expressions
+      const result = new Function('return (' + sanitized + ')')();
 
       if (
         result === null ||

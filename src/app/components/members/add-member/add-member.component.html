@@ -1,22 +1,22 @@
-<h1 mat-dialog-title>Add Member</h1>
-<form [formGroup]="addMemberForm">
-  <mat-dialog-content class="content">
-    <mat-form-field appearance="fill">
+<h1 mat-dialog-title data-testid="add-member-title">Add Member</h1>
+<form [formGroup]="addMemberForm" data-testid="add-member-form" aria-label="Add member form">
+  <mat-dialog-content class="content" data-testid="add-member-content">
+    <mat-form-field appearance="fill" data-testid="member-name-field">
       <mat-label>Name</mat-label>
-      <input matInput formControlName="displayName" />
+      <input matInput formControlName="displayName" data-testid="member-name-input" aria-label="Member name" />
       @if (f.displayName.errors?.['required']) {
-        <mat-error> *Required </mat-error>
+        <mat-error data-testid="member-name-error"> *Required </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" data-testid="member-email-field">
       <mat-label>Email</mat-label>
-      <input matInput formControlName="email" />
+      <input matInput formControlName="email" data-testid="member-email-input" aria-label="Member email" />
       @if (f.email.errors?.['required']) {
-        <mat-error> *Required </mat-error>
+        <mat-error data-testid="member-email-error"> *Required </mat-error>
       }
     </mat-form-field>
   </mat-dialog-content>
-  <mat-dialog-actions>
+  <mat-dialog-actions data-testid="add-member-actions">
     <button
       mat-raised-button
       class="btn-secondary"
@@ -24,6 +24,8 @@
       defaultButton
       [disabled]="!addMemberForm.valid || addMemberForm.disabled"
       (click)="onSubmit()"
+      data-testid="add-member-save-button"
+      aria-label="Save new member"
     >
       Save
     </button>
@@ -32,6 +34,8 @@
       [mat-dialog-close]="false"
       type="button"
       [disabled]="addMemberForm.disabled"
+      data-testid="add-member-cancel-button"
+      aria-label="Cancel adding member"
     >
       Cancel
     </button>

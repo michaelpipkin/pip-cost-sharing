@@ -1,17 +1,18 @@
 @if (!groupStore.loaded()) {
-  <div class="container pt-3">
+  <div class="container pt-3" data-testid="groups-loading-container">
     <h3 data-testid="loading-message">Loading groups...</h3>
   </div>
 } @else {
-  <div class="container pt-3">
-    <div class="page-header">
+  <div class="container pt-3" data-testid="groups-main-container">
+    <div class="page-header" data-testid="groups-page-header">
       <div></div>
-      <h3>Groups</h3>
-      <div class="help-icon">
+      <h3 data-testid="groups-page-title">Groups</h3>
+      <div class="help-icon" data-testid="groups-help-icon-container">
         <mat-icon
-          data-testid="help-button"
+          data-testid="groups-help-button"
           matTooltip="Help"
           (click)="showHelp()"
+          aria-label="Show help for groups"
           >help</mat-icon
         >
       </div>

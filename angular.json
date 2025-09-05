@@ -42,8 +42,7 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
-              "moment",
-              "string-math"
+              "moment"
             ],
             "browser": "src/main.ts"
           },

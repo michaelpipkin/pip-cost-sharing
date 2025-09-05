@@ -7,22 +7,19 @@ import { ExpensesComponent } from './expenses/expenses.component';
 
 export const expensesRoutes: Routes = [
   {
-    path: 'expenses',
+    path: '',
     title: 'Expenses',
     component: ExpensesComponent,
-    canActivate: [authGuard, groupGuard],
   },
   {
-    path: 'expenses/add',
+    path: 'add',
     title: 'Add Expense',
     component: AddExpenseComponent,
-    canActivate: [authGuard, groupGuard],
   },
   {
-    path: 'expenses/:id',
+    path: ':id',
     title: 'Edit Expense',
     component: EditExpenseComponent,
     resolve: { expense: editExpenseResolver },
-    canActivate: [authGuard, groupGuard],
   },
 ];

@@ -1,26 +1,27 @@
-<div class="container pt-3">
-  <div class="page-header">
+<div class="container pt-3" data-testid="help-container">
+  <div class="page-header" data-testid="help-page-header">
     <div></div>
-    <h3>Help Topics</h3>
+    <h3 data-testid="help-page-title">Help Topics</h3>
     <div></div>
   </div>
-  <mat-accordion>
+  <mat-accordion data-testid="help-accordion">
     @for (section of helpSections; track section.id) {
-      <mat-expansion-panel hideToggle>
-        <mat-expansion-panel-header>
+      <mat-expansion-panel hideToggle [attr.data-testid]="'help-panel-' + section.id">
+        <mat-expansion-panel-header [attr.data-testid]="'help-panel-header-' + section.id">
           <mat-panel-title
+            [attr.data-testid]="'help-panel-title-' + section.id"
             ><h5>{{ section.title }}</h5></mat-panel-title
           >
         </mat-expansion-panel-header>
         @for (paragraph of section.content; track $index) {
-          <p>{{ paragraph }}</p>
+          <p [attr.data-testid]="'help-content-' + section.id + '-' + $index">{{ paragraph }}</p>
         }
       </mat-expansion-panel>
     }
   </mat-accordion>
-  <div class="issue-container">
-    <h3>Report an Issue</h3>
-    <form [formGroup]="issueForm" class="issue-form">
+  <div class="issue-container" data-testid="report-issue-container">
+    <h3 data-testid="report-issue-title">Report an Issue</h3>
+    <form [formGroup]="issueForm" class="issue-form" data-testid="report-issue-form" aria-label="Report an issue form">
       <mat-form-field appearance="fill" subscriptSizing="dynamic">
         <mat-label>Title</mat-label>
         <input matInput formControlName="title" />
