@@ -86,15 +86,15 @@ export class EditMemberComponent {
   }
 
   async onSubmit(): Promise<void> {
-    const form = this.editMemberForm.value;
-    const changes: Partial<Member> = {
-      displayName: form.memberName,
-      email: form.email,
-      active: form.active,
-      groupAdmin: form.groupAdmin,
-    };
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const form = this.editMemberForm.value;
+      const changes: Partial<Member> = {
+        displayName: form.memberName,
+        email: form.email,
+        active: form.active,
+        groupAdmin: form.groupAdmin,
+      };
       await this.memberService.updateMember(this.member.ref, changes);
       this.dialogRef.close({
         success: true,
@@ -129,8 +129,8 @@ export class EditMemberComponent {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
           await this.memberService.removeMemberFromGroup(
             this.data.groupId,
             this.member.ref

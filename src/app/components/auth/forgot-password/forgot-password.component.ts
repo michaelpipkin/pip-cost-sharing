@@ -46,9 +46,9 @@ export class ForgotPasswordComponent {
   }
 
   async forgotPassword() {
-    const email = this.forgotPasswordForm.value.email;
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const email = this.forgotPasswordForm.value.email;
       await sendPasswordResetEmail(this.auth, email);
       this.snackBar.open(
         'Password reset email sent. Please check your email.',

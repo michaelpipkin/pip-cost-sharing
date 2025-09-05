@@ -489,35 +489,35 @@ export class EditExpenseComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        const val = this.editExpenseForm.value;
-        const expenseDate = firestore.Timestamp.fromDate(val.date);
-        const changes: Partial<Expense> = {
-          date: expenseDate,
-          description: val.description,
-          categoryRef: val.category,
-          paidByMemberRef: val.paidByMember,
-          sharedAmount: +val.sharedAmount,
-          allocatedAmount: +val.allocatedAmount,
-          totalAmount: +val.amount,
-          splitByPercentage: this.splitByPercentage(),
-          paid: false,
-        };
-        let splits: Partial<Split>[] = [];
-        this.splitsFormArray.value.forEach((s) => {
-          const split: Partial<Split> = {
-            date: expenseDate,
-            categoryRef: val.category,
-            assignedAmount: +s.assignedAmount,
-            percentage: +s.percentage,
-            allocatedAmount: +s.allocatedAmount,
-            paidByMemberRef: val.paidByMember,
-            owedByMemberRef: s.owedByMemberRef,
-            paid: s.owedByMemberRef.eq(val.paidByMember),
-          };
-          splits.push(split);
-        });
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
+          const val = this.editExpenseForm.value;
+          const expenseDate = firestore.Timestamp.fromDate(val.date);
+          const changes: Partial<Expense> = {
+            date: expenseDate,
+            description: val.description,
+            categoryRef: val.category,
+            paidByMemberRef: val.paidByMember,
+            sharedAmount: +val.sharedAmount,
+            allocatedAmount: +val.allocatedAmount,
+            totalAmount: +val.amount,
+            splitByPercentage: this.splitByPercentage(),
+            paid: false,
+          };
+          let splits: Partial<Split>[] = [];
+          this.splitsFormArray.value.forEach((s) => {
+            const split: Partial<Split> = {
+              date: expenseDate,
+              categoryRef: val.category,
+              assignedAmount: +s.assignedAmount,
+              percentage: +s.percentage,
+              allocatedAmount: +s.allocatedAmount,
+              paidByMemberRef: val.paidByMember,
+              owedByMemberRef: s.owedByMemberRef,
+              paid: s.owedByMemberRef.eq(val.paidByMember),
+            };
+            splits.push(split);
+          });
           await this.expenseService.updateExpense(
             this.#currentGroup().id,
             this.expense().ref,
@@ -558,8 +558,8 @@ export class EditExpenseComponent implements OnInit {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
           await this.expenseService.deleteExpense(
             this.#currentGroup().id,
             this.expense().ref

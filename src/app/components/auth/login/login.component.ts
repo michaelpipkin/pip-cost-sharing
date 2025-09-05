@@ -51,16 +51,30 @@ export class LoginComponent {
   }
 
   async emailLogin() {
-    const email = this.loginForm.value.email;
-    const password = this.loginForm.value.password;
-    this.loading.loadingOn();
-    const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
-    if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
+    try {
+      this.loading.loadingOn();
+      const email = this.loginForm.value.email;
+      const password = this.loginForm.value.password;
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+      if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
+        this.snackBar.open('Please sign in with Google', 'Close');
+        return;
+      } else {
+        await signInWithEmailAndPassword(this.auth, email, password);
+        this.router.navigateByUrl('/groups');
+      }
+    } catch (error: any) {
+      this.snackBar.open(error.message, 'Close');
+    } finally {
       this.loading.loadingOff();
-      this.snackBar.open('Please sign in with Google', 'Close');
-      return;
-    } else {
-      await signInWithEmailAndPassword(this.auth, email, password)
+    }
+  }
+
+  googleLogin() {
+    try {
+      this.loading.loadingOn();
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(this.auth, provider)
         .then(() => {
           this.router.navigateByUrl('/groups');
         })
@@ -70,20 +84,9 @@ export class LoginComponent {
         .finally(() => {
           this.loading.loadingOff();
         });
+    } catch (error: any) {
+      this.snackBar.open(error.message, 'Close');
+      this.loading.loadingOff();
     }
-  }
-
-  googleLogin() {
-    const provider = new GoogleAuthProvider();
-    signInWithPopup(this.auth, provider)
-      .then(() => {
-        this.router.navigateByUrl('/groups');
-      })
-      .catch((error) => {
-        this.snackBar.open(error.message, 'Close');
-      })
-      .finally(() => {
-        this.loading.loadingOff();
-      });
   }
 }

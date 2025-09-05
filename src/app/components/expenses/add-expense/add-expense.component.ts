@@ -491,37 +491,37 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(saveAndAdd: boolean = false): Promise<void> {
-    this.loading.loadingOn();
-    const val = this.addExpenseForm.value;
-    const expenseDate = firestore.Timestamp.fromDate(val.date);
-    const expense: Partial<Expense> = {
-      date: expenseDate,
-      description: val.description,
-      categoryRef: val.category,
-      paidByMemberRef: val.paidByMember,
-      paid: false,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
-      splitByPercentage: this.splitByPercentage(),
-    };
-    let splits: Partial<Split>[] = [];
-    this.splitsFormArray.value.forEach((s) => {
-      if (s.allocatedAmount !== 0) {
-        const split: Partial<Split> = {
-          date: expenseDate,
-          categoryRef: val.category,
-          assignedAmount: s.assignedAmount,
-          percentage: s.percentage,
-          allocatedAmount: s.allocatedAmount,
-          paidByMemberRef: val.paidByMember,
-          owedByMemberRef: s.owedByMemberRef,
-          paid: s.owedByMemberRef.eq(val.paidByMember),
-        };
-        splits.push(split);
-      }
-    });
     try {
+      this.loading.loadingOn();
+      const val = this.addExpenseForm.value;
+      const expenseDate = firestore.Timestamp.fromDate(val.date);
+      const expense: Partial<Expense> = {
+        date: expenseDate,
+        description: val.description,
+        categoryRef: val.category,
+        paidByMemberRef: val.paidByMember,
+        paid: false,
+        sharedAmount: val.sharedAmount,
+        allocatedAmount: val.allocatedAmount,
+        totalAmount: val.amount,
+        splitByPercentage: this.splitByPercentage(),
+      };
+      let splits: Partial<Split>[] = [];
+      this.splitsFormArray.value.forEach((s) => {
+        if (s.allocatedAmount !== 0) {
+          const split: Partial<Split> = {
+            date: expenseDate,
+            categoryRef: val.category,
+            assignedAmount: s.assignedAmount,
+            percentage: s.percentage,
+            allocatedAmount: s.allocatedAmount,
+            paidByMemberRef: val.paidByMember,
+            owedByMemberRef: s.owedByMemberRef,
+            paid: s.owedByMemberRef.eq(val.paidByMember),
+          };
+          splits.push(split);
+        }
+      });
       await this.expenseService.addExpense(
         this.currentGroup().id,
         expense,

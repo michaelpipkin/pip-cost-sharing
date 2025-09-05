@@ -278,29 +278,29 @@ export class SummaryComponent {
     const dialogRef = this.dialog.open(PaymentDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        let history = {
-          paidByMemberRef: owedByMember,
-          paidToMemberRef: owedToMember,
-          date: Timestamp.now(),
-          totalPaid: +splitsToPay
-            .reduce(
-              (total, s) =>
-                s.paidByMemberRef.eq(owedToMember)
-                  ? (total += +s.allocatedAmount)
-                  : (total -= +s.allocatedAmount),
-              0
-            )
-            .toFixed(2),
-          lineItems: [],
-        };
-        this.detailData().forEach((split) => {
-          history.lineItems.push({
-            category: this.getCategoryName(split.categoryRef.id),
-            amount: split.amount,
-          });
-        });
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
+          let history = {
+            paidByMemberRef: owedByMember,
+            paidToMemberRef: owedToMember,
+            date: Timestamp.now(),
+            totalPaid: +splitsToPay
+              .reduce(
+                (total, s) =>
+                  s.paidByMemberRef.eq(owedToMember)
+                    ? (total += +s.allocatedAmount)
+                    : (total -= +s.allocatedAmount),
+                0
+              )
+              .toFixed(2),
+            lineItems: [],
+          };
+          this.detailData().forEach((split) => {
+            history.lineItems.push({
+              category: this.getCategoryName(split.categoryRef.id),
+              amount: split.amount,
+            });
+          });
           await this.splitService.paySplitsBetweenMembers(
             this.currentGroup().id,
             splitsToPay,

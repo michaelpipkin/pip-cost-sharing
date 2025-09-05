@@ -55,16 +55,16 @@ export class AddMemberComponent {
   }
 
   async onSubmit(): Promise<void> {
-    const val = this.addMemberForm.value;
-    const newMember: Partial<Member> = {
-      userRef: null,
-      displayName: val.displayName,
-      email: val.email,
-      active: true,
-      groupAdmin: false,
-    };
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const val = this.addMemberForm.value;
+      const newMember: Partial<Member> = {
+        userRef: null,
+        displayName: val.displayName,
+        email: val.email,
+        active: true,
+        groupAdmin: false,
+      };
       await this.memberService.addManualMemberToGroup(
         this.data.groupId,
         newMember
