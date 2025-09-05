@@ -54,21 +54,21 @@ export class AddGroupComponent {
   }
 
   async onSubmit(): Promise<void> {
-    this.loading.loadingOn();
-    const val = this.newGroupForm.value;
-    const newGroup: Partial<Group> = {
-      name: val.groupName,
-      active: true,
-      autoAddMembers: val.autoAddMembers,
-    };
-    const newMember: Partial<Member> = {
-      userRef: this.user().ref,
-      displayName: val.displayName,
-      email: this.user().email,
-      active: true,
-      groupAdmin: true,
-    };
     try {
+      this.loading.loadingOn();
+      const val = this.newGroupForm.value;
+      const newGroup: Partial<Group> = {
+        name: val.groupName,
+        active: true,
+        autoAddMembers: val.autoAddMembers,
+      };
+      const newMember: Partial<Member> = {
+        userRef: this.user().ref,
+        displayName: val.displayName,
+        email: this.user().email,
+        active: true,
+        groupAdmin: true,
+      };
       await this.groupService.addGroup(newGroup, newMember);
       this.dialogRef.close(true);
     } catch (error) {

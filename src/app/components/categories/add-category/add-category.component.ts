@@ -50,13 +50,13 @@ export class AddCategoryComponent {
   }
 
   async onSubmit(): Promise<void> {
-    const categoryName = this.newCategoryForm.value.categoryName;
-    const newCategory: Partial<Category> = {
-      name: categoryName,
-      active: true,
-    };
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const categoryName = this.newCategoryForm.value.categoryName;
+      const newCategory: Partial<Category> = {
+        name: categoryName,
+        active: true,
+      };
       await this.categoryService.addCategory(this.groupId, newCategory);
       this.dialogRef.close(true);
     } catch (error) {

@@ -115,28 +115,25 @@ export class RegisterComponent implements OnInit, OnDestroy {
   }
 
   async register() {
-    const email = this.registerForm.value.email;
-    const password = this.registerForm.value.password;
-    this.loading.loadingOn();
-    const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
-    if (signInMethods.length > 0 && signInMethods.includes('password')) {
+    try {
+      this.loading.loadingOn();
+      const email = this.registerForm.value.email;
+      const password = this.registerForm.value.password;
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+      if (signInMethods.length > 0 && signInMethods.includes('password')) {
+        this.snackBar.open(
+          'Account already exists for this email address',
+          'Close'
+        );
+        return;
+      } else {
+        await createUserWithEmailAndPassword(this.auth, email, password);
+        this.router.navigateByUrl('/groups');
+      }
+    } catch (error: any) {
+      this.snackBar.open(error.message, 'Close');
+    } finally {
       this.loading.loadingOff();
-      this.snackBar.open(
-        'Account already exists for this email address',
-        'Close'
-      );
-      return;
-    } else {
-      await createUserWithEmailAndPassword(this.auth, email, password)
-        .then(() => {
-          this.router.navigateByUrl('/groups');
-        })
-        .catch((error) => {
-          this.snackBar.open(error.message, 'Close');
-        })
-        .finally(() => {
-          this.loading.loadingOff();
-        });
     }
   }
 }

@@ -404,30 +404,30 @@ export class EditMemorizedComponent implements OnInit {
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(): Promise<void> {
-    const val = this.editMemorizedForm.value;
-    const changes: Partial<Memorized> = {
-      description: val.description,
-      categoryRef: val.category,
-      paidByMemberRef: val.paidByMember,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
-      totalAmount: val.amount,
-      splitByPercentage: this.splitByPercentage(),
-    };
-    let splits = [];
-    this.splitsFormArray.value.forEach((s) => {
-      const split = {
-        assignedAmount: s.assignedAmount,
-        percentage: s.percentage,
-        allocatedAmount: s.allocatedAmount,
-        paidByMemberRef: val.paidByMember,
-        owedByMemberRef: s.owedByMemberRef,
-      };
-      splits.push(split);
-    });
-    changes.splits = splits;
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const val = this.editMemorizedForm.value;
+      const changes: Partial<Memorized> = {
+        description: val.description,
+        categoryRef: val.category,
+        paidByMemberRef: val.paidByMember,
+        sharedAmount: val.sharedAmount,
+        allocatedAmount: val.allocatedAmount,
+        totalAmount: val.amount,
+        splitByPercentage: this.splitByPercentage(),
+      };
+      let splits = [];
+      this.splitsFormArray.value.forEach((s) => {
+        const split = {
+          assignedAmount: s.assignedAmount,
+          percentage: s.percentage,
+          allocatedAmount: s.allocatedAmount,
+          paidByMemberRef: val.paidByMember,
+          owedByMemberRef: s.owedByMemberRef,
+        };
+        splits.push(split);
+      });
+      changes.splits = splits;
       await this.memorizedService.updateMemorized(
         this.memorized().ref,
         changes
@@ -463,8 +463,8 @@ export class EditMemorizedComponent implements OnInit {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
           await this.memorizedService.deleteMemorized(this.memorized().ref);
           this.snackBar.open('Memorized expense deleted.', 'OK');
           this.router.navigate(['/memorized']);
