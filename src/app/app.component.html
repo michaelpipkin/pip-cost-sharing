@@ -42,7 +42,7 @@
         @if (isLoggedIn()) {
           <a
             matButton
-            routerLink="groups"
+            [routerLink]="routes.ADMIN_GROUPS"
             aria-label="groups"
             title="Groups"
             data-testid="nav-groups"
@@ -53,7 +53,7 @@
           @if (currentGroup() != null) {
             <a
               matButton
-              routerLink="members"
+              [routerLink]="routes.ADMIN_MEMBERS"
               aria-label="members"
               title="Members"
               data-testid="nav-members"
@@ -63,7 +63,7 @@
             </a>
             <a
               matButton
-              routerLink="categories"
+              [routerLink]="routes.ADMIN_CATEGORIES"
               aria-label="categories"
               title="Categories"
               data-testid="nav-categories"
@@ -73,7 +73,7 @@
             </a>
             <a
               matButton
-              routerLink="expenses"
+              [routerLink]="routes.EXPENSES_ROOT"
               aria-label="expenses"
               title="Expenses"
               data-testid="nav-expenses"
@@ -84,7 +84,7 @@
             </a>
             <a
               matButton
-              routerLink="memorized"
+              [routerLink]="routes.MEMORIZED_ROOT"
               aria-label="memorized"
               title="Memorized"
               data-testid="nav-memorized"
@@ -95,7 +95,7 @@
             </a>
             <a
               matButton
-              routerLink="summary"
+              [routerLink]="routes.ANALYSIS_SUMMARY"
               aria-label="summary"
               title="Summary"
               data-testid="nav-summary"
@@ -106,7 +106,7 @@
             </a>
             <a
               matButton
-              routerLink="history"
+              [routerLink]="routes.ANALYSIS_HISTORY"
               aria-label="history"
               title="History"
               data-testid="nav-history"
@@ -118,7 +118,7 @@
         }
         <a
           matButton
-          routerLink="split"
+          [routerLink]="routes.SPLIT"
           aria-label="split expense"
           title="Split Expense"
           data-testid="nav-split"
@@ -201,7 +201,7 @@
     @if (isLoggedIn()) {
       <a
         mat-menu-item
-        routerLink="groups"
+        [routerLink]="routes.ADMIN_GROUPS"
         aria-label="groups"
         title="Groups"
         data-testid="mobile-nav-groups"
@@ -212,7 +212,7 @@
       @if (currentGroup() != null) {
         <a
           mat-menu-item
-          routerLink="members"
+          [routerLink]="routes.ADMIN_MEMBERS"
           aria-label="members"
           title="Members"
           data-testid="mobile-nav-members"
@@ -222,7 +222,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="categories"
+          [routerLink]="routes.ADMIN_CATEGORIES"
           aria-label="categories"
           title="Categories"
           data-testid="mobile-nav-categories"
@@ -232,7 +232,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="expenses"
+          [routerLink]="routes.EXPENSES_ROOT"
           aria-label="expenses"
           title="Expenses"
           data-testid="mobile-nav-expenses"
@@ -242,7 +242,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="memorized"
+          [routerLink]="routes.MEMORIZED_ROOT"
           aria-label="memorized"
           title="Memorized"
           data-testid="mobile-nav-memorized"
@@ -253,7 +253,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="summary"
+          [routerLink]="routes.ANALYSIS_SUMMARY"
           aria-label="summary"
           title="Summary"
           data-testid="mobile-nav-summary"
@@ -263,7 +263,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="history"
+          [routerLink]="routes.ANALYSIS_HISTORY"
           aria-label="history"
           title="History"
           data-testid="mobile-nav-history"
@@ -273,7 +273,7 @@
         </a>
         <a
           mat-menu-item
-          routerLink="split"
+          [routerLink]="routes.SPLIT"
           aria-label="split expense"
           title="Split expense"
           data-testid="mobile-nav-split"
@@ -284,7 +284,7 @@
       }
       <a
         mat-menu-item
-        routerLink="help"
+        [routerLink]="routes.HELP"
         aria-label="help"
         title="Help"
         data-testid="mobile-nav-help"
@@ -293,7 +293,7 @@
       </a>
       <a
         mat-menu-item
-        routerLink="auth/account"
+        [routerLink]="routes.AUTH_ACCOUNT"
         aria-label="account"
         title="Account"
         data-testid="mobile-nav-account"
@@ -314,7 +314,7 @@
     } @else {
       <a
         mat-menu-item
-        routerLink="split"
+        [routerLink]="routes.SPLIT"
         aria-label="split expense"
         title="Split expense"
         data-testid="mobile-nav-split-logged-out"
@@ -324,7 +324,7 @@
       </a>
       <a
         mat-menu-item
-        routerLink="auth/login"
+        [routerLink]="routes.AUTH_LOGIN"
         aria-label="login"
         title="Login"
         data-testid="mobile-nav-login"

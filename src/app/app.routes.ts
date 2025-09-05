@@ -1,18 +1,9 @@
 import { Routes } from '@angular/router';
 import { authGuard, groupGuard } from '@components/auth/guards.guard';
-import { CategoriesComponent } from '@components/categories/categories/categories.component';
-import { expensesRoutes } from '@components/expenses/expenses.routes';
-import { GroupsComponent } from '@components/groups/groups/groups.component';
 import { HelpComponent } from '@components/help/help.component';
-import { HistoryComponent } from '@components/history/history/history.component';
 import { HomeComponent } from '@components/home/home.component';
-import { MembersComponent } from '@components/members/members/members.component';
-import { memorizedRoutes } from '@components/memorized/memorized-routes';
-import { SplitComponent } from '@components/split/split/split.component';
-import { SummaryComponent } from '@components/summary/summary/summary.component';
 
 export const appRoutes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: '' },
   {
     path: '',
     title: 'Home',
@@ -23,36 +14,35 @@ export const appRoutes: Routes = [
     loadChildren: () =>
       import('@components/auth/auth.routes').then((m) => m.authRoutes),
   },
+  // Backward compatibility redirects
+  { path: 'groups', redirectTo: 'administration/groups' },
+  { path: 'members', redirectTo: 'administration/members' },
+  { path: 'categories', redirectTo: 'administration/categories' },
   {
-    path: 'groups',
-    title: 'Groups',
-    component: GroupsComponent,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'members',
-    title: 'Members',
-    component: MembersComponent,
+    path: 'administration',
+    loadChildren: () =>
+      import('@components/administration/administration.routes').then((m) => m.administrationRoutes),
     canActivate: [authGuard, groupGuard],
   },
   {
-    path: 'categories',
-    title: 'Categories',
-    component: CategoriesComponent,
-    canActivate: [authGuard, groupGuard],
-  },
-  ...expensesRoutes,
-  ...memorizedRoutes,
-  {
-    path: 'summary',
-    title: 'Summary',
-    component: SummaryComponent,
+    path: 'expenses',
+    loadChildren: () =>
+      import('@components/expenses/expenses.routes').then((m) => m.expensesRoutes),
     canActivate: [authGuard, groupGuard],
   },
   {
-    path: 'history',
-    title: 'History',
-    component: HistoryComponent,
+    path: 'memorized',
+    loadChildren: () =>
+      import('@components/memorized/memorized-routes').then((m) => m.memorizedRoutes),
+    canActivate: [authGuard, groupGuard],
+  },
+  // Backward compatibility redirects
+  { path: 'summary', redirectTo: 'analysis/summary' },
+  { path: 'history', redirectTo: 'analysis/history' },
+  {
+    path: 'analysis',
+    loadChildren: () =>
+      import('@components/analysis/analysis.routes').then((m) => m.analysisRoutes),
     canActivate: [authGuard, groupGuard],
   },
   {
@@ -62,8 +52,8 @@ export const appRoutes: Routes = [
   },
   {
     path: 'split',
-    title: 'Split Expense',
-    component: SplitComponent,
+    loadChildren: () =>
+      import('@components/split/split.routes').then((m) => m.splitRoutes),
   },
   { path: '**', redirectTo: '' },
 ];

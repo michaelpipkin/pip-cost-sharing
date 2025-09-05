@@ -64,8 +64,7 @@ import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
-import * as firestore from 'firebase/firestore';
-import { DocumentReference } from 'firebase/firestore';
+import { DocumentReference, Timestamp } from 'firebase/firestore';
 import {
   deleteObject,
   getDownloadURL,
@@ -492,7 +491,7 @@ export class EditExpenseComponent implements OnInit {
         try {
           this.loading.loadingOn();
           const val = this.editExpenseForm.value;
-          const expenseDate = firestore.Timestamp.fromDate(val.date);
+          const expenseDate = Timestamp.fromDate(val.date);
           const changes: Partial<Expense> = {
             date: expenseDate,
             description: val.description,

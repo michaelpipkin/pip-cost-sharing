@@ -42,12 +42,7 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
-              "moment",
-              "typed-function",
-              "javascript-natural-sort",
-              "tiny-emitter",
-              "escape-latex",
-              "seedrandom"
+              "moment"
             ],
             "browser": "src/main.ts"
           },

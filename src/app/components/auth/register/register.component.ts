@@ -27,6 +27,7 @@ import {
   fetchSignInMethodsForEmail,
   getAuth,
 } from 'firebase/auth';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 export declare const hcaptcha: any;
 
 @Component({
@@ -128,7 +129,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
         return;
       } else {
         await createUserWithEmailAndPassword(this.auth, email, password);
-        this.router.navigateByUrl('/groups');
+        // Navigation will be handled automatically by auth state change
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');

@@ -13,6 +13,7 @@ import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 
@@ -48,6 +49,9 @@ export class AppComponent implements OnInit {
   user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  
+  // Route constants for template access
+  readonly routes = ROUTE_PATHS;
 
   constructor() {
     logEvent(this.analytics, 'app_initalized');

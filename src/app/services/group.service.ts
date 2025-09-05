@@ -7,6 +7,7 @@ import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import {
   collection,
   collectionGroup,
@@ -72,7 +73,7 @@ export class GroupService implements IGroupService {
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
               autoNav = false;
-              this.router.navigateByUrl('/groups');
+              this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
               return;
             }
             
@@ -116,7 +117,7 @@ export class GroupService implements IGroupService {
                       }
                     } else {
                       autoNav = false;
-                      this.router.navigateByUrl('/groups');
+                      this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
                     }
                   }
                 } catch (error) {
