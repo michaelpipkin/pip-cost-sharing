@@ -59,13 +59,13 @@ export class EditCategoryComponent {
   }
 
   async onSubmit(): Promise<void> {
-    const form = this.editCategoryForm.value;
-    const changes: Partial<Category> = {
-      name: form.categoryName,
-      active: form.active,
-    };
-    this.loading.loadingOn();
     try {
+      this.loading.loadingOn();
+      const form = this.editCategoryForm.value;
+      const changes: Partial<Category> = {
+        name: form.categoryName,
+        active: form.active,
+      };
       await this.categoryService.updateCategory(this.#category().ref, changes);
       this.dialogRef.close({
         success: true,
@@ -100,8 +100,8 @@ export class EditCategoryComponent {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
           await this.categoryService.deleteCategory(this.#category().ref);
           this.dialogRef.close({
             success: true,

@@ -153,8 +153,8 @@ export class HistoryComponent {
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
-        this.loading.loadingOn();
         try {
+          this.loading.loadingOn();
           await this.historyService.deleteHistory(history.ref);
           this.expandedHistory.set(null);
           this.snackBar.open('Payment record deleted', 'OK');
