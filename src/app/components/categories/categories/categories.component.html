@@ -1,21 +1,21 @@
 @if (!categoryStore.loaded()) {
-  <div class="container pt-3">
-    <h3>Loading categories...</h3>
+  <div class="container pt-3" data-testid="categories-loading-container">
+    <h3 data-testid="loading-categories-message">Loading categories...</h3>
   </div>
 } @else {
-  <div class="container with-table pt-3">
-    <div class="page-header">
+  <div class="container with-table pt-3" data-testid="categories-main-container">
+    <div class="page-header" data-testid="categories-page-header">
       <div></div>
-      <h3>Categories</h3>
-      <div class="help-icon">
-        <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+      <h3 data-testid="categories-page-title">Categories</h3>
+      <div class="help-icon" data-testid="categories-help-icon-container">
+        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="categories-help-button" aria-label="Show help for categories">help</mat-icon>
       </div>
     </div>
-    <h4>{{ currentGroup()?.name }}</h4>
-    <div class="filters">
-      <mat-form-field class="clearable" subscriptSizing="dynamic">
+    <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
+    <div class="filters" data-testid="category-filters">
+      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="category-search-field">
         <mat-label>Search by name</mat-label>
-        <input matInput type="text" [(ngModel)]="nameFilter" />
+        <input matInput type="text" [(ngModel)]="nameFilter" data-testid="category-search-input" aria-label="Search categories by name" />
         @if (nameFilter() !== '') {
           <button
             matSuffix
@@ -24,12 +24,13 @@
             aria-label="Clear"
             (click)="nameFilter.set('')"
             [matTooltip]="'Clear'"
+            data-testid="clear-category-search-button"
           >
             <mat-icon>close</mat-icon>
           </button>
         }
       </mat-form-field>
-      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly">
+      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-categories-only-toggle" aria-label="Show active categories only">
         Active only
       </mat-slide-toggle>
     </div>
@@ -39,12 +40,14 @@
         class="btn-primary"
         [class.hidden]="!currentMember()?.groupAdmin"
         (click)="addCategory()"
+        data-testid="add-category-button"
+        aria-label="Add new category"
       >
         Add Category
       </button>
     </div>
     @if (filteredCategories()?.length > 0) {
-      <div class="table-container mat-elevation-z8">
+      <div class="table-container mat-elevation-z8" data-testid="categories-table-container">
         <div class="scrollable-table">
           <table
             mat-table
@@ -52,6 +55,8 @@
             [dataSource]="filteredCategories()"
             (matSortChange)="sortCategories($event)"
             class="static-table"
+            data-testid="categories-table"
+            aria-label="Categories table"
           >
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
@@ -74,13 +79,15 @@
               *matRowDef="let myRowData; columns: displayedColumns()"
               (click)="onRowClick(myRowData)"
               [class.clickable-row]="currentMember()?.groupAdmin"
+              [attr.data-testid]="'category-row-' + myRowData.id"
+              [attr.aria-label]="'Category: ' + myRowData.name"
             ></tr>
           </table>
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No categories found</h5>
+      <div class="container pt-3" data-testid="no-categories-container">
+        <h5 data-testid="no-categories-message">No categories found</h5>
       </div>
     }
   </div>

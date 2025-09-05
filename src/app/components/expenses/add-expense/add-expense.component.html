@@ -1,21 +1,23 @@
-<div class="container pt-3">
-  <div class="page-header">
+<div class="container pt-3" data-test-id="add-expense-container">
+  <div class="page-header" data-test-id="page-header">
     <div></div>
-    <h3>Add Expense</h3>
-    <div class="help-icon">
-      <mat-icon matTooltip="Help" (click)="showHelp()">help</mat-icon>
+    <h3 data-test-id="page-title">Add Expense</h3>
+    <div class="help-icon" data-test-id="help-icon-container">
+      <mat-icon matTooltip="Help" (click)="showHelp()" data-test-id="help-button" aria-label="Show help for adding expenses">help</mat-icon>
     </div>
   </div>
   @let members = activeMembers();
   <div class="mb-2">
-    <form [formGroup]="addExpenseForm" id="expense-form">
+    <form [formGroup]="addExpenseForm" id="expense-form" data-test-id="add-expense-form" aria-label="Add expense form">
       <div class="flex-wrap fw-start">
-        <mat-form-field id="paid-by-select">
+        <mat-form-field id="paid-by-select" data-test-id="payer-field">
           <mat-label>Payer</mat-label>
           <mat-select
             formControlName="paidByMember"
             name="paidByMember"
             docRefCompare
+            data-test-id="payer-select"
+            aria-label="Select who paid for this expense"
           >
             @for (member of members; track member.ref) {
               <mat-option [value]="member.ref">{{
@@ -24,13 +26,14 @@
             }
           </mat-select>
           @if (e.paidByMember.errors?.['required']) {
-            <mat-error> *Required </mat-error>
+            <mat-error data-test-id="payer-error"> *Required </mat-error>
           }
         </mat-form-field>
         <mat-form-field
           appearance="fill"
           class="datepicker-with-hint"
           subscriptSizing="dynamic"
+          data-test-id="date-field"
         >
           <mat-label>Date</mat-label>
           <input
@@ -39,22 +42,26 @@
             [matDatepicker]="expenseDatePicker"
             appDateShortcutKeys
             #datePicker
+            data-test-id="date-input"
+            aria-label="Select expense date"
           />
           <mat-hint>+/- to change date</mat-hint>
           <mat-datepicker-toggle
             matIconSuffix
             [for]="expenseDatePicker"
+            data-test-id="date-picker-toggle"
+            aria-label="Open date picker"
           ></mat-datepicker-toggle>
-          <mat-datepicker #expenseDatePicker></mat-datepicker>
+          <mat-datepicker #expenseDatePicker data-test-id="date-picker"></mat-datepicker>
           @if (e.date.errors?.['required']) {
-            <mat-error> *Required </mat-error>
+            <mat-error data-test-id="date-error"> *Required </mat-error>
           }
         </mat-form-field>
       </div>
       <div class="flex-wrap fw-start">
-        <mat-form-field appearance="fill" id="description">
+        <mat-form-field appearance="fill" id="description" data-test-id="description-field">
           <mat-label>Description</mat-label>
-          <input matInput formControlName="description" />
+          <input matInput formControlName="description" data-test-id="description-input" aria-label="Enter expense description" />
           @if (e.description.errors?.['required']) {
             <mat-error> *Required </mat-error>
           }
@@ -131,25 +138,27 @@
       </div>
       <div class="mb-3">
         @if (!!fileName()) {
-          <div (click)="removeFile()" class="attachment">
-            <button mat-mini-fab class="btn btn-danger">
+          <div (click)="removeFile()" class="attachment" data-test-id="remove-file-attachment">
+            <button mat-mini-fab class="btn btn-danger" data-test-id="remove-file-button" aria-label="Remove attached receipt file">
               <mat-icon>delete</mat-icon>
             </button>
-            <span class="filename">{{ fileName() }}</span>
+            <span class="filename" data-test-id="attached-filename">{{ fileName() }}</span>
           </div>
         } @else {
-          <div (click)="attachFile.click()" class="attachment">
+          <div (click)="attachFile.click()" class="attachment" data-test-id="attach-file-area">
             <input
               type="file"
               accept=".pdf,image/*"
               class="file-input"
               #attachFile
               (change)="onFileSelected($event)"
+              data-test-id="file-input"
+              aria-label="Select receipt file to upload"
             />
-            <button mat-mini-fab class="btn btn-success">
+            <button mat-mini-fab class="btn btn-success" data-test-id="attach-file-button" aria-label="Attach receipt file">
               <mat-icon>attach_file</mat-icon>
             </button>
-            <span class="filename">Upload receipt</span>
+            <span class="filename" data-test-id="upload-prompt">Upload receipt</span>
           </div>
         }
       </div>
@@ -159,6 +168,8 @@
           class="btn-primary"
           type="button"
           (click)="addSplit()"
+          data-test-id="add-split-button"
+          aria-label="Add expense split for member"
         >
           Add New Split
         </button>
@@ -167,6 +178,8 @@
           class="btn-primary"
           type="button"
           (click)="addAllActiveGroupMembers()"
+          data-test-id="add-all-members-button"
+          aria-label="Add splits for all members"
         >
           Add All Members
         </button>
@@ -176,6 +189,8 @@
           class="btn-primary"
           type="button"
           (click)="toggleSplitByPercentage()"
+          data-test-id="toggle-split-method-button"
+          [aria-label]="splitByPercentage() ? 'Change to split by amount' : 'Change to split by percentage'"
         >
           {{ splitByPercentage() ? 'Split by percentage' : 'Split by amount' }}
           <mat-icon>
@@ -276,6 +291,8 @@
           !expenseFullyAllocated()
         "
         (click)="onSubmit(false)"
+        data-test-id="save-button"
+        aria-label="Save expense"
       >
         Save
       </button>
@@ -290,6 +307,8 @@
             !expenseFullyAllocated()
           "
           (click)="onSubmit(true)"
+          data-test-id="save-and-add-another-button"
+          aria-label="Save expense and add another"
         >
           Save & Add Another
         </button>
@@ -299,6 +318,8 @@
         type="button"
         [disabled]="addExpenseForm.disabled"
         (click)="onCancel()"
+        data-test-id="cancel-button"
+        aria-label="Cancel adding expense"
       >
         Cancel
       </button>

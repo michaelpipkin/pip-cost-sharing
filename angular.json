@@ -43,7 +43,11 @@
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
               "moment",
-              "string-math"
+              "typed-function",
+              "javascript-natural-sort",
+              "tiny-emitter",
+              "escape-latex",
+              "seedrandom"
             ],
             "browser": "src/main.ts"
           },

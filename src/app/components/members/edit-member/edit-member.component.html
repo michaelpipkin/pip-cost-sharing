@@ -1,33 +1,35 @@
-<h1 mat-dialog-title>Edit Member</h1>
-<form [formGroup]="editMemberForm">
-  <mat-dialog-content>
-    <div class="content">
-      <mat-form-field appearance="fill">
+<h1 mat-dialog-title data-testid="edit-member-title">Edit Member</h1>
+<form [formGroup]="editMemberForm" data-testid="edit-member-form" aria-label="Edit member form">
+  <mat-dialog-content data-testid="edit-member-content">
+    <div class="content" data-testid="edit-member-fields">
+      <mat-form-field appearance="fill" data-testid="edit-member-name-field">
         <mat-label>Member name</mat-label>
-        <input matInput formControlName="memberName" />
+        <input matInput formControlName="memberName" data-testid="edit-member-name-input" aria-label="Member name" />
         @if (f.memberName.errors?.['required']) {
-          <mat-error> *Required </mat-error>
+          <mat-error data-testid="edit-member-name-error"> *Required </mat-error>
         }
       </mat-form-field>
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="fill" data-testid="edit-member-email-field">
         <mat-label>Email</mat-label>
-        <input matInput email formControlName="email" />
+        <input matInput email formControlName="email" data-testid="edit-member-email-input" aria-label="Member email" />
         @if (f.email.errors?.['email']) {
-          <mat-error> *Not a valid email address </mat-error>
+          <mat-error data-testid="edit-member-email-error"> *Not a valid email address </mat-error>
         }
       </mat-form-field>
     </div>
-    <div class="toggle" [class.hidden]="!currentMember().groupAdmin">
-      <mat-slide-toggle formControlName="active">Active</mat-slide-toggle>
+    <div class="toggle" [class.hidden]="!currentMember().groupAdmin" data-testid="edit-member-toggles">
+      <mat-slide-toggle formControlName="active" data-testid="edit-member-active-toggle" aria-label="Member is active">Active</mat-slide-toggle>
       <mat-slide-toggle
         formControlName="groupAdmin"
         [matTooltip]="groupAdminTooltip"
+        data-testid="edit-member-admin-toggle"
+        aria-label="Member is group admin"
       >
         Group Admin
       </mat-slide-toggle>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions>
+  <mat-dialog-actions data-testid="edit-member-actions">
     <button
       mat-raised-button
       class="btn-secondary"
@@ -39,6 +41,8 @@
         editMemberForm.disabled
       "
       (click)="onSubmit()"
+      data-testid="edit-member-save-button"
+      aria-label="Save member changes"
     >
       Save
     </button>
@@ -48,6 +52,8 @@
       class="btn-danger"
       (click)="removeMember()"
       [disabled]="editMemberForm.disabled"
+      data-testid="remove-member-button"
+      aria-label="Remove member from group"
     >
       Remove
     </button>
@@ -57,6 +63,8 @@
       type="button"
       [mat-dialog-close]="{ success: false }"
       [disabled]="editMemberForm.disabled"
+      data-testid="edit-member-cancel-button"
+      aria-label="Cancel editing member"
     >
       Cancel
     </button>

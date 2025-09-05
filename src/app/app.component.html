@@ -1,14 +1,25 @@
-<mat-toolbar class="nav">
-  <mat-toolbar-row>
+<mat-toolbar class="nav" data-testid="main-toolbar">
+  <mat-toolbar-row data-testid="toolbar-row">
     @if (isSmallScreen()) {
-      <button mat-icon-button [matMenuTriggerFor]="menu">
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="menu"
+        data-testid="mobile-menu-toggle"
+        aria-label="Open navigation menu"
+      >
         <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
       </button>
-      <span id="title">PipSplit</span>
-      <div class="account links">
+      <span id="title" data-testid="app-title">PipSplit</span>
+      <div class="account links" data-testid="mobile-account-actions">
         <button
           matIconButton
           (click)="toggleTheme()"
+          data-testid="theme-toggle-mobile"
+          [aria-label]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
           [matTooltip]="
             themeService.currentTheme() === 'light'
               ? 'Switch to dark mode'
@@ -26,10 +37,16 @@
       </div>
     }
     @if (!isSmallScreen()) {
-      <span id="title">PipSplit</span>
-      <div class="links">
+      <span id="title" data-testid="app-title-desktop">PipSplit</span>
+      <div class="links" data-testid="desktop-navigation">
         @if (isLoggedIn()) {
-          <a matButton routerLink="groups" aria-label="groups" title="Groups">
+          <a
+            matButton
+            routerLink="groups"
+            aria-label="groups"
+            title="Groups"
+            data-testid="nav-groups"
+          >
             <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
             >&nbsp;Groups
           </a>
@@ -39,6 +56,7 @@
               routerLink="members"
               aria-label="members"
               title="Members"
+              data-testid="nav-members"
             >
               <mat-icon fontSet="material-symbols-outlined">face</mat-icon
               >&nbsp;Members
@@ -48,6 +66,7 @@
               routerLink="categories"
               aria-label="categories"
               title="Categories"
+              data-testid="nav-categories"
             >
               <mat-icon fontSet="material-symbols-outlined">category</mat-icon
               >&nbsp;Categories
@@ -57,6 +76,7 @@
               routerLink="expenses"
               aria-label="expenses"
               title="Expenses"
+              data-testid="nav-expenses"
             >
               <mat-icon fontSet="material-symbols-outlined"
                 >attach_money</mat-icon
@@ -67,6 +87,7 @@
               routerLink="memorized"
               aria-label="memorized"
               title="Memorized"
+              data-testid="nav-memorized"
             >
               <mat-icon fontSet="material-symbols-outlined"
                 >currency_exchange</mat-icon
@@ -77,6 +98,7 @@
               routerLink="summary"
               aria-label="summary"
               title="Summary"
+              data-testid="nav-summary"
             >
               <mat-icon fontSet="material-symbols-outlined"
                 >compare_arrows</mat-icon
@@ -87,6 +109,7 @@
               routerLink="history"
               aria-label="history"
               title="History"
+              data-testid="nav-history"
             >
               <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
               >&nbsp;History
@@ -98,15 +121,22 @@
           routerLink="split"
           aria-label="split expense"
           title="Split Expense"
+          data-testid="nav-split"
         >
           <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
           >&nbsp;Split
         </a>
       </div>
-      <div class="account links">
+      <div class="account links" data-testid="desktop-account-actions">
         <button
           matIconButton
           (click)="toggleTheme()"
+          data-testid="theme-toggle-desktop"
+          [aria-label]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
           [matTooltip]="
             themeService.currentTheme() === 'light'
               ? 'Switch to dark mode'
@@ -127,6 +157,7 @@
             [routerLink]="['help']"
             matTooltip="Help"
             aria-label="help"
+            data-testid="nav-help-desktop"
           >
             <mat-icon>help</mat-icon>
           </a>
@@ -135,6 +166,7 @@
             [routerLink]="['auth', 'account']"
             matTooltip="Account"
             aria-label="account"
+            data-testid="nav-account-desktop"
           >
             <mat-icon>account_circle</mat-icon>
           </a>
@@ -143,6 +175,7 @@
             (click)="logout()"
             aria-label="log out"
             matTooltip="Log out"
+            data-testid="logout-button-desktop"
           >
             <mat-icon>logout</mat-icon>
           </button>
@@ -152,6 +185,7 @@
             [routerLink]="['auth', 'login']"
             aria-label="login"
             matTooltip="Login"
+            data-testid="nav-login-desktop"
           >
             <mat-icon>login</mat-icon>
             &nbsp;<span>Log in</span>
@@ -162,10 +196,16 @@
   </mat-toolbar-row>
 </mat-toolbar>
 
-<mat-menu #menu="matMenu">
-  <div class="menu">
+<mat-menu #menu="matMenu" data-testid="mobile-menu">
+  <div class="menu" data-testid="mobile-menu-content">
     @if (isLoggedIn()) {
-      <a mat-menu-item routerLink="groups" aria-label="groups" title="Groups">
+      <a
+        mat-menu-item
+        routerLink="groups"
+        aria-label="groups"
+        title="Groups"
+        data-testid="mobile-nav-groups"
+      >
         <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
         >&nbsp;Groups
       </a>
@@ -175,6 +215,7 @@
           routerLink="members"
           aria-label="members"
           title="Members"
+          data-testid="mobile-nav-members"
         >
           <mat-icon fontSet="material-symbols-outlined">face</mat-icon
           >&nbsp;Members
@@ -184,6 +225,7 @@
           routerLink="categories"
           aria-label="categories"
           title="Categories"
+          data-testid="mobile-nav-categories"
         >
           <mat-icon fontSet="material-symbols-outlined">category</mat-icon
           >&nbsp;Categories
@@ -193,6 +235,7 @@
           routerLink="expenses"
           aria-label="expenses"
           title="Expenses"
+          data-testid="mobile-nav-expenses"
         >
           <mat-icon fontSet="material-symbols-outlined">attach_money</mat-icon
           >Expenses
@@ -202,6 +245,7 @@
           routerLink="memorized"
           aria-label="memorized"
           title="Memorized"
+          data-testid="mobile-nav-memorized"
         >
           <mat-icon fontSet="material-symbols-outlined"
             >currency_exchange</mat-icon
@@ -212,6 +256,7 @@
           routerLink="summary"
           aria-label="summary"
           title="Summary"
+          data-testid="mobile-nav-summary"
         >
           <mat-icon fontSet="material-symbols-outlined">compare_arrows</mat-icon
           >&nbsp;Summary
@@ -221,6 +266,7 @@
           routerLink="history"
           aria-label="history"
           title="History"
+          data-testid="mobile-nav-history"
         >
           <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
           >&nbsp;History
@@ -230,12 +276,19 @@
           routerLink="split"
           aria-label="split expense"
           title="Split expense"
+          data-testid="mobile-nav-split"
         >
           <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
           >&nbsp;Split
         </a>
       }
-      <a mat-menu-item routerLink="help" aria-label="help" title="Help">
+      <a
+        mat-menu-item
+        routerLink="help"
+        aria-label="help"
+        title="Help"
+        data-testid="mobile-nav-help"
+      >
         <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
       </a>
       <a
@@ -243,11 +296,18 @@
         routerLink="auth/account"
         aria-label="account"
         title="Account"
+        data-testid="mobile-nav-account"
       >
         <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
         >&nbsp;Account
       </a>
-      <a mat-menu-item (click)="logout()" aria-label="log out" title="Log out">
+      <a
+        mat-menu-item
+        (click)="logout()"
+        aria-label="log out"
+        title="Log out"
+        data-testid="mobile-logout-button"
+      >
         <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>&nbsp;Log
         out
       </a>
@@ -257,19 +317,26 @@
         routerLink="split"
         aria-label="split expense"
         title="Split expense"
+        data-testid="mobile-nav-split-logged-out"
       >
         <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
         >&nbsp;Split
       </a>
-      <a mat-menu-item routerLink="auth/login" aria-label="login" title="Login">
+      <a
+        mat-menu-item
+        routerLink="auth/login"
+        aria-label="login"
+        title="Login"
+        data-testid="mobile-nav-login"
+      >
         <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
         in
       </a>
     }
   </div>
 </mat-menu>
-<loading />
-<div id="outlet">
+<loading data-testid="loading-component" />
+<div id="outlet" data-testid="main-content">
   <router-outlet />
 </div>
-<footer></footer>
+<footer data-testid="main-footer"></footer>
