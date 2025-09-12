@@ -7,6 +7,7 @@ import {
   withMethods,
   withState,
 } from '@ngrx/signals';
+import { DocumentReference } from 'firebase/firestore';
 
 type MemberState = {
   currentMember: Member | null;
@@ -32,6 +33,11 @@ export const MemberStore = signalStore(
     },
     setGroupMembers: (members: Member[]) => {
       patchState(store, { groupMembers: members, loaded: true });
+    },
+    getMemberByRef: (ref: DocumentReference<Member> | null) => {
+      if (!ref) return null;
+      const members = store.groupMembers();
+      return members.find((m) => m.ref.eq(ref)) || null;
     },
   })),
   withComputed(({ groupMembers }) => ({

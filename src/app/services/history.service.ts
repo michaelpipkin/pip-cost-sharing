@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
 import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
 import {
   collection,
   deleteDoc,
@@ -18,6 +19,7 @@ import { IHistoryService } from './history.service.interface';
 export class HistoryService implements IHistoryService {
   protected readonly fs = inject(getFirestore);
   protected readonly historyStore = inject(HistoryStore);
+  protected readonly memberStore = inject(MemberStore);
 
   getHistoryForGroup(groupId: string): void {
     const historyQuery = query(
@@ -27,9 +29,12 @@ export class HistoryService implements IHistoryService {
     onSnapshot(historyQuery, (historyQuerySnap) => {
       const history = [
         ...historyQuerySnap.docs.map((doc) => {
+          const data = doc.data();
           return new History({
             id: doc.id,
-            ...doc.data(),
+            ...data,
+            paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
+            paidToMember: this.memberStore.getMemberByRef(data.paidToMemberRef),
             ref: doc.ref as DocumentReference<History>,
           });
         }),

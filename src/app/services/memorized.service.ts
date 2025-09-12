@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
+import { CategoryStore } from '@store/category.store';
+import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
@@ -21,6 +23,8 @@ import { IMemorizedService } from './memorized.service.interface';
 export class MemorizedService implements IMemorizedService {
   protected readonly fs = inject(getFirestore);
   protected readonly memorizedStore = inject(MemorizedStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly memberStore = inject(MemberStore);
   protected readonly analytics = inject(getAnalytics);
 
   getMemorizedExpensesForGroup(groupId: string): void {
@@ -28,19 +32,24 @@ export class MemorizedService implements IMemorizedService {
       this.fs,
       `groups/${groupId}/memorized`
     );
-    
+
     onSnapshot(
-      memorizedCollection, 
+      memorizedCollection,
       (snapshot) => {
         try {
-          const memorized = snapshot.docs.map(
-            (doc) =>
-              new Memorized({
-                id: doc.id,
-                ...doc.data(),
-                ref: doc.ref as DocumentReference<Memorized>,
-              })
-          );
+          const memorized = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return new Memorized({
+              id: doc.id,
+              ...data,
+              category: this.categoryStore.getCategoryByRef(data.categoryRef),
+              paidByMember: this.memberStore.getMemberByRef(
+                data.paidByMemberRef
+              ),
+              // Note: Splits inside memorized expenses do not have member/category objects
+              ref: doc.ref as DocumentReference<Memorized>,
+            });
+          });
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
           logEvent(this.analytics, 'error', {
@@ -48,7 +57,7 @@ export class MemorizedService implements IMemorizedService {
             method: 'getMemorizedExpensesForGroup',
             message: 'Failed to process memorized expenses snapshot',
             groupId,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       },
@@ -58,7 +67,7 @@ export class MemorizedService implements IMemorizedService {
           method: 'getMemorizedExpensesForGroup',
           message: 'Failed to listen to memorized expenses',
           groupId,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     );
@@ -68,14 +77,16 @@ export class MemorizedService implements IMemorizedService {
     try {
       const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
       const memorizedDoc = await getDoc(d);
-      
+
       if (!memorizedDoc.exists()) {
         throw new Error('Memorized expense not found');
       }
-      
+      const data = memorizedDoc.data();
       return new Memorized({
         id: memorizedDoc.id,
-        ...memorizedDoc.data(),
+        ...data,
+        category: this.categoryStore.getCategoryByRef(data.categoryRef),
+        paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: memorizedDoc.ref as DocumentReference<Memorized>,
       });
     } catch (error) {
@@ -85,7 +96,7 @@ export class MemorizedService implements IMemorizedService {
         message: 'Failed to get memorized expense',
         groupId,
         memorizedId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -97,14 +108,14 @@ export class MemorizedService implements IMemorizedService {
   ): Promise<DocumentReference<Memorized>> {
     try {
       const c = collection(this.fs, `groups/${groupId}/memorized`);
-      return await addDoc(c, memorized) as DocumentReference<Memorized>;
+      return (await addDoc(c, memorized)) as DocumentReference<Memorized>;
     } catch (error) {
       logEvent(this.analytics, 'error', {
         service: 'MemorizedService',
         method: 'addMemorized',
         message: 'Failed to add memorized expense',
         groupId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -122,7 +133,7 @@ export class MemorizedService implements IMemorizedService {
         method: 'updateMemorized',
         message: 'Failed to update memorized expense',
         memorizedId: memorizedRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -139,7 +150,7 @@ export class MemorizedService implements IMemorizedService {
         method: 'deleteMemorized',
         message: 'Failed to delete memorized expense',
         memorizedId: memorizedRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }

@@ -8,12 +8,23 @@
       <div></div>
       <h3 data-testid="summary-page-title">Summary</h3>
       <div class="help-icon" data-testid="summary-help-icon-container">
-        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="summary-help-button" aria-label="Show help for summary">help</mat-icon>
+        <mat-icon
+          matTooltip="Help"
+          (click)="showHelp()"
+          data-testid="summary-help-button"
+          aria-label="Show help for summary"
+          >help</mat-icon
+        >
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div>
-      <mat-form-field id="member-select" subscriptSizing="dynamic" class="mb-3" data-testid="summary-member-field">
+      <mat-form-field
+        id="member-select"
+        subscriptSizing="dynamic"
+        class="mb-3"
+        data-testid="summary-member-field"
+      >
         <mat-label>Select Member</mat-label>
         <mat-select
           name="member"
@@ -107,13 +118,13 @@
             <ng-container matColumnDef="owedTo">
               <th mat-header-cell *matHeaderCellDef>Owed To</th>
               <td mat-cell *matCellDef="let amountDue">
-                {{ getMemberName(amountDue.owedToMemberRef.id) }}
+                {{ amountDue.owedToMember.displayName }}
               </td>
             </ng-container>
             <ng-container matColumnDef="owedBy">
               <th mat-header-cell *matHeaderCellDef>Owed By</th>
               <td mat-cell *matCellDef="let amountDue">
-                {{ getMemberName(amountDue.owedByMemberRef.id) }}
+                {{ amountDue.owedByMember.displayName }}
               </td>
             </ng-container>
             <ng-container matColumnDef="amount">
@@ -139,8 +150,8 @@
                   "
                   title="
                 Pay expenses owed to {{
-                    getMemberName(amountDue.owedToMemberRef.id)
-                  }} from {{ getMemberName(amountDue.owedByMemberRef.id) }}.
+                    amountDue.owedToMember.displayName
+                  }} from {{ amountDue.owedByMember.displayName }}.
               "
                 >
                   <mat-icon>paid</mat-icon>
@@ -173,7 +184,7 @@
                       <ng-container matColumnDef="category">
                         <th mat-header-cell *matHeaderCellDef>Category</th>
                         <td mat-cell *matCellDef="let lineItem">
-                          {{ getCategoryName(lineItem.categoryRef.id) }}
+                          {{ lineItem.category.name }}
                         </td>
                       </ng-container>
                       <ng-container matColumnDef="amount">

@@ -8,7 +8,9 @@ export class History {
   id: string;
   date: Timestamp;
   paidByMemberRef: DocumentReference<Member>;
+  paidByMember?: Member;
   paidToMemberRef: DocumentReference<Member>;
+  paidToMember?: Member;
   totalPaid: number;
   lineItems: { category: string; amount: number }[];
   ref?: DocumentReference<History>;

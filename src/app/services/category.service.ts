@@ -1,8 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
 import { CategoryStore } from '@store/category.store';
-import { ICategoryService } from './category.service.interface';
-import { SortingService } from './sorting.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   addDoc,
@@ -18,6 +16,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { ICategoryService } from './category.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
@@ -50,7 +50,7 @@ export class CategoryService implements ICategoryService {
             service: 'CategoryService',
             method: 'getGroupCategories',
             message: 'Failed to process categories snapshot',
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       },
@@ -59,28 +59,10 @@ export class CategoryService implements ICategoryService {
           service: 'CategoryService',
           method: 'getGroupCategories',
           message: 'Failed to listen to categories',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     );
-  }
-
-  async getCategoryMap(groupId: string): Promise<Map<string, string>> {
-    try {
-      const categoriesQuery = query(
-        collection(this.fs, `groups/${groupId}/categories`)
-      );
-      const categoriesSnap = await getDocs(categoriesQuery);
-
-      const categoryMap = new Map<string, string>();
-      categoriesSnap.docs.forEach((doc) => {
-        categoryMap.set(doc.id, doc.data().name);
-      });
-
-      return categoryMap;
-    } catch (error) {
-      throw error;
-    }
   }
 
   async addCategory(

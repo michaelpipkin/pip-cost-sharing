@@ -1,6 +1,8 @@
 @if (!memorizedStore.loaded()) {
   <div class="container pt-3" data-testid="memorized-loading-container">
-    <h3 data-testid="loading-memorized-message">Loading memorized expenses...</h3>
+    <h3 data-testid="loading-memorized-message">
+      Loading memorized expenses...
+    </h3>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="memorized-main-container">
@@ -8,12 +10,22 @@
       <div></div>
       <h3 data-testid="memorized-page-title">Memorized Expenses</h3>
       <div class="help-icon" data-testid="memorized-help-icon-container">
-        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="memorized-help-button" aria-label="Show help for memorized expenses">help</mat-icon>
+        <mat-icon
+          matTooltip="Help"
+          (click)="showHelp()"
+          data-testid="memorized-help-button"
+          aria-label="Show help for memorized expenses"
+          >help</mat-icon
+        >
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div class="filters" data-testid="memorized-filters">
-      <mat-form-field id="search-field" subscriptSizing="dynamic" data-testid="memorized-search-field">
+      <mat-form-field
+        id="search-field"
+        subscriptSizing="dynamic"
+        data-testid="memorized-search-field"
+      >
         <mat-label>{{
           searchFocused()
             ? 'Search by payer, description, or category'
@@ -41,7 +53,13 @@
           </button>
         }
       </mat-form-field>
-      <button mat-raised-button class="btn-primary" routerLink="/memorized/add" data-testid="memorize-new-expense-button" aria-label="Memorize new expense">
+      <button
+        mat-raised-button
+        class="btn-primary"
+        routerLink="/memorized/add"
+        data-testid="memorize-new-expense-button"
+        aria-label="Memorize new expense"
+      >
         Memorize New Expense
       </button>
     </div>
@@ -61,7 +79,7 @@
             <ng-container matColumnDef="paidBy">
               <th mat-header-cell *matHeaderCellDef>Payer</th>
               <td mat-cell *matCellDef="let expense">
-                {{ getMemberName(expense.paidByMemberRef.id) }}
+                {{ expense.paidByMember.displayName }}
               </td>
             </ng-container>
             <ng-container matColumnDef="description-category">
@@ -71,7 +89,7 @@
               <td mat-cell *matCellDef="let expense">
                 {{ expense.description }}
                 <br />
-                {{ getCategoryName(expense.categoryRef.id) }}
+                {{ expense.category.name }}
               </td>
             </ng-container>
             <ng-container matColumnDef="description">
@@ -83,7 +101,7 @@
             <ng-container matColumnDef="category">
               <th mat-header-cell *matHeaderCellDef>Category</th>
               <td mat-cell *matCellDef="let expense">
-                {{ getCategoryName(expense.categoryRef.id) }}
+                {{ expense.category.name }}
               </td>
             </ng-container>
             <ng-container matColumnDef="amount">
@@ -150,7 +168,7 @@
                       <ng-container matColumnDef="owedBy">
                         <th mat-header-cell *matHeaderCellDef>Owed By</th>
                         <td mat-cell *matCellDef="let split">
-                          {{ getMemberName(split.owedByMemberRef.id) }}
+                          {{ split.owedByMember.displayName }}
                         </td>
                       </ng-container>
                       <ng-container matColumnDef="amount">

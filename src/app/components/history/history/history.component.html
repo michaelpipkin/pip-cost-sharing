@@ -8,12 +8,23 @@
       <div></div>
       <h3 data-testid="history-page-title">History</h3>
       <div class="help-icon" data-testid="history-help-icon-container">
-        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="history-help-button" aria-label="Show help for history">help</mat-icon>
+        <mat-icon
+          matTooltip="Help"
+          (click)="showHelp()"
+          data-testid="history-help-button"
+          aria-label="Show help for history"
+          >help</mat-icon
+        >
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div>
-      <mat-form-field id="member-select" subscriptSizing="dynamic" class="mb-3" data-testid="history-member-field">
+      <mat-form-field
+        id="member-select"
+        subscriptSizing="dynamic"
+        class="mb-3"
+        data-testid="history-member-field"
+      >
         <mat-label>Select Member</mat-label>
         <mat-select
           name="member"
@@ -117,13 +128,13 @@
             <ng-container matColumnDef="paidTo">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Paid To</th>
               <td mat-cell *matCellDef="let history">
-                {{ getMemberName(history.paidToMemberRef.id) }}
+                {{ history.paidToMember.displayName }}
               </td>
             </ng-container>
             <ng-container matColumnDef="paidBy">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Paid By</th>
               <td mat-cell *matCellDef="let history">
-                {{ getMemberName(history.paidByMemberRef.id) }}
+                {{ history.paidByMember.displayName }}
               </td>
             </ng-container>
             <ng-container matColumnDef="amount">

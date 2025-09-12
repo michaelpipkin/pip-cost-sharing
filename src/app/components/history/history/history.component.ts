@@ -1,4 +1,13 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -13,6 +22,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -26,19 +39,6 @@ import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-history',
@@ -184,11 +184,6 @@ export class HistoryComponent {
     this.sortAsc.set(h.direction === 'asc');
   }
 
-  getMemberName(memberId: string): string {
-    const member = this.members().find((m) => m.id === memberId);
-    return member?.displayName ?? '';
-  }
-
   resetHistoryTable(): void {
     this.expandedHistory.set(null);
   }
@@ -226,8 +221,8 @@ export class HistoryComponent {
   }
 
   private generateHistoryText(history: History): string {
-    const paidBy = this.getMemberName(history.paidByMemberRef.id);
-    const paidTo = this.getMemberName(history.paidToMemberRef.id);
+    const paidBy = history.paidByMember.displayName;
+    const paidTo = history.paidToMember.displayName;
     const date = history.date.toDate().toLocaleDateString();
 
     let summaryText = `Payment History\n`;
