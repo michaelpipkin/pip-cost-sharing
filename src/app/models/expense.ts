@@ -12,8 +12,9 @@ export class Expense {
   date: Timestamp;
   description: string;
   categoryRef: DocumentReference<Category>;
-  categoryName?: string;
+  category?: Category;
   paidByMemberRef: DocumentReference<Member>;
+  paidByMember?: Member;
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;

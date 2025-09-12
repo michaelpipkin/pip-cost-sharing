@@ -152,16 +152,6 @@ export class MemorizedComponent implements OnInit {
     this.expandedExpense.update((e) => (e === expense ? null : expense));
   }
 
-  getMemberName(memberId: string): string {
-    const member = this.members().find((m: Member) => m.id === memberId);
-    return member?.displayName ?? '';
-  }
-
-  getCategoryName(categoryId: string): string {
-    const category = this.categories().find((c) => c.id === categoryId);
-    return category?.name ?? '';
-  }
-
   onRowClick(memorized: Memorized): void {
     this.loading.loadingOn();
     this.router.navigate(['/memorized', memorized.id]);

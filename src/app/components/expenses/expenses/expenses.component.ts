@@ -1,5 +1,14 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -34,15 +43,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -241,16 +241,6 @@ export class ExpensesComponent implements OnInit {
     this.sortAsc.set(e.direction == 'asc');
   }
 
-  getMemberName(memberId: string): string {
-    const member = this.members().find((m) => m.id === memberId);
-    return member?.displayName ?? '';
-  }
-
-  getCategoryName(categoryId: string): string {
-    const category = this.categories().find((c) => c.id === categoryId);
-    return category?.name ?? '';
-  }
-
   onRowClick(expense: Expense): void {
     this.loading.loadingOn();
     this.router.navigate(['/expenses', expense.id]);
@@ -312,14 +302,12 @@ export class ExpensesComponent implements OnInit {
   }
 
   private generateExpenseSummaryText(expense: Expense): string {
-    const payer = this.getMemberName(expense.paidByMemberRef.id);
-    const category = expense.categoryName;
     const date = expense.date.toDate().toLocaleDateString();
 
     let summaryText = `Date: ${date}\n`;
     summaryText += `Description: ${expense.description}\n`;
-    summaryText += `Category: ${category}\n`;
-    summaryText += `Paid by: ${payer}\n`;
+    summaryText += `Category: ${expense.category.name}\n`;
+    summaryText += `Paid by: ${expense.paidByMember.displayName}\n`;
     summaryText += `Total: ${this.formatCurrency(expense.totalAmount)}\n`;
 
     // Add breakdown information similar to split component
@@ -337,7 +325,7 @@ export class ExpensesComponent implements OnInit {
 
     // First pass: collect all lines and calculate max lengths
     expense.splits.forEach((split) => {
-      const owedBy = this.getMemberName(split.owedByMemberRef.id);
+      const owedBy = split.owedByMember.displayName;
       // Only show paid status if the person who owes is different from the person who paid
       const showPaidStatus = !expense.paidByMemberRef.eq(split.owedByMemberRef);
       const paidStatus = showPaidStatus

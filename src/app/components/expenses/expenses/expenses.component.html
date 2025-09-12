@@ -4,7 +4,13 @@
       <div></div>
       <h3 data-testid="expenses-page-title">Expenses</h3>
       <div class="help-icon" data-testid="expenses-help-icon-container">
-        <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="expenses-help-button" aria-label="Show help for expenses">help</mat-icon>
+        <mat-icon
+          matTooltip="Help"
+          (click)="showHelp()"
+          data-testid="expenses-help-button"
+          aria-label="Show help for expenses"
+          >help</mat-icon
+        >
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
@@ -146,7 +152,7 @@
               <td mat-cell *matCellDef="let expense" class="no-wrap">
                 {{ expense.date.toDate() | date: 'M/d/yy' }}
                 <br />
-                {{ getMemberName(expense.paidByMemberRef.id) }}
+                {{ expense.paidByMember.displayName }}
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
@@ -167,7 +173,7 @@
             <ng-container matColumnDef="paidBy">
               <th mat-header-cell *matHeaderCellDef>Payer</th>
               <td mat-cell *matCellDef="let expense">
-                {{ getMemberName(expense.paidByMemberRef.id) }}
+                {{ expense.paidByMember.displayName }}
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
@@ -178,7 +184,7 @@
               <td mat-cell *matCellDef="let expense">
                 {{ expense.description }}
                 <br />
-                {{ expense.categoryName }}
+                {{ expense.category.name }}
               </td>
               <td mat-footer-cell *matFooterCellDef class="cell-right">
                 Total:
@@ -194,7 +200,7 @@
             <ng-container matColumnDef="category">
               <th mat-header-cell *matHeaderCellDef>Category</th>
               <td mat-cell *matCellDef="let expense">
-                {{ expense.categoryName }}
+                {{ expense.category.name }}
               </td>
               <td mat-footer-cell *matFooterCellDef class="cell-right">
                 Total:
@@ -301,7 +307,7 @@
                       <ng-container matColumnDef="owedBy">
                         <th mat-header-cell *matHeaderCellDef>Owed By</th>
                         <td mat-cell *matCellDef="let split">
-                          {{ getMemberName(split.owedByMemberRef.id) }}
+                          {{ split.owedByMember.displayName }}
                         </td>
                       </ng-container>
                       <ng-container matColumnDef="amount">
