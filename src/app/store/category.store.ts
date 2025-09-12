@@ -7,6 +7,7 @@ import {
   withMethods,
   withState,
 } from '@ngrx/signals';
+import { DocumentReference } from 'firebase/firestore';
 
 type CategoryState = {
   groupCategories: Category[];
@@ -27,6 +28,11 @@ export const CategoryStore = signalStore(
     },
     clearGroupCategories: () => {
       patchState(store, { groupCategories: [], loaded: false });
+    },
+    getCategoryByRef: (categoryRef: DocumentReference<Category> | null) => {
+      if (!categoryRef) return null;
+      const categories = store.groupCategories();
+      return categories.find((c) => c.ref.eq(categoryRef)) || null;
     },
   })),
   withComputed(({ groupCategories }) => ({

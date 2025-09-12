@@ -10,7 +10,9 @@ export class Memorized {
   id: string;
   description: string;
   categoryRef: DocumentReference<Category>;
+  category?: Category;
   paidByMemberRef: DocumentReference<Member>;
+  paidByMember?: Member;
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;

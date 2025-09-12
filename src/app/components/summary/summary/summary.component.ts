@@ -89,8 +89,8 @@ export class SummaryComponent {
   splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
-  owedToMember = signal<DocumentReference<Member>>(null);
-  owedByMember = signal<DocumentReference<Member>>(null);
+  owedToMemberRef = signal<DocumentReference<Member>>(null);
+  owedByMemberRef = signal<DocumentReference<Member>>(null);
 
   selectedMember = model<DocumentReference<Member>>(
     this.currentMember()?.ref ?? null
@@ -146,7 +146,9 @@ export class SummaryComponent {
               summaryData.push(
                 new AmountDue({
                   owedByMemberRef: member.ref,
+                  owedByMember: member,
                   owedToMemberRef: selectedMember,
+                  owedToMember: this.memberStore.getMemberByRef(selectedMember),
                   amount: owedToSelected - owedBySelected,
                 })
               );
@@ -154,7 +156,9 @@ export class SummaryComponent {
               summaryData.push(
                 new AmountDue({
                   owedToMemberRef: member.ref,
+                  owedToMember: member,
                   owedByMemberRef: selectedMember,
+                  owedByMember: this.memberStore.getMemberByRef(selectedMember),
                   amount: owedBySelected - owedToSelected,
                 })
               );
@@ -167,18 +171,18 @@ export class SummaryComponent {
 
   detailData = computed(
     (
-      owedToMember: DocumentReference<Member> = this.owedToMember(),
-      owedByMember: DocumentReference<Member> = this.owedByMember(),
+      owedToMemberRef: DocumentReference<Member> = this.owedToMemberRef(),
+      owedByMemberRef: DocumentReference<Member> = this.owedByMemberRef(),
       splits: Split[] = this.filteredSplits(),
       categories: Category[] = this.categories()
     ) => {
       var detailData: AmountDue[] = [];
       const memberSplits = splits.filter(
         (s) =>
-          (s.owedByMemberRef.eq(owedToMember) ||
-            s.paidByMemberRef.eq(owedToMember)) &&
-          (s.owedByMemberRef.eq(owedByMember) ||
-            s.paidByMemberRef.eq(owedByMember))
+          (s.owedByMemberRef.eq(owedToMemberRef) ||
+            s.paidByMemberRef.eq(owedToMemberRef)) &&
+          (s.owedByMemberRef.eq(owedByMemberRef) ||
+            s.paidByMemberRef.eq(owedByMemberRef))
       );
       categories.forEach((category) => {
         if (
@@ -189,20 +193,25 @@ export class SummaryComponent {
           const owedToMember1 = memberSplits
             .filter(
               (s: Split) =>
-                s.paidByMemberRef.eq(owedToMember) &&
+                s.paidByMemberRef.eq(owedToMemberRef) &&
                 s.categoryRef.eq(category.ref)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           const owedToMember2 = memberSplits
             .filter(
               (s: Split) =>
-                s.paidByMemberRef.eq(owedByMember) &&
+                s.paidByMemberRef.eq(owedByMemberRef) &&
                 s.categoryRef.eq(category.ref)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           detailData.push(
             new AmountDue({
               categoryRef: category.ref,
+              category: category,
+              owedByMemberRef: owedByMemberRef,
+              owedByMember: this.memberStore.getMemberByRef(owedByMemberRef),
+              owedToMemberRef: owedToMemberRef,
+              owedToMember: this.memberStore.getMemberByRef(owedToMemberRef),
               amount: owedToMember1 - owedToMember2,
             })
           );
@@ -229,18 +238,8 @@ export class SummaryComponent {
 
   onExpandClick(amountDue: AmountDue): void {
     this.expandedDetail.update((d) => (d === amountDue ? null : amountDue));
-    this.owedByMember.set(amountDue.owedByMemberRef);
-    this.owedToMember.set(amountDue.owedToMemberRef);
-  }
-
-  getMemberName(memberId: string): string {
-    const member = this.members().find((m) => m.id === memberId);
-    return member?.displayName ?? '';
-  }
-
-  getCategoryName(categoryId: string): string {
-    const category = this.categories().find((c) => c.id === categoryId);
-    return category?.name ?? '';
+    this.owedByMemberRef.set(amountDue.owedByMemberRef);
+    this.owedToMemberRef.set(amountDue.owedToMemberRef);
   }
 
   resetDetail(): void {
@@ -248,30 +247,32 @@ export class SummaryComponent {
   }
 
   async payExpenses(
-    owedToMember: DocumentReference<Member>,
-    owedByMember: DocumentReference<Member>
+    owedToMemberRef: DocumentReference<Member>,
+    owedByMemberRef: DocumentReference<Member>
   ): Promise<void> {
-    this.owedToMember.set(owedToMember);
-    this.owedByMember.set(owedByMember);
+    this.owedToMemberRef.set(owedToMemberRef);
+    this.owedByMemberRef.set(owedByMemberRef);
     var splitsToPay: Split[] = [];
     const memberSplits = this.filteredSplits().filter(
       (s) =>
-        (s.owedByMemberRef.eq(owedByMember) &&
-          s.paidByMemberRef.eq(owedToMember)) ||
-        (s.owedByMemberRef.eq(owedToMember) &&
-          s.paidByMemberRef.eq(owedByMember))
+        (s.owedByMemberRef.eq(owedByMemberRef) &&
+          s.paidByMemberRef.eq(owedToMemberRef)) ||
+        (s.owedByMemberRef.eq(owedToMemberRef) &&
+          s.paidByMemberRef.eq(owedByMemberRef))
     );
     splitsToPay = memberSplits;
     let paymentMethods = {};
     this.loading.loadingOn();
     try {
-      paymentMethods = await this.userService.getPaymentMethods(owedToMember);
+      paymentMethods =
+        await this.userService.getPaymentMethods(owedToMemberRef);
     } finally {
       this.loading.loadingOff();
     }
     const dialogConfig: MatDialogConfig = {
       data: {
-        payToMemberName: this.getMemberName(owedToMember.id),
+        payToMemberName: this.members().find((m) => m.ref.eq(owedToMemberRef))
+          ?.displayName,
         ...paymentMethods,
       },
     };
@@ -281,13 +282,13 @@ export class SummaryComponent {
         try {
           this.loading.loadingOn();
           let history = {
-            paidByMemberRef: owedByMember,
-            paidToMemberRef: owedToMember,
+            paidByMemberRef: owedByMemberRef,
+            paidToMemberRef: owedToMemberRef,
             date: Timestamp.now(),
             totalPaid: +splitsToPay
               .reduce(
                 (total, s) =>
-                  s.paidByMemberRef.eq(owedToMember)
+                  s.paidByMemberRef.eq(owedToMemberRef)
                     ? (total += +s.allocatedAmount)
                     : (total -= +s.allocatedAmount),
                 0
@@ -297,7 +298,7 @@ export class SummaryComponent {
           };
           this.detailData().forEach((split) => {
             history.lineItems.push({
-              category: this.getCategoryName(split.categoryRef.id),
+              category: split.category.name,
               amount: split.amount,
             });
           });
@@ -357,8 +358,8 @@ export class SummaryComponent {
   }
 
   private generateSummaryText(amountDue: AmountDue): string {
-    const owedTo = this.getMemberName(amountDue.owedToMemberRef.id);
-    const owedBy = this.getMemberName(amountDue.owedByMemberRef.id);
+    const owedTo = amountDue.owedToMember.displayName;
+    const owedBy = amountDue.owedByMember.displayName;
 
     let summaryText = `Expenses Summary\n`;
     summaryText += `${owedBy} owes ${owedTo} ${this.formatCurrency(amountDue.amount)}\n\n`;
@@ -373,11 +374,14 @@ export class SummaryComponent {
       const categoryLines: { name: string; amount: string }[] = [];
 
       categoryDetails.forEach((detail) => {
-        const categoryName = this.getCategoryName(detail.categoryRef.id);
         const formattedAmount = this.formatCurrency(detail.amount);
-        const lineLength = categoryName.length + 2 + formattedAmount.length; // +2 for ": "
+        const lineLength =
+          detail.category.name.length + 2 + formattedAmount.length; // +2 for ": "
         maxLineLength = Math.max(maxLineLength, lineLength);
-        categoryLines.push({ name: categoryName, amount: formattedAmount });
+        categoryLines.push({
+          name: detail.category.name,
+          amount: formattedAmount,
+        });
       });
 
       summaryText += `${'='.repeat(maxLineLength + 1)}\n`;
