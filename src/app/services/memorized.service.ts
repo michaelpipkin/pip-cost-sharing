@@ -37,14 +37,9 @@ export class MemorizedService implements IMemorizedService {
       memorizedCollection,
       (snapshot) => {
         try {
-          // Skip processing if stores are not loaded yet
-          if (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
-            return;
-          }
-
           const memorized = snapshot.docs.map((doc) => {
             const data = doc.data();
-            return new Memorized({
+            const memorized = new Memorized({
               id: doc.id,
               ...data,
               category: this.categoryStore.getCategoryByRef(data.categoryRef),
@@ -54,6 +49,18 @@ export class MemorizedService implements IMemorizedService {
               // Note: Splits inside memorized expenses do not have member/category objects
               ref: doc.ref as DocumentReference<Memorized>,
             });
+            memorized.splits.forEach((split) => {
+              split.paidByMember = this.memberStore.getMemberByRef(
+                split.paidByMemberRef
+              );
+              split.owedByMember = this.memberStore.getMemberByRef(
+                split.owedByMemberRef
+              );
+              split.category = this.categoryStore.getCategoryByRef(
+                split.categoryRef
+              );
+            });
+            return memorized;
           });
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
@@ -82,7 +89,7 @@ export class MemorizedService implements IMemorizedService {
     try {
       // Wait for stores to be loaded before processing
       while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
