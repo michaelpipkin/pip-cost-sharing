@@ -37,6 +37,11 @@ export class ExpenseService implements IExpenseService {
     endDate?: Date
   ): Promise<Expense[]> {
     try {
+      // Wait for stores to be loaded before processing
+      while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
       // Build split query
       let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
       if (startDate) {
@@ -105,6 +110,11 @@ export class ExpenseService implements IExpenseService {
 
   async getExpense(groupId: string, expenseId: string): Promise<Expense> {
     try {
+      // Wait for stores to be loaded before processing
+      while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
       const expenseReference = doc(
         this.fs,
         `groups/${groupId}/expenses/${expenseId}`
