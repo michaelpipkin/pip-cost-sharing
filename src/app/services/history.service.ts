@@ -27,6 +27,11 @@ export class HistoryService implements IHistoryService {
       orderBy('date', 'desc')
     );
     onSnapshot(historyQuery, (historyQuerySnap) => {
+      // Skip processing if stores are not loaded yet
+      if (!this.memberStore.loaded()) {
+        return;
+      }
+
       const history = [
         ...historyQuerySnap.docs.map((doc) => {
           const data = doc.data();

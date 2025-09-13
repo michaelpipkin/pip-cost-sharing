@@ -37,6 +37,11 @@ export class MemorizedService implements IMemorizedService {
       memorizedCollection,
       (snapshot) => {
         try {
+          // Skip processing if stores are not loaded yet
+          if (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
+            return;
+          }
+
           const memorized = snapshot.docs.map((doc) => {
             const data = doc.data();
             return new Memorized({
@@ -75,6 +80,11 @@ export class MemorizedService implements IMemorizedService {
 
   async getMemorized(groupId: string, memorizedId: string): Promise<Memorized> {
     try {
+      // Wait for stores to be loaded before processing
+      while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
       const d = doc(this.fs, `groups/${groupId}/memorized/${memorizedId}`);
       const memorizedDoc = await getDoc(d);
 
