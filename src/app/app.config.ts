@@ -21,10 +21,6 @@ import {
   MatSnackBarConfig,
 } from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
-import {
-  BrowserAnimationsModule,
-  provideAnimations,
-} from '@angular/platform-browser/animations';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { environment } from '@env/environment';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
@@ -72,12 +68,10 @@ export const appConfig: ApplicationConfig = {
       BrowserModule,
       FormsModule,
       ReactiveFormsModule,
-      BrowserAnimationsModule,
       MatNativeDateModule,
       MatDatepickerModule,
       MatIconModule
     ),
-    provideAnimations(),
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategyService },
     { provide: DateAdapter, useClass: CustomDateAdapter },
