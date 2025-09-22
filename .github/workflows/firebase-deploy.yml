@@ -82,6 +82,8 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
+          echo "Service account being used:"
+          cat service-account-key.json | jq -r '.client_email'
           firebase deploy --only functions --project pip-cost-sharing
           rm service-account-key.json
 
