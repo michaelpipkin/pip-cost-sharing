@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "type": "module",
   "scripts": {
     "ng": "ng",
@@ -88,6 +88,10 @@
       "lmdb",
       "msgpackr-extract",
       "protobufjs"
-    ]
+    ],
+    "overrides": {
+      "form-data": ">=2.5.4",
+      "brace-expansion": ">=1.1.12"
+    }
   }
 }
