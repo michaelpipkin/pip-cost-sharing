@@ -68,7 +68,7 @@ jobs:
 
       - name: Install functions dependencies
         if: steps.functions-changes.outputs.functions_changed == 'true'
-        run: cd functions && pnpm install --frozen-lockfile
+        run: cd functions && pnpm install
 
       - name: Build Angular App
         run: pnpm build:ci
