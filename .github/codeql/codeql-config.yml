@@ -1,0 +1,11 @@
+name: "CodeQL Config"
+paths-ignore:
+  - "**/*test*/**"
+  - "**/*spec*/**" 
+  - "**/e2e/**"
+  - "**/tests/**"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/cypress/**"
+  - "**/playwright/**"
+  - "**/*.e2e.*"
