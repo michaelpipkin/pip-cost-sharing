@@ -33,6 +33,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check for functions changes
+        id: functions-changes
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- functions/; then
+            echo "functions_changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in functions folder"
+          else
+            echo "functions_changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in functions folder"
+          fi
+
       - name: Create Firebase config file
         run: |
           cat << EOF > src/app/firebase.config.ts
@@ -55,12 +66,24 @@ jobs:
           };
           EOF
 
+      - name: Install functions dependencies
+        if: steps.functions-changes.outputs.functions_changed == 'true'
+        run: cd functions && pnpm install --frozen-lockfile
+
       - name: Build Angular App
         run: pnpm build:ci
 
       - name: Update Firebase CLI
         run: pnpm add -g firebase-tools
         
+      - name: Deploy Firebase Functions
+        if: steps.functions-changes.outputs.functions_changed == 'true'
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > service-account-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="service-account-key.json"
+          firebase deploy --only functions --project pip-cost-sharing
+          rm service-account-key.json
+
       - name: Deploy to Firebase Hosting
         id: deploy
         uses: FirebaseExtended/action-hosting-deploy@v0 
