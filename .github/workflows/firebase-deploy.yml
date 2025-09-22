@@ -80,9 +80,10 @@ jobs:
         if: steps.functions-changes.outputs.functions_changed == 'true'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
-          firebase deploy --only functions --project pip-cost-sharing --force
+          firebase deploy --only functions --project pip-cost-sharing --non-interactive
           rm service-account-key.json
 
       - name: Deploy to Firebase Hosting
