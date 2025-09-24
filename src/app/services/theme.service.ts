@@ -69,21 +69,10 @@ export class ThemeService implements IThemeService {
 
   private getSavedTheme(): ThemeMode {
     const savedTheme = localStorage.getItem(this.themeKey);
-    return (savedTheme as ThemeMode) || this.getPreferredTheme();
+    return (savedTheme as ThemeMode) || 'light';
   }
 
   private saveTheme(theme: ThemeMode): void {
     localStorage.setItem(this.themeKey, theme);
-  }
-
-  private getPreferredTheme(): ThemeMode {
-    // Check if user has a system preference
-    if (
-      window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    ) {
-      return 'dark';
-    }
-    return 'light';
   }
 }
