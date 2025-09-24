@@ -33,6 +33,7 @@
             "assets": [
               "src/favicon.ico",
               "src/manifest.json",
+              "src/ads.txt",
               "src/assets"
             ],
             "styles": [
@@ -105,6 +106,7 @@
             "assets": [
               "src/favicon.ico",
               "src/manifest.json",
+              "src/ads.txt",
               "src/assets"
             ],
             "styles": [
