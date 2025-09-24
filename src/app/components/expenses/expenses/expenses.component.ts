@@ -3,6 +3,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
   Component,
   computed,
+  effect,
   inject,
   model,
   OnInit,
@@ -39,6 +40,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -79,6 +81,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
@@ -97,8 +100,22 @@ export class ExpensesComponent implements OnInit {
 
   expenses = signal<Expense[]>([]);
   isLoaded = signal<boolean>(false);
+
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
+
+  constructor() {
+    // Watch for store data changes and auto-load demo expenses
+    effect(() => {
+      const storeExpenses = this.expenseStore.groupExpenses();
+      const storeLoaded = this.expenseStore.loaded();
+      if (storeExpenses.length > 0 && storeLoaded && this.expenses().length === 0) {
+        this.expenses.set(storeExpenses);
+        this.isLoaded.set(true);
+        console.log('Auto-loaded demo expenses from store:', storeExpenses.length);
+      }
+    });
+  }
 
   searchText = model<string>('');
   searchFocused = model<boolean>(false);
@@ -183,14 +200,23 @@ export class ExpensesComponent implements OnInit {
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
     try {
-      const expenses: Expense[] =
-        await this.expenseService.getGroupExpensesByDateRange(
-          this.currentGroup().id,
-          this.startDate(),
-          this.endDate()
-        );
-      this.expenses.set(expenses);
-      this.isLoaded.set(true);
+      // Check if we have store data (demo mode) first
+      const storeExpenses = this.expenseStore.groupExpenses();
+      if (storeExpenses.length > 0 && this.expenseStore.loaded()) {
+        // Use demo/store data
+        this.expenses.set(storeExpenses);
+        this.isLoaded.set(true);
+      } else {
+        // Fall back to Firebase service
+        const expenses: Expense[] =
+          await this.expenseService.getGroupExpensesByDateRange(
+            this.currentGroup().id,
+            this.startDate(),
+            this.endDate()
+          );
+        this.expenses.set(expenses);
+        this.isLoaded.set(true);
+      }
     } catch (error) {
       logEvent(this.analytics, 'fetch_expenses_error', {
         error: error.message,
