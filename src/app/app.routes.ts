@@ -22,19 +22,19 @@ export const appRoutes: Routes = [
     path: 'administration',
     loadChildren: () =>
       import('@components/administration/administration.routes').then((m) => m.administrationRoutes),
-    canActivate: [authGuard, groupGuard],
+    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
   },
   {
     path: 'expenses',
     loadChildren: () =>
       import('@components/expenses/expenses.routes').then((m) => m.expensesRoutes),
-    canActivate: [authGuard, groupGuard],
+    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
   },
   {
     path: 'memorized',
     loadChildren: () =>
       import('@components/memorized/memorized-routes').then((m) => m.memorizedRoutes),
-    canActivate: [authGuard, groupGuard],
+    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
   },
   // Backward compatibility redirects
   { path: 'summary', redirectTo: 'analysis/summary' },
@@ -43,7 +43,7 @@ export const appRoutes: Routes = [
     path: 'analysis',
     loadChildren: () =>
       import('@components/analysis/analysis.routes').then((m) => m.analysisRoutes),
-    canActivate: [authGuard, groupGuard],
+    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
   },
   {
     path: 'help',
