@@ -11,8 +11,6 @@ if (environment.production) {
 }
 
 bootstrapApplication(AppComponent, appConfig).catch((err) => {
-  const analytics = inject(getAnalytics);
-  logEvent(analytics, 'bootstrap_error', {
-    error: err,
-  });
+  // Log bootstrap errors to console (cannot use Firebase Analytics here due to injection context)
+  console.error('Bootstrap error:', err);
 });

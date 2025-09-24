@@ -6,6 +6,7 @@ import { User } from '@models/user';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { GroupService } from './group.service';
+import { DemoModeService } from './demo-mode.service';
 import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
@@ -30,6 +31,7 @@ export class UserService implements IUserService {
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly demoModeService = inject(DemoModeService);
 
   constructor() {
     this.initializeAuth();
@@ -59,8 +61,8 @@ export class UserService implements IUserService {
             });
           }
         } else {
-          this.userStore.clearUser();
-          this.groupService.logout();
+          // Initialize demo mode for AdSense approval when no user is authenticated
+          this.demoModeService.initializeDemoData();
         }
       });
     } catch (error) {
