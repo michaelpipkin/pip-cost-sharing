@@ -92,6 +92,7 @@
             class="number-right"
             appFormatCurrencyInput
             (blur)="updateTotalAmount()"
+            inputmode="decimal"
           />
           <span matTextPrefix>$</span>
           @if (e.amount.errors?.['required']) {
@@ -116,6 +117,7 @@
             class="number-right"
             appFormatCurrencyInput
             (blur)="allocateSharedAmounts()"
+            inputmode="decimal"
           />
           <span matTextPrefix>$</span>
           <mat-hint>Tax, tip, etc.</mat-hint>
@@ -249,6 +251,7 @@
                     formControlName="assignedAmount"
                     appFormatCurrencyInput
                     (blur)="allocateSharedAmounts()"
+                    inputmode="decimal"
                   />
                   <span matTextPrefix>$</span>
                 </mat-form-field>
