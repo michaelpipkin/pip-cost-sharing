@@ -20,6 +20,11 @@ export class CalculatorOverlayService {
       this.closeCalculator();
     }
 
+    // Dismiss virtual keyboard on mobile by blurring active element
+    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     const overlayConfig = this.getOverlayConfig(triggerElement);
     this.overlayRef = this.overlay.create(overlayConfig);
 
