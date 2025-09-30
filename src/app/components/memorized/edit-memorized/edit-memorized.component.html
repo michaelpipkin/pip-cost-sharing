@@ -3,12 +3,23 @@
     <div></div>
     <h3 data-testid="edit-memorized-page-title">Edit Memorized Expense</h3>
     <div class="help-icon" data-testid="edit-memorized-help-icon-container">
-      <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="edit-memorized-help-button" aria-label="Show help for editing memorized expenses">help</mat-icon>
+      <mat-icon
+        matTooltip="Help"
+        (click)="showHelp()"
+        data-testid="edit-memorized-help-button"
+        aria-label="Show help for editing memorized expenses"
+        >help</mat-icon
+      >
     </div>
   </div>
   @let memberList = memorizedMembers();
   <div class="sub-container mb-2">
-    <form [formGroup]="editMemorizedForm" id="expense-form" data-testid="edit-memorized-form" aria-label="Edit memorized expense form">
+    <form
+      [formGroup]="editMemorizedForm"
+      id="expense-form"
+      data-testid="edit-memorized-form"
+      aria-label="Edit memorized expense form"
+    >
       <div>
         <mat-form-field id="paid-by-select">
           <mat-label>Payer</mat-label>
@@ -57,7 +68,7 @@
         <mat-form-field
           appearance="fill"
           floatLabel="always"
-          class="number-field"
+          class="total-amount-field"
         >
           <mat-label>Total Amount</mat-label>
           <input
@@ -71,6 +82,15 @@
             inputmode="decimal"
           />
           <span matTextPrefix>$</span>
+          <button
+            matIconSuffix
+            mat-icon-button
+            (click)="openCalculator($event, 'amount')"
+            aria-label="Open calculator"
+            type="button"
+          >
+            <mat-icon>calculate</mat-icon>
+          </button>
           @if (e.amount.errors?.['required']) {
             <mat-error> *Required </mat-error>
           }
@@ -81,7 +101,7 @@
         <mat-form-field
           appearance="fill"
           floatLabel="always"
-          class="number-field"
+          class="proportional-amount-field"
           [class.hidden]="splitByPercentage()"
         >
           <mat-label>Proportional Amount</mat-label>
@@ -96,6 +116,15 @@
             inputmode="decimal"
           />
           <span matTextPrefix>$</span>
+          <button
+            matIconSuffix
+            mat-icon-button
+            (click)="openCalculator($event, 'allocatedAmount')"
+            aria-label="Open calculator"
+            type="button"
+          >
+            <mat-icon>calculate</mat-icon>
+          </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
           @if (e.allocatedAmount.errors?.['required']) {
             <mat-error> *Required - Enter 0 if none </mat-error>
@@ -196,6 +225,15 @@
                     inputmode="decimal"
                   />
                   <span matTextPrefix>$</span>
+                  <button
+                    matIconSuffix
+                    mat-icon-button
+                    (click)="openCalculator($event, 'assignedAmount', i)"
+                    aria-label="Open calculator"
+                    type="button"
+                  >
+                    <mat-icon>calculate</mat-icon>
+                  </button>
                 </mat-form-field>
               }
               <div class="mock-input">

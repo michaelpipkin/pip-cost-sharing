@@ -24,7 +24,7 @@
           <mat-form-field
             appearance="fill"
             floatLabel="always"
-            class="number-field"
+            class="total-amount-field"
           >
             <mat-label>Total Amount</mat-label>
             <input
@@ -38,6 +38,15 @@
               inputmode="decimal"
             />
             <span matTextPrefix>$</span>
+            <button
+              matIconSuffix
+              mat-icon-button
+              (click)="openCalculator($event, 'amount')"
+              aria-label="Open calculator"
+              type="button"
+            >
+              <mat-icon>calculate</mat-icon>
+            </button>
             @if (e.amount.errors?.['required']) {
               <mat-error> *Required </mat-error>
             }
@@ -48,7 +57,7 @@
           <mat-form-field
             appearance="fill"
             floatLabel="always"
-            class="number-field"
+            class="proportional-amount-field"
             [class.hidden]="splitByPercentage()"
           >
             <mat-label>Proportional Amount</mat-label>
@@ -63,6 +72,15 @@
               inputmode="decimal"
             />
             <span matTextPrefix>$</span>
+            <button
+              matIconSuffix
+              mat-icon-button
+              (click)="openCalculator($event, 'allocatedAmount')"
+              aria-label="Open calculator"
+              type="button"
+            >
+              <mat-icon>calculate</mat-icon>
+            </button>
             <mat-hint>Tax, tip, etc.</mat-hint>
             @if (e.allocatedAmount.errors?.['required']) {
               <mat-error> *Required - Enter 0 if none </mat-error>
@@ -163,6 +181,15 @@
                       inputmode="decimal"
                     />
                     <span matTextPrefix>$</span>
+                    <button
+                      matIconSuffix
+                      mat-icon-button
+                      (click)="openCalculator($event, 'assignedAmount', i)"
+                      aria-label="Open calculator"
+                      type="button"
+                    >
+                      <mat-icon>calculate</mat-icon>
+                    </button>
                   </mat-form-field>
                 }
                 <div class="mock-input">

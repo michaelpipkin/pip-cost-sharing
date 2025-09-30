@@ -3,13 +3,24 @@
     <div></div>
     <h3 data-testid="edit-expense-page-title">Edit Expense</h3>
     <div class="help-icon" data-testid="edit-expense-help-icon-container">
-      <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="edit-expense-help-button" aria-label="Show help for editing expenses">help</mat-icon>
+      <mat-icon
+        matTooltip="Help"
+        (click)="showHelp()"
+        data-testid="edit-expense-help-button"
+        aria-label="Show help for editing expenses"
+        >help</mat-icon
+      >
     </div>
   </div>
   @let memberList = expenseMembers();
   @let hasReceipt = !!receiptUrl();
   <div class="sub-container mb-2">
-    <form [formGroup]="editExpenseForm" id="expense-form" data-testid="edit-expense-form" aria-label="Edit expense form">
+    <form
+      [formGroup]="editExpenseForm"
+      id="expense-form"
+      data-testid="edit-expense-form"
+      aria-label="Edit expense form"
+    >
       <div class="flex-wrap fw-start">
         <mat-form-field id="paid-by-select">
           <mat-label>Payer</mat-label>
@@ -81,7 +92,7 @@
         <mat-form-field
           appearance="fill"
           floatLabel="always"
-          class="number-field"
+          class="total-amount-field"
         >
           <mat-label>Total Amount</mat-label>
           <input
@@ -95,6 +106,15 @@
             inputmode="decimal"
           />
           <span matTextPrefix>$</span>
+          <button
+            matIconSuffix
+            mat-icon-button
+            (click)="openCalculator($event, 'amount')"
+            aria-label="Open calculator"
+            type="button"
+          >
+            <mat-icon>calculate</mat-icon>
+          </button>
           @if (e.amount.errors?.['required']) {
             <mat-error> *Required </mat-error>
           }
@@ -105,7 +125,7 @@
         <mat-form-field
           appearance="fill"
           floatLabel="always"
-          class="number-field"
+          class="proportional-amount-field"
           [class.hidden]="splitByPercentage()"
         >
           <mat-label>Proportional Amount</mat-label>
@@ -120,6 +140,15 @@
             inputmode="decimal"
           />
           <span matTextPrefix>$</span>
+          <button
+            matIconSuffix
+            mat-icon-button
+            (click)="openCalculator($event, 'allocatedAmount')"
+            aria-label="Open calculator"
+            type="button"
+          >
+            <mat-icon>calculate</mat-icon>
+          </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
         </mat-form-field>
         <div class="mock-input" [class.hidden]="splitByPercentage()">
@@ -254,6 +283,15 @@
                     inputmode="decimal"
                   />
                   <span matTextPrefix>$</span>
+                  <button
+                    matIconSuffix
+                    mat-icon-button
+                    (click)="openCalculator($event, 'assignedAmount', i)"
+                    aria-label="Open calculator"
+                    type="button"
+                  >
+                    <mat-icon>calculate</mat-icon>
+                  </button>
                 </mat-form-field>
               }
               <div class="mock-input">
