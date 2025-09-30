@@ -11,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Split } from '@models/split';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   afterEveryRender,
@@ -63,6 +64,7 @@ export class SplitComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly calculatorOverlay = inject(CalculatorOverlayService);
 
   submitted = signal<boolean>(false);
 
@@ -181,8 +183,11 @@ export class SplitComponent {
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedBy && splits[i].assignedAmount === 0) {
+        if (!splits[i].owedBy && +splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
+          this.splitsFormArray.at(i).patchValue({
+            allocatedAmount: 0,
+          });
         } else {
           i++;
         }
@@ -208,20 +213,28 @@ export class SplitComponent {
           sharedAmount: evenlySharedAmount,
         });
       }
-      splits.forEach((split: Split) => {
-        split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
-      });
-      splits.forEach((split: Split) => {
-        if (totalAmount === proportionalAmount) {
-          return;
-        }
-        const baseSplit: number =
-          +split.assignedAmount + +split.allocatedAmount;
-        split.allocatedAmount = +(
-          baseSplit +
-          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
-        ).toFixed(2);
-      });
+      splits
+        .filter((s) => s.owedBy !== '')
+        .forEach((split: Split) => {
+          split.allocatedAmount =
+            splitCount === 0
+              ? 0
+              : +(evenlySharedAmount / splitCount).toFixed(2);
+        });
+      splits
+        .filter((s) => s.owedBy !== '')
+        .forEach((split: Split) => {
+          if (totalAmount === proportionalAmount) {
+            return;
+          }
+          const baseSplit: number =
+            +split.assignedAmount + +split.allocatedAmount;
+          split.allocatedAmount = +(
+            baseSplit +
+            (baseSplit / (totalAmount - proportionalAmount)) *
+              proportionalAmount
+          ).toFixed(2);
+        });
       const allocatedTotal = +splits
         .reduce((total, s) => (total += s.allocatedAmount), 0)
         .toFixed(2);
@@ -243,11 +256,13 @@ export class SplitComponent {
         }
       }
       // Patch the allocatedAmount back into the form array
-      splits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
-          allocatedAmount: split.allocatedAmount,
+      splits
+        .filter((s) => s.owedBy !== '')
+        .forEach((split, index) => {
+          this.splitsFormArray.at(index).patchValue({
+            allocatedAmount: split.allocatedAmount,
+          });
         });
-      });
     }
   }
 
@@ -500,6 +515,29 @@ export class SplitComponent {
     this.splitsFormArray.clear();
     this.submitted.set(false);
     this.splitByPercentage.set(false);
+  }
+
+  openCalculator(event: Event, controlName: string, index?: number): void {
+    const target = event.target as HTMLElement;
+    this.calculatorOverlay.openCalculator(target, (result: number) => {
+      if (index !== undefined) {
+        const control = this.splitsFormArray.at(index).get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          if (this.splitByPercentage()) {
+            this.allocateByPercentage();
+          } else {
+            this.allocateSharedAmounts();
+          }
+        }
+      } else {
+        const control = this.expenseForm.get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          this.updateTotalAmount();
+        }
+      }
+    });
   }
 
   showHelp(): void {

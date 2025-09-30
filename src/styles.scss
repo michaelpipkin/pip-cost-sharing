@@ -6,6 +6,7 @@
 @use './app/styles/m3-green-theme.scss' as light;
 @use './app/styles/m3-green-dark-theme.scss' as dark;
 @use './app/styles/color-tokens.scss' as tokens;
+@use './app/shared/components/calculator/calculator-overlay.styles.scss';
 
 // Plus imports for other components in your app.
 $enable-negative-margins: true;
@@ -472,6 +473,22 @@ tr.detail-row:hover {
 
 .number-field .mat-mdc-form-field-infix {
   max-width: 100px;
+}
+
+.total-amount-field {
+  width: 140px;
+}
+
+.total-amount-field .mat-mdc-form-field-infix {
+  max-width: 90px;
+}
+
+.proportional-amount-field {
+  width: 160px;
+}
+
+.proportional-amount-field .mat-mdc-form-field-infix {
+  max-width: 120px;
 }
 
 .no-subscript {
