@@ -1,0 +1,131 @@
+.calculator {
+  background: var(--surface, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border, #e0e0e0);
+  padding: 16px;
+  width: 296px;
+  font-family: 'Roboto', sans-serif;
+  opacity: 1;
+  position: relative;
+  z-index: 1000;
+}
+
+.calculator-display {
+  background: var(--surface-variant, #f5f5f5);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.expression {
+  font-size: 14px;
+  color: var(--on-surface, #666);
+  min-height: 20px;
+  word-break: break-all;
+  opacity: 0.7;
+}
+
+.result {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--on-surface, #333);
+  text-align: right;
+  min-height: 28px;
+}
+
+.result.error {
+  color: var(--error, #f44336);
+  font-size: 18px;
+}
+
+.calculator-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calculator-row {
+  display: flex;
+  gap: 8px;
+}
+
+.calc-btn {
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  font-size: 18px;
+  font-weight: 500;
+  border-radius: 4px;
+  box-shadow: none;
+  line-height: 1 !important;
+  flex: none !important;
+  
+  // Ensure consistent sizing for icon buttons
+  &.mat-mdc-icon-button {
+    width: 60px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    
+    mat-icon {
+      font-size: 18px !important;
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
+}
+
+.calc-btn.full-width {
+  width: 100%;
+}
+
+.calc-btn.number {
+  background: var(--surface, #fff);
+  color: var(--on-surface, #333);
+  border: 1px solid var(--border, #ddd);
+}
+
+.calc-btn.number:hover {
+  background: var(--surface-variant, #f0f0f0);
+}
+
+.calc-btn.operator {
+  background: var(--secondary-light, #e3f2fd);
+  color: var(--on-secondary, #1976d2);
+  border: 1px solid var(--secondary, #bbdefb);
+}
+
+.calc-btn.operator:hover {
+  background: var(--secondary, #bbdefb);
+  color: var(--on-secondary, #1976d2);
+}
+
+.calc-btn.secondary {
+  background: var(--tertiary, #fff3e0);
+  color: var(--on-tertiary, #f57c00);
+  border: 1px solid var(--tertiary, #ffcc02);
+}
+
+.calc-btn.secondary:hover {
+  background: var(--tertiary, #ffcc02);
+  color: var(--on-tertiary, #f57c00);
+}
+
+.calc-btn.primary {
+  background: var(--primary, #1976d2);
+  color: var(--on-primary, white);
+  border: 1px solid var(--primary, #1976d2);
+}
+
+.calc-btn.primary:hover {
+  background: var(--primary-dark, #1565c0);
+  color: var(--on-primary, white);
+}
+

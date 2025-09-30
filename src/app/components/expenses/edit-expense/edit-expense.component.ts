@@ -1,4 +1,37 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Expense } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { ExpenseService } from '@services/expense.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { FirebaseError } from 'firebase/app';
+import { DocumentReference, Timestamp } from 'firebase/firestore';
 import {
   afterEveryRender,
   afterNextRender,
@@ -24,47 +57,15 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { Expense } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { FirebaseError } from 'firebase/app';
-import { DocumentReference, Timestamp } from 'firebase/firestore';
 import {
   deleteObject,
   getDownloadURL,
@@ -112,6 +113,7 @@ export class EditExpenseComponent implements OnInit {
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly calculatorOverlay = inject(CalculatorOverlayService);
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
@@ -595,6 +597,29 @@ export class EditExpenseComponent implements OnInit {
 
   onCancel(): void {
     this.router.navigate(['/expenses']);
+  }
+
+  openCalculator(event: Event, controlName: string, index?: number): void {
+    const target = event.target as HTMLElement;
+    this.calculatorOverlay.openCalculator(target, (result: number) => {
+      if (index !== undefined) {
+        const control = this.splitsFormArray.at(index).get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          if (this.splitByPercentage()) {
+            this.allocateByPercentage();
+          } else {
+            this.allocateSharedAmounts();
+          }
+        }
+      } else {
+        const control = this.editExpenseForm.get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          this.updateTotalAmount();
+        }
+      }
+    });
   }
 
   showHelp(): void {
