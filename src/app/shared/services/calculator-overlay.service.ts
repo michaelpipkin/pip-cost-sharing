@@ -20,10 +20,8 @@ export class CalculatorOverlayService {
       this.closeCalculator();
     }
 
-    // Dismiss virtual keyboard on mobile by blurring active element
-    if (document.activeElement && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
+    // Dismiss virtual keyboard on mobile by blurring associated input field
+    this.dismissVirtualKeyboard(triggerElement);
 
     const overlayConfig = this.getOverlayConfig(triggerElement);
     this.overlayRef = this.overlay.create(overlayConfig);
@@ -75,6 +73,47 @@ export class CalculatorOverlayService {
       this.overlayRef = null;
       this.calculatorRef = null;
       this.isOpen.set(false);
+    }
+  }
+
+  private dismissVirtualKeyboard(triggerElement: HTMLElement): void {
+    // Find the input field associated with this calculator button
+    const matFormField = triggerElement.closest('mat-form-field');
+    if (matFormField) {
+      const inputElement = matFormField.querySelector('input') as HTMLInputElement;
+      if (inputElement) {
+        // Multiple aggressive approaches to dismiss virtual keyboard
+        inputElement.blur();
+        inputElement.readOnly = true;
+        
+        // Force viewport reset to dismiss keyboard on iOS
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          window.scrollTo(0, 0);
+        }
+        
+        // Create a temporary hidden input to steal focus
+        const hiddenInput = document.createElement('input');
+        hiddenInput.style.position = 'absolute';
+        hiddenInput.style.top = '-9999px';
+        hiddenInput.style.left = '-9999px';
+        hiddenInput.style.opacity = '0';
+        hiddenInput.style.pointerEvents = 'none';
+        hiddenInput.setAttribute('readonly', 'true');
+        
+        document.body.appendChild(hiddenInput);
+        hiddenInput.focus();
+        hiddenInput.blur();
+        
+        setTimeout(() => {
+          document.body.removeChild(hiddenInput);
+          inputElement.readOnly = false;
+        }, 300);
+      }
+    }
+
+    // Also blur any currently active element as fallback
+    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
   }
 
