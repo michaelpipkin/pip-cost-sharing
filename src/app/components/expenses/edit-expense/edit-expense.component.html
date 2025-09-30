@@ -109,7 +109,7 @@
           <button
             matIconSuffix
             mat-icon-button
-            (click)="openCalculator($event, 'amount')"
+            (click)="openCalculator($event, 'amount'); $event.preventDefault(); $event.stopPropagation()"
             aria-label="Open calculator"
             type="button"
           >
@@ -143,7 +143,7 @@
           <button
             matIconSuffix
             mat-icon-button
-            (click)="openCalculator($event, 'allocatedAmount')"
+            (click)="openCalculator($event, 'allocatedAmount'); $event.preventDefault(); $event.stopPropagation()"
             aria-label="Open calculator"
             type="button"
           >
@@ -286,7 +286,7 @@
                   <button
                     matIconSuffix
                     mat-icon-button
-                    (click)="openCalculator($event, 'assignedAmount', i)"
+                    (click)="openCalculator($event, 'assignedAmount', i); $event.preventDefault(); $event.stopPropagation()"
                     aria-label="Open calculator"
                     type="button"
                   >
