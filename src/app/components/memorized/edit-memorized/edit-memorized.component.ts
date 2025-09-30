@@ -21,6 +21,7 @@ import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.compo
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -101,6 +102,7 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly calculatorOverlay = inject(CalculatorOverlayService);
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
@@ -491,6 +493,29 @@ export class EditMemorizedComponent implements OnInit {
 
   onCancel(): void {
     this.router.navigate(['/memorized']);
+  }
+
+  openCalculator(event: Event, controlName: string, index?: number): void {
+    const target = event.target as HTMLElement;
+    this.calculatorOverlay.openCalculator(target, (result: number) => {
+      if (index !== undefined) {
+        const control = this.splitsFormArray.at(index).get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          if (this.splitByPercentage()) {
+            this.allocateByPercentage();
+          } else {
+            this.allocateSharedAmounts();
+          }
+        }
+      } else {
+        const control = this.editMemorizedForm.get(controlName);
+        if (control) {
+          control.setValue(result.toFixed(2), { emitEvent: true });
+          this.updateTotalAmount();
+        }
+      }
+    });
   }
 
   showHelp(): void {
