@@ -28,6 +28,7 @@ import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
 import { MemorizedService } from './memorized.service';
 import { SplitService } from './split.service';
+import { DateUtils } from '@utils/date-utils.service';
 
 @Injectable({
   providedIn: 'root',
@@ -280,5 +281,173 @@ export class GroupService implements IGroupService {
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
     this.groupStore.clearAdminGroupIds();
+  }
+
+  /**
+   * Batch update all expenses and splits in a group to normalize dates to UTC midnight.
+   * This is a one-time migration to fix timezone issues with existing data.
+   * 
+   * @param groupId - The ID of the group to update
+   * @returns Promise<{success: boolean, expensesUpdated: number, splitsUpdated: number, errors: string[]}>
+   */
+  async normalizeGroupDatesToUTC(groupId: string): Promise<{
+    success: boolean;
+    expensesUpdated: number; 
+    splitsUpdated: number;
+    errors: string[];
+  }> {
+    const result = {
+      success: false,
+      expensesUpdated: 0,
+      splitsUpdated: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      logEvent(this.analytics, 'date_normalization_started', { groupId });
+      
+      // Get all expenses for the group
+      const expensesQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
+      const expensesSnapshot = await getDocs(expensesQuery);
+      
+      // Get all splits for the group  
+      const splitsQuery = query(collection(this.fs, `groups/${groupId}/splits`));
+      const splitsSnapshot = await getDocs(splitsQuery);
+
+      console.log(`Found ${expensesSnapshot.docs.length} expenses and ${splitsSnapshot.docs.length} splits to normalize`);
+
+      // Process in batches (Firestore limit is 500 operations per batch)
+      const BATCH_SIZE = 400; // Leave some buffer
+      let totalBatches = 0;
+      
+      // Process expenses
+      for (let i = 0; i < expensesSnapshot.docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(this.fs);
+        const expenseBatch = expensesSnapshot.docs.slice(i, i + BATCH_SIZE);
+        
+        expenseBatch.forEach(expenseDoc => {
+          const data = expenseDoc.data();
+          if (data.date && !DateUtils.isUTCMidnight(data.date)) {
+            const normalizedDate = DateUtils.toUTCTimestamp(data.date.toDate());
+            batch.update(expenseDoc.ref, { date: normalizedDate });
+            result.expensesUpdated++;
+          }
+        });
+        
+        if (expenseBatch.length > 0) {
+          await batch.commit();
+          totalBatches++;
+          console.log(`Completed expense batch ${totalBatches} (${expenseBatch.length} expenses)`);
+        }
+      }
+
+      // Process splits
+      for (let i = 0; i < splitsSnapshot.docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(this.fs);
+        const splitBatch = splitsSnapshot.docs.slice(i, i + BATCH_SIZE);
+        
+        splitBatch.forEach(splitDoc => {
+          const data = splitDoc.data();
+          if (data.date && !DateUtils.isUTCMidnight(data.date)) {
+            const normalizedDate = DateUtils.toUTCTimestamp(data.date.toDate());
+            batch.update(splitDoc.ref, { date: normalizedDate });
+            result.splitsUpdated++;
+          }
+        });
+        
+        if (splitBatch.length > 0) {
+          await batch.commit();
+          totalBatches++;
+          console.log(`Completed split batch ${totalBatches} (${splitBatch.length} splits)`);
+        }
+      }
+
+      result.success = true;
+      
+      logEvent(this.analytics, 'date_normalization_completed', {
+        groupId,
+        expensesUpdated: result.expensesUpdated,
+        splitsUpdated: result.splitsUpdated,
+        totalBatches
+      });
+      
+      console.log(`✅ Date normalization completed for group ${groupId}:`);
+      console.log(`   - ${result.expensesUpdated} expenses updated`);
+      console.log(`   - ${result.splitsUpdated} splits updated`);
+      console.log(`   - ${totalBatches} batches processed`);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      result.errors.push(errorMessage);
+      
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'normalizeGroupDatesToUTC',
+        message: 'Failed to normalize group dates to UTC',
+        groupId,
+        error: errorMessage
+      });
+      
+      console.error(`❌ Date normalization failed for group ${groupId}:`, error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Normalize dates for all groups the user has access to.
+   * Use with caution - this will update all group data.
+   */
+  async normalizeAllGroupDatesToUTC(): Promise<{
+    success: boolean;
+    groupsProcessed: number;
+    totalExpensesUpdated: number;
+    totalSplitsUpdated: number;
+    errors: string[];
+  }> {
+    const result = {
+      success: false,
+      groupsProcessed: 0,
+      totalExpensesUpdated: 0,
+      totalSplitsUpdated: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      const userGroups = this.groupStore.allUserGroups();
+      console.log(`Starting date normalization for ${userGroups.length} groups...`);
+
+      for (const group of userGroups) {
+        console.log(`\nProcessing group: ${group.name} (${group.id})`);
+        
+        const groupResult = await this.normalizeGroupDatesToUTC(group.id);
+        
+        result.groupsProcessed++;
+        result.totalExpensesUpdated += groupResult.expensesUpdated;
+        result.totalSplitsUpdated += groupResult.splitsUpdated;
+        
+        if (!groupResult.success) {
+          result.errors.push(`Group ${group.name}: ${groupResult.errors.join(', ')}`);
+        }
+      }
+
+      result.success = result.errors.length === 0;
+      
+      console.log(`\n🎉 All groups processed!`);
+      console.log(`   - ${result.groupsProcessed} groups processed`);
+      console.log(`   - ${result.totalExpensesUpdated} total expenses updated`);
+      console.log(`   - ${result.totalSplitsUpdated} total splits updated`);
+      
+      if (result.errors.length > 0) {
+        console.log(`   - ${result.errors.length} errors occurred`);
+      }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      result.errors.push(errorMessage);
+      console.error('❌ Failed to normalize all group dates:', error);
+    }
+
+    return result;
   }
 }

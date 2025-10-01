@@ -11,11 +11,13 @@ import {
 type UserState = {
   user: User | null;
   isGoogleUser: boolean;
+  isDemoMode: boolean;
 };
 
 const initialState: UserState = {
   user: null,
   isGoogleUser: false,
+  isDemoMode: false,
 };
 
 export const UserStore = signalStore(
@@ -33,6 +35,8 @@ export const UserStore = signalStore(
     },
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),
+    setIsDemoMode: (isDemoMode: boolean) =>
+      patchState(store, { isDemoMode: isDemoMode }),
   })),
   withComputed(({ user }) => ({
     isLoggedIn: computed(() => !!user()),

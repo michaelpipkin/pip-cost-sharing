@@ -43,6 +43,8 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
+import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import {
@@ -78,6 +80,7 @@ import {
 export class ExpensesComponent implements OnInit {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
@@ -107,12 +110,21 @@ export class ExpensesComponent implements OnInit {
   constructor() {
     // Watch for store data changes and auto-load demo expenses
     effect(() => {
-      const storeExpenses = this.expenseStore.groupExpenses();
-      const storeLoaded = this.expenseStore.loaded();
-      if (storeExpenses.length > 0 && storeLoaded && this.expenses().length === 0) {
-        this.expenses.set(storeExpenses);
-        this.isLoaded.set(true);
-        console.log('Auto-loaded demo expenses from store:', storeExpenses.length);
+      if (this.userStore.isDemoMode()) {
+        const storeExpenses = this.expenseStore.groupExpenses();
+        const storeLoaded = this.expenseStore.loaded();
+        if (
+          storeExpenses.length > 0 &&
+          storeLoaded &&
+          this.expenses().length === 0
+        ) {
+          this.expenses.set(storeExpenses);
+          this.isLoaded.set(true);
+          console.log(
+            'Auto-loaded demo expenses from store:',
+            storeExpenses.length
+          );
+        }
       }
     });
   }
@@ -202,7 +214,11 @@ export class ExpensesComponent implements OnInit {
     try {
       // Check if we have store data (demo mode) first
       const storeExpenses = this.expenseStore.groupExpenses();
-      if (storeExpenses.length > 0 && this.expenseStore.loaded()) {
+      if (
+        this.userStore.isDemoMode() &&
+        storeExpenses.length > 0 &&
+        this.expenseStore.loaded()
+      ) {
         // Use demo/store data
         this.expenses.set(storeExpenses);
         this.isLoaded.set(true);
@@ -327,8 +343,12 @@ export class ExpensesComponent implements OnInit {
     }
   }
 
+  getDateOnly(expense: Expense): Date {
+    return DateUtils.getDateOnly(expense.date);
+  }
+
   private generateExpenseSummaryText(expense: Expense): string {
-    const date = expense.date.toDate().toLocaleDateString();
+    const date = DateUtils.getDateOnly(expense.date).toLocaleDateString();
 
     let summaryText = `Date: ${date}\n`;
     summaryText += `Description: ${expense.description}\n`;

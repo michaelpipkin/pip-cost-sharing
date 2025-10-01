@@ -2,12 +2,25 @@
   <mat-tab-group dynamicHeight class="account-tabs" data-testid="account-tabs">
     @if (!isGoogleUser()) {
       <mat-tab label="Account" data-testid="account-tab">
-        <form [formGroup]="emailForm" class="container" data-testid="email-form" aria-label="Update email form">
+        <form
+          [formGroup]="emailForm"
+          class="container"
+          data-testid="email-form"
+          aria-label="Update email form"
+        >
           <mat-form-field class="email-input" data-testid="account-email-field">
             <mat-label>Email Address</mat-label>
-            <input matInput type="email" formControlName="email" data-testid="account-email-input" aria-label="Email address" />
+            <input
+              matInput
+              type="email"
+              formControlName="email"
+              data-testid="account-email-input"
+              aria-label="Email address"
+            />
             @if (e.email.errors?.email) {
-              <mat-error data-testid="account-email-error"> Invalid email address </mat-error>
+              <mat-error data-testid="account-email-error">
+                Invalid email address
+              </mat-error>
             }
           </mat-form-field>
           <div class="buttons" data-testid="email-buttons">
@@ -18,7 +31,11 @@
               [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
               (click)="verifyEmail()"
               data-testid="verify-email-button"
-              [aria-label]="firebaseUser()?.emailVerified ? 'Email already verified' : 'Send email verification'"
+              [aria-label]="
+                firebaseUser()?.emailVerified
+                  ? 'Email already verified'
+                  : 'Send email verification'
+              "
             >
               {{
                 firebaseUser()?.emailVerified
@@ -43,7 +60,12 @@
             </button>
           </div>
         </form>
-        <form [formGroup]="passwordForm" class="container mt-3" data-testid="password-form" aria-label="Change password form">
+        <form
+          [formGroup]="passwordForm"
+          class="container mt-3"
+          data-testid="password-form"
+          aria-label="Change password form"
+        >
           <mat-form-field data-testid="new-password-field">
             <mat-label>New Password</mat-label>
             <input
@@ -107,22 +129,47 @@
     }
     <mat-tab label="Payment Services" data-testid="payment-services-tab">
       <h4 data-testid="payment-services-title">Payment Service IDs</h4>
-      <form [formGroup]="paymentsForm" class="container payments" data-testid="payments-form" aria-label="Payment service IDs form">
+      <form
+        [formGroup]="paymentsForm"
+        class="container payments"
+        data-testid="payments-form"
+        aria-label="Payment service IDs form"
+      >
         <mat-form-field data-testid="venmo-field">
           <mat-label>Venmo</mat-label>
-          <input matInput formControlName="venmoId" data-testid="venmo-input" aria-label="Venmo ID" />
+          <input
+            matInput
+            formControlName="venmoId"
+            data-testid="venmo-input"
+            aria-label="Venmo ID"
+          />
         </mat-form-field>
         <mat-form-field data-testid="paypal-field">
           <mat-label>PayPal</mat-label>
-          <input matInput formControlName="paypalId" data-testid="paypal-input" aria-label="PayPal ID" />
+          <input
+            matInput
+            formControlName="paypalId"
+            data-testid="paypal-input"
+            aria-label="PayPal ID"
+          />
         </mat-form-field>
         <mat-form-field data-testid="cashapp-field">
           <mat-label>CashApp</mat-label>
-          <input matInput formControlName="cashAppId" data-testid="cashapp-input" aria-label="CashApp ID" />
+          <input
+            matInput
+            formControlName="cashAppId"
+            data-testid="cashapp-input"
+            aria-label="CashApp ID"
+          />
         </mat-form-field>
         <mat-form-field data-testid="zelle-field">
           <mat-label>Zelle</mat-label>
-          <input matInput formControlName="zelleId" data-testid="zelle-input" aria-label="Zelle ID" />
+          <input
+            matInput
+            formControlName="zelleId"
+            data-testid="zelle-input"
+            aria-label="Zelle ID"
+          />
         </mat-form-field>
         <button
           mat-raised-button
@@ -139,7 +186,12 @@
     </mat-tab>
     <mat-tab label="Options" data-testid="options-tab">
       <h4 data-testid="default-group-title">Select Default Group</h4>
-      <form [formGroup]="groupForm" class="container" data-testid="default-group-form" aria-label="Select default group form">
+      <form
+        [formGroup]="groupForm"
+        class="container"
+        data-testid="default-group-form"
+        aria-label="Select default group form"
+      >
         <mat-form-field id="group-select" data-testid="default-group-field">
           <mat-label>Select Group</mat-label>
           <mat-select
@@ -151,7 +203,11 @@
             aria-label="Select default group"
           >
             @for (group of activeUserGroups(); track group.ref) {
-              <mat-option [value]="group.ref" [attr.data-testid]="'default-group-option-' + group.id">{{ group.name }}</mat-option>
+              <mat-option
+                [value]="group.ref"
+                [attr.data-testid]="'default-group-option-' + group.id"
+                >{{ group.name }}</mat-option
+              >
             }
           </mat-select>
         </mat-form-field>
@@ -167,7 +223,7 @@
           Save
         </button>
       </form>
-      <!-- @if (!prod()) {
+      @if (!prod()) {
         <button
           mat-raised-button
           class="btn-tertiary"
@@ -176,7 +232,7 @@
         >
           Update Data
         </button>
-      } -->
+      }
     </mat-tab>
   </mat-tab-group>
 </div>
