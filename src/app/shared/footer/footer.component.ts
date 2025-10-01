@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
 import { environment } from '@env/environment';
 import packageJson from 'package.json';
 
@@ -7,7 +9,7 @@ import packageJson from 'package.json';
   selector: 'footer',
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.scss',
-  imports: [DatePipe],
+  imports: [DatePipe, MatButtonModule, RouterLink],
 })
 export class FooterComponent {
   currentYear = signal<string>(new Date().getFullYear().toString());

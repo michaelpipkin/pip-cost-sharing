@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, groupGuard } from '@components/auth/guards.guard';
+import { AboutComponent } from '@components/about/about.component';
 import { HelpComponent } from '@components/help/help.component';
 import { HomeComponent } from '@components/home/home.component';
 
@@ -49,6 +50,11 @@ export const appRoutes: Routes = [
     path: 'help',
     title: 'Help',
     component: HelpComponent,
+  },
+  {
+    path: 'about',
+    title: 'About Us',
+    component: AboutComponent,
   },
   {
     path: 'split',

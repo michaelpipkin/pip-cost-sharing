@@ -10,6 +10,7 @@ export const ROUTES = {
   AUTH: 'auth',
   HELP: 'help',
   SPLIT: 'split',
+  ABOUT: 'about',
   
   // Feature modules
   ADMINISTRATION: 'administration',
@@ -66,6 +67,7 @@ export const ROUTE_PATHS = {
   // Other routes
   SPLIT: `/${ROUTES.SPLIT}`,
   HELP: `/${ROUTES.HELP}`,
+  ABOUT: `/${ROUTES.ABOUT}`,
   HOME: `/${ROUTES.HOME}`,
 } as const;
 
