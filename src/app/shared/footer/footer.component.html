@@ -1,13 +1,37 @@
-<div class="footer" [class.no-emulation]="!production() && !emulators()" data-test-id="app-footer">
-  <div data-test-id="copyright-section">
-    <span data-test-id="copyright-text"> &copy; {{ currentYear() }} - Michael A. Pipkin </span>
+<div
+  class="footer"
+  [class.no-emulation]="!production() && !emulators()"
+  data-test-id="app-footer"
+>
+  <div data-test-id="footer-left" class="footer-left">
+    <span data-test-id="copyright-text"> &copy; {{ currentYear() }}</span>
+    <a
+      mat-button
+      [routerLink]="['/about']"
+      data-test-id="about-link"
+      aria-label="About Us"
+    >
+      About Us
+    </a>
+    <a
+      mat-button
+      [routerLink]="['/help']"
+      data-test-id="contact-link"
+      aria-label="Contact Us"
+    >
+      Contact Us
+    </a>
   </div>
   <div class="footer-right" data-test-id="version-section">
     @if (!production()) {
       @if (emulators()) {
-        <span data-test-id="dev-emulated-status">*** DEV :: USING EMULATED DATA ***</span>
+        <span data-test-id="dev-emulated-status"
+          >*** DEV :: USING EMULATED DATA ***</span
+        >
       } @else {
-        <span data-test-id="dev-production-status">*** DEV :: USING PRODUCTION DATA ***</span>
+        <span data-test-id="dev-production-status"
+          >*** DEV :: USING PRODUCTION DATA ***</span
+        >
       }
     } @else {
       <span data-test-id="version-info">
