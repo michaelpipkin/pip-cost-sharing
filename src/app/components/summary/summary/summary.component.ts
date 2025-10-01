@@ -37,6 +37,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
 import {
@@ -114,7 +115,7 @@ export class SummaryComponent {
       endDate = new Date(endDate.setDate(endDate.getDate() + 1));
     }
     return this.splits().filter((split: Split) => {
-      return split.date.toDate() >= startDate && split.date.toDate() < endDate;
+      return DateUtils.getDateOnly(split.date) >= startDate && DateUtils.getDateOnly(split.date) < endDate;
     });
   });
 

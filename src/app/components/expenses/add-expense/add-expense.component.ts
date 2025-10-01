@@ -29,6 +29,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
+import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -495,7 +496,7 @@ export class AddExpenseComponent implements OnInit {
     try {
       this.loading.loadingOn();
       const val = this.addExpenseForm.value;
-      const expenseDate = Timestamp.fromDate(val.date);
+      const expenseDate = DateUtils.toUTCTimestamp(val.date);
       const expense: Partial<Expense> = {
         date: expenseDate,
         description: val.description,

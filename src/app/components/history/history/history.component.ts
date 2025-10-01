@@ -37,6 +37,7 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -99,12 +100,12 @@ export class HistoryComponent {
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date.toDate() >= this.startDate();
+          return DateUtils.getDateOnly(history.date) >= this.startDate();
         });
       }
       if (this.endDate() !== undefined && this.endDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date.toDate() <= this.endDate();
+          return DateUtils.getDateOnly(history.date) <= this.endDate();
         });
       }
       if (filteredHistory.length > 0) {
@@ -220,10 +221,14 @@ export class HistoryComponent {
     }
   }
 
+  getDateOnly(history: History): Date {
+    return DateUtils.getDateOnly(history.date);
+  }
+
   private generateHistoryText(history: History): string {
     const paidBy = history.paidByMember.displayName;
     const paidTo = history.paidToMember.displayName;
-    const date = history.date.toDate().toLocaleDateString();
+    const date = DateUtils.getDateOnly(history.date).toLocaleDateString();
 
     let summaryText = `Payment History\n`;
     summaryText += `${paidBy} paid ${paidTo} ${this.formatCurrency(history.totalPaid)} on ${date}\n\n`;

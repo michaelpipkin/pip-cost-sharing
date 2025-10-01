@@ -110,29 +110,41 @@ export class DemoModeService {
     });
 
     // Create demo splits for expenses
-    const createEvenSplits = (amount: number, members: Member[], paidBy: Member, date: Timestamp, category: Category, expenseId: string): Split[] => {
+    const createEvenSplits = (
+      amount: number,
+      members: Member[],
+      paidBy: Member,
+      date: Timestamp,
+      category: Category,
+      expenseId: string
+    ): Split[] => {
       const splitAmount = amount / members.length;
-      return members.map((member, index) => new Split({
-        id: `split-${expenseId}-${member.id}`,
-        expenseRef: this.createMockDocRef(expenseId),
-        date: date,
-        categoryRef: this.createMockDocRef(category.id),
-        category: category,
-        assignedAmount: splitAmount,
-        percentage: 100 / members.length,
-        allocatedAmount: splitAmount,
-        paidByMemberRef: paidBy.ref,
-        paidByMember: paidBy,
-        owedByMemberRef: member.ref,
-        owedByMember: member,
-        paid: Math.random() > 0.5, // Randomly mark some as paid for demo
-        ref: this.createMockDocRef(`split-${expenseId}-${member.id}`),
-      }));
+      return members.map(
+        (member) =>
+          new Split({
+            id: `split-${expenseId}-${member.id}`,
+            expenseRef: this.createMockDocRef(expenseId),
+            date: date,
+            categoryRef: this.createMockDocRef(category.id),
+            category: category,
+            assignedAmount: splitAmount,
+            percentage: 100 / members.length,
+            allocatedAmount: splitAmount,
+            paidByMemberRef: paidBy.ref,
+            paidByMember: paidBy,
+            owedByMemberRef: member.ref,
+            owedByMember: member,
+            paid: Math.random() > 0.5, // Randomly mark some as paid for demo
+            ref: this.createMockDocRef(`split-${expenseId}-${member.id}`),
+          })
+      );
     };
 
     // Create demo expenses (within last 30 days for default filtering)
     const now = new Date();
-    const exp1Date = Timestamp.fromDate(new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)); // 5 days ago
+    const exp1Date = Timestamp.fromDate(
+      new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+    ); // 5 days ago
     const expense1 = new Expense({
       id: 'exp-1',
       date: exp1Date,
@@ -145,12 +157,21 @@ export class DemoModeService {
       allocatedAmount: 127.45,
       totalAmount: 127.45,
       splitByPercentage: false,
-      splits: createEvenSplits(127.45, [alice, bob, charlie], alice, exp1Date, groceries, 'exp-1'),
+      splits: createEvenSplits(
+        127.45,
+        [alice, bob, charlie],
+        alice,
+        exp1Date,
+        groceries,
+        'exp-1'
+      ),
       paid: false,
       ref: this.createMockDocRef('exp-1'),
     });
 
-    const exp2Date = Timestamp.fromDate(new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000)); // 10 days ago
+    const exp2Date = Timestamp.fromDate(
+      new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000)
+    ); // 10 days ago
     const expense2 = new Expense({
       id: 'exp-2',
       date: exp2Date,
@@ -159,16 +180,25 @@ export class DemoModeService {
       category: restaurants,
       paidByMemberRef: bob.ref,
       paidByMember: bob,
-      sharedAmount: 54.80,
-      allocatedAmount: 54.80,
-      totalAmount: 54.80,
+      sharedAmount: 54.8,
+      allocatedAmount: 54.8,
+      totalAmount: 54.8,
       splitByPercentage: false,
-      splits: createEvenSplits(54.80, [alice, bob, charlie], bob, exp2Date, restaurants, 'exp-2'),
+      splits: createEvenSplits(
+        54.8,
+        [alice, bob, charlie],
+        bob,
+        exp2Date,
+        restaurants,
+        'exp-2'
+      ),
       paid: false,
       ref: this.createMockDocRef('exp-2'),
     });
 
-    const exp3Date = Timestamp.fromDate(new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)); // 15 days ago
+    const exp3Date = Timestamp.fromDate(
+      new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)
+    ); // 15 days ago
     const expense3 = new Expense({
       id: 'exp-3',
       date: exp3Date,
@@ -181,12 +211,21 @@ export class DemoModeService {
       allocatedAmount: 89.32,
       totalAmount: 89.32,
       splitByPercentage: false,
-      splits: createEvenSplits(89.32, [alice, bob, charlie], charlie, exp3Date, utilities, 'exp-3'),
+      splits: createEvenSplits(
+        89.32,
+        [alice, bob, charlie],
+        charlie,
+        exp3Date,
+        utilities,
+        'exp-3'
+      ),
       paid: true,
       ref: this.createMockDocRef('exp-3'),
     });
 
-    const exp4Date = Timestamp.fromDate(new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000)); // 20 days ago
+    const exp4Date = Timestamp.fromDate(
+      new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000)
+    ); // 20 days ago
     const expense4 = new Expense({
       id: 'exp-4',
       date: exp4Date,
@@ -195,11 +234,18 @@ export class DemoModeService {
       category: entertainment,
       paidByMemberRef: alice.ref,
       paidByMember: alice,
-      sharedAmount: 36.00,
-      allocatedAmount: 36.00,
-      totalAmount: 36.00,
+      sharedAmount: 36.0,
+      allocatedAmount: 36.0,
+      totalAmount: 36.0,
       splitByPercentage: false,
-      splits: createEvenSplits(36.00, [alice, bob], alice, exp4Date, entertainment, 'exp-4'),
+      splits: createEvenSplits(
+        36.0,
+        [alice, bob],
+        alice,
+        exp4Date,
+        entertainment,
+        'exp-4'
+      ),
       paid: false,
       ref: this.createMockDocRef('exp-4'),
     });
@@ -212,14 +258,29 @@ export class DemoModeService {
       category: groceries,
       paidByMemberRef: alice.ref,
       paidByMember: alice,
-      sharedAmount: 120.00,
-      allocatedAmount: 120.00,
-      totalAmount: 120.00,
+      sharedAmount: 120.0,
+      allocatedAmount: 120.0,
+      totalAmount: 120.0,
       splitByPercentage: false,
       splits: [
-        { assignedAmount: 40.00, percentage: 33.33, allocatedAmount: 40.00, owedByMember: alice },
-        { assignedAmount: 40.00, percentage: 33.33, allocatedAmount: 40.00, owedByMember: bob },
-        { assignedAmount: 40.00, percentage: 33.33, allocatedAmount: 40.00, owedByMember: charlie }
+        {
+          assignedAmount: 40.0,
+          percentage: 33.33,
+          allocatedAmount: 40.0,
+          owedByMember: alice,
+        },
+        {
+          assignedAmount: 40.0,
+          percentage: 33.33,
+          allocatedAmount: 40.0,
+          owedByMember: bob,
+        },
+        {
+          assignedAmount: 40.0,
+          percentage: 33.33,
+          allocatedAmount: 40.0,
+          owedByMember: charlie,
+        },
       ],
       ref: this.createMockDocRef('mem-1'),
     });
@@ -231,14 +292,29 @@ export class DemoModeService {
       category: utilities,
       paidByMemberRef: charlie.ref,
       paidByMember: charlie,
-      sharedAmount: 150.00,
-      allocatedAmount: 150.00,
-      totalAmount: 150.00,
+      sharedAmount: 150.0,
+      allocatedAmount: 150.0,
+      totalAmount: 150.0,
       splitByPercentage: false,
       splits: [
-        { assignedAmount: 50.00, percentage: 33.33, allocatedAmount: 50.00, owedByMember: alice },
-        { assignedAmount: 50.00, percentage: 33.33, allocatedAmount: 50.00, owedByMember: bob },
-        { assignedAmount: 50.00, percentage: 33.33, allocatedAmount: 50.00, owedByMember: charlie }
+        {
+          assignedAmount: 50.0,
+          percentage: 33.33,
+          allocatedAmount: 50.0,
+          owedByMember: alice,
+        },
+        {
+          assignedAmount: 50.0,
+          percentage: 33.33,
+          allocatedAmount: 50.0,
+          owedByMember: bob,
+        },
+        {
+          assignedAmount: 50.0,
+          percentage: 33.33,
+          allocatedAmount: 50.0,
+          owedByMember: charlie,
+        },
       ],
       ref: this.createMockDocRef('mem-2'),
     });
@@ -246,37 +322,41 @@ export class DemoModeService {
     // Create demo history records
     const history1 = new History({
       id: 'hist-1',
-      date: Timestamp.fromDate(new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000)), // 25 days ago
+      date: Timestamp.fromDate(
+        new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000)
+      ), // 25 days ago
       paidByMemberRef: bob.ref,
       paidByMember: bob,
       paidToMemberRef: alice.ref,
       paidToMember: alice,
-      totalPaid: 45.50,
+      totalPaid: 45.5,
       lineItems: [
-        { category: 'Groceries', amount: 30.00 },
-        { category: 'Restaurants', amount: 15.50 }
+        { category: 'Groceries', amount: 30.0 },
+        { category: 'Restaurants', amount: 15.5 },
       ],
       ref: this.createMockDocRef('hist-1'),
     });
 
     const history2 = new History({
       id: 'hist-2',
-      date: Timestamp.fromDate(new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000)), // 12 days ago
+      date: Timestamp.fromDate(
+        new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000)
+      ), // 12 days ago
       paidByMemberRef: charlie.ref,
       paidByMember: charlie,
       paidToMemberRef: alice.ref,
       paidToMember: alice,
       totalPaid: 22.75,
       lineItems: [
-        { category: 'Entertainment', amount: 12.00 },
-        { category: 'Utilities', amount: 10.75 }
+        { category: 'Entertainment', amount: 12.0 },
+        { category: 'Utilities', amount: 10.75 },
       ],
       ref: this.createMockDocRef('hist-2'),
     });
 
     // Collect unpaid splits from all expenses
     const allUnpaidSplits = [expense1, expense2, expense4] // expense3 is marked as paid
-      .flatMap(expense => expense.splits.filter(split => !split.paid));
+      .flatMap((expense) => expense.splits.filter((split) => !split.paid));
 
     // Create demo group
     const demoGroup = new Group({
@@ -291,24 +371,38 @@ export class DemoModeService {
 
     // Initialize stores with demo data
     this.userStore.setUser(demoUser);
+    this.userStore.setIsDemoMode(true);
     this.groupStore.setAllUserGroups([demoGroup]);
     this.groupStore.setCurrentGroup(demoGroup);
     this.groupStore.setAdminGroupIds([demoGroup.id]);
     this.memberStore.setGroupMembers([alice, bob, charlie]);
     this.memberStore.setCurrentMember(alice); // Set Alice as the current member for demo
-    this.categoryStore.setGroupCategories([groceries, restaurants, utilities, entertainment]);
-    this.expenseStore.setGroupExpenses([expense1, expense2, expense3, expense4]);
+    this.categoryStore.setGroupCategories([
+      groceries,
+      restaurants,
+      utilities,
+      entertainment,
+    ]);
+    this.expenseStore.setGroupExpenses([
+      expense1,
+      expense2,
+      expense3,
+      expense4,
+    ]);
     this.memorizedStore.setMemorizedExpenses([memorized1, memorized2]);
     this.historyStore.setHistory([history1, history2]);
     this.splitStore.setSplits(allUnpaidSplits);
 
     // Set localStorage to simulate being logged in (store as JSON like the real app)
-    localStorage.setItem('currentGroup', JSON.stringify({
-      id: demoGroup.id,
-      name: demoGroup.name,
-      active: demoGroup.active,
-      autoAddMembers: demoGroup.autoAddMembers
-    }));
+    localStorage.setItem(
+      'currentGroup',
+      JSON.stringify({
+        id: demoGroup.id,
+        name: demoGroup.name,
+        active: demoGroup.active,
+        autoAddMembers: demoGroup.autoAddMembers,
+      })
+    );
 
     console.log('Demo mode initialized with sample data');
   }
