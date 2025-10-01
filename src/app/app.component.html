@@ -9,7 +9,9 @@
       >
         <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
       </button>
-      <span id="title" data-testid="app-title">PipSplit</span>
+      <a [routerLink]="routes.HOME">
+        <span id="title" data-testid="app-title-mobile">PipSplit</span>
+      </a>
       <div class="account links" data-testid="mobile-account-actions">
         <button
           matIconButton
@@ -37,7 +39,9 @@
       </div>
     }
     @if (!isSmallScreen()) {
-      <span id="title" data-testid="app-title-desktop">PipSplit</span>
+      <a [routerLink]="routes.HOME">
+        <span id="title" data-testid="app-title-desktop">PipSplit</span>
+      </a>
       <div class="links" data-testid="desktop-navigation">
         @if (isLoggedIn()) {
           <a
@@ -151,16 +155,16 @@
             }}
           </mat-icon>
         </button>
+        <a
+          matIconButton
+          [routerLink]="['help']"
+          matTooltip="Help"
+          aria-label="help"
+          data-testid="nav-help-desktop"
+        >
+          <mat-icon>help</mat-icon>
+        </a>
         @if (isLoggedIn() && !isDemoMode()) {
-          <a
-            matIconButton
-            [routerLink]="['help']"
-            matTooltip="Help"
-            aria-label="help"
-            data-testid="nav-help-desktop"
-          >
-            <mat-icon>help</mat-icon>
-          </a>
           <a
             matIconButton
             [routerLink]="['auth', 'account']"
@@ -291,47 +295,39 @@
       >
         <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
       </a>
-      <a
-        mat-menu-item
-        [routerLink]="routes.AUTH_ACCOUNT"
-        aria-label="account"
-        title="Account"
-        data-testid="mobile-nav-account"
-      >
-        <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
-        >&nbsp;Account
-      </a>
-      <a
-        mat-menu-item
-        (click)="logout()"
-        aria-label="log out"
-        title="Log out"
-        data-testid="mobile-logout-button"
-      >
-        <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>&nbsp;Log
-        out
-      </a>
-    } @else {
-      <a
-        mat-menu-item
-        [routerLink]="routes.SPLIT"
-        aria-label="split expense"
-        title="Split expense"
-        data-testid="mobile-nav-split-logged-out"
-      >
-        <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
-        >&nbsp;Split
-      </a>
-      <a
-        mat-menu-item
-        [routerLink]="routes.AUTH_LOGIN"
-        aria-label="login"
-        title="Login"
-        data-testid="mobile-nav-login"
-      >
-        <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
-        in
-      </a>
+      @if (isLoggedIn() && !isDemoMode()) {
+        <a
+          mat-menu-item
+          [routerLink]="routes.AUTH_ACCOUNT"
+          aria-label="account"
+          title="Account"
+          data-testid="mobile-nav-account"
+        >
+          <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
+          >&nbsp;Account
+        </a>
+        <a
+          mat-menu-item
+          (click)="logout()"
+          aria-label="log out"
+          title="Log out"
+          data-testid="mobile-logout-button"
+        >
+          <mat-icon fontSet="material-symbols-outlined">logout</mat-icon
+          >&nbsp;Log out
+        </a>
+      } @else {
+        <a
+          mat-menu-item
+          [routerLink]="routes.AUTH_LOGIN"
+          aria-label="login"
+          title="Login"
+          data-testid="mobile-nav-login"
+        >
+          <mat-icon fontSet="material-symbols-outlined">login</mat-icon
+          >&nbsp;Log in
+        </a>
+      }
     }
   </div>
 </mat-menu>
