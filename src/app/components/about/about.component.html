@@ -1,0 +1,85 @@
+<div class="container about-container" data-testid="about-container">
+  <div class="about-header" data-testid="about-header">
+    <h1 data-testid="page-title">About PipSplit</h1>
+  </div>
+
+  <div class="about-content" data-testid="about-content">
+    <section class="intro-section" data-testid="intro-section">
+      <p data-testid="intro-text">
+        Hi there! My name is Michael Pipkin, and I am the solo developer behind
+        PipSplit.
+      </p>
+
+      <p data-testid="purpose-text">
+        I created this site because I wanted an easy way to split monthly
+        expenses with my housemate. From there, it grew into a fully-functional
+        expense-sharing app. My goal is to offer a fast, reliable, and
+        user-friendly tool for people who need to split costs among friends,
+        roommates, or any group situation where shared expenses arise.
+      </p>
+    </section>
+
+    <section class="mission-section" data-testid="mission-section">
+      <h2 data-testid="mission-title">Our Mission</h2>
+      <p data-testid="mission-text">
+        PipSplit helps you effortlessly track and split shared expenses with
+        unlimited groups. Whether you're splitting costs for a weekend getaway
+        with friends, tracking monthly expenses with roommates, or calculating
+        everyone's share of a dinner out, PipSplit makes it simple and
+        transparent. There's even an option to split an expense without creating
+        an account!
+      </p>
+    </section>
+
+    <section class="features-section" data-testid="features-section">
+      <h2 data-testid="features-title">What PipSplit Offers</h2>
+      <ul data-testid="features-list">
+        <li data-testid="feature-groups">
+          Create and manage unlimited expense-sharing groups
+        </li>
+        <li data-testid="feature-categorize">
+          Categorize expenses for better organization and analysis
+        </li>
+        <li data-testid="feature-summaries">
+          View detailed summaries showing who owes whom
+        </li>
+        <li data-testid="feature-memorized">
+          Save frequently used expenses as templates for quick entry
+        </li>
+        <li data-testid="feature-history">
+          Track payment history and expense details over time
+        </li>
+        <li data-testid="feature-split">
+          Split individual expenses without creating an account
+        </li>
+      </ul>
+    </section>
+
+    <section class="values-section" data-testid="values-section">
+      <h2 data-testid="values-title">My Values</h2>
+      <p data-testid="values-text">
+        As a developer, I am committed to continuous improvement and listening
+        to user feedback. PipSplit is a passion project of mine, and I believe
+        that expense sharing should be simple, transparent, and accessible to
+        everyone. I'm dedicated to keeping this tool free, fast, and focused on
+        what matters most: making shared expenses stress-free.
+      </p>
+    </section>
+
+    <section class="contact-section" data-testid="contact-section">
+      <h2 data-testid="contact-title">Get in Touch</h2>
+      <p data-testid="contact-text">
+        If you have any suggestions, feedback, or need help, please don't
+        hesitate to reach out through our
+        <a
+          [routerLink]="['/help']"
+          data-testid="help-link"
+          aria-label="Visit help page"
+          >Help page</a
+        >. Your input helps make PipSplit better for everyone!
+      </p>
+
+      <p data-testid="closing-text">Thank you for using PipSplit!</p>
+    </section>
+  </div>
+</div>

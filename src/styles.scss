@@ -192,19 +192,30 @@ body.dark-theme {
   color: tokens.color('on-primary');
   margin: 0;
   padding: 4px;
-  display: grid;
-  grid-template-columns: max-content auto;
-  align-content: center;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
 
   a {
-    color: tokens.color('on-primary');
-    text-decoration: none;
+    color: tokens.color('on-primary') !important;
+    text-decoration: none !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
   }
 }
 
 .footer-right {
-  display: grid;
-  justify-items: end;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.footer-left {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 /* ========================================
