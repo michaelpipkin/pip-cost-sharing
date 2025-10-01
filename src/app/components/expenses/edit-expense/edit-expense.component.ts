@@ -29,6 +29,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
+import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import { DocumentReference, Timestamp } from 'firebase/firestore';
@@ -186,7 +187,7 @@ export class EditExpenseComponent implements OnInit {
     this.splitByPercentage.set(expense.splitByPercentage);
     this.editExpenseForm.patchValue({
       paidByMember: expense.paidByMemberRef,
-      date: expense.date.toDate(),
+      date: DateUtils.getDateOnly(expense.date),
       amount: expense.totalAmount,
       description: expense.description,
       category: expense.categoryRef,
@@ -493,7 +494,7 @@ export class EditExpenseComponent implements OnInit {
         try {
           this.loading.loadingOn();
           const val = this.editExpenseForm.value;
-          const expenseDate = Timestamp.fromDate(val.date);
+          const expenseDate = DateUtils.toUTCTimestamp(val.date);
           const changes: Partial<Expense> = {
             date: expenseDate,
             description: val.description,

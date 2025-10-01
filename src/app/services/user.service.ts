@@ -3,11 +3,10 @@ import { Router } from '@angular/router';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { ExpenseStore } from '@store/expense.store';
+import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { GroupService } from './group.service';
-import { DemoModeService } from './demo-mode.service';
-import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -20,6 +19,9 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +32,9 @@ export class UserService implements IUserService {
   protected readonly analytics = inject(getAnalytics);
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
+  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly groupStore = inject(GroupStore);
   protected readonly demoModeService = inject(DemoModeService);
 
   constructor() {
@@ -50,14 +54,17 @@ export class UserService implements IUserService {
               ...userData,
             });
             this.userStore.setUser(user);
+            this.userStore.setIsDemoMode(false);
+            this.groupStore.setCurrentGroup(null);
+            this.expenseStore.setGroupExpenses([]);
             this.userStore.setIsGoogleUser(
               firebaseUser.providerData[0].providerId === 'google.com'
             );
             await this.groupService.getUserGroups(user, true);
           } catch (error) {
-            logEvent(this.analytics, 'error', { 
-              message: 'Failed to initialize user', 
-              error: error instanceof Error ? error.message : 'Unknown error'
+            logEvent(this.analytics, 'error', {
+              message: 'Failed to initialize user',
+              error: error instanceof Error ? error.message : 'Unknown error',
             });
           }
         } else {
@@ -66,9 +73,9 @@ export class UserService implements IUserService {
         }
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to set auth persistence',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -86,10 +93,10 @@ export class UserService implements IUserService {
       }
       return null;
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to get user details',
         userId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -110,7 +117,7 @@ export class UserService implements IUserService {
         cashAppId: '',
         zelleId: '',
       };
-      
+
       await setDoc(docRef, defaultUserData);
       return new User({
         id: userId,
@@ -118,10 +125,10 @@ export class UserService implements IUserService {
         ref: docRef as DocumentReference<User>,
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to create user',
         userId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -140,9 +147,9 @@ export class UserService implements IUserService {
       );
       this.userStore.updateUser({ defaultGroupRef: groupRef });
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to save default group',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -155,9 +162,9 @@ export class UserService implements IUserService {
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to update user',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -187,9 +194,9 @@ export class UserService implements IUserService {
         return {};
       }
     } catch (error) {
-      logEvent(this.analytics, 'error', { 
+      logEvent(this.analytics, 'error', {
         message: 'Failed to get payment methods',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }

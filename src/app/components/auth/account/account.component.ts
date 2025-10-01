@@ -1,26 +1,3 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
-import { environment } from '@env/environment';
-import { Group } from '@models/group';
-import { User } from '@models/user';
-import { ExpenseService } from '@services/expense.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { GroupStore } from '@store/group.store';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getAuth, User as FirebaseUser, sendEmailVerification, updateEmail, updatePassword } from 'firebase/auth';
-import { DocumentReference } from 'firebase/firestore';
 import {
   Component,
   effect,
@@ -36,6 +13,36 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { environment } from '@env/environment';
+import { Group } from '@models/group';
+import { User } from '@models/user';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
+import { SplitService } from '@services/split.service';
+import { UserService } from '@services/user.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import {
+  User as FirebaseUser,
+  getAuth,
+  sendEmailVerification,
+  updateEmail,
+  updatePassword,
+} from 'firebase/auth';
+import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-account',
@@ -63,6 +70,7 @@ export class AccountComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
+  protected readonly groupService = inject(GroupService);
   protected readonly splitService = inject(SplitService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
@@ -297,6 +305,7 @@ export class AccountComponent {
       // this.userService.migrateGroupIdsToRefs(),
       // this.memberService.migrateUserIdsToRefs(),
       // this.splitService.migrateFieldIdsToRefs(),
+      this.groupService.normalizeAllGroupDatesToUTC(),
     ])
       .then(() => {
         this.loading.loadingOff();
