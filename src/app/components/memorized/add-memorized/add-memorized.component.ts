@@ -1,35 +1,4 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Memorized } from '@models/memorized';
-import { Split } from '@models/split';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { DateUtils } from '@utils/date-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 import {
   afterEveryRender,
   afterNextRender,
@@ -54,15 +23,45 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Memorized } from '@models/memorized';
+import { Split } from '@models/split';
+import { CategoryService } from '@services/category.service';
+import { MemorizedService } from '@services/memorized.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-add-memorized',
@@ -344,7 +343,7 @@ export class AddMemorizedComponent implements OnInit {
         (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.addMemorizedForm.value;
-      const totalAmount: number = val.amount;
+      const totalAmount: number = +val.amount;
       splits.forEach((split: Split) => {
         split.allocatedAmount = +(
           (totalAmount * +split.percentage) /
