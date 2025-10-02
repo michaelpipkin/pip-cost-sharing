@@ -7,6 +7,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
@@ -34,6 +35,7 @@ import { SplitService } from './split.service';
 })
 export class GroupService implements IGroupService {
   protected readonly fs = inject(getFirestore);
+  protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
   protected readonly categoryService = inject(CategoryService);
@@ -102,6 +104,11 @@ export class GroupService implements IGroupService {
                     .filter((g) => userGroupIds.includes(g.id));
 
                   this.groupStore.setAllUserGroups(groups);
+
+                  if (!this.userStore.isValidUser()) {
+                    this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
+                    return;
+                  }
 
                   if (!!this.groupStore.currentGroup()) {
                     await this.getGroup(

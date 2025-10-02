@@ -48,6 +48,7 @@ export class AppComponent implements OnInit {
 
   user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
+  isValidUser: Signal<boolean> = this.userStore.isValidUser;
   isDemoMode: Signal<boolean> = this.userStore.isDemoMode;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
 

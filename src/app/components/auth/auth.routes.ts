@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthMainComponent } from '@components/auth/auth-main/auth-main.component';
-import { authGuard, loggedInGuard } from './guards.guard';
+import { authGuard, basicAuthGuard, loggedInGuard } from './guards.guard';
 
 export const authRoutes: Routes = [
   {
@@ -50,7 +50,7 @@ export const authRoutes: Routes = [
           import('@components/auth/account/account.component').then(
             (m) => m.AccountComponent
           ),
-        canActivate: [authGuard],
+        canActivate: [basicAuthGuard],
       },
     ],
   },
