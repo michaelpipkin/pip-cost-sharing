@@ -376,10 +376,6 @@ export class AddExpenseComponent implements OnInit {
   }
 
   allocateSharedAmounts(): void {
-    if (this.splitsFormArray.length === 0) {
-      return;
-    }
-
     const val = this.addExpenseForm.value;
     const input = {
       totalAmount: val.amount,
