@@ -1,18 +1,4 @@
 import { CurrencyPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
-import { Split } from '@models/split';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   afterEveryRender,
   afterNextRender,
@@ -35,10 +21,24 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
+import { Split } from '@models/split';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-split',
@@ -195,9 +195,9 @@ export class SplitComponent {
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const splitTotal: number = this.getAssignedTotal();
       const val = this.expenseForm.value;
-      const totalAmount: number = val.amount;
-      let evenlySharedAmount: number = val.sharedAmount;
-      const proportionalAmount: number = val.allocatedAmount;
+      const totalAmount: number = +val.amount;
+      let evenlySharedAmount: number = +val.sharedAmount;
+      const proportionalAmount: number = +val.allocatedAmount;
       const totalSharedSplits: number = +(
         evenlySharedAmount +
         proportionalAmount +
@@ -291,7 +291,7 @@ export class SplitComponent {
       }
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const val = this.expenseForm.value;
-      const totalAmount: number = val.amount;
+      const totalAmount: number = +val.amount;
       splits.forEach((split: Split) => {
         split.allocatedAmount = +(
           (totalAmount * +split.percentage) /
