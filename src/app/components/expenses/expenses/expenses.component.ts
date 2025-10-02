@@ -133,8 +133,8 @@ export class ExpensesComponent implements OnInit {
   searchFocused = model<boolean>(false);
   unpaidOnly = model<boolean>(true);
   startDate = model<Date | null>(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  ); // 30 days ago
+    new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  ); // 90 days ago
   endDate = model<Date | null>(null);
 
   filteredExpenses = computed(
