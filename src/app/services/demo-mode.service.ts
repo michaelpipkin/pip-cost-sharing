@@ -31,7 +31,7 @@ export class DemoModeService {
   protected readonly splitStore = inject(SplitStore);
 
   // Helper to create mock DocumentReference with eq() method
-  private createMockDocRef<T>(id: string): any {
+  private createMockDocRef(id: string): any {
     return {
       id,
       eq: (other: any) => other?.id === id,

@@ -43,7 +43,7 @@
         <span id="title" data-testid="app-title-desktop">PipSplit</span>
       </a>
       <div class="links" data-testid="desktop-navigation">
-        @if (isLoggedIn()) {
+        @if (isLoggedIn() && isValidUser()) {
           <a
             matButton
             [routerLink]="routes.ADMIN_GROUPS"
@@ -202,7 +202,7 @@
 
 <mat-menu #menu="matMenu" data-testid="mobile-menu">
   <div class="menu" data-testid="mobile-menu-content">
-    @if (isLoggedIn()) {
+    @if (isLoggedIn() && isValidUser()) {
       <a
         mat-menu-item
         [routerLink]="routes.ADMIN_GROUPS"

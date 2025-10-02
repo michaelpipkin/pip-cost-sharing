@@ -11,12 +11,14 @@ import {
 type UserState = {
   user: User | null;
   isGoogleUser: boolean;
+  isEmailConfirmed: boolean;
   isDemoMode: boolean;
 };
 
 const initialState: UserState = {
   user: null,
   isGoogleUser: false,
+  isEmailConfirmed: false,
   isDemoMode: false,
 };
 
@@ -35,10 +37,13 @@ export const UserStore = signalStore(
     },
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),
+    setIsEmailConfirmed: (isEmailConfirmed: boolean) =>
+      patchState(store, { isEmailConfirmed: isEmailConfirmed }),
     setIsDemoMode: (isDemoMode: boolean) =>
       patchState(store, { isDemoMode: isDemoMode }),
   })),
-  withComputed(({ user }) => ({
+  withComputed(({ user, isGoogleUser, isEmailConfirmed }) => ({
     isLoggedIn: computed(() => !!user()),
+    isValidUser: computed(() => isGoogleUser() || isEmailConfirmed()),
   }))
 );

@@ -1,4 +1,10 @@
 <div class="container mt-3" data-testid="account-container">
+  @if (!isGoogleUser() && !isEmailConfirmed()) {
+    <div class="email-verification-banner" data-testid="email-verification-banner">
+      <mat-icon>warning</mat-icon>
+      <span>You must confirm your email address before you can access the app. Check your email for a verification link, or click "Verify Email" below to resend it.</span>
+    </div>
+  }
   <mat-tab-group dynamicHeight class="account-tabs" data-testid="account-tabs">
     @if (!isGoogleUser()) {
       <mat-tab label="Account" data-testid="account-tab">

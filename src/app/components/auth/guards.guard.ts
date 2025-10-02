@@ -20,6 +20,28 @@ export const authGuard: CanActivateFn = () => {
   return new Promise((resolve) => {
     onAuthStateChanged(auth, (user) => {
       if (user) {
+        const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
+        const isEmailConfirmed = user.emailVerified;
+        
+        if (isGoogleUser || isEmailConfirmed) {
+          resolve(true);
+        } else {
+          resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
+        }
+      } else {
+        resolve(router.navigate([ROUTE_PATHS.AUTH_LOGIN]));
+      }
+    });
+  });
+};
+
+export const basicAuthGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  const auth = inject(getAuth);
+
+  return new Promise((resolve) => {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
         resolve(true);
       } else {
         resolve(router.navigate([ROUTE_PATHS.AUTH_LOGIN]));

@@ -5,7 +5,6 @@
     "lib": ["ES2022", "dom"],
     "outDir": "../test-results",
     "rootDir": ".",
-    "baseUrl": "../",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -16,14 +15,14 @@
     "types": ["node"],
     "typeRoots": ["../node_modules/@types"],
     "paths": {
-      "@env/*": ["src/environments/*"],
-      "@shared/*": ["src/app/shared/*"],
-      "@services/*": ["src/app/services/*"],
-      "@models/*": ["src/app/models/*"],
-      "@components/*": ["src/app/components/*"],
-      "@store/*": ["src/app/store/*"],
-      "@utils/*": ["src/app/utilities/*"],
-      "@app/*": ["src/app/*"]
+      "@env/*": ["../src/environments/*"],
+      "@shared/*": ["../src/app/shared/*"],
+      "@services/*": ["../src/app/services/*"],
+      "@models/*": ["../src/app/models/*"],
+      "@components/*": ["../src/app/components/*"],
+      "@store/*": ["../src/app/store/*"],
+      "@utils/*": ["../src/app/utilities/*"],
+      "@app/*": ["../src/app/*"]
     }
   },
   "include": ["**/*.ts", "**/*.js"],
