@@ -1,13 +1,3 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, RouterModule } from '@angular/router';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
 import {
   Component,
   inject,
@@ -22,12 +12,22 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router, RouterModule } from '@angular/router';
+import { LoadingService } from '@shared/loading/loading.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   getAuth,
+  sendEmailVerification,
 } from 'firebase/auth';
-import { ROUTE_PATHS } from '@constants/routes.constants';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
 export declare const hcaptcha: any;
 
 @Component({
@@ -128,7 +128,18 @@ export class RegisterComponent implements OnInit, OnDestroy {
         );
         return;
       } else {
-        await createUserWithEmailAndPassword(this.auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(
+          this.auth,
+          email,
+          password
+        );
+        sendEmailVerification(userCredential.user).catch((error) => {
+          console.error('Email verification failed:', error);
+        });
+        this.snackBar.open(
+          'Account created! Please check your email to verify your email address before accessing the app.',
+          'Close'
+        );
         // Navigation will be handled automatically by auth state change
       }
     } catch (error: any) {

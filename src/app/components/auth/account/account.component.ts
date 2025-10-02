@@ -79,6 +79,8 @@ export class AccountComponent {
   currentUser: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
+  isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
+  isValidUser: Signal<boolean> = this.userStore.isValidUser;
 
   firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);

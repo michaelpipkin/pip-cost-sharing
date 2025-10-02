@@ -7,3 +7,23 @@
 .payments mat-form-field {
   width: 240px !important;
 }
+
+.email-verification-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+
+  mat-icon {
+    color: #856404;
+  }
+
+  span {
+    flex: 1;
+  }
+}
