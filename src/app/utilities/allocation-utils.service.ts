@@ -33,7 +33,7 @@ export class AllocationUtilsService {
     if (input.splits.length === 0) {
       return {
         splits: [],
-        adjustedSharedAmount: input.sharedAmount,
+        adjustedSharedAmount: input.totalAmount - input.allocatedAmount,
       };
     }
 
