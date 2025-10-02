@@ -43,7 +43,7 @@ export class HelpContentService {
       id: 'expenses',
       title: 'Expenses',
       content: [
-        'By default, the expenses page loads expenses from the last 30 days. You can change the start and end dates, then click the Fetch Expenses button to retrieve expenses for that date range. Be aware that clearing both dates and fetching all expenses for the group may take a while.',
+        'By default, the expenses page loads expenses from the last 90 days. You can change the start and end dates, then click the Fetch Expenses button to retrieve expenses for that date range. Be aware that clearing both dates and fetching all expenses for the group may take a while.',
         'You can filter the expenses by payer, description, or category using the search box. Clicking the Unpaid only toggle will alternate between showing all expenses or only those with unpaid splits.',
         'Clicking the Date header will toggle sorting the table in ascending or descending date order.',
         'Click the Splits arrow on any row to expand the split detail for that expense. You can click the paid icon on a split row to mark that specific split paid or unpaid. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing.',
