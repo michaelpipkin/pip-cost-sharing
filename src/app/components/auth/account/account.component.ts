@@ -305,7 +305,7 @@ export class AccountComponent {
       // this.userService.migrateGroupIdsToRefs(),
       // this.memberService.migrateUserIdsToRefs(),
       // this.splitService.migrateFieldIdsToRefs(),
-      this.groupService.normalizeAllGroupDatesToUTC(),
+      // this.groupService.normalizeAllGroupDatesToUTC(),
     ])
       .then(() => {
         this.loading.loadingOff();
