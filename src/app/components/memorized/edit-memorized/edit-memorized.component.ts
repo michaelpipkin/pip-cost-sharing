@@ -289,10 +289,6 @@ export class EditMemorizedComponent implements OnInit {
   }
 
   allocateSharedAmounts(): void {
-    if (this.splitsFormArray.length === 0) {
-      return;
-    }
-
     const val = this.editMemorizedForm.value;
     const input = {
       totalAmount: val.amount,

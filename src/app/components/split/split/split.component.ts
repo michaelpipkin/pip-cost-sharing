@@ -180,6 +180,9 @@ export class SplitComponent {
   }
 
   allocateSharedAmounts(): void {
+    const val = this.expenseForm.value;
+    const totalAmount: number = +val.amount;
+    const proportionalAmount: number = +val.allocatedAmount;
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
@@ -194,10 +197,7 @@ export class SplitComponent {
       }
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const splitTotal: number = this.getAssignedTotal();
-      const val = this.expenseForm.value;
-      const totalAmount: number = +val.amount;
       let evenlySharedAmount: number = +val.sharedAmount;
-      const proportionalAmount: number = +val.allocatedAmount;
       const totalSharedSplits: number = +(
         evenlySharedAmount +
         proportionalAmount +
@@ -263,6 +263,10 @@ export class SplitComponent {
             allocatedAmount: split.allocatedAmount,
           });
         });
+    } else {
+      this.expenseForm.patchValue({
+        sharedAmount: totalAmount - proportionalAmount,
+      });
     }
   }
 
