@@ -60,9 +60,9 @@ export class AllocationUtilsService {
       0
     );
 
-    const totalAmount: number = input.totalAmount;
-    let evenlySharedAmount: number = input.sharedAmount;
-    const proportionalAmount: number = input.allocatedAmount;
+    const totalAmount: number = +input.totalAmount;
+    let evenlySharedAmount: number = +input.sharedAmount;
+    const proportionalAmount: number = +input.allocatedAmount;
 
     const totalSharedSplits: number = +(
       evenlySharedAmount +
