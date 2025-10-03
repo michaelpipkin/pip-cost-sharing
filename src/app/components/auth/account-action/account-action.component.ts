@@ -15,6 +15,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   applyActionCode,
@@ -51,6 +52,7 @@ export class AccountActionComponent implements OnInit {
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
+  protected readonly userStore = inject(UserStore);
 
   mode = signal<ActionMode | null>(null);
   oobCode = signal<string>('');
@@ -134,6 +136,8 @@ export class AccountActionComponent implements OnInit {
       // Force reload the user to get updated emailVerified status
       if (this.auth.currentUser) {
         await this.auth.currentUser.reload();
+        // Update UserStore with new email verification status
+        this.userStore.setIsEmailConfirmed(this.auth.currentUser.emailVerified);
       }
 
       this.success.set(true);
