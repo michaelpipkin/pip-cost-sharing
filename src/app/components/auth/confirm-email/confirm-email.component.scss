@@ -1,0 +1,62 @@
+.verify-email-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  padding: 20px;
+
+  mat-card {
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+
+    mat-card-content {
+      padding: 30px 20px;
+    }
+  }
+}
+
+.verifying-state,
+.success-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+
+  mat-icon {
+    font-size: 72px;
+    width: 72px;
+    height: 72px;
+  }
+
+  h2 {
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+    color: var(--mdc-theme-text-secondary, rgba(0, 0, 0, 0.6));
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  .login-hint {
+    width: 100%;
+    font-weight: 500;
+    color: var(--mdc-theme-text-primary, rgba(0, 0, 0, 0.87));
+  }
+
+  button {
+    mat-spinner {
+      display: inline-block;
+      margin-right: 8px;
+    }
+  }
+}

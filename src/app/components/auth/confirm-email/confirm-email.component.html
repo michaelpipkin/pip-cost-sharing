@@ -1,0 +1,103 @@
+<div class="verify-email-container">
+  <mat-card data-testid="verify-email-card">
+    <mat-card-header>
+      <mat-card-title>Email Verification</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (verifying()) {
+        <div class="verifying-state" data-testid="verifying-state">
+          <mat-spinner
+            diameter="50"
+            aria-label="Verifying email address"
+            data-testid="verification-spinner"
+          >
+          </mat-spinner>
+          <p>Verifying your email address...</p>
+        </div>
+      }
+
+      @if (!verifying() && success()) {
+        <div class="success-state" data-testid="success-state">
+          <mat-icon
+            color="primary"
+            aria-label="Success"
+            data-testid="success-icon"
+          >
+            check_circle
+          </mat-icon>
+          <h2>Email Verified Successfully!</h2>
+          <p>
+            Your email has been verified. You can now access all features of the
+            app.
+          </p>
+        </div>
+      }
+
+      @if (!verifying() && !success() && errorMessage()) {
+        <div class="error-state" data-testid="error-state">
+          <mat-icon color="warn" aria-label="Error" data-testid="error-icon">
+            error
+          </mat-icon>
+          <h2>Verification Failed</h2>
+          <p data-testid="error-message">{{ errorMessage() }}</p>
+
+          <div class="actions">
+            @if (isUserLoggedIn()) {
+              <!-- User is logged in - offer to resend verification email -->
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="resendVerificationEmail()"
+                [disabled]="resending()"
+                aria-label="Resend verification email"
+                data-testid="resend-verification-button"
+              >
+                @if (resending()) {
+                  <mat-spinner
+                    diameter="20"
+                    aria-label="Sending verification email"
+                  >
+                  </mat-spinner>
+                  Sending...
+                } @else {
+                  Resend Verification Email
+                }
+              </button>
+              <a
+                mat-stroked-button
+                routerLink="/"
+                aria-label="Navigate to home page"
+                data-testid="go-home-button-logged-in"
+              >
+                Go to Home
+              </a>
+            } @else {
+              <!-- User is NOT logged in - direct them to login -->
+              <p class="login-hint" data-testid="login-hint">
+                Please log in to resend the verification email.
+              </p>
+              <a
+                mat-raised-button
+                color="primary"
+                [routerLink]="['auth', 'login']"
+                aria-label="Navigate to login page"
+                data-testid="go-login-button"
+              >
+                Go to Login
+              </a>
+              <a
+                mat-stroked-button
+                routerLink="/"
+                aria-label="Navigate to home page"
+                data-testid="go-home-button-logged-out"
+              >
+                Go to Home
+              </a>
+            }
+          </div>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
