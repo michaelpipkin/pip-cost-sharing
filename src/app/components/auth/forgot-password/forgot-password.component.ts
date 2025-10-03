@@ -49,7 +49,13 @@ export class ForgotPasswordComponent {
     try {
       this.loading.loadingOn();
       const email = this.forgotPasswordForm.value.email;
-      await sendPasswordResetEmail(this.auth, email);
+      
+      const actionCodeSettings = {
+        url: window.location.origin + '/auth/account-action',
+        handleCodeInApp: true,
+      };
+      
+      await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
       this.snackBar.open(
         'Password reset email sent. Please check your email.',
         'Close'

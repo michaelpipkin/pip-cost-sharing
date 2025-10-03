@@ -1,0 +1,157 @@
+<div class="container">
+  <mat-card class="action-card">
+    <mat-card-header>
+      <mat-card-title>{{ getTitle() }}</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Processing State -->
+      @if (processing()) {
+        <div class="processing-state">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>{{ getProcessingMessage() }}</p>
+        </div>
+      }
+
+      <!-- Success State -->
+      @else if (success()) {
+        <div class="success-state">
+          <mat-icon class="success-icon">check_circle</mat-icon>
+          <h3>{{ getSuccessMessage() }}</h3>
+          
+          @if (mode() === 'verifyEmail' || mode() === 'recoverEmail') {
+            @if (!isUserLoggedIn()) {
+              <p>You can now log in to your account.</p>
+            } @else {
+              <p>You can now access all features of the app.</p>
+            }
+          }
+        </div>
+      }
+
+      <!-- Reset Password Form -->
+      @else if (mode() === 'resetPassword' && !success()) {
+        <div class="reset-password-form">
+          <p>Enter your new password below:</p>
+          
+          <form [formGroup]="resetPasswordForm" (ngSubmit)="resetPassword()">
+            <mat-form-field>
+              <mat-label>New Password</mat-label>
+              <input
+                matInput
+                [type]="hidePassword() ? 'password' : 'text'"
+                autocomplete="new-password"
+                formControlName="password"
+                required
+              />
+              <button
+                mat-icon-button
+                matIconSuffix
+                type="button"
+                (click)="toggleHidePassword()"
+                [attr.aria-label]="'Hide password'"
+                [attr.aria-pressed]="hidePassword"
+              >
+                <mat-icon>{{
+                  hidePassword() ? 'visibility_off' : 'visibility'
+                }}</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Confirm Password</mat-label>
+              <input
+                matInput
+                [type]="hideConfirmPassword() ? 'password' : 'text'"
+                autocomplete="new-password"
+                formControlName="confirmPassword"
+                required
+              />
+              <button
+                mat-icon-button
+                matIconSuffix
+                type="button"
+                (click)="toggleHideConfirmPassword()"
+                [attr.aria-label]="'Hide password'"
+                [attr.aria-pressed]="hideConfirmPassword"
+              >
+                <mat-icon>{{
+                  hideConfirmPassword() ? 'visibility_off' : 'visibility'
+                }}</mat-icon>
+              </button>
+              @if (resetPasswordForm.errors?.['mismatch']) {
+                <mat-error>Passwords do not match.</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-actions">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="resetPasswordForm.invalid"
+              >
+                Reset Password
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- Error State -->
+      @else if (errorMessage()) {
+        <div class="error-state">
+          <mat-icon class="error-icon">error</mat-icon>
+          <h3>Something went wrong</h3>
+          <p>{{ errorMessage() }}</p>
+          
+          @if (mode() === 'verifyEmail' && isUserLoggedIn()) {
+            <button
+              mat-raised-button
+              color="accent"
+              (click)="resendVerificationEmail()"
+              [disabled]="resending()"
+            >
+              @if (resending()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                Sending...
+              } @else {
+                Resend Verification Email
+              }
+            </button>
+          }
+        </div>
+      }
+    </mat-card-content>
+
+    <mat-card-actions>
+      <!-- Continue to Login button for successful actions when not logged in -->
+      @if (success() && !isUserLoggedIn()) {
+        <button mat-raised-button color="primary" routerLink="/auth/login">
+          Continue to Login
+        </button>
+      }
+      
+      <!-- Continue to Account button for successful actions when logged in -->
+      @if (success() && isUserLoggedIn()) {
+        <button mat-raised-button color="primary" routerLink="/auth/account">
+          Continue to Account
+        </button>
+      }
+      
+      <!-- Back to Login for errors -->
+      @if (errorMessage() && !isUserLoggedIn()) {
+        <button mat-stroked-button routerLink="/auth/login">
+          Back to Login
+        </button>
+      }
+      
+      <!-- Back to Account for logged in users with errors -->
+      @if (errorMessage() && isUserLoggedIn()) {
+        <button mat-stroked-button routerLink="/auth/account">
+          Back to Account
+        </button>
+      }
+    </mat-card-actions>
+  </mat-card>
+</div>
