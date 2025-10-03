@@ -21,7 +21,6 @@ import {
   confirmPasswordReset,
   getAuth,
   sendEmailVerification,
-  verifyPasswordResetCode,
 } from 'firebase/auth';
 import { passwordMatchValidator } from '../auth-main/password-match-validator';
 
@@ -60,7 +59,7 @@ export class AccountActionComponent implements OnInit {
   errorMessage = signal<string>('');
   isUserLoggedIn = signal<boolean>(false);
   resending = signal<boolean>(false);
-  
+
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
 
@@ -89,7 +88,10 @@ export class AccountActionComponent implements OnInit {
         return;
       }
 
-      if (!mode || !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)) {
+      if (
+        !mode ||
+        !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
+      ) {
         this.errorMessage.set('Invalid link. Unknown action.');
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
@@ -125,11 +127,17 @@ export class AccountActionComponent implements OnInit {
 
   private async processEmailVerification(): Promise<void> {
     this.processing.set(true);
-    
+
     try {
       await applyActionCode(this.auth, this.oobCode());
+
+      // Force reload the user to get updated emailVerified status
+      if (this.auth.currentUser) {
+        await this.auth.currentUser.reload();
+      }
+
       this.success.set(true);
-      
+
       logEvent(this.analytics, 'email_verified', {
         component: this.constructor.name,
       });
@@ -142,11 +150,11 @@ export class AccountActionComponent implements OnInit {
 
   private async processEmailRecovery(): Promise<void> {
     this.processing.set(true);
-    
+
     try {
       await applyActionCode(this.auth, this.oobCode());
       this.success.set(true);
-      
+
       logEvent(this.analytics, 'email_recovered', {
         component: this.constructor.name,
       });
@@ -160,12 +168,12 @@ export class AccountActionComponent implements OnInit {
   async resetPassword(): Promise<void> {
     const password = this.resetPasswordForm.value.password;
     this.loading.loadingOn();
-    
+
     try {
       await confirmPasswordReset(this.auth, this.oobCode(), password);
       this.success.set(true);
       this.snackBar.open('Password reset successfully', 'Close');
-      
+
       logEvent(this.analytics, 'password_reset_success', {
         component: this.constructor.name,
       });
@@ -188,14 +196,14 @@ export class AccountActionComponent implements OnInit {
 
     try {
       this.resending.set(true);
-      
+
       const actionCodeSettings = {
         url: window.location.origin + '/auth/account-action',
         handleCodeInApp: true,
       };
-      
+
       await sendEmailVerification(this.auth.currentUser, actionCodeSettings);
-      
+
       this.snackBar.open(
         'Verification email sent! Please check your inbox.',
         'Close',
@@ -224,7 +232,7 @@ export class AccountActionComponent implements OnInit {
 
   private handleError(action: string, error: any): void {
     let errorMsg = `Failed to ${action}. `;
-    
+
     if (error.code === 'auth/invalid-action-code') {
       errorMsg += 'The link is invalid or has expired.';
     } else if (error.code === 'auth/expired-action-code') {
