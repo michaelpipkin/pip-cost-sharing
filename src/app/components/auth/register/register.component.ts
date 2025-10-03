@@ -134,7 +134,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
           password
         );
         const actionCodeSettings = {
-          url: window.location.origin + '/auth/confirm-email',
+          url: window.location.origin + '/auth/account-action',
           handleCodeInApp: true,
         };
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(
