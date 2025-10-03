@@ -56,6 +56,12 @@ export class GroupService implements IGroupService {
   }
 
   async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
+    // Check email verification first, before any group logic
+    if (!this.userStore.isValidUser()) {
+      this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
+      return;
+    }
+    
     try {
       const memberQuery = query(
         collectionGroup(this.fs, 'members'),
@@ -104,11 +110,6 @@ export class GroupService implements IGroupService {
                     .filter((g) => userGroupIds.includes(g.id));
 
                   this.groupStore.setAllUserGroups(groups);
-
-                  if (!this.userStore.isValidUser()) {
-                    this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
-                    return;
-                  }
 
                   if (!!this.groupStore.currentGroup()) {
                     await this.getGroup(
