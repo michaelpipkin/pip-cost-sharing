@@ -155,7 +155,7 @@ export class AccountComponent {
 
   async verifyEmail(): Promise<void> {
     const actionCodeSettings = {
-      url: window.location.origin + '/auth/confirm-email',
+      url: window.location.origin + '/auth/account-action',
       handleCodeInApp: true,
     };
     sendEmailVerification(this.firebaseUser(), actionCodeSettings)

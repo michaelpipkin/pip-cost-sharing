@@ -26,14 +26,6 @@ export const authRoutes: Routes = [
         canActivate: [loggedInGuard],
       },
       {
-        path: 'confirm-email',
-        title: 'Confirm Email',
-        loadComponent: () =>
-          import('@components/auth/confirm-email/confirm-email.component').then(
-            (m) => m.ConfirmEmailComponent
-          ),
-      },
-      {
         path: 'forgot-password',
         title: 'Forgot Password',
         loadComponent: () =>
@@ -59,6 +51,14 @@ export const authRoutes: Routes = [
             (m) => m.AccountComponent
           ),
         canActivate: [basicAuthGuard],
+      },
+      {
+        path: 'account-action',
+        title: 'Account Action',
+        loadComponent: () =>
+          import(
+            '@components/auth/account-action/account-action.component'
+          ).then((m) => m.AccountActionComponent),
       },
     ],
   },
