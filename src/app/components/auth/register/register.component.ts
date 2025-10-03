@@ -133,9 +133,23 @@ export class RegisterComponent implements OnInit, OnDestroy {
           email,
           password
         );
-        sendEmailVerification(userCredential.user).catch((error) => {
-          console.error('Email verification failed:', error);
-        });
+        const actionCodeSettings = {
+          url: window.location.origin + '/auth/confirm-email',
+          handleCodeInApp: true,
+        };
+        sendEmailVerification(userCredential.user, actionCodeSettings).catch(
+          (err: Error) => {
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'verify_email',
+              message: err.message,
+            });
+            this.snackBar.open(
+              'Something went wrong - verification email could not be sent.',
+              'Close'
+            );
+          }
+        );
         this.snackBar.open(
           'Account created! Please check your email to verify your email address before accessing the app.',
           'Close'

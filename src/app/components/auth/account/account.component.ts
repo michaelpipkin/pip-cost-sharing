@@ -154,7 +154,11 @@ export class AccountComponent {
   }
 
   async verifyEmail(): Promise<void> {
-    sendEmailVerification(this.firebaseUser())
+    const actionCodeSettings = {
+      url: window.location.origin + '/auth/confirm-email',
+      handleCodeInApp: true,
+    };
+    sendEmailVerification(this.firebaseUser(), actionCodeSettings)
       .then(() => {
         this.snackBar.open(
           'Check your email to verify your email address.',
@@ -172,10 +176,7 @@ export class AccountComponent {
         });
         this.snackBar.open(
           'Something went wrong - verification email could not be sent.',
-          'Close',
-          {
-            verticalPosition: 'top',
-          }
+          'Close'
         );
       });
   }

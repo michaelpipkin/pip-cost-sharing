@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthMainComponent } from '@components/auth/auth-main/auth-main.component';
-import { authGuard, basicAuthGuard, loggedInGuard } from './guards.guard';
+import { basicAuthGuard, loggedInGuard } from './guards.guard';
 
 export const authRoutes: Routes = [
   {
@@ -24,6 +24,14 @@ export const authRoutes: Routes = [
             (m) => m.RegisterComponent
           ),
         canActivate: [loggedInGuard],
+      },
+      {
+        path: 'confirm-email',
+        title: 'Confirm Email',
+        loadComponent: () =>
+          import('@components/auth/confirm-email/confirm-email.component').then(
+            (m) => m.ConfirmEmailComponent
+          ),
       },
       {
         path: 'forgot-password',
