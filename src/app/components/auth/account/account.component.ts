@@ -30,7 +30,6 @@ import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
@@ -58,7 +57,6 @@ import { DocumentReference } from 'firebase/firestore';
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
-    DocRefCompareDirective,
   ],
 })
 export class AccountComponent {
@@ -269,33 +267,6 @@ export class AccountComponent {
       }
     } finally {
       this.loading.loadingOff();
-    }
-  }
-
-  async saveDefaultGroup(): Promise<void> {
-    const selectedGroup = this.groupForm.value.groupRef;
-    if (selectedGroup !== null) {
-      this.loading.loadingOn();
-      try {
-        await this.userService.saveDefaultGroup(selectedGroup);
-        this.snackBar.open('Default group updated.', 'Close');
-      } catch (error) {
-        if (error instanceof Error) {
-          this.snackBar.open(error.message, 'Close');
-          logEvent(this.analytics, 'error', {
-            component: this.constructor.name,
-            action: 'edit_group',
-            message: error.message,
-          });
-        } else {
-          this.snackBar.open(
-            'Something went wrong - could not update default group.',
-            'Close'
-          );
-        }
-      } finally {
-        this.loading.loadingOff();
-      }
     }
   }
 

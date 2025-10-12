@@ -1,8 +1,15 @@
 <div class="container mt-3" data-testid="account-container">
   @if (!isGoogleUser() && !isEmailConfirmed()) {
-    <div class="email-verification-banner" data-testid="email-verification-banner">
+    <div
+      class="email-verification-banner"
+      data-testid="email-verification-banner"
+    >
       <mat-icon>warning</mat-icon>
-      <span>You must confirm your email address before you can access the app. Check your email for a verification link, or click "Verify Email" below to resend it.</span>
+      <span
+        >You must confirm your email address before you can access the app.
+        Check your email for a verification link, or click "Verify Email" below
+        to resend it.</span
+      >
     </div>
   }
   <mat-tab-group dynamicHeight class="account-tabs" data-testid="account-tabs">
@@ -131,6 +138,16 @@
             Change Password
           </button>
         </form>
+        @if (!prod()) {
+          <button
+            mat-raised-button
+            class="btn-tertiary"
+            type="button"
+            (click)="updateData()"
+          >
+            Update Data
+          </button>
+        }
       </mat-tab>
     }
     <mat-tab label="Payment Services" data-testid="payment-services-tab">
@@ -189,56 +206,6 @@
           Save
         </button>
       </form>
-    </mat-tab>
-    <mat-tab label="Options" data-testid="options-tab">
-      <h4 data-testid="default-group-title">Select Default Group</h4>
-      <form
-        [formGroup]="groupForm"
-        class="container"
-        data-testid="default-group-form"
-        aria-label="Select default group form"
-      >
-        <mat-form-field id="group-select" data-testid="default-group-field">
-          <mat-label>Select Group</mat-label>
-          <mat-select
-            formControlName="groupRef"
-            name="group"
-            #groupSelect
-            docRefCompare
-            data-testid="default-group-select"
-            aria-label="Select default group"
-          >
-            @for (group of activeUserGroups(); track group.ref) {
-              <mat-option
-                [value]="group.ref"
-                [attr.data-testid]="'default-group-option-' + group.id"
-                >{{ group.name }}</mat-option
-              >
-            }
-          </mat-select>
-        </mat-form-field>
-        <button
-          mat-raised-button
-          class="btn-primary"
-          type="button"
-          [disabled]="selectedGroup === null || groupForm.pristine"
-          (click)="saveDefaultGroup()"
-          data-testid="save-default-group-button"
-          aria-label="Save default group selection"
-        >
-          Save
-        </button>
-      </form>
-      @if (!prod()) {
-        <button
-          mat-raised-button
-          class="btn-tertiary"
-          type="button"
-          (click)="updateData()"
-        >
-          Update Data
-        </button>
-      }
     </mat-tab>
   </mat-tab-group>
 </div>
