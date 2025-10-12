@@ -1,3 +1,12 @@
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -10,6 +19,10 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -21,19 +34,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-categories',
@@ -122,7 +122,6 @@ export class CategoriesComponent {
       const dialogConfig: MatDialogConfig = {
         data: {
           category: category,
-          groupId: this.currentGroup().id,
         },
       };
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);

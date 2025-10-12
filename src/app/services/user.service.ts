@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { ExpenseStore } from '@store/expense.store';
@@ -129,27 +128,6 @@ export class UserService implements IUserService {
       logEvent(this.analytics, 'error', {
         message: 'Failed to create user',
         userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
-  }
-
-  async saveDefaultGroup(groupRef: DocumentReference<Group>): Promise<void> {
-    try {
-      const userId = this.userStore.user().id;
-      const docRef = doc(this.fs, `users/${userId}`);
-      await setDoc(
-        docRef,
-        {
-          defaultGroupRef: groupRef,
-        },
-        { merge: true }
-      );
-      this.userStore.updateUser({ defaultGroupRef: groupRef });
-    } catch (error) {
-      logEvent(this.analytics, 'error', {
-        message: 'Failed to save default group',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

@@ -20,6 +20,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -61,7 +62,7 @@ export class GroupService implements IGroupService {
       this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       return;
     }
-    
+
     try {
       const memberQuery = query(
         collectionGroup(this.fs, 'members'),
@@ -205,6 +206,19 @@ export class GroupService implements IGroupService {
 
       this.groupStore.setCurrentGroup(group);
       localStorage.setItem('currentGroup', JSON.stringify(group));
+
+      const groupRef = doc(
+        this.fs,
+        `groups/${groupId}`
+      ) as DocumentReference<Group>;
+      await setDoc(
+        userRef,
+        {
+          defaultGroupRef: groupRef,
+        },
+        { merge: true }
+      );
+      this.userStore.updateUser({ defaultGroupRef: groupRef });
 
       // Initialize group-related data
       this.categoryService.getGroupCategories(groupId);
