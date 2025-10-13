@@ -2,10 +2,18 @@ import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
+import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -18,9 +26,6 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
-import { DemoModeService } from './demo-mode.service';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -34,6 +39,11 @@ export class UserService implements IUserService {
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly groupService = inject(GroupService);
   protected readonly groupStore = inject(GroupStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly memorizedStore = inject(MemorizedStore);
+  protected readonly historyStore = inject(HistoryStore);
+  protected readonly splitStore = inject(SplitStore);
   protected readonly demoModeService = inject(DemoModeService);
 
   constructor() {
@@ -54,13 +64,36 @@ export class UserService implements IUserService {
             });
             this.userStore.setUser(user);
             this.userStore.setIsDemoMode(false);
-            this.groupStore.setCurrentGroup(null);
-            this.expenseStore.setGroupExpenses([]);
+
+            // Clear all demo data from stores when a real user logs in
+            this.groupStore.clearCurrentGroup();
+            this.expenseStore.clearGroupExpenses();
+            this.categoryStore.clearGroupCategories();
+            this.memberStore.clearCurrentMember();
+            this.memberStore.clearGroupMembers();
+            this.memorizedStore.clearMemorizedExpenses();
+            this.historyStore.clearHistory();
+            this.splitStore.clearSplits();
+
             this.userStore.setIsGoogleUser(
               firebaseUser.providerData[0].providerId === 'google.com'
             );
             this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
             await this.groupService.getUserGroups(user);
+
+            // Handle auto-navigation for bookmarked/direct home page visits
+            // Login/register pages are handled by loggedInGuard
+            const currentUrl = this.router.url;
+            const isOnHomePage = currentUrl === '/home' || currentUrl === '/';
+
+            if (isOnHomePage) {
+              // Validated users go to expenses, unvalidated users go to account
+              if (this.userStore.isValidUser()) {
+                this.router.navigateByUrl('/expenses');
+              } else {
+                this.router.navigateByUrl('/auth/account');
+              }
+            }
           } catch (error) {
             logEvent(this.analytics, 'error', {
               message: 'Failed to initialize user',

@@ -57,7 +57,15 @@ export const loggedInGuard: CanActivateFn = () => {
   return new Promise((resolve) => {
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
+        const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
+        const isEmailConfirmed = user.emailVerified;
+
+        // Redirect validated users to expenses, unvalidated users to account
+        if (isGoogleUser || isEmailConfirmed) {
+          resolve(router.navigate([ROUTE_PATHS.EXPENSES_ROOT]));
+        } else {
+          resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
+        }
       } else {
         resolve(true);
       }
