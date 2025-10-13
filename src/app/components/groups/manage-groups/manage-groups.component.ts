@@ -1,6 +1,17 @@
 import { Component, inject, model, OnInit, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -11,17 +22,6 @@ import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-manage-groups',
@@ -49,7 +49,7 @@ export class ManageGroupsComponent implements OnInit {
   protected readonly loading = inject(LoadingService);
   protected readonly data = inject(MAT_DIALOG_DATA);
 
-  selectedGroup = model<Group>(this.data.group as Group);
+  selectedGroup = model<Group | null>(this.data.group as Group);
 
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
@@ -61,13 +61,15 @@ export class ManageGroupsComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const group = this.selectedGroup();
-    this.editGroupForm.patchValue({
-      groupId: group.id,
-      groupName: group.name,
-      active: group.active ?? false,
-      autoAddMembers: group.autoAddMembers ?? false,
-    });
+    if (this.selectedGroup() !== null) {
+      const group = this.selectedGroup();
+      this.editGroupForm.patchValue({
+        groupId: group.id,
+        groupName: group.name,
+        active: group.active ?? false,
+        autoAddMembers: group.autoAddMembers ?? false,
+      });
+    }
   }
 
   public get f() {
