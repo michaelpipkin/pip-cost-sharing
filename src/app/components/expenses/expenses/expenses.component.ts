@@ -125,6 +125,21 @@ export class ExpensesComponent implements OnInit {
             storeExpenses.length
           );
         }
+      } else {
+        // Clear demo expenses when switching to real user mode
+        if (this.expenses().length > 0 && !this.currentGroup()) {
+          console.log('Clearing demo expenses - user logged in');
+          this.expenses.set([]);
+          this.isLoaded.set(false);
+        }
+      }
+    });
+
+    // Watch for currentGroup to become available and load expenses
+    effect(() => {
+      const group = this.currentGroup();
+      if (group && !this.isLoaded() && !this.userStore.isDemoMode()) {
+        this.loadExpenses();
       }
     });
   }
@@ -206,7 +221,12 @@ export class ExpensesComponent implements OnInit {
           this.smallScreen.set(false);
         }
       });
-    await this.loadExpenses();
+
+    // If currentGroup is already set (e.g., coming from another page), load expenses immediately
+    // Otherwise, the effect in the constructor will load them when the group becomes available
+    if (this.currentGroup() && !this.userStore.isDemoMode()) {
+      await this.loadExpenses();
+    }
   }
 
   async loadExpenses(): Promise<void> {

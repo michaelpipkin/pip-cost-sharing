@@ -10,7 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
 import {
   fetchSignInMethodsForEmail,
@@ -37,7 +37,6 @@ import {
 export class LoginComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
-  protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
 
@@ -61,7 +60,7 @@ export class LoginComponent {
         return;
       } else {
         await signInWithEmailAndPassword(this.auth, email, password);
-        this.router.navigateByUrl('/expenses');
+        // Navigation handled automatically by UserService.onAuthStateChanged
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
@@ -75,7 +74,7 @@ export class LoginComponent {
       this.loading.loadingOn();
       const provider = new GoogleAuthProvider();
       await signInWithPopup(this.auth, provider);
-      this.router.navigateByUrl('/expenses');
+      // Navigation handled automatically by UserService.onAuthStateChanged
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
     } finally {
