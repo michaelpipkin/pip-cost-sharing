@@ -56,7 +56,7 @@ export class GroupService implements IGroupService {
     }
   }
 
-  async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
+  async getUserGroups(user: User): Promise<void> {
     // Check email verification first, before any group logic
     if (!this.userStore.isValidUser()) {
       this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
@@ -81,7 +81,6 @@ export class GroupService implements IGroupService {
 
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
-              autoNav = false;
               this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
               return;
             }
@@ -117,25 +116,11 @@ export class GroupService implements IGroupService {
                       this.groupStore.currentGroup().id,
                       user.ref
                     );
-                    if (autoNav && this.router.url === '/') {
-                      this.router.navigateByUrl('/expenses');
-                    }
                   } else {
-                    if (groups.length === 1 && groups[0].active) {
-                      await this.getGroup(groups[0].id, user.ref);
-                      if (autoNav) {
-                        autoNav = false;
-                        this.router.navigateByUrl('/expenses');
-                      }
-                    } else if (user.defaultGroupRef !== null) {
+                    if (user.defaultGroupRef !== null) {
                       await this.getGroup(user.defaultGroupRef.id, user.ref);
-                      if (autoNav) {
-                        autoNav = false;
-                        this.router.navigateByUrl('/expenses');
-                      }
-                    } else {
-                      autoNav = false;
-                      this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
+                    } else if (groups.length === 1 && groups[0].active) {
+                      await this.getGroup(groups[0].id, user.ref);
                     }
                   }
                 } catch (error) {
