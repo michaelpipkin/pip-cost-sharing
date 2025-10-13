@@ -61,7 +61,7 @@ export class LoginComponent {
         return;
       } else {
         await signInWithEmailAndPassword(this.auth, email, password);
-        // Navigation will be handled automatically by auth state change
+        this.router.navigateByUrl('/expenses');
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
@@ -70,22 +70,15 @@ export class LoginComponent {
     }
   }
 
-  googleLogin() {
+  async googleLogin() {
     try {
       this.loading.loadingOn();
       const provider = new GoogleAuthProvider();
-      signInWithPopup(this.auth, provider)
-        .then(() => {
-          // Navigation will be handled automatically by auth state change
-        })
-        .catch((error) => {
-          this.snackBar.open(error.message, 'Close');
-        })
-        .finally(() => {
-          this.loading.loadingOff();
-        });
+      await signInWithPopup(this.auth, provider);
+      this.router.navigateByUrl('/expenses');
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
+    } finally {
       this.loading.loadingOff();
     }
   }

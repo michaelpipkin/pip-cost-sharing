@@ -60,7 +60,7 @@ export class UserService implements IUserService {
               firebaseUser.providerData[0].providerId === 'google.com'
             );
             this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
-            await this.groupService.getUserGroups(user, true);
+            await this.groupService.getUserGroups(user);
           } catch (error) {
             logEvent(this.analytics, 'error', {
               message: 'Failed to initialize user',

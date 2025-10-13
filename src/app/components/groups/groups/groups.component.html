@@ -18,32 +18,39 @@
       </div>
     </div>
     <div class="mb-4">
-      <mat-form-field
-        id="group-select"
-        data-testid="group-select-field"
-        subscriptSizing="dynamic"
+      <form
+        [formGroup]="groupForm"
+        aria-label="Select group form"
+        data-testid="select-group-form"
       >
-        <mat-label>Select Group</mat-label>
-        <mat-select
-          data-testid="group-select"
-          [(ngModel)]="selectedGroupId"
-          name="group"
-          (selectionChange)="onSelectGroup($event)"
+        <mat-form-field
+          id="group-select"
+          data-testid="group-select-field"
+          subscriptSizing="dynamic"
         >
-          @for (group of activeUserGroups(); track group.id) {
-            <mat-option
-              [value]="group.id"
-              [attr.data-testid]="'group-option-' + group.id"
-              >{{ group.name }}</mat-option
-            >
-          }
-        </mat-select>
-      </mat-form-field>
+          <mat-label>Select Group</mat-label>
+          <mat-select
+            data-testid="group-select"
+            formControlName="selectedGroupRef"
+            name="group"
+            (selectionChange)="onSelectGroup($event)"
+            docRefCompare
+          >
+            @for (group of activeUserGroups(); track group.ref) {
+              <mat-option
+                [value]="group.ref"
+                [attr.data-testid]="'group-option-' + group.ref"
+                >{{ group.name }}</mat-option
+              >
+            }
+          </mat-select>
+        </mat-form-field>
+      </form>
     </div>
-    @if (selectedGroupId() != '') {
+    @if (selectedGroupRef != null) {
       <div class="mb-4">
         <span id="join-code" data-testid="join-code">
-          Group join code: {{ selectedGroupId() }}
+          Group join code: {{ selectedGroupRef.id }}
           <mat-icon
             matTooltip="Copy group join code to clipboard"
             (click)="copyGroupCode()"
@@ -71,15 +78,17 @@
       >
         Join Group
       </button>
-      <button
-        data-testid="manage-groups-button"
-        mat-raised-button
-        class="btn-primary"
-        type="button"
-        (click)="manageGroups()"
-      >
-        Manage Groups
-      </button>
+      @if (allUserGroups().length > 0) {
+        <button
+          data-testid="manage-groups-button"
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          (click)="manageGroups()"
+        >
+          Manage Groups
+        </button>
+      }
     </div>
   </div>
 }

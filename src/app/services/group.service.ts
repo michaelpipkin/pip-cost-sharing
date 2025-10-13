@@ -50,13 +50,16 @@ export class GroupService implements IGroupService {
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');
     if (currentGroup !== null) {
-      this.groupStore.setCurrentGroup(
-        new Group({ ...JSON.parse(currentGroup) })
-      );
+      const group = new Group({ ...JSON.parse(currentGroup) });
+      group.ref = doc(
+        this.fs,
+        `groups/${group.id}`
+      ) as DocumentReference<Group>;
+      this.groupStore.setCurrentGroup(group);
     }
   }
 
-  async getUserGroups(user: User, autoNav: boolean = false): Promise<void> {
+  async getUserGroups(user: User): Promise<void> {
     // Check email verification first, before any group logic
     if (!this.userStore.isValidUser()) {
       this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
@@ -81,7 +84,6 @@ export class GroupService implements IGroupService {
 
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
-              autoNav = false;
               this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
               return;
             }
@@ -114,28 +116,14 @@ export class GroupService implements IGroupService {
 
                   if (!!this.groupStore.currentGroup()) {
                     await this.getGroup(
-                      this.groupStore.currentGroup().id,
+                      this.groupStore.currentGroup().ref,
                       user.ref
                     );
-                    if (autoNav && this.router.url === '/') {
-                      this.router.navigateByUrl('/expenses');
-                    }
                   } else {
-                    if (groups.length === 1 && groups[0].active) {
-                      await this.getGroup(groups[0].id, user.ref);
-                      if (autoNav) {
-                        autoNav = false;
-                        this.router.navigateByUrl('/expenses');
-                      }
-                    } else if (user.defaultGroupRef !== null) {
-                      await this.getGroup(user.defaultGroupRef.id, user.ref);
-                      if (autoNav) {
-                        autoNav = false;
-                        this.router.navigateByUrl('/expenses');
-                      }
-                    } else {
-                      autoNav = false;
-                      this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
+                    if (user.defaultGroupRef !== null) {
+                      await this.getGroup(user.defaultGroupRef, user.ref);
+                    } else if (groups.length === 1 && groups[0].active) {
+                      await this.getGroup(groups[0].ref, user.ref);
                     }
                   }
                 } catch (error) {
@@ -188,14 +176,14 @@ export class GroupService implements IGroupService {
   }
 
   async getGroup(
-    groupId: string,
+    groupRef: DocumentReference<Group>,
     userRef: DocumentReference<User>
   ): Promise<void> {
     try {
-      const docSnap = await getDoc(doc(this.fs, `groups/${groupId}`));
+      const docSnap = await getDoc(groupRef);
 
       if (!docSnap.exists()) {
-        throw new Error(`Group with ID ${groupId} not found`);
+        throw new Error(`Group with ID ${groupRef.id} not found`);
       }
 
       const group = new Group({
@@ -207,10 +195,6 @@ export class GroupService implements IGroupService {
       this.groupStore.setCurrentGroup(group);
       localStorage.setItem('currentGroup', JSON.stringify(group));
 
-      const groupRef = doc(
-        this.fs,
-        `groups/${groupId}`
-      ) as DocumentReference<Group>;
       await setDoc(
         userRef,
         {
@@ -221,18 +205,18 @@ export class GroupService implements IGroupService {
       this.userStore.updateUser({ defaultGroupRef: groupRef });
 
       // Initialize group-related data
-      this.categoryService.getGroupCategories(groupId);
-      this.memberService.getGroupMembers(groupId);
-      this.memberService.getMemberByUserRef(groupId, userRef);
-      this.memorizedService.getMemorizedExpensesForGroup(groupId);
-      this.splitsService.getUnpaidSplitsForGroup(groupId);
-      this.historyService.getHistoryForGroup(groupId);
+      this.categoryService.getGroupCategories(groupRef.id);
+      this.memberService.getGroupMembers(groupRef.id);
+      this.memberService.getMemberByUserRef(groupRef.id, userRef);
+      this.memorizedService.getMemorizedExpensesForGroup(groupRef.id);
+      this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
+      this.historyService.getHistoryForGroup(groupRef.id);
     } catch (error) {
       logEvent(this.analytics, 'error', {
         service: 'GroupService',
         method: 'getGroup',
         message: 'Failed to get group',
-        groupId,
+        groupId: groupRef.id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
