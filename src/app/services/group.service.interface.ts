@@ -5,7 +5,10 @@ import { DocumentReference } from 'firebase/firestore';
 
 export interface IGroupService {
   getUserGroups(user: User): Promise<void>;
-  getGroup(groupId: string, userRef: DocumentReference<User>): Promise<void>;
+  getGroup(
+    groupRef: DocumentReference<Group>,
+    userRef: DocumentReference<User>
+  ): Promise<void>;
   addGroup(group: Partial<Group>, member: Partial<Member>): Promise<any>;
   updateGroup(
     groupRef: DocumentReference<Group>,

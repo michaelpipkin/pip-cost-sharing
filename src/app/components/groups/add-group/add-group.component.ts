@@ -69,8 +69,8 @@ export class AddGroupComponent {
         active: true,
         groupAdmin: true,
       };
-      await this.groupService.addGroup(newGroup, newMember);
-      this.dialogRef.close(true);
+      const groupRef = await this.groupService.addGroup(newGroup, newMember);
+      this.dialogRef.close(groupRef);
     } catch (error) {
       if (error instanceof Error) {
         this.snackBar.open(error.message, 'Close');
