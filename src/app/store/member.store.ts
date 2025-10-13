@@ -34,6 +34,9 @@ export const MemberStore = signalStore(
     setGroupMembers: (members: Member[]) => {
       patchState(store, { groupMembers: members, loaded: true });
     },
+    clearGroupMembers: () => {
+      patchState(store, { groupMembers: [], loaded: false });
+    },
     getMemberByRef: (ref: DocumentReference<Member> | null) => {
       if (!ref) return null;
       const members = store.groupMembers();
