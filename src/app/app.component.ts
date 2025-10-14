@@ -6,9 +6,10 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { ROUTE_PATHS } from '@constants/routes.constants';
+import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
@@ -40,6 +41,7 @@ export class AppComponent implements OnInit {
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly router = inject(Router);
   protected readonly analytics = inject(getAnalytics);
   protected readonly breakpointObserver = inject(BreakpointObserver);
@@ -49,11 +51,12 @@ export class AppComponent implements OnInit {
   user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isValidUser: Signal<boolean> = this.userStore.isValidUser;
-  isDemoMode: Signal<boolean> = this.userStore.isDemoMode;
+  isInDemoMode: Signal<boolean> = this.demoService.isInDemoMode;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   // Route constants for template access
   readonly routes = ROUTE_PATHS;
+  readonly demoRoutes = DEMO_ROUTE_PATHS;
 
   constructor() {
     logEvent(this.analytics, 'app_initalized');

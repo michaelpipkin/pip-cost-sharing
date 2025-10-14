@@ -1,4 +1,4 @@
-import { Component, effect, inject, Signal } from '@angular/core';
+import { Component, effect, inject, OnInit, Signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -14,13 +14,14 @@ import {
 } from '@components/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getAnalytics } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { JoinGroupComponent } from '../join-group/join-group.component';
@@ -41,12 +42,13 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     DocRefCompareDirective,
   ],
 })
-export class GroupsComponent {
+export class GroupsComponent implements OnInit {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly memberStore = inject(MemberStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly fb = inject(FormBuilder);
@@ -71,45 +73,63 @@ export class GroupsComponent {
     });
   }
 
+  ngOnInit(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.groupForm.patchValue({
+        selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
+      });
+    }
+  }
+
   get selectedGroupRef() {
     return this.groupForm.get('selectedGroupRef').value;
   }
 
   addGroup(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogRef = this.dialog.open(AddGroupComponent);
     dialogRef
       .afterClosed()
       .subscribe(async (groupRef: DocumentReference<Group>) => {
         if (groupRef) {
           this.snackBar.open('Group added!', 'OK');
-          if (this.activeUserGroups().length === 1) {
-            try {
-              this.loadingService.loadingOn();
-              await this.groupService.getGroup(groupRef, this.#user().ref);
-              this.groupForm.patchValue({ selectedGroupRef: groupRef });
-            } catch (error) {
-              this.snackBar.open('Error selecting new group', 'OK');
-              logEvent(this.analytics, 'select_group_error', {
-                error: error.message,
-              });
-            } finally {
-              this.loadingService.loadingOff();
-            }
-          }
+          this.groupForm.patchValue({
+            selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
+          });
         }
       });
   }
 
   joinGroup(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogRef = this.dialog.open(JoinGroupComponent);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackBar.open('Group joined!', 'OK');
+        this.groupForm.patchValue({
+          selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
+        });
       }
     });
   }
 
   async onSelectGroup(e: MatSelectChange): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      // In demo mode, just find and set the group from the store
+      const selectedGroup = this.allUserGroups().find(
+        (g) => g.ref.id === e.value.id
+      );
+      if (selectedGroup) {
+        this.groupStore.setCurrentGroup(selectedGroup);
+      }
+      return;
+    }
     await this.groupService.getGroup(e.value, this.#user().ref);
   }
 
@@ -121,6 +141,10 @@ export class GroupsComponent {
   }
 
   manageGroups(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: { user: this.#user(), group: this.#currentGroup() },
     };
@@ -128,9 +152,9 @@ export class GroupsComponent {
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
         this.snackBar.open(`Group updated`, 'OK');
-        if (this.groupStore.currentGroup() === null) {
-          this.groupForm.patchValue({ selectedGroupRef: null });
-        }
+        this.groupForm.patchValue({
+          selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
+        });
       }
     });
   }

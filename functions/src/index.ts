@@ -36,6 +36,29 @@ exports.validateHCaptcha = functions.https.onCall(async (request) => {
   }
 });
 
+exports.verifyUserEmail = functions.https.onCall(async (request) => {
+  const uid = request.data.uid;
+
+  if (!uid) {
+    throw new functions.https.HttpsError('invalid-argument', 'UID is required');
+  }
+
+  try {
+    await admin.auth().updateUser(uid, {
+      emailVerified: true,
+    });
+
+    console.log(`Successfully verified email for user: ${uid}`);
+    return { success: true, message: `Email verified for user ${uid}` };
+  } catch (error) {
+    console.error(`Error verifying email for user ${uid}:`, error);
+    throw new functions.https.HttpsError(
+      'internal',
+      'Error verifying user email'
+    );
+  }
+});
+
 export const deleteOldPaidExpenses = functions.scheduler.onSchedule(
   '0 0 * * *',
   async (context) => {

@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -50,6 +51,7 @@ export class EditMemberComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly memberService = inject(MemberService);
+  protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
@@ -86,6 +88,10 @@ export class EditMemberComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const form = this.editMemberForm.value;

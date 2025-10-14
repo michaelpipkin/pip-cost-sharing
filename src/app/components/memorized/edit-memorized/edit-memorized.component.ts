@@ -50,6 +50,7 @@ import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
@@ -94,6 +95,7 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -402,6 +404,10 @@ export class EditMemorizedComponent implements OnInit {
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const val = this.editMemorizedForm.value;
@@ -452,6 +458,10 @@ export class EditMemorizedComponent implements OnInit {
   }
 
   onDelete(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',

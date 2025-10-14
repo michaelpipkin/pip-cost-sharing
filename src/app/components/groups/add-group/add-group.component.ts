@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
@@ -38,6 +39,7 @@ export class AddGroupComponent {
   protected readonly dialogRef = inject(MatDialogRef<AddGroupComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
@@ -54,6 +56,10 @@ export class AddGroupComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const val = this.newGroupForm.value;

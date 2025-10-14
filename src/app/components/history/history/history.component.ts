@@ -29,6 +29,7 @@ import {
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
+import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { SortingService } from '@services/sorting.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
@@ -73,6 +74,7 @@ export class HistoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly demoService = inject(DemoService);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   history: Signal<History[]> = this.historyStore.groupHistory;
@@ -145,6 +147,10 @@ export class HistoryComponent {
   }
 
   onDeleteClick(history: History): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
