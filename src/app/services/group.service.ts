@@ -9,12 +9,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { CategoryService } from './category.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -30,6 +24,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -113,20 +113,44 @@ export class GroupService implements IGroupService {
                     .filter((g) => userGroupIds.includes(g.id));
 
                   this.groupStore.setAllUserGroups(groups);
-
-                  if (!!this.groupStore.currentGroup()) {
+                  user = this.userStore.user();
+                  const activeGroups = groups.filter((g) => g.active);
+                  if (
+                    !!this.groupStore.currentGroup() &&
+                    groups.includes(this.groupStore.currentGroup())
+                  ) {
                     await this.getGroup(
                       this.groupStore.currentGroup().ref,
                       user.ref
                     );
                   } else {
-                    if (user.defaultGroupRef !== null) {
+                    if (
+                      !!user.defaultGroupRef &&
+                      user.defaultGroupRef !== null
+                    ) {
                       await this.getGroup(user.defaultGroupRef, user.ref);
-                    } else if (groups.length === 1 && groups[0].active) {
-                      await this.getGroup(groups[0].ref, user.ref);
+                    } else if (activeGroups.length === 1) {
+                      await this.getGroup(activeGroups[0].ref, user.ref);
                     } else {
                       this.groupStore.clearCurrentGroup();
                       localStorage.removeItem('currentGroup');
+                    }
+                  }
+                  // Handle auto-navigation for bookmarked/direct home page visits
+                  // Login/register pages are handled by loggedInGuard
+                  const currentUrl = this.router.url;
+                  const isRedirectPage =
+                    currentUrl === '/home' ||
+                    currentUrl === '/' ||
+                    currentUrl === '/auth/login' ||
+                    currentUrl === '/auth/account';
+
+                  if (isRedirectPage) {
+                    // Validated users go to expenses, unvalidated users go to account
+                    if (this.userStore.isValidUser()) {
+                      this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+                    } else {
+                      this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
                     }
                   }
                 } catch (error) {
@@ -276,16 +300,17 @@ export class GroupService implements IGroupService {
         const usersRef = collection(this.fs, 'users');
         const usersQuery = query(
           usersRef,
-          where('defaultGroupId', '==', groupRef.id)
+          where('defaultGroupRef', '==', groupRef)
         );
         const users = await getDocs(usersQuery);
         users.forEach((u) => {
-          batch.update(u.ref, { defaultGroupId: '' });
+          batch.update(u.ref, { defaultGroupRef: null });
         });
 
         // Clear current group if it's the one being deactivated
         if (this.groupStore.currentGroup().id === groupRef.id) {
           this.groupStore.clearCurrentGroup();
+          this.userStore.updateUser({ defaultGroupRef: null });
           localStorage.removeItem('currentGroup');
         }
       }
@@ -303,10 +328,10 @@ export class GroupService implements IGroupService {
   }
 
   logout(): void {
-    this.groupStore.clearCurrentGroup();
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
     this.groupStore.clearAdminGroupIds();
+    this.groupStore.setLoadedState(false);
   }
 
   /**

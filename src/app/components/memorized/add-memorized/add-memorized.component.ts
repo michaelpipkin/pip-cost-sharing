@@ -49,6 +49,7 @@ import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
@@ -95,6 +96,7 @@ export class AddMemorizedComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
@@ -396,6 +398,10 @@ export class AddMemorizedComponent implements OnInit {
     this.addMemorizedForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const val = this.addMemorizedForm.value;
     const memorized: Partial<Memorized> = {
       description: val.description,

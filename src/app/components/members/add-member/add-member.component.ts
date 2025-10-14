@@ -4,6 +4,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
+import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -41,6 +42,7 @@ export class AddMemberComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly memberService = inject(MemberService);
   protected readonly groupService = inject(GroupService);
+  protected readonly demoService = inject(DemoService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
@@ -55,6 +57,10 @@ export class AddMemberComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const val = this.addMemberForm.value;

@@ -26,6 +26,7 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
@@ -82,6 +83,7 @@ export class SummaryComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly demoService = inject(DemoService);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -251,6 +253,10 @@ export class SummaryComponent {
     owedToMemberRef: DocumentReference<Member>,
     owedByMemberRef: DocumentReference<Member>
   ): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     this.owedToMemberRef.set(owedToMemberRef);
     this.owedByMemberRef.set(owedByMemberRef);
     var splitsToPay: Split[] = [];
@@ -336,6 +342,10 @@ export class SummaryComponent {
   }
 
   async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const summaryText = this.generateSummaryText(amountDue);
     try {
       await navigator.clipboard.writeText(summaryText);

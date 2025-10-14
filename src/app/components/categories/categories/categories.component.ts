@@ -26,6 +26,7 @@ import {
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
+import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
@@ -61,6 +62,7 @@ export class CategoriesComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
+  protected readonly demoService = inject(DemoService);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -106,6 +108,10 @@ export class CategoriesComponent {
   }
 
   addCategory(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: this.currentGroup().id,
     };
@@ -118,6 +124,10 @@ export class CategoriesComponent {
   }
 
   onRowClick(category: Category): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     if (this.currentMember().groupAdmin) {
       const dialogConfig: MatDialogConfig = {
         data: {

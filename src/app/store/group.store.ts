@@ -33,7 +33,11 @@ export const GroupStore = signalStore(
       patchState(store, { loaded });
     },
     clearAllUserGroups: () => {
-      patchState(store, { allUserGroups: [], loaded: false });
+      patchState(store, {
+        allUserGroups: [],
+        currentGroup: null,
+        loaded: false,
+      });
     },
     setCurrentGroup: (group: Group) => {
       patchState(store, { currentGroup: group });

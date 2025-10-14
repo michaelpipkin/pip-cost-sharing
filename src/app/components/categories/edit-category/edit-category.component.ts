@@ -6,6 +6,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -42,6 +43,7 @@ export class EditCategoryComponent {
   protected readonly dialogRef = inject(MatDialogRef<EditCategoryComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
@@ -59,6 +61,10 @@ export class EditCategoryComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const form = this.editCategoryForm.value;

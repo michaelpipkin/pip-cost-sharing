@@ -4,6 +4,15 @@
 
 .buttons {
   grid-area: buttons;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.buttons-row-2 {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
 }
 
 .home-container {

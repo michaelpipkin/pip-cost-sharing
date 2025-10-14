@@ -25,7 +25,7 @@ export const appRoutes: Routes = [
       import('@components/administration/administration.routes').then(
         (m) => m.administrationRoutes
       ),
-    canActivate: [authGuard, groupGuard],
+    canActivate: [authGuard],
   },
   {
     path: 'expenses',
@@ -68,6 +68,11 @@ export const appRoutes: Routes = [
     path: 'split',
     loadChildren: () =>
       import('@components/split/split.routes').then((m) => m.splitRoutes),
+  },
+  {
+    path: 'demo',
+    loadChildren: () =>
+      import('@components/demo/demo.routes').then((m) => m.demoRoutes),
   },
   { path: '**', redirectTo: '' },
 ];

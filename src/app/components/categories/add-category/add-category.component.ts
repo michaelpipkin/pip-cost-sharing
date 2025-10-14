@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 
@@ -37,6 +38,7 @@ export class AddCategoryComponent {
   protected readonly dialogRef = inject(MatDialogRef<AddCategoryComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
@@ -50,6 +52,10 @@ export class AddCategoryComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     try {
       this.loading.loadingOn();
       const categoryName = this.newCategoryForm.value.categoryName;

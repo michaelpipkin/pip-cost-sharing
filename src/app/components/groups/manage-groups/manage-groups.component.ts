@@ -18,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
+import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
@@ -47,6 +48,7 @@ export class ManageGroupsComponent implements OnInit {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
+  protected readonly demoService = inject(DemoService);
   protected readonly data = inject(MAT_DIALOG_DATA);
 
   selectedGroup = model<Group | null>(this.data.group as Group);
@@ -61,7 +63,10 @@ export class ManageGroupsComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (this.selectedGroup() !== null) {
+    if (
+      this.selectedGroup() !== null &&
+      this.userAdminGroups().includes(this.selectedGroup())
+    ) {
       const group = this.selectedGroup();
       this.editGroupForm.patchValue({
         groupId: group.id,
@@ -91,6 +96,10 @@ export class ManageGroupsComponent implements OnInit {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const form = this.editGroupForm.value;
     const changes: Partial<Group> = {
       name: form.groupName,

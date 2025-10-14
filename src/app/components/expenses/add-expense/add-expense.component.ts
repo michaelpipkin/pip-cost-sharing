@@ -51,6 +51,7 @@ import { Member } from '@models/member';
 import { SerializableMemorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
@@ -101,6 +102,7 @@ export class AddExpenseComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
@@ -179,6 +181,9 @@ export class AddExpenseComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Turn off loading indicator once the component is initialized
+    this.loading.loadingOff();
+
     if (this.activeCategories().length == 1) {
       this.addExpenseForm.patchValue({
         category: this.activeCategories()[0].ref,
@@ -489,6 +494,11 @@ export class AddExpenseComponent implements OnInit {
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(saveAndAdd: boolean = false): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      this.router.navigate(['/demo/expenses']);
+      return;
+    }
     try {
       this.loading.loadingOn();
       const val = this.addExpenseForm.value;
@@ -571,7 +581,11 @@ export class AddExpenseComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate(['/expenses']);
+    if (this.demoService.isInDemoMode()) {
+      this.router.navigate(['/demo/expenses']);
+    } else {
+      this.router.navigate(['/expenses']);
+    }
   }
 
   openCalculator(event: Event, controlName: string, index?: number): void {
