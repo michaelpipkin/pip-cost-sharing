@@ -1,12 +1,14 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { ROUTE_PATHS } from '@constants/routes.constants';
+import { GroupStore } from '@store/group.store';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 export const groupGuard: CanActivateFn = () => {
   const router = inject(Router);
-  const currentGroup = localStorage.getItem('currentGroup');
-  if (currentGroup === null) {
+  const groupStore = inject(GroupStore);
+
+  if (groupStore.loaded() && !groupStore.currentGroup()) {
     router.navigate([ROUTE_PATHS.ADMIN_GROUPS]);
     return false;
   }
@@ -22,7 +24,7 @@ export const authGuard: CanActivateFn = () => {
       if (user) {
         const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
         const isEmailConfirmed = user.emailVerified;
-        
+
         if (isGoogleUser || isEmailConfirmed) {
           resolve(true);
         } else {
@@ -62,8 +64,8 @@ export const loggedInGuard: CanActivateFn = () => {
 
         // Redirect validated users to expenses, unvalidated users to account
         if (isGoogleUser || isEmailConfirmed) {
-          resolve(router.navigate([ROUTE_PATHS.EXPENSES_ROOT]));
-        } else {
+          //   resolve(router.navigate([ROUTE_PATHS.EXPENSES_ROOT]));
+          // } else {
           resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
         }
       } else {

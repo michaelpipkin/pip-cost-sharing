@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { MemberStore } from '@store/member.store';
@@ -37,6 +38,7 @@ export class JoinGroupComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly memberService = inject(MemberService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
@@ -53,6 +55,10 @@ export class JoinGroupComponent {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     this.loading.loadingOn();
     const val = this.joinGroupForm.value;
     const newMember: Partial<Member> = {

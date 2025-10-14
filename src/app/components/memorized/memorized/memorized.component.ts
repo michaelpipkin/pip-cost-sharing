@@ -30,6 +30,7 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized, SerializableMemorized } from '@models/memorized';
+import { DemoService } from '@services/demo.service';
 import { SplitService } from '@services/split.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
@@ -61,6 +62,7 @@ export class MemorizedComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly memorizedStore = inject(MemorizedStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly splitService = inject(SplitService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -153,11 +155,19 @@ export class MemorizedComponent implements OnInit {
   }
 
   onRowClick(memorized: Memorized): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     this.loading.loadingOn();
     this.router.navigate(['/memorized', memorized.id]);
   }
 
   addExpense(expense: Memorized): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     // Create a serializable version of the expense by converting DocumentReferences to IDs
     const serializableExpense: SerializableMemorized = {
       id: expense.id,

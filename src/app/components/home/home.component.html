@@ -25,16 +25,28 @@
         >
           Login or sign up now for a free account
         </a>
-        <a
-          matButton="elevated"
-          class="btn-primary mb-4"
-          type="button"
-          [routerLink]="['split']"
-          data-testid="split-expense-button"
-          aria-label="Split an expense now"
-        >
-          Split an expense now
-        </a>
+        <div class="buttons-row-2">
+          <a
+            mat-raised-button
+            class="btn-primary mb-4"
+            type="button"
+            [routerLink]="['demo', 'administration', 'groups']"
+            data-testid="view-demo-button"
+            aria-label="View demo of PipSplit"
+          >
+            View Demo
+          </a>
+          <a
+            matButton="elevated"
+            class="btn-primary mb-4"
+            type="button"
+            [routerLink]="['split']"
+            data-testid="split-expense-button"
+            aria-label="Split an expense now"
+          >
+            Split an expense now
+          </a>
+        </div>
       }
     </div>
     <div class="image" data-testid="hero-image-section">

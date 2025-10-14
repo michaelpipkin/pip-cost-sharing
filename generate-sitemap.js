@@ -42,6 +42,57 @@ const publicRoutes = [
     priority: '0.6',
     changefreq: 'monthly',
   },
+  // Demo routes - showcase app features without requiring authentication
+  {
+    path: 'demo/administration/groups',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/administration/members',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/administration/categories',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/expenses',
+    priority: '0.9',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/expenses/add',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/memorized',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/analysis/summary',
+    priority: '0.9',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/analysis/history',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/split',
+    priority: '0.8',
+    changefreq: 'weekly',
+  },
+  {
+    path: 'demo/help',
+    priority: '0.7',
+    changefreq: 'monthly',
+  },
 ];
 
 function generateSitemap() {
@@ -70,6 +121,9 @@ function generateRobotsTxt() {
   return `# robots.txt for ${BASE_URL}
 User-agent: *
 Allow: /
+# Allow demo routes (public showcase of features)
+Allow: /demo/
+# Disallow authenticated routes
 Disallow: /administration/
 Disallow: /expenses/
 Disallow: /analysis/

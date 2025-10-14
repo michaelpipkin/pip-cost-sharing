@@ -50,6 +50,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
@@ -107,6 +108,7 @@ export class EditExpenseComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -475,6 +477,11 @@ export class EditExpenseComponent implements OnInit {
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
   async onSubmit(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      this.router.navigate(['/demo/expenses']);
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Action',
@@ -524,7 +531,11 @@ export class EditExpenseComponent implements OnInit {
             this.receiptFile()
           );
           this.snackBar.open('Expense updated successfully.', 'OK');
-          this.router.navigate(['/expenses']);
+          if (this.demoService.isInDemoMode()) {
+            this.router.navigate(['/demo/expenses']);
+          } else {
+            this.router.navigate(['/expenses']);
+          }
         } catch (error) {
           if (error instanceof Error) {
             this.snackBar.open(error.message, 'Close');
@@ -547,6 +558,11 @@ export class EditExpenseComponent implements OnInit {
   }
 
   onDelete(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      this.router.navigate(['/demo/expenses']);
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         operation: 'Delete',
@@ -570,7 +586,11 @@ export class EditExpenseComponent implements OnInit {
             await deleteObject(fileRef);
           }
           this.snackBar.open('Expense deleted.', 'OK');
-          this.router.navigate(['/expenses']);
+          if (this.demoService.isInDemoMode()) {
+            this.router.navigate(['/demo/expenses']);
+          } else {
+            this.router.navigate(['/expenses']);
+          }
         } catch (error) {
           if (error instanceof Error) {
             this.snackBar.open(error.message, 'Close');
@@ -593,7 +613,11 @@ export class EditExpenseComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate(['/expenses']);
+    if (this.demoService.isInDemoMode()) {
+      this.router.navigate(['/demo/expenses']);
+    } else {
+      this.router.navigate(['/expenses']);
+    }
   }
 
   openCalculator(event: Event, controlName: string, index?: number): void {

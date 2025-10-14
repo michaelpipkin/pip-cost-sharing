@@ -28,6 +28,7 @@ import {
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
@@ -61,6 +62,7 @@ export class MembersComponent implements OnInit {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
+  protected readonly demoService = inject(DemoService);
   protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -134,6 +136,10 @@ export class MembersComponent implements OnInit {
   }
 
   addMember(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const dialogConfig: MatDialogConfig = {
       data: {
         groupId: this.currentGroup().id,
@@ -148,6 +154,10 @@ export class MembersComponent implements OnInit {
   }
 
   onRowClick(member: Member): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     if (this.currentMember().groupAdmin || this.user().ref.eq(member.userRef)) {
       const dialogConfig: MatDialogConfig = {
         data: {

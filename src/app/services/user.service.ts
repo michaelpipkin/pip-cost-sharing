@@ -11,9 +11,6 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DemoModeService } from './demo-mode.service';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -26,6 +23,9 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -56,6 +56,15 @@ export class UserService implements IUserService {
       this.auth.onAuthStateChanged(async (firebaseUser) => {
         if (!!firebaseUser) {
           try {
+            // Clear all demo data from stores when a real user logs in
+            this.groupStore.clearAllUserGroups();
+            this.expenseStore.clearGroupExpenses();
+            this.categoryStore.clearGroupCategories();
+            this.memberStore.clearGroupMembers();
+            this.memorizedStore.clearMemorizedExpenses();
+            this.historyStore.clearHistory();
+            this.splitStore.clearSplits();
+
             const userData = await this.createUserIfNotExists(firebaseUser.uid);
             const user = new User({
               id: firebaseUser.uid,
@@ -65,16 +74,6 @@ export class UserService implements IUserService {
             this.userStore.setUser(user);
             this.userStore.setIsDemoMode(false);
 
-            // Clear all demo data from stores when a real user logs in
-            this.groupStore.clearCurrentGroup();
-            this.expenseStore.clearGroupExpenses();
-            this.categoryStore.clearGroupCategories();
-            this.memberStore.clearCurrentMember();
-            this.memberStore.clearGroupMembers();
-            this.memorizedStore.clearMemorizedExpenses();
-            this.historyStore.clearHistory();
-            this.splitStore.clearSplits();
-
             this.userStore.setIsGoogleUser(
               firebaseUser.providerData[0].providerId === 'google.com'
             );
@@ -83,26 +82,27 @@ export class UserService implements IUserService {
 
             // Handle auto-navigation for bookmarked/direct home page visits
             // Login/register pages are handled by loggedInGuard
-            const currentUrl = this.router.url;
-            const isOnHomePage = currentUrl === '/home' || currentUrl === '/';
+            // const currentUrl = this.router.url;
+            // const isRedirectPage =
+            //   currentUrl === '/home' ||
+            //   currentUrl === '/' ||
+            //   currentUrl === '/auth/login' ||
+            //   currentUrl === '/auth/account';
 
-            if (isOnHomePage) {
-              // Validated users go to expenses, unvalidated users go to account
-              if (this.userStore.isValidUser()) {
-                this.router.navigateByUrl('/expenses');
-              } else {
-                this.router.navigateByUrl('/auth/account');
-              }
-            }
+            // if (isRedirectPage) {
+            //   // Validated users go to expenses, unvalidated users go to account
+            //   if (this.userStore.isValidUser()) {
+            //     this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+            //   } else {
+            //     this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
+            //   }
+            // }
           } catch (error) {
             logEvent(this.analytics, 'error', {
               message: 'Failed to initialize user',
               error: error instanceof Error ? error.message : 'Unknown error',
             });
           }
-        } else {
-          // Initialize demo mode for AdSense approval when no user is authenticated
-          this.demoModeService.initializeDemoData();
         }
       });
     } catch (error) {
@@ -216,6 +216,7 @@ export class UserService implements IUserService {
 
   logout(): void {
     this.groupService.logout();
+    this.userStore.clearUser();
     this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
   }
 

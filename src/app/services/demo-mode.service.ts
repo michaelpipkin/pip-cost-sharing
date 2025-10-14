@@ -367,6 +367,7 @@ export class DemoModeService {
       expenses: [expense1, expense2, expense3, expense4],
       categories: [groceries, restaurants, utilities, entertainment],
       autoAddMembers: false,
+      ref: this.createMockDocRef('demo-group-123'),
     });
 
     // Initialize stores with demo data

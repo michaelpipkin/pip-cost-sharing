@@ -1,15 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -24,13 +14,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Category } from '@models/category';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
@@ -47,6 +38,16 @@ import { UserStore } from '@store/user.store';
 import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -73,7 +74,6 @@ import {
     DatePipe,
     YesNoPipe,
     YesNoNaPipe,
-    RouterLink,
     DateShortcutKeysDirective,
   ],
 })
@@ -86,6 +86,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
@@ -303,12 +304,29 @@ export class ExpensesComponent implements OnInit {
     this.sortAsc.set(e.direction == 'asc');
   }
 
+  onAddExpenseClick(): void {
+    this.loading.loadingOn();
+    if (this.demoService.isInDemoMode()) {
+      this.router.navigate(['/demo/expenses/add']);
+    } else {
+      this.router.navigate(['/expenses/add']);
+    }
+  }
+
   onRowClick(expense: Expense): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     this.loading.loadingOn();
     this.router.navigate(['/expenses', expense.id]);
   }
 
   async markSplitPaidUnpaid(expense: Expense, split: Split): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
     const changes = {
       paid: !split.paid,
     };

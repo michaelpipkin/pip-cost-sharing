@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { authGuard, groupGuard } from '@components/auth/guards.guard';
 import { AboutComponent } from '@components/about/about.component';
+import { authGuard, groupGuard } from '@components/auth/guards.guard';
 import { HelpComponent } from '@components/help/help.component';
 import { HomeComponent } from '@components/home/home.component';
 
@@ -22,20 +22,26 @@ export const appRoutes: Routes = [
   {
     path: 'administration',
     loadChildren: () =>
-      import('@components/administration/administration.routes').then((m) => m.administrationRoutes),
-    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
+      import('@components/administration/administration.routes').then(
+        (m) => m.administrationRoutes
+      ),
+    canActivate: [authGuard],
   },
   {
     path: 'expenses',
     loadChildren: () =>
-      import('@components/expenses/expenses.routes').then((m) => m.expensesRoutes),
-    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
+      import('@components/expenses/expenses.routes').then(
+        (m) => m.expensesRoutes
+      ),
+    canActivate: [authGuard, groupGuard],
   },
   {
     path: 'memorized',
     loadChildren: () =>
-      import('@components/memorized/memorized-routes').then((m) => m.memorizedRoutes),
-    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
+      import('@components/memorized/memorized-routes').then(
+        (m) => m.memorizedRoutes
+      ),
+    canActivate: [authGuard, groupGuard],
   },
   // Backward compatibility redirects
   { path: 'summary', redirectTo: 'analysis/summary' },
@@ -43,8 +49,10 @@ export const appRoutes: Routes = [
   {
     path: 'analysis',
     loadChildren: () =>
-      import('@components/analysis/analysis.routes').then((m) => m.analysisRoutes),
-    // canActivate: [authGuard, groupGuard], // Temporarily disabled for AdSense approval
+      import('@components/analysis/analysis.routes').then(
+        (m) => m.analysisRoutes
+      ),
+    canActivate: [authGuard, groupGuard],
   },
   {
     path: 'help',
@@ -60,6 +68,11 @@ export const appRoutes: Routes = [
     path: 'split',
     loadChildren: () =>
       import('@components/split/split.routes').then((m) => m.splitRoutes),
+  },
+  {
+    path: 'demo',
+    loadChildren: () =>
+      import('@components/demo/demo.routes').then((m) => m.demoRoutes),
   },
   { path: '**', redirectTo: '' },
 ];

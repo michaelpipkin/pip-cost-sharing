@@ -43,7 +43,82 @@
         <span id="title" data-testid="app-title-desktop">PipSplit</span>
       </a>
       <div class="links" data-testid="desktop-navigation">
-        @if ((isLoggedIn() && isValidUser()) || isDemoMode()) {
+        @if (isInDemoMode()) {
+          <!-- Demo mode navigation -->
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_GROUPS"
+            aria-label="demo groups"
+            title="Demo Groups"
+            data-testid="nav-demo-groups"
+          >
+            <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
+            >&nbsp;Groups
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_MEMBERS"
+            aria-label="demo members"
+            title="Demo Members"
+            data-testid="nav-demo-members"
+          >
+            <mat-icon fontSet="material-symbols-outlined">face</mat-icon
+            >&nbsp;Members
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_CATEGORIES"
+            aria-label="demo categories"
+            title="Demo Categories"
+            data-testid="nav-demo-categories"
+          >
+            <mat-icon fontSet="material-symbols-outlined">category</mat-icon
+            >&nbsp;Categories
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_EXPENSES"
+            aria-label="demo expenses"
+            title="Demo Expenses"
+            data-testid="nav-demo-expenses"
+          >
+            <mat-icon fontSet="material-symbols-outlined">attach_money</mat-icon
+            >Expenses
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_MEMORIZED"
+            aria-label="demo memorized"
+            title="Demo Memorized"
+            data-testid="nav-demo-memorized"
+          >
+            <mat-icon fontSet="material-symbols-outlined"
+              >currency_exchange</mat-icon
+            >&nbsp;Memorized
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_SUMMARY"
+            aria-label="demo summary"
+            title="Demo Summary"
+            data-testid="nav-demo-summary"
+          >
+            <mat-icon fontSet="material-symbols-outlined"
+              >compare_arrows</mat-icon
+            >&nbsp;Summary
+          </a>
+          <a
+            matButton
+            [routerLink]="demoRoutes.DEMO_HISTORY"
+            aria-label="demo history"
+            title="Demo History"
+            data-testid="nav-demo-history"
+          >
+            <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
+            >&nbsp;History
+          </a>
+        } @else if (isLoggedIn() && isValidUser()) {
+          <!-- Regular authenticated navigation -->
           <a
             matButton
             [routerLink]="routes.ADMIN_GROUPS"
@@ -122,7 +197,7 @@
         }
         <a
           matButton
-          [routerLink]="routes.SPLIT"
+          [routerLink]="isInDemoMode() ? demoRoutes.DEMO_SPLIT : routes.SPLIT"
           aria-label="split expense"
           title="Split Expense"
           data-testid="nav-split"
@@ -157,14 +232,14 @@
         </button>
         <a
           matIconButton
-          [routerLink]="['help']"
+          [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
           matTooltip="Help"
           aria-label="help"
           data-testid="nav-help-desktop"
         >
           <mat-icon>help</mat-icon>
         </a>
-        @if (isLoggedIn() && !isDemoMode()) {
+        @if (!isInDemoMode() && isLoggedIn()) {
           <a
             matIconButton
             [routerLink]="['auth', 'account']"
@@ -202,7 +277,81 @@
 
 <mat-menu #menu="matMenu" data-testid="mobile-menu">
   <div class="menu" data-testid="mobile-menu-content">
-    @if ((isLoggedIn() && isValidUser()) || isDemoMode()) {
+    @if (isInDemoMode()) {
+      <!-- Demo mode navigation -->
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_GROUPS"
+        aria-label="demo groups"
+        title="Demo Groups"
+        data-testid="mobile-nav-demo-groups"
+      >
+        <mat-icon fontSet="material-symbols-outlined">groups</mat-icon
+        >&nbsp;Groups
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_MEMBERS"
+        aria-label="demo members"
+        title="Demo Members"
+        data-testid="mobile-nav-demo-members"
+      >
+        <mat-icon fontSet="material-symbols-outlined">face</mat-icon
+        >&nbsp;Members
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_CATEGORIES"
+        aria-label="demo categories"
+        title="Demo Categories"
+        data-testid="mobile-nav-demo-categories"
+      >
+        <mat-icon fontSet="material-symbols-outlined">category</mat-icon
+        >&nbsp;Categories
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_EXPENSES"
+        aria-label="demo expenses"
+        title="Demo Expenses"
+        data-testid="mobile-nav-demo-expenses"
+      >
+        <mat-icon fontSet="material-symbols-outlined">attach_money</mat-icon
+        >Expenses
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_MEMORIZED"
+        aria-label="demo memorized"
+        title="Demo Memorized"
+        data-testid="mobile-nav-demo-memorized"
+      >
+        <mat-icon fontSet="material-symbols-outlined"
+          >currency_exchange</mat-icon
+        >&nbsp;Memorized
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_SUMMARY"
+        aria-label="demo summary"
+        title="Demo Summary"
+        data-testid="mobile-nav-demo-summary"
+      >
+        <mat-icon fontSet="material-symbols-outlined">compare_arrows</mat-icon
+        >&nbsp;Summary
+      </a>
+      <a
+        mat-menu-item
+        [routerLink]="demoRoutes.DEMO_HISTORY"
+        aria-label="demo history"
+        title="Demo History"
+        data-testid="mobile-nav-demo-history"
+      >
+        <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
+        >&nbsp;History
+      </a>
+    } @else if (isLoggedIn() && isValidUser()) {
+      <!-- Regular authenticated navigation -->
       <a
         mat-menu-item
         [routerLink]="routes.ADMIN_GROUPS"
@@ -277,7 +426,7 @@
         </a>
         <a
           mat-menu-item
-          [routerLink]="routes.SPLIT"
+          [routerLink]="isInDemoMode() ? demoRoutes.DEMO_SPLIT : routes.SPLIT"
           aria-label="split expense"
           title="Split expense"
           data-testid="mobile-nav-split"
@@ -286,16 +435,18 @@
           >&nbsp;Split
         </a>
       }
-      <a
-        mat-menu-item
-        [routerLink]="routes.HELP"
-        aria-label="help"
-        title="Help"
-        data-testid="mobile-nav-help"
-      >
-        <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
-      </a>
-      @if (isLoggedIn() && !isDemoMode()) {
+    }
+    <a
+      mat-menu-item
+      [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
+      aria-label="help"
+      title="Help"
+      data-testid="mobile-nav-help"
+    >
+      <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
+    </a>
+    @if (!isInDemoMode()) {
+      @if (isLoggedIn()) {
         <a
           mat-menu-item
           [routerLink]="routes.AUTH_ACCOUNT"
