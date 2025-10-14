@@ -236,7 +236,7 @@ body.dark-theme {
   margin-bottom: 24px; /* Small margin from footer */
 
   &.with-table {
-    height: calc(100vh - 110px); /* Adjust based on your header/footer height */
+    height: calc(100vh - 130px); /* Adjust based on your header/footer height */
     overflow: hidden; /* Prevent overflow outside the container */
   }
 }
