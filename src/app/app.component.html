@@ -43,7 +43,7 @@
         <span id="title" data-testid="app-title-desktop">PipSplit</span>
       </a>
       <div class="links" data-testid="desktop-navigation">
-        @if ((isLoggedIn() && isValidUser()) || isDemoMode()) {
+        @if (isLoggedIn() && isValidUser()) {
           <a
             matButton
             [routerLink]="routes.ADMIN_GROUPS"
@@ -164,7 +164,7 @@
         >
           <mat-icon>help</mat-icon>
         </a>
-        @if (isLoggedIn() && !isDemoMode()) {
+        @if (isLoggedIn()) {
           <a
             matIconButton
             [routerLink]="['auth', 'account']"
@@ -202,7 +202,7 @@
 
 <mat-menu #menu="matMenu" data-testid="mobile-menu">
   <div class="menu" data-testid="mobile-menu-content">
-    @if ((isLoggedIn() && isValidUser()) || isDemoMode()) {
+    @if (isLoggedIn() && isValidUser()) {
       <a
         mat-menu-item
         [routerLink]="routes.ADMIN_GROUPS"
@@ -295,7 +295,7 @@
       >
         <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
       </a>
-      @if (isLoggedIn() && !isDemoMode()) {
+      @if (isLoggedIn()) {
         <a
           mat-menu-item
           [routerLink]="routes.AUTH_ACCOUNT"
