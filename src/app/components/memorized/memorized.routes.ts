@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, groupGuard } from '@components/auth/guards.guard';
+import { noCrawlerGuard } from '@components/auth/guards.guard';
 import { AddMemorizedComponent } from './add-memorized/add-memorized.component';
 import { editMemorizedResolver } from './edit-memorized.resolver';
 import { EditMemorizedComponent } from './edit-memorized/edit-memorized.component';
@@ -15,11 +15,13 @@ export const memorizedRoutes: Routes = [
     path: 'add',
     title: 'Add Memorized Expense',
     component: AddMemorizedComponent,
+    canActivate: [noCrawlerGuard],
   },
   {
     path: ':id',
     title: 'Edit Memorized Expense',
     component: EditMemorizedComponent,
     resolve: { memorized: editMemorizedResolver },
+    canActivate: [noCrawlerGuard],
   },
 ];
