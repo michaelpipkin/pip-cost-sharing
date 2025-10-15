@@ -38,7 +38,7 @@ export const appRoutes: Routes = [
   {
     path: 'memorized',
     loadChildren: () =>
-      import('@components/memorized/memorized-routes').then(
+      import('@components/memorized/memorized.routes').then(
         (m) => m.memorizedRoutes
       ),
     canActivate: [authGuard, groupGuard],
