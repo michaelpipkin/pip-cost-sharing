@@ -8,12 +8,22 @@
       <div></div>
       <h3 data-testid="categories-page-title">Categories</h3>
       <div class="help-icon" data-testid="categories-help-icon-container">
+        @if (demoService.isInDemoMode()) {
+          <mat-icon
+            data-testid="categories-tour-button"
+            matTooltip="Show Tour"
+            (click)="startTour()"
+            aria-label="Start categories tour"
+            class="mr-2"
+            >tour</mat-icon
+          >
+        }
         <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="categories-help-button" aria-label="Show help for categories">help</mat-icon>
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div class="filters" data-testid="category-filters">
-      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="category-search-field">
+      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="category-search-field" data-tour="category-search">
         <mat-label>Search by name</mat-label>
         <input matInput type="text" [(ngModel)]="nameFilter" data-testid="category-search-input" aria-label="Search categories by name" />
         @if (nameFilter() !== '') {
@@ -30,7 +40,7 @@
           </button>
         }
       </mat-form-field>
-      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-categories-only-toggle" aria-label="Show active categories only">
+      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-categories-only-toggle" data-tour="category-filter" aria-label="Show active categories only">
         Active only
       </mat-slide-toggle>
     </div>
@@ -41,13 +51,14 @@
         [class.hidden]="!currentMember()?.groupAdmin"
         (click)="addCategory()"
         data-testid="add-category-button"
+        data-tour="add-category-button"
         aria-label="Add new category"
       >
         Add Category
       </button>
     </div>
     @if (filteredCategories()?.length > 0) {
-      <div class="table-container mat-elevation-z8" data-testid="categories-table-container">
+      <div class="table-container mat-elevation-z8" data-testid="categories-table-container" data-tour="categories-table">
         <div class="scrollable-table">
           <table
             mat-table

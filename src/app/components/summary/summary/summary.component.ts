@@ -1,5 +1,6 @@
 import { CurrencyPipe } from '@angular/common';
 import {
+  AfterViewInit,
   Component,
   computed,
   effect,
@@ -29,6 +30,7 @@ import { Split } from '@models/split';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { SplitService } from '@services/split.service';
+import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
@@ -69,7 +71,7 @@ import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.compone
     DateShortcutKeysDirective,
   ],
 })
-export class SummaryComponent {
+export class SummaryComponent implements AfterViewInit {
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
@@ -79,6 +81,7 @@ export class SummaryComponent {
   protected readonly splitService = inject(SplitService);
   protected readonly splitStore = inject(SplitStore);
   protected readonly historyService = inject(HistoryService);
+  protected readonly tourService = inject(TourService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -239,6 +242,11 @@ export class SummaryComponent {
     });
   }
 
+  ngAfterViewInit(): void {
+    // Check if we should auto-start the summary tour
+    this.tourService.checkForContinueTour('summary');
+  }
+
   onExpandClick(amountDue: AmountDue): void {
     this.expandedDetail.update((d) => (d === amountDue ? null : amountDue));
     this.owedByMemberRef.set(amountDue.owedByMemberRef);
@@ -339,6 +347,11 @@ export class SummaryComponent {
       data: { sectionId: 'summary' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Summary Tour (ignoring completion state)
+    this.tourService.startSummaryTour(true);
   }
 
   async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {

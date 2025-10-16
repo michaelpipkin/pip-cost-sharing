@@ -38,8 +38,10 @@
             ],
             "styles": [
               "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "./node_modules/shepherd.js/dist/css/shepherd.css",
               "src/styles.scss",
-              "src/app/styles/m3-green-theme.scss"
+              "src/app/styles/m3-green-theme.scss",
+              "src/app/styles/shepherd-theme.scss"
             ],
             "scripts": [],
             "allowedCommonJsDependencies": [
@@ -111,8 +113,10 @@
             ],
             "styles": [
               "./node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "./node_modules/shepherd.js/dist/css/shepherd.css",
               "src/styles.scss",
-              "src/app/styles/m3-green-theme.scss"
+              "src/app/styles/m3-green-theme.scss",
+              "src/app/styles/shepherd-theme.scss"
             ],
             "scripts": []
           }

@@ -362,6 +362,73 @@ Each tour will be defined as a configuration object containing:
 
 ---
 
+## Key Implementation Details
+
+### Shepherd.js TypeScript Type System
+
+**IMPORTANT: Type Usage Patterns to Prevent Compilation Errors**
+
+When working with Shepherd.js types, follow these patterns to avoid TypeScript errors:
+
+#### 1. Import Types Separately
+`Tour` and `TourOptions` are **separate types**, not a namespace:
+
+```typescript
+import type { Tour, TourOptions } from 'shepherd.js';
+
+// ✅ CORRECT
+private defaultTourOptions: TourOptions = { ... };
+private currentTour: Tour | null = null;
+
+// ❌ WRONG - Tour is not a namespace!
+private defaultTourOptions: Tour.TourOptions = { ... };
+```
+
+#### 2. Button Action Context
+Button actions are automatically bound to the **`Tour` instance**, NOT the `Step`:
+
+```typescript
+// ✅ CORRECT - 'this' is the Tour instance
+{
+  text: 'Next',
+  action: function (this: Tour) {
+    this.next();  // Tour has navigation methods
+  }
+}
+
+// ❌ WRONG - Step doesn't have navigation methods
+{
+  text: 'Next',
+  action: function (this: Step) {
+    this.next();  // ERROR: Step has no next() method!
+  }
+}
+```
+
+**Available Methods by Type:**
+- **`Tour` methods:** `next()`, `back()`, `complete()`, `cancel()`, `show()`, `hide()`, `start()`
+- **`Step` methods:** `complete()`, `cancel()`, `hide()`, `show()` (no navigation methods like next/back)
+
+#### 3. Dynamic Import for Runtime
+Use dynamic import to avoid adding Shepherd to initial bundle:
+
+```typescript
+// Shepherd is only loaded when actually needed
+const Shepherd = (await import('shepherd.js')).default;
+const tour = new Shepherd.Tour(options);
+```
+
+**Result:** Shepherd.js is lazy-loaded (~55 KB chunk, ~17 KB compressed)
+
+#### 4. Type-Only Imports
+Use `import type` for type definitions to ensure zero runtime cost:
+
+```typescript
+import type { Tour, TourOptions } from 'shepherd.js';  // Type-only, no bundle impact
+```
+
+---
+
 ## Technical Considerations
 
 ### Element Selectors Strategy
@@ -468,12 +535,179 @@ Each tour will be defined as a configuration object containing:
 
 ## Status Tracking
 
-**Current Phase:** Phase 1 - Tour Service Foundation
+**Current Phase:** Tour Restart Functionality (Complete!)
 **Last Updated:** 2025-10-15
-**Completed TODOs:** 0 / 37
+**Completed TODOs:** 14 / 37
 
 ### Completion Log
-*Updates will be added here as TODOs are completed*
+
+**Phase 1: Tour Service Foundation** ✅ COMPLETE
+- ✅ TODO 1.1: Created `tour.service.ts` with full Shepherd integration
+- ✅ TODO 1.2: Implemented localStorage tour state management (isTourCompleted, markTourCompleted, resetAllTours)
+- ✅ TODO 1.3: Configured default Shepherd options with modal overlay and Material-compatible settings
+- ✅ TODO 1.4: Created TourConfig and TourStep TypeScript interfaces
+
+**Phase 2: Welcome Tour Implementation** ✅ COMPLETE
+- ✅ TODO 2.1: Defined Welcome Tour with 5 steps in TourService
+- ✅ TODO 2.2: Implemented `startWelcomeTour()` method with navigation to Expenses Tour
+- ✅ TODO 2.3: Integrated tour into GroupsComponent with ngAfterViewInit hook
+- ✅ TODO 2.3.1: Added data-tour attributes to groups.component.html
+
+**Phase 6: Styling** ✅ COMPLETE (Moved up in priority)
+- ✅ TODO 6.1: Created custom Shepherd theme CSS (`shepherd-theme.scss`) matching Material design
+- ✅ TODO 6.2: Added Shepherd CSS and custom theme to angular.json
+- ✅ TODO 6.3: Added responsive behavior in shepherd-theme.scss
+
+**Additional Tours in TourService** ✅ PRE-BUILT
+- ✅ Pre-implemented all 5 tours in TourService:
+  - Welcome Tour (5 steps)
+  - Expenses Tour (5 steps)
+  - Summary Tour (3 steps)
+  - History Tour (2 steps)
+  - Memorized Tour (2 steps)
+
+**TypeScript Type Fixes** ✅ COMPLETE
+- ✅ Fixed TypeScript compilation errors:
+  - Changed `Tour.TourOptions` to `TourOptions` (imported as separate type)
+  - Fixed button action context from `Step` to `Tour` (correct binding)
+  - Removed unused imports (`Shepherd` and `Step`)
+  - Verified build succeeds with Shepherd.js lazy-loaded (54.95 kB chunk)
+
+**Phase 2.5: Categories Tour Implementation** ✅ COMPLETE
+- ✅ Added Categories Tour to TourService (5 steps):
+  - Categories intro (table highlight)
+  - Search categories feature
+  - Filter active/inactive toggle
+  - Add category button (demo restriction)
+  - Navigation to Expenses tour
+- ✅ Added data-tour attributes to categories.component.html:
+  - `data-tour="categories-table"` on table container
+  - `data-tour="category-search"` on search field
+  - `data-tour="category-filter"` on active toggle
+  - `data-tour="add-category-button"` on add button
+- ✅ Integrated tour into CategoriesComponent:
+  - Added TourService injection
+  - Implemented AfterViewInit lifecycle hook
+  - Called `checkForContinueTour('categories')` in ngAfterViewInit
+- ✅ Updated `checkForContinueTour` to accept 'categories' as valid tour name
+- ✅ Updated Welcome Tour final step to navigate to Categories (user modification)
+- ✅ Build verification passed
+
+**Phase 7.2: Tour Restart Functionality** ✅ COMPLETE
+- ✅ Added "Show Tour" icon button to GroupsComponent:
+  - Material "tour" icon next to help icon
+  - Only visible in demo mode
+  - Calls `startWelcomeTour(true)` to force restart
+- ✅ Added "Show Tour" icon button to CategoriesComponent:
+  - Material "tour" icon next to help icon
+  - Only visible in demo mode
+  - Calls `startCategoriesTour(true)` to force restart
+- ✅ Implemented `startTour()` methods in both components
+- ✅ Tours can now be restarted anytime by clicking the tour icon
+- ✅ Build verification passed
+
+**Phase 2.6: Members Tour Implementation** ✅ COMPLETE
+- ✅ Added Members Tour to TourService (5 steps)
+- ✅ Added data-tour attributes to members.component.html
+- ✅ Integrated tour into MembersComponent with AfterViewInit
+- ✅ Updated `checkForContinueTour` to accept 'members'
+- ✅ Added tour restart button to members component
+- ✅ Build verification passed
+
+**Phase 3: Expenses Tour Implementation** ✅ COMPLETE
+- ✅ Added Expenses Tour to TourService (5 steps)
+- ✅ Added data-tour attributes to expenses.component.html
+- ✅ Integrated tour into ExpensesComponent with AfterViewInit
+- ✅ Updated `checkForContinueTour` to accept 'expenses'
+- ✅ Added tour restart button to expenses component
+- ✅ Updated final step to navigate to Add Expense (user requirement)
+- ✅ Build verification passed
+
+**Phase 3.5: Add Expense Tour Implementation** ✅ COMPLETE
+- ✅ Created `startAddExpenseTour()` method in TourService (5 steps):
+  - Basic info form section
+  - Amount fields (total and proportional)
+  - Split controls (equal/custom splits)
+  - Demo mode reminder
+  - Navigation to Memorized tour
+- ✅ Added data-tour attributes to add-expense.component.html:
+  - `data-tour="basic-info"` on payer/date/description/category section
+  - `data-tour="amount-fields"` on amount fields
+  - `data-tour="split-controls"` on split buttons
+- ✅ Integrated tour into AddExpenseComponent:
+  - Injected TourService
+  - Implemented AfterViewInit lifecycle hook
+  - Added `ngAfterViewInit()` method calling `checkForContinueTour('add-expense')`
+  - Added `startTour()` method to manually restart tour
+  - Added tour restart button in header (only visible in demo mode)
+- ✅ Updated `checkForContinueTour` to accept 'add-expense'
+- ✅ Build verification passed
+
+**Phase 5.2: Memorized Expenses Tour Implementation** ✅ COMPLETE
+- ✅ Added Memorized Tour to TourService (3 steps):
+  - Memorized expenses intro with table highlight
+  - Search functionality
+  - Navigation to Summary tour (updated per user requirement)
+- ✅ Added data-tour attributes to memorized.component.html:
+  - `data-tour="memorized-table"` on table element
+  - `data-tour="memorized-search"` on search field
+  - `data-tour="memorize-button"` on "Memorize New Expense" button
+- ✅ Integrated tour into MemorizedComponent:
+  - Added AfterViewInit import
+  - Added TourService import and injection
+  - Changed component to implement AfterViewInit
+  - Added `ngAfterViewInit()` method calling `checkForContinueTour('memorized')`
+  - Added `startTour()` method calling `startMemorizedTour(true)`
+  - Added tour restart button in header (only visible in demo mode)
+- ✅ Updated `checkForContinueTour` to accept 'memorized'
+- ✅ Build verification passed
+
+**Phase 4: Summary Tour Implementation** ✅ COMPLETE
+- ✅ Summary Tour already exists in TourService (3 steps)
+- ✅ Data-tour attribute already present in summary.component.html (`data-tour="payment-flow"`)
+- ✅ Tour already integrated into SummaryComponent (AfterViewInit, TourService injection)
+- ✅ Tour restart button already present in summary component
+- ✅ Verification: Summary tour was already complete from earlier work
+
+**Phase 5.1: History Tour Implementation** ✅ COMPLETE
+- ✅ History Tour already existed in TourService (2 steps):
+  - History intro
+  - Historical payments table
+- ✅ Updated History Tour to reference correct data-tour attribute (`[data-tour="history-table"]`)
+- ✅ Added data-tour attributes to history.component.html:
+  - `data-tour="history-filters"` on filters container
+  - `data-tour="history-table"` on table element
+- ✅ Integrated tour into HistoryComponent:
+  - Added AfterViewInit import
+  - Added TourService import and injection
+  - Changed component to implement AfterViewInit
+  - Added `ngAfterViewInit()` method calling `checkForContinueTour('history')`
+  - Added `startTour()` method calling `startHistoryTour(true)`
+  - Added tour restart button in header (only visible in demo mode)
+- ✅ Updated `checkForContinueTour` to accept 'history' in type signature
+- ✅ Added 'history' case to checkForContinueTour switch statement
+- ✅ Build verification passed
+
+**Tour Flow (Updated per User Requirements):**
+Groups → Members → Categories → Expenses → **Add New Expense** → Memorized → **Summary**
+(History tour is manual-only, no auto-navigation)
+
+**Status: ALL TOURS COMPLETE!** 🎉
+
+The complete tour system is now fully implemented with the following tours:
+1. ✅ Groups (Welcome Tour) - 5 steps
+2. ✅ Members Tour - 5 steps
+3. ✅ Categories Tour - 5 steps
+4. ✅ Expenses Tour - 5 steps
+5. ✅ Add New Expense Tour - 5 steps
+6. ✅ Memorized Tour - 3 steps
+7. ✅ Summary Tour - 3 steps
+8. ✅ History Tour - 2 steps (manual-only)
+
+**Next Steps:**
+- Test complete tour flow end-to-end in demo mode
+- Verify all tour transitions work correctly
+- Consider user feedback for tour improvements
 
 ---
 

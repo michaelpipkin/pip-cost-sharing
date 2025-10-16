@@ -1,4 +1,11 @@
-import { Component, effect, inject, OnInit, Signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  effect,
+  inject,
+  OnInit,
+  Signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -16,6 +23,7 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
+import { TourService } from '@services/tour.service';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
@@ -42,13 +50,14 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     DocRefCompareDirective,
   ],
 })
-export class GroupsComponent implements OnInit {
+export class GroupsComponent implements OnInit, AfterViewInit {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly memberStore = inject(MemberStore);
   protected readonly demoService = inject(DemoService);
+  protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly fb = inject(FormBuilder);
@@ -78,6 +87,16 @@ export class GroupsComponent implements OnInit {
       this.groupForm.patchValue({
         selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
       });
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Start Welcome Tour if in demo mode and haven't completed it
+    if (this.demoService.isInDemoMode()) {
+      // Small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        this.tourService.startWelcomeTour();
+      }, 500);
     }
   }
 
@@ -166,5 +185,10 @@ export class GroupsComponent implements OnInit {
       data: { sectionId: 'groups' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Welcome Tour (ignoring completion state)
+    this.tourService.startWelcomeTour(true);
   }
 }
