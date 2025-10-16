@@ -43,7 +43,11 @@
       <a [routerLink]="routes.HOME">
         <span id="title" data-testid="app-title-desktop">PipSplit</span>
       </a>
-      <div class="links" data-testid="desktop-navigation" data-tour="desktop-navigation">
+      <div
+        class="links"
+        data-testid="desktop-navigation"
+        data-tour="desktop-navigation"
+      >
         @if (isInDemoMode()) {
           <!-- Demo mode navigation -->
           <a
@@ -446,40 +450,38 @@
     >
       <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
     </a>
-    @if (!isInDemoMode()) {
-      @if (isLoggedIn()) {
-        <a
-          mat-menu-item
-          [routerLink]="routes.AUTH_ACCOUNT"
-          aria-label="account"
-          title="Account"
-          data-testid="mobile-nav-account"
-        >
-          <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
-          >&nbsp;Account
-        </a>
-        <a
-          mat-menu-item
-          (click)="logout()"
-          aria-label="log out"
-          title="Log out"
-          data-testid="mobile-logout-button"
-        >
-          <mat-icon fontSet="material-symbols-outlined">logout</mat-icon
-          >&nbsp;Log out
-        </a>
-      } @else {
-        <a
-          mat-menu-item
-          [routerLink]="routes.AUTH_LOGIN"
-          aria-label="login"
-          title="Login"
-          data-testid="mobile-nav-login"
-        >
-          <mat-icon fontSet="material-symbols-outlined">login</mat-icon
-          >&nbsp;Log in
-        </a>
-      }
+    @if (!isInDemoMode() && isLoggedIn()) {
+      <a
+        mat-menu-item
+        [routerLink]="routes.AUTH_ACCOUNT"
+        aria-label="account"
+        title="Account"
+        data-testid="mobile-nav-account"
+      >
+        <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
+        >&nbsp;Account
+      </a>
+      <a
+        mat-menu-item
+        (click)="logout()"
+        aria-label="log out"
+        title="Log out"
+        data-testid="mobile-logout-button"
+      >
+        <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>&nbsp;Log
+        out
+      </a>
+    } @else {
+      <a
+        mat-menu-item
+        [routerLink]="routes.AUTH_LOGIN"
+        aria-label="login"
+        title="Login"
+        data-testid="mobile-nav-login"
+      >
+        <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
+        in
+      </a>
     }
   </div>
 </mat-menu>
