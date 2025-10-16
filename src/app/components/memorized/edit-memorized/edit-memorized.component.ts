@@ -272,14 +272,16 @@ export class EditMemorizedComponent implements OnInit {
     this.editMemorizedForm.markAsDirty();
   }
 
-  toggleSplitByPercentage(): void {
-    this.splitByPercentage.set(!this.splitByPercentage());
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
     this.editMemorizedForm.markAsDirty();
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.editMemorizedForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {

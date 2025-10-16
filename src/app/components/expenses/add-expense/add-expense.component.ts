@@ -369,14 +369,16 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
     this.fileName.set('');
   }
 
-  toggleSplitByPercentage(): void {
-    this.splitByPercentage.set(!this.splitByPercentage());
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
     this.addExpenseForm.markAsDirty();
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.addExpenseForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {

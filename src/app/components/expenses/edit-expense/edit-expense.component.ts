@@ -345,14 +345,16 @@ export class EditExpenseComponent implements OnInit {
     this.editExpenseForm.markAsDirty();
   }
 
-  toggleSplitByPercentage(): void {
-    this.splitByPercentage.set(!this.splitByPercentage());
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
     this.editExpenseForm.markAsDirty();
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.editExpenseForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {
