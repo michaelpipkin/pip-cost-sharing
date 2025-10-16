@@ -8,12 +8,22 @@
       <div></div>
       <h3 data-testid="members-page-title">Members</h3>
       <div class="help-icon" data-testid="members-help-icon-container">
+        @if (demoService.isInDemoMode()) {
+          <mat-icon
+            data-testid="members-tour-button"
+            matTooltip="Show Tour"
+            (click)="startTour()"
+            aria-label="Start members tour"
+            class="mr-2"
+            >tour</mat-icon
+          >
+        }
         <mat-icon matTooltip="Help" (click)="showHelp()" data-testid="members-help-button" aria-label="Show help for members">help</mat-icon>
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     <div class="filters" data-testid="member-filters">
-      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="member-search-field">
+      <mat-form-field class="clearable" subscriptSizing="dynamic" data-testid="member-search-field" data-tour="member-search">
         <mat-label>Search by name or email</mat-label>
         <input matInput [(ngModel)]="nameFilter" data-testid="member-search-input" aria-label="Search members by name or email" />
         @if (nameFilter() !== '') {
@@ -30,19 +40,19 @@
           </button>
         }
       </mat-form-field>
-      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-members-only-toggle" aria-label="Show active members only">
+      <mat-slide-toggle #activeToggle [checked]="true" [(ngModel)]="activeOnly" data-testid="active-members-only-toggle" data-tour="member-filter" aria-label="Show active members only">
         Active only
       </mat-slide-toggle>
     </div>
     @if (currentMember()?.groupAdmin) {
       <div>
-        <button mat-raised-button class="btn-primary" (click)="addMember()" data-testid="add-member-button" aria-label="Add new member to group">
+        <button mat-raised-button class="btn-primary" (click)="addMember()" data-testid="add-member-button" data-tour="add-member-button" aria-label="Add new member to group">
           Add Member
         </button>
       </div>
     }
     @if (filteredMembers()?.length > 0) {
-      <div class="table-container mat-elevation-z8" data-testid="members-table-container">
+      <div class="table-container mat-elevation-z8" data-testid="members-table-container" data-tour="members-table">
         <div class="scrollable-table">
           <table
             mat-table

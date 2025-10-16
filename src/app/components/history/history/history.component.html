@@ -8,6 +8,16 @@
       <div></div>
       <h3 data-testid="history-page-title">History</h3>
       <div class="help-icon" data-testid="history-help-icon-container">
+        @if (demoService.isInDemoMode()) {
+          <mat-icon
+            data-testid="history-tour-button"
+            matTooltip="Show Tour"
+            (click)="startTour()"
+            aria-label="Start history tour"
+            class="mr-2"
+            >tour</mat-icon
+          >
+        }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
@@ -40,7 +50,7 @@
         </mat-select>
       </mat-form-field>
     </div>
-    <div class="filters">
+    <div class="filters" data-tour="history-filters">
       <mat-form-field
         appearance="fill"
         class="datepicker"
@@ -114,6 +124,7 @@
             (matSortChange)="sortHistory($event)"
             multiTemplateDataRows
             class="expandable-table"
+            data-tour="history-table"
           >
             <ng-container matColumnDef="id">
               <th mat-header-cell *matHeaderCellDef>Id</th>

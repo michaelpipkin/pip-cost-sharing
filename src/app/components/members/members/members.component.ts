@@ -1,5 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
+  AfterViewInit,
   Component,
   computed,
   effect,
@@ -30,6 +31,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
@@ -57,12 +59,13 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
     ActiveInactivePipe,
   ],
 })
-export class MembersComponent implements OnInit {
+export class MembersComponent implements OnInit, AfterViewInit {
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly demoService = inject(DemoService);
+  protected readonly tourService = inject(TourService);
   protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -130,6 +133,11 @@ export class MembersComponent implements OnInit {
       });
   }
 
+  ngAfterViewInit(): void {
+    // Check if we should auto-start the members tour
+    this.tourService.checkForContinueTour('members');
+  }
+
   sortMembers(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
     this.sortAsc.set(e.direction == 'asc');
@@ -183,5 +191,10 @@ export class MembersComponent implements OnInit {
       data: { sectionId: 'members' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Members Tour (ignoring completion state)
+    this.tourService.startMembersTour(true);
   }
 }

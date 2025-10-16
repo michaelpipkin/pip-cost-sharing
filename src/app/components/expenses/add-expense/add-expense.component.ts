@@ -2,6 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  AfterViewInit,
   Component,
   computed,
   ElementRef,
@@ -54,6 +55,7 @@ import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { MemorizedService } from '@services/memorized.service';
+import { TourService } from '@services/tour.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
@@ -92,7 +94,7 @@ import { getStorage } from 'firebase/storage';
     DocRefCompareDirective,
   ],
 })
-export class AddExpenseComponent implements OnInit {
+export class AddExpenseComponent implements OnInit, AfterViewInit {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly fb = inject(FormBuilder);
@@ -105,6 +107,7 @@ export class AddExpenseComponent implements OnInit {
   protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
+  protected readonly tourService = inject(TourService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
@@ -229,6 +232,10 @@ export class AddExpenseComponent implements OnInit {
     } else if (this.currentGroup().autoAddMembers) {
       this.addAllActiveGroupMembers();
     }
+  }
+
+  ngAfterViewInit(): void {
+    this.tourService.checkForContinueTour('add-expense');
   }
 
   addSelectFocus(): void {
@@ -625,5 +632,9 @@ export class AddExpenseComponent implements OnInit {
       data: { sectionId: 'add-edit-expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    this.tourService.startAddExpenseTour(true);
   }
 }

@@ -5,6 +5,7 @@
         mat-icon-button
         [matMenuTriggerFor]="menu"
         data-testid="mobile-menu-toggle"
+        data-tour="mobile-navigation"
         aria-label="Open navigation menu"
       >
         <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
@@ -42,7 +43,7 @@
       <a [routerLink]="routes.HOME">
         <span id="title" data-testid="app-title-desktop">PipSplit</span>
       </a>
-      <div class="links" data-testid="desktop-navigation">
+      <div class="links" data-testid="desktop-navigation" data-tour="desktop-navigation">
         @if (isInDemoMode()) {
           <!-- Demo mode navigation -->
           <a

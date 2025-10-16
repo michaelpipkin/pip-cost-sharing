@@ -4,6 +4,16 @@
       <div></div>
       <h3 data-testid="expenses-page-title">Expenses</h3>
       <div class="help-icon" data-testid="expenses-help-icon-container">
+        @if (demoService.isInDemoMode()) {
+          <mat-icon
+            data-testid="expenses-tour-button"
+            matTooltip="Show Tour"
+            (click)="startTour()"
+            aria-label="Start expenses tour"
+            class="mr-2"
+            >tour</mat-icon
+          >
+        }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
@@ -120,12 +130,13 @@
         matButton="elevated"
         class="btn-primary add-button"
         (click)="onAddExpenseClick()"
+        data-tour="add-expense-button"
       >
         Add New Expense
       </button>
     </div>
     @if (filteredExpenses()?.length > 0) {
-      <div class="table-container mat-elevation-z8">
+      <div class="table-container mat-elevation-z8" data-tour="expenses-list">
         <div class="scrollable-table">
           <table
             mat-table
@@ -406,9 +417,10 @@
             ></tr>
             <tr
               mat-row
-              *matRowDef="let expense; columns: columnsToDisplay()"
+              *matRowDef="let expense; columns: columnsToDisplay(); let isFirst = first"
               class="summary-row clickable-row expandable-row"
               [class.expanded-row]="expandedExpense() === expense"
+              [attr.data-tour]="isFirst ? 'expense-row' : null"
               (click)="onRowClick(expense)"
             ></tr>
             <tr

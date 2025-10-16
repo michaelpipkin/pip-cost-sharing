@@ -3,6 +3,16 @@
     <div></div>
     <h3 data-test-id="page-title">Add Expense</h3>
     <div class="help-icon" data-test-id="help-icon-container">
+      @if (demoService.isInDemoMode()) {
+        <mat-icon
+          data-testid="add-expense-tour-button"
+          matTooltip="Show Tour"
+          (click)="startTour()"
+          aria-label="Start add expense tour"
+          class="mr-2"
+          >tour</mat-icon
+        >
+      }
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
@@ -20,7 +30,7 @@
       data-test-id="add-expense-form"
       aria-label="Add expense form"
     >
-      <div class="flex-wrap fw-start">
+      <div class="flex-wrap fw-start" data-tour="basic-info">
         <mat-form-field id="paid-by-select" data-test-id="payer-field">
           <mat-label>Payer</mat-label>
           <mat-select
@@ -106,7 +116,7 @@
           }
         </mat-form-field>
       </div>
-      <div class="flex-wrap fw-start">
+      <div class="flex-wrap fw-start" data-tour="amount-fields">
         <mat-form-field
           appearance="fill"
           floatLabel="always"
@@ -227,7 +237,7 @@
           </div>
         }
       </div>
-      <div class="flex-wrap fw-start row-gap">
+      <div class="flex-wrap fw-start row-gap" data-tour="split-controls">
         <button
           mat-raised-button
           class="btn-primary"

@@ -25,6 +25,7 @@ import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
+import { TourService } from '@services/tour.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -39,6 +40,7 @@ import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
 import {
+  AfterViewInit,
   Component,
   computed,
   effect,
@@ -77,7 +79,7 @@ import {
     DateShortcutKeysDirective,
   ],
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent implements OnInit, AfterViewInit {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly userStore = inject(UserStore);
@@ -87,6 +89,7 @@ export class ExpensesComponent implements OnInit {
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
+  protected readonly tourService = inject(TourService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
@@ -230,6 +233,11 @@ export class ExpensesComponent implements OnInit {
     }
   }
 
+  ngAfterViewInit(): void {
+    // Check if we should auto-start the expenses tour
+    this.tourService.checkForContinueTour('expenses');
+  }
+
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
     try {
@@ -356,6 +364,11 @@ export class ExpensesComponent implements OnInit {
       data: { sectionId: 'expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Expenses Tour (ignoring completion state)
+    this.tourService.startExpensesTour(true);
   }
 
   async copyExpenseSummaryToClipboard(expense: Expense): Promise<void> {
