@@ -162,13 +162,16 @@ export class SplitComponent {
     }
   }
 
-  toggleSplitByPercentage(): void {
-    this.splitByPercentage.set(!this.splitByPercentage());
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
+    this.expenseForm.markAsDirty();
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.expenseForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {
