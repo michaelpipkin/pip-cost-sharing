@@ -1,0 +1,181 @@
+/**
+ * Custom Shepherd.js theme to match Angular Material design
+ * Integrates with the M3 Green theme
+ */
+
+// Import Material theme variables if needed
+// @use '@angular/material' as mat;
+
+.shepherd-element {
+  max-width: 400px;
+  z-index: 10000;
+}
+
+.shepherd-modal-overlay-container {
+  z-index: 9999;
+}
+
+.shepherd-header {
+  background-color: var(--mat-toolbar-container-background-color, #1e7e34);
+  color: var(--mat-toolbar-container-text-color, white);
+  padding: 16px;
+  border-radius: 4px 4px 0 0;
+}
+
+.shepherd-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+.shepherd-cancel-icon {
+  color: var(--mat-toolbar-container-text-color, white);
+  font-size: 24px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.shepherd-text {
+  padding: 16px;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.shepherd-footer {
+  padding: 8px 16px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-radius: 0 0 4px 4px;
+}
+
+.shepherd-button {
+  background: transparent;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px; // Rounded like Angular Material buttons
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: none; // Mixed-case text like Angular Material
+  letter-spacing: 0.25px;
+  min-height: 36px;
+  line-height: 20px;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.12);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(30, 126, 52, 0.3);
+  }
+}
+
+.shepherd-button-primary {
+  background-color: #1e7e34;
+  color: white;
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.2),
+              0 4px 5px 0 rgba(0, 0, 0, 0.14),
+              0 1px 10px 0 rgba(0, 0, 0, 0.12);
+
+  &:hover {
+    background-color: #1a6b2d;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.2),
+                0 4px 5px 0 rgba(0, 0, 0, 0.14),
+                0 1px 10px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    background-color: #165a25;
+    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+                0 8px 10px 1px rgba(0, 0, 0, 0.14),
+                0 3px 14px 2px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.shepherd-button-secondary {
+  color: #1e7e34;
+
+  &:hover {
+    background-color: rgba(30, 126, 52, 0.08);
+  }
+
+  &:active {
+    background-color: rgba(30, 126, 52, 0.16);
+  }
+}
+
+.shepherd-arrow {
+  &::before {
+    background: white;
+  }
+}
+
+// Dark theme support (if applicable)
+@media (prefers-color-scheme: dark) {
+  .shepherd-element {
+    background-color: #2d2d2d;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  .shepherd-text {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  .shepherd-button {
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    &:active {
+      background-color: rgba(255, 255, 255, 0.16);
+    }
+  }
+
+  .shepherd-arrow {
+    &::before {
+      background: #2d2d2d;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .shepherd-element {
+    max-width: 90vw;
+  }
+
+  .shepherd-text {
+    font-size: 13px;
+  }
+
+  .shepherd-button {
+    font-size: 13px;
+    padding: 6px 16px;
+    min-height: 32px;
+  }
+}
+
+// Special styling for tour-specific elements
+.shepherd-enabled.shepherd-element {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.shepherd-modal-overlay-container.shepherd-modal-is-visible {
+  opacity: 0.5;
+}

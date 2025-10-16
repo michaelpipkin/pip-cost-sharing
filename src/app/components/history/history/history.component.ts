@@ -1,5 +1,6 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
+  AfterViewInit,
   Component,
   computed,
   effect,
@@ -32,6 +33,7 @@ import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -64,11 +66,12 @@ import { DocumentReference } from 'firebase/firestore';
     DocRefCompareDirective,
   ],
 })
-export class HistoryComponent {
+export class HistoryComponent implements AfterViewInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly historyService = inject(HistoryService);
   protected readonly historyStore = inject(HistoryStore);
+  protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
@@ -142,6 +145,10 @@ export class HistoryComponent {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.tourService.checkForContinueTour('history');
+  }
+
   onExpandClick(history: History): void {
     this.expandedHistory.update((h) => (h === history ? null : history));
   }
@@ -202,6 +209,10 @@ export class HistoryComponent {
       data: { sectionId: 'history' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    this.tourService.startHistoryTour(true);
   }
 
   async copyHistoryToClipboard(history: History): Promise<void> {

@@ -1,6 +1,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@angular/common';
 import {
+  AfterViewInit,
   Component,
   computed,
   effect,
@@ -32,6 +33,7 @@ import { Member } from '@models/member';
 import { Memorized, SerializableMemorized } from '@models/memorized';
 import { DemoService } from '@services/demo.service';
 import { SplitService } from '@services/split.service';
+import { TourService } from '@services/tour.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -56,7 +58,7 @@ import { MemorizedStore } from '@store/memorized.store';
     RouterLink,
   ],
 })
-export class MemorizedComponent implements OnInit {
+export class MemorizedComponent implements OnInit, AfterViewInit {
   protected readonly router = inject(Router);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -64,6 +66,7 @@ export class MemorizedComponent implements OnInit {
   protected readonly memorizedStore = inject(MemorizedStore);
   protected readonly demoService = inject(DemoService);
   protected readonly splitService = inject(SplitService);
+  protected readonly tourService = inject(TourService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -140,6 +143,10 @@ export class MemorizedComponent implements OnInit {
       });
   }
 
+  ngAfterViewInit(): void {
+    this.tourService.checkForContinueTour('memorized');
+  }
+
   onSearchFocus() {
     this.searchFocused.set(true);
   }
@@ -198,5 +205,9 @@ export class MemorizedComponent implements OnInit {
       data: { sectionId: 'memorized-expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    this.tourService.startMemorizedTour(true);
   }
 }

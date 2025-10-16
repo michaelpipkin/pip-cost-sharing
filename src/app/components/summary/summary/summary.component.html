@@ -8,6 +8,16 @@
       <div></div>
       <h3 data-testid="summary-page-title">Summary</h3>
       <div class="help-icon" data-testid="summary-help-icon-container">
+        @if (demoService.isInDemoMode()) {
+          <mat-icon
+            data-testid="summary-tour-button"
+            matTooltip="Show Tour"
+            (click)="startTour()"
+            aria-label="Start summary tour"
+            class="mr-2"
+            >tour</mat-icon
+          >
+        }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
@@ -105,7 +115,7 @@
       </mat-form-field>
     </div>
     @if (summaryData()?.length > 0) {
-      <div class="table-container mat-elevation-z8">
+      <div class="table-container mat-elevation-z8" data-tour="payment-flow">
         <div class="scrollable-table">
           <table
             mat-table

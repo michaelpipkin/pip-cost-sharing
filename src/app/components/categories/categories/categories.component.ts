@@ -6,6 +6,7 @@ import {
   model,
   signal,
   Signal,
+  AfterViewInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,6 +29,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -53,7 +55,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
     ActiveInactivePipe,
   ],
 })
-export class CategoriesComponent {
+export class CategoriesComponent implements AfterViewInit {
   protected readonly router = inject(Router);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly groupStore = inject(GroupStore);
@@ -63,6 +65,7 @@ export class CategoriesComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly demoService = inject(DemoService);
+  protected readonly tourService = inject(TourService);
 
   currentMember: Signal<Member> = this.memberStore.currentMember;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
@@ -100,6 +103,11 @@ export class CategoriesComponent {
         this.loading.loadingOff();
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Check if we should auto-start the categories tour
+    this.tourService.checkForContinueTour('categories');
   }
 
   sortCategories(e: { active: string; direction: string }): void {
@@ -150,5 +158,10 @@ export class CategoriesComponent {
       data: { sectionId: 'categories' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Categories Tour (ignoring completion state)
+    this.tourService.startCategoriesTour(true);
   }
 }
