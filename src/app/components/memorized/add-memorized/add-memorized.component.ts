@@ -266,14 +266,16 @@ export class AddMemorizedComponent implements OnInit {
     }
   }
 
-  toggleSplitByPercentage(): void {
-    this.splitByPercentage.set(!this.splitByPercentage());
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
     this.addMemorizedForm.markAsDirty();
-    if (this.splitByPercentage()) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.addMemorizedForm.markAsDirty();
+    this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {

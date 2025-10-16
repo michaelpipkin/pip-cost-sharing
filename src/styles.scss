@@ -76,6 +76,11 @@ body.dark-theme {
   color: tokens.color('on-tertiary') !important;
 }
 
+.btn-unselected:not([disabled]) {
+  background-color: tokens.color('surface-variant') !important;
+  color: tokens.color('on-surface-variant') !important;
+}
+
 .btn-danger:not([disabled]) {
   background-color: tokens.color('error') !important;
   color: tokens.color('on-error') !important;
@@ -90,6 +95,29 @@ body.dark-theme {
 
 .mdc-button__label {
   text-align: center !important;
+}
+
+.left-half-btn {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  padding-right: 0.5rem !important;
+  border-right: 1px solid tokens.color('on-surface') !important;
+  margin-right: -1px !important;
+  mat-icon {
+    font-size: 1.6rem !important;
+  }
+}
+
+.right-half-btn {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  padding-right: 0.5rem !important;
+  border-left: 1px solid tokens.color('on-surface') !important;
+  margin-left: -1px !important;
+  mat-icon {
+    font-size: 1.6rem !important;
+    width: 110% !important;
+  }
 }
 
 /* ========================================
