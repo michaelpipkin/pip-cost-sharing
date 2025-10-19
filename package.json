@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.11.28",
+  "version": "1.11.29",
   "type": "module",
   "scripts": {
     "ng": "ng",
@@ -11,8 +11,8 @@
     "emu:no-data": "firebase emulators:start",
     "emu:data": "firebase emulators:start --import seed-data",
     "get-indexes": "firebase firestore:indexes",
-    "build:prod": "pnpm --no-git-tag-version version patch && node ./setBuildDate.js && ng build --configuration=production && node ./generate-sitemap.js",
-    "build:ci": "node ./setBuildDate.js && ng build --configuration=production && node ./generate-sitemap.js",
+    "build:prod": "pnpm --no-git-tag-version version patch && node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
+    "build:ci": "node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
     "update-angular": "ng update @angular/cli @angular/core @angular/material @angular/cdk",
     "e2e:report": "playwright show-report",
     "e2e:install": "playwright install",
