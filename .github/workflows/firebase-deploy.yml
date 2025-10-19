@@ -88,11 +88,17 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         id: deploy
-        uses: FirebaseExtended/action-hosting-deploy@v0 
-        with:
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-          projectId: 'pip-cost-sharing'
-          channelId: live
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
+          if firebase deploy --only hosting --project pip-cost-sharing --non-interactive; then
+            echo "outcome=success" >> $GITHUB_OUTPUT
+          else
+            echo "outcome=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          rm service-account-key.json
 
       - name: Configure Git for merge
         if: steps.deploy.outcome == 'success'
