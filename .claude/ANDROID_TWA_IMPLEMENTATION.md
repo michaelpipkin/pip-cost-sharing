@@ -242,15 +242,17 @@ Located in `twa-project/` after initialization. Key fields:
 - Package ID: `com.pipsplit.app`
 - Keystore: `android.keystore` (password: android123 - **CHANGE FOR PRODUCTION**)
 
-✅ **Build successful:**
-- APK: `app-release-signed.apk`
-- AAB: `app-release-bundle.aab`
-- SHA256 Fingerprint: `F7:0A:30:A2:74:05:4B:6A:3E:AC:03:A3:F2:D3:2E:83:D2:36:C7:28:94:7C:06:DB:85:2F:E4:25:52:BC:FF:B3`
+✅ **Production Build successful:**
+- APK: `app-release-signed.apk` (signed with production keystore)
+- AAB: `app-release-bundle.aab` (ready for Play Store)
+- Production Keystore: `production.keystore` (alias: upload)
+- SHA256 Fingerprint: `5B:CD:50:5E:7D:3F:5D:E2:3E:08:9A:7D:C4:13:DB:2E:2C:B8:A8:8A:BB:FA:FC:D2:DE:E8:68:05:CA:E9:82:A5`
 
-✅ **Digital Asset Links file created:**
+✅ **Digital Asset Links deployed:**
 - File: `src/.well-known/assetlinks.json`
-- Angular.json updated to include .well-known folder
-- **NEXT STEP: Deploy to production!**
+- Accessible at: https://pipsplit.com/.well-known/assetlinks.json
+- Contains production keystore fingerprint
+- **READY FOR PLAY STORE SUBMISSION!**
 
 ## Deployment Instructions
 
@@ -280,24 +282,107 @@ Located in `twa-project/` after initialization. Key fields:
    - Fill out store listing
    - Submit for review
 
-## IMPORTANT: Production Keystore
+## Play Store Submission Checklist
 
-⚠️ **The current keystore uses a simple password (android123) for testing!**
+### Required Materials
 
-Before final Play Store submission, you should:
-1. Create a new production keystore with a strong password (alphanumeric only, no special chars)
-2. Update `twa-manifest.json` with new keystore path
-3. Rebuild the AAB
-4. Get new SHA256 fingerprint
-5. Update `assetlinks.json` with new fingerprint
-6. Redeploy website
+You'll need to prepare the following for Play Store submission:
 
-**Production keystore creation:**
-```bash
-cd pipsplit-twa
-C:\jdk17\bin\keytool.exe -genkey -v -keystore production.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-# Use strong password with only letters/numbers/basic chars
+1. **App Bundle (AAB)** ✅
+   - Location: `C:\Users\mpipk\source\repos\michaelpipkin\pipsplit-twa\app-release-bundle.aab`
+   - Ready to upload!
+
+2. **App Icon** ✅
+   - 512x512 PNG (you already have this at `src/assets/images/pip_split_icon_512x512.png`)
+
+3. **Feature Graphic** ⏳
+   - Required size: 1024w x 500h pixels
+   - Should showcase your app's key feature
+   - No rounded corners, no transparency
+
+4. **Screenshots** ⏳
+   - Minimum 2 screenshots required
+   - Recommended: 4-8 screenshots
+   - Phone: 16:9 or 9:16 aspect ratio
+   - Minimum dimension: 320px
+   - Maximum dimension: 3840px
+   - Take screenshots showing:
+     - Creating/joining a group
+     - Adding an expense
+     - Viewing expense summary
+     - Settling up payments
+
+5. **Privacy Policy** ⏳
+   - Required URL (if app collects any user data)
+   - Must be hosted and publicly accessible
+   - Should explain what data you collect (Firebase Auth, Firestore data, etc.)
+
+6. **App Information** ⏳
+   - Short description (80 characters max)
+   - Full description (4000 characters max)
+   - App category: Finance or Productivity
+   - Content rating: Complete questionnaire in Play Console
+   - Target audience: Adults
+
+### Recommended Descriptions
+
+**Short Description (example):**
+"Split expenses and track shared costs with unlimited groups. Perfect for roommates and group trips."
+
+**Full Description (example):**
 ```
+PipSplit helps you effortlessly track and split shared expenses with friends, roommates, and travel companions.
+
+KEY FEATURES:
+• Create unlimited expense groups
+• Add expenses and specify who paid and who owes
+• Automatic expense splitting calculations
+• Detailed payment summaries
+• Track who owes what to whom
+• Settle up and mark payments as complete
+• Real-time sync across all devices
+
+PERFECT FOR:
+• Roommates sharing rent and utilities
+• Friends splitting dinner bills
+• Group trips and vacations
+• Shared household expenses
+• Any situation involving shared costs
+
+PipSplit makes it easy to keep track of shared expenses without the awkward conversations. No more spreadsheets or mental math - just simple, transparent expense tracking.
+
+FREE TO USE with unlimited groups and expenses!
+```
+
+### Step-by-Step Play Store Submission
+
+1. **Go to Google Play Console**: https://play.google.com/console
+2. **Create New App**:
+   - App name: PipSplit
+   - Default language: English (United States)
+   - App type: App
+   - Free or Paid: Free
+3. **Store Listing**:
+   - Upload app icon, feature graphic, screenshots
+   - Enter descriptions
+   - Add privacy policy URL
+4. **Content Rating**:
+   - Complete the questionnaire
+   - Most likely rating: Everyone
+5. **Target Audience**:
+   - Select age groups
+6. **Store Presence**:
+   - Select countries/regions (start with US, expand later)
+7. **Production Release**:
+   - Create new release
+   - Upload `app-release-bundle.aab`
+   - Release name: 1.11.25 (or your version)
+   - Release notes: "Initial release of PipSplit for Android"
+   - Save and submit for review
+
+### Review Timeline
+- Initial review: 1-7 days (typically 1-3 days)
+- Google will email you when approved or if issues found
 
 ## Next Steps After Play Store Approval
 
