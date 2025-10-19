@@ -34,7 +34,12 @@
               "src/favicon.ico",
               "src/manifest.json",
               "src/ads.txt",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/.well-known",
+                "output": "/.well-known"
+              }
             ],
             "styles": [
               "./node_modules/bootstrap/dist/css/bootstrap.min.css",
@@ -109,7 +114,12 @@
               "src/favicon.ico",
               "src/manifest.json",
               "src/ads.txt",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/.well-known",
+                "output": "/.well-known"
+              }
             ],
             "styles": [
               "./node_modules/bootstrap/dist/css/bootstrap.min.css",
