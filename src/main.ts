@@ -1,7 +1,6 @@
-import { enableProdMode, inject } from '@angular/core';
+import { enableProdMode } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { environment } from '@env/environment';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
 import './app/extensions/doc-ref-extensions';
