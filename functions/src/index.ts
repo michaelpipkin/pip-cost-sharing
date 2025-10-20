@@ -103,3 +103,101 @@ export const deleteOldPaidExpenses = functions.scheduler.onSchedule(
     }
   }
 );
+
+// Delete user account and all associated data
+// Requires user to be authenticated
+exports.deleteUserAccount = functions.https.onCall(async (request) => {
+  const uid = request.auth?.uid;
+
+  if (!uid) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to delete account'
+    );
+  }
+
+  try {
+    // Get user email for logging
+    const userRecord = await admin.auth().getUser(uid);
+    const userEmail = userRecord.email || '';
+    console.log(`Authenticated deletion request for UID: ${uid}, email: ${userEmail}`);
+
+    // Start deletion process
+    console.log(`Starting account deletion for UID: ${uid}`);
+
+    // 1. Get user document reference directly (document ID is the UID)
+    const userDocRef = db.collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
+
+    if (!userDoc.exists) {
+      console.log(`Warning: User document not found for UID: ${uid}`);
+      // Continue with deletion even if user document doesn't exist
+    } else {
+      console.log(`Found user document: ${userDocRef.path}`);
+    }
+
+    // 2. Find and update all member documents
+    try {
+      // Get all groups
+      const groupsSnapshot = await db.collection('groups').get();
+
+      for (const groupDoc of groupsSnapshot.docs) {
+        // Query members subcollection for this user
+        const membersSnapshot = await groupDoc.ref
+          .collection('members')
+          .where('userRef', '==', userDocRef)
+          .get();
+
+        // Update each matching member document
+        const batch = db.batch();
+        membersSnapshot.docs.forEach((memberDoc) => {
+          batch.update(memberDoc.ref, {
+            email: '',
+            userRef: null,
+          });
+          console.log(
+            `Anonymizing member document: ${memberDoc.ref.path}`
+          );
+        });
+
+        if (membersSnapshot.size > 0) {
+          await batch.commit();
+          console.log(
+            `Updated ${membersSnapshot.size} member(s) in group ${groupDoc.id}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error updating member documents:', error);
+      // Log error but continue with deletion
+      // The user document and auth account should still be deleted
+    }
+
+    // 3. Delete user document if it exists
+    if (userDoc.exists) {
+      await userDocRef.delete();
+      console.log(`Deleted user document: ${userDocRef.path}`);
+    }
+
+    // 4. Delete auth account (do this last)
+    await admin.auth().deleteUser(uid);
+    console.log(`Deleted auth account for UID: ${uid}`);
+
+    return {
+      success: true,
+      message: 'Account successfully deleted',
+    };
+  } catch (error: any) {
+    console.error('Error deleting user account:', error);
+
+    // Return appropriate error
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `Error deleting account: ${error.message}`
+    );
+  }
+});

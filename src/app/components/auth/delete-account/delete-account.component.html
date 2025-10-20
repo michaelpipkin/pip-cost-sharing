@@ -1,0 +1,124 @@
+<div class="container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Delete Account</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Unverified State -->
+      @if (state() === 'unverified') {
+        <div class="unverified-section">
+          <div class="info-box">
+            <mat-icon color="primary">info</mat-icon>
+            <div>
+              <h3>Authentication Required</h3>
+              <p>
+                To delete your account, you must first log in to verify your
+                identity.
+              </p>
+            </div>
+          </div>
+
+          <p class="info-text">
+            This security measure ensures that only the account owner can delete
+            their account.
+          </p>
+
+          <button
+            mat-raised-button
+            color="primary"
+            routerLink="/auth/login"
+            [queryParams]="{ returnUrl: '/auth/delete-account' }"
+            class="action-button"
+          >
+            <mat-icon>login</mat-icon>
+            Log In to Continue
+          </button>
+        </div>
+      }
+
+      <!-- Verified State -->
+      @if (state() === 'verified') {
+        <div class="verified-section">
+          <div class="warning-box">
+            <mat-icon color="warn">warning</mat-icon>
+            <div>
+              <h3>This action is irreversible</h3>
+              <p>
+                Deleting your account will permanently remove all your data and
+                cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <p class="info-text">When you delete your account:</p>
+          <ul class="deletion-info">
+            <li>Your authentication account will be permanently deleted</li>
+            <li>Your user profile will be removed from our database</li>
+            <li>
+              Your email address will be removed from all group and expense
+              records
+            </li>
+            <li>This action cannot be reversed</li>
+          </ul>
+
+          <form>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email Address</mat-label>
+              <input matInput type="email" [value]="verifiedEmail()" readonly />
+              <mat-icon matPrefix>email</mat-icon>
+            </mat-form-field>
+
+            <mat-checkbox
+              [(ngModel)]="confirmDeletion"
+              name="confirm"
+              color="warn"
+              class="confirmation-checkbox"
+            >
+              I understand this action is irreversible and want to permanently
+              delete my account
+            </mat-checkbox>
+
+            <button
+              mat-raised-button
+              color="warn"
+              type="button"
+              [disabled]="!confirmDeletion()"
+              (click)="deleteAccount()"
+              class="action-button"
+            >
+              <mat-icon>delete_forever</mat-icon>
+              Delete My Account
+            </button>
+          </form>
+        </div>
+      }
+
+      <!-- Completed State -->
+      @if (state() === 'completed') {
+        <div class="completed-section">
+          <div class="success-box">
+            <mat-icon color="primary">check_circle</mat-icon>
+            <div>
+              <h3>Account Deletion Initiated</h3>
+              <p>
+                Your account deletion has been successfully initiated. All your
+                data has been removed.
+              </p>
+            </div>
+          </div>
+
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="goHome()"
+            class="action-button"
+          >
+            <mat-icon>home</mat-icon>
+            Return to Home
+          </button>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
