@@ -142,13 +142,17 @@ jobs:
           # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
+          # Discard any local changes from build process (e.g., environment.ts modifications)
+          # These changes are already baked into the deployed build artifacts
+          git reset --hard HEAD
+
           # Set up SSH authentication for git operations
           git remote set-url origin git@github.com:${{ github.repository }}.git
-          
+
           # Fetch the latest main branch
           git fetch origin main
-          
+
           # Switch to main branch
           git checkout main
           
