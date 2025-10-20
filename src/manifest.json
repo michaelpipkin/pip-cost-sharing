@@ -19,5 +19,10 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "android_manifest": {
+    "permissions": [
+      "com.google.android.gms.permission.AD_ID"
+    ]
+  }
 }
