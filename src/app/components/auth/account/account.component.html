@@ -138,16 +138,16 @@
             Change Password
           </button>
         </form>
-        <a
-          mat-raised-button
-          class="btn-danger"
-          [routerLink]="['/auth', 'delete-account']"
-          data-testid="delete-account-button"
-          aria-label="Delete account"
-        >
-          Delete Account
-        </a>
       }
+      <a
+        mat-raised-button
+        class="btn-danger"
+        [routerLink]="['/auth', 'delete-account']"
+        data-testid="delete-account-button"
+        aria-label="Delete account"
+      >
+        Delete Account
+      </a>
     </mat-tab>
     <mat-tab label="Payment Services" data-testid="payment-services-tab">
       <h4 data-testid="payment-services-title">Payment Service IDs</h4>
@@ -207,14 +207,16 @@
       </form>
     </mat-tab>
   </mat-tab-group>
-  <button
-    mat-raised-button
-    class="btn-danger mt-3"
-    type="button"
-    (click)="updateData()"
-    data-testid="update-data-button"
-    aria-label="Update live data"
-  >
-    Update Live Data
-  </button>
+  @if (localLive()) {
+    <button
+      mat-raised-button
+      class="btn-danger mt-3"
+      type="button"
+      (click)="updateData()"
+      data-testid="update-data-button"
+      aria-label="Update live data"
+    >
+      Update Live Data
+    </button>
+  }
 </div>
