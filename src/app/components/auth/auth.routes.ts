@@ -60,6 +60,14 @@ export const authRoutes: Routes = [
             '@components/auth/account-action/account-action.component'
           ).then((m) => m.AccountActionComponent),
       },
+      {
+        path: 'delete-account',
+        title: 'Delete Account',
+        loadComponent: () =>
+          import(
+            '@components/auth/delete-account/delete-account.component'
+          ).then((m) => m.DeleteAccountComponent),
+      },
     ],
   },
 ];

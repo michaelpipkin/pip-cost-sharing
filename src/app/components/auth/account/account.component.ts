@@ -1,3 +1,27 @@
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { RouterLink } from '@angular/router';
+import { environment } from '@env/environment';
+import { Group } from '@models/group';
+import { User } from '@models/user';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
+import { SplitService } from '@services/split.service';
+import { UserService } from '@services/user.service';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   Component,
   effect,
@@ -13,27 +37,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
-import { environment } from '@env/environment';
-import { Group } from '@models/group';
-import { User } from '@models/user';
-import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { GroupStore } from '@store/group.store';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   User as FirebaseUser,
   getAuth,
@@ -41,7 +44,6 @@ import {
   updateEmail,
   updatePassword,
 } from 'firebase/auth';
-import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-account',
@@ -57,11 +59,13 @@ import { DocumentReference } from 'firebase/firestore';
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
+    RouterLink,
   ],
 })
 export class AccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly functions = inject(getFunctions);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
@@ -82,6 +86,9 @@ export class AccountComponent {
 
   firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
+  localLive = signal<boolean>(
+    !environment.production && !environment.useEmulators
+  );
 
   selectedGroup = model<DocumentReference | null>(
     this.currentUser()?.defaultGroupRef ?? null
@@ -272,30 +279,33 @@ export class AccountComponent {
 
   async updateData(): Promise<void> {
     this.loading.loadingOn();
-    await Promise.all([
-      // this.expenseService.removeHasReceiptField(),
-      // this.expenseService.migrateCategoryIdsToRefs(),
-      // this.memorizedService.migrateCategoryIdsToRefs(),
-      // this.userService.migrateGroupIdsToRefs(),
-      // this.memberService.migrateUserIdsToRefs(),
-      // this.splitService.migrateFieldIdsToRefs(),
-      // this.groupService.normalizeAllGroupDatesToUTC(),
-    ])
-      .then(() => {
-        this.loading.loadingOff();
-        this.snackBar.open('Data updated.', 'Close');
-      })
-      .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'data_update',
-          message: err.message,
-        });
-        this.loading.loadingOff();
-        this.snackBar.open(
-          'Something went wrong - could not update data.',
-          'Close'
-        );
+    try {
+      const verifyEmail = httpsCallable(this.functions, 'verifyUserEmail');
+      verifyEmail({ uid: 'rUYCPmIYB7fDjfaS3aeoDnHKnsh1' })
+        .then((result) => console.log(result))
+        .catch((error) => console.error(error));
+      // await Promise.all([
+      //   this.expenseService.removeHasReceiptField(),
+      //   this.expenseService.migrateCategoryIdsToRefs(),
+      //   this.memorizedService.migrateCategoryIdsToRefs(),
+      //   this.userService.migrateGroupIdsToRefs(),
+      //   this.memberService.migrateUserIdsToRefs(),
+      //   this.splitService.migrateFieldIdsToRefs(),
+      //   this.groupService.normalizeAllGroupDatesToUTC(),
+      // ]);
+      this.snackBar.open('Data updated.', 'Close');
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'data_update',
+        message: error.message,
       });
+      this.snackBar.open(
+        'Something went wrong - could not update data.',
+        'Close'
+      );
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 }

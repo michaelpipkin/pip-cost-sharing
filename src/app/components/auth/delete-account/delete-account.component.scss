@@ -1,0 +1,83 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  padding: 20px;
+}
+
+mat-card {
+  max-width: 600px;
+  width: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.action-button {
+  width: 100%;
+  margin-top: 16px;
+  height: 48px;
+  font-size: 16px;
+}
+
+.info-text {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+.info-box,
+.warning-box,
+.success-box {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  h3 {
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.info-box {
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.warning-box {
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.success-box {
+  background-color: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.deletion-info {
+  margin: 16px 0;
+  padding-left: 20px;
+
+  li {
+    margin: 8px 0;
+    line-height: 1.6;
+  }
+}
+
+.confirmation-checkbox {
+  display: block;
+  margin: 24px 0 8px 0;
+}
