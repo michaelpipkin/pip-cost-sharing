@@ -1,5 +1,19 @@
 import { Component, inject, Signal } from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -14,20 +28,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogConfig,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-edit-member',
@@ -94,7 +94,7 @@ export class EditMemberComponent {
     }
     try {
       this.loading.loadingOn();
-      const form = this.editMemberForm.value;
+      const form = this.editMemberForm.getRawValue();
       const changes: Partial<Member> = {
         displayName: form.memberName,
         email: form.email,
