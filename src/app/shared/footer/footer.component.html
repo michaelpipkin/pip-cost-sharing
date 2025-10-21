@@ -40,10 +40,19 @@
         >
       }
     } @else {
-      <span data-test-id="version-info">
-        v{{ version() }}&nbsp;|
-        {{ buildDate() | date: 'yyyy-MM-dd' }}
-      </span>
+      @if (isSmallScreen()) {
+        <span
+          data-test-id="version-info"
+          matTooltip="Build Date: {{ buildDate() | date: 'yyyy-MM-dd' }}"
+        >
+          v{{ version() }}
+        </span>
+      } @else {
+        <span data-test-id="version-info">
+          Version {{ version() }} | Build Date:
+          {{ buildDate() | date: 'yyyy-MM-dd' }}
+        </span>
+      }
     }
   </div>
 </div>
