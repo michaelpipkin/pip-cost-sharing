@@ -11,6 +11,9 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -23,9 +26,6 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
-import { DemoModeService } from './demo-mode.service';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -214,10 +214,13 @@ export class UserService implements IUserService {
     }
   }
 
-  logout(): void {
+  async logout(redirect: boolean = true): Promise<void> {
     this.groupService.logout();
     this.userStore.clearUser();
-    this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
+    await this.auth.signOut();
+    if (redirect) {
+      this.router.navigateByUrl('/home');
+    }
   }
 
   // Migration method to update groupId to groupRef in user documents
