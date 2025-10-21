@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.11.40",
+  "version": "1.11.41",
   "type": "module",
   "scripts": {
     "ng": "ng",
