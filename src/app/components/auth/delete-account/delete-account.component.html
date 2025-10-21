@@ -9,7 +9,9 @@
       @if (state() === 'unverified') {
         <div class="unverified-section">
           <div class="info-box">
-            <mat-icon color="primary">info</mat-icon>
+            <div class="icon-container">
+              <mat-icon color="primary">info</mat-icon>
+            </div>
             <div>
               <h3>Authentication Required</h3>
               <p>
@@ -41,7 +43,9 @@
       @if (state() === 'verified') {
         <div class="verified-section">
           <div class="warning-box">
-            <mat-icon color="warn">warning</mat-icon>
+            <div class="icon-container">
+              <mat-icon color="warn">warning</mat-icon>
+            </div>
             <div>
               <h3>This action is irreversible</h3>
               <p>
@@ -98,25 +102,27 @@
       @if (state() === 'completed') {
         <div class="completed-section">
           <div class="success-box">
-            <mat-icon color="primary">check_circle</mat-icon>
+            <div class="icon-container">
+              <mat-icon color="primary">check_circle</mat-icon>
+            </div>
             <div>
-              <h3>Account Deletion Initiated</h3>
+              <h3>Account Deletion Completed</h3>
               <p>
-                Your account deletion has been successfully initiated. All your
-                data has been removed.
+                Your account has been successfully deleted. All your data has
+                been removed.
               </p>
             </div>
           </div>
 
-          <button
+          <a
             mat-raised-button
             color="primary"
-            (click)="goHome()"
+            routerLink="/home"
             class="action-button"
           >
             <mat-icon>home</mat-icon>
             Return to Home
-          </button>
+          </a>
         </div>
       }
     </mat-card-content>

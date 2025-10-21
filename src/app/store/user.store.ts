@@ -1,6 +1,7 @@
 import { computed } from '@angular/core';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { DocumentReference } from 'firebase/firestore';
 import {
   patchState,
   signalStore,
@@ -8,7 +9,6 @@ import {
   withMethods,
   withState,
 } from '@ngrx/signals';
-import { DocumentReference } from 'firebase/firestore';
 
 type UserState = {
   user: User | null;
@@ -37,7 +37,12 @@ export const UserStore = signalStore(
       patchState(store, { user: { ...store.user(), ...changes } });
     },
     clearUser: () => {
-      patchState(store, { user: null });
+      patchState(store, {
+        user: null,
+        isGoogleUser: false,
+        isEmailConfirmed: false,
+        defaultGroupRef: null,
+      });
     },
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),

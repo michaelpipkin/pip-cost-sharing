@@ -9,6 +9,12 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -24,12 +30,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { CategoryService } from './category.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -63,6 +63,8 @@ export class GroupService implements IGroupService {
     // Skip group loading if user isn't validated (email not confirmed for non-Google users)
     // Auth guards will handle redirecting to account page if needed
     if (!this.userStore.isValidUser()) {
+      this.router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      this.loading.loadingOff();
       return;
     }
 
