@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { CategoryStore } from '@store/category.store';
@@ -215,11 +216,11 @@ export class UserService implements IUserService {
   }
 
   async logout(redirect: boolean = true): Promise<void> {
+    await this.auth.signOut();
     this.groupService.logout();
     this.userStore.clearUser();
-    await this.auth.signOut();
     if (redirect) {
-      this.router.navigateByUrl('/home');
+      this.router.navigate([ROUTE_PATHS.HOME]);
     }
   }
 
