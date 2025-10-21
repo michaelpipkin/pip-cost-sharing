@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { CategoryStore } from '@store/category.store';
@@ -11,6 +12,9 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -23,9 +27,6 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
-import { DemoModeService } from './demo-mode.service';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -214,10 +215,13 @@ export class UserService implements IUserService {
     }
   }
 
-  logout(): void {
+  async logout(redirect: boolean = true): Promise<void> {
+    await this.auth.signOut();
     this.groupService.logout();
     this.userStore.clearUser();
-    this.auth.signOut().finally(() => this.router.navigateByUrl('/home'));
+    if (redirect) {
+      this.router.navigate([ROUTE_PATHS.HOME]);
+    }
   }
 
   // Migration method to update groupId to groupRef in user documents

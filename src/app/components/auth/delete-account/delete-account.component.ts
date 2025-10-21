@@ -13,7 +13,7 @@ import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { getAuth, signOut } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 type DeletionState = 'unverified' | 'verified' | 'completed';
@@ -83,9 +83,7 @@ export class DeleteAccountComponent implements OnInit {
       if (result.data.success) {
         // Log out user
         if (this.auth.currentUser) {
-          this.userService.logout();
-          this.groupService.logout();
-          await signOut(this.auth);
+          await this.userService.logout(false);
         }
 
         this.state.set('completed');
@@ -110,9 +108,5 @@ export class DeleteAccountComponent implements OnInit {
     } finally {
       this.loading.loadingOff();
     }
-  }
-
-  goHome(): void {
-    this.router.navigate(['/']);
   }
 }

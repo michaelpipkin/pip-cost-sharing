@@ -1,10 +1,4 @@
 import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +6,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterModule } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   fetchSignInMethodsForEmail,
   getAuth,
@@ -64,8 +64,6 @@ export class LoginComponent {
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
-    } finally {
-      this.loading.loadingOff();
     }
   }
 

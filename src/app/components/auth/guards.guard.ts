@@ -2,10 +2,22 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { GroupStore } from '@store/group.store';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { Auth, getAuth, onAuthStateChanged, User } from 'firebase/auth';
 
 // AdSense crawler user email - this user should bypass group requirements
 const ADSENSE_CRAWLER_EMAIL = 'adsensecrawler@google.com';
+
+// Helper function to wait for initial auth state to be determined
+// This resolves immediately once Firebase has loaded the persisted auth state
+// and cleans up the subscription to prevent listening to future auth changes
+function waitForAuthInit(auth: Auth): Promise<User | null> {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe(); // Clean up immediately after first callback
+      resolve(user);
+    });
+  });
+}
 
 export const groupGuard: CanActivateFn = () => {
   const router = inject(Router);
@@ -24,64 +36,74 @@ export const groupGuard: CanActivateFn = () => {
   return true;
 };
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = async () => {
   const router = inject(Router);
   const auth = inject(getAuth);
 
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
-        const isEmailConfirmed = user.emailVerified;
+  // Wait for Firebase to determine initial auth state (handles page refresh)
+  // This only waits for the first state determination, not future changes
+  const user = await waitForAuthInit(auth);
 
-        if (isGoogleUser || isEmailConfirmed) {
-          resolve(true);
-        } else {
-          resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
-        }
-      } else {
-        resolve(router.navigate([ROUTE_PATHS.AUTH_LOGIN]));
-      }
-    });
-  });
+  if (user) {
+    const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
+    const isEmailConfirmed = user.emailVerified;
+
+    if (isGoogleUser || isEmailConfirmed) {
+      return true;
+    } else {
+      return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+    }
+  } else {
+    // Don't redirect if we're on the delete account page
+    // This prevents interrupting the deletion confirmation message
+    if (router.url.includes('/auth/delete-account')) {
+      return false;
+    }
+    return router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+  }
 };
 
-export const basicAuthGuard: CanActivateFn = () => {
+export const basicAuthGuard: CanActivateFn = async () => {
   const router = inject(Router);
   const auth = inject(getAuth);
 
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        resolve(true);
-      } else {
-        resolve(router.navigate([ROUTE_PATHS.AUTH_LOGIN]));
-      }
-    });
-  });
+  // Wait for Firebase to determine initial auth state (handles page refresh)
+  // This only waits for the first state determination, not future changes
+  const user = await waitForAuthInit(auth);
+
+  if (user) {
+    return true;
+  } else {
+    // Don't redirect if we're on the delete account page
+    // This prevents interrupting the deletion confirmation message
+    if (router.url.includes('/auth/delete-account')) {
+      return false;
+    }
+    return router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+  }
 };
 
-export const loggedInGuard: CanActivateFn = () => {
+export const loggedInGuard: CanActivateFn = async () => {
   const router = inject(Router);
   const auth = inject(getAuth);
 
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
-        const isEmailConfirmed = user.emailVerified;
+  // Wait for Firebase to determine initial auth state (handles page refresh)
+  // This only waits for the first state determination, not future changes
+  const user = await waitForAuthInit(auth);
 
-        // Redirect validated users to expenses, unvalidated users to account
-        if (isGoogleUser || isEmailConfirmed) {
-          //   resolve(router.navigate([ROUTE_PATHS.EXPENSES_ROOT]));
-          // } else {
-          resolve(router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]));
-        }
-      } else {
-        resolve(true);
-      }
-    });
-  });
+  if (user) {
+    const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
+    const isEmailConfirmed = user.emailVerified;
+
+    // Redirect validated users to expenses, unvalidated users to account
+    if (isGoogleUser || isEmailConfirmed) {
+      //   return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
+      // } else {
+      return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+    }
+  } else {
+    return true;
+  }
 };
 
 export const noCrawlerGuard: CanActivateFn = () => {
