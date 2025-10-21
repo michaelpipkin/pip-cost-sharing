@@ -40,9 +40,11 @@
         >
       }
     } @else {
-      <span data-test-id="version-info">
-        v{{ version() }}&nbsp;|
-        {{ buildDate() | date: 'yyyy-MM-dd' }}
+      <span
+        data-test-id="version-info"
+        matTooltip="Build Date: {{ buildDate() | date: 'yyyy-MM-dd' }}"
+      >
+        v{{ version() }}
       </span>
     }
   </div>
