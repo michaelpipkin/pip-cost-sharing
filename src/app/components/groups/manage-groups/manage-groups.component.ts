@@ -100,7 +100,7 @@ export class ManageGroupsComponent implements OnInit {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    const form = this.editGroupForm.value;
+    const form = this.editGroupForm.getRawValue();
     const changes: Partial<Group> = {
       name: form.groupName,
       active: form.active,
