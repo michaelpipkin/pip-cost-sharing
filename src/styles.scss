@@ -246,10 +246,10 @@ body.dark-theme {
     }
 
     // Hide copyright when container is narrow (< 500px)
-    [data-test-id="copyright-text"] {
+    [data-test-id='copyright-text'] {
       white-space: nowrap;
 
-      @container footer (max-width: 500px) {
+      @container footer (max-width: 400px) {
         display: none;
       }
     }
@@ -263,7 +263,7 @@ body.dark-theme {
     flex-shrink: 0; // Don't shrink version section
 
     // Hide version info when container is very narrow (< 400px)
-    @container footer (max-width: 400px) {
+    @container footer (max-width: 330px) {
       display: none;
     }
   }
