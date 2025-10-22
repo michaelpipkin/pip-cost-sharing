@@ -1,17 +1,29 @@
 <mat-toolbar class="nav" data-testid="main-toolbar">
   <mat-toolbar-row data-testid="toolbar-row">
     @if (isSmallScreen()) {
-      <button
-        mat-icon-button
-        [matMenuTriggerFor]="menu"
-        data-testid="mobile-menu-toggle"
-        data-tour="mobile-navigation"
-        aria-label="Open navigation menu"
-      >
-        <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
-      </button>
+      @if (isLoggedIn() || isInDemoMode()) {
+        <button
+          mat-icon-button
+          [matMenuTriggerFor]="menu"
+          data-testid="mobile-menu-toggle"
+          data-tour="mobile-navigation"
+          aria-label="Open navigation menu"
+        >
+          <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
+        </button>
+      }
       <a [routerLink]="routes.HOME">
         <span id="title" data-testid="app-title-mobile">PipSplit</span>
+      </a>
+      <a
+        matButton
+        [routerLink]="isInDemoMode() ? demoRoutes.DEMO_SPLIT : routes.SPLIT"
+        aria-label="split expense"
+        title="Split Expense"
+        data-testid="nav-split"
+      >
+        <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
+        >&nbsp;Split
       </a>
       <div class="account links" data-testid="mobile-account-actions">
         <button
@@ -37,6 +49,46 @@
             }}
           </mat-icon>
         </button>
+        <a
+          matIconButton
+          [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
+          matTooltip="Help"
+          aria-label="help"
+          data-testid="nav-help-desktop"
+        >
+          <mat-icon>help</mat-icon>
+        </a>
+        @if (!isInDemoMode() && isLoggedIn()) {
+          <a
+            matIconButton
+            [routerLink]="['auth', 'account']"
+            matTooltip="Account"
+            aria-label="account"
+            data-testid="nav-account-desktop"
+          >
+            <mat-icon>account_circle</mat-icon>
+          </a>
+          <button
+            matIconButton
+            (click)="logout()"
+            aria-label="log out"
+            matTooltip="Log out"
+            data-testid="logout-button-desktop"
+          >
+            <mat-icon>logout</mat-icon>
+          </button>
+        } @else {
+          <a
+            matButton
+            [routerLink]="['auth', 'login']"
+            aria-label="login"
+            matTooltip="Login"
+            data-testid="nav-login-desktop"
+          >
+            <mat-icon>login</mat-icon>
+            &nbsp;<span>Log in</span>
+          </a>
+        }
       </div>
     }
     @if (!isSmallScreen()) {
@@ -429,59 +481,7 @@
           <mat-icon fontSet="material-symbols-outlined">receipt</mat-icon
           >&nbsp;History
         </a>
-        <a
-          mat-menu-item
-          [routerLink]="isInDemoMode() ? demoRoutes.DEMO_SPLIT : routes.SPLIT"
-          aria-label="split expense"
-          title="Split expense"
-          data-testid="mobile-nav-split"
-        >
-          <mat-icon fontSet="material-symbols-outlined">arrow_split</mat-icon
-          >&nbsp;Split
-        </a>
       }
-    }
-    <a
-      mat-menu-item
-      [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
-      aria-label="help"
-      title="Help"
-      data-testid="mobile-nav-help"
-    >
-      <mat-icon fontSet="material-symbols-outlined">help</mat-icon>&nbsp;Help
-    </a>
-    @if (!isInDemoMode() && isLoggedIn()) {
-      <a
-        mat-menu-item
-        [routerLink]="routes.AUTH_ACCOUNT"
-        aria-label="account"
-        title="Account"
-        data-testid="mobile-nav-account"
-      >
-        <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon
-        >&nbsp;Account
-      </a>
-      <a
-        mat-menu-item
-        (click)="logout()"
-        aria-label="log out"
-        title="Log out"
-        data-testid="mobile-logout-button"
-      >
-        <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>&nbsp;Log
-        out
-      </a>
-    } @else {
-      <a
-        mat-menu-item
-        [routerLink]="routes.AUTH_LOGIN"
-        aria-label="login"
-        title="Login"
-        data-testid="mobile-nav-login"
-      >
-        <mat-icon fontSet="material-symbols-outlined">login</mat-icon>&nbsp;Log
-        in
-      </a>
     }
   </div>
 </mat-menu>

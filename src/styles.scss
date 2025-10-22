@@ -147,12 +147,13 @@ body.dark-theme {
   .links a {
     padding-left: 0.375rem !important;
     padding-right: 0.375rem !important;
-    color: tokens.color('on-primary');
-    line-height: 1.25rem;
+    color: tokens.color('on-primary') !important;
+    line-height: 1.25rem !important;
   }
 
+  a span,
   .links a span {
-    line-height: 1.25rem;
+    line-height: 1.25rem !important;
     font-size: 1.125rem !important; // This is already relative to root
   }
 
