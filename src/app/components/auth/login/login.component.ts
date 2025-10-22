@@ -57,6 +57,7 @@ export class LoginComponent {
       const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
         this.snackBar.open('Please sign in with Google', 'Close');
+        this.loading.loadingOff();
         return;
       } else {
         await signInWithEmailAndPassword(this.auth, email, password);
@@ -64,6 +65,7 @@ export class LoginComponent {
       }
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
+      this.loading.loadingOff();
     }
   }
 
@@ -75,7 +77,6 @@ export class LoginComponent {
       // Navigation handled automatically by UserService.onAuthStateChanged
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
-    } finally {
       this.loading.loadingOff();
     }
   }
