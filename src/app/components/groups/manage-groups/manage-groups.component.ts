@@ -1,4 +1,4 @@
-import { Component, inject, model, OnInit, Signal } from '@angular/core';
+import { Component, inject, model, OnInit, signal, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -18,7 +18,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Group } from '@models/group';
+import {
+  SUPPORTED_CURRENCIES,
+  getCurrencyConfig,
+} from '@models/currency-config.interface';
 import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
@@ -43,6 +48,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 export class ManageGroupsComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly expenseService = inject(ExpenseService);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
@@ -52,6 +58,8 @@ export class ManageGroupsComponent implements OnInit {
   protected readonly data = inject(MAT_DIALOG_DATA);
 
   selectedGroup = model<Group | null>(this.data.group as Group);
+  groupHasExpenses = signal<boolean>(false);
+  supportedCurrencies = SUPPORTED_CURRENCIES;
 
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
@@ -60,20 +68,32 @@ export class ManageGroupsComponent implements OnInit {
     groupName: ['', Validators.required],
     active: [false],
     autoAddMembers: [false],
+    currencyCode: ['USD', Validators.required],
   });
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (
       this.selectedGroup() !== null &&
       this.userAdminGroups().includes(this.selectedGroup())
     ) {
       const group = this.selectedGroup();
+
+      // Check if group has expenses
+      const hasExpenses = await this.expenseService.hasExpensesForGroup(group.id);
+      this.groupHasExpenses.set(hasExpenses);
+
       this.editGroupForm.patchValue({
         groupId: group.id,
         groupName: group.name,
         active: group.active ?? false,
         autoAddMembers: group.autoAddMembers ?? false,
+        currencyCode: group.currencyCode ?? 'USD',
       });
+
+      // Disable currency field if expenses exist
+      if (hasExpenses) {
+        this.editGroupForm.controls.currencyCode.disable();
+      }
     }
   }
 
@@ -81,15 +101,28 @@ export class ManageGroupsComponent implements OnInit {
     return this.editGroupForm.controls;
   }
 
-  onSelectGroup(): void {
+  async onSelectGroup(): Promise<void> {
     const group = this.userAdminGroups().find(
       (g) => g.id === this.f.groupId.value
     );
     this.selectedGroup.set(group);
+
+    // Check if group has expenses
+    const hasExpenses = await this.expenseService.hasExpensesForGroup(group.id);
+    this.groupHasExpenses.set(hasExpenses);
+
+    // Enable/disable currency field based on expenses
+    if (hasExpenses) {
+      this.editGroupForm.controls.currencyCode.disable();
+    } else {
+      this.editGroupForm.controls.currencyCode.enable();
+    }
+
     this.editGroupForm.patchValue({
       groupName: this.selectedGroup().name,
       active: this.selectedGroup().active ?? false,
       autoAddMembers: this.selectedGroup().autoAddMembers ?? false,
+      currencyCode: this.selectedGroup().currencyCode ?? 'USD',
     });
     this.editGroupForm.markAsPristine();
     this.editGroupForm.markAsUntouched();
@@ -101,10 +134,14 @@ export class ManageGroupsComponent implements OnInit {
       return;
     }
     const form = this.editGroupForm.getRawValue();
+    const currencyConfig = getCurrencyConfig(form.currencyCode);
     const changes: Partial<Group> = {
       name: form.groupName,
       active: form.active,
       autoAddMembers: form.autoAddMembers,
+      currencyCode: form.currencyCode,
+      currencySymbol: currencyConfig.symbol,
+      decimalPlaces: currencyConfig.decimalPlaces,
     };
     this.loading.loadingOn();
     try {

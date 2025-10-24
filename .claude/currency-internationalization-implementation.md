@@ -245,7 +245,7 @@ async hasExpensesForGroup(groupId: string): Promise<boolean> {
 }
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
