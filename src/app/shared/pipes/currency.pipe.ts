@@ -1,14 +1,14 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
+import { LocaleService } from '@services/locale.service';
 
 @Pipe({
   name: 'currency',
   standalone: true,
 })
 export class CurrencyPipe implements PipeTransform {
+  private localeService = inject(LocaleService);
+
   transform(value: number): string {
-    return `${value < 0 ? '-' : ''}$${Math.abs(value).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return this.localeService.formatCurrency(value);
   }
 }

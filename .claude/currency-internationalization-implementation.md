@@ -2,9 +2,9 @@
 
 ## Progress Status
 
-**Last Updated**: Session completing Phase 2
-**Overall Progress**: 5 of 39 TODOs completed (12.8%)
-**Current Phase**: Phase 2 ✅ COMPLETED
+**Last Updated**: Session completing Phase 4
+**Overall Progress**: 9 of 39 TODOs completed (23.1%)
+**Current Phase**: Phase 4 ✅ COMPLETED
 
 ### Completed Phases:
 - ✅ **Phase 1: Data Model & Currency Configuration** (3/3 TODOs)
@@ -20,10 +20,20 @@
   - Provides currency formatting, rounding, and decimal format utilities
   - No manual integration needed - updates automatically on group changes
 
+- ✅ **Phase 3: Group UI** (3/3 TODOs)
+  - AddGroupComponent has currency selector with all supported currencies
+  - ManageGroupsComponent has currency field that conditionally disables when expenses exist
+  - Forms include proper validation and helpful hints
+  - Currency data (code, symbol, decimalPlaces) is saved to Group documents
+
+- ✅ **Phase 4: Currency Pipe** (1/1 TODO)
+  - Refactored currency.pipe.ts to inject and use LocaleService
+  - Replaced hardcoded 'en-US' locale and '$' symbol with dynamic formatting
+  - Pipe now automatically uses current group's currency settings
+
 ### Next Steps:
-- **Phase 3: Group UI** (0/3 TODOs) - Already completed in Phase 1
-- **Phase 4: Currency Pipe** (0/1 TODO)
 - **Phase 5: Input Directive** (0/1 TODO)
+- **Phase 6: Templates** (0/11 TODOs)
 - And more...
 
 ---
@@ -385,7 +395,7 @@ This reactive approach means:
 ### Phase 3: Update Group Creation UI
 
 #### TODO 3.1: Add Currency Selector to Create Group Dialog
-**File**: `src/app/components/groups/groups.component.html`
+**File**: `src/app/components/groups/add-group/add-group.component.html`
 
 In the create group dialog template, add currency selection:
 
@@ -403,17 +413,17 @@ In the create group dialog template, add currency selection:
 </mat-form-field>
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
 #### TODO 3.2: Update GroupsComponent Logic
-**File**: `src/app/components/groups/groups.component.ts`
+**File**: `src/app/components/groups/add-group/add-group.component.ts`
 
 ```typescript
 import { SUPPORTED_CURRENCIES, getCurrencyConfig } from '@models/currency-config.interface';
 
-export class GroupsComponent {
+export class AddGroupComponent {
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
   // In addGroup form initialization
@@ -439,12 +449,12 @@ export class GroupsComponent {
 }
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
 #### TODO 3.3: Update Edit Group Dialog with Conditional Currency Field
-**File**: `src/app/components/groups/groups.component.html` and `groups.component.ts`
+**File**: `src/app/components/groups/manage-groups/manage-groups.component.html` and `manage-groups.component.ts`
 
 Update the edit group dialog to:
 1. Show currency selector when no expenses exist (enabled)
@@ -491,7 +501,7 @@ async onEditGroup(group: Group): Promise<void> {
 </mat-form-field>
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
@@ -517,7 +527,7 @@ export class CurrencyPipe implements PipeTransform {
 }
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
@@ -922,13 +932,13 @@ Execute the migration script against your Firestore database.
 - [x] 2.1: Create LocaleService
 - [x] 2.2: Integrate with GroupService (via automatic effect watching GroupStore)
 
-### Phase 3: Group UI (3 TODOs)
-- [ ] 3.1: Add currency selector to create dialog
-- [ ] 3.2: Update GroupsComponent logic
-- [ ] 3.3: Add currency display to edit dialog
+### Phase 3: Group UI (3 TODOs) ✅ COMPLETED
+- [x] 3.1: Add currency selector to create dialog
+- [x] 3.2: Update GroupsComponent logic
+- [x] 3.3: Add currency display to edit dialog
 
-### Phase 4: Currency Pipe (1 TODO)
-- [ ] 4.1: Refactor currency pipe
+### Phase 4: Currency Pipe (1 TODO) ✅ COMPLETED
+- [x] 4.1: Refactor currency pipe
 
 ### Phase 5: Input Directive (1 TODO)
 - [ ] 5.1: Update FormatCurrencyInputDirective
