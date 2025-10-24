@@ -1,8 +1,5 @@
-import { Injectable, signal, computed, effect, inject } from '@angular/core';
-import {
-  CurrencyConfig,
-  getCurrencyConfig,
-} from '@models/currency-config.interface';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { getCurrencyConfig } from '@models/currency-config.interface';
 import { GroupStore } from '@store/group.store';
 
 @Injectable({ providedIn: 'root' })
