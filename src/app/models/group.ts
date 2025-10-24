@@ -14,5 +14,8 @@ export class Group {
   expenses: Expense[];
   categories: Category[];
   autoAddMembers: boolean;
+  currencyCode: string; // ISO 4217 code (USD, EUR, GBP, etc.)
+  currencySymbol: string; // Display symbol ($, €, £, etc.)
+  decimalPlaces: number; // Decimal precision (2 for most, 0 for JPY)
   ref?: DocumentReference<Group>;
 }
