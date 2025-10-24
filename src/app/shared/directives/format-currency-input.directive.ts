@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { FormArray, FormGroupDirective } from '@angular/forms';
+import { LocaleService } from '@services/locale.service';
 import { StringUtils } from '@utils/string-utils.service';
 
 @Directive({
@@ -10,6 +11,7 @@ import { StringUtils } from '@utils/string-utils.service';
 export class FormatCurrencyInputDirective {
   protected readonly stringUtils = inject(StringUtils);
   protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly localeService = inject(LocaleService);
   protected readonly formGroupDirective = inject(FormGroupDirective, {
     optional: true,
   });
@@ -45,7 +47,14 @@ export class FormatCurrencyInputDirective {
         }
       }
     }
+
+    // Use locale service for dynamic decimal formatting
+    const pattern = this.localeService.getDecimalFormat();
+    const locale = this.localeService.locale();
+    const currency = this.localeService.currency();
+    const defaultValue = '0'.padEnd(currency.decimalPlaces > 0 ? currency.decimalPlaces + 2 : 1, '.0');
+
     this.el.nativeElement.value =
-      this.decimalPipe.transform(calc, '1.2-2') || '0.00';
+      this.decimalPipe.transform(calc, pattern, locale) || defaultValue;
   }
 }

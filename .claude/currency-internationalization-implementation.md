@@ -2,9 +2,9 @@
 
 ## Progress Status
 
-**Last Updated**: Session completing Phase 4
-**Overall Progress**: 9 of 39 TODOs completed (23.1%)
-**Current Phase**: Phase 4 ✅ COMPLETED
+**Last Updated**: Session completing Phase 5
+**Overall Progress**: 10 of 39 TODOs completed (25.6%)
+**Current Phase**: Phase 5 ✅ COMPLETED
 
 ### Completed Phases:
 - ✅ **Phase 1: Data Model & Currency Configuration** (3/3 TODOs)
@@ -31,9 +31,15 @@
   - Replaced hardcoded 'en-US' locale and '$' symbol with dynamic formatting
   - Pipe now automatically uses current group's currency settings
 
+- ✅ **Phase 5: Input Directive** (1/1 TODO)
+  - Refactored FormatCurrencyInputDirective to inject and use LocaleService
+  - Replaced hardcoded '1.2-2' decimal format with dynamic pattern from LocaleService
+  - Directive now uses browser locale for number formatting
+  - Automatically adapts to different decimal places (e.g., 0 for JPY, 2 for USD)
+
 ### Next Steps:
-- **Phase 5: Input Directive** (0/1 TODO)
 - **Phase 6: Templates** (0/11 TODOs)
+- **Phase 7: Number Formatting** (0/4 TODOs)
 - And more...
 
 ---
@@ -536,58 +542,25 @@ export class CurrencyPipe implements PipeTransform {
 #### TODO 5.1: Update FormatCurrencyInputDirective
 **File**: `src/app/shared/directives/format-currency-input.directive.ts`
 
+The directive has been updated to:
+- Inject LocaleService
+- Use `localeService.getDecimalFormat()` for dynamic decimal pattern
+- Use `localeService.locale()` for browser locale formatting
+- Adapt default value based on currency decimal places
+
+Key changes:
 ```typescript
-import { Directive, ElementRef, HostListener, inject } from '@angular/core';
-import { NgControl } from '@angular/forms';
-import { DecimalPipe } from '@angular/common';
-import { LocaleService } from '@services/locale.service';
+// Use locale service for dynamic decimal formatting
+const pattern = this.localeService.getDecimalFormat();
+const locale = this.localeService.locale();
+const currency = this.localeService.currency();
+const defaultValue = '0'.padEnd(currency.decimalPlaces > 0 ? currency.decimalPlaces + 2 : 1, '.0');
 
-@Directive({
-  selector: '[appFormatCurrencyInput]',
-  standalone: true,
-})
-export class FormatCurrencyInputDirective {
-  private el = inject(ElementRef);
-  private ngControl = inject(NgControl);
-  private decimalPipe = inject(DecimalPipe);
-  private localeService = inject(LocaleService);
-
-  @HostListener('blur')
-  onBlur() {
-    const value = this.ngControl.value;
-    if (value !== null && value !== undefined && value !== '') {
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue)) {
-        // Use locale service for formatting
-        const pattern = this.localeService.getDecimalFormat();
-        const locale = this.localeService.locale();
-        const formatted = this.decimalPipe.transform(numericValue, pattern, locale);
-        this.el.nativeElement.value = formatted;
-      }
-    }
-  }
-
-  @HostListener('focus')
-  onFocus() {
-    const value = this.el.nativeElement.value;
-    if (value) {
-      // Remove formatting for editing
-      // Handle both . and , as decimal separator
-      const currency = this.localeService.currency();
-      let cleanValue = value.replace(new RegExp(`\\${currency.thousandsSeparator}`, 'g'), '');
-
-      // Normalize decimal separator to .
-      if (currency.decimalSeparator !== '.') {
-        cleanValue = cleanValue.replace(currency.decimalSeparator, '.');
-      }
-
-      this.el.nativeElement.value = cleanValue;
-    }
-  }
-}
+this.el.nativeElement.value =
+  this.decimalPipe.transform(calc, pattern, locale) || defaultValue;
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
@@ -940,8 +913,8 @@ Execute the migration script against your Firestore database.
 ### Phase 4: Currency Pipe (1 TODO) ✅ COMPLETED
 - [x] 4.1: Refactor currency pipe
 
-### Phase 5: Input Directive (1 TODO)
-- [ ] 5.1: Update FormatCurrencyInputDirective
+### Phase 5: Input Directive (1 TODO) ✅ COMPLETED
+- [x] 5.1: Update FormatCurrencyInputDirective
 
 ### Phase 6: Templates (11 TODOs)
 - [ ] 6.1: Add expense template
