@@ -158,7 +158,7 @@ export function getCurrencyConfig(code: string): CurrencyConfig | undefined {
 }
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
 
 ---
 
