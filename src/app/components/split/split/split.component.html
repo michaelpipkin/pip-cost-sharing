@@ -3,6 +3,16 @@
     <div></div>
     <h3 data-testid="split-page-title">Split Expense</h3>
     <div class="help-icon" data-testid="split-help-icon-container">
+      @if (demoService.isInDemoMode()) {
+        <mat-icon
+          data-testid="split-tour-button"
+          matTooltip="Show Tour"
+          (click)="startTour()"
+          aria-label="Start split expense tour"
+          class="mr-2"
+          >tour</mat-icon
+        >
+      }
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
@@ -238,6 +248,7 @@
           class="btn-secondary"
           type="submit"
           defaultButton
+          data-tour="generate-summary-button"
           [disabled]="
             !expenseForm.valid ||
             expenseForm.disabled ||
@@ -265,6 +276,7 @@
           mat-mini-fab
           class="btn btn-primary ms-3"
           matTooltip="Copy summary to clipboard"
+          data-tour="copy-summary-button"
           (click)="copySummaryToClipboard()"
         >
           <mat-icon>content_copy</mat-icon>

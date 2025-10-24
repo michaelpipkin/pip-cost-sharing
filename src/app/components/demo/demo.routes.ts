@@ -107,10 +107,10 @@ export const demoRoutes: Routes = [
     title: 'Demo - Help',
     component: HelpComponent,
   },
-  // Default redirect to expenses when entering demo mode
+  // Default redirect to split when entering demo mode
   {
     path: '',
-    redirectTo: 'expenses',
+    redirectTo: 'split',
     pathMatch: 'full',
   },
 ];

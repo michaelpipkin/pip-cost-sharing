@@ -36,6 +36,8 @@ import {
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
 import { Split } from '@models/split';
+import { DemoService } from '@services/demo.service';
+import { TourService } from '@services/tour.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -64,6 +66,8 @@ export class SplitComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly analytics = inject(getAnalytics);
+  protected readonly demoService = inject(DemoService);
+  protected readonly tourService = inject(TourService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
 
   submitted = signal<boolean>(false);
@@ -94,6 +98,64 @@ export class SplitComponent {
     afterEveryRender(() => {
       this.addSelectFocus();
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Pre-populate demo data if in demo mode
+    if (this.demoService.isInDemoMode()) {
+      this.populateDemoData();
+      // Start Welcome Tour after populating data
+      // Small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        this.tourService.startWelcomeTour();
+      }, 500);
+    }
+  }
+
+  /**
+   * Pre-populate the form with demo data for the welcome tour
+   */
+  private populateDemoData(): void {
+    // Set total and proportional amounts
+    this.expenseForm.patchValue({
+      amount: 65.33,
+      allocatedAmount: 17.44,
+    });
+
+    // Add three splits with demo member names and amounts
+    const demoSplits = [
+      { name: 'Alice', amount: 12.55 },
+      { name: 'Bob', amount: 13.37 },
+      { name: 'Charlie', amount: 14.02 },
+    ];
+
+    demoSplits.forEach(() => {
+      this.splitsFormArray.push(this.createSplitFormGroup());
+    });
+
+    // Wait for the DOM to update, then populate the split values
+    setTimeout(() => {
+      demoSplits.forEach((split, index) => {
+        this.splitsFormArray.at(index).patchValue({
+          owedBy: split.name,
+          assignedAmount: split.amount.toFixed(2),
+        });
+      });
+
+      // Manually update the input field values
+      this.totalAmountField().nativeElement.value = '65.33';
+      this.allocatedAmountField().nativeElement.value = '17.44';
+
+      const memberAmountElements = this.memberAmounts();
+      if (memberAmountElements.length >= 3) {
+        memberAmountElements[0].nativeElement.value = '12.55';
+        memberAmountElements[1].nativeElement.value = '13.37';
+        memberAmountElements[2].nativeElement.value = '14.02';
+      }
+
+      // Trigger calculation to update allocated amounts
+      this.allocateSharedAmounts();
+    }, 100);
   }
 
   addSelectFocus(): void {
@@ -554,5 +616,10 @@ export class SplitComponent {
       data: { sectionId: 'split' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    // Force start the Welcome Tour (ignoring completion state)
+    this.tourService.startWelcomeTour(true);
   }
 }
