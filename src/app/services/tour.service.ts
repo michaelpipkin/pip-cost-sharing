@@ -223,12 +223,157 @@ export class TourService {
    */
   startWelcomeTour(force: boolean = false): void {
     const tourConfig: TourConfig = {
-      id: 'welcome',
+      id: 'splits',
       steps: [
         {
           id: 'welcome-intro',
           title: 'Welcome to PipSplit Demo!',
-          text: "This is a fully interactive demo with sample data. Let's take a quick tour to show you around! (All changes are read-only in demo mode.)",
+          text: "This is a fully interactive demo with sample data. Let's take a quick tour to show you PipSplit's unique splitting capabilities!",
+          buttons: [this.getNextButton(), this.getSkipButton()],
+        },
+        {
+          id: 'splits-overview',
+          title: 'Split Expense Calculator',
+          text: "This is the Split page where you can quickly split a single expense without needing an account. It's perfect for one-time expenses or when you don't want to create a full group.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'total-amount',
+          attachTo: {
+            element: '.total-amount-field',
+            on: 'bottom',
+          },
+          title: 'Total Amount',
+          text: "Enter the total expense amount here. We've pre-filled $65.33 for a demo dinner out between these friends. You can click or tap the calculator icon to use the built-in calculator if needed. The result from the calculator will automatically populate this field after you hit the '=' button.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'proportional-amount',
+          attachTo: {
+            element: '.proportional-amount-field',
+            on: 'bottom',
+          },
+          title: "PipSplit's Unique Feature",
+          text: "This is what sets PipSplit apart! Add amounts like tax or tip that should be split proportionally based on each person's share. We've entered $17.44 for this example.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'member-amounts',
+          attachTo: {
+            element: '#split-member',
+            on: 'bottom',
+          },
+          title: 'Individual Amounts',
+          text: 'Unlike other apps which only allow equal splits or percentages, PipSplit lets you assign specific amounts to each person. In this example, Alice ordered $12.55, Bob $13.37, and Charlie $14.02 worth of food.',
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'shared-remainder',
+          title: 'Smart Calculations',
+          text: "PipSplit automatically calculates the evenly shared remainder ($7.95 for a shared appetizer in this case) and splits the proportional amount based on each person's individual spending. This ensures fair splitting when people order different amounts!",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'try-summary',
+          attachTo: {
+            element: '[data-tour="generate-summary-button"]',
+            on: 'top',
+          },
+          title: 'Generate the Summary',
+          text: "Click 'Generate Summary' to see exactly how the expense is split, including the breakdown of personal, shared, and proportional amounts for each person. Go ahead and click it now!",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton('Continue'),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'copy-summary',
+          attachTo: {
+            element: '[data-tour="copy-summary-button"]',
+            on: 'bottom',
+          },
+          title: 'Easy Sharing',
+          text: 'Click this button to copy the summary to your clipboard. You can then paste it into a text message or email to share with your group members!',
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+          beforeShowPromise: () => {
+            return new Promise<void>((resolve) => {
+              // Wait for the copy button to be available (when summary is shown)
+              const checkElement = () => {
+                const element = document.querySelector(
+                  '[data-tour="copy-summary-button"]'
+                );
+                if (element) {
+                  resolve();
+                } else {
+                  // If element not found, wait a bit and check again (max 5 seconds)
+                  setTimeout(checkElement, 100);
+                }
+              };
+              checkElement();
+            });
+          },
+        },
+        {
+          id: 'explore-more',
+          title: 'Want to See More?',
+          text: 'This is just a taste of PipSplit! Create a free account to manage groups, track expenses over time, and see who owes what. Or continue exploring the demo features!',
+          buttons: [
+            this.getBackButton(),
+            {
+              text: 'Explore Demo',
+              action: () => {
+                this.currentTour?.complete();
+                this.router.navigate(['/demo/administration/groups'], {
+                  queryParams: { continueTour: 'true' },
+                });
+              },
+              classes: 'shepherd-button-primary',
+            },
+            this.getFinishButton(),
+          ],
+        },
+      ],
+    };
+
+    this.startTour(tourConfig, force);
+  }
+
+  /**
+   * Start the Groups Tour
+   */
+  startGroupsTour(force: boolean = false): void {
+    const tourConfig: TourConfig = {
+      id: 'groups',
+      steps: [
+        {
+          id: 'groups-intro',
+          title: 'Groups Overview',
+          text: "This is the Groups page where you can create, join, and manage groups to start sharing expenses with others. Let's take a quick tour to show you around!",
           buttons: [this.getNextButton(), this.getSkipButton()],
         },
         {
@@ -748,6 +893,7 @@ export class TourService {
    */
   checkForContinueTour(
     tourName:
+      | 'groups'
       | 'members'
       | 'categories'
       | 'expenses'
@@ -767,7 +913,9 @@ export class TourService {
 
       // Start the appropriate tour after a short delay to ensure DOM is ready
       setTimeout(() => {
-        if (tourName === 'members') {
+        if (tourName === 'groups') {
+          this.startGroupsTour(true);
+        } else if (tourName === 'members') {
           this.startMembersTour(true);
         } else if (tourName === 'categories') {
           this.startCategoriesTour(true);

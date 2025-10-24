@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { AboutComponent } from '@components/about/about.component';
-import { authGuard, groupGuard } from '@components/auth/guards.guard';
+import {
+  authGuard,
+  groupGuard,
+  loggedInGuard,
+} from '@components/auth/guards.guard';
 import { HelpComponent } from '@components/help/help.component';
 import { HomeComponent } from '@components/home/home.component';
 
@@ -73,6 +77,7 @@ export const appRoutes: Routes = [
     path: 'demo',
     loadChildren: () =>
       import('@components/demo/demo.routes').then((m) => m.demoRoutes),
+    canActivate: [loggedInGuard],
   },
   { path: '**', redirectTo: '' },
 ];

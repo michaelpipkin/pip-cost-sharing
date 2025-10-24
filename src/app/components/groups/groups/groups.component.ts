@@ -91,13 +91,8 @@ export class GroupsComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Start Welcome Tour if in demo mode and haven't completed it
-    if (this.demoService.isInDemoMode()) {
-      // Small delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        this.tourService.startWelcomeTour();
-      }, 500);
-    }
+    // Check if we should auto-start the groups tour
+    this.tourService.checkForContinueTour('groups');
   }
 
   get selectedGroupRef() {
