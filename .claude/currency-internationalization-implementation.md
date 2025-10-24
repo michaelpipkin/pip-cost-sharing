@@ -2,9 +2,9 @@
 
 ## Progress Status
 
-**Last Updated**: Session completing Phase 1
-**Overall Progress**: 3 of 39 TODOs completed (7.7%)
-**Current Phase**: Phase 1 ✅ COMPLETED
+**Last Updated**: Session completing Phase 2
+**Overall Progress**: 5 of 39 TODOs completed (12.8%)
+**Current Phase**: Phase 2 ✅ COMPLETED
 
 ### Completed Phases:
 - ✅ **Phase 1: Data Model & Currency Configuration** (3/3 TODOs)
@@ -14,10 +14,16 @@
   - Added hasExpensesForGroup() helper to ExpenseService
   - Currency field conditionally disables when expenses exist
 
+- ✅ **Phase 2: Locale Service** (2/2 TODOs)
+  - Created LocaleService with reactive currency management
+  - Automatically watches GroupStore.currentGroup() signal
+  - Provides currency formatting, rounding, and decimal format utilities
+  - No manual integration needed - updates automatically on group changes
+
 ### Next Steps:
-- **Phase 2: Locale Service** (0/2 TODOs)
-- **Phase 3: Group UI** (0/3 TODOs)
+- **Phase 3: Group UI** (0/3 TODOs) - Already completed in Phase 1
 - **Phase 4: Currency Pipe** (0/1 TODO)
+- **Phase 5: Input Directive** (0/1 TODO)
 - And more...
 
 ---
@@ -343,31 +349,36 @@ export class LocaleService {
 }
 ```
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Completed
+
+**Note**: The LocaleService automatically watches the GroupStore's currentGroup signal using an effect, so no manual integration with GroupService is needed. The currency updates automatically whenever the current group changes.
 
 ---
 
 #### TODO 2.2: Integrate LocaleService with GroupService
-**File**: `src/app/services/group.service.ts`
+**File**: `src/app/services/locale.service.ts`
 
-Inject LocaleService and update currency when active group changes:
+**Status**: ✅ Completed
+
+**Implementation**: Integration is handled within the LocaleService itself, not in GroupService. The LocaleService constructor includes an effect that watches `GroupStore.currentGroup()`:
 
 ```typescript
-constructor(
-  private localeService: LocaleService,
-  // ... other dependencies
-) {
-  // In the effect that watches activeGroup
+constructor() {
+  // Automatically update currency when current group changes
   effect(() => {
-    const group = this.activeGroup();
+    const group = this.groupStore.currentGroup();
     if (group?.currencyCode) {
-      this.localeService.setGroupCurrency(group.currencyCode);
+      this.currentCurrencyCode.set(group.currencyCode);
     }
   });
 }
 ```
 
-**Status**: ⬜ Not Started
+This reactive approach means:
+- No manual calls to `setGroupCurrency()` needed
+- Currency updates automatically when user switches groups
+- Cleaner separation of concerns
+- No circular dependency between services
 
 ---
 
@@ -907,9 +918,9 @@ Execute the migration script against your Firestore database.
 - [x] 1.2: Update Group model
 - [x] 1.3: Add form validators for currency (application-layer validation)
 
-### Phase 2: Locale Service (2 TODOs)
-- [ ] 2.1: Create LocaleService
-- [ ] 2.2: Integrate with GroupService
+### Phase 2: Locale Service (2 TODOs) ✅ COMPLETED
+- [x] 2.1: Create LocaleService
+- [x] 2.2: Integrate with GroupService (via automatic effect watching GroupStore)
 
 ### Phase 3: Group UI (3 TODOs)
 - [ ] 3.1: Add currency selector to create dialog
