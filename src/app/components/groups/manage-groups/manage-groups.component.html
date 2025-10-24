@@ -1,95 +1,119 @@
 <h1 mat-dialog-title data-testid="manage-groups-title">Manage Groups</h1>
 <mat-dialog-content>
-  <form [formGroup]="editGroupForm">
-    <div class="content pt-3">
-      <mat-form-field id="group-select">
-        <mat-label>Select Group</mat-label>
-        <mat-select
-          data-testid="manage-group-select"
-          formControlName="groupId"
-          name="group"
-          (selectionChange)="onSelectGroup()"
-        >
-          @for (group of userAdminGroups(); track group.id) {
-            <mat-option
-              [value]="group.id"
-              [attr.data-testid]="'manage-group-option-' + group.id"
-              >{{ group.name }}</mat-option
+  @if (userAdminGroups().length === 0) {
+    <p>You are not an admin of any groups.</p>
+  } @else {
+    <form [formGroup]="editGroupForm">
+      <div class="content pt-3">
+        <mat-form-field id="group-select">
+          <mat-label>Select Group</mat-label>
+          <mat-select
+            data-testid="manage-group-select"
+            formControlName="groupRef"
+            name="group"
+            (selectionChange)="onSelectGroup()"
+            docRefCompare
+          >
+            @for (group of userAdminGroups(); track group.ref) {
+              <mat-option
+                [value]="group.ref"
+                [attr.data-testid]="'manage-group-option-' + group.id"
+                >{{ group.name }}</mat-option
+              >
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (!!selectedGroup()) {
+          <mat-form-field appearance="fill">
+            <mat-label>Update group name</mat-label>
+            <input
+              matInput
+              formControlName="groupName"
+              data-testid="manage-group-name-input"
+            />
+            @if (f.groupName.errors?.['required']) {
+              <mat-error> *Required </mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="mb-4">
+            <mat-label>Currency</mat-label>
+            <mat-select
+              formControlName="currencyCode"
+              data-testid="manage-currency-select"
             >
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="fill">
-        <mat-label>Group name</mat-label>
-        <input
-          matInput
-          formControlName="groupName"
-          data-testid="manage-group-name-input"
-        />
-        @if (f.groupName.errors?.['required']) {
-          <mat-error> *Required </mat-error>
+              @for (currency of supportedCurrencies; track currency.code) {
+                <mat-option [value]="currency.code">
+                  {{ currency.symbol }} - {{ currency.name }} ({{
+                    currency.code
+                  }})
+                </mat-option>
+              }
+            </mat-select>
+            @if (f.currencyCode.errors?.['required']) {
+              <mat-error> *Required </mat-error>
+            }
+            @if (groupHasExpenses()) {
+              <mat-hint
+                >Cannot be changed once expenses are added to the
+                group</mat-hint
+              >
+            } @else {
+              <mat-hint>Select the currency for this group</mat-hint>
+            }
+          </mat-form-field>
+          <div class="toggle">
+            <mat-slide-toggle
+              formControlName="active"
+              data-testid="manage-active-toggle"
+              >Active</mat-slide-toggle
+            >
+          </div>
+          <div class="toggle">
+            <mat-slide-toggle
+              formControlName="autoAddMembers"
+              data-testid="manage-auto-add-toggle"
+              >Automatically add all group<br />
+              members to new expenses</mat-slide-toggle
+            >
+          </div>
         }
-      </mat-form-field>
-      <mat-form-field appearance="fill">
-        <mat-label>Currency</mat-label>
-        <mat-select
-          formControlName="currencyCode"
-          data-testid="manage-currency-select"
-        >
-          @for (currency of supportedCurrencies; track currency.code) {
-            <mat-option [value]="currency.code">
-              {{ currency.symbol }} - {{ currency.name }} ({{ currency.code }})
-            </mat-option>
-          }
-        </mat-select>
-        @if (f.currencyCode.errors?.['required']) {
-          <mat-error> *Required </mat-error>
-        }
-        @if (groupHasExpenses()) {
-          <mat-hint>Cannot be changed once expenses are added to the group</mat-hint>
-        } @else {
-          <mat-hint>Select the currency for this group</mat-hint>
-        }
-      </mat-form-field>
-    </div>
-    <div class="toggle">
-      <mat-slide-toggle
-        formControlName="active"
-        data-testid="manage-active-toggle"
-        >Active</mat-slide-toggle
-      >
-    </div>
-    <div class="toggle">
-      <mat-slide-toggle
-        formControlName="autoAddMembers"
-        data-testid="manage-auto-add-toggle"
-        >Automatically add all group<br />
-        members to new expenses</mat-slide-toggle
-      >
-    </div>
-  </form>
+      </div>
+    </form>
+  }
 </mat-dialog-content>
 <mat-dialog-actions>
-  <button
-    data-testid="manage-groups-save-button"
-    mat-raised-button
-    class="btn-secondary"
-    type="submit"
-    defaultButton
-    [disabled]="
-      !editGroupForm.valid || editGroupForm.pristine || editGroupForm.disabled
-    "
-    (click)="onSubmit()"
-  >
-    Save
-  </button>
-  <button
-    data-testid="manage-groups-cancel-button"
-    mat-stroked-button
-    type="button"
-    [mat-dialog-close]="false"
-    [disabled]="editGroupForm.disabled"
-  >
-    Cancel
-  </button>
+  @if (userAdminGroups().length === 0) {
+    <button
+      data-testid="manage-groups-close-button"
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="false"
+      [disabled]="editGroupForm.disabled"
+    >
+      Close
+    </button>
+  } @else {
+    <button
+      data-testid="manage-groups-save-button"
+      mat-raised-button
+      class="btn-secondary"
+      type="submit"
+      defaultButton
+      [disabled]="
+        !editGroupForm.valid || editGroupForm.pristine || editGroupForm.disabled
+      "
+      (click)="onSubmit()"
+    >
+      Save
+    </button>
+    <button
+      data-testid="manage-groups-cancel-button"
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="false"
+      [disabled]="editGroupForm.disabled"
+    >
+      Cancel
+    </button>
+  }
 </mat-dialog-actions>

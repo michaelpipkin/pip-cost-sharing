@@ -1,4 +1,11 @@
-import { Component, inject, model, OnInit, signal, Signal } from '@angular/core';
+import {
+  Component,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -17,17 +24,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Group } from '@models/group';
 import {
-  SUPPORTED_CURRENCIES,
   getCurrencyConfig,
+  SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
+import { Group } from '@models/group';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-manage-groups',
@@ -43,6 +52,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
     MatOptionModule,
     MatInputModule,
     MatSlideToggleModule,
+    DocRefCompareDirective,
   ],
 })
 export class ManageGroupsComponent implements OnInit {
@@ -64,7 +74,7 @@ export class ManageGroupsComponent implements OnInit {
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
   editGroupForm = this.fb.group({
-    groupId: [''],
+    groupRef: [null as DocumentReference<Group> | null, Validators.required],
     groupName: ['', Validators.required],
     active: [false],
     autoAddMembers: [false],
@@ -72,18 +82,21 @@ export class ManageGroupsComponent implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    const adminGroupIds = this.userAdminGroups().map((g) => g.id);
     if (
       this.selectedGroup() !== null &&
-      this.userAdminGroups().includes(this.selectedGroup())
+      adminGroupIds.includes(this.selectedGroup().id)
     ) {
       const group = this.selectedGroup();
 
       // Check if group has expenses
-      const hasExpenses = await this.expenseService.hasExpensesForGroup(group.id);
+      const hasExpenses = await this.expenseService.hasExpensesForGroup(
+        group.id
+      );
       this.groupHasExpenses.set(hasExpenses);
 
       this.editGroupForm.patchValue({
-        groupId: group.id,
+        groupRef: group.ref,
         groupName: group.name,
         active: group.active ?? false,
         autoAddMembers: group.autoAddMembers ?? false,
@@ -94,6 +107,8 @@ export class ManageGroupsComponent implements OnInit {
       if (hasExpenses) {
         this.editGroupForm.controls.currencyCode.disable();
       }
+    } else {
+      this.selectedGroup.set(null);
     }
   }
 
@@ -102,8 +117,8 @@ export class ManageGroupsComponent implements OnInit {
   }
 
   async onSelectGroup(): Promise<void> {
-    const group = this.userAdminGroups().find(
-      (g) => g.id === this.f.groupId.value
+    const group = this.userAdminGroups().find((g) =>
+      g.ref.eq(this.f.groupRef.value)
     );
     this.selectedGroup.set(group);
 

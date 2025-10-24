@@ -23,12 +23,9 @@
         <mat-error> *Required </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" class="mb-4">
       <mat-label>Currency</mat-label>
-      <mat-select
-        formControlName="currencyCode"
-        data-testid="currency-select"
-      >
+      <mat-select formControlName="currencyCode" data-testid="currency-select">
         @for (currency of supportedCurrencies; track currency.code) {
           <mat-option [value]="currency.code">
             {{ currency.symbol }} - {{ currency.name }} ({{ currency.code }})
@@ -38,7 +35,9 @@
       @if (f.currencyCode.errors?.['required']) {
         <mat-error> *Required </mat-error>
       }
-      <mat-hint>Cannot be changed once expenses are added to the group</mat-hint>
+      <mat-hint
+        >Cannot be changed once expenses are added to the group</mat-hint
+      >
     </mat-form-field>
     <div class="toggle">
       <mat-slide-toggle
