@@ -4,6 +4,7 @@ import { LocaleService } from '@services/locale.service';
 @Pipe({
   name: 'currency',
   standalone: true,
+  pure: false, // Impure pipe to react to currency changes in LocaleService
 })
 export class CurrencyPipe implements PipeTransform {
   private localeService = inject(LocaleService);
