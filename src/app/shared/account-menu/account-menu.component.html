@@ -1,0 +1,85 @@
+<!-- <button
+  mat-menu-item
+  [matMenuTriggerFor]="languageMenu"
+  aria-label="change language"
+  data-testid="language-selector"
+>
+  <span class="flag">{{ currentLanguage.flag }}</span>
+  <span>{{ currentLanguage.name }}</span>
+  <mat-icon>language</mat-icon>
+</button> -->
+
+<button
+  mat-menu-item
+  [matMenuTriggerFor]="themeMenu"
+  aria-label="change theme"
+  data-testid="theme-selector"
+>
+  <span>Theme</span>
+  <mat-icon>{{
+    currentTheme() === 'dark' ? 'dark_mode' : 'light_mode'
+  }}</mat-icon>
+</button>
+
+<a
+  mat-menu-item
+  [routerLink]="routes.AUTH_ACCOUNT"
+  aria-label="account settings"
+  data-testid="account-settings-menu-item"
+>
+  <mat-icon>manage_accounts</mat-icon>
+  <span>{{ 'ACCOUNT.TITLE' | translate }}</span>
+</a>
+
+<button
+  mat-menu-item
+  (click)="logout()"
+  aria-label="log out"
+  data-testid="logout-menu-item"
+>
+  <mat-icon>logout</mat-icon>
+  <span>{{ 'ACCOUNT.LOGOUT' | translate }}</span>
+</button>
+
+<mat-menu #languageMenu="matMenu">
+  @for (lang of languages; track lang.code) {
+    <button
+      mat-menu-item
+      (click)="switchLanguage(lang.code)"
+      [attr.data-testid]="'language-' + lang.code"
+    >
+      <span class="flag">{{ lang.flag }}</span>
+      <span>{{ lang.name }}</span>
+      @if (lang.code === currentLanguage.code) {
+        <mat-icon>check</mat-icon>
+      }
+    </button>
+  }
+</mat-menu>
+
+<mat-menu #themeMenu="matMenu">
+  <button
+    mat-menu-item
+    (click)="switchTheme('light')"
+    [attr.data-testid]="'theme-light'"
+  >
+    <span>Light Mode</span>
+    @if (currentTheme() === 'light') {
+      <mat-icon>check</mat-icon>
+    } @else {
+      <mat-icon>light_mode</mat-icon>
+    }
+  </button>
+  <button
+    mat-menu-item
+    (click)="switchTheme('dark')"
+    [attr.data-testid]="'theme-dark'"
+  >
+    <span>Dark Mode</span>
+    @if (currentTheme() === 'dark') {
+      <mat-icon>check</mat-icon>
+    } @else {
+      <mat-icon>dark_mode</mat-icon>
+    }
+  </button>
+</mat-menu>

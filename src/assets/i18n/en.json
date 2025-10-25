@@ -1,0 +1,9 @@
+{
+  "APP_NAME": "PipSplit",
+  "ACCOUNT": {
+    "TITLE": "Account",
+    "SETTINGS": "Settings",
+    "LOGOUT": "Logout",
+    "LANGUAGE": "Language"
+  }
+}
