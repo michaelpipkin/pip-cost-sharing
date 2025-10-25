@@ -12,5 +12,6 @@ export class User {
   paypalId?: string = '';
   cashAppId?: string = '';
   zelleId?: string = '';
+  language?: string = 'en';
   ref?: DocumentReference<User>;
 }

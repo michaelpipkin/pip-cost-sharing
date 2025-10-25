@@ -1,5 +1,4 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, OnInit, signal, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -9,14 +8,23 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { TranslateService } from '@ngx-translate/core';
 import { DemoService } from '@services/demo.service';
-import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AccountMenuComponent } from './shared/account-menu/account-menu.component';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
+import {
+  Component,
+  effect,
+  inject,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-root',
@@ -32,12 +40,12 @@ import { LoadingComponent } from './shared/loading/loading.component';
     RouterOutlet,
     FooterComponent,
     MatTooltipModule,
+    AccountMenuComponent,
   ],
 })
 export class AppComponent implements OnInit {
   title = 'Cost Sharing';
 
-  protected readonly themeService = inject(ThemeService);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
@@ -45,6 +53,7 @@ export class AppComponent implements OnInit {
   protected readonly router = inject(Router);
   protected readonly analytics = inject(getAnalytics);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly translate = inject(TranslateService);
 
   isSmallScreen = signal<boolean>(false);
 
@@ -60,18 +69,26 @@ export class AppComponent implements OnInit {
 
   constructor() {
     logEvent(this.analytics, 'app_initalized');
+
+    // Initialize translation service
+    this.translate.setFallbackLang('en');
+    this.translate.use('en');
+
+    // Set user's preferred language when user loads
+    effect(() => {
+      const user = this.user();
+      if (user?.language) {
+        this.translate.use(user.language);
+      }
+    });
   }
 
   ngOnInit(): void {
     this.breakpointObserver
-      .observe('(max-width: 1088px)')
+      .observe('(max-width: 1100px)')
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });
-  }
-
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
   }
 
   logout(): void {
