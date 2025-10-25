@@ -1,16 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -52,6 +41,17 @@ import { UserStore } from '@store/user.store';
 import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -199,6 +199,7 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   expandedExpense = model<Expense | null>(null);
 
   columnsToDisplay = signal<string[]>([]);
+  footerColumnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
 
   async ngOnInit(): Promise<void> {
@@ -213,6 +214,7 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
             'receipt-paid',
             'expand',
           ]);
+          this.footerColumnsToDisplay.set(['amount', 'receipt-paid', 'expand']);
           this.smallScreen.set(true);
         } else {
           this.columnsToDisplay.set([
@@ -220,6 +222,12 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
             'paidBy',
             'description',
             'category',
+            'amount',
+            'receipt',
+            'paid',
+            'expand',
+          ]);
+          this.footerColumnsToDisplay.set([
             'amount',
             'receipt',
             'paid',
