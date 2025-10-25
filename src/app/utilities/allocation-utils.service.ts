@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { FormArray } from '@angular/forms';
+import { LocaleService } from '@services/locale.service';
 
 export interface AllocationInput {
   totalAmount: number;
@@ -24,6 +25,7 @@ export interface AllocationResult {
   providedIn: 'root',
 })
 export class AllocationUtilsService {
+  protected readonly localeService = inject(LocaleService);
   /**
    * Allocates shared amounts across splits using the same logic as the individual components
    * @param input The allocation input data
@@ -64,24 +66,22 @@ export class AllocationUtilsService {
     let evenlySharedAmount: number = +input.sharedAmount;
     const proportionalAmount: number = +input.allocatedAmount;
 
-    const totalSharedSplits: number = +(
-      evenlySharedAmount +
-      proportionalAmount +
-      splitTotal
-    ).toFixed(2);
+    const totalSharedSplits: number = this.localeService.roundToCurrency(
+      +(evenlySharedAmount + proportionalAmount + splitTotal)
+    );
 
     // Adjust evenly shared amount if totals don't match
     if (totalAmount != totalSharedSplits) {
-      evenlySharedAmount = +(
-        totalAmount -
-        splitTotal -
-        proportionalAmount
-      ).toFixed(2);
+      evenlySharedAmount = this.localeService.roundToCurrency(
+        +(totalAmount - splitTotal - proportionalAmount)
+      );
     }
 
     // First pass: Distribute evenly shared amount
     splits.forEach((split: AllocationSplit) => {
-      split.allocatedAmount = +(evenlySharedAmount / splitCount).toFixed(2);
+      split.allocatedAmount = this.localeService.roundToCurrency(
+        +(evenlySharedAmount / splitCount)
+      );
     });
 
     // Second pass: Add proportional allocation
@@ -90,26 +90,31 @@ export class AllocationUtilsService {
         return;
       }
       const baseSplit: number = +split.assignedAmount + +split.allocatedAmount;
-      split.allocatedAmount = +(
-        baseSplit +
-        (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
-      ).toFixed(2);
+      split.allocatedAmount = this.localeService.roundToCurrency(
+        +(
+          baseSplit +
+          (baseSplit / (totalAmount - proportionalAmount)) * proportionalAmount
+        )
+      );
     });
 
     // Final adjustment to handle rounding differences
-    const allocatedTotal = +splits
-      .reduce((total, s) => (total += s.allocatedAmount), 0)
-      .toFixed(2);
+    const allocatedTotal = this.localeService.roundToCurrency(
+      +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+    );
 
     if (allocatedTotal !== totalAmount && splitCount > 0) {
-      let diff = +(totalAmount - allocatedTotal).toFixed(2);
+      let diff = this.localeService.roundToCurrency(
+        totalAmount - allocatedTotal
+      );
+      const increment = this.localeService.getSmallestIncrement();
       for (let i = 0; diff != 0; ) {
         if (diff > 0) {
-          splits[i].allocatedAmount += 0.01;
-          diff = +(diff - 0.01).toFixed(2);
+          splits[i].allocatedAmount += increment;
+          diff = this.localeService.roundToCurrency(diff - increment);
         } else {
-          splits[i].allocatedAmount -= 0.01;
-          diff = +(diff + 0.01).toFixed(2);
+          splits[i].allocatedAmount -= increment;
+          diff = this.localeService.roundToCurrency(diff + increment);
         }
         if (i < splits.length - 1) {
           i++;

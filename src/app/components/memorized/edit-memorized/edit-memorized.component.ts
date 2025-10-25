@@ -1,4 +1,4 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
@@ -51,11 +51,13 @@ import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
+import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -105,6 +107,7 @@ export class EditMemorizedComponent implements OnInit {
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
+  protected readonly localeService = inject(LocaleService);
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
@@ -220,7 +223,10 @@ export class EditMemorizedComponent implements OnInit {
         availableMembers.length > 0 ? availableMembers[0].ref : null,
         Validators.required,
       ],
-      assignedAmount: ['0.00', Validators.required],
+      assignedAmount: [
+        this.localeService.getFormattedZero(),
+        Validators.required,
+      ],
       percentage: [0.0],
       allocatedAmount: [0.0],
     });
@@ -248,7 +254,7 @@ export class EditMemorizedComponent implements OnInit {
         (i) => i.nativeElement.value === ''
       );
       if (lastInput) {
-        lastInput.nativeElement.value = '0.00';
+        lastInput.nativeElement.value = this.localeService.getFormattedZero();
         // Manually trigger the input event to update the mat-label
         const event = new Event('input', { bubbles: true });
         lastInput.nativeElement.dispatchEvent(event);
@@ -334,9 +340,8 @@ export class EditMemorizedComponent implements OnInit {
             splits[i].percentage = +splits[i].percentage;
             totalPercentage += splits[i].percentage;
           } else {
-            const remainingPercentage: number = +(
-              100 - totalPercentage
-            ).toFixed(2);
+            const remainingPercentage: number =
+              this.localeService.roundToCurrency(+(100 - totalPercentage));
             splits[i].percentage = remainingPercentage;
             this.splitsFormArray.at(i).patchValue({
               percentage: remainingPercentage,
@@ -351,30 +356,32 @@ export class EditMemorizedComponent implements OnInit {
       const val = this.editMemorizedForm.value;
       const totalAmount: number = +val.amount;
       splits.forEach((split: Split) => {
-        split.allocatedAmount = +(
-          (totalAmount * +split.percentage) /
-          100
-        ).toFixed(2);
+        split.allocatedAmount = this.localeService.roundToCurrency(
+          +((totalAmount * +split.percentage) / 100)
+        );
       });
-      const allocatedTotal: number = +splits
-        .reduce((total, s) => (total += s.allocatedAmount), 0)
-        .toFixed(2);
-      const percentageTotal: number = +splits
-        .reduce((total, s) => (total += s.percentage), 0)
-        .toFixed(2);
+      const allocatedTotal: number = this.localeService.roundToCurrency(
+        +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+      );
+      const percentageTotal: number = this.localeService.roundToCurrency(
+        +splits.reduce((total, s) => (total += s.percentage), 0)
+      );
       if (
         allocatedTotal !== totalAmount &&
         percentageTotal === 100 &&
         splitCount > 0
       ) {
-        let diff = +(totalAmount - allocatedTotal).toFixed(2);
+        let diff = this.localeService.roundToCurrency(
+          +(totalAmount - allocatedTotal)
+        );
+        const increment = this.localeService.getSmallestIncrement();
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
-            splits[i].allocatedAmount += 0.01;
-            diff = +(diff - 0.01).toFixed(2);
+            splits[i].allocatedAmount += increment;
+            diff = this.localeService.roundToCurrency(+(diff - increment));
           } else {
-            splits[i].allocatedAmount -= 0.01;
-            diff = +(diff + 0.01).toFixed(2);
+            splits[i].allocatedAmount -= increment;
+            diff = this.localeService.roundToCurrency(+(diff + increment));
           }
           if (i < splits.length - 1) {
             i++;
@@ -393,14 +400,22 @@ export class EditMemorizedComponent implements OnInit {
   }
 
   getAssignedTotal = (): number =>
-    +[...this.splitsFormArray.value]
-      .reduce((total, s) => (total += +s.assignedAmount), 0)
-      .toFixed(2);
+    this.localeService.roundToCurrency(
+      +[...this.splitsFormArray.value].reduce(
+        (total, s) =>
+          (total += this.localeService.roundToCurrency(+s.assignedAmount)),
+        0
+      )
+    );
 
   getAllocatedTotal = (): number =>
-    +[...this.splitsFormArray.value]
-      .reduce((total, s) => (total += +s.allocatedAmount), 0)
-      .toFixed(2);
+    this.localeService.roundToCurrency(
+      +[...this.splitsFormArray.value].reduce(
+        (total, s) =>
+          (total += this.localeService.roundToCurrency(+s.allocatedAmount)),
+        0
+      )
+    );
 
   memorizedFullyAllocated = (): boolean =>
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
@@ -509,7 +524,9 @@ export class EditMemorizedComponent implements OnInit {
       if (index !== undefined) {
         const control = this.splitsFormArray.at(index).get(controlName);
         if (control) {
-          control.setValue(result.toFixed(2), { emitEvent: true });
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
           if (this.splitByPercentage()) {
             this.allocateByPercentage();
           } else {
@@ -519,7 +536,9 @@ export class EditMemorizedComponent implements OnInit {
       } else {
         const control = this.editMemorizedForm.get(controlName);
         if (control) {
-          control.setValue(result.toFixed(2), { emitEvent: true });
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
           this.updateTotalAmount();
         }
       }

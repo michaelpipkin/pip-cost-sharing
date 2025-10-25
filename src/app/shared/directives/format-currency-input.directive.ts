@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { FormArray, FormGroupDirective } from '@angular/forms';
+import { LocaleService } from '@services/locale.service';
 import { StringUtils } from '@utils/string-utils.service';
 
 @Directive({
@@ -10,6 +11,7 @@ import { StringUtils } from '@utils/string-utils.service';
 export class FormatCurrencyInputDirective {
   protected readonly stringUtils = inject(StringUtils);
   protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly localeService = inject(LocaleService);
   protected readonly formGroupDirective = inject(FormGroupDirective, {
     optional: true,
   });
@@ -45,7 +47,31 @@ export class FormatCurrencyInputDirective {
         }
       }
     }
-    this.el.nativeElement.value =
-      this.decimalPipe.transform(calc, '1.2-2') || '0.00';
+
+    // Format using currency's decimal separator
+    const currency = this.localeService.currency();
+    const formatted = this.formatWithCurrencySeparator(
+      calc,
+      currency.decimalPlaces,
+      currency.decimalSeparator,
+      currency.symbolPosition
+    );
+    this.el.nativeElement.value = formatted;
+  }
+
+  private formatWithCurrencySeparator(
+    value: number,
+    decimalPlaces: number,
+    decimalSeparator: string,
+    symbolPosition: 'prefix' | 'suffix'
+  ): string {
+    // Format the number with fixed decimal places
+    const fixed = value.toFixed(decimalPlaces);
+
+    // Replace dot with currency's decimal separator
+    const formatted = fixed.replace('.', decimalSeparator);
+
+    // Add trailing space for suffix currencies to separate from symbol
+    return symbolPosition === 'suffix' ? `${formatted} ` : formatted;
   }
 }

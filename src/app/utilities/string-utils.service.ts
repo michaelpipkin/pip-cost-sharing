@@ -1,20 +1,34 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { LocaleService } from '@services/locale.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class StringUtils {
+  private localeService = inject(LocaleService);
+
   toNumber(str: string): number {
     try {
       if (typeof str !== 'string' || str.trim() === '') {
         return 0;
       }
 
+      // Get current currency's decimal separator
+      const currency = this.localeService.currency();
+      const decimalSeparator = currency.decimalSeparator;
+
+      // Normalize the input: replace locale-specific decimal separator with dot
+      let normalized = str;
+      if (decimalSeparator !== '.') {
+        // Replace comma with dot for parsing
+        normalized = str.replace(decimalSeparator, '.');
+      }
+
       // Simple math expression evaluator using Function constructor
       // Sanitize input to only allow numbers, basic operators, parentheses, and decimals
-      const sanitized = str.replace(/[^0-9+\-*/().\s]/g, '');
-      
-      if (sanitized !== str) {
+      const sanitized = normalized.replace(/[^0-9+\-*/().\s]/g, '');
+
+      if (sanitized !== normalized) {
         // If sanitization changed the string, it contained invalid characters
         return 0;
       }
@@ -33,7 +47,10 @@ export class StringUtils {
         return 0;
       }
 
-      return +Number(result).toFixed(2);
+      // Round to currency's decimal places
+      // const places = currency.decimalPlaces;
+      // return +Number(result).toFixed(places);
+      return this.localeService.roundToCurrency(result);
     } catch {
       return 0;
     }

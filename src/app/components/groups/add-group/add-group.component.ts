@@ -5,9 +5,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import {
+  SUPPORTED_CURRENCIES,
+  getCurrencyConfig,
+} from '@models/currency-config.interface';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -32,6 +38,8 @@ import {
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
+    MatSelectModule,
+    MatOptionModule,
   ],
 })
 export class AddGroupComponent {
@@ -44,10 +52,13 @@ export class AddGroupComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
+  supportedCurrencies = SUPPORTED_CURRENCIES;
+
   newGroupForm = this.fb.group({
     groupName: ['', Validators.required],
     displayName: ['', Validators.required],
     autoAddMembers: [false],
+    currencyCode: ['USD', Validators.required],
   });
   user: Signal<User> = this.userStore.user;
 
@@ -63,10 +74,14 @@ export class AddGroupComponent {
     try {
       this.loading.loadingOn();
       const val = this.newGroupForm.value;
+      const currencyConfig = getCurrencyConfig(val.currencyCode);
       const newGroup: Partial<Group> = {
         name: val.groupName,
         active: true,
         autoAddMembers: val.autoAddMembers,
+        currencyCode: val.currencyCode,
+        currencySymbol: currencyConfig.symbol,
+        decimalPlaces: currencyConfig.decimalPlaces,
       };
       const newMember: Partial<Member> = {
         userRef: this.user().ref,
