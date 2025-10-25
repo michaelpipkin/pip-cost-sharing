@@ -1,3 +1,18 @@
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,23 +35,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import {
   User as FirebaseUser,
   getAuth,
@@ -44,6 +42,8 @@ import {
   updateEmail,
   updatePassword,
 } from 'firebase/auth';
+import { DocumentReference } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 @Component({
   selector: 'app-account',
@@ -86,9 +86,8 @@ export class AccountComponent {
 
   firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
-  localLive = signal<boolean>(
-    !environment.production && !environment.useEmulators
-  );
+  isLocalEnvironment = signal<boolean>(!environment.production);
+  isLiveData = signal<boolean>(!environment.useEmulators);
 
   selectedGroup = model<DocumentReference | null>(
     this.currentUser()?.defaultGroupRef ?? null
@@ -280,19 +279,20 @@ export class AccountComponent {
   async updateData(): Promise<void> {
     this.loading.loadingOn();
     try {
-      const verifyEmail = httpsCallable(this.functions, 'verifyUserEmail');
-      verifyEmail({ uid: 'rUYCPmIYB7fDjfaS3aeoDnHKnsh1' })
-        .then((result) => console.log(result))
-        .catch((error) => console.error(error));
-      // await Promise.all([
-      //   this.expenseService.removeHasReceiptField(),
-      //   this.expenseService.migrateCategoryIdsToRefs(),
-      //   this.memorizedService.migrateCategoryIdsToRefs(),
-      //   this.userService.migrateGroupIdsToRefs(),
-      //   this.memberService.migrateUserIdsToRefs(),
-      //   this.splitService.migrateFieldIdsToRefs(),
-      //   this.groupService.normalizeAllGroupDatesToUTC(),
-      // ]);
+      // const verifyEmail = httpsCallable(this.functions, 'verifyUserEmail');
+      // verifyEmail({ uid: 'rUYCPmIYB7fDjfaS3aeoDnHKnsh1' })
+      //   .then((result) => console.log(result))
+      //   .catch((error) => console.error(error));
+      await Promise.all([
+        //   this.expenseService.removeHasReceiptField(),
+        //   this.expenseService.migrateCategoryIdsToRefs(),
+        //   this.memorizedService.migrateCategoryIdsToRefs(),
+        //   this.userService.migrateGroupIdsToRefs(),
+        //   this.memberService.migrateUserIdsToRefs(),
+        //   this.splitService.migrateFieldIdsToRefs(),
+        //   this.groupService.normalizeAllGroupDatesToUTC(),
+        this.groupService.setDefaultCurrencyForAllGroups(),
+      ]);
       this.snackBar.open('Data updated.', 'Close');
     } catch (error) {
       logEvent(this.analytics, 'error', {

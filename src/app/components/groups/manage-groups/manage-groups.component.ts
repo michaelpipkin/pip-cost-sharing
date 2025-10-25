@@ -1,4 +1,11 @@
-import { Component, inject, model, OnInit, Signal } from '@angular/core';
+import {
+  Component,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -17,12 +24,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  getCurrencyConfig,
+  SUPPORTED_CURRENCIES,
+} from '@models/currency-config.interface';
 import { Group } from '@models/group';
 import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-manage-groups',
@@ -38,11 +52,13 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
     MatOptionModule,
     MatInputModule,
     MatSlideToggleModule,
+    DocRefCompareDirective,
   ],
 })
 export class ManageGroupsComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly expenseService = inject(ExpenseService);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
@@ -52,28 +68,47 @@ export class ManageGroupsComponent implements OnInit {
   protected readonly data = inject(MAT_DIALOG_DATA);
 
   selectedGroup = model<Group | null>(this.data.group as Group);
+  groupHasExpenses = signal<boolean>(false);
+  supportedCurrencies = SUPPORTED_CURRENCIES;
 
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
   editGroupForm = this.fb.group({
-    groupId: [''],
+    groupRef: [null as DocumentReference<Group> | null, Validators.required],
     groupName: ['', Validators.required],
     active: [false],
     autoAddMembers: [false],
+    currencyCode: ['USD', Validators.required],
   });
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    const adminGroupIds = this.userAdminGroups().map((g) => g.id);
     if (
       this.selectedGroup() !== null &&
-      this.userAdminGroups().includes(this.selectedGroup())
+      adminGroupIds.includes(this.selectedGroup().id)
     ) {
       const group = this.selectedGroup();
+
+      // Check if group has expenses
+      const hasExpenses = await this.expenseService.hasExpensesForGroup(
+        group.id
+      );
+      this.groupHasExpenses.set(hasExpenses);
+
       this.editGroupForm.patchValue({
-        groupId: group.id,
+        groupRef: group.ref,
         groupName: group.name,
         active: group.active ?? false,
         autoAddMembers: group.autoAddMembers ?? false,
+        currencyCode: group.currencyCode ?? 'USD',
       });
+
+      // Disable currency field if expenses exist
+      if (hasExpenses) {
+        this.editGroupForm.controls.currencyCode.disable();
+      }
+    } else {
+      this.selectedGroup.set(null);
     }
   }
 
@@ -81,15 +116,28 @@ export class ManageGroupsComponent implements OnInit {
     return this.editGroupForm.controls;
   }
 
-  onSelectGroup(): void {
-    const group = this.userAdminGroups().find(
-      (g) => g.id === this.f.groupId.value
+  async onSelectGroup(): Promise<void> {
+    const group = this.userAdminGroups().find((g) =>
+      g.ref.eq(this.f.groupRef.value)
     );
     this.selectedGroup.set(group);
+
+    // Check if group has expenses
+    const hasExpenses = await this.expenseService.hasExpensesForGroup(group.id);
+    this.groupHasExpenses.set(hasExpenses);
+
+    // Enable/disable currency field based on expenses
+    if (hasExpenses) {
+      this.editGroupForm.controls.currencyCode.disable();
+    } else {
+      this.editGroupForm.controls.currencyCode.enable();
+    }
+
     this.editGroupForm.patchValue({
       groupName: this.selectedGroup().name,
       active: this.selectedGroup().active ?? false,
       autoAddMembers: this.selectedGroup().autoAddMembers ?? false,
+      currencyCode: this.selectedGroup().currencyCode ?? 'USD',
     });
     this.editGroupForm.markAsPristine();
     this.editGroupForm.markAsUntouched();
@@ -101,10 +149,14 @@ export class ManageGroupsComponent implements OnInit {
       return;
     }
     const form = this.editGroupForm.getRawValue();
+    const currencyConfig = getCurrencyConfig(form.currencyCode);
     const changes: Partial<Group> = {
       name: form.groupName,
       active: form.active,
       autoAddMembers: form.autoAddMembers,
+      currencyCode: form.currencyCode,
+      currencySymbol: currencyConfig.symbol,
+      decimalPlaces: currencyConfig.decimalPlaces,
     };
     this.loading.loadingOn();
     try {

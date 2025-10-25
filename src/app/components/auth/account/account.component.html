@@ -207,7 +207,7 @@
       </form>
     </mat-tab>
   </mat-tab-group>
-  @if (localLive()) {
+  @if (isLocalEnvironment()) {
     <button
       mat-raised-button
       class="btn-danger mt-3"
@@ -216,7 +216,11 @@
       data-testid="update-data-button"
       aria-label="Update live data"
     >
-      Update Live Data
+      @if (isLiveData()) {
+        Update Live Data
+      } @else {
+        Update Emulator Data
+      }
     </button>
   }
 </div>

@@ -12,6 +12,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  limit,
   orderBy,
   query,
   where,
@@ -39,7 +40,7 @@ export class ExpenseService implements IExpenseService {
     try {
       // Wait for stores to be loaded before processing
       while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       // Build split query
@@ -112,7 +113,7 @@ export class ExpenseService implements IExpenseService {
     try {
       // Wait for stores to be loaded before processing
       while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const expenseReference = doc(
@@ -353,6 +354,29 @@ export class ExpenseService implements IExpenseService {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
+    }
+  }
+
+  /**
+   * Check if a group has any expenses
+   * Used to determine if currency can be changed
+   */
+  async hasExpensesForGroup(groupId: string): Promise<boolean> {
+    try {
+      const q = query(
+        collection(this.fs, `groups/${groupId}/expenses`),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      return !snapshot.empty;
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'has_expenses_for_group',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // If there's an error, assume expenses exist to be safe
+      return true;
     }
   }
 

@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import {
   AfterViewInit,
   Component,
