@@ -89,7 +89,7 @@ export class AllocationUtilsService {
       if (totalAmount === proportionalAmount) {
         return;
       }
-      const baseSplit: number = split.assignedAmount + split.allocatedAmount;
+      const baseSplit: number = +split.assignedAmount + +split.allocatedAmount;
       split.allocatedAmount = this.localeService.roundToCurrency(
         +(
           baseSplit +

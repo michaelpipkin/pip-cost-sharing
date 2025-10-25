@@ -9,12 +9,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { CategoryService } from './category.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -30,6 +24,12 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
@@ -503,4 +503,32 @@ export class GroupService implements IGroupService {
 
   //   return result;
   // }
+
+  async setDefaultCurrencyForAllGroups(): Promise<void> {
+    const groups = collection(this.fs, 'groups');
+    const snapshot = await getDocs(groups);
+    try {
+      const batch = writeBatch(this.fs);
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (!data.currencyCode) {
+          batch.update(doc.ref, {
+            currencyCode: 'USD',
+            currencySymbol: '$',
+            decimalPlaces: 2,
+          });
+        }
+      });
+
+      await batch.commit();
+      console.log(`\n🎉 All groups processed!`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.error(
+        '❌ Failed to add default currency to groups:',
+        errorMessage
+      );
+    }
+  }
 }
