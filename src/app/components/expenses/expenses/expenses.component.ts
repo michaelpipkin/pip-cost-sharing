@@ -539,9 +539,6 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
 
   // Helper method to format currency
   private formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return this.localeService.formatCurrency(amount);
   }
 }

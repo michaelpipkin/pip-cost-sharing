@@ -2,9 +2,9 @@
 
 ## Progress Status
 
-**Last Updated**: Session completing Phase 6
-**Overall Progress**: 21 of 39 TODOs completed (53.8%)
-**Current Phase**: Phase 6 ✅ COMPLETED
+**Last Updated**: Session completing Phases 7 & 8
+**Overall Progress**: 31 of 39 TODOs completed (79.5%)
+**Current Phase**: Phase 8 ✅ COMPLETED
 
 ### Completed Phases:
 - ✅ **Phase 1: Data Model & Currency Configuration** (3/3 TODOs)
@@ -39,6 +39,8 @@
   - **Fixed**: Replaced Angular's built-in CurrencyPipe imports with custom CurrencyPipe in 9 components:
     - Split, Expenses (x3), Memorized (x3), History, Summary
   - All `| currency` usages in templates now use the dynamic custom pipe
+  - **Fixed**: Made pipe impure (`pure: false`) to react to currency changes in LocaleService
+    - Ensures pipe re-runs when currency changes (e.g., on Split page currency selector)
 
 - ✅ **Phase 5: Input Directive** (1/1 TODO)
   - Refactored FormatCurrencyInputDirective to inject and use LocaleService
@@ -79,10 +81,25 @@
     - Suffix currencies (SEK): symbol after amount (`45,25 kr`)
     - Updated 5 templates: Add/Edit Expense, Add/Edit Memorized, Split
 
+- ✅ **Phase 7: Number Formatting** (4/4 TODOs)
+  - Updated SummaryComponent to use `localeService.formatCurrency()` instead of hardcoded Intl.NumberFormat
+  - SplitComponent already using local currency state with `toLocaleString()` (verified, no changes needed)
+  - Updated HistoryComponent: Added LocaleService injection and updated `formatCurrency()` method
+  - Updated ExpensesComponent to use `localeService.formatCurrency()` instead of hardcoded Intl.NumberFormat
+  - All clipboard copy operations now use correct currency formatting
+
+- ✅ **Phase 8: Decimal Handling** (6/6 TODOs)
+  - AllocationUtilsService: Verified extensive use of `localeService.roundToCurrency()` (11 usages)
+  - StringUtilsService: Verified use of `localeService.roundToCurrency()` instead of `.toFixed()`
+  - Add Expense Component: Verified use of `localeService.getFormattedZero()`, no `.toFixed()` calls
+  - Edit Expense Component: Verified no `.toFixed()` calls, using LocaleService throughout
+  - Add Memorized Component: Verified use of `localeService.getFormattedZero()`, no `.toFixed()` calls
+  - Edit Memorized Component: Verified no `.toFixed()` calls, using LocaleService throughout
+  - All rounding and decimal handling now centralized through LocaleService
+
 ### Next Steps:
-- **Phase 7: Number Formatting** (0/4 TODOs)
-- **Phase 8: Decimal Handling** (0/6 TODOs)
-- And more...
+- **Phase 9: Database Migration** (2 TODOs)
+- **Phase 10: Testing** (6 TODOs)
 
 ---
 
@@ -979,19 +996,19 @@ Execute the migration script against your Firestore database.
 - [x] 6.10: Groups template
 - [x] 6.11: Help/auth templates
 
-### Phase 7: Number Formatting (4 TODOs)
-- [ ] 7.1: Update SummaryComponent
-- [ ] 7.2: Update SplitComponent
-- [ ] 7.3: Update HistoryComponent
-- [ ] 7.4: Update ExpensesComponent
+### Phase 7: Number Formatting (4 TODOs) ✅ COMPLETED
+- [x] 7.1: Update SummaryComponent
+- [x] 7.2: Update SplitComponent
+- [x] 7.3: Update HistoryComponent
+- [x] 7.4: Update ExpensesComponent
 
-### Phase 8: Decimal Handling (6 TODOs)
-- [ ] 8.1: Update AllocationUtilsService
-- [ ] 8.2: Update StringUtilsService
-- [ ] 8.3: Update Add Expense Component
-- [ ] 8.4: Update Edit Expense Component
-- [ ] 8.5: Update Add Memorized Component
-- [ ] 8.6: Update Edit Memorized Component
+### Phase 8: Decimal Handling (6 TODOs) ✅ COMPLETED
+- [x] 8.1: Update AllocationUtilsService
+- [x] 8.2: Update StringUtilsService
+- [x] 8.3: Update Add Expense Component
+- [x] 8.4: Update Edit Expense Component
+- [x] 8.5: Update Add Memorized Component
+- [x] 8.6: Update Edit Memorized Component
 
 ### Phase 9: Migration (2 TODOs)
 - [ ] 9.1: Create migration script
