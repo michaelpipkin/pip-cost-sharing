@@ -22,6 +22,8 @@ import {
 } from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
 import { provideRouter, TitleStrategy } from '@angular/router';
+import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { environment } from '@env/environment';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -73,6 +75,13 @@ export const appConfig: ApplicationConfig = {
       MatIconModule
     ),
     provideRouter(appRoutes),
+    provideTranslateService({
+      defaultLanguage: 'en',
+    }),
+    provideTranslateHttpLoader({
+      prefix: './assets/i18n/',
+      suffix: '.json',
+    }),
     { provide: TitleStrategy, useClass: PageTitleStrategyService },
     { provide: DateAdapter, useClass: CustomDateAdapter },
     { provide: MAT_DIALOG_DEFAULT_OPTIONS, useValue: new MatDialogConfig() },
