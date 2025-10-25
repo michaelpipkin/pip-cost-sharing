@@ -1,4 +1,3 @@
-import { CurrencyPipe } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -29,12 +28,14 @@ import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
+import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -87,6 +88,7 @@ export class SummaryComponent implements AfterViewInit {
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(getAnalytics);
   protected readonly demoService = inject(DemoService);
+  protected readonly localeService = inject(LocaleService);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -120,7 +122,10 @@ export class SummaryComponent implements AfterViewInit {
       endDate = new Date(endDate.setDate(endDate.getDate() + 1));
     }
     return this.splits().filter((split: Split) => {
-      return DateUtils.getDateOnly(split.date) >= startDate && DateUtils.getDateOnly(split.date) < endDate;
+      return (
+        DateUtils.getDateOnly(split.date) >= startDate &&
+        DateUtils.getDateOnly(split.date) < endDate
+      );
     });
   });
 
@@ -140,14 +145,16 @@ export class SummaryComponent implements AfterViewInit {
         this.members()
           .filter((m) => !m.ref.eq(selectedMember))
           .forEach((member) => {
-            const owedToSelected = +memberSplits
-              .filter((m) => m.owedByMemberRef.eq(member.ref))
-              .reduce((total, split) => (total += split.allocatedAmount), 0)
-              .toFixed(2);
-            const owedBySelected = +memberSplits
-              .filter((m) => m.paidByMemberRef.eq(member.ref))
-              .reduce((total, split) => (total += split.allocatedAmount), 0)
-              .toFixed(2);
+            const owedToSelected = this.localeService.roundToCurrency(
+              +memberSplits
+                .filter((m) => m.owedByMemberRef.eq(member.ref))
+                .reduce((total, split) => (total += split.allocatedAmount), 0)
+            );
+            const owedBySelected = this.localeService.roundToCurrency(
+              +memberSplits
+                .filter((m) => m.paidByMemberRef.eq(member.ref))
+                .reduce((total, split) => (total += split.allocatedAmount), 0)
+            );
             if (owedToSelected > owedBySelected) {
               summaryData.push(
                 new AmountDue({
@@ -300,15 +307,15 @@ export class SummaryComponent implements AfterViewInit {
             paidByMemberRef: owedByMemberRef,
             paidToMemberRef: owedToMemberRef,
             date: Timestamp.now(),
-            totalPaid: +splitsToPay
-              .reduce(
+            totalPaid: this.localeService.roundToCurrency(
+              +splitsToPay.reduce(
                 (total, s) =>
                   s.paidByMemberRef.eq(owedToMemberRef)
                     ? (total += +s.allocatedAmount)
                     : (total -= +s.allocatedAmount),
                 0
               )
-              .toFixed(2),
+            ),
             lineItems: [],
           };
           this.detailData().forEach((split) => {

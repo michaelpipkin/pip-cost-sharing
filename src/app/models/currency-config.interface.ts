@@ -73,6 +73,15 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
     name: 'Mexican Peso',
   },
   {
+    code: 'SEK',
+    symbol: 'kr',
+    symbolPosition: 'suffix',
+    decimalPlaces: 2,
+    decimalSeparator: ',',
+    thousandsSeparator: ' ',
+    name: 'Swedish Krona',
+  },
+  {
     code: 'CHF',
     symbol: 'CHF',
     symbolPosition: 'prefix',
@@ -93,8 +102,6 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
 ];
 
 // Helper function to get currency config by code
-export function getCurrencyConfig(
-  code: string
-): CurrencyConfig | undefined {
+export function getCurrencyConfig(code: string): CurrencyConfig | undefined {
   return SUPPORTED_CURRENCIES.find((c) => c.code === code);
 }

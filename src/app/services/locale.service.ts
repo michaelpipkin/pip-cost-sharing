@@ -44,15 +44,17 @@ export class LocaleService {
    */
   formatCurrency(value: number): string {
     const curr = this.currency();
-    const formatted = Math.abs(value).toLocaleString(this.locale(), {
-      minimumFractionDigits: curr.decimalPlaces,
-      maximumFractionDigits: curr.decimalPlaces,
-    });
+
+    // Format manually using currency's decimal separator (not browser locale)
+    const absValue = Math.abs(value);
+    const formatted = absValue
+      .toFixed(curr.decimalPlaces)
+      .replace('.', curr.decimalSeparator);
 
     const symbol =
       curr.symbolPosition === 'prefix'
-        ? `${curr.symbol}${formatted}`
-        : `${formatted}${curr.symbol}`;
+        ? `${curr.symbol} ${formatted}`
+        : `${formatted} ${curr.symbol}`;
 
     return value < 0 ? `-${symbol}` : symbol;
   }
@@ -61,6 +63,9 @@ export class LocaleService {
    * Round to currency's decimal places
    */
   roundToCurrency(value: number): number {
+    if (isNaN(value)) {
+      return 0;
+    }
     const places = this.currency().decimalPlaces;
     const multiplier = Math.pow(10, places);
     return Math.round(value * multiplier) / multiplier;
@@ -72,5 +77,25 @@ export class LocaleService {
   getDecimalFormat(): string {
     const places = this.currency().decimalPlaces;
     return `1.${places}-${places}`;
+  }
+
+  /**
+   * Get smallest currency increment (e.g., 0.01 for USD, 0.05 for CHF, 1 for JPY)
+   */
+  getSmallestIncrement(): number {
+    const places = this.currency().decimalPlaces;
+    return places === 0 ? 1 : 1 / Math.pow(10, places);
+  }
+
+  /**
+   * Get formatted zero value for current currency
+   * Returns '0,00' for SEK (suffix), '0,00' for EUR, '0.00' for USD, '0' for JPY, etc.
+   */
+  getFormattedZero(): string {
+    const curr = this.currency();
+    if (curr.decimalPlaces === 0) {
+      return curr.symbolPosition === 'suffix' ? '0 ' : '0';
+    }
+    return `0${curr.decimalSeparator}${'0'.repeat(curr.decimalPlaces)}`;
   }
 }

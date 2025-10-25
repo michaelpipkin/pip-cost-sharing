@@ -105,7 +105,14 @@
             (blur)="updateTotalAmount()"
             inputmode="decimal"
           />
-          <span matTextPrefix>$</span>
+          @if (localeService.currency().symbolPosition === 'prefix') {
+            <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+          }
+          @if (localeService.currency().symbolPosition === 'suffix') {
+            <span matTextSuffix
+              >&nbsp;{{ localeService.currency().symbol }}</span
+            >
+          }
           <button
             matIconSuffix
             mat-icon-button
@@ -143,7 +150,14 @@
             (blur)="allocateSharedAmounts()"
             inputmode="decimal"
           />
-          <span matTextPrefix>$</span>
+          @if (localeService.currency().symbolPosition === 'prefix') {
+            <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+          }
+          @if (localeService.currency().symbolPosition === 'suffix') {
+            <span matTextSuffix
+              >&nbsp;{{ localeService.currency().symbol }}</span
+            >
+          }
           <button
             matIconSuffix
             mat-icon-button
@@ -306,7 +320,16 @@
                     (blur)="allocateSharedAmounts()"
                     inputmode="decimal"
                   />
-                  <span matTextPrefix>$</span>
+                  @if (localeService.currency().symbolPosition === 'prefix') {
+                    <span matTextPrefix>{{
+                      localeService.currency().symbol
+                    }}</span>
+                  }
+                  @if (localeService.currency().symbolPosition === 'suffix') {
+                    <span matTextSuffix
+                      >&nbsp;{{ localeService.currency().symbol }}</span
+                    >
+                  }
                   <button
                     matIconSuffix
                     mat-icon-button

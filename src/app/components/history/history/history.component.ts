@@ -1,4 +1,5 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import {
   AfterViewInit,
   Component,

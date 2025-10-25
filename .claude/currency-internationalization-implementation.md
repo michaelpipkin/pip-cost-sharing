@@ -2,13 +2,14 @@
 
 ## Progress Status
 
-**Last Updated**: Session completing Phase 5
-**Overall Progress**: 10 of 39 TODOs completed (25.6%)
-**Current Phase**: Phase 5 ✅ COMPLETED
+**Last Updated**: Session completing Phase 6
+**Overall Progress**: 21 of 39 TODOs completed (53.8%)
+**Current Phase**: Phase 6 ✅ COMPLETED
 
 ### Completed Phases:
 - ✅ **Phase 1: Data Model & Currency Configuration** (3/3 TODOs)
-  - Created CurrencyConfig interface with 9 supported currencies (alphabetically sorted)
+  - Created CurrencyConfig interface with 10 supported currencies (alphabetically sorted)
+  - Added SEK (Swedish Krona) as the first suffix-positioned currency
   - Updated Group model with currency fields
   - Added currency selection to AddGroupComponent and ManageGroupsComponent
   - Added hasExpensesForGroup() helper to ExpenseService
@@ -19,6 +20,11 @@
   - Automatically watches GroupStore.currentGroup() signal
   - Provides currency formatting, rounding, and decimal format utilities
   - No manual integration needed - updates automatically on group changes
+  - **Fixed**: `formatCurrency()` now uses currency's decimal separator directly (not browser locale)
+    - Formats manually using `toFixed()` and replaces dot with currency separator
+    - EUR shows `€45,25`, USD shows `$45.25`, JPY shows `¥45`
+  - **Added**: `getFormattedZero()` helper method returns formatted zero for current currency
+    - Returns `0,00` for EUR, `0.00` for USD, `0` for JPY
 
 - ✅ **Phase 3: Group UI** (3/3 TODOs)
   - AddGroupComponent has currency selector with all supported currencies
@@ -30,16 +36,52 @@
   - Refactored currency.pipe.ts to inject and use LocaleService
   - Replaced hardcoded 'en-US' locale and '$' symbol with dynamic formatting
   - Pipe now automatically uses current group's currency settings
+  - **Fixed**: Replaced Angular's built-in CurrencyPipe imports with custom CurrencyPipe in 9 components:
+    - Split, Expenses (x3), Memorized (x3), History, Summary
+  - All `| currency` usages in templates now use the dynamic custom pipe
 
 - ✅ **Phase 5: Input Directive** (1/1 TODO)
   - Refactored FormatCurrencyInputDirective to inject and use LocaleService
   - Replaced hardcoded '1.2-2' decimal format with dynamic pattern from LocaleService
-  - Directive now uses browser locale for number formatting
+  - Directive now displays values using currency's decimal separator (not browser locale)
   - Automatically adapts to different decimal places (e.g., 0 for JPY, 2 for USD)
+  - **Fixed**: Updated StringUtils service to accept locale-specific decimal separators
+    - Now accepts comma (,) for EUR and other currencies that use comma as decimal separator
+    - Normalizes input to dot before parsing
+    - Rounds to currency-specific decimal places
+  - **Fixed**: Updated FormatCurrencyInputDirective to display using currency decimal separator
+    - Replaced DecimalPipe with custom formatting to ensure currency separator is used
+    - EUR now displays as `45,25` instead of `45.25`
+    - USD displays as `45.25`
+    - JPY displays as `45` (no decimals)
+    - SEK displays as `45,25 ` (with trailing space for suffix symbol)
+  - **Fixed**: Updated all 5 components to use `localeService.getFormattedZero()` for initial values
+    - Add/Edit Expense, Add/Edit Memorized, Split components
+    - Fields now initialize with `0,00` for EUR, `0,00 ` for SEK (with space), instead of hardcoded `0.00`
+  - **Fixed**: Added trailing space for suffix currencies in input fields
+    - Provides visual separation between amount and suffix symbol
+    - SEK: `45,25 kr` (note the space before kr)
+
+- ✅ **Phase 6: Templates with Dynamic Currency Symbols** (11/11 TODOs)
+  - All templates updated to use `{{ localeService.currency().symbol }}` instead of hardcoded `$`
+  - Components updated: Add Expense, Edit Expense, Split, Add Memorized, Edit Memorized, History, Summary, Members, Categories, Groups, Help, Auth
+  - **Special handling for Split component**: Added currency selector since it's a standalone component not tied to a group
+  - Split component now allows users to select currency (defaults to USD)
+  - Split component maintains local currency state (`localCurrency` computed signal)
+  - Split component syncs its currency selection with LocaleService for directive compatibility
+  - `ngOnDestroy` restores LocaleService to group's currency when leaving split page
+  - Split component's `formatCurrency` method uses local currency state
+  - **Fixed**: Split component now properly syncs currency in `afterNextRender`
+    - Prevents group's currency from overriding split's selected currency
+    - Ensures directives always use split's selected currency, not group currency
+  - **Fixed**: Input fields now conditionally use `matTextPrefix` or `matTextSuffix` based on currency
+    - Prefix currencies (USD, EUR, etc.): symbol before amount (`$ 45.25`)
+    - Suffix currencies (SEK): symbol after amount (`45,25 kr`)
+    - Updated 5 templates: Add/Edit Expense, Add/Edit Memorized, Split
 
 ### Next Steps:
-- **Phase 6: Templates** (0/11 TODOs)
 - **Phase 7: Number Formatting** (0/4 TODOs)
+- **Phase 8: Decimal Handling** (0/6 TODOs)
 - And more...
 
 ---
@@ -593,11 +635,19 @@ Same replacement as 6.1.
 ---
 
 #### TODO 6.3: Update Split Component Template
-**File**: `src/app/components/split/split/split.component.html`
+**File**: `src/app/components/split/split/split.component.html` and `split.component.ts`
 
-Same replacement as 6.1.
+**Special handling required**: The split component is a standalone component not tied to any group (accessible to logged-in and non-logged-in users). Therefore:
 
-**Status**: ⬜ Not Started
+1. Added currency selector at the top of the form (defaults to USD)
+2. Updated template to use `{{ localeService.currency().symbol }}`
+3. Added `currencyCode` form control
+4. Added `onCurrencyChange()` method to update LocaleService when currency changes
+5. Updated `formatCurrency()` method to use `localeService.formatCurrency()` instead of hardcoded Intl.NumberFormat
+6. Added SUPPORTED_CURRENCIES import and supportedCurrencies property
+7. Added MatSelectModule to imports
+
+**Status**: ✅ Completed
 
 ---
 
@@ -916,18 +966,18 @@ Execute the migration script against your Firestore database.
 ### Phase 5: Input Directive (1 TODO) ✅ COMPLETED
 - [x] 5.1: Update FormatCurrencyInputDirective
 
-### Phase 6: Templates (11 TODOs)
-- [ ] 6.1: Add expense template
-- [ ] 6.2: Edit expense template
-- [ ] 6.3: Split component template
-- [ ] 6.4: Add memorized template
-- [ ] 6.5: Edit memorized template
-- [ ] 6.6: History template
-- [ ] 6.7: Summary template
-- [ ] 6.8: Members template
-- [ ] 6.9: Categories template
-- [ ] 6.10: Groups template
-- [ ] 6.11: Help/auth templates
+### Phase 6: Templates (11 TODOs) ✅ COMPLETED
+- [x] 6.1: Add expense template
+- [x] 6.2: Edit expense template
+- [x] 6.3: Split component template (+ added currency selector)
+- [x] 6.4: Add memorized template
+- [x] 6.5: Edit memorized template
+- [x] 6.6: History template
+- [x] 6.7: Summary template
+- [x] 6.8: Members template
+- [x] 6.9: Categories template
+- [x] 6.10: Groups template
+- [x] 6.11: Help/auth templates
 
 ### Phase 7: Number Formatting (4 TODOs)
 - [ ] 7.1: Update SummaryComponent

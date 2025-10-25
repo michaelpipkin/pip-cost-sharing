@@ -48,13 +48,30 @@ export class FormatCurrencyInputDirective {
       }
     }
 
-    // Use locale service for dynamic decimal formatting
-    const pattern = this.localeService.getDecimalFormat();
-    const locale = this.localeService.locale();
+    // Format using currency's decimal separator
     const currency = this.localeService.currency();
-    const defaultValue = '0'.padEnd(currency.decimalPlaces > 0 ? currency.decimalPlaces + 2 : 1, '.0');
+    const formatted = this.formatWithCurrencySeparator(
+      calc,
+      currency.decimalPlaces,
+      currency.decimalSeparator,
+      currency.symbolPosition
+    );
+    this.el.nativeElement.value = formatted;
+  }
 
-    this.el.nativeElement.value =
-      this.decimalPipe.transform(calc, pattern, locale) || defaultValue;
+  private formatWithCurrencySeparator(
+    value: number,
+    decimalPlaces: number,
+    decimalSeparator: string,
+    symbolPosition: 'prefix' | 'suffix'
+  ): string {
+    // Format the number with fixed decimal places
+    const fixed = value.toFixed(decimalPlaces);
+
+    // Replace dot with currency's decimal separator
+    const formatted = fixed.replace('.', decimalSeparator);
+
+    // Add trailing space for suffix currencies to separate from symbol
+    return symbolPosition === 'suffix' ? `${formatted} ` : formatted;
   }
 }

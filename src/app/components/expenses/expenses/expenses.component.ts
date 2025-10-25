@@ -1,5 +1,16 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -23,12 +34,14 @@ import { Split } from '@models/split';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
 import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -39,17 +52,6 @@ import { UserStore } from '@store/user.store';
 import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -98,6 +100,7 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
   protected readonly sorter = inject(SortingService);
+  protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -524,12 +527,14 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
       (((split.assignedAmount || 0) + evenlySharedAmount) / baseAmount) *
       expense.allocatedAmount;
 
-    return +memberProportionalAmount.toFixed(2);
+    return this.localeService.roundToCurrency(+memberProportionalAmount);
   }
 
   private calculateSharedPortionForSplit(expense: Expense): number {
     if (expense.sharedAmount === 0 || expense.splits.length === 0) return 0;
-    return +(expense.sharedAmount / expense.splits.length).toFixed(2);
+    return this.localeService.roundToCurrency(
+      +(expense.sharedAmount / expense.splits.length)
+    );
   }
 
   // Helper method to format currency
