@@ -26,24 +26,56 @@
         >&nbsp;Split
       </a>
       <div class="account links" data-testid="mobile-account-actions">
+        <button
+          matIconButton
+          (click)="toggleTheme()"
+          data-testid="theme-toggle-mobile"
+          [aria-label]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+          [matTooltip]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+        >
+          <mat-icon>
+            {{
+              themeService.currentTheme() === 'light'
+                ? 'dark_mode'
+                : 'light_mode'
+            }}
+          </mat-icon>
+        </button>
         <a
           matIconButton
           [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
           matTooltip="Help"
           aria-label="help"
-          data-testid="nav-help-mobile"
+          data-testid="nav-help-desktop"
         >
           <mat-icon>help</mat-icon>
         </a>
         @if (!isInDemoMode() && isLoggedIn()) {
+          <a
+            matIconButton
+            [routerLink]="['auth', 'account']"
+            matTooltip="Account"
+            aria-label="account"
+            data-testid="nav-account-desktop"
+          >
+            <mat-icon>manage_accounts</mat-icon>
+          </a>
           <button
             matIconButton
-            [matMenuTriggerFor]="accountMenu"
-            matTooltip="Account &amp; Settings"
-            aria-label="settings"
-            data-testid="nav-account-mobile"
+            (click)="logout()"
+            aria-label="log out"
+            matTooltip="Log out"
+            data-testid="logout-button-desktop"
           >
-            <mat-icon>settings</mat-icon>
+            <mat-icon>logout</mat-icon>
           </button>
         } @else {
           <a
@@ -51,7 +83,7 @@
             [routerLink]="['auth', 'login']"
             aria-label="login"
             matTooltip="Login"
-            data-testid="nav-login-mobile"
+            data-testid="nav-login-desktop"
           >
             <mat-icon>login</mat-icon>
             &nbsp;<span>Log in</span>
@@ -232,6 +264,29 @@
         </a>
       </div>
       <div class="account links" data-testid="desktop-account-actions">
+        <button
+          matIconButton
+          (click)="toggleTheme()"
+          data-testid="theme-toggle-desktop"
+          [aria-label]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+          [matTooltip]="
+            themeService.currentTheme() === 'light'
+              ? 'Switch to dark mode'
+              : 'Switch to light mode'
+          "
+        >
+          <mat-icon>
+            {{
+              themeService.currentTheme() === 'light'
+                ? 'dark_mode'
+                : 'light_mode'
+            }}
+          </mat-icon>
+        </button>
         <a
           matIconButton
           [routerLink]="isInDemoMode() ? demoRoutes.DEMO_HELP : routes.HELP"
@@ -242,14 +297,23 @@
           <mat-icon>help</mat-icon>
         </a>
         @if (!isInDemoMode() && isLoggedIn()) {
-          <button
+          <a
             matIconButton
-            [matMenuTriggerFor]="accountMenu"
-            matTooltip="Account &amp; Settings"
-            aria-label="settings"
+            [routerLink]="['auth', 'account']"
+            matTooltip="Account"
+            aria-label="account"
             data-testid="nav-account-desktop"
           >
-            <mat-icon>settings</mat-icon>
+            <mat-icon>manage_accounts</mat-icon>
+          </a>
+          <button
+            matIconButton
+            (click)="logout()"
+            aria-label="log out"
+            matTooltip="Log out"
+            data-testid="logout-button-desktop"
+          >
+            <mat-icon>logout</mat-icon>
           </button>
         } @else {
           <a
@@ -421,10 +485,6 @@
     }
   </div>
 </mat-menu>
-<mat-menu #accountMenu="matMenu">
-  <app-account-menu />
-</mat-menu>
-
 <loading data-testid="loading-component" />
 <div id="outlet" data-testid="main-content">
   <router-outlet />
