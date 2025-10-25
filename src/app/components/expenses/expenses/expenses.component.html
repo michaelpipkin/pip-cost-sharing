@@ -165,7 +165,7 @@
                 <br />
                 {{ expense.paidByMember.displayName }}
               </td>
-              <td mat-footer-cell *matFooterCellDef></td>
+              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="date">
               <th
@@ -179,14 +179,14 @@
               <td mat-cell *matCellDef="let expense" class="no-wrap">
                 {{ getDateOnly(expense) | date: 'M/d/yyyy' }}
               </td>
-              <td mat-footer-cell *matFooterCellDef></td>
+              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="paidBy">
               <th mat-header-cell *matHeaderCellDef>Payer</th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.paidByMember.displayName }}
               </td>
-              <td mat-footer-cell *matFooterCellDef></td>
+              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="description-category">
               <th mat-header-cell *matHeaderCellDef>
@@ -197,25 +197,25 @@
                 <br />
                 {{ expense.category.name }}
               </td>
-              <td mat-footer-cell *matFooterCellDef class="cell-right">
+              <!-- <td mat-footer-cell *matFooterCellDef class="cell-right">
                 Total:
-              </td>
+              </td> -->
             </ng-container>
             <ng-container matColumnDef="description">
               <th mat-header-cell *matHeaderCellDef>Description</th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.description }}
               </td>
-              <td mat-footer-cell *matFooterCellDef></td>
+              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="category">
               <th mat-header-cell *matHeaderCellDef>Category</th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.category.name }}
               </td>
-              <td mat-footer-cell *matFooterCellDef class="cell-right">
+              <!-- <td mat-footer-cell *matFooterCellDef class="cell-right">
                 Total:
-              </td>
+              </td> -->
             </ng-container>
             <ng-container matColumnDef="amount">
               <th mat-header-cell *matHeaderCellDef class="cell-right">
@@ -224,8 +224,13 @@
               <td mat-cell *matCellDef="let expense" class="cell-right">
                 {{ expense.totalAmount | currency }}
               </td>
-              <td mat-footer-cell *matFooterCellDef class="cell-right">
-                {{ expenseTotal() | currency }}
+              <td
+                mat-footer-cell
+                *matFooterCellDef
+                class="cell-right"
+                [colSpan]="this.smallScreen() ? 3 : 5"
+              >
+                Total:&nbsp;&nbsp;{{ expenseTotal() | currency }}
               </td>
             </ng-container>
             <ng-container matColumnDef="receipt">
@@ -417,7 +422,11 @@
             ></tr>
             <tr
               mat-row
-              *matRowDef="let expense; columns: columnsToDisplay(); let isFirst = first"
+              *matRowDef="
+                let expense;
+                columns: columnsToDisplay();
+                let isFirst = first
+              "
               class="summary-row clickable-row expandable-row"
               [class.expanded-row]="expandedExpense() === expense"
               [attr.data-tour]="isFirst ? 'expense-row' : null"
@@ -425,7 +434,7 @@
             ></tr>
             <tr
               mat-footer-row
-              *matFooterRowDef="columnsToDisplay(); sticky: true"
+              *matFooterRowDef="footerColumnsToDisplay(); sticky: true"
             ></tr>
             <tr
               mat-row
