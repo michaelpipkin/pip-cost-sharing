@@ -3,20 +3,6 @@
   flex: 1;
 }
 
-.split-type {
-  display: grid;
-  grid-auto-flow: column;
-  align-items: center;
-  justify-content: start;
-
-  span {
-    font-size: 1.1em;
-    font-weight: 600;
-    text-align: end;
-    margin-right: 4px;
-  }
-}
-
 .attachment {
   display: grid;
   grid-template-columns: max-content auto;
