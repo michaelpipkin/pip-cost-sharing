@@ -330,7 +330,7 @@ export class AddMemorizedComponent implements OnInit {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.getRawValue()];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -419,12 +419,16 @@ export class AddMemorizedComponent implements OnInit {
   memorizedFullyAllocated = (): boolean =>
     this.addMemorizedForm.value.amount == this.getAllocatedTotal();
 
+  isLastSplit(index: number): boolean {
+    return index === this.splitsFormArray.length - 1;
+  }
+
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    const val = this.addMemorizedForm.value;
+    const val = this.addMemorizedForm.getRawValue();
     const memorized: Partial<Memorized> = {
       description: val.description,
       categoryRef: val.category,
@@ -435,7 +439,7 @@ export class AddMemorizedComponent implements OnInit {
       splitByPercentage: this.splitByPercentage(),
     };
     let splits = [];
-    this.splitsFormArray.value.forEach((s) => {
+    this.splitsFormArray.getRawValue().forEach((s) => {
       const split = {
         assignedAmount: +s.assignedAmount,
         percentage: +s.percentage,

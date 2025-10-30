@@ -331,7 +331,7 @@ export class EditMemorizedComponent implements OnInit {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.getRawValue()];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -420,6 +420,10 @@ export class EditMemorizedComponent implements OnInit {
   memorizedFullyAllocated = (): boolean =>
     this.editMemorizedForm.value.amount == this.getAllocatedTotal();
 
+  isLastSplit(index: number): boolean {
+    return index === this.splitsFormArray.length - 1;
+  }
+
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();
@@ -427,7 +431,7 @@ export class EditMemorizedComponent implements OnInit {
     }
     try {
       this.loading.loadingOn();
-      const val = this.editMemorizedForm.value;
+      const val = this.editMemorizedForm.getRawValue();
       const changes: Partial<Memorized> = {
         description: val.description,
         categoryRef: val.category,
@@ -438,7 +442,7 @@ export class EditMemorizedComponent implements OnInit {
         splitByPercentage: this.splitByPercentage(),
       };
       let splits = [];
-      this.splitsFormArray.value.forEach((s) => {
+      this.splitsFormArray.getRawValue().forEach((s) => {
         const split = {
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
