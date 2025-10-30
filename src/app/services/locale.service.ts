@@ -45,11 +45,22 @@ export class LocaleService {
   formatCurrency(value: number): string {
     const curr = this.currency();
 
-    // Format manually using currency's decimal separator (not browser locale)
+    // Format manually using currency's decimal and thousands separators
     const absValue = Math.abs(value);
-    const formatted = absValue
-      .toFixed(curr.decimalPlaces)
-      .replace('.', curr.decimalSeparator);
+    const fixed = absValue.toFixed(curr.decimalPlaces);
+    const [integerPart, decimalPart] = fixed.split('.');
+
+    // Add thousands separators
+    const formattedInteger = integerPart.replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      curr.thousandsSeparator
+    );
+
+    // Combine integer and decimal parts with correct decimal separator
+    const formatted =
+      curr.decimalPlaces > 0
+        ? `${formattedInteger}${curr.decimalSeparator}${decimalPart}`
+        : formattedInteger;
 
     const symbol =
       curr.symbolPosition === 'prefix'

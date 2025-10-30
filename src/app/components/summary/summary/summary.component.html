@@ -172,7 +172,7 @@
               <td
                 mat-cell
                 *matCellDef="let amountDue"
-                [colSpan]="summaryColumnsToDisplay.length"
+                [colSpan]="summaryColumnsToDisplay.length + 1"
               >
                 @if (amountDue == expandedDetail()) {
                   <div
