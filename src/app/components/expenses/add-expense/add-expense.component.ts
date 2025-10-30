@@ -432,7 +432,7 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits: Split[] = [...this.splitsFormArray.value];
+      let splits: Split[] = [...this.splitsFormArray.getRawValue()];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -521,6 +521,10 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
   expenseFullyAllocated = (): boolean =>
     this.addExpenseForm.value.amount == this.getAllocatedTotal();
 
+  isLastSplit(index: number): boolean {
+    return index === this.splitsFormArray.length - 1;
+  }
+
   async onSubmit(saveAndAdd: boolean = false): Promise<void> {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();
@@ -529,7 +533,7 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
     }
     try {
       this.loading.loadingOn();
-      const val = this.addExpenseForm.value;
+      const val = this.addExpenseForm.getRawValue();
       const expenseDate = DateUtils.toUTCTimestamp(val.date);
       const expense: Partial<Expense> = {
         date: expenseDate,
@@ -543,7 +547,7 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
         splitByPercentage: this.splitByPercentage(),
       };
       let splits: Partial<Split>[] = [];
-      this.splitsFormArray.value.forEach((s) => {
+      this.splitsFormArray.getRawValue().forEach((s) => {
         if (s.allocatedAmount !== 0) {
           const split: Partial<Split> = {
             date: expenseDate,
