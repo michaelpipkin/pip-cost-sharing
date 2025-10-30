@@ -394,7 +394,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
   allocateByPercentage(): void {
     var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.value];
+      let splits = [...this.splitsFormArray.getRawValue()];
       for (let i = 0; i < splits.length; ) {
         if (!splits[i].owedBy && splits[i].assignedAmount === 0) {
           splits.splice(i, 1);
@@ -480,6 +480,10 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
   expenseFullyAllocated = (): boolean =>
     this.expenseForm.value.amount == this.getAllocatedTotal();
+
+  isLastSplit(index: number): boolean {
+    return index === this.splitsFormArray.length - 1;
+  }
 
   onSubmit(): void {
     this.submitted.set(true);

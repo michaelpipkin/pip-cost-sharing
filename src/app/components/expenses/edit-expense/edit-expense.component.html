@@ -286,7 +286,13 @@
                 <mat-form-field
                   appearance="fill"
                   class="number-field no-subscript"
+                  [class.locked-input]="isLastSplit(i)"
                   subscriptSizing="dynamic"
+                  [matTooltip]="
+                    isLastSplit(i)
+                      ? 'The last split percentage is automatically calculated to make the total 100%'
+                      : ''
+                  "
                 >
                   <mat-label>Percentage</mat-label>
                   <input
@@ -297,6 +303,7 @@
                     parentControlName="splits"
                     [index]="i"
                     formControlName="percentage"
+                    [readonly]="isLastSplit(i)"
                     (blur)="allocateByPercentage()"
                   />
                   <span matTextSuffix>%</span>

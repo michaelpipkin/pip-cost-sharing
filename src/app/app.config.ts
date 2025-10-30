@@ -22,9 +22,9 @@ import {
 } from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
 import { provideRouter, TitleStrategy } from '@angular/router';
+import { environment } from '@env/environment';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
-import { environment } from '@env/environment';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
@@ -76,7 +76,7 @@ export const appConfig: ApplicationConfig = {
     ),
     provideRouter(appRoutes),
     provideTranslateService({
-      defaultLanguage: 'en',
+      fallbackLang: 'en',
     }),
     provideTranslateHttpLoader({
       prefix: './assets/i18n/',

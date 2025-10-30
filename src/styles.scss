@@ -640,6 +640,13 @@ mat-slide-toggle {
   padding-left: 16px;
 }
 
+.locked-input .mat-mdc-text-field-wrapper {
+  background-color: tokens.color('surface') !important;
+  input {
+    pointer-events: none;
+  }
+}
+
 /* ==========================================================================
    LOADING STATES
    ========================================================================== */
