@@ -3,6 +3,7 @@
   "version": "1.11.55",
   "type": "module",
   "scripts": {
+    "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
     "start": "ng serve --host=local.dev.com",
     "start:ci": "ng serve",
