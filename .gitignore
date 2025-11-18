@@ -64,3 +64,4 @@ functions/src/.env
 functions/.env
 src/app/github.config.ts
 CLAUDE.md
+bash.exe.stackdump

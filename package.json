@@ -1,8 +1,9 @@
 {
   "name": "pipsplit",
-  "version": "1.11.55",
+  "version": "1.11.56",
   "type": "module",
   "scripts": {
+    "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
     "start": "ng serve --host=local.dev.com",
     "start:ci": "ng serve",
@@ -96,7 +97,8 @@
       "form-data": ">=2.5.4",
       "brace-expansion": ">=1.1.12",
       "vite": ">=7.1.11",
-      "@messageformat/runtime": ">=3.0.2"
+      "@messageformat/runtime": ">=3.0.2",
+      "glob": ">=11.1.0"
     }
   }
 }
