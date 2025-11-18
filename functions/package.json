@@ -3,6 +3,7 @@
   "version": "1.0.5",
   "description": "Cloud Functions for Firebase",
   "scripts": {
+    "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "pnpm build && firebase emulators:start --only functions",
