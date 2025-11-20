@@ -1,11 +1,19 @@
 <h1 mat-dialog-title data-testid="add-category-title">Add Category</h1>
-<form [formGroup]="newCategoryForm" data-testid="add-category-form" aria-label="Add category form">
+<form data-testid="add-category-form" aria-label="Add category form">
   <mat-dialog-content class="content" data-testid="add-category-content">
     <mat-form-field appearance="fill" data-testid="category-name-field">
       <mat-label>Category name</mat-label>
-      <input matInput formControlName="categoryName" data-testid="category-name-input" aria-label="Category name" />
-      @if (f.categoryName.errors?.['required']) {
-        <mat-error data-testid="category-name-error"> *Required </mat-error>
+      <input
+        matInput
+        type="text"
+        [field]="newCategoryForm.categoryName"
+        data-testid="category-name-input"
+        aria-label="Category name"
+      />
+      @for (error of newCategoryForm.categoryName().errors(); track error) {
+        <mat-error data-testid="category-name-error-{{ error.key }}">
+          {{ error.message }}
+        </mat-error>
       }
     </mat-form-field>
   </mat-dialog-content>
@@ -15,7 +23,7 @@
       class="btn-secondary"
       type="submit"
       defaultButton
-      [disabled]="!newCategoryForm.valid || newCategoryForm.disabled"
+      [disabled]="!newCategoryForm().valid() || newCategoryForm().disabled()"
       (click)="onSubmit()"
       data-testid="add-category-save-button"
       aria-label="Save new category"
@@ -26,7 +34,7 @@
       mat-stroked-button
       type="button"
       [mat-dialog-close]="false"
-      [disabled]="newCategoryForm.disabled"
+      [disabled]="newCategoryForm().disabled()"
       data-testid="add-category-cancel-button"
       aria-label="Cancel adding category"
     >
