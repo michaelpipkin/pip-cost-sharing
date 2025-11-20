@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, inject, model, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,7 +21,6 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
 @Component({
   selector: 'app-delete-account',
   imports: [
-    CommonModule,
     FormsModule,
     MatButtonModule,
     MatCardModule,
@@ -29,8 +28,8 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    RouterLink,
-  ],
+    RouterLink
+],
   templateUrl: './delete-account.component.html',
   styleUrl: './delete-account.component.scss',
 })
