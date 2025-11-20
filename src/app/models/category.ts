@@ -9,3 +9,8 @@ export class Category {
   active: boolean = true;
   ref?: DocumentReference<Category>;
 }
+
+export interface CategoryForm {
+  categoryName: string;
+  active?: boolean;
+}

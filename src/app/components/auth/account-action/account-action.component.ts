@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, inject, model, OnInit, signal } from '@angular/core';
 import {
   FormBuilder,
@@ -30,7 +30,6 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
 @Component({
   selector: 'app-account-action',
   imports: [
-    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     MatProgressSpinnerModule,
@@ -39,8 +38,8 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    RouterLink,
-  ],
+    RouterLink
+],
   templateUrl: './account-action.component.html',
   styleUrl: './account-action.component.scss',
 })

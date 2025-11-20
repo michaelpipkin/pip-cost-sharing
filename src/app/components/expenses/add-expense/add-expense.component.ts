@@ -152,7 +152,7 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
   });
 
   constructor() {
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     if (navigation?.extras?.state?.expense) {
       this.memorizedExpense.set(navigation!.extras!.state!.expense);
     }

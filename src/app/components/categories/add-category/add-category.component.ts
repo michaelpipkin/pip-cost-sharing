@@ -1,10 +1,6 @@
-import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Field, form, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -14,7 +10,7 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Category } from '@models/category';
+import { Category, CategoryForm } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -31,6 +27,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
     MatFormFieldModule,
     MatButtonModule,
     MatInputModule,
+    Field,
   ],
 })
 export class AddCategoryComponent {
@@ -42,14 +39,14 @@ export class AddCategoryComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
+  protected form!: CategoryForm;
 
-  newCategoryForm = this.fb.group({
-    categoryName: ['', Validators.required],
+  protected readonly category = signal<CategoryForm>({
+    categoryName: '',
   });
-
-  public get f() {
-    return this.newCategoryForm.controls;
-  }
+  protected readonly newCategoryForm = form(this.category, (fieldPath) => {
+    required(fieldPath.categoryName, { message: '*Required' });
+  });
 
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
@@ -58,7 +55,8 @@ export class AddCategoryComponent {
     }
     try {
       this.loading.loadingOn();
-      const categoryName = this.newCategoryForm.value.categoryName;
+      const formValues = this.newCategoryForm().value();
+      const categoryName = formValues.categoryName;
       const newCategory: Partial<Category> = {
         name: categoryName,
         active: true,

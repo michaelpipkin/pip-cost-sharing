@@ -1,12 +1,28 @@
 .spinner-container {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.32);
-  z-index: 20000;
+  // Popover styles - only apply when popover is open
+  &:popover-open {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+
+    // Layout
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    // Appearance
+    background: rgba(0, 0, 0, 0.32);
+    pointer-events: auto;
+  }
+
+  // Override default popover background
+  &::backdrop {
+    display: none;
+  }
 }
