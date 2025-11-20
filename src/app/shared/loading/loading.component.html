@@ -1,5 +1,9 @@
-@if (loading()) {
-  <div class="spinner-container" data-test-id="loading-spinner-container">
+<ng-template #loadingTemplate>
+  <div
+    popover="manual"
+    class="spinner-container"
+    data-test-id="loading-spinner-container"
+  >
     <mat-spinner data-test-id="loading-spinner" aria-label="Loading" />
   </div>
-}
+</ng-template>
