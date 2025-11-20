@@ -30,11 +30,11 @@
             mat-raised-button
             class="btn-primary mb-4"
             type="button"
-            [routerLink]="['demo', 'split']"
+            (click)="startDemoWalkthrough()"
             data-testid="view-demo-button"
             aria-label="View demo of PipSplit"
           >
-            View Demo
+            Demo / Walkthrough
           </a>
           <a
             matButton="elevated"
