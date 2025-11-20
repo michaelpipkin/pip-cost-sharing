@@ -1,4 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, model } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,12 +12,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterModule } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import {
   fetchSignInMethodsForEmail,
   getAuth,
@@ -40,6 +40,8 @@ export class LoginComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
 
+  hidePassword = model<boolean>(true);
+
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
@@ -47,6 +49,10 @@ export class LoginComponent {
 
   get l() {
     return this.loginForm.controls;
+  }
+
+  toggleHidePassword() {
+    this.hidePassword.update((h) => !h);
   }
 
   async emailLogin() {
