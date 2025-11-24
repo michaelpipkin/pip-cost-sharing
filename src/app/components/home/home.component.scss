@@ -50,6 +50,15 @@
   justify-content: center;
 }
 
+.web-visit-section p {
+  font-size: 1.2rem;
+  font-weight: bold;
+
+  a {
+    font-size: inherit;
+  }
+}
+
 .home-container {
   padding: 16px 15% 0;
 }
