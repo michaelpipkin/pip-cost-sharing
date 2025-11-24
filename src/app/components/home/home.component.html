@@ -3,7 +3,6 @@
     <p class="app-title" data-testid="welcome-title">Welcome to PipSplit!</p>
   </div>
   <div class="top-section" data-testid="hero-section">
-    <div></div>
     <div class="app-details" data-testid="app-description">
       <p class="summary" data-testid="app-summary">
         Enter and track shared expenses for an unlimited number of groups.
@@ -12,62 +11,92 @@
         Split expenses with friends for your weekend getaway, track monthly
         costs with your roommates, or easily calculate shares of a dinner out.
       </p>
+      <p>
+        Sign up for a free account now, view a demo, or try out splitting an
+        expense!
+      </p>
     </div>
     <div class="buttons" data-testid="action-buttons">
       @if (!isLoggedIn()) {
         <a
           mat-raised-button
-          class="btn-primary mb-4"
+          class="btn-primary"
           type="button"
           [routerLink]="['auth', 'login']"
           data-testid="signup-login-button"
           aria-label="Login or sign up for a free account"
         >
-          Login or sign up now for a free account
+          Login or sign up
         </a>
-        <div class="buttons-row-2">
+        <a
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          (click)="startDemoWalkthrough()"
+          data-testid="view-demo-button"
+          aria-label="View demo of PipSplit"
+        >
+          Demo / Walkthrough
+        </a>
+        <a
+          matButton="elevated"
+          class="btn-primary"
+          type="button"
+          [routerLink]="['split']"
+          data-testid="split-expense-button"
+          aria-label="Split an expense now"
+        >
+          Split an expense now
+        </a>
+      }
+    </div>
+    <div class="logo" data-testid="hero-image-section">
+      <img
+        id="app-logo"
+        src="/assets/images/pip_split_icon_192x192.png"
+        alt="PipSplit"
+        data-testid="app-logo-image"
+      />
+    </div>
+    <div class="platform-message" data-testid="platform-message">
+      @if (isRunningInBrowser()) {
+        <div class="app-download-section" data-testid="app-download">
+          <p class="mb-0" data-testid="download-message">
+            <strong>Get the PipSplit app!</strong>
+          </p>
           <a
-            mat-raised-button
-            class="btn-primary mb-4"
-            type="button"
-            (click)="startDemoWalkthrough()"
-            data-testid="view-demo-button"
-            aria-label="View demo of PipSplit"
+            href="https://play.google.com/store/apps/details?id=com.pipsplit.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Get PipSplit on Google Play"
+            data-testid="google-play-badge"
           >
-            Demo / Walkthrough
-          </a>
-          <a
-            matButton="elevated"
-            class="btn-primary mb-4"
-            type="button"
-            [routerLink]="['split']"
-            data-testid="split-expense-button"
-            aria-label="Split an expense now"
-          >
-            Split an expense now
+            <img
+              src="/assets/images/google-play-badge.png"
+              alt="Get it on Google Play"
+              class="play-store-badge"
+              data-testid="play-store-image"
+            />
           </a>
         </div>
       }
+      @if (isRunningAsApp()) {
+        <div class="web-visit-section" data-testid="web-visit">
+          <p data-testid="web-visit-message">
+            <strong>Visit PipSplit on the web at</strong>
+            <a
+              href="https://pipsplit.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit PipSplit website"
+              data-testid="website-link"
+            >
+              pipsplit.com
+            </a>
+          </p>
+        </div>
+      }
     </div>
-    <div class="image" data-testid="hero-image-section">
-      <img
-        id="logo"
-        src="/assets/images/exchange_money.svg"
-        alt="Designed by Freepik"
-        data-testid="hero-image"
-      />
-      <span data-testid="image-attribution"
-        >Designed by
-        <a
-          href="https://www.freepik.com"
-          target="_blank"
-          aria-label="Visit Freepik website"
-          data-testid="freepik-link"
-          >Freepik</a
-        ></span
-      >
-    </div>
-    <div></div>
   </div>
   <div class="feature-container mt-4 mb-5" data-testid="features-section">
     <div class="feature" data-testid="feature-categorize">
@@ -75,9 +104,7 @@
         <mat-icon>category</mat-icon>
       </div>
       <div class="feature-title" data-testid="feature-title-categorize">
-        <p>
-          <strong>Categorize Expenses</strong>
-        </p>
+        <strong>Categorize Expenses</strong>
       </div>
       <div
         class="feature-description"
@@ -94,9 +121,7 @@
         <mat-icon>attach_money</mat-icon>
       </div>
       <div class="feature-title" data-testid="feature-title-summary">
-        <p>
-          <strong>See a summary breakdown</strong>
-        </p>
+        <strong>See a Summary Breakdown</strong>
       </div>
       <div
         class="feature-description"
@@ -114,9 +139,7 @@
         <mat-icon>currency_exchange</mat-icon>
       </div>
       <div class="feature-title" data-testid="feature-title-memorize">
-        <p>
-          <strong>Memorize Recurring Expenses</strong>
-        </p>
+        <strong>Memorize Recurring Expenses</strong>
       </div>
       <div
         class="feature-description"

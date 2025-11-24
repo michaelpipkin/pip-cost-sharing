@@ -69,9 +69,22 @@
       <div class="form-error">Passwords do not match.</div>
     }
     <div id="hcaptcha-container"></div>
-    <p class="privacy-notice" style="font-size: 0.875rem; text-align: center; margin: 10px 0; color: #666;">
+    <p
+      class="privacy-notice"
+      style="
+        font-size: 0.875rem;
+        text-align: center;
+        margin: 10px 0;
+        color: #666;
+      "
+    >
       By registering, you agree to our
-      <a href="/privacy-policy.html" target="_blank" style="color: #4CAF50; text-decoration: none;">Privacy Policy</a>
+      <a
+        href="/privacy-policy.html"
+        target="_blank"
+        style="color: #4caf50; text-decoration: none"
+        >Privacy Policy</a
+      >
     </p>
     <div class="buttons">
       <button
@@ -87,4 +100,44 @@
       <a class="primary-link" routerLink="../login">Return to Login</a>
     </div>
   </form>
+  <mat-divider class="standard-divider"></mat-divider>
+  <div class="platform-message" data-testid="platform-message">
+    @if (isRunningInBrowser()) {
+      <div class="app-download-section" data-testid="app-download">
+        <p class="mb-0" data-testid="download-message">
+          <strong>Get the PipSplit app!</strong>
+        </p>
+        <a
+          href="https://play.google.com/store/apps/details?id=com.pipsplit.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Get PipSplit on Google Play"
+          data-testid="google-play-badge"
+        >
+          <img
+            src="/assets/images/google-play-badge.png"
+            alt="Get it on Google Play"
+            class="play-store-badge"
+            data-testid="play-store-image"
+          />
+        </a>
+      </div>
+    }
+    @if (isRunningAsApp()) {
+      <div class="web-visit-section" data-testid="web-visit">
+        <p data-testid="web-visit-message">
+          <strong>Visit PipSplit on the web at</strong>
+          <a
+            href="https://pipsplit.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit PipSplit website"
+            data-testid="website-link"
+          >
+            pipsplit.com
+          </a>
+        </p>
+      </div>
+    }
+  </div>
 </div>

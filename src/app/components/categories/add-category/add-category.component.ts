@@ -39,12 +39,11 @@ export class AddCategoryComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
-  protected form!: CategoryForm;
 
-  protected readonly category = signal<CategoryForm>({
+  protected readonly categoryModel = signal<CategoryForm>({
     categoryName: '',
   });
-  protected readonly newCategoryForm = form(this.category, (fieldPath) => {
+  protected readonly newCategoryForm = form(this.categoryModel, (fieldPath) => {
     required(fieldPath.categoryName, { message: '*Required' });
   });
 
