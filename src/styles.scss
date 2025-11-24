@@ -299,7 +299,7 @@ body.dark-theme {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 24px; /* Small margin from footer */
+  margin: 0 auto 24px auto;
 
   &.with-table {
     height: calc(100vh - 130px); /* Adjust based on your header/footer height */
@@ -353,6 +353,35 @@ body.dark-theme {
 .title {
   text-align: center;
   margin-right: 15px;
+}
+
+.app-download-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.play-store-badge {
+  height: auto;
+  width: 192px;
+}
+
+.web-visit-section {
+  p {
+    margin: 0;
+  }
+
+  a {
+    display: block;
+    color: var(--primary);
+    font-size: 1rem;
+  }
+}
+
+.standard-divider {
+  width: 100% !important;
+  margin: 1rem 0 !important;
 }
 
 /* ========================================

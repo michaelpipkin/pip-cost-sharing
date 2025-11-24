@@ -13,11 +13,13 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterModule } from '@angular/router';
+import { PwaDetectionService } from '@services/pwa-detection.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
@@ -40,6 +42,7 @@ export declare const hcaptcha: any;
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatDividerModule,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
@@ -52,6 +55,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly functions = inject(getFunctions);
+  protected readonly pwaDetection = inject(PwaDetectionService);
 
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
@@ -101,6 +105,13 @@ export class RegisterComponent implements OnInit, OnDestroy {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
+  }
+  isRunningInBrowser(): boolean {
+    return this.pwaDetection.isRunningInBrowser();
+  }
+
+  isRunningAsApp(): boolean {
+    return this.pwaDetection.isRunningAsApp();
   }
 
   toggleHidePassword() {

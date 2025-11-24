@@ -1,17 +1,19 @@
-import { Component, inject, model } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { RouterModule } from '@angular/router';
+import { PwaDetectionService } from '@services/pwa-detection.service';
+import { LoadingService } from '@shared/loading/loading.service';
 import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { RouterModule } from '@angular/router';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
   fetchSignInMethodsForEmail,
   getAuth,
@@ -30,6 +32,7 @@ import {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatDividerModule,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
@@ -39,8 +42,7 @@ export class LoginComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackBar = inject(MatSnackBar);
-
-  hidePassword = model<boolean>(true);
+  protected readonly pwaDetection = inject(PwaDetectionService);
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -51,8 +53,12 @@ export class LoginComponent {
     return this.loginForm.controls;
   }
 
-  toggleHidePassword() {
-    this.hidePassword.update((h) => !h);
+  isRunningInBrowser(): boolean {
+    return this.pwaDetection.isRunningInBrowser();
+  }
+
+  isRunningAsApp(): boolean {
+    return this.pwaDetection.isRunningAsApp();
   }
 
   async emailLogin() {
