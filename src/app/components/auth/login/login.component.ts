@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, model } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -44,6 +44,8 @@ export class LoginComponent {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly pwaDetection = inject(PwaDetectionService);
 
+  hidePassword = model<boolean>(true);
+
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
@@ -59,6 +61,10 @@ export class LoginComponent {
 
   isRunningAsApp(): boolean {
     return this.pwaDetection.isRunningAsApp();
+  }
+
+  toggleHidePassword() {
+    this.hidePassword.update((h) => !h);
   }
 
   async emailLogin() {

@@ -73,15 +73,15 @@
   }
 }
 
-@media (min-width: 801px) {
-  #logo {
+@media (min-width: 769px) {
+  #app-logo {
     height: 200px;
     width: 200px;
   }
 }
 
-@media (max-width: 800px) {
-  #logo {
+@media (max-width: 768px) {
+  #app-logo {
     height: 125px;
     width: 125px;
   }

@@ -28,28 +28,26 @@
         >
           Login or sign up
         </a>
-        <div class="buttons-row-2">
-          <a
-            mat-raised-button
-            class="btn-primary mb-4"
-            type="button"
-            (click)="startDemoWalkthrough()"
-            data-testid="view-demo-button"
-            aria-label="View demo of PipSplit"
-          >
-            Demo / Walkthrough
-          </a>
-          <a
-            matButton="elevated"
-            class="btn-primary mb-4"
-            type="button"
-            [routerLink]="['split']"
-            data-testid="split-expense-button"
-            aria-label="Split an expense now"
-          >
-            Split an expense now
-          </a>
-        </div>
+        <a
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          (click)="startDemoWalkthrough()"
+          data-testid="view-demo-button"
+          aria-label="View demo of PipSplit"
+        >
+          Demo / Walkthrough
+        </a>
+        <a
+          matButton="elevated"
+          class="btn-primary"
+          type="button"
+          [routerLink]="['split']"
+          data-testid="split-expense-button"
+          aria-label="Split an expense now"
+        >
+          Split an expense now
+        </a>
       }
     </div>
     <div class="logo" data-testid="hero-image-section">
