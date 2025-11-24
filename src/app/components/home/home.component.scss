@@ -1,3 +1,25 @@
+.top-section {
+  display: grid;
+  grid-template-columns: 1fr 6fr 4fr 1fr;
+  justify-content: center;
+  grid-template-areas:
+    '. app-details logo .'
+    '. buttons link .';
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .top-section {
+    grid-template-columns: 1fr 4fr 4fr 1fr;
+    row-gap: 1em;
+    grid-template-rows: auto;
+    grid-template-areas:
+      '. app-details logo .'
+      '. app-details link .'
+      '. buttons buttons .';
+  }
+}
+
 .app-details {
   grid-area: app-details;
 }
@@ -5,14 +27,27 @@
 .buttons {
   grid-area: buttons;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-content: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  a {
+    white-space: nowrap;
+  }
 }
 
-.buttons-row-2 {
+.logo {
+  grid-area: logo;
+  display: grid;
+  align-content: flex-start;
+  justify-content: center;
+}
+
+.platform-message {
+  grid-area: link;
   display: flex;
-  flex-direction: row;
-  gap: 8px;
+  align-content: flex-start;
+  justify-content: center;
 }
 
 .home-container {
@@ -25,7 +60,7 @@
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 990px) {
   .home-container {
     padding: 16px 5% 0;
 
@@ -38,51 +73,18 @@
   }
 }
 
-@media (min-width: 801px) {
-  #logo {
+@media (min-width: 769px) {
+  #app-logo {
     height: 200px;
     width: 200px;
   }
 }
 
-@media (max-width: 800px) {
-  #logo {
+@media (max-width: 768px) {
+  #app-logo {
     height: 125px;
     width: 125px;
   }
-}
-
-.top-section {
-  display: grid;
-  grid-template-columns: 1fr 4fr 3fr 1fr;
-  justify-content: center;
-  grid-template-areas:
-    '. app-details image .'
-    '. buttons image .';
-}
-
-@media (max-width: 600px) {
-  .top-section {
-    grid-template-columns: 1fr 2fr 2fr 1fr;
-    row-gap: 1em;
-    grid-template-rows: auto;
-    grid-template-areas:
-      '. app-details image .'
-      '. buttons buttons .';
-  }
-}
-
-.image {
-  grid-area: image;
-  display: grid;
-  margin-left: 20px;
-  align-self: self-start;
-  justify-items: center;
-}
-
-.image span,
-a {
-  font-size: 0.8rem;
 }
 
 .summary {
@@ -103,8 +105,9 @@ a {
 
 .feature {
   display: grid;
-  grid-template-rows: 64px 32px auto;
+  grid-template-rows: 64px max-content auto;
   padding: 8px;
+  gap: 1rem;
 }
 
 .feature-icon {
