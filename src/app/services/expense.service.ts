@@ -62,7 +62,7 @@ export class ExpenseService implements IExpenseService {
       if (endDate) {
         expenseQuery = query(expenseQuery, where('date', '<=', endDate));
       }
-      expenseQuery = query(expenseQuery, orderBy('date'));
+      expenseQuery = query(expenseQuery, orderBy('date', 'desc'), limit(200));
 
       // Execute all queries in parallel
       const [splitSnap, expenseSnap] = await Promise.all([
