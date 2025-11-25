@@ -511,6 +511,13 @@ tr.detail-row:hover {
   clear: both;
 }
 
+.no-data-cell {
+  text-align: center !important;
+  padding: 24px !important;
+  font-style: italic;
+  color: tokens.color('outline');
+}
+
 .mat-sort-header-arrow {
   color: tokens.color('on-primary') !important;
 }
@@ -990,4 +997,92 @@ span.filename {
 
 a:hover {
   cursor: pointer;
+}
+
+/* ========================================
+   TABLE FILTER STYLES
+======================================== */
+
+.filter-icon {
+  color: tokens.color('on-primary') !important;
+  opacity: 0.7;
+  font-size: 1rem !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin-left: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.filter-active {
+    opacity: 1;
+    color: tokens.color('applied-filter') !important;
+  }
+}
+
+.filter-panel {
+  background: tokens.color('surface');
+  border: 1px solid tokens.color('outline-variant');
+  border-radius: 4px;
+  padding: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+  max-width: 350px;
+
+  .filter-panel-header {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background-color: tokens.color('surface-variant');
+    text-align: center;
+
+    h4,
+    h5 {
+      margin: 0;
+      font-weight: 500;
+      color: tokens.color('on-surface');
+    }
+  }
+
+  .filter-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filter-panel-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .filter-quick-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+
+    button {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      min-height: 28px;
+    }
+  }
+}
+
+.filter-toggle-group {
+  display: flex;
+  gap: 4px;
+
+  button {
+    flex: 1;
+
+    &.active {
+      background-color: tokens.color('primary') !important;
+      color: tokens.color('on-primary') !important;
+    }
+  }
 }

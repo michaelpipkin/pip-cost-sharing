@@ -1,5 +1,16 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  OnInit,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -27,12 +38,17 @@ import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { DateRangeFilterDirective } from '@shared/directives/filters/date-range-filter.directive';
+import { SelectFilterDirective } from '@shared/directives/filters/select-filter.directive';
+import { TextFilterDirective } from '@shared/directives/filters/text-filter.directive';
+import { ToggleFilterDirective } from '@shared/directives/filters/toggle-filter.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { TableFilterService } from '@shared/services/table-filter.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -40,18 +56,8 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  OnInit,
-  signal,
-  Signal,
-} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -79,7 +85,13 @@ import {
     YesNoPipe,
     YesNoNaPipe,
     DateShortcutKeysDirective,
+    DocRefCompareDirective,
+    TextFilterDirective,
+    SelectFilterDirective,
+    ToggleFilterDirective,
+    DateRangeFilterDirective,
   ],
+  providers: [TableFilterService],
 })
 export class ExpensesComponent implements OnInit, AfterViewInit {
   protected readonly storage = inject(getStorage);
@@ -102,6 +114,9 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   protected readonly sorter = inject(SortingService);
   protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+
+  // Table filter service
+  expenseFilterService = inject(TableFilterService<Expense>);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member> = this.memberStore.currentMember;
@@ -151,46 +166,38 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
     });
   }
 
-  searchText = model<string>('');
-  searchFocused = model<boolean>(false);
-  unpaidOnly = model<boolean>(true);
   startDate = model<Date | null>(
     new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
   ); // 90 days ago
   endDate = model<Date | null>(null);
+  searchPayer = model<DocumentReference<Member> | null>(null);
+  searchCategory = model<DocumentReference<Category> | null>(null);
+  unpaidOnly = model<boolean>(true);
 
-  filteredExpenses = computed(
-    (
-      unpaidOnly: boolean = this.unpaidOnly(),
-      searchText: string = this.searchText()
-    ) => {
-      var filteredExpenses = this.expenses().filter((expense: Expense) => {
-        return (
-          (!expense.paid || expense.paid != unpaidOnly) &&
-          (!searchText ||
-            expense.description
-              .toLowerCase()
-              .includes(searchText.toLowerCase()) ||
-            this.members()
-              .find((m) => m.ref.eq(expense.paidByMemberRef))
-              ?.displayName.toLowerCase()
-              .includes(searchText.toLowerCase()) ||
-            this.categories()
-              .find((c) => c.ref.eq(expense.categoryRef))
-              ?.name.toLowerCase()
-              .includes(searchText.toLowerCase()))
-        );
-      });
-      if (filteredExpenses.length > 0) {
-        filteredExpenses = this.sorter.sort(
-          filteredExpenses,
-          this.sortField(),
-          this.sortAsc()
-        );
-      }
-      return filteredExpenses;
+  filteredExpenses = computed(() => {
+    // Create a copy to avoid mutating the original signal array
+    var filteredExpenses = [...this.expenses()];
+
+    // Apply table filter directives
+    const tableFilters = this.expenseFilterService.filters();
+    tableFilters.forEach((filterValue, key) => {
+      filteredExpenses = this.applyTableFilter(
+        filteredExpenses,
+        key,
+        filterValue
+      );
+    });
+
+    // Apply sorting
+    if (filteredExpenses.length > 0) {
+      filteredExpenses = this.sorter.sort(
+        filteredExpenses,
+        this.sortField(),
+        this.sortAsc()
+      );
     }
-  );
+    return filteredExpenses;
+  });
 
   expenseTotal = computed(() =>
     this.filteredExpenses().reduce((total, e) => (total += +e.totalAmount), 0)
@@ -268,7 +275,10 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
           await this.expenseService.getGroupExpensesByDateRange(
             this.currentGroup().id,
             this.startDate(),
-            this.endDate()
+            this.endDate(),
+            this.unpaidOnly(),
+            this.searchPayer(),
+            this.searchCategory()
           );
         this.expenses.set(expenses);
         this.isLoaded.set(true);
@@ -279,38 +289,6 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
       });
     } finally {
       this.loading.loadingOff();
-    }
-  }
-
-  onFetchExpensesClick(): void {
-    if (!this.startDate() && !this.endDate()) {
-      const dialogConfig: MatDialogConfig = {
-        data: {
-          dialogTitle: 'Confirm Fetch All Expenses',
-          confirmationText:
-            'Fetching all expenses with no start or end date may take a long time. Are you sure you want to continue?',
-          cancelButtonText: 'No',
-          confirmButtonText: 'Yes',
-        },
-      };
-      const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
-      dialogRef.afterClosed().subscribe((confirm) => {
-        if (confirm) {
-          this.loadExpenses();
-        }
-      });
-    } else {
-      this.loadExpenses();
-    }
-  }
-
-  onSearchFocus() {
-    this.searchFocused.set(true);
-  }
-
-  onSearchBlur() {
-    if (!this.searchText()) {
-      this.searchFocused.set(false);
     }
   }
 
@@ -549,4 +527,136 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   private formatCurrency(amount: number): string {
     return this.localeService.formatCurrency(amount);
   }
+
+  // Apply table filter based on filter type
+  private applyTableFilter(
+    expenses: Expense[],
+    key: string,
+    filterValue: any
+  ): Expense[] {
+    switch (filterValue.type) {
+      case 'text':
+        return expenses.filter((expense) => {
+          const value = (expense as any)[key];
+          if (value === undefined || value === null) return false;
+
+          const stringValue = String(value);
+          const searchValue = filterValue.value;
+
+          if (filterValue.caseSensitive) {
+            return stringValue.includes(searchValue);
+          } else {
+            return stringValue
+              .toLowerCase()
+              .includes(searchValue.toLowerCase());
+          }
+        });
+
+      case 'select':
+        return expenses.filter((expense) => {
+          const value = (expense as any)[key];
+          if (filterValue.multiple) {
+            return filterValue.value.some((filterVal: any) => {
+              // Extract ref if filterVal is an object with a ref property
+              const compareVal = filterVal?.ref ? filterVal.ref : filterVal;
+              return this.compareValues(value, compareVal);
+            });
+          } else {
+            // Extract ref if filterValue.value is an object with a ref property
+            const compareVal = filterValue.value?.ref
+              ? filterValue.value.ref
+              : filterValue.value;
+            return this.compareValues(value, compareVal);
+          }
+        });
+
+      case 'dateRange':
+        return expenses.filter((expense) => {
+          const value = (expense as any)[key];
+          if (!value) return false;
+
+          // Get the date from Timestamp or Date
+          let expenseDate: Date;
+          if (value.toDate && typeof value.toDate === 'function') {
+            // Firestore Timestamp - use DateUtils
+            expenseDate = DateUtils.getDateOnly(value);
+          } else if (value instanceof Date) {
+            // Already a Date
+            expenseDate = new Date(
+              value.getFullYear(),
+              value.getMonth(),
+              value.getDate()
+            );
+          } else {
+            return false;
+          }
+
+          if (filterValue.start && filterValue.end) {
+            const startDate = new Date(
+              filterValue.start.getFullYear(),
+              filterValue.start.getMonth(),
+              filterValue.start.getDate()
+            );
+            const endDate = new Date(
+              filterValue.end.getFullYear(),
+              filterValue.end.getMonth(),
+              filterValue.end.getDate()
+            );
+            return expenseDate >= startDate && expenseDate <= endDate;
+          } else if (filterValue.start) {
+            const startDate = new Date(
+              filterValue.start.getFullYear(),
+              filterValue.start.getMonth(),
+              filterValue.start.getDate()
+            );
+            return expenseDate >= startDate;
+          } else if (filterValue.end) {
+            const endDate = new Date(
+              filterValue.end.getFullYear(),
+              filterValue.end.getMonth(),
+              filterValue.end.getDate()
+            );
+            return expenseDate <= endDate;
+          }
+
+          return true;
+        });
+
+      case 'toggle':
+        return expenses.filter((expense) => {
+          const value = (expense as any)[key];
+          return value === filterValue.value;
+        });
+
+      default:
+        return expenses;
+    }
+  }
+
+  // Helper to compare values (handles primitives and DocumentReferences)
+  private compareValues(value1: any, value2: any): boolean {
+    if (value1 === value2) return true;
+
+    // Handle DocumentReference comparison
+    if (
+      value1?.path !== undefined &&
+      value2?.path !== undefined &&
+      typeof value1.path === 'string' &&
+      typeof value2.path === 'string'
+    ) {
+      return value1.path === value2.path;
+    }
+
+    return false;
+  }
+
+  // Display function for category select filter
+  categoryDisplayFn = (category: Category): string => {
+    return category?.name || '';
+  };
+
+  // Display function for member select filter
+  memberDisplayFn = (member: Member): string => {
+    return member?.displayName || '';
+  };
 }
