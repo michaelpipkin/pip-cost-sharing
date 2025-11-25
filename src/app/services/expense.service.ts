@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
+import { Category } from '@models/category';
 import { Expense } from '@models/expense';
+import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -35,7 +37,10 @@ export class ExpenseService implements IExpenseService {
   async getGroupExpensesByDateRange(
     groupId: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    unpaidOnly?: boolean,
+    memberRef?: DocumentReference<Member> | null,
+    categoryRef?: DocumentReference<Category> | null
   ): Promise<Expense[]> {
     try {
       // Wait for stores to be loaded before processing
@@ -62,6 +67,22 @@ export class ExpenseService implements IExpenseService {
       if (endDate) {
         expenseQuery = query(expenseQuery, where('date', '<=', endDate));
       }
+      if (unpaidOnly) {
+        expenseQuery = query(expenseQuery, where('paid', '==', false));
+      }
+      if (memberRef) {
+        expenseQuery = query(
+          expenseQuery,
+          where('paidByMemberRef', '==', memberRef)
+        );
+      }
+      if (categoryRef) {
+        expenseQuery = query(
+          expenseQuery,
+          where('categoryRef', '==', categoryRef)
+        );
+      }
+
       expenseQuery = query(expenseQuery, orderBy('date', 'desc'), limit(200));
 
       // Execute all queries in parallel
