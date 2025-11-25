@@ -80,45 +80,6 @@
         }
         <mat-datepicker #endDatePicker></mat-datepicker>
       </mat-form-field>
-      <button
-        matButton="elevated"
-        type="button"
-        class="btn-primary fetch-button"
-        (click)="onFetchExpensesClick()"
-      >
-        Fetch Expenses
-      </button>
-    </div>
-    <div class="filters mt-3">
-      <mat-form-field
-        class="clearable"
-        id="search-field"
-        subscriptSizing="dynamic"
-      >
-        <mat-label>{{
-          searchFocused()
-            ? 'Search by payer, description, or category'
-            : 'Search'
-        }}</mat-label>
-        <input
-          matInput
-          [(ngModel)]="searchText"
-          (focus)="onSearchFocus()"
-          (blur)="onSearchBlur()"
-        />
-        @if (searchText() !== '') {
-          <button
-            matSuffix
-            matIconButton
-            tabindex="-1"
-            aria-label="Clear"
-            (click)="searchText.set('')"
-            [matTooltip]="'Clear'"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </mat-form-field>
       <mat-slide-toggle
         #unpaidToggle
         class="unpaid-toggle"
@@ -126,6 +87,48 @@
         [(ngModel)]="unpaidOnly"
         >Unpaid only</mat-slide-toggle
       >
+    </div>
+    <div class="filters mt-2">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-select
+          class="payer-select"
+          [(ngModel)]="searchPayer"
+          docRefCompare
+          placeholder="-- All Payers --"
+        >
+          <mat-option [value]="null">-- All Payers --</mat-option>
+          @for (member of members(); track member.ref) {
+            <mat-option [value]="member.ref">
+              {{ member.displayName }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-select
+          class="payer-select"
+          [(ngModel)]="searchCategory"
+          docRefCompare
+          placeholder="-- All Categories --"
+        >
+          <mat-option [value]="null">-- All Categories --</mat-option>
+          @for (category of categories(); track category.ref) {
+            <mat-option [value]="category.ref">
+              {{ category.name }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="filters mt-3">
+      <button
+        matButton="elevated"
+        type="button"
+        class="btn-primary fetch-button"
+        (click)="loadExpenses()"
+      >
+        Fetch Expenses
+      </button>
       <button
         matButton="elevated"
         class="btn-primary add-button"
@@ -135,7 +138,15 @@
         Add New Expense
       </button>
     </div>
-    @if (filteredExpenses()?.length > 0) {
+    @if (expenses()?.length >= 200) {
+      <div class="alert alert-warning mt-3" role="alert">
+        <strong>Note:</strong> You have reached the maximum number of expenses
+        (200) that can be fetched at once.<br />
+        Please refine your search criteria and fetch again to see more specific
+        results.
+      </div>
+    }
+    @if (expenses()?.length > 0) {
       <div class="table-container mat-elevation-z8" data-tour="expenses-list">
         <div class="scrollable-table">
           <table
@@ -157,6 +168,13 @@
                 *matHeaderCellDef
                 mat-sort-header
                 class="cell-left no-wrap"
+                appSelectFilter
+                [filterKey]="'paidByMemberRef'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Payer'"
+                [filterOptions]="members()"
+                [filterLabel]="'Select payer'"
+                [displayFn]="memberDisplayFn"
               >
                 Date<br />Payer
               </th>
@@ -165,7 +183,6 @@
                 <br />
                 {{ expense.paidByMember.displayName }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="date">
               <th
@@ -173,23 +190,47 @@
                 *matHeaderCellDef
                 mat-sort-header
                 class="cell-left"
+                appDateRangeFilter
+                [filterKey]="'date'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Date'"
               >
                 Date
               </th>
               <td mat-cell *matCellDef="let expense" class="no-wrap">
                 {{ getDateOnly(expense) | date: 'M/d/yyyy' }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="paidBy">
-              <th mat-header-cell *matHeaderCellDef>Payer</th>
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                appSelectFilter
+                [filterKey]="'paidByMemberRef'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Payer'"
+                [filterOptions]="members()"
+                [filterLabel]="'Select payer'"
+                [displayFn]="memberDisplayFn"
+              >
+                Payer
+              </th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.paidByMember.displayName }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="description-category">
-              <th mat-header-cell *matHeaderCellDef>
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                appSelectFilter
+                [filterKey]="'categoryRef'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Category'"
+                [filterOptions]="categories()"
+                [filterLabel]="'Select category'"
+                [displayFn]="categoryDisplayFn"
+              >
                 Description<br />Category
               </th>
               <td mat-cell *matCellDef="let expense">
@@ -197,25 +238,39 @@
                 <br />
                 {{ expense.category.name }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef class="cell-right">
-                Total:
-              </td> -->
             </ng-container>
             <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                appTextFilter
+                [filterKey]="'description'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Description'"
+              >
+                Description
+              </th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.description }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef></td> -->
             </ng-container>
             <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                appSelectFilter
+                [filterKey]="'categoryRef'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Category'"
+                [filterOptions]="categories()"
+                [filterLabel]="'Select category'"
+                [displayFn]="categoryDisplayFn"
+              >
+                Category
+              </th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.category.name }}
               </td>
-              <!-- <td mat-footer-cell *matFooterCellDef class="cell-right">
-                Total:
-              </td> -->
             </ng-container>
             <ng-container matColumnDef="amount">
               <th mat-header-cell *matHeaderCellDef class="cell-right">
@@ -247,7 +302,15 @@
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
             <ng-container matColumnDef="paid">
-              <th mat-header-cell *matHeaderCellDef class="cell-center">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="cell-center"
+                appToggleFilter
+                [filterKey]="'paid'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Paid'"
+              >
                 Paid
               </th>
               <td mat-cell *matCellDef="let expense" class="cell-center">
@@ -256,7 +319,15 @@
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
             <ng-container matColumnDef="receipt-paid">
-              <th mat-header-cell *matHeaderCellDef class="cell-center">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="cell-center"
+                appToggleFilter
+                [filterKey]="'paid'"
+                [filterService]="expenseFilterService"
+                [columnHeader]="'Paid'"
+              >
                 Rcpt<br />Paid
               </th>
               <td mat-cell *matCellDef="let expense" class="cell-center">
@@ -273,11 +344,9 @@
                 class="cell-center"
                 aria-label="row actions"
               >
-                @if (!smallScreen()) {
-                  Splits
-                } @else {
-                  Spl
-                }
+                <mat-icon fontSet="material-symbols-outlined"
+                  >arrow_split</mat-icon
+                >
               </th>
               <td mat-cell *matCellDef="let expense" class="cell-center">
                 <button
@@ -440,6 +509,14 @@
               mat-footer-row
               *matFooterRowDef="footerColumnsToDisplay(); sticky: true"
             ></tr>
+            <tr *matNoDataRow class="no-data-row">
+              <td
+                class="mat-mdc-cell mdc-data-table__cell cdk-cell no-data-cell"
+                [attr.colspan]="columnsToDisplay().length"
+              >
+                No expenses match the filter criteria.
+              </td>
+            </tr>
             <tr
               mat-row
               *matRowDef="let split; columns: ['expandedDetail']"
