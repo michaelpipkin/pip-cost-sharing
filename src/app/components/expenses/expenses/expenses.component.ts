@@ -124,7 +124,7 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   expenses = signal<Expense[]>([]);
-  isLoaded = signal<boolean>(true);
+  isLoaded = signal<boolean>(false);
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
@@ -268,7 +268,6 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
       ) {
         // Use demo/store data
         this.expenses.set(storeExpenses);
-        this.isLoaded.set(true);
       } else {
         // Fall back to Firebase service
         const expenses: Expense[] =
@@ -281,13 +280,17 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
             this.searchCategory()
           );
         this.expenses.set(expenses);
-        this.isLoaded.set(true);
       }
     } catch (error) {
       logEvent(this.analytics, 'fetch_expenses_error', {
         error: error.message,
       });
+      console.error('Error loading expenses:', error);
+      // Set empty array on error so the UI shows "No expenses found" instead of hanging
+      this.expenses.set([]);
     } finally {
+      // Always mark as loaded, even on error, so the @defer block resolves
+      this.isLoaded.set(true);
       this.loading.loadingOff();
     }
   }
