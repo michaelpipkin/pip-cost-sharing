@@ -124,7 +124,7 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   expenses = signal<Expense[]>([]);
-  isLoaded = signal<boolean>(false);
+  isLoaded = signal<boolean>(true);
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
