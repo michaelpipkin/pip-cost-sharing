@@ -149,8 +149,14 @@
               </td>
             </ng-container>
             <ng-container matColumnDef="amount">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Amount</th>
-              <td mat-cell *matCellDef="let history">
+              <th mat-header-cell *matHeaderCellDef class="cell-right">
+                Amount
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let history"
+                class="cell-right amount-cell"
+              >
                 {{ history.totalPaid | currency }}
               </td>
             </ng-container>
