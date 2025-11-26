@@ -22,6 +22,10 @@
     },
     "singleProjectMode": true
   },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "site": "pipsplit",
     "public": "dist/browser",

@@ -2,6 +2,7 @@
   "name": "pipsplit",
   "version": "1.11.66",
   "type": "module",
+  "packageManager": "pnpm@10.22.0",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
@@ -98,7 +99,8 @@
       "brace-expansion": ">=1.1.12",
       "vite": ">=7.1.11",
       "@messageformat/runtime": ">=3.0.2",
-      "glob": ">=11.1.0"
+      "glob": ">=11.1.0",
+      "body-parser": ">=2.2.1"
     }
   }
 }
