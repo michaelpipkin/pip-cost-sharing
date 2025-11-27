@@ -88,10 +88,12 @@
         >Unpaid only</mat-slide-toggle
       >
     </div>
-    <div class="filters mt-2">
-      <mat-form-field subscriptSizing="dynamic">
+    <div class="filters placeholder-selects">
+      <mat-form-field subscriptSizing="dynamic" class="payer-select">
+        @if (!!searchPayer()) {
+          <mat-label>Payer</mat-label>
+        }
         <mat-select
-          class="payer-select"
           [(ngModel)]="searchPayer"
           docRefCompare
           placeholder="-- All Payers --"
@@ -104,9 +106,11 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field subscriptSizing="dynamic">
+      <mat-form-field subscriptSizing="dynamic" class="category-select">
+        @if (!!searchCategory()) {
+          <mat-label>Category</mat-label>
+        }
         <mat-select
-          class="payer-select"
           [(ngModel)]="searchCategory"
           docRefCompare
           placeholder="-- All Categories --"
@@ -322,7 +326,7 @@
               <th
                 mat-header-cell
                 *matHeaderCellDef
-                class="cell-center"
+                class="cell-center no-wrap"
                 appToggleFilter
                 [filterKey]="'paid'"
                 [filterService]="expenseFilterService"
