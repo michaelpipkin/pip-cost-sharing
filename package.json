@@ -2,7 +2,6 @@
   "name": "pipsplit",
   "version": "1.11.66",
   "type": "module",
-  "packageManager": "pnpm@10.22.0",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
