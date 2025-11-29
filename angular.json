@@ -34,6 +34,7 @@
               "src/favicon.ico",
               "src/manifest.json",
               "src/ads.txt",
+              "src/app-ads.txt",
               "src/privacy-policy.html",
               "src/assets",
               {
@@ -115,6 +116,7 @@
               "src/favicon.ico",
               "src/manifest.json",
               "src/ads.txt",
+              "src/app-ads.txt",
               "src/privacy-policy.html",
               "src/assets",
               {
