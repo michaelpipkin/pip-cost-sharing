@@ -9,6 +9,7 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { AdMobService } from '@services/admob.service';
 import { DemoService } from '@services/demo.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -45,6 +46,7 @@ export class AppComponent implements OnInit {
   protected readonly router = inject(Router);
   protected readonly analytics = inject(getAnalytics);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  private adMobService = inject(AdMobService);
 
   isSmallScreen = signal<boolean>(false);
 
