@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "175229019851",
+    "project_id": "pip-cost-sharing",
+    "storage_bucket": "pip-cost-sharing.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:175229019851:android:df643006de6dc0ace95d4e",
+        "android_client_info": {
+          "package_name": "com.pipsplit.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "175229019851-hv2rl1mnrlm5valnijqjqk8dj0c293q5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVl-Um2ioDBEZpQoNtHtqFkFCpCzYETCM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "175229019851-hv2rl1mnrlm5valnijqjqk8dj0c293q5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      },
+      "admob_app_id": "ca-app-pub-9151218051877311~6615684271"
+    }
+  ],
+  "configuration_version": "1"
+}
