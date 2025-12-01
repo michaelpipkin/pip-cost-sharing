@@ -6,11 +6,13 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { TextZoom } from '@capacitor/text-zoom';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
 import { DemoService } from '@services/demo.service';
+import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
@@ -46,6 +48,7 @@ export class AppComponent implements OnInit {
   protected readonly router = inject(Router);
   protected readonly analytics = inject(getAnalytics);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly pwaDetection = inject(PwaDetectionService);
   private adMobService = inject(AdMobService);
 
   isSmallScreen = signal<boolean>(false);
@@ -62,6 +65,7 @@ export class AppComponent implements OnInit {
 
   constructor() {
     logEvent(this.analytics, 'app_initalized');
+    this.lockTextZoom();
   }
 
   ngOnInit(): void {
@@ -70,6 +74,13 @@ export class AppComponent implements OnInit {
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });
+  }
+
+  private async lockTextZoom() {
+    if (this.pwaDetection.isRunningAsApp()) {
+      // Set zoom to 100% (1.0) regardless of system setting
+      await TextZoom.set({ value: 1.0 });
+    }
   }
 
   toggleTheme(): void {

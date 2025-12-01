@@ -50,6 +50,9 @@ importers:
       '@capacitor-community/admob':
         specifier: ^7.2.0
         version: 7.2.0
+      '@capacitor-firebase/authentication':
+        specifier: ^7.4.0
+        version: 7.4.0(@capacitor/core@7.4.4)(firebase@12.6.0)
       '@capacitor/android':
         specifier: ^7.4.4
         version: 7.4.4(@capacitor/core@7.4.4)
@@ -59,6 +62,12 @@ importers:
       '@capacitor/core':
         specifier: ^7.4.4
         version: 7.4.4
+      '@capacitor/text-zoom':
+        specifier: ^7.0.2
+        version: 7.0.2(@capacitor/core@7.4.4)
+      '@capawesome/capacitor-android-edge-to-edge-support':
+        specifier: ^7.2.3
+        version: 7.2.3(@capacitor/core@7.4.4)
       '@ngrx/signals':
         specifier: ^20.1.0
         version: 20.1.0(@angular/core@21.0.1(@angular/compiler@21.0.1)(rxjs@7.8.2))(rxjs@7.8.2)
@@ -489,6 +498,15 @@ packages:
     resolution: {integrity: sha512-ejRd0CkiHq15F0XvHXPhk9gKIlYy7lj0hxCP+XUMqXwEoX8HN0BFE7bp3QvXKI/4FtjKMD8KF++e6sYMoKpwvA==}
     engines: {node: '>=20.0.0'}
 
+  '@capacitor-firebase/authentication@7.4.0':
+    resolution: {integrity: sha512-T1ygiWfIguqGUmap87Gh836nCpnOm0C43v6O2xwrowCSx7442khs20NScm2cOebba5PX1aLWwZL19BENV148Yg==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+      firebase: ^11.2.0
+    peerDependenciesMeta:
+      firebase:
+        optional: true
+
   '@capacitor/android@7.4.4':
     resolution: {integrity: sha512-y8knfV1JXNrd6XZZLZireGT+EBCN0lvOo+HZ/s7L8LkrPBu4nY5UZn0Wxz4yOezItEII9rqYJSHsS5fMJG9gdw==}
     peerDependencies:
@@ -511,6 +529,16 @@ packages:
 
   '@capacitor/core@7.4.4':
     resolution: {integrity: sha512-xzjxpr+d2zwTpCaN0k+C6wKSZzWFAb9OVEUtmO72ihjr/NEDoLvsGl4WLfjWPcCO2zOy0b2X52tfRWjECFUjtw==}
+
+  '@capacitor/text-zoom@7.0.2':
+    resolution: {integrity: sha512-FrWrIWGjq7HDmlChdSxp9A05RLjtrMFNRdNOBYdyW47efnYpFy8stp51Ks/2T5jAov1J4Eqc493AHBh4orhm0Q==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
+  '@capawesome/capacitor-android-edge-to-edge-support@7.2.3':
+    resolution: {integrity: sha512-WtwXeU5Clg13t3SO6JvtIfJlpO+E48tHC+vNmC519zcS6GV9URl705UOvwOOvEyh6GFxAi2dHi8lj8iqIOYCdA==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -5782,6 +5810,12 @@ snapshots:
       '@capacitor/core': 7.4.4
       '@rdlabo/capacitor-docgen': 0.4.1
 
+  '@capacitor-firebase/authentication@7.4.0(@capacitor/core@7.4.4)(firebase@12.6.0)':
+    dependencies:
+      '@capacitor/core': 7.4.4
+    optionalDependencies:
+      firebase: 12.6.0
+
   '@capacitor/android@7.4.4(@capacitor/core@7.4.4)':
     dependencies:
       '@capacitor/core': 7.4.4
@@ -5855,6 +5889,14 @@ snapshots:
   '@capacitor/core@7.4.4':
     dependencies:
       tslib: 2.8.1
+
+  '@capacitor/text-zoom@7.0.2(@capacitor/core@7.4.4)':
+    dependencies:
+      '@capacitor/core': 7.4.4
+
+  '@capawesome/capacitor-android-edge-to-edge-support@7.2.3(@capacitor/core@7.4.4)':
+    dependencies:
+      '@capacitor/core': 7.4.4
 
   '@colors/colors@1.5.0': {}
 

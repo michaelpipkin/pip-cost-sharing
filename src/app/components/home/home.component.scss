@@ -14,8 +14,8 @@
     row-gap: 1em;
     grid-template-rows: auto;
     grid-template-areas:
-      '. app-details logo .'
-      '. app-details link .'
+      '. logo link .'
+      '. app-details app-details .'
       '. buttons buttons .';
   }
 }

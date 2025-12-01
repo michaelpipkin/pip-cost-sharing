@@ -27,6 +27,16 @@ body {
   margin: 0;
 }
 
+body {
+  /* This pushes your content inward to avoid the status/home bars */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+
+  /* Ensure padding doesn't make the body larger than 100% */
+  box-sizing: border-box;
+}
+
 * {
   font-size: 0.9rem;
   font-family: 'Open Sans', sans-serif;
@@ -235,7 +245,11 @@ body.dark-theme {
   z-index: 20;
   color: tokens.color('on-primary');
   margin: 0;
-  padding: 4px;
+  padding-top: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
+  /* This adds your 4px spacing PLUS the device's bottom safe area */
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: 0.5rem;
