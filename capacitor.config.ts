@@ -17,6 +17,12 @@ const config: CapacitorConfig = {
       skipNativeAuth: false,
       providers: ['google.com'],
     },
+    AndroidEdgeToEdgeSupport: {
+      statusBarStyle: 'LIGHT',
+      navigationBarStyle: 'LIGHT',
+      enforceStatusBarContrast: false,
+      enforceNavigationBarContrast: false,
+    },
   },
 };
 
