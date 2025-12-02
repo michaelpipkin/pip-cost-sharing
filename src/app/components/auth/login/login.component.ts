@@ -1,4 +1,10 @@
 import { Component, inject, model } from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -6,18 +12,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterModule } from '@angular/router';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import {
   fetchSignInMethodsForEmail,
   getAuth,
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
@@ -90,8 +92,17 @@ export class LoginComponent {
   async googleLogin() {
     try {
       this.loading.loadingOn();
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(this.auth, provider);
+      if (this.isRunningAsApp()) {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        const credential = GoogleAuthProvider.credential(
+          result.credential?.idToken
+        );
+
+        await signInWithCredential(this.auth, credential);
+      } else {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(this.auth, provider);
+      }
       // Navigation handled automatically by UserService.onAuthStateChanged
     } catch (error: any) {
       this.snackBar.open(error.message, 'Close');
