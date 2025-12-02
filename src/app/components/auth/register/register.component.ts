@@ -19,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterModule } from '@angular/router';
+import { Browser } from '@capacitor/browser';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -172,5 +173,13 @@ export class RegisterComponent implements OnInit, OnDestroy {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  async openPrivacyPolicy(event: Event) {
+    if (this.pwaDetection.isRunningAsApp()) {
+      event.preventDefault();
+      await Browser.open({ url: 'https://pipsplit.com/privacy-policy.html' });
+    }
+    // If running in browser, let the default behavior handle it (target="_blank")
   }
 }

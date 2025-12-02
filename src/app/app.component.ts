@@ -82,8 +82,10 @@ export class AppComponent implements OnInit {
       // Set zoom to 100% (1.0) regardless of system setting
       await TextZoom.set({ value: 1.0 });
 
-      // Configure Status Bar - Dark icons on light background
-      await StatusBar.setStyle({ style: Style.Dark });
+      // Configure Status Bar - Light style means dark icons on light background
+      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setBackgroundColor({ color: '#ffffff' });
+      await StatusBar.setOverlaysWebView({ overlay: false });
       await StatusBar.show();
     }
   }
