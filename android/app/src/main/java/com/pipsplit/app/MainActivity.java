@@ -3,6 +3,7 @@ package com.pipsplit.app;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
+import androidx.activity.EdgeToEdge;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -12,10 +13,11 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Configure status bar to use dark icons on light background
-        Window window = getWindow();
-        WindowCompat.setDecorFitsSystemWindows(window, false);
+        // Enable edge-to-edge
+        EdgeToEdge.enable(this);
 
+        // Configure window appearance
+        Window window = getWindow();
         View decorView = window.getDecorView();
         WindowInsetsControllerCompat windowInsetsController =
             WindowCompat.getInsetsController(window, decorView);
@@ -23,9 +25,7 @@ public class MainActivity extends BridgeActivity {
         if (windowInsetsController != null) {
             // Set status bar to use dark icons (for light background)
             windowInsetsController.setAppearanceLightStatusBars(true);
+            windowInsetsController.setAppearanceLightNavigationBars(true);
         }
-
-        // Set status bar color to white
-        window.setStatusBarColor(0xFFFFFFFF);
     }
 }

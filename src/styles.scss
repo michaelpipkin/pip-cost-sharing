@@ -28,10 +28,8 @@ body {
 }
 
 body {
-  /* This pushes your content inward to avoid the status/home bars */
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  /* Don't add padding here - let individual components handle insets */
+  padding: 0;
 
   /* Ensure padding doesn't make the body larger than 100% */
   box-sizing: border-box;
@@ -151,6 +149,10 @@ body.dark-theme {
 .nav {
   background: tokens.color('primary') !important;
   color: tokens.color('on-primary') !important;
+  /* Add safe area padding to toolbar for status bar */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 
   mat-toolbar-row {
     display: flex;
@@ -306,6 +308,9 @@ body.dark-theme {
   width: 95vw;
   margin-left: 2.5vw;
   padding-bottom: 1.25rem;
+  /* Add safe area padding for horizontal notches/edges */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .container {
