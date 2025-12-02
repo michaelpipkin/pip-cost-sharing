@@ -11,8 +11,8 @@ android {
         applicationId "com.pipsplit.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 12
-        versionName "1.0.6"
+        versionCode 13
+        versionName "1.0.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -44,12 +44,16 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation project(':capacitor-firebase-authentication')
 
     // Import the Firebase BoM
     implementation platform('com.google.firebase:firebase-bom:34.6.0')
 
     // Add Firebase Authentication SDK
     implementation 'com.google.firebase:firebase-auth'
+
+    // Add Google Sign-In SDK required by @capacitor-firebase/authentication
+    implementation 'com.google.android.gms:play-services-auth:21.3.0'
 }
 
 apply from: 'capacitor.build.gradle'

@@ -12,6 +12,12 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
     adjustMarginsForEdgeToEdge: 'force',
   },
+  plugins: {
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
+  },
 };
 
 export default config;
