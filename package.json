@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.11.82",
+  "version": "1.11.83",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -12,6 +12,7 @@
     "emu:no-data": "firebase emulators:start",
     "emu:data": "firebase emulators:start --import seed-data",
     "get-indexes": "firebase firestore:indexes",
+    "build:cap": "ng build --configuration=production && npx cap sync",
     "build:prod": "pnpm --no-git-tag-version version patch && node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
     "build:ci": "node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
     "update-angular": "ng update @angular/cli @angular/core @angular/material @angular/cdk",
