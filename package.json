@@ -111,7 +111,8 @@
       "@messageformat/runtime": ">=3.0.2",
       "glob": ">=11.1.0",
       "body-parser": ">=2.2.1",
-      "sharp": ">=0.34.5"
+      "sharp": ">=0.34.5",
+      "@modelcontextprotocol/sdk": ">=1.24.0"
     }
   }
 }
