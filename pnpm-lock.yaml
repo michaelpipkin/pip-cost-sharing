@@ -18,34 +18,34 @@ importers:
   .:
     dependencies:
       '@angular/animations':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))
       '@angular/cdk':
-        specifier: ^21.0.0
+        specifier: ^21.0.1
         version: 21.0.1(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@angular/common':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@angular/compiler':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2
       '@angular/core':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)
       '@angular/forms':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(@angular/platform-browser@21.0.2(@angular/animations@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@standard-schema/spec@1.0.0)(rxjs@7.8.2)
       '@angular/material':
-        specifier: ^21.0.0
+        specifier: ^21.0.1
         version: 21.0.1(dec94edbcf9d9c152a9fc57dbc9f7e4b)
       '@angular/platform-browser':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/animations@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))
       '@angular/platform-browser-dynamic':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/compiler@21.0.2)(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(@angular/platform-browser@21.0.2(@angular/animations@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))
       '@angular/router':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(@angular/platform-browser@21.0.2(@angular/animations@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@capacitor-community/admob':
         specifier: ^7.2.0
@@ -100,13 +100,13 @@ importers:
         version: 2.8.1
     devDependencies:
       '@angular/build':
-        specifier: ^21.0.0
+        specifier: ^21.0.1
         version: 21.0.1(@angular/compiler-cli@21.0.2(@angular/compiler@21.0.2)(typescript@5.9.3))(@angular/compiler@21.0.2)(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(@angular/platform-browser@21.0.2(@angular/animations@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@angular/common@21.0.2(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.0.2(@angular/compiler@21.0.2)(rxjs@7.8.2)))(@types/node@24.10.1)(chokidar@4.0.3)(karma@6.4.4)(postcss@8.5.6)(tslib@2.8.1)(typescript@5.9.3)
       '@angular/cli':
-        specifier: ^21.0.0
+        specifier: ^21.0.1
         version: 21.0.1(@types/node@24.10.1)(chokidar@4.0.3)
       '@angular/compiler-cli':
-        specifier: ^21.0.0
+        specifier: ^21.0.2
         version: 21.0.2(@angular/compiler@21.0.2)(typescript@5.9.3)
       '@capacitor/assets':
         specifier: ^3.0.5
@@ -115,7 +115,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
       '@playwright/test':
-        specifier: ^1.56.1
+        specifier: ^1.57.0
         version: 1.57.0
       '@types/jasmine':
         specifier: ~5.1.13
@@ -124,10 +124,10 @@ importers:
         specifier: ^24.10.1
         version: 24.10.1
       '@typescript-eslint/eslint-plugin':
-        specifier: ^8.47.0
+        specifier: ^8.48.0
         version: 8.48.0(@typescript-eslint/parser@8.48.0(eslint@9.39.1)(typescript@5.9.3))(eslint@9.39.1)(typescript@5.9.3)
       '@typescript-eslint/parser':
-        specifier: ^8.47.0
+        specifier: ^8.48.0
         version: 8.48.0(eslint@9.39.1)(typescript@5.9.3)
       concurrently:
         specifier: ^9.2.1
@@ -166,16 +166,16 @@ importers:
         specifier: ~2.1.0
         version: 2.1.0(jasmine-core@5.10.0)(karma-jasmine@5.1.0(karma@6.4.4))(karma@6.4.4)
       playwright:
-        specifier: ^1.56.1
+        specifier: ^1.57.0
         version: 1.57.0
       prettier:
-        specifier: ^3.6.2
+        specifier: ^3.7.3
         version: 3.7.3
       prettier-eslint-cli:
         specifier: ^8.0.1
         version: 8.0.1(prettier-eslint@16.4.2(typescript@5.9.3))(typescript@5.9.3)
       sharp:
-        specifier: '>=0.34.5'
+        specifier: ^0.34.5
         version: 0.34.5
       typescript:
         specifier: ^5.9.3
