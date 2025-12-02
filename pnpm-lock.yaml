@@ -175,7 +175,7 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(prettier-eslint@16.4.2(typescript@5.9.3))(typescript@5.9.3)
       sharp:
-        specifier: ^0.34.5
+        specifier: '>=0.34.5'
         version: 0.34.5
       typescript:
         specifier: ^5.9.3
