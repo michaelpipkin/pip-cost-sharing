@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.pipsplit.app',
   appName: 'PipSplit',
   webDir: 'dist/browser',
-  server: {
-    url: 'https://pipsplit.com',
-    cleartext: true,
-  },
+  // server: {
+  //   url: 'https://pipsplit.com',
+  //   cleartext: true,
+  // },
   android: {
     allowMixedContent: true,
     adjustMarginsForEdgeToEdge: 'force',

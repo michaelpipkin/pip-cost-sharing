@@ -46,6 +46,7 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/status-bar": "^7.0.3",
     "@capacitor/text-zoom": "^7.0.2",
     "@capawesome/capacitor-android-edge-to-edge-support": "^7.2.3",
     "@ngrx/signals": "^20.1.0",
