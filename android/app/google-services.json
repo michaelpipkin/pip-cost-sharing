@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "175229019851-f82jo5tfudp8s257kvssupo8pctbi5a4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pipsplit.app",
+            "certificate_hash": "56d7f37fac599cfd9df1174ab60a1cf48ab3285f"
+          }
+        },
+        {
           "client_id": "175229019851-t3fpcp3bhq8bkqff7kh023pqfet6a4oa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
