@@ -3,7 +3,9 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
+import { Browser } from '@capacitor/browser';
 import { environment } from '@env/environment';
+import { PwaDetectionService } from '@services/pwa-detection.service';
 import packageJson from 'package.json';
 
 @Component({
@@ -14,6 +16,7 @@ import packageJson from 'package.json';
 })
 export class FooterComponent implements OnInit {
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly pwaDetection = inject(PwaDetectionService);
 
   currentYear = signal<string>(new Date().getFullYear().toString());
   version = signal<string>(packageJson.version);
@@ -48,5 +51,13 @@ export class FooterComponent implements OnInit {
           );
         }
       });
+  }
+
+  async openPrivacyPolicy(event: Event) {
+    if (this.pwaDetection.isRunningAsApp()) {
+      event.preventDefault();
+      await Browser.open({ url: 'https://pipsplit.com/privacy-policy.html' });
+    }
+    // If running in browser, let the default behavior handle it (target="_blank")
   }
 }
