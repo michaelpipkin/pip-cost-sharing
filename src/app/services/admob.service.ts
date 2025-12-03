@@ -13,7 +13,7 @@ export class AdMobService {
   protected readonly analytics = inject(getAnalytics);
 
   // Configuration
-  private readonly ADS_FREQUENCY = 3; // Show ad every 3 page navigations
+  private readonly ADS_FREQUENCY = 4; // Show ad every 4 page navigations
   private readonly ANDROID_INTERSTITIAL_ID =
     'ca-app-pub-9151218051877311/2705618600';
   // State
