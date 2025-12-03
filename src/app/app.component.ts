@@ -6,7 +6,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { StatusBar, Style } from '@capacitor/status-bar';
 import { TextZoom } from '@capacitor/text-zoom';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
@@ -82,11 +81,10 @@ export class AppComponent implements OnInit {
       // Set zoom to 100% (1.0) regardless of system setting
       await TextZoom.set({ value: 1.0 });
 
-      // Configure Status Bar - Light style means dark icons on light background
-      await StatusBar.setStyle({ style: Style.Light });
-      await StatusBar.setBackgroundColor({ color: '#ffffff' });
-      await StatusBar.setOverlaysWebView({ overlay: false });
-      await StatusBar.show();
+      // Status bar is now handled by edge-to-edge configuration in:
+      // - MainActivity.java (WindowInsetsControllerCompat)
+      // - styles.xml (transparent status bar)
+      // - styles.scss (safe area insets)
     }
   }
 
