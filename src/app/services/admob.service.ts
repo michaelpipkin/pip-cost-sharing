@@ -35,6 +35,9 @@ export class AdMobService {
       await AdMob.initialize();
       this.isInitialized = true;
 
+      // Set video ads to be muted by default
+      await AdMob.setApplicationMuted({ muted: true });
+
       AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
         this.isAdLoaded.set(false);
         this.loadInterstitial();
