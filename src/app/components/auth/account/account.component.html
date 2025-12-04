@@ -206,6 +206,56 @@
         </button>
       </form>
     </mat-tab>
+    <mat-tab label="Receipt Policy" data-testid="receipt-policy-tab">
+      <div
+        class="container receipt-policy"
+        data-testid="receipt-policy-content"
+      >
+        <h4 data-testid="receipt-policy-title">Receipt Retention Policy</h4>
+        <p data-testid="policy-text-1">
+          PipSplit retains receipts for 90 days from the expense date. After 90
+          days have passed and all expense splits are marked as paid, receipts
+          are permanently deleted from our servers and cannot be recovered.
+        </p>
+        <p data-testid="policy-text-2">
+          If you wish to keep a copy of your receipts, please save a copy
+          elsewhere.
+        </p>
+
+        @if (user()?.receiptPolicy) {
+          <div class="policy-accepted" data-testid="policy-accepted">
+            <mat-icon class="check-icon">check_circle</mat-icon>
+            <span>You have accepted the receipt retention policy.</span>
+          </div>
+        } @else {
+          <div class="policy-acceptance" data-testid="policy-acceptance">
+            <p data-testid="acceptance-prompt">
+              By checking the box below, you confirm that you understand and
+              accept this receipt retention policy.
+            </p>
+            <div class="policy-controls" data-testid="policy-controls">
+              <mat-checkbox
+                [(ngModel)]="receiptPolicyAcknowledged"
+                data-testid="policy-checkbox"
+              >
+                I acknowledge and accept the receipt retention policy.
+              </mat-checkbox>
+              <button
+                mat-raised-button
+                class="btn-primary mt-2"
+                type="button"
+                [disabled]="!receiptPolicyAcknowledged()"
+                (click)="acceptReceiptPolicy()"
+                data-testid="accept-policy-button"
+                aria-label="Accept receipt retention policy"
+              >
+                Accept Policy
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
   </mat-tab-group>
   @if (isLocalEnvironment()) {
     <button
