@@ -189,7 +189,7 @@
             <span class="filename">{{ fileName() }}</span>
           </div>
         } @else {
-          <div (click)="attachFile.click()" class="attachment">
+          <div (click)="openFileSelectionDialog()" class="attachment">
             <input
               type="file"
               accept=".pdf,image/*"

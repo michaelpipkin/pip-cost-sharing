@@ -1,0 +1,53 @@
+<h1 mat-dialog-title data-test-id="dialog-title">Select Receipt</h1>
+<mat-dialog-content data-test-id="dialog-content">
+  <div class="selection-options">
+    @if (data.showCameraOption) {
+      <button
+        mat-raised-button
+        class="btn-primary selection-button"
+        type="button"
+        [mat-dialog-close]="'camera'"
+        data-test-id="camera-button"
+        aria-label="Take a photo with camera"
+      >
+        <mat-icon>camera_alt</mat-icon>
+        <span>Take Photo</span>
+      </button>
+    }
+    @if (data.showGalleryOption) {
+      <button
+        mat-raised-button
+        class="btn-primary selection-button"
+        type="button"
+        [mat-dialog-close]="'gallery'"
+        data-test-id="gallery-button"
+        aria-label="Choose from photo gallery"
+      >
+        <mat-icon>photo_library</mat-icon>
+        <span>Choose from Gallery</span>
+      </button>
+    }
+    <button
+      mat-raised-button
+      class="btn-primary selection-button"
+      type="button"
+      [mat-dialog-close]="'file'"
+      data-test-id="file-button"
+      aria-label="Browse files"
+    >
+      <mat-icon>folder_open</mat-icon>
+      <span>Browse Files</span>
+    </button>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions data-test-id="dialog-actions">
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="null"
+    data-test-id="cancel-button"
+    aria-label="Cancel"
+  >
+    Cancel
+  </button>
+</mat-dialog-actions>
