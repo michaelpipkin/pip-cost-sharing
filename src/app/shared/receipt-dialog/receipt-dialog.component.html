@@ -1,0 +1,40 @@
+<h4 mat-dialog-title data-test-id="dialog-title" class="mb-2">{{ title }}</h4>
+<mat-dialog-content data-test-id="dialog-content" class="dialog-content">
+  <p data-test-id="dialog-text-1">
+    PipSplit retains receipts for 30 days beyond the date that an expense is
+    marked as fully paid. After this period, receipts are permanently deleted
+    from our servers and cannot be recovered.
+  </p>
+  <p data-test-id="dialog-text-3">
+    If you wish to keep a copy of your receipts, please save a copy elsewhere.
+  </p>
+  <p data-test-id="dialog-text-4">
+    By checking the box below, you confirm that you understand and accept this
+    receipt retention policy.
+  </p>
+  <mat-checkbox data-test-id="acknowledge-checkbox" [(ngModel)]="acknowledged">
+    I acknowledge and accept the receipt retention policy.
+  </mat-checkbox>
+</mat-dialog-content>
+<mat-dialog-actions data-test-id="dialog-actions">
+  <button
+    mat-raised-button
+    class="btn-secondary"
+    type="button"
+    data-test-id="confirm-button"
+    aria-label="acceptButton"
+    (click)="acknowledgePolicy()"
+    [disabled]="!acknowledged()"
+  >
+    Accept
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-test-id="cancel-button"
+    aria-label="cancelButton"
+  >
+    Cancel
+  </button>
+</mat-dialog-actions>

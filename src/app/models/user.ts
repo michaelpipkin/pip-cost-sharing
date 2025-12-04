@@ -13,5 +13,6 @@ export class User {
   cashAppId?: string = '';
   zelleId?: string = '';
   language?: string = 'en';
+  receiptPolicy?: boolean = false;
   ref?: DocumentReference<User>;
 }
