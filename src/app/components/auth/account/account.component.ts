@@ -14,6 +14,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -57,6 +58,7 @@ import { getFunctions } from 'firebase/functions';
     MatSelectModule,
     MatInputModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatIconModule,
     MatTabsModule,
     RouterLink,
@@ -78,6 +80,7 @@ export class AccountComponent {
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly memberService = inject(MemberService);
 
+  user: Signal<User> = this.userStore.user;
   currentUser: Signal<User> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
@@ -94,6 +97,7 @@ export class AccountComponent {
   );
   hidePassword = model<boolean>(true);
   hideConfirm = model<boolean>(true);
+  receiptPolicyAcknowledged = model<boolean>(false);
 
   emailForm = this.fb.group({
     email: [this.currentUser()?.email, Validators.email],
@@ -268,6 +272,31 @@ export class AccountComponent {
       } else {
         this.snackBar.open(
           'Something went wrong - could not update payment service IDs.',
+          'Close'
+        );
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
+  async acceptReceiptPolicy(): Promise<void> {
+    this.loading.loadingOn();
+    try {
+      await this.userService.updateUser({ receiptPolicy: true });
+      this.receiptPolicyAcknowledged.set(false);
+      this.snackBar.open('Receipt retention policy accepted.', 'OK');
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackBar.open(error.message, 'Close');
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'accept_receipt_policy',
+          message: error.message,
+        });
+      } else {
+        this.snackBar.open(
+          'Something went wrong - could not accept receipt policy.',
           'Close'
         );
       }
