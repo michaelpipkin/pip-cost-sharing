@@ -16,7 +16,8 @@ export class HelpContentService {
       title: 'Groups',
       content: [
         'In order to use this app, you must be a member of at least one group. If you received a group join code, click the Join Group button. Enter the group code, as well as your display name for the group. You can have a different display name for each group you are in.',
-        'If you need to create a new group, click the Create New Group button. Enter the group name, as well as your display name for the group. After saving, the group join code will be generated and displayed. Share this code with people you want to invite to the group. You will automatically be made an admin for any group you create.',
+        'If you need to create a new group, click the Create New Group button. Enter the group name, select a currency, and enter your display name for the group. Be aware that the group currency cannot be changed after any expenses have been saved for the group.',
+        'After saving the group, the group join code will be generated and displayed. Share this code with people you want to invite to the group. You will automatically be made an admin for any group you create.',
         "You can manage all groups for which you are a group admin by clicking the Manage Groups button. From here, you can change the group name, or make it inactive. Inactive groups won't show up in the Select Group dropdown list on the groups page.",
       ],
     },
@@ -43,8 +44,8 @@ export class HelpContentService {
       id: 'expenses',
       title: 'Expenses',
       content: [
-        'By default, the expenses page loads expenses from the last 90 days. You can change the start and end dates, then click the Fetch Expenses button to retrieve expenses for that date range. Be aware that clearing both dates and fetching all expenses for the group may take a while.',
-        'You can filter the expenses by payer, description, or category using the search box. Clicking the Unpaid only toggle will alternate between showing all expenses or only those with unpaid splits.',
+        'By default, the expenses page loads unpaid expenses from the last 90 days. You can use the search form at the top of the page to fetch expenses by date range, payer, description, or category. You can also choose to show all expenses, or only unpaid expenses. Be aware that you can only load a maximum of 200 expenses at a time.',
+        'You can filter certain columns in the expenses table by clicking the filter icon in the column header. This will open a popup where you can enter filter criteria for that column. Multiple column filters can be applied at the same time.',
         'Clicking the Date header will toggle sorting the table in ascending or descending date order.',
         'Click the Splits arrow on any row to expand the split detail for that expense. You can click the paid icon on a split row to mark that specific split paid or unpaid. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing.',
         'Click the Add New Expense button to create a new expense for the group.',
@@ -61,7 +62,7 @@ export class HelpContentService {
         'Click the Add New Split button to add a single split line to the expense. By default, an expense is split evenly between all listed members. Click the Split by button to alternate between splitting the expense by dollar amount or by percentage.',
         'If you are splitting by amount, you can enter the amount in the Member Amount field that the member is individually responsible for and should not be split. Click the Add All Members button to automatically insert a split line for each active group member not already listed in the splits table. The form will automatically update the allocated amounts for each member as you change the total amount, proportional amount, or individual amounts for each member.',
         "If you are splitting by percentage, the form will automatically adjust the final member's percentage so that the total will always be 100%.",
-        'You can perform basic arithmetic directly in any amount input field, but not percentage fields. (i.e. entering 3*6-2 in the total amount field will evaluate to 16.00) You can also use the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
+        'Click the calculator button in amount fields to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'The form also allows you to upload a supporting receipt for the expense. The receipt must be a PDF or an image file, with a maximum size of 5MB. Click the Upload receipt button, then select your file. The receipt will be saved with the expense. Please note that receipts are automatically deleted after 90 days if the expense is fully paid. If you need to keep a receipt for your records, please save a copy on your device.',
       ],
     },
@@ -84,7 +85,7 @@ export class HelpContentService {
         'Click the Add New Split button to add a single split line to the expense. By default, an expense is split evenly between all listed members. Click the Split by button to alternate between splitting the expense by dollar amount or by percentage.',
         'If you are splitting by amount, you can enter the amount in the Member Amount field that the member is individually responsible for and should not be split. Click the Add All Members button to automatically insert a split line for each active group member not already listed in the splits table. The form will automatically update the allocated amounts for each member as you change the total amount, proportional amount, or individual amounts for each member.',
         "If you are splitting by percentage, the form will automatically adjust the final member's percentage so that the total will always be 100%.",
-        'You can perform basic arithmetic directly in any amount input field, but not percentage fields. (i.e. entering 3*6-2 in the total amount field will evaluate to 16.00) You can also use the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
+        'Click the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
       ],
     },
     {
@@ -110,6 +111,7 @@ export class HelpContentService {
       id: 'split',
       title: 'Split Expense',
       content: [
+        'When splitting a single expense, you can choose the currency for the expense at the top of the form.',
         'The Proportional Amount field is for items like tax and tip that should be split proportionally to the amount for which each member is responsible. The evenly shared remainder and the allocated split amount for each member will update automatically as you enter/update the total amount, proportional amount, and individual member amounts. The proportional amount is only available when splitting by amount, not percentage.',
         'Click the Add New Split button to add a single split line to the expense. By default, an expense is split evenly between all listed members. Click the Split by button to alternate between splitting the expense by dollar amount or by percentage.',
         'If you are splitting by amount, you can enter the amount in the Member Amount field that the member is individually responsible for and should not be split. The form will automatically update the allocated amounts for each member as you change the total amount, proportional amount, or individual amounts for each member.',
