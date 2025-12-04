@@ -49,6 +49,7 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
@@ -58,6 +59,10 @@ import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.compo
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import {
+  FileSelectionDialogComponent,
+  FileSelectionOption,
+} from '@shared/file-selection-dialog/file-selection-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
@@ -70,12 +75,7 @@ import { StringUtils } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import { DocumentReference } from 'firebase/firestore';
-import {
-  deleteObject,
-  getDownloadURL,
-  getStorage,
-  ref,
-} from 'firebase/storage';
+import { getDownloadURL, getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-edit-expense',
@@ -110,6 +110,7 @@ export class EditExpenseComponent implements OnInit {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly cameraService = inject(CameraService);
   protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
@@ -332,16 +333,7 @@ export class EditExpenseComponent implements OnInit {
   onFileSelected(e): void {
     if (e.target.files.length > 0) {
       const file: File = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        this.snackBar.open(
-          'File is too large. File size limited to 5MB.',
-          'OK'
-        );
-      } else {
-        this.receiptFile.set(file);
-        this.fileName.set(file.name);
-        this.editExpenseForm.markAsDirty();
-      }
+      this.processSelectedFile(file);
     }
   }
 
@@ -349,6 +341,91 @@ export class EditExpenseComponent implements OnInit {
     this.receiptFile.set(null);
     this.fileName.set('');
     this.editExpenseForm.markAsDirty();
+  }
+
+  /**
+   * Opens file selection dialog (native) or file picker (web)
+   * On native platforms: shows dialog to choose camera, gallery, or file browser
+   * On web/PWA: directly opens file picker
+   */
+  async openFileSelectionDialog(): Promise<void> {
+    const isCameraAvailable = this.cameraService.isAvailable();
+
+    // On web/PWA, skip dialog and go directly to file picker
+    if (!isCameraAvailable) {
+      const fileInput = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      if (fileInput) {
+        fileInput.click();
+      }
+      return;
+    }
+
+    // On native platforms, show selection dialog
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '400px',
+      data: {
+        showCameraOption: true,
+        showGalleryOption: true,
+      },
+    };
+
+    const dialogRef = this.dialog.open(
+      FileSelectionDialogComponent,
+      dialogConfig
+    );
+
+    const result: FileSelectionOption | null = await new Promise((resolve) => {
+      dialogRef.afterClosed().subscribe((value) => resolve(value));
+    });
+
+    if (!result) {
+      // User cancelled
+      return;
+    }
+
+    try {
+      let file: File | null = null;
+
+      if (result === 'camera') {
+        file = await this.cameraService.takePicture();
+      } else if (result === 'gallery') {
+        file = await this.cameraService.selectFromGallery();
+      } else if (result === 'file') {
+        // Trigger the hidden file input
+        const fileInput = document.querySelector(
+          'input[type="file"]'
+        ) as HTMLInputElement;
+        if (fileInput) {
+          fileInput.click();
+        }
+        return; // The onFileSelected handler will process the file
+      }
+
+      // Process the file from camera or gallery
+      if (file) {
+        this.processSelectedFile(file);
+      }
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      this.snackBar.open('Failed to select file. Please try again.', 'Close');
+    }
+  }
+
+  /**
+   * Process a file (from camera, gallery, or file browser)
+   * Validates size and sets the file in the component state
+   */
+  private processSelectedFile(file: File): void {
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackBar.open('File is too large. File size limited to 5MB.', 'OK');
+    } else {
+      this.receiptFile.set(file);
+      this.fileName.set(file.name);
+      this.editExpenseForm.markAsDirty();
+    }
   }
 
   onSplitByPercentageClick(): void {
@@ -599,13 +676,6 @@ export class EditExpenseComponent implements OnInit {
             this.#currentGroup().id,
             this.expense().ref
           );
-          if (this.receiptUrl()) {
-            const fileRef = ref(
-              this.storage,
-              `groups/${this.#currentGroup().id}/receipts/${this.expense().id}`
-            );
-            await deleteObject(fileRef);
-          }
           this.snackBar.open('Expense deleted.', 'OK');
           if (this.demoService.isInDemoMode()) {
             this.router.navigate(['/demo/expenses']);

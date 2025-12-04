@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-community-admob')
     implementation project(':capacitor-firebase-authentication')
     implementation project(':capacitor-browser')
+    implementation project(':capacitor-camera')
     implementation project(':capacitor-text-zoom')
     implementation project(':capawesome-capacitor-android-edge-to-edge-support')
 
