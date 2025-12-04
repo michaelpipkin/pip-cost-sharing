@@ -12,9 +12,6 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DemoModeService } from './demo-mode.service';
-import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
 import {
   browserLocalPersistence,
   getAuth,
@@ -27,6 +24,9 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
+import { DemoModeService } from './demo-mode.service';
+import { GroupService } from './group.service';
+import { IUserService } from './user.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -80,24 +80,6 @@ export class UserService implements IUserService {
             );
             this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
             await this.groupService.getUserGroups(user);
-
-            // Handle auto-navigation for bookmarked/direct home page visits
-            // Login/register pages are handled by loggedInGuard
-            // const currentUrl = this.router.url;
-            // const isRedirectPage =
-            //   currentUrl === '/home' ||
-            //   currentUrl === '/' ||
-            //   currentUrl === '/auth/login' ||
-            //   currentUrl === '/auth/account';
-
-            // if (isRedirectPage) {
-            //   // Validated users go to expenses, unvalidated users go to account
-            //   if (this.userStore.isValidUser()) {
-            //     this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
-            //   } else {
-            //     this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
-            //   }
-            // }
           } catch (error) {
             logEvent(this.analytics, 'error', {
               message: 'Failed to initialize user',
@@ -146,6 +128,7 @@ export class UserService implements IUserService {
       const docRef = doc(this.fs, `users/${userId}`);
       const defaultUserData = {
         defaultGroupRef: null,
+        receiptPolicy: false,
         venmoId: '',
         paypalId: '',
         cashAppId: '',

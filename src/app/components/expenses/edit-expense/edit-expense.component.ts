@@ -65,10 +65,12 @@ import {
 } from '@shared/file-selection-dialog/file-selection-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
 import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { DateUtils } from '@utils/date-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
@@ -109,6 +111,7 @@ export class EditExpenseComponent implements OnInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
+  protected readonly userStore = inject(UserStore);
   protected readonly categoryService = inject(CategoryService);
   protected readonly cameraService = inject(CameraService);
   protected readonly demoService = inject(DemoService);
@@ -345,10 +348,30 @@ export class EditExpenseComponent implements OnInit {
 
   /**
    * Opens file selection dialog (native) or file picker (web)
+   * First checks if user has accepted receipt policy
    * On native platforms: shows dialog to choose camera, gallery, or file browser
    * On web/PWA: directly opens file picker
    */
   async openFileSelectionDialog(): Promise<void> {
+    // Check if user has accepted receipt policy (checked at click time, not component load)
+    const currentUser = this.userStore.user();
+    if (!currentUser?.receiptPolicy) {
+      const policyDialogRef = this.dialog.open(ReceiptDialogComponent, {
+        disableClose: true,
+        maxWidth: '600px',
+      });
+
+      const accepted = await new Promise<boolean>((resolve) => {
+        policyDialogRef.afterClosed().subscribe((value) => resolve(value));
+      });
+
+      if (!accepted) {
+        // User cancelled or didn't accept policy
+        return;
+      }
+      // Policy now accepted, continue with file selection
+    }
+
     const isCameraAvailable = this.cameraService.isAvailable();
 
     // On web/PWA, skip dialog and go directly to file picker

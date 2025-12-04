@@ -35,6 +35,10 @@ export class AdMobService {
       await AdMob.initialize();
       this.isInitialized = true;
 
+      // Set video ads to be muted by default (both methods for maximum compatibility)
+      await AdMob.setApplicationMuted({ muted: true });
+      await AdMob.setApplicationVolume({ volume: 0.0 });
+
       AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
         this.isAdLoaded.set(false);
         this.loadInterstitial();
@@ -99,6 +103,10 @@ export class AdMobService {
 
   private async showInterstitial() {
     try {
+      // Ensure muted state right before showing ad
+      await AdMob.setApplicationMuted({ muted: true });
+      await AdMob.setApplicationVolume({ volume: 0.0 });
+
       await AdMob.showInterstitial();
 
       // Reset count immediately on show
