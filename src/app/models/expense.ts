@@ -1,4 +1,4 @@
-import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import { getStorage, ref, StorageReference } from 'firebase/storage';
 import { Category } from './category';
 import { Member } from './member';
@@ -9,7 +9,7 @@ export class Expense {
     Object.assign(this, init);
   }
   id: string;
-  date: Timestamp;
+  date: Date;
   description: string;
   categoryRef: DocumentReference<Category>;
   category?: Category;
@@ -41,3 +41,5 @@ export class Expense {
     return amount;
   }
 }
+
+export type ExpenseDto = Omit<Expense, 'date'> & { date: string };

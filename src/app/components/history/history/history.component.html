@@ -133,7 +133,7 @@
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
               <td mat-cell *matCellDef="let history" class="no-wrap">
-                {{ getDateOnly(history) | date: 'M/d/yyyy' }}
+                {{ history.date | date: 'M/d/yyyy' }}
               </td>
             </ng-container>
             <ng-container matColumnDef="paidTo">

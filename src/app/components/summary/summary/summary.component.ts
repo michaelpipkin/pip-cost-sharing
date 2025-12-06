@@ -41,9 +41,9 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { DateUtils } from '@utils/date-utils.service';
+import { toIsoFormat } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -122,10 +122,7 @@ export class SummaryComponent implements AfterViewInit {
       endDate = new Date(endDate.setDate(endDate.getDate() + 1));
     }
     return this.splits().filter((split: Split) => {
-      return (
-        DateUtils.getDateOnly(split.date) >= startDate &&
-        DateUtils.getDateOnly(split.date) < endDate
-      );
+      return split.date >= startDate && split.date < endDate;
     });
   });
 
@@ -306,7 +303,7 @@ export class SummaryComponent implements AfterViewInit {
           let history = {
             paidByMemberRef: owedByMemberRef,
             paidToMemberRef: owedToMemberRef,
-            date: Timestamp.now(),
+            date: toIsoFormat(new Date()),
             totalPaid: this.localeService.roundToCurrency(
               +splitsToPay.reduce(
                 (total, s) =>

@@ -386,12 +386,8 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
     }
   }
 
-  getDateOnly(expense: Expense): Date {
-    return DateUtils.getDateOnly(expense.date);
-  }
-
   private generateExpenseSummaryText(expense: Expense): string {
-    const date = DateUtils.getDateOnly(expense.date).toLocaleDateString();
+    const date = expense.date.toLocaleDateString();
 
     let summaryText = `Date: ${date}\n`;
     summaryText += `Description: ${expense.description}\n`;
