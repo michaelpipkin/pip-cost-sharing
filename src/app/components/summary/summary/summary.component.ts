@@ -41,7 +41,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { toIsoFormat } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import {
@@ -303,7 +302,7 @@ export class SummaryComponent implements AfterViewInit {
           let history = {
             paidByMemberRef: owedByMemberRef,
             paidToMemberRef: owedToMemberRef,
-            date: toIsoFormat(new Date()),
+            date: new Date().toIsoFormat(),
             totalPaid: this.localeService.roundToCurrency(
               +splitsToPay.reduce(
                 (total, s) =>

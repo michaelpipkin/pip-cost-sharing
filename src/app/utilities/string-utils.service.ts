@@ -53,14 +53,4 @@ export class StringUtils {
       return 0;
     }
   }
-
-  /**
-   * Parses a date string in ISO 8601 format (YYYY-MM-DD) to
-   * a Date object at UTC midnight
-   */
-  static parseDate(isoDateString: string): Date {
-    return new Date(isoDateString + 'T00:00:00Z');
-  }
 }
-
-export const parseDate = StringUtils.parseDate;

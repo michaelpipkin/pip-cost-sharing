@@ -3,8 +3,6 @@ import { Expense } from '@models/expense';
 import { HistoryDto } from '@models/history';
 import { Split, SplitDto } from '@models/split';
 import { SplitStore } from '@store/split.store';
-import { timestampToIsoDateString } from '@utils/date-utils.service';
-import { parseDate } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
@@ -44,7 +42,7 @@ export class SplitService implements ISplitService {
             return new Split({
               id: d.id,
               ...data,
-              date: parseDate(data.date),
+              date: data.date.parseDate(),
               ref: d.ref as DocumentReference<Split>,
             });
           });
@@ -177,7 +175,11 @@ export class SplitService implements ISplitService {
    * Migrates split date fields from Timestamp to ISO 8601 string format.
    * Run this once when ready to switch to string-based date storage.
    */
-  async migrateDateTimestampToString(): Promise<{ success: boolean; count: number; error?: string }> {
+  async migrateDateTimestampToString(): Promise<{
+    success: boolean;
+    count: number;
+    error?: string;
+  }> {
     try {
       const splitsCollection = collectionGroup(this.fs, 'splits');
       const splitDocs = await getDocs(splitsCollection);
@@ -192,7 +194,7 @@ export class SplitService implements ISplitService {
 
         // Check if date is a Timestamp (has toDate method)
         if (data.date instanceof Timestamp) {
-          const isoDateString = timestampToIsoDateString(data.date);
+          const isoDateString = data.date.toIsoDateString();
           batch.update(splitDoc.ref, { date: isoDateString });
           migratedCount++;
           batchCount++;
@@ -211,7 +213,9 @@ export class SplitService implements ISplitService {
         await batch.commit();
       }
 
-      console.log(`Successfully migrated ${migratedCount} split date fields to ISO string format`);
+      console.log(
+        `Successfully migrated ${migratedCount} split date fields to ISO string format`
+      );
       return { success: true, count: migratedCount };
     } catch (error) {
       console.error('Error migrating split date fields:', error);
