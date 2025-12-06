@@ -6,11 +6,6 @@ import { Split, SplitDto } from '@models/split';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
-import {
-  timestampToIsoDateString,
-  toIsoFormat,
-} from '@utils/date-utils.service';
-import { parseDate } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
@@ -55,8 +50,8 @@ export class ExpenseService implements IExpenseService {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const isoStartDate = startDate ? toIsoFormat(startDate) : null;
-      const isoEndDate = endDate ? toIsoFormat(endDate) : null;
+      const isoStartDate = startDate ? startDate.toIsoFormat() : null;
+      const isoEndDate = endDate ? endDate.toIsoFormat() : null;
 
       // Build split query
       let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
@@ -107,7 +102,7 @@ export class ExpenseService implements IExpenseService {
         return new Split({
           id: doc.id,
           ...data,
-          date: parseDate(data.date),
+          date: data.date.parseDate(),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -121,7 +116,7 @@ export class ExpenseService implements IExpenseService {
         return new Expense({
           id: doc.id,
           ...data,
-          date: parseDate(data.date),
+          date: data.date.parseDate(),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           ref: doc.ref as DocumentReference<Expense>,
@@ -177,7 +172,7 @@ export class ExpenseService implements IExpenseService {
       const expense = new Expense({
         id: expenseDoc.id,
         ...data,
-        date: parseDate(data.date),
+        date: data.date.parseDate(),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: expenseDoc.ref as DocumentReference<Expense>,
@@ -188,7 +183,7 @@ export class ExpenseService implements IExpenseService {
         return new Split({
           id: doc.id,
           ...data,
-          date: parseDate(data.date),
+          date: data.date.parseDate(),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -421,7 +416,11 @@ export class ExpenseService implements IExpenseService {
    * Migrates expense date fields from Timestamp to ISO 8601 string format.
    * Run this once when ready to switch to string-based date storage.
    */
-  async migrateDateTimestampToString(): Promise<{ success: boolean; count: number; error?: string }> {
+  async migrateDateTimestampToString(): Promise<{
+    success: boolean;
+    count: number;
+    error?: string;
+  }> {
     try {
       const expensesCollection = collectionGroup(this.fs, 'expenses');
       const expenseDocs = await getDocs(expensesCollection);
@@ -436,7 +435,7 @@ export class ExpenseService implements IExpenseService {
 
         // Check if date is a Timestamp (has toDate method)
         if (data.date instanceof Timestamp) {
-          const isoDateString = timestampToIsoDateString(data.date);
+          const isoDateString = data.date.toIsoDateString();
           batch.update(expenseDoc.ref, { date: isoDateString });
           migratedCount++;
           batchCount++;
@@ -455,7 +454,9 @@ export class ExpenseService implements IExpenseService {
         await batch.commit();
       }
 
-      console.log(`Successfully migrated ${migratedCount} expense date fields to ISO string format`);
+      console.log(
+        `Successfully migrated ${migratedCount} expense date fields to ISO string format`
+      );
       return { success: true, count: migratedCount };
     } catch (error) {
       console.error('Error migrating expense date fields:', error);

@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.12.10",
+  "version": "1.12.11",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
