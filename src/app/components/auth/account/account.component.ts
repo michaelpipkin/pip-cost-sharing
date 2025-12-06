@@ -315,17 +315,17 @@ export class AccountComponent {
       //   .then((result) => console.log(result))
       //   .catch((error) => console.error(error));
       await Promise.all([
-        //   this.expenseService.removeHasReceiptField(),
-        //   this.expenseService.migrateCategoryIdsToRefs(),
-        //   this.memorizedService.migrateCategoryIdsToRefs(),
-        //   this.userService.migrateGroupIdsToRefs(),
-        //   this.memberService.migrateUserIdsToRefs(),
-        //   this.splitService.migrateFieldIdsToRefs(),
-        //   this.groupService.normalizeAllGroupDatesToUTC(),
-        //this.groupService.setDefaultCurrencyForAllGroups(),
-        this.expenseService.migrateDateTimestampToString(),
-        this.splitService.migrateDateTimestampToString(),
-        this.historyService.migrateDateTimestampToString(),
+        // this.expenseService.removeHasReceiptField(),
+        // this.expenseService.migrateCategoryIdsToRefs(),
+        // this.memorizedService.migrateCategoryIdsToRefs(),
+        // this.userService.migrateGroupIdsToRefs(),
+        // this.memberService.migrateUserIdsToRefs(),
+        // this.splitService.migrateFieldIdsToRefs(),
+        // this.groupService.normalizeAllGroupDatesToUTC(),
+        // this.groupService.setDefaultCurrencyForAllGroups(),
+        // this.expenseService.migrateDateTimestampToString(),
+        // this.splitService.migrateDateTimestampToString(),
+        // this.historyService.migrateDateTimestampToString(),
       ]);
       this.snackBar.open('Data updated.', 'Close');
     } catch (error) {
