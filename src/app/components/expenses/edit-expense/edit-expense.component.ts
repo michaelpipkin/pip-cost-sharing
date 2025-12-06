@@ -45,10 +45,10 @@ import {
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
+import { Expense, ExpenseDto } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
+import { Split, SplitDto } from '@models/split';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
@@ -72,7 +72,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { DateUtils } from '@utils/date-utils.service';
+import { toIsoFormat } from '@utils/date-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
@@ -196,7 +196,7 @@ export class EditExpenseComponent implements OnInit {
     this.splitByPercentage.set(expense.splitByPercentage);
     this.editExpenseForm.patchValue({
       paidByMember: expense.paidByMemberRef,
-      date: DateUtils.getDateOnly(expense.date),
+      date: expense.date,
       amount: expense.totalAmount,
       description: expense.description,
       category: expense.categoryRef,
@@ -618,8 +618,8 @@ export class EditExpenseComponent implements OnInit {
         try {
           this.loading.loadingOn();
           const val = this.editExpenseForm.getRawValue();
-          const expenseDate = DateUtils.toUTCTimestamp(val.date);
-          const changes: Partial<Expense> = {
+          const expenseDate = toIsoFormat(val.date);
+          const changes: Partial<ExpenseDto> = {
             date: expenseDate,
             description: val.description,
             categoryRef: val.category,
@@ -630,9 +630,9 @@ export class EditExpenseComponent implements OnInit {
             splitByPercentage: this.splitByPercentage(),
             paid: false,
           };
-          let splits: Partial<Split>[] = [];
+          let splits: Partial<SplitDto>[] = [];
           this.splitsFormArray.getRawValue().forEach((s) => {
-            const split: Partial<Split> = {
+            const split: Partial<SplitDto> = {
               date: expenseDate,
               categoryRef: val.category,
               assignedAmount: +s.assignedAmount,

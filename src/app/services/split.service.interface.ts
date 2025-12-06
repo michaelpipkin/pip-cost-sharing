@@ -1,6 +1,6 @@
 import { Expense } from '@models/expense';
-import { History } from '@models/history';
-import { Split } from '@models/split';
+import { HistoryDto } from '@models/history';
+import { Split, SplitDto } from '@models/split';
 import { DocumentReference } from 'firebase/firestore';
 
 export interface ISplitService {
@@ -9,11 +9,11 @@ export interface ISplitService {
     groupId: string,
     expenseRef: DocumentReference<Expense>,
     splitRef: DocumentReference<Split>,
-    changes: Partial<Split>
+    changes: Partial<SplitDto>
   ): Promise<any>;
   paySplitsBetweenMembers(
     groupId: string,
     splits: Split[],
-    history: Partial<History>
+    history: Partial<HistoryDto>
   ): Promise<any>;
 }

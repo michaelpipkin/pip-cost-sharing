@@ -1,14 +1,20 @@
 import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
+import { Expense, ExpenseDto } from '@models/expense';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
+import { Split, SplitDto } from '@models/split';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
+import {
+  timestampToIsoDateString,
+  toIsoFormat,
+} from '@utils/date-utils.service';
+import { parseDate } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
+  collectionGroup,
   doc,
   DocumentReference,
   getDoc,
@@ -17,6 +23,7 @@ import {
   limit,
   orderBy,
   query,
+  Timestamp,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -48,13 +55,16 @@ export class ExpenseService implements IExpenseService {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
+      const isoStartDate = startDate ? toIsoFormat(startDate) : null;
+      const isoEndDate = endDate ? toIsoFormat(endDate) : null;
+
       // Build split query
       let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
       if (startDate) {
-        splitQuery = query(splitQuery, where('date', '>=', startDate));
+        splitQuery = query(splitQuery, where('date', '>=', isoStartDate));
       }
       if (endDate) {
-        splitQuery = query(splitQuery, where('date', '<=', endDate));
+        splitQuery = query(splitQuery, where('date', '<=', isoEndDate));
       }
 
       // Build expense query
@@ -62,10 +72,10 @@ export class ExpenseService implements IExpenseService {
         collection(this.fs, `groups/${groupId}/expenses`)
       );
       if (startDate) {
-        expenseQuery = query(expenseQuery, where('date', '>=', startDate));
+        expenseQuery = query(expenseQuery, where('date', '>=', isoStartDate));
       }
       if (endDate) {
-        expenseQuery = query(expenseQuery, where('date', '<=', endDate));
+        expenseQuery = query(expenseQuery, where('date', '<=', isoEndDate));
       }
       if (unpaidOnly) {
         expenseQuery = query(expenseQuery, where('paid', '==', false));
@@ -97,6 +107,7 @@ export class ExpenseService implements IExpenseService {
         return new Split({
           id: doc.id,
           ...data,
+          date: parseDate(data.date),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -110,6 +121,7 @@ export class ExpenseService implements IExpenseService {
         return new Expense({
           id: doc.id,
           ...data,
+          date: parseDate(data.date),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           ref: doc.ref as DocumentReference<Expense>,
@@ -165,6 +177,7 @@ export class ExpenseService implements IExpenseService {
       const expense = new Expense({
         id: expenseDoc.id,
         ...data,
+        date: parseDate(data.date),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: expenseDoc.ref as DocumentReference<Expense>,
@@ -175,6 +188,7 @@ export class ExpenseService implements IExpenseService {
         return new Split({
           id: doc.id,
           ...data,
+          date: parseDate(data.date),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -198,8 +212,8 @@ export class ExpenseService implements IExpenseService {
 
   async addExpense(
     groupId: string,
-    expense: Partial<Expense>,
-    splits: Partial<Split>[],
+    expense: Partial<ExpenseDto>,
+    splits: Partial<SplitDto>[],
     receipt: File | null = null
   ): Promise<DocumentReference<Expense>> {
     const batch = writeBatch(this.fs);
@@ -258,8 +272,8 @@ export class ExpenseService implements IExpenseService {
   async updateExpense(
     groupId: string,
     expenseRef: DocumentReference<Expense>,
-    changes: Partial<Expense>,
-    splits: Partial<Split>[],
+    changes: Partial<ExpenseDto>,
+    splits: Partial<SplitDto>[],
     receipt: File | null = null
   ): Promise<void> {
     try {
@@ -401,7 +415,57 @@ export class ExpenseService implements IExpenseService {
     }
   }
 
-  // Utilities for data integrity and migration
+  // Migration methods
+
+  /**
+   * Migrates expense date fields from Timestamp to ISO 8601 string format.
+   * Run this once when ready to switch to string-based date storage.
+   */
+  async migrateDateTimestampToString(): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      const expensesCollection = collectionGroup(this.fs, 'expenses');
+      const expenseDocs = await getDocs(expensesCollection);
+
+      let migratedCount = 0;
+      const batchSize = 500; // Firestore batch limit
+      let batch = writeBatch(this.fs);
+      let batchCount = 0;
+
+      for (const expenseDoc of expenseDocs.docs) {
+        const data = expenseDoc.data();
+
+        // Check if date is a Timestamp (has toDate method)
+        if (data.date instanceof Timestamp) {
+          const isoDateString = timestampToIsoDateString(data.date);
+          batch.update(expenseDoc.ref, { date: isoDateString });
+          migratedCount++;
+          batchCount++;
+
+          // Commit batch if we hit the limit
+          if (batchCount >= batchSize) {
+            await batch.commit();
+            batch = writeBatch(this.fs);
+            batchCount = 0;
+          }
+        }
+      }
+
+      // Commit any remaining updates
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      console.log(`Successfully migrated ${migratedCount} expense date fields to ISO string format`);
+      return { success: true, count: migratedCount };
+    } catch (error) {
+      console.error('Error migrating expense date fields:', error);
+      return {
+        success: false,
+        count: 0,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 
   // async removeHasReceiptField(): Promise<boolean | Error> {
   //   const batch = writeBatch(this.fs);

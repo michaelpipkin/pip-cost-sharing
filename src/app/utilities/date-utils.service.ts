@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class DateUtils {
   /**
@@ -10,12 +10,9 @@ export class DateUtils {
    * This ensures dates are stored consistently regardless of the user's timezone
    */
   static toUTCMidnight(date: Date): Date {
-    return new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(), 
-      date.getDate(),
-      0, 0, 0, 0
-    ));
+    return new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
+    );
   }
 
   /**
@@ -32,7 +29,11 @@ export class DateUtils {
    */
   static getDateOnly(timestamp: Timestamp): Date {
     const date = timestamp.toDate();
-    return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate()
+    );
   }
 
   /**
@@ -41,9 +42,29 @@ export class DateUtils {
    */
   static isUTCMidnight(timestamp: Timestamp): boolean {
     const date = timestamp.toDate();
-    return date.getUTCHours() === 0 && 
-           date.getUTCMinutes() === 0 && 
-           date.getUTCSeconds() === 0 && 
-           date.getUTCMilliseconds() === 0;
+    return (
+      date.getUTCHours() === 0 &&
+      date.getUTCMinutes() === 0 &&
+      date.getUTCSeconds() === 0 &&
+      date.getUTCMilliseconds() === 0
+    );
+  }
+
+  /**
+   * Formats a date as YYYY-MM-DD string
+   */
+  static toIsoFormat(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  static timestampToIsoDateString(timestamp: Timestamp): string {
+    const date = DateUtils.getDateOnly(timestamp);
+    return toIsoFormat(date);
   }
 }
+
+export const toIsoFormat = DateUtils.toIsoFormat;
+export const timestampToIsoDateString = DateUtils.timestampToIsoDateString;

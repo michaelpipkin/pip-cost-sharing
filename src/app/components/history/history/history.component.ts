@@ -1,5 +1,4 @@
 import { DatePipe } from '@angular/common';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import {
   AfterViewInit,
   Component,
@@ -39,10 +38,10 @@ import { TourService } from '@services/tour.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
-import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -108,12 +107,12 @@ export class HistoryComponent implements AfterViewInit {
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return DateUtils.getDateOnly(history.date) >= this.startDate();
+          return history.date >= this.startDate();
         });
       }
       if (this.endDate() !== undefined && this.endDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return DateUtils.getDateOnly(history.date) <= this.endDate();
+          return history.date <= this.endDate();
         });
       }
       if (filteredHistory.length > 0) {
@@ -241,15 +240,10 @@ export class HistoryComponent implements AfterViewInit {
     }
   }
 
-  getDateOnly(history: History): Date {
-    return DateUtils.getDateOnly(history.date);
-  }
-
   private generateHistoryText(history: History): string {
     const paidBy = history.paidByMember.displayName;
     const paidTo = history.paidToMember.displayName;
-    const date = DateUtils.getDateOnly(history.date).toLocaleDateString();
-
+    const date = history.date.toLocaleDateString();
     let summaryText = `Payment History\n`;
     summaryText += `${paidBy} paid ${paidTo} ${this.formatCurrency(history.totalPaid)} on ${date}\n\n`;
 

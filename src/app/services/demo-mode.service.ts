@@ -15,7 +15,6 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { Timestamp } from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -114,7 +113,7 @@ export class DemoModeService {
       amount: number,
       members: Member[],
       paidBy: Member,
-      date: Timestamp,
+      date: Date,
       category: Category,
       expenseId: string
     ): Split[] => {
@@ -141,10 +140,7 @@ export class DemoModeService {
     };
 
     // Create demo expenses (within last 30 days for default filtering)
-    const now = new Date();
-    const exp1Date = Timestamp.fromDate(
-      new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-    ); // 5 days ago
+    const exp1Date = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
     const expense1 = new Expense({
       id: 'exp-1',
       date: exp1Date,
@@ -169,9 +165,7 @@ export class DemoModeService {
       ref: this.createMockDocRef('exp-1'),
     });
 
-    const exp2Date = Timestamp.fromDate(
-      new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000)
-    ); // 10 days ago
+    const exp2Date = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
     const expense2 = new Expense({
       id: 'exp-2',
       date: exp2Date,
@@ -196,9 +190,7 @@ export class DemoModeService {
       ref: this.createMockDocRef('exp-2'),
     });
 
-    const exp3Date = Timestamp.fromDate(
-      new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000)
-    ); // 15 days ago
+    const exp3Date = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000); // 15 days ago
     const expense3 = new Expense({
       id: 'exp-3',
       date: exp3Date,
@@ -223,9 +215,7 @@ export class DemoModeService {
       ref: this.createMockDocRef('exp-3'),
     });
 
-    const exp4Date = Timestamp.fromDate(
-      new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000)
-    ); // 20 days ago
+    const exp4Date = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000); // 20 days ago
     const expense4 = new Expense({
       id: 'exp-4',
       date: exp4Date,
@@ -322,9 +312,7 @@ export class DemoModeService {
     // Create demo history records
     const history1 = new History({
       id: 'hist-1',
-      date: Timestamp.fromDate(
-        new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000)
-      ), // 25 days ago
+      date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), // 25 days ago
       paidByMemberRef: bob.ref,
       paidByMember: bob,
       paidToMemberRef: alice.ref,
@@ -339,9 +327,7 @@ export class DemoModeService {
 
     const history2 = new History({
       id: 'hist-2',
-      date: Timestamp.fromDate(
-        new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000)
-      ), // 12 days ago
+      date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // 12 days ago
       paidByMemberRef: charlie.ref,
       paidByMember: charlie,
       paidToMemberRef: alice.ref,

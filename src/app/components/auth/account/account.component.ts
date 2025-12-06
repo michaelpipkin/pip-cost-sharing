@@ -28,6 +28,7 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { HistoryService } from '@services/history.service';
 import { MemberService } from '@services/member.service';
 import { MemorizedService } from '@services/memorized.service';
 import { SplitService } from '@services/split.service';
@@ -79,6 +80,7 @@ export class AccountComponent {
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly memberService = inject(MemberService);
+  protected readonly historyService = inject(HistoryService);
 
   user: Signal<User> = this.userStore.user;
   currentUser: Signal<User> = this.userStore.user;
@@ -320,7 +322,10 @@ export class AccountComponent {
         //   this.memberService.migrateUserIdsToRefs(),
         //   this.splitService.migrateFieldIdsToRefs(),
         //   this.groupService.normalizeAllGroupDatesToUTC(),
-        this.groupService.setDefaultCurrencyForAllGroups(),
+        //this.groupService.setDefaultCurrencyForAllGroups(),
+        this.expenseService.migrateDateTimestampToString(),
+        this.splitService.migrateDateTimestampToString(),
+        this.historyService.migrateDateTimestampToString(),
       ]);
       this.snackBar.open('Data updated.', 'Close');
     } catch (error) {

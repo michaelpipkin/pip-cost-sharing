@@ -46,11 +46,11 @@ import {
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Expense } from '@models/expense';
+import { ExpenseDto } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { SerializableMemorized } from '@models/memorized';
-import { Split } from '@models/split';
+import { Split, SplitDto } from '@models/split';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
@@ -74,7 +74,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { DateUtils } from '@utils/date-utils.service';
+import { toIsoFormat } from '@utils/date-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
@@ -639,8 +639,8 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
     try {
       this.loading.loadingOn();
       const val = this.addExpenseForm.getRawValue();
-      const expenseDate = DateUtils.toUTCTimestamp(val.date);
-      const expense: Partial<Expense> = {
+      const expenseDate = toIsoFormat(val.date);
+      const expense: Partial<ExpenseDto> = {
         date: expenseDate,
         description: val.description,
         categoryRef: val.category,
@@ -651,10 +651,10 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
         totalAmount: val.amount,
         splitByPercentage: this.splitByPercentage(),
       };
-      let splits: Partial<Split>[] = [];
+      let splits: Partial<SplitDto>[] = [];
       this.splitsFormArray.getRawValue().forEach((s) => {
         if (s.allocatedAmount !== 0) {
-          const split: Partial<Split> = {
+          const split: Partial<SplitDto> = {
             date: expenseDate,
             categoryRef: val.category,
             assignedAmount: s.assignedAmount,
