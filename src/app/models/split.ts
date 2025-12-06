@@ -1,4 +1,4 @@
-import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import { Category } from './category';
 import { Expense } from './expense';
 import { Member } from './member';
@@ -9,7 +9,7 @@ export class Split {
   }
   id: string;
   expenseRef: DocumentReference<Expense>;
-  date: Timestamp;
+  date: Date;
   categoryRef: DocumentReference<Category>;
   category?: Category;
   assignedAmount: number = 0;
@@ -22,3 +22,5 @@ export class Split {
   paid: boolean = false;
   ref?: DocumentReference<Split>;
 }
+
+export type SplitDto = Omit<Split, 'date'> & { date: string };

@@ -1,4 +1,4 @@
-import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { DocumentReference } from 'firebase/firestore';
 import { Member } from './member';
 
 export class History {
@@ -6,7 +6,7 @@ export class History {
     Object.assign(this, init);
   }
   id: string;
-  date: Timestamp;
+  date: Date;
   paidByMemberRef: DocumentReference<Member>;
   paidByMember?: Member;
   paidToMemberRef: DocumentReference<Member>;
@@ -15,3 +15,5 @@ export class History {
   lineItems: { category: string; amount: number }[];
   ref?: DocumentReference<History>;
 }
+
+export type HistoryDto = Omit<History, 'date'> & { date: string };

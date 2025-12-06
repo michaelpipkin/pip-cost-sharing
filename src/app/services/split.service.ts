@@ -1,21 +1,25 @@
 import { inject, Injectable } from '@angular/core';
 import { Expense } from '@models/expense';
-import { History } from '@models/history';
-import { Split } from '@models/split';
+import { HistoryDto } from '@models/history';
+import { Split, SplitDto } from '@models/split';
 import { SplitStore } from '@store/split.store';
-import { ISplitService } from './split.service.interface';
+import { timestampToIsoDateString } from '@utils/date-utils.service';
+import { parseDate } from '@utils/string-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
+  collectionGroup,
   doc,
   DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
   query,
+  Timestamp,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -30,15 +34,17 @@ export class SplitService implements ISplitService {
       collection(this.fs, `groups/${groupId}/splits`),
       where('paid', '==', false)
     );
-    
+
     onSnapshot(
-      splitsQuery, 
+      splitsQuery,
       (splitsQuerySnap) => {
         try {
           const splits = splitsQuerySnap.docs.map((d) => {
+            const data = d.data();
             return new Split({
               id: d.id,
-              ...d.data(),
+              ...data,
+              date: parseDate(data.date),
               ref: d.ref as DocumentReference<Split>,
             });
           });
@@ -49,7 +55,7 @@ export class SplitService implements ISplitService {
             method: 'getUnpaidSplitsForGroup',
             message: 'Failed to process unpaid splits snapshot',
             groupId,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       },
@@ -59,7 +65,7 @@ export class SplitService implements ISplitService {
           method: 'getUnpaidSplitsForGroup',
           message: 'Failed to listen to unpaid splits',
           groupId,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     );
@@ -69,26 +75,26 @@ export class SplitService implements ISplitService {
     groupId: string,
     expenseRef: DocumentReference<Expense>,
     splitRef: DocumentReference<Split>,
-    changes: Partial<Split>
+    changes: Partial<SplitDto>
   ): Promise<void> {
     try {
       const batch = writeBatch(this.fs);
       batch.update(splitRef, changes);
-      
+
       // Check if expense should be marked as paid
       const splitsQuery = query(
         collection(this.fs, `groups/${groupId}/splits`),
         where('expenseRef', '==', expenseRef)
       );
       const splitsQuerySnap = await getDocs(splitsQuery);
-      
+
       const expensePaid =
         splitsQuerySnap.docs.filter(
           (doc) => !doc.ref.eq(splitRef) && !doc.data().paid
         ).length === 0 && changes.paid;
-        
+
       batch.update(expenseRef, { paid: expensePaid });
-      
+
       await batch.commit();
     } catch (error) {
       logEvent(this.analytics, 'error', {
@@ -98,7 +104,7 @@ export class SplitService implements ISplitService {
         groupId,
         splitId: splitRef.id,
         expenseId: expenseRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -107,7 +113,7 @@ export class SplitService implements ISplitService {
   async paySplitsBetweenMembers(
     groupId: string,
     splits: Split[],
-    history: Partial<History>
+    history: Partial<HistoryDto>
   ): Promise<void> {
     try {
       const batch = writeBatch(this.fs);
@@ -146,9 +152,11 @@ export class SplitService implements ISplitService {
       }
 
       // Add history record
-      const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
+      const newHistoryDoc = doc(
+        collection(this.fs, `groups/${groupId}/history`)
+      );
       batch.set(newHistoryDoc, history);
-      
+
       await batch.commit();
     } catch (error) {
       logEvent(this.analytics, 'error', {
@@ -157,13 +165,63 @@ export class SplitService implements ISplitService {
         message: 'Failed to pay splits between members',
         groupId,
         splitCount: splits.length,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
   }
 
-  // Migration method to update split documents
+  // Migration methods
+
+  /**
+   * Migrates split date fields from Timestamp to ISO 8601 string format.
+   * Run this once when ready to switch to string-based date storage.
+   */
+  async migrateDateTimestampToString(): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      const splitsCollection = collectionGroup(this.fs, 'splits');
+      const splitDocs = await getDocs(splitsCollection);
+
+      let migratedCount = 0;
+      const batchSize = 500; // Firestore batch limit
+      let batch = writeBatch(this.fs);
+      let batchCount = 0;
+
+      for (const splitDoc of splitDocs.docs) {
+        const data = splitDoc.data();
+
+        // Check if date is a Timestamp (has toDate method)
+        if (data.date instanceof Timestamp) {
+          const isoDateString = timestampToIsoDateString(data.date);
+          batch.update(splitDoc.ref, { date: isoDateString });
+          migratedCount++;
+          batchCount++;
+
+          // Commit batch if we hit the limit
+          if (batchCount >= batchSize) {
+            await batch.commit();
+            batch = writeBatch(this.fs);
+            batchCount = 0;
+          }
+        }
+      }
+
+      // Commit any remaining updates
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      console.log(`Successfully migrated ${migratedCount} split date fields to ISO string format`);
+      return { success: true, count: migratedCount };
+    } catch (error) {
+      console.error('Error migrating split date fields:', error);
+      return {
+        success: false,
+        count: 0,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 
   // async migrateFieldIdsToRefs(): Promise<boolean | Error> {
   //   const batch = writeBatch(this.fs);
