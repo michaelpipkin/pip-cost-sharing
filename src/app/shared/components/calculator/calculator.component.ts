@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, EventEmitter, inject, Output, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { StringUtils } from '@utils/string-utils.service';
@@ -12,10 +12,10 @@ import { StringUtils } from '@utils/string-utils.service';
   styleUrls: ['./calculator.component.scss'],
 })
 export class CalculatorComponent {
-  private readonly stringUtils = inject(StringUtils);
+  private stringUtils = inject(StringUtils);
 
-  @Output() resultSelected = new EventEmitter<number>();
-  @Output() closed = new EventEmitter<void>();
+  resultSelected = output<number>();
+  closed = output<void>();
 
   expression = signal<string>('');
   result = signal<number>(0);
@@ -56,7 +56,8 @@ export class CalculatorComponent {
   useResult(): void {
     if (!this.hasError()) {
       this.resultSelected.emit(this.result());
-      this.closed.emit();
+      // Note: Don't emit closed here - the overlay service handles closing
+      // when it receives resultSelected to avoid emitting on a destroyed component
     }
   }
 

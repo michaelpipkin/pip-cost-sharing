@@ -54,7 +54,6 @@ import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { DateUtils } from '@utils/date-utils.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -574,21 +573,11 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
           const value = (expense as any)[key];
           if (!value) return false;
 
-          // Get the date from Timestamp or Date
-          let expenseDate: Date;
-          if (value.toDate && typeof value.toDate === 'function') {
-            // Firestore Timestamp - use DateUtils
-            expenseDate = DateUtils.getDateOnly(value);
-          } else if (value instanceof Date) {
-            // Already a Date
-            expenseDate = new Date(
-              value.getFullYear(),
-              value.getMonth(),
-              value.getDate()
-            );
-          } else {
-            return false;
-          }
+          const expenseDate: Date = new Date(
+            value.getFullYear(),
+            value.getMonth(),
+            value.getDate()
+          );
 
           if (filterValue.start && filterValue.end) {
             const startDate = new Date(
