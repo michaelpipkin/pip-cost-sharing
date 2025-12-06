@@ -48,8 +48,6 @@ export class StringUtils {
       }
 
       // Round to currency's decimal places
-      // const places = currency.decimalPlaces;
-      // return +Number(result).toFixed(places);
       return this.localeService.roundToCurrency(result);
     } catch {
       return 0;

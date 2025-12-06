@@ -9,12 +9,12 @@ import { StringUtils } from '@utils/string-utils.service';
   standalone: true,
 })
 export class FormatCurrencyInputDirective {
-  protected readonly stringUtils = inject(StringUtils);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly localeService = inject(LocaleService);
   protected readonly formGroupDirective = inject(FormGroupDirective, {
     optional: true,
   });
+  protected readonly stringUtils = inject(StringUtils);
 
   constructor(private el: ElementRef) {}
 
