@@ -2,8 +2,6 @@ import { inject, Injectable } from '@angular/core';
 import { History } from '@models/history';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
-import { timestampToIsoDateString } from '@utils/date-utils.service';
-import { parseDate } from '@utils/string-utils.service';
 import {
   collection,
   collectionGroup,
@@ -44,7 +42,7 @@ export class HistoryService implements IHistoryService {
           return new History({
             id: doc.id,
             ...data,
-            date: parseDate(data.date),
+            date: data.date.parseDate(),
             paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
             paidToMember: this.memberStore.getMemberByRef(data.paidToMemberRef),
             ref: doc.ref as DocumentReference<History>,
@@ -65,7 +63,11 @@ export class HistoryService implements IHistoryService {
    * Migrates history date fields from Timestamp to ISO 8601 string format.
    * Run this once when ready to switch to string-based date storage.
    */
-  async migrateDateTimestampToString(): Promise<{ success: boolean; count: number; error?: string }> {
+  async migrateDateTimestampToString(): Promise<{
+    success: boolean;
+    count: number;
+    error?: string;
+  }> {
     try {
       const historyCollection = collectionGroup(this.fs, 'history');
       const historyDocs = await getDocs(historyCollection);
@@ -80,7 +82,7 @@ export class HistoryService implements IHistoryService {
 
         // Check if date is a Timestamp (has toDate method)
         if (data.date instanceof Timestamp) {
-          const isoDateString = timestampToIsoDateString(data.date);
+          const isoDateString = data.date.toIsoDateString();
           batch.update(historyDoc.ref, { date: isoDateString });
           migratedCount++;
           batchCount++;
@@ -99,7 +101,9 @@ export class HistoryService implements IHistoryService {
         await batch.commit();
       }
 
-      console.log(`Successfully migrated ${migratedCount} history date fields to ISO string format`);
+      console.log(
+        `Successfully migrated ${migratedCount} history date fields to ISO string format`
+      );
       return { success: true, count: migratedCount };
     } catch (error) {
       console.error('Error migrating history date fields:', error);
