@@ -11,21 +11,24 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Register custom plugin before calling super.onCreate
+        registerPlugin(SystemBarsPlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // Enable edge-to-edge
         EdgeToEdge.enable(this);
 
-        // Configure window appearance
+        // Configure initial window appearance for light theme (dark background, light icons)
         Window window = getWindow();
         View decorView = window.getDecorView();
         WindowInsetsControllerCompat windowInsetsController =
             WindowCompat.getInsetsController(window, decorView);
 
         if (windowInsetsController != null) {
-            // Set status bar to use dark icons (for light background)
-            windowInsetsController.setAppearanceLightStatusBars(true);
-            windowInsetsController.setAppearanceLightNavigationBars(true);
+            // Set status bar to use light icons (for dark/primary background)
+            windowInsetsController.setAppearanceLightStatusBars(false);
+            windowInsetsController.setAppearanceLightNavigationBars(false);
         }
     }
 }
