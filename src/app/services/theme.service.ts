@@ -8,8 +8,17 @@ import {
   RendererFactory2,
   signal,
 } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
+import { EdgeToEdge } from '@capawesome/capacitor-android-edge-to-edge-support';
+import { SystemBars } from '../plugins/system-bars.plugin';
 
 export type ThemeMode = 'light' | 'dark';
+
+// Primary colors for each theme (from color-tokens.scss)
+const THEME_PRIMARY_COLORS: Record<ThemeMode, string> = {
+  light: '#105208', // primary level 30
+  dark: '#78bc67', // primary level 70
+};
 
 @Injectable({
   providedIn: 'root',
@@ -65,6 +74,25 @@ export class ThemeService implements IThemeService {
       this.renderer.addClass(document.body, 'light-theme');
       this.renderer.removeClass(document.body, 'dark-theme');
     }
+
+    // Update Android system bar colors when running as native app
+    this.updateSystemBarColors(theme);
+  }
+
+  private async updateSystemBarColors(theme: ThemeMode): Promise<void> {
+    if (Capacitor.getPlatform() !== 'android') {
+      return;
+    }
+
+    const primaryColor = THEME_PRIMARY_COLORS[theme];
+    await EdgeToEdge.setBackgroundColor({ color: primaryColor });
+
+    // Set status bar icon style based on background color brightness
+    // Light theme (dark background) = dark icons param but light visual icons
+    // Dark theme (light background) = light icons param but dark visual icons
+    // Note: 'light' style = dark icons on light background, 'dark' style = light icons on dark background
+    const style = theme === 'light' ? 'dark' : 'light';
+    await SystemBars.setStyle({ style });
   }
 
   private getSavedTheme(): ThemeMode {
