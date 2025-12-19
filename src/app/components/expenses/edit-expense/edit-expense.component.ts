@@ -1,13 +1,53 @@
 import { DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from '@models/category';
+import { Expense, ExpenseDto } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { Split, SplitDto } from '@models/split';
+import { CameraService } from '@services/camera.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { FirebaseError } from 'firebase/app';
+import { DocumentReference } from 'firebase/firestore';
+import { getDownloadURL, getStorage } from 'firebase/storage';
 import {
   afterEveryRender,
   afterNextRender,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   model,
-  OnInit,
   Signal,
   signal,
   viewChild,
@@ -24,59 +64,19 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { Expense, ExpenseDto } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { Split, SplitDto } from '@models/split';
-import { CameraService } from '@services/camera.service';
-import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
-import { ExpenseService } from '@services/expense.service';
-import { LocaleService } from '@services/locale.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import {
   FileSelectionDialogComponent,
   FileSelectionOption,
 } from '@shared/file-selection-dialog/file-selection-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
-import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { UserStore } from '@store/user.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { FirebaseError } from 'firebase/app';
-import { DocumentReference } from 'firebase/firestore';
-import { getDownloadURL, getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-edit-expense',
@@ -101,7 +101,7 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     DocRefCompareDirective,
   ],
 })
-export class EditExpenseComponent implements OnInit {
+export class EditExpenseComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly fb = inject(FormBuilder);
@@ -126,7 +126,7 @@ export class EditExpenseComponent implements OnInit {
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
-  expense = signal<Expense>(null);
+  expense = signal<Expense>(this.route.snapshot.data.expense);
 
   categories = computed<Category[]>(() => {
     return this.categoryStore
@@ -187,11 +187,13 @@ export class EditExpenseComponent implements OnInit {
     afterEveryRender(() => {
       this.addSelectFocus();
     });
+    effect(() => {
+      const expense = this.expense();
+      this.loadExpense(expense);
+    });
   }
 
-  async ngOnInit(): Promise<void> {
-    const expense: Expense = this.route.snapshot.data.expense;
-    this.expense.set(expense);
+  async loadExpense(expense: Expense): Promise<void> {
     this.splitByPercentage.set(expense.splitByPercentage);
     this.editExpenseForm.patchValue({
       paidByMember: expense.paidByMemberRef,
