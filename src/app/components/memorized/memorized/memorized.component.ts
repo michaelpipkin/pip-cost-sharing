@@ -1,13 +1,12 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   computed,
   effect,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -58,7 +57,7 @@ import { MemorizedStore } from '@store/memorized.store';
     RouterLink,
   ],
 })
-export class MemorizedComponent implements OnInit, AfterViewInit {
+export class MemorizedComponent {
   protected readonly router = inject(Router);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -116,9 +115,8 @@ export class MemorizedComponent implements OnInit, AfterViewInit {
         this.loading.loadingOff();
       }
     });
-  }
 
-  ngOnInit(): void {
+    // Observe breakpoint changes for responsive column display
     this.breakpointObserver
       .observe('(max-width: 1009px)')
       .subscribe((result) => {
@@ -141,10 +139,10 @@ export class MemorizedComponent implements OnInit, AfterViewInit {
           ]);
         }
       });
-  }
 
-  ngAfterViewInit(): void {
-    this.tourService.checkForContinueTour('memorized');
+    afterNextRender(() => {
+      this.tourService.checkForContinueTour('memorized');
+    });
   }
 
   onSearchFocus() {
