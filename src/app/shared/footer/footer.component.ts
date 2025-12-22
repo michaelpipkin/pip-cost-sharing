@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
@@ -14,7 +14,7 @@ import packageJson from 'package.json';
   styleUrl: './footer.component.scss',
   imports: [MatButtonModule, RouterLink, MatTooltipModule],
 })
-export class FooterComponent implements OnInit {
+export class FooterComponent {
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly pwaDetection = inject(PwaDetectionService);
 
@@ -25,7 +25,8 @@ export class FooterComponent implements OnInit {
   emulators = signal<boolean>(environment.useEmulators);
   versionText = signal<string>('');
 
-  ngOnInit(): void {
+  constructor() {
+    // Observe breakpoint changes for responsive version text display
     this.breakpointObserver
       .observe([
         '(max-width: 499px)',

@@ -2,13 +2,12 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
-  AfterViewInit,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
   viewChild,
@@ -102,7 +101,7 @@ import { getStorage } from 'firebase/storage';
     DocRefCompareDirective,
   ],
 })
-export class AddExpenseComponent implements OnInit, AfterViewInit {
+export class AddExpenseComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly fb = inject(FormBuilder);
@@ -133,9 +132,11 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
 
   memorizedExpense = signal<SerializableMemorized | null>(null);
 
-  activeCategories = computed<Category[]>(() => {
-    return this.#categories().filter((c) => c.active);
-  });
+  activeCategories = computed<Category[]>(() =>
+    this.#categories().filter((c) => c.active)
+  );
+
+  autoAddMembers = computed<boolean>(() => this.currentGroup().autoAddMembers);
 
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
@@ -165,6 +166,7 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
       this.memorizedExpense.set(navigation!.extras!.state!.expense);
     }
     afterNextRender(() => {
+      this.tourService.checkForContinueTour('add-expense');
       if (!!this.memorizedExpense()) {
         const expense: SerializableMemorized = this.memorizedExpense();
         this.totalAmountField().nativeElement.value =
@@ -189,65 +191,64 @@ export class AddExpenseComponent implements OnInit, AfterViewInit {
           elementRef.nativeElement.value = formattedZero;
         });
       }
+      this.loading.loadingOff();
     });
     afterEveryRender(() => {
       this.addSelectFocus();
     });
+    effect(() => {
+      if (!!this.memorizedExpense()) {
+        this.loadMemorizedExpense();
+      } else {
+        if (this.autoAddMembers()) {
+          this.addAllActiveGroupMembers();
+        }
+        if (this.activeCategories().length === 1) {
+          this.addExpenseForm.patchValue({
+            category: this.activeCategories()[0].ref,
+          });
+        }
+      }
+    });
   }
 
-  ngOnInit(): void {
-    // Turn off loading indicator once the component is initialized
-    this.loading.loadingOff();
+  loadMemorizedExpense(): void {
+    const expense: SerializableMemorized = this.memorizedExpense();
+    this.splitByPercentage.set(expense.splitByPercentage);
 
-    if (this.activeCategories().length == 1) {
-      this.addExpenseForm.patchValue({
-        category: this.activeCategories()[0].ref,
-      });
-    }
-    if (!!this.memorizedExpense()) {
-      const expense: SerializableMemorized = this.memorizedExpense();
-      this.splitByPercentage.set(expense.splitByPercentage);
+    // Find the category and member by ID
+    const category = this.#categories().find(
+      (c) => c.id === expense.categoryId
+    );
+    const paidByMember = this.activeMembers().find(
+      (m) => m.id === expense.paidByMemberId
+    );
 
-      // Find the category and member by ID
-      const category = this.#categories().find(
-        (c) => c.id === expense.categoryId
+    this.addExpenseForm.patchValue({
+      paidByMember: paidByMember?.ref,
+      date: new Date(),
+      amount: expense.totalAmount,
+      description: expense.description,
+      category: category?.ref,
+      sharedAmount: expense.sharedAmount,
+      allocatedAmount: expense.allocatedAmount,
+    });
+
+    expense.splits.forEach((split) => {
+      // Find the member by ID
+      const owedByMember = this.activeMembers().find(
+        (m) => m.id === split.owedByMemberId
       );
-      const paidByMember = this.activeMembers().find(
-        (m) => m.id === expense.paidByMemberId
+
+      this.splitsFormArray.push(
+        this.fb.group({
+          owedByMemberRef: owedByMember?.ref,
+          assignedAmount: split.assignedAmount,
+          percentage: split.percentage,
+          allocatedAmount: split.allocatedAmount,
+        })
       );
-
-      this.addExpenseForm.patchValue({
-        paidByMember: paidByMember?.ref,
-        date: new Date(),
-        amount: expense.totalAmount,
-        description: expense.description,
-        category: category?.ref,
-        sharedAmount: expense.sharedAmount,
-        allocatedAmount: expense.allocatedAmount,
-      });
-
-      expense.splits.forEach((split) => {
-        // Find the member by ID
-        const owedByMember = this.activeMembers().find(
-          (m) => m.id === split.owedByMemberId
-        );
-
-        this.splitsFormArray.push(
-          this.fb.group({
-            owedByMemberRef: owedByMember?.ref,
-            assignedAmount: split.assignedAmount,
-            percentage: split.percentage,
-            allocatedAmount: split.allocatedAmount,
-          })
-        );
-      });
-    } else if (this.currentGroup().autoAddMembers) {
-      this.addAllActiveGroupMembers();
-    }
-  }
-
-  ngAfterViewInit(): void {
-    this.tourService.checkForContinueTour('add-expense');
+    });
   }
 
   addSelectFocus(): void {

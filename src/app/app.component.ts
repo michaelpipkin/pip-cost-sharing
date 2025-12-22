@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, OnInit, signal, Signal } from '@angular/core';
+import { Component, inject, signal, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -37,7 +37,7 @@ import { LoadingComponent } from './shared/loading/loading.component';
     MatTooltipModule,
   ],
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   title = 'Cost Sharing';
 
   protected readonly themeService = inject(ThemeService);
@@ -66,9 +66,8 @@ export class AppComponent implements OnInit {
   constructor() {
     logEvent(this.analytics, 'app_initalized');
     this.lockTextZoom();
-  }
 
-  ngOnInit(): void {
+    // Observe breakpoint changes for responsive layout
     this.breakpointObserver
       .observe('(max-width: 1100px)')
       .subscribe((result) => {

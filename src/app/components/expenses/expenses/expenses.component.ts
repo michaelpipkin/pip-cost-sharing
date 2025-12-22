@@ -1,13 +1,13 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
+  afterNextRender,
   AfterViewInit,
   Component,
   computed,
   effect,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -92,7 +92,7 @@ import {
   ],
   providers: [TableFilterService],
 })
-export class ExpensesComponent implements OnInit, AfterViewInit {
+export class ExpensesComponent implements AfterViewInit {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly userStore = inject(UserStore);
@@ -163,6 +163,49 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
         this.loadExpenses();
       }
     });
+
+    // Observe breakpoint changes for responsive column display
+    this.breakpointObserver
+      .observe('(max-width: 1009px)')
+      .subscribe((result) => {
+        if (result.matches) {
+          this.columnsToDisplay.set([
+            'date-paidBy',
+            'description-category',
+            'amount',
+            'receipt-paid',
+            'expand',
+          ]);
+          this.footerColumnsToDisplay.set(['amount', 'receipt-paid', 'expand']);
+          this.smallScreen.set(true);
+        } else {
+          this.columnsToDisplay.set([
+            'date',
+            'paidBy',
+            'description',
+            'category',
+            'amount',
+            'receipt',
+            'paid',
+            'expand',
+          ]);
+          this.footerColumnsToDisplay.set([
+            'amount',
+            'receipt',
+            'paid',
+            'expand',
+          ]);
+          this.smallScreen.set(false);
+        }
+      });
+
+    // If currentGroup is already set (e.g., coming from another page), load expenses immediately
+    // Otherwise, the effect above will load them when the group becomes available
+    afterNextRender(() => {
+      if (this.currentGroup() && !this.userStore.isDemoMode()) {
+        this.loadExpenses();
+      }
+    });
   }
 
   startDate = model<Date | null>(
@@ -207,48 +250,6 @@ export class ExpensesComponent implements OnInit, AfterViewInit {
   columnsToDisplay = signal<string[]>([]);
   footerColumnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
-
-  async ngOnInit(): Promise<void> {
-    this.breakpointObserver
-      .observe('(max-width: 1009px)')
-      .subscribe((result) => {
-        if (result.matches) {
-          this.columnsToDisplay.set([
-            'date-paidBy',
-            'description-category',
-            'amount',
-            'receipt-paid',
-            'expand',
-          ]);
-          this.footerColumnsToDisplay.set(['amount', 'receipt-paid', 'expand']);
-          this.smallScreen.set(true);
-        } else {
-          this.columnsToDisplay.set([
-            'date',
-            'paidBy',
-            'description',
-            'category',
-            'amount',
-            'receipt',
-            'paid',
-            'expand',
-          ]);
-          this.footerColumnsToDisplay.set([
-            'amount',
-            'receipt',
-            'paid',
-            'expand',
-          ]);
-          this.smallScreen.set(false);
-        }
-      });
-
-    // If currentGroup is already set (e.g., coming from another page), load expenses immediately
-    // Otherwise, the effect in the constructor will load them when the group becomes available
-    if (this.currentGroup() && !this.userStore.isDemoMode()) {
-      await this.loadExpenses();
-    }
-  }
 
   ngAfterViewInit(): void {
     // Check if we should auto-start the expenses tour

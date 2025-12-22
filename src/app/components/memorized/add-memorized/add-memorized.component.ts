@@ -7,7 +7,6 @@ import {
   ElementRef,
   inject,
   model,
-  OnInit,
   Signal,
   viewChild,
   viewChildren,
@@ -88,7 +87,7 @@ import { getStorage } from 'firebase/storage';
     DocRefCompareDirective,
   ],
 })
-export class AddMemorizedComponent implements OnInit {
+export class AddMemorizedComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(getAnalytics);
   protected readonly dialog = inject(MatDialog);
@@ -136,6 +135,18 @@ export class AddMemorizedComponent implements OnInit {
   });
 
   constructor() {
+    // Set default category if only one exists
+    if (this.activeCategories().length == 1) {
+      this.addMemorizedForm.patchValue({
+        category: this.activeCategories()[0].ref,
+      });
+    }
+
+    // Auto-add members if group setting is enabled
+    if (this.currentGroup().autoAddMembers) {
+      this.addAllActiveGroupMembers();
+    }
+
     afterNextRender(() => {
       this.totalAmountField().nativeElement.value =
         this.localeService.getFormattedZero();
@@ -148,17 +159,6 @@ export class AddMemorizedComponent implements OnInit {
     afterEveryRender(() => {
       this.addSelectFocus();
     });
-  }
-
-  ngOnInit(): void {
-    if (this.activeCategories().length == 1) {
-      this.addMemorizedForm.patchValue({
-        category: this.activeCategories()[0].ref,
-      });
-    }
-    if (this.currentGroup().autoAddMembers) {
-      this.addAllActiveGroupMembers();
-    }
   }
 
   addSelectFocus(): void {

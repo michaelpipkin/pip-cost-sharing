@@ -1,4 +1,4 @@
-import { Directive, ComponentRef, Input } from '@angular/core';
+import { ComponentRef, DestroyRef, Directive, inject, input } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { BaseFilterDirective } from './base-filter.directive';
 import {
@@ -25,15 +25,26 @@ import {
   standalone: true,
 })
 export class SelectFilterDirective extends BaseFilterDirective {
-  @Input() filterOptions: any[] = [];
-  @Input() filterMultiple = false;
-  @Input() filterLabel = 'Select value';
-  @Input() displayFn: (option: any) => string = (option) =>
-    option?.toString() || '';
-  @Input() trackByFn: (index: number, option: any) => any = (index, option) =>
-    option;
+  readonly #destroyRef = inject(DestroyRef);
+
+  filterOptions = input<any[]>([]);
+  filterMultiple = input(false);
+  filterLabel = input('Select value');
+  displayFn = input<(option: any) => string>((option) =>
+    option?.toString() || '');
+  trackByFn = input<(_index: number, option: any) => any>((_index, option) =>
+    option);
 
   private componentRef: ComponentRef<SelectFilterPanelComponent> | null = null;
+
+  constructor() {
+    super();
+    this.#destroyRef.onDestroy(() => {
+      if (this.componentRef) {
+        this.componentRef.destroy();
+      }
+    });
+  }
 
   protected override createFilterPanel(): ComponentPortal<any> {
     return new ComponentPortal(SelectFilterPanelComponent);
@@ -59,14 +70,15 @@ export class SelectFilterDirective extends BaseFilterDirective {
     if (!this.componentRef) return;
 
     // Set inputs using setInput for signal-based inputs
-    this.componentRef.setInput('options', this.filterOptions);
-    this.componentRef.setInput('multiple', this.filterMultiple);
-    this.componentRef.setInput('label', this.filterLabel);
-    this.componentRef.setInput('displayFn', this.displayFn);
-    this.componentRef.setInput('trackByFn', this.trackByFn);
+    this.componentRef.setInput('options', this.filterOptions());
+    this.componentRef.setInput('multiple', this.filterMultiple());
+    this.componentRef.setInput('label', this.filterLabel());
+    this.componentRef.setInput('displayFn', this.displayFn());
+    this.componentRef.setInput('trackByFn', this.trackByFn());
 
-    if (this.columnHeader) {
-      this.componentRef.setInput('columnLabel', this.columnHeader);
+    const columnHeader = this.columnHeader();
+    if (columnHeader) {
+      this.componentRef.setInput('columnLabel', columnHeader);
     }
 
     const currentFilter = this.getCurrentFilter();
@@ -91,10 +103,4 @@ export class SelectFilterDirective extends BaseFilterDirective {
     });
   }
 
-  override ngOnDestroy(): void {
-    if (this.componentRef) {
-      this.componentRef.destroy();
-    }
-    super.ngOnDestroy();
-  }
 }

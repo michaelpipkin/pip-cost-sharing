@@ -1,8 +1,8 @@
 import {
   Component,
+  computed,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -55,7 +55,7 @@ import { DocumentReference } from 'firebase/firestore';
     DocRefCompareDirective,
   ],
 })
-export class ManageGroupsComponent implements OnInit {
+export class ManageGroupsComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
   protected readonly expenseService = inject(ExpenseService);
@@ -73,6 +73,8 @@ export class ManageGroupsComponent implements OnInit {
 
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
 
+  adminGroupIds = computed(() => this.userAdminGroups().map((g) => g.id));
+
   editGroupForm = this.fb.group({
     groupRef: [null as DocumentReference<Group> | null, Validators.required],
     groupName: ['', Validators.required],
@@ -81,11 +83,14 @@ export class ManageGroupsComponent implements OnInit {
     currencyCode: ['USD', Validators.required],
   });
 
-  async ngOnInit(): Promise<void> {
-    const adminGroupIds = this.userAdminGroups().map((g) => g.id);
+  constructor() {
+    this.initializeForm();
+  }
+
+  private async initializeForm(): Promise<void> {
     if (
       this.selectedGroup() !== null &&
-      adminGroupIds.includes(this.selectedGroup().id)
+      this.adminGroupIds().includes(this.selectedGroup().id)
     ) {
       const group = this.selectedGroup();
 
@@ -103,7 +108,6 @@ export class ManageGroupsComponent implements OnInit {
         currencyCode: group.currencyCode ?? 'USD',
       });
 
-      // Disable currency field if expenses exist
       if (hasExpenses) {
         this.editGroupForm.controls.currencyCode.disable();
       }

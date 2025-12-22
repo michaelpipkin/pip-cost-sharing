@@ -1,5 +1,5 @@
 
-import { Component, inject, model, OnInit, signal } from '@angular/core';
+import { Component, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -33,7 +33,7 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
   templateUrl: './delete-account.component.html',
   styleUrl: './delete-account.component.scss',
 })
-export class DeleteAccountComponent implements OnInit {
+export class DeleteAccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly router = inject(Router);
   protected readonly snackBar = inject(MatSnackBar);
@@ -43,18 +43,11 @@ export class DeleteAccountComponent implements OnInit {
   protected readonly userService = inject(UserService);
   protected readonly groupService = inject(GroupService);
 
-  state = signal<DeletionState>('unverified');
-  verifiedEmail = signal<string>('');
+  state = signal<DeletionState>(
+    this.auth.currentUser ? 'verified' : 'unverified'
+  );
+  verifiedEmail = signal<string>(this.auth.currentUser?.email || '');
   confirmDeletion = model<boolean>(false);
-
-  ngOnInit(): void {
-    // Check if user is logged in
-    if (this.auth.currentUser) {
-      this.state.set('verified');
-      this.verifiedEmail.set(this.auth.currentUser.email || '');
-    }
-    // If not logged in, stay in 'unverified' state which prompts them to log in
-  }
 
   async deleteAccount(): Promise<void> {
     if (!this.confirmDeletion()) {
