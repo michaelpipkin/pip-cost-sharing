@@ -4,6 +4,7 @@ import {
   afterNextRender,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   model,
@@ -134,19 +135,10 @@ export class AddMemorizedComponent {
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
+  autoAddMembers = computed<boolean>(() => this.currentGroup()?.autoAddMembers);
+
   constructor() {
-    // Set default category if only one exists
-    if (this.activeCategories().length == 1) {
-      this.addMemorizedForm.patchValue({
-        category: this.activeCategories()[0].ref,
-      });
-    }
-
-    // Auto-add members if group setting is enabled
-    if (this.currentGroup().autoAddMembers) {
-      this.addAllActiveGroupMembers();
-    }
-
+    this.loading.loadingOn();
     afterNextRender(() => {
       this.totalAmountField().nativeElement.value =
         this.localeService.getFormattedZero();
@@ -158,6 +150,29 @@ export class AddMemorizedComponent {
     });
     afterEveryRender(() => {
       this.addSelectFocus();
+    });
+    effect(() => {
+      // Set default payer to current member if not already set
+      const currentMemberRef = this.currentMember()?.ref;
+      if (currentMemberRef && !this.addMemorizedForm.value.paidByMember) {
+        this.addMemorizedForm.patchValue({
+          paidByMember: currentMemberRef,
+        });
+      }
+      // Auto-add members if group setting is enabled
+      if (this.autoAddMembers()) {
+        this.addAllActiveGroupMembers();
+      }
+      // Set default category if only one exists
+      if (this.activeCategories().length === 1) {
+        this.addMemorizedForm.patchValue({
+          category: this.activeCategories()[0].ref,
+        });
+      }
+      // Turn off loading once stores are populated
+      if (currentMemberRef) {
+        this.loading.loadingOff();
+      }
     });
   }
 
