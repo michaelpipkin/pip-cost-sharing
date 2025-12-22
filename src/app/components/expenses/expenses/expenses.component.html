@@ -106,23 +106,25 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field subscriptSizing="dynamic" class="category-select">
-        @if (!!searchCategory()) {
-          <mat-label>Category</mat-label>
-        }
-        <mat-select
-          [(ngModel)]="searchCategory"
-          docRefCompare
-          placeholder="-- All Categories --"
-        >
-          <mat-option [value]="null">-- All Categories --</mat-option>
-          @for (category of categories(); track category.ref) {
-            <mat-option [value]="category.ref">
-              {{ category.name }}
-            </mat-option>
+      @if (categories().length > 1) {
+        <mat-form-field subscriptSizing="dynamic" class="category-select">
+          @if (!!searchCategory()) {
+            <mat-label>Category</mat-label>
           }
-        </mat-select>
-      </mat-form-field>
+          <mat-select
+            [(ngModel)]="searchCategory"
+            docRefCompare
+            placeholder="-- All Categories --"
+          >
+            <mat-option [value]="null">-- All Categories --</mat-option>
+            @for (category of categories(); track category.ref) {
+              <mat-option [value]="category.ref">
+                {{ category.name }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
     </div>
     <div class="filters mt-3">
       <button

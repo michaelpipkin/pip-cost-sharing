@@ -161,6 +161,7 @@ export class AddExpenseComponent {
   });
 
   constructor() {
+    this.loading.loadingOn();
     const navigation = this.router.currentNavigation();
     if (navigation?.extras?.state?.expense) {
       this.memorizedExpense.set(navigation!.extras!.state!.expense);
@@ -191,7 +192,6 @@ export class AddExpenseComponent {
           elementRef.nativeElement.value = formattedZero;
         });
       }
-      this.loading.loadingOff();
     });
     afterEveryRender(() => {
       this.addSelectFocus();
@@ -199,7 +199,15 @@ export class AddExpenseComponent {
     effect(() => {
       if (!!this.memorizedExpense()) {
         this.loadMemorizedExpense();
+        this.loading.loadingOff();
       } else {
+        // Set default payer to current member if not already set
+        const currentMemberRef = this.currentMember()?.ref;
+        if (currentMemberRef && !this.addExpenseForm.value.paidByMember) {
+          this.addExpenseForm.patchValue({
+            paidByMember: currentMemberRef,
+          });
+        }
         if (this.autoAddMembers()) {
           this.addAllActiveGroupMembers();
         }
@@ -207,6 +215,10 @@ export class AddExpenseComponent {
           this.addExpenseForm.patchValue({
             category: this.activeCategories()[0].ref,
           });
+        }
+        // Turn off loading once stores are populated
+        if (currentMemberRef) {
+          this.loading.loadingOff();
         }
       }
     });
