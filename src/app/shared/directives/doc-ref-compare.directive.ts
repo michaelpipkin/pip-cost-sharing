@@ -1,4 +1,4 @@
-import { Directive, inject, OnInit } from '@angular/core';
+import { Directive, inject } from '@angular/core';
 import { MatSelect } from '@angular/material/select';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -6,10 +6,10 @@ import { DocumentReference } from 'firebase/firestore';
   selector: 'mat-select[docRefCompare]',
   standalone: true,
 })
-export class DocRefCompareDirective implements OnInit {
+export class DocRefCompareDirective {
   private matSelect = inject(MatSelect);
 
-  ngOnInit() {
+  constructor() {
     this.matSelect.compareWith = this.compareDocRefs;
   }
 

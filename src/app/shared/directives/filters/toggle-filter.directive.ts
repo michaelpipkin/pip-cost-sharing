@@ -1,4 +1,4 @@
-import { Directive, ComponentRef, Input } from '@angular/core';
+import { ComponentRef, DestroyRef, Directive, inject, input } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { BaseFilterDirective } from './base-filter.directive';
 import {
@@ -23,11 +23,22 @@ import {
   standalone: true,
 })
 export class ToggleFilterDirective extends BaseFilterDirective {
-  @Input() filterTrueLabel = 'Yes';
-  @Input() filterFalseLabel = 'No';
-  @Input() filterAllLabel = 'All';
+  readonly #destroyRef = inject(DestroyRef);
+
+  filterTrueLabel = input('Yes');
+  filterFalseLabel = input('No');
+  filterAllLabel = input('All');
 
   private componentRef: ComponentRef<ToggleFilterPanelComponent> | null = null;
+
+  constructor() {
+    super();
+    this.#destroyRef.onDestroy(() => {
+      if (this.componentRef) {
+        this.componentRef.destroy();
+      }
+    });
+  }
 
   protected override createFilterPanel(): ComponentPortal<any> {
     return new ComponentPortal(ToggleFilterPanelComponent);
@@ -53,13 +64,14 @@ export class ToggleFilterDirective extends BaseFilterDirective {
     if (!this.componentRef) return;
 
     // Set inputs using setInput for signal-based inputs
-    if (this.columnHeader) {
-      this.componentRef.setInput('columnLabel', this.columnHeader);
+    const columnHeader = this.columnHeader();
+    if (columnHeader) {
+      this.componentRef.setInput('columnLabel', columnHeader);
     }
 
-    this.componentRef.setInput('trueLabel', this.filterTrueLabel);
-    this.componentRef.setInput('falseLabel', this.filterFalseLabel);
-    this.componentRef.setInput('allLabel', this.filterAllLabel);
+    this.componentRef.setInput('trueLabel', this.filterTrueLabel());
+    this.componentRef.setInput('falseLabel', this.filterFalseLabel());
+    this.componentRef.setInput('allLabel', this.filterAllLabel());
 
     const currentFilter = this.getCurrentFilter();
     if (currentFilter && currentFilter.type === 'toggle') {
@@ -84,12 +96,5 @@ export class ToggleFilterDirective extends BaseFilterDirective {
     this.componentRef.instance.clear.subscribe(() => {
       this.clearFilter();
     });
-  }
-
-  override ngOnDestroy(): void {
-    if (this.componentRef) {
-      this.componentRef.destroy();
-    }
-    super.ngOnDestroy();
   }
 }

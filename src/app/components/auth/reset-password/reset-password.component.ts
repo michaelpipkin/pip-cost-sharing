@@ -1,4 +1,4 @@
-import { Component, inject, model, OnInit, signal } from '@angular/core';
+import { Component, inject, model, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,7 +30,7 @@ import {
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss',
 })
-export class ResetPasswordComponent implements OnInit {
+export class ResetPasswordComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly route = inject(ActivatedRoute);
@@ -39,7 +39,7 @@ export class ResetPasswordComponent implements OnInit {
   protected readonly snackBar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
-  oobCode = signal<string>('');
+  oobCode = signal<string>(this.route.snapshot.queryParams['oobCode'] || '');
 
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
@@ -52,13 +52,10 @@ export class ResetPasswordComponent implements OnInit {
     { validators: passwordMatchValidator() }
   );
 
-  ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
-      if (!params['oobCode']) {
-        this.router.navigate(['/login']);
-      }
-      this.oobCode.set(params['oobCode']);
-    });
+  constructor() {
+    if (!this.oobCode()) {
+      this.router.navigate(['/login']);
+    }
   }
 
   toggleHidePassword() {
