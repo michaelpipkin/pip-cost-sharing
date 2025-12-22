@@ -1,17 +1,3 @@
-import {
-  Component,
-  inject,
-  model,
-  OnDestroy,
-  OnInit,
-  signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -23,14 +9,28 @@ import { Browser } from '@capacitor/browser';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
+import {
+  afterNextRender,
+  Component,
+  DestroyRef,
+  inject,
+  model,
+  signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   getAuth,
   sendEmailVerification,
 } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
 export declare const hcaptcha: any;
 
 @Component({
@@ -48,7 +48,7 @@ export declare const hcaptcha: any;
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
 })
-export class RegisterComponent implements OnInit, OnDestroy {
+export class RegisterComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);
@@ -57,6 +57,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   protected readonly analytics = inject(getAnalytics);
   protected readonly functions = inject(getFunctions);
   protected readonly pwaDetection = inject(PwaDetectionService);
+  readonly #destroyRef = inject(DestroyRef);
 
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
@@ -64,7 +65,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   passedCaptcha = signal<boolean>(false);
   hCaptchaWidgetId = signal<string>('');
 
-  private intervalId: any;
+  #intervalId: ReturnType<typeof setInterval> | null = null;
 
   registerForm = this.fb.group(
     {
@@ -75,37 +76,39 @@ export class RegisterComponent implements OnInit, OnDestroy {
     { validators: passwordMatchValidator() }
   );
 
-  ngOnInit(): void {
-    const widgetId = hcaptcha.render('hcaptcha-container', {
-      sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
-      callback: async (token: String) => {
-        const validateHCaptcha = httpsCallable(
-          this.functions,
-          'validateHCaptcha'
-        );
-        try {
-          const result = await validateHCaptcha({ token: token });
-          if (result.data === 'Success') {
-            this.passedCaptcha.set(true);
-            this.intervalId = setInterval(() => {
-              hcaptcha.reset(this.hCaptchaWidgetId());
-              this.passedCaptcha.set(false);
-            }, 90000);
+  constructor() {
+    afterNextRender(() => {
+      const widgetId = hcaptcha.render('hcaptcha-container', {
+        sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
+        callback: async (token: String) => {
+          const validateHCaptcha = httpsCallable(
+            this.functions,
+            'validateHCaptcha'
+          );
+          try {
+            const result = await validateHCaptcha({ token: token });
+            if (result.data === 'Success') {
+              this.passedCaptcha.set(true);
+              this.#intervalId = setInterval(() => {
+                hcaptcha.reset(this.hCaptchaWidgetId());
+                this.passedCaptcha.set(false);
+              }, 90000);
+            }
+          } catch (error) {
+            logEvent(this.analytics, 'hCaptcha_error', {
+              error: error.message,
+            });
           }
-        } catch (error) {
-          logEvent(this.analytics, 'hCaptcha_error', {
-            error: error.message,
-          });
-        }
-      },
+        },
+      });
+      this.hCaptchaWidgetId.set(widgetId);
     });
-    this.hCaptchaWidgetId.set(widgetId);
-  }
 
-  ngOnDestroy(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
+    this.#destroyRef.onDestroy(() => {
+      if (this.#intervalId) {
+        clearInterval(this.#intervalId);
+      }
+    });
   }
   isRunningInBrowser(): boolean {
     return this.pwaDetection.isRunningInBrowser();

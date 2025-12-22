@@ -1,5 +1,5 @@
 
-import { Component, inject, model, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, model, signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -43,7 +43,7 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
   templateUrl: './account-action.component.html',
   styleUrl: './account-action.component.scss',
 })
-export class AccountActionComponent implements OnInit {
+export class AccountActionComponent {
   protected readonly auth = inject(getAuth);
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
@@ -58,7 +58,7 @@ export class AccountActionComponent implements OnInit {
   processing = signal<boolean>(false);
   success = signal<boolean>(false);
   errorMessage = signal<string>('');
-  isUserLoggedIn = signal<boolean>(false);
+  isUserLoggedIn = computed<boolean>(() => !!this.auth.currentUser);
   resending = signal<boolean>(false);
 
   hidePassword = model<boolean>(true);
@@ -72,46 +72,43 @@ export class AccountActionComponent implements OnInit {
     { validators: passwordMatchValidator() }
   );
 
-  ngOnInit(): void {
-    this.isUserLoggedIn.set(!!this.auth.currentUser);
+  constructor() {
+    const params = this.route.snapshot.queryParams;
+    const oobCode = params['oobCode'];
+    const mode = params['mode'] as ActionMode;
 
-    this.route.queryParams.subscribe((params) => {
-      const oobCode = params['oobCode'];
-      const mode = params['mode'] as ActionMode;
+    if (!oobCode) {
+      this.errorMessage.set('Invalid link. No code provided.');
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'process_action',
+        message: 'No oobCode in URL',
+      });
+      return;
+    }
 
-      if (!oobCode) {
-        this.errorMessage.set('Invalid link. No code provided.');
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'process_action',
-          message: 'No oobCode in URL',
-        });
-        return;
-      }
+    if (
+      !mode ||
+      !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
+    ) {
+      this.errorMessage.set('Invalid link. Unknown action.');
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'process_action',
+        message: `Invalid mode: ${mode}`,
+      });
+      return;
+    }
 
-      if (
-        !mode ||
-        !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
-      ) {
-        this.errorMessage.set('Invalid link. Unknown action.');
-        logEvent(this.analytics, 'error', {
-          component: this.constructor.name,
-          action: 'process_action',
-          message: `Invalid mode: ${mode}`,
-        });
-        return;
-      }
+    this.mode.set(mode);
+    this.oobCode.set(oobCode);
 
-      this.mode.set(mode);
-      this.oobCode.set(oobCode);
-
-      if (mode === 'verifyEmail') {
-        this.processEmailVerification();
-      } else if (mode === 'recoverEmail') {
-        this.processEmailRecovery();
-      }
-      // For resetPassword, we just show the form
-    });
+    if (mode === 'verifyEmail') {
+      this.processEmailVerification();
+    } else if (mode === 'recoverEmail') {
+      this.processEmailRecovery();
+    }
+    // For resetPassword, we just show the form
   }
 
   get r() {

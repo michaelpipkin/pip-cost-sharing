@@ -1,9 +1,9 @@
 import {
+  afterNextRender,
+  DestroyRef,
   Directive,
   ElementRef,
-  Input,
-  OnInit,
-  OnDestroy,
+  input,
   ViewContainerRef,
   inject,
   Renderer2,
@@ -31,26 +31,27 @@ import {
 @Directive({
   standalone: true,
 })
-export abstract class BaseFilterDirective implements OnInit, OnDestroy {
+export abstract class BaseFilterDirective {
   protected elementRef = inject(ElementRef);
   protected renderer = inject(Renderer2);
   protected overlay = inject(Overlay);
   protected viewContainerRef = inject(ViewContainerRef);
+  readonly #destroyRef = inject(DestroyRef);
 
   /**
    * The property key to filter on (e.g., 'date', 'paidBy', 'description')
    */
-  @Input({ required: true }) filterKey!: string;
+  filterKey = input.required<string>();
 
   /**
    * The filter service instance to use for state management
    */
-  @Input({ required: true }) filterService!: TableFilterService<any>;
+  filterService = input.required<TableFilterService<any>>();
 
   /**
    * The column header text to display in the filter panel (e.g., 'Date', 'Paid By')
    */
-  @Input() columnHeader?: string;
+  columnHeader = input<string>();
 
   protected overlayRef: OverlayRef | null = null;
   protected filterIcon: HTMLElement | null = null;
@@ -59,22 +60,25 @@ export abstract class BaseFilterDirective implements OnInit, OnDestroy {
   constructor() {
     // Watch for filter changes to update icon state
     effect(() => {
-      if (this.filterService) {
-        const hasFilter = this.filterService.hasFilter(this.filterKey);
+      const service = this.filterService();
+      if (service) {
+        const hasFilter = service.hasFilter(this.filterKey());
         this.updateIconState(hasFilter);
       }
     });
-  }
 
-  ngOnInit(): void {
-    this.injectFilterIcon();
-  }
+    // Inject filter icon after DOM is ready
+    afterNextRender(() => {
+      this.injectFilterIcon();
+    });
 
-  ngOnDestroy(): void {
-    this.closeFilterPanel();
-    if (this.filterIcon) {
-      this.filterIcon.remove();
-    }
+    // Cleanup on destroy
+    this.#destroyRef.onDestroy(() => {
+      this.closeFilterPanel();
+      if (this.filterIcon) {
+        this.filterIcon.remove();
+      }
+    });
   }
 
   /**
@@ -103,7 +107,7 @@ export abstract class BaseFilterDirective implements OnInit, OnDestroy {
     this.renderer.appendChild(targetElement, this.filterIcon);
 
     // Update initial state
-    const hasFilter = this.filterService.hasFilter(this.filterKey);
+    const hasFilter = this.filterService().hasFilter(this.filterKey());
     this.updateIconState(hasFilter);
   }
 
@@ -212,7 +216,7 @@ export abstract class BaseFilterDirective implements OnInit, OnDestroy {
    * Applies the current filter value to the service
    */
   protected applyFilter(value: FilterValue): void {
-    this.filterService.setFilter(this.filterKey, value);
+    this.filterService().setFilter(this.filterKey(), value);
     this.closeFilterPanel();
   }
 
@@ -220,7 +224,7 @@ export abstract class BaseFilterDirective implements OnInit, OnDestroy {
    * Clears the filter for this column
    */
   protected clearFilter(): void {
-    this.filterService.clearFilter(this.filterKey);
+    this.filterService().clearFilter(this.filterKey());
     this.closeFilterPanel();
   }
 
@@ -228,7 +232,7 @@ export abstract class BaseFilterDirective implements OnInit, OnDestroy {
    * Gets the current filter value from the service
    */
   protected getCurrentFilter(): FilterValue | undefined {
-    return this.filterService.getFilter(this.filterKey);
+    return this.filterService().getFilter(this.filterKey());
   }
 
   /**

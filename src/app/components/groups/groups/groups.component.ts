@@ -1,9 +1,8 @@
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   effect,
   inject,
-  OnInit,
   Signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -50,7 +49,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     DocRefCompareDirective,
   ],
 })
-export class GroupsComponent implements OnInit, AfterViewInit {
+export class GroupsComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
@@ -80,19 +79,18 @@ export class GroupsComponent implements OnInit, AfterViewInit {
         this.loadingService.loadingOff();
       }
     });
-  }
 
-  ngOnInit(): void {
+    // Patch form value in demo mode
     if (this.demoService.isInDemoMode()) {
       this.groupForm.patchValue({
         selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
       });
     }
-  }
 
-  ngAfterViewInit(): void {
-    // Check if we should auto-start the groups tour
-    this.tourService.checkForContinueTour('groups');
+    afterNextRender(() => {
+      // Check if we should auto-start the groups tour
+      this.tourService.checkForContinueTour('groups');
+    });
   }
 
   get selectedGroupRef() {

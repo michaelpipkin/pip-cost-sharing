@@ -1,12 +1,11 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   computed,
   effect,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -59,7 +58,7 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
     ActiveInactivePipe,
   ],
 })
-export class MembersComponent implements OnInit, AfterViewInit {
+export class MembersComponent {
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
@@ -108,9 +107,8 @@ export class MembersComponent implements OnInit, AfterViewInit {
         this.loading.loadingOff();
       }
     });
-  }
 
-  ngOnInit(): void {
+    // Observe breakpoint changes for responsive column display
     this.breakpointObserver
       .observe('(max-width: 1009px)')
       .subscribe((result) => {
@@ -131,11 +129,11 @@ export class MembersComponent implements OnInit, AfterViewInit {
           ]);
         }
       });
-  }
 
-  ngAfterViewInit(): void {
-    // Check if we should auto-start the members tour
-    this.tourService.checkForContinueTour('members');
+    afterNextRender(() => {
+      // Check if we should auto-start the members tour
+      this.tourService.checkForContinueTour('members');
+    });
   }
 
   sortMembers(e: { active: string; direction: string }): void {

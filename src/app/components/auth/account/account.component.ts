@@ -1,18 +1,3 @@
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatOptionModule } from '@angular/material/core';
@@ -37,6 +22,23 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   User as FirebaseUser,
   getAuth,
@@ -44,8 +46,6 @@ import {
   updateEmail,
   updatePassword,
 } from 'firebase/auth';
-import { DocumentReference } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
 
 @Component({
   selector: 'app-account',
@@ -230,26 +230,40 @@ export class AccountComponent {
   }
 
   onSubmitPassword(): void {
-    this.passwordForm.disable();
     const changes = this.passwordForm.value;
-    if (changes.password !== '') {
-      updatePassword(this.firebaseUser(), changes.password)
-        .then(() => {
-          this.snackBar.open('Your password has been updated.', 'Close', {
-            verticalPosition: 'top',
-          });
-        })
-        .catch(() => {
-          this.snackBar.open(
-            'Something went wrong - your password could not be updated.',
-            'Close',
-            {
+    this.loading.loadingOn();
+    try {
+      if (changes.password !== '') {
+        updatePassword(this.firebaseUser(), changes.password)
+          .then(() => {
+            this.snackBar.open('Your password has been updated.', 'Close', {
               verticalPosition: 'top',
-            }
-          );
+            });
+            this.passwordForm.reset();
+          })
+          .catch(() => {
+            this.snackBar.open(
+              'Something went wrong - your password could not be updated.',
+              'Close',
+              {
+                verticalPosition: 'top',
+              }
+            );
+          });
+      } else {
+        this.snackBar.open('Password cannot be empty.', 'Close', {
+          verticalPosition: 'top',
         });
+      }
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'update_password',
+        message: error.message,
+      });
+    } finally {
+      this.loading.loadingOff();
     }
-    this.passwordForm.enable();
   }
 
   async onSubmitPayments(): Promise<void> {

@@ -7,7 +7,6 @@ import {
   ElementRef,
   inject,
   model,
-  OnInit,
   signal,
   Signal,
   viewChild,
@@ -89,7 +88,7 @@ import { DocumentReference } from 'firebase/firestore';
   templateUrl: './edit-memorized.component.html',
   styleUrl: './edit-memorized.component.scss',
 })
-export class EditMemorizedComponent implements OnInit {
+export class EditMemorizedComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute);
@@ -111,7 +110,7 @@ export class EditMemorizedComponent implements OnInit {
 
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
-  memorized = signal<Memorized>(null);
+  memorized = signal<Memorized>(this.route.snapshot.data.memorized);
 
   categories = computed<Category[]>(() => {
     return this.categoryStore
@@ -131,7 +130,9 @@ export class EditMemorizedComponent implements OnInit {
       .filter((m) => m.active || splitMembers.includes(m.ref));
   });
 
-  splitByPercentage = model<boolean>(false);
+  splitByPercentage = model<boolean>(
+    this.route.snapshot.data.memorized?.splitByPercentage ?? false
+  );
 
   totalAmountField = viewChild<ElementRef>('totalAmount');
   proportionalAmountField = viewChild<ElementRef>('propAmount');
@@ -149,30 +150,8 @@ export class EditMemorizedComponent implements OnInit {
   });
 
   constructor() {
-    afterNextRender(() => {
-      const memorized = this.memorized();
-      this.totalAmountField().nativeElement.value =
-        this.decimalPipe.transform(memorized.totalAmount, '1.2-2') || '0.00';
-      this.proportionalAmountField().nativeElement.value =
-        this.decimalPipe.transform(memorized.allocatedAmount, '1.2-2') ||
-        '0.00';
-      this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
-        elementRef.nativeElement.value =
-          this.decimalPipe.transform(
-            memorized.splits[index].assignedAmount,
-            '1.2-2'
-          ) || '0.00';
-      });
-    });
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
-  }
-
-  ngOnInit(): void {
-    const memorized = this.route.snapshot.data.memorized;
-    this.memorized.set(memorized);
-    this.splitByPercentage.set(memorized.splitByPercentage);
+    // Load memorized data from route and populate form
+    const memorized = this.memorized();
     this.editMemorizedForm.patchValue({
       paidByMember: memorized.paidByMemberRef,
       amount: memorized.totalAmount,
@@ -191,7 +170,26 @@ export class EditMemorizedComponent implements OnInit {
         })
       );
     });
-    this.loading.loadingOff();
+
+    afterNextRender(() => {
+      const memorized = this.memorized();
+      this.totalAmountField().nativeElement.value =
+        this.decimalPipe.transform(memorized.totalAmount, '1.2-2') || '0.00';
+      this.proportionalAmountField().nativeElement.value =
+        this.decimalPipe.transform(memorized.allocatedAmount, '1.2-2') ||
+        '0.00';
+      this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
+        elementRef.nativeElement.value =
+          this.decimalPipe.transform(
+            memorized.splits[index].assignedAmount,
+            '1.2-2'
+          ) || '0.00';
+      });
+      this.loading.loadingOff();
+    });
+    afterEveryRender(() => {
+      this.addSelectFocus();
+    });
   }
 
   get splits(): FormArray {
