@@ -13,6 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   HelpDialogComponent,
@@ -58,7 +59,7 @@ export class GroupsComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly fb = inject(FormBuilder);
   protected readonly analytics = inject(getAnalytics);
 
@@ -107,7 +108,9 @@ export class GroupsComponent {
       .afterClosed()
       .subscribe(async (groupRef: DocumentReference<Group>) => {
         if (groupRef) {
-          this.snackBar.open('Group added!', 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Group added' },
+          });
           this.groupForm.patchValue({
             selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
           });
@@ -123,7 +126,9 @@ export class GroupsComponent {
     const dialogRef = this.dialog.open(JoinGroupComponent);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
-        this.snackBar.open('Group joined!', 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Group joined' },
+        });
         this.groupForm.patchValue({
           selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
         });
@@ -147,8 +152,8 @@ export class GroupsComponent {
 
   copyGroupCode(): void {
     navigator.clipboard.writeText(this.selectedGroupRef.id);
-    this.snackBar.open('Group join code copied', 'OK', {
-      duration: 2000,
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: 'Group join code copied' },
     });
   }
 
@@ -163,7 +168,9 @@ export class GroupsComponent {
     const dialogRef = this.dialog.open(ManageGroupsComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
-        this.snackBar.open(`Group updated`, 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Group updated' },
+        });
         this.groupForm.patchValue({
           selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
         });

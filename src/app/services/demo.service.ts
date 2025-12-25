@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { NavigationEnd, Router } from '@angular/router';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -18,7 +19,7 @@ import { DemoModeService } from './demo-mode.service';
 export class DemoService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly demoModeService = inject(DemoModeService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly snackbar = inject(MatSnackBar);
   private readonly userStore = inject(UserStore);
   private readonly groupStore = inject(GroupStore);
   private readonly memberStore = inject(MemberStore);
@@ -87,10 +88,8 @@ export class DemoService implements OnDestroy {
    * This should be called whenever a user tries to save/delete/modify data in demo components
    */
   showDemoModeRestrictionMessage(): void {
-    this.snackBar.open('Data modification is disabled in demo mode', 'Close', {
-      duration: 4000,
-      horizontalPosition: 'center',
-      verticalPosition: 'top',
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: 'Data modification is disabled in demo mode' },
     });
   }
 

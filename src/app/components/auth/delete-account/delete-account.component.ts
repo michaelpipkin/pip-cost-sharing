@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Router, RouterLink } from '@angular/router';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
@@ -36,7 +37,7 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
 export class DeleteAccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly router = inject(Router);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
   protected readonly functions = inject(getFunctions);
@@ -51,11 +52,9 @@ export class DeleteAccountComponent {
 
   async deleteAccount(): Promise<void> {
     if (!this.confirmDeletion()) {
-      this.snackBar.open(
-        'Please confirm that you understand this action is irreversible',
-        'Close',
-        { verticalPosition: 'top' }
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Please confirm that you understand this action is irreversible' },
+      });
       return;
     }
 
@@ -86,11 +85,9 @@ export class DeleteAccountComponent {
       }
     } catch (error: any) {
       console.error('Error deleting account:', error);
-      this.snackBar.open(
-        `Failed to delete account: ${error.message}`,
-        'Close',
-        { duration: 0, verticalPosition: 'top' }
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: `Failed to delete account: ${error.message}` },
+      });
 
       logEvent(this.analytics, 'error', {
         component: this.constructor.name,

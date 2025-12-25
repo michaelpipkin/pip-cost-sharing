@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -53,7 +54,7 @@ export class EditMemberComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
@@ -108,17 +109,18 @@ export class EditMemberComponent {
       });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_member',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not edit member.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not edit member' },
+        });
       }
     } finally {
       this.loading.loadingOff();
@@ -147,16 +149,18 @@ export class EditMemberComponent {
           });
         } catch (error) {
           if (error instanceof Error) {
-            this.snackBar.open(error.message, 'Close');
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'remove_member',
               message: error.message,
             });
-            this.snackBar.open(
-              'Something went wrong - could not remove member.',
-              'Close'
-            );
+          } else {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not remove member' },
+            });
           }
         } finally {
           this.loading.loadingOff();

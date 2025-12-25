@@ -4,6 +4,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Router, RouterModule } from '@angular/router';
 import { Browser } from '@capacitor/browser';
 import { PwaDetectionService } from '@services/pwa-detection.service';
@@ -53,7 +54,7 @@ export class RegisterComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly functions = inject(getFunctions);
   protected readonly pwaDetection = inject(PwaDetectionService);
@@ -137,10 +138,9 @@ export class RegisterComponent {
       const password = this.registerForm.value.password;
       const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length > 0 && signInMethods.includes('password')) {
-        this.snackBar.open(
-          'Account already exists for this email address',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Account already exists for this email address' },
+        });
         return;
       } else {
         const userCredential = await createUserWithEmailAndPassword(
@@ -159,20 +159,20 @@ export class RegisterComponent {
               action: 'verify_email',
               message: err.message,
             });
-            this.snackBar.open(
-              'Something went wrong - verification email could not be sent.',
-              'Close'
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - verification email could not be sent' },
+            });
           }
         );
-        this.snackBar.open(
-          'Account created! Please check your email to verify your email address before accessing the app.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Account created! Please check your email to verify your email address before accessing the app' },
+        });
         // Navigation will be handled automatically by auth state change
       }
     } catch (error: any) {
-      this.snackBar.open(error.message, 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: error.message },
+      });
     } finally {
       this.loading.loadingOff();
     }

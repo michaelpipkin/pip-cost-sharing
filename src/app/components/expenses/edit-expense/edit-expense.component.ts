@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -117,7 +118,7 @@ export class EditExpenseComponent {
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
@@ -225,7 +226,9 @@ export class EditExpenseComponent {
           if (error.code !== 'storage/object-not-found') {
             logEvent(this.analytics, 'receipt-retrieval-error');
           } else {
-            this.snackBar.open(error.message, 'Close');
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'firebase_receipt_retrieval',
@@ -233,17 +236,18 @@ export class EditExpenseComponent {
             });
           }
         } else if (error instanceof Error) {
-          this.snackBar.open(error.message, 'Close');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: error.message },
+          });
           logEvent(this.analytics, 'error', {
             component: this.constructor.name,
             action: 'firebase_receipt_retrieval',
             message: error.message,
           });
         } else {
-          this.snackBar.open(
-            'Something went wrong - could not retrieve receipt.',
-            'Close'
-          );
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Something went wrong - could not retrieve receipt' },
+          });
         }
       }
     }
@@ -434,7 +438,9 @@ export class EditExpenseComponent {
       }
     } catch (error) {
       console.error('Error selecting file:', error);
-      this.snackBar.open('Failed to select file. Please try again.', 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Failed to select file. Please try again' },
+      });
     }
   }
 
@@ -444,7 +450,9 @@ export class EditExpenseComponent {
    */
   private processSelectedFile(file: File): void {
     if (file.size > 5 * 1024 * 1024) {
-      this.snackBar.open('File is too large. File size limited to 5MB.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'File is too large. File size limited to 5MB' },
+      });
     } else {
       this.receiptFile.set(file);
       this.fileName.set(file.name);
@@ -652,7 +660,9 @@ export class EditExpenseComponent {
             splits,
             this.receiptFile()
           );
-          this.snackBar.open('Expense updated successfully.', 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Expense updated successfully' },
+          });
           if (this.demoService.isInDemoMode()) {
             this.router.navigate(['/demo/expenses']);
           } else {
@@ -660,17 +670,18 @@ export class EditExpenseComponent {
           }
         } catch (error) {
           if (error instanceof Error) {
-            this.snackBar.open(error.message, 'Close');
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'edit_expense',
               message: error.message,
             });
           } else {
-            this.snackBar.open(
-              'Something went wrong - could not edit expense.',
-              'Close'
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not edit expense' },
+            });
           }
         } finally {
           this.loading.loadingOff();
@@ -700,7 +711,9 @@ export class EditExpenseComponent {
             this.#currentGroup().id,
             this.expense().ref
           );
-          this.snackBar.open('Expense deleted.', 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Expense deleted' },
+          });
           if (this.demoService.isInDemoMode()) {
             this.router.navigate(['/demo/expenses']);
           } else {
@@ -708,17 +721,18 @@ export class EditExpenseComponent {
           }
         } catch (error) {
           if (error instanceof Error) {
-            this.snackBar.open(error.message, 'Close');
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'delete_expense',
               message: error.message,
             });
           } else {
-            this.snackBar.open(
-              'Something went wrong - could not delete expense.',
-              'Close'
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not delete expense' },
+            });
           }
         } finally {
           this.loading.loadingOff();

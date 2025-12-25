@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 
@@ -20,7 +21,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
   styleUrl: './payment-dialog.component.scss',
 })
 export class PaymentDialogComponent {
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   protected readonly data: paymentData = inject(MAT_DIALOG_DATA);
@@ -28,20 +29,22 @@ export class PaymentDialogComponent {
   async copyPaymentIdToClipboard(paymentId: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(paymentId);
-      this.snackBar.open('Payment ID copied to clipboard', 'OK', {
-        duration: 2000,
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Payment ID copied to clipboard' },
       });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'copy_payment_id_to_clipboard',
           message: error.message,
         });
       } else {
-        this.snackBar.open('Failed to copy payment ID', 'OK', {
-          duration: 2000,
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Failed to copy payment ID' },
         });
       }
     }

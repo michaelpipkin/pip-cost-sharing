@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { Group } from '@models/group';
@@ -49,7 +50,7 @@ export class AddGroupComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
@@ -94,17 +95,18 @@ export class AddGroupComponent {
       this.dialogRef.close(groupRef);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_group',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not add group.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not add group' },
+        });
       }
     } finally {
       this.loading.loadingOff();

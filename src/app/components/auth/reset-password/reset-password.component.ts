@@ -4,6 +4,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
@@ -36,7 +37,7 @@ export class ResetPasswordComponent {
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   oobCode = signal<string>(this.route.snapshot.queryParams['oobCode'] || '');
@@ -75,19 +76,27 @@ export class ResetPasswordComponent {
     this.loading.loadingOn();
     await confirmPasswordReset(this.auth, this.oobCode(), password)
       .then(() => {
-        this.snackBar.open('Password reset successfully', 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Password reset successfully' },
+        });
         this.router.navigate(['/login']);
       })
       .catch((error) => {
         if (error?.code === 'auth/invalid-action-code') {
-          this.snackBar.open('Invalid reset link', 'Close');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Invalid reset link' },
+          });
         } else if (error?.code === 'auth/expired-action-code') {
-          this.snackBar.open('Reset link expired', 'Close');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Reset link expired' },
+          });
         } else {
           logEvent(this.analytics, 'reset_password_error', {
             error: error.message,
           });
-          this.snackBar.open(error.message, 'Close');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: error.message },
+          });
         }
       })
       .finally(() => {

@@ -1105,3 +1105,19 @@ a:hover {
     }
   }
 }
+
+/* ========================================
+   SNACKBAR STYLES
+======================================== */
+
+.snackbar-spinner {
+  @include mat.progress-spinner-overrides(
+    (
+      active-indicator-color: tokens.color('secondary'),
+    )
+  );
+}
+
+.close-button {
+  color: tokens.color('on-primary') !important;
+}

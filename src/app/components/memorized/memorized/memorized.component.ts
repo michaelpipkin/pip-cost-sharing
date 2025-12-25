@@ -1,15 +1,4 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -22,10 +11,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -34,10 +19,25 @@ import { DemoService } from '@services/demo.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-memorized',
@@ -66,7 +66,7 @@ export class MemorizedComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly splitService = inject(SplitService);
   protected readonly tourService = inject(TourService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
