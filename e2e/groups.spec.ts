@@ -245,7 +245,7 @@ test.describe('Groups Component Functionality', () => {
       // Should show error message (exact message depends on backend implementation)
       // The form should remain open or show an error
       // We don't expect the success message
-      await expect(groupsPage.snackBar).not.toContainText('Group joined!');
+      await expect(groupsPage.snackbar).not.toContainText('Group joined!');
     });
   });
 
@@ -344,7 +344,7 @@ test.describe('Groups Component Functionality', () => {
       await groupsPage.cancelManageGroups();
 
       // Changes should not be saved
-      await expect(groupsPage.snackBar).not.toContainText('Group updated');
+      await expect(groupsPage.snackbar).not.toContainText('Group updated');
     });
   });
 

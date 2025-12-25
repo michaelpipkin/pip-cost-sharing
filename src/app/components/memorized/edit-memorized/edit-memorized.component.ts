@@ -36,6 +36,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -100,7 +101,7 @@ export class EditMemorizedComponent {
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
@@ -455,21 +456,24 @@ export class EditMemorizedComponent {
         this.memorized().ref,
         changes
       );
-      this.snackBar.open('Memorized expense updated.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Memorized expense updated' },
+      });
       this.router.navigate(['/memorized']);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_memorized_expense',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not update memorized expense.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not update memorized expense' },
+        });
       }
     } finally {
       this.loading.loadingOff();
@@ -493,21 +497,24 @@ export class EditMemorizedComponent {
         try {
           this.loading.loadingOn();
           await this.memorizedService.deleteMemorized(this.memorized().ref);
-          this.snackBar.open('Memorized expense deleted.', 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Memorized expense deleted' },
+          });
           this.router.navigate(['/memorized']);
         } catch (error) {
           if (error instanceof Error) {
-            this.snackBar.open(error.message, 'Close');
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
             logEvent(this.analytics, 'error', {
               component: this.constructor.name,
               action: 'delete_memorized_expense',
               message: error.message,
             });
           } else {
-            this.snackBar.open(
-              'Something went wrong - could not delete memorized expense.',
-              'Close'
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not delete memorized expense' },
+            });
           }
         } finally {
           this.loading.loadingOff();

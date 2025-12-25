@@ -36,6 +36,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
@@ -101,7 +102,7 @@ export class AddMemorizedComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
@@ -471,21 +472,24 @@ export class AddMemorizedComponent {
         this.currentGroup().id,
         memorized
       );
-      this.snackBar.open('Memorized expense added.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Memorized expense added' },
+        });
       this.router.navigate(['/memorized']);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'memorize_expense',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not memorize expense.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not memorize expense' },
+        });
       }
     } finally {
       this.loading.loadingOff();

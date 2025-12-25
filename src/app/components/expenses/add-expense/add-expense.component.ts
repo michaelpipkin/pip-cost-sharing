@@ -491,7 +491,9 @@ export class AddExpenseComponent {
    */
   private processSelectedFile(file: File): void {
     if (file.size > 5 * 1024 * 1024) {
-      this.snackbar.open('File is too large. File size limited to 5MB.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'File is too large. File size limited to 5MB.' },
+      });
     } else {
       this.receiptFile.set(file);
       this.fileName.set(file.name);
@@ -688,7 +690,9 @@ export class AddExpenseComponent {
         splits,
         this.receiptFile()
       );
-      this.snackbar.open('Expense added.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Expense added.' },
+      });
       if (saveAndAdd) {
         this.addExpenseForm.reset();
         this.splitsFormArray.clear();
@@ -716,17 +720,18 @@ export class AddExpenseComponent {
       }
     } catch (error) {
       if (error instanceof Error) {
-        this.snackbar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_expense',
           message: error.message,
         });
       } else {
-        this.snackbar.open(
-          'Something went wrong - could not save expense.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not save expense.' },
+        });
       }
     } finally {
       this.loading.loadingOff();

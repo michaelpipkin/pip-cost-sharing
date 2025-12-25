@@ -22,7 +22,7 @@ const SNACKBAR_DURATION = 4000;
   styleUrl: './custom-snackbar.component.scss',
 })
 export class CustomSnackbarComponent {
-  private snackBarRef = inject(MatSnackBarRef);
+  private snackbarRef = inject(MatSnackBarRef);
   private destroyRef = inject(DestroyRef);
   data = inject<{ message: string }>(MAT_SNACK_BAR_DATA);
 
@@ -49,7 +49,7 @@ export class CustomSnackbarComponent {
   }
 
   dismiss() {
-    this.snackBarRef.dismiss();
+    this.snackbarRef.dismiss();
   }
 
   private clearInterval() {

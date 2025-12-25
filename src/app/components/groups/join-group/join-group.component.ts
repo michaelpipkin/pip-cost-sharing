@@ -4,6 +4,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { DemoService } from '@services/demo.service';
@@ -40,7 +41,7 @@ export class JoinGroupComponent {
   protected readonly memberStore = inject(MemberStore);
   protected readonly demoService = inject(DemoService);
   protected readonly memberService = inject(MemberService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   joinGroupForm = this.fb.group({
@@ -73,17 +74,18 @@ export class JoinGroupComponent {
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'join_group',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not join group. Please check the group code.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not join group. Please check the group code' },
+        });
       }
     } finally {
       this.loading.loadingOff();

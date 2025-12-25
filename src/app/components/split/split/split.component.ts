@@ -31,6 +31,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
@@ -74,7 +75,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 })
 export class SplitComponent implements AfterViewInit, OnDestroy {
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly analytics = inject(getAnalytics);
   protected readonly demoService = inject(DemoService);
@@ -634,20 +635,22 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     const summaryText = this.generateSummaryText();
     try {
       await navigator.clipboard.writeText(summaryText);
-      this.snackBar.open('Summary copied to clipboard', 'OK', {
-        duration: 2000,
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Summary copied to clipboard' },
       });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,
         });
       } else {
-        this.snackBar.open('Failed to copy summary', 'OK', {
-          duration: 2000,
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Failed to copy summary' },
         });
       }
     }

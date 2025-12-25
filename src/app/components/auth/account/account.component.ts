@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { environment } from '@env/environment';
@@ -74,7 +75,7 @@ export class AccountComponent {
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly groupService = inject(GroupService);
   protected readonly splitService = inject(SplitService);
   protected readonly expenseService = inject(ExpenseService);
@@ -170,13 +171,9 @@ export class AccountComponent {
     };
     sendEmailVerification(this.firebaseUser(), actionCodeSettings)
       .then(() => {
-        this.snackBar.open(
-          'Check your email to verify your email address.',
-          'Close',
-          {
-            verticalPosition: 'top',
-          }
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Check your email to verify your email address' },
+        });
       })
       .catch((err: Error) => {
         logEvent(this.analytics, 'error', {
@@ -184,10 +181,9 @@ export class AccountComponent {
           action: 'verify_email',
           message: err.message,
         });
-        this.snackBar.open(
-          'Something went wrong - verification email could not be sent.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - verification email could not be sent' },
+        });
       });
   }
 
@@ -197,8 +193,8 @@ export class AccountComponent {
     if (newEmail !== this.firebaseUser().email) {
       updateEmail(this.firebaseUser(), newEmail)
         .then(() => {
-          this.snackBar.open('Your email address has been updated.', 'Close', {
-            verticalPosition: 'top',
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Your email address has been updated' },
           });
         })
         .catch((err) => {
@@ -208,21 +204,13 @@ export class AccountComponent {
             message: err.message,
           });
           if (err.code === 'auth/email-already-in-use') {
-            this.snackBar.open(
-              'This email address is already in use by another account.',
-              'Close',
-              {
-                verticalPosition: 'top',
-              }
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'This email address is already in use by another account' },
+            });
           } else {
-            this.snackBar.open(
-              'Something went wrong - your email address could not be updated.',
-              'Close',
-              {
-                verticalPosition: 'top',
-              }
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - your email address could not be updated' },
+            });
           }
         });
     }
@@ -236,23 +224,19 @@ export class AccountComponent {
       if (changes.password !== '') {
         updatePassword(this.firebaseUser(), changes.password)
           .then(() => {
-            this.snackBar.open('Your password has been updated.', 'Close', {
-              verticalPosition: 'top',
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Your password has been updated' },
             });
             this.passwordForm.reset();
           })
           .catch(() => {
-            this.snackBar.open(
-              'Something went wrong - your password could not be updated.',
-              'Close',
-              {
-                verticalPosition: 'top',
-              }
-            );
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - your password could not be updated' },
+            });
           });
       } else {
-        this.snackBar.open('Password cannot be empty.', 'Close', {
-          verticalPosition: 'top',
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Password cannot be empty' },
         });
       }
     } catch (error) {
@@ -276,20 +260,23 @@ export class AccountComponent {
         cashAppId: changes.cashAppId,
         zelleId: changes.zelleId,
       });
-      this.snackBar.open('Payment service IDs updated.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Payment service IDs updated' },
+      });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'update_payments',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not update payment service IDs.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not update payment service IDs' },
+        });
       }
     } finally {
       this.loading.loadingOff();
@@ -301,20 +288,23 @@ export class AccountComponent {
     try {
       await this.userService.updateUser({ receiptPolicy: true });
       this.receiptPolicyAcknowledged.set(false);
-      this.snackBar.open('Receipt retention policy accepted.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Receipt retention policy accepted' },
+      });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'accept_receipt_policy',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not accept receipt policy.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not accept receipt policy' },
+        });
       }
     } finally {
       this.loading.loadingOff();
@@ -341,17 +331,18 @@ export class AccountComponent {
         // this.splitService.migrateDateTimestampToString(),
         // this.historyService.migrateDateTimestampToString(),
       ]);
-      this.snackBar.open('Data updated.', 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Data updated' },
+      });
     } catch (error) {
       logEvent(this.analytics, 'error', {
         component: this.constructor.name,
         action: 'data_update',
         message: error.message,
       });
-      this.snackBar.open(
-        'Something went wrong - could not update data.',
-        'Close'
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Something went wrong - could not update data' },
+      });
     } finally {
       this.loading.loadingOff();
     }
