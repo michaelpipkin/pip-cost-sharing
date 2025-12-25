@@ -1,13 +1,3 @@
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-  AfterViewInit,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -15,21 +5,18 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -37,6 +24,20 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-categories',
@@ -63,7 +64,7 @@ export class CategoriesComponent implements AfterViewInit {
   protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
 
@@ -126,7 +127,9 @@ export class CategoriesComponent implements AfterViewInit {
     const dialogRef = this.dialog.open(AddCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
-        this.snackBar.open('Category added', 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Category added' },
+        });
       }
     });
   }
@@ -145,7 +148,9 @@ export class CategoriesComponent implements AfterViewInit {
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {
         if (result.success) {
-          this.snackBar.open(`Category ${result.operation}`, 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: `Category ${result.operation}` },
+          });
         }
       });
     }

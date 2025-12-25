@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
@@ -47,7 +48,7 @@ export class AccountActionComponent {
   protected readonly auth = inject(getAuth);
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
@@ -172,7 +173,9 @@ export class AccountActionComponent {
     try {
       await confirmPasswordReset(this.auth, this.oobCode(), password);
       this.success.set(true);
-      this.snackBar.open('Password reset successfully', 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Password reset successfully' },
+      });
 
       logEvent(this.analytics, 'password_reset_success', {
         component: this.constructor.name,
@@ -186,11 +189,9 @@ export class AccountActionComponent {
 
   async resendVerificationEmail(): Promise<void> {
     if (!this.auth.currentUser) {
-      this.snackBar.open(
-        'You must be logged in to resend the verification email.',
-        'Close',
-        { verticalPosition: 'top' }
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'You must be logged in to resend the verification email' },
+      });
       return;
     }
 
@@ -204,21 +205,17 @@ export class AccountActionComponent {
 
       await sendEmailVerification(this.auth.currentUser, actionCodeSettings);
 
-      this.snackBar.open(
-        'Verification email sent! Please check your inbox.',
-        'Close',
-        { duration: 5000, verticalPosition: 'top' }
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Verification email sent! Please check your inbox' },
+      });
 
       logEvent(this.analytics, 'verification_email_resent', {
         component: this.constructor.name,
       });
     } catch (error: any) {
-      this.snackBar.open(
-        `Failed to send verification email: ${error.message}`,
-        'Close',
-        { verticalPosition: 'top' }
-      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: `Failed to send verification email: ${error.message}` },
+      });
 
       logEvent(this.analytics, 'error', {
         component: this.constructor.name,
@@ -256,9 +253,8 @@ export class AccountActionComponent {
       code: error.code,
     });
 
-    this.snackBar.open(errorMsg, 'Close', {
-      duration: 0,
-      verticalPosition: 'top',
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: errorMsg },
     });
   }
 

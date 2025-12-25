@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
@@ -43,7 +44,7 @@ export class AddMemberComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly groupService = inject(GroupService);
   protected readonly demoService = inject(DemoService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
@@ -78,17 +79,18 @@ export class AddMemberComponent {
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_member',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not add member.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not add member.' },
+        });
       }
     } finally {
       this.loading.loadingOff();

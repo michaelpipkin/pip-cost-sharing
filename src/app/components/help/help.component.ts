@@ -5,6 +5,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { HelpService } from '@services/help.service';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics } from 'firebase/analytics';
@@ -38,7 +39,7 @@ export class HelpComponent {
   private readonly helpContentService = inject(HelpContentService);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
 
   helpSections: HelpSection[] = [];
@@ -75,12 +76,16 @@ export class HelpComponent {
         // Success callback
         this.clearForm();
         this.loading.loadingOff();
-        this.snackBar.open('Issue submitted. Thank you!', 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Issue submitted. Thank you!' },
+        });
       },
       error: (err: Error) => {
         // Error callback
         this.loading.loadingOff();
-        this.snackBar.open('Error creating issue', 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Error creating issue' },
+        });
         this.analytics.logEvent('issue_created', {
           action: 'submit_issue',
           message: err.message,

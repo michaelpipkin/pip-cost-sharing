@@ -1,4 +1,45 @@
 import { DecimalPipe } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Category } from '@models/category';
+import { ExpenseDto } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { SerializableMemorized } from '@models/memorized';
+import { Split, SplitDto } from '@models/split';
+import { CameraService } from '@services/camera.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
+import { MemorizedService } from '@services/memorized.service';
+import { TourService } from '@services/tour.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
+import { LoadingService } from '@shared/loading/loading.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
+import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import {
   afterEveryRender,
   afterNextRender,
@@ -24,59 +65,19 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
   MatDialogModule,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
-import { Category } from '@models/category';
-import { ExpenseDto } from '@models/expense';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { SerializableMemorized } from '@models/memorized';
-import { Split, SplitDto } from '@models/split';
-import { CameraService } from '@services/camera.service';
-import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
-import { ExpenseService } from '@services/expense.service';
-import { LocaleService } from '@services/locale.service';
-import { MemorizedService } from '@services/memorized.service';
-import { TourService } from '@services/tour.service';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import {
   FileSelectionDialogComponent,
   FileSelectionOption,
 } from '@shared/file-selection-dialog/file-selection-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
-import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { UserStore } from '@store/user.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 @Component({
   selector: 'app-add-expense',
@@ -118,7 +119,7 @@ export class AddExpenseComponent {
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly tourService = inject(TourService);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
@@ -478,7 +479,9 @@ export class AddExpenseComponent {
       }
     } catch (error) {
       console.error('Error selecting file:', error);
-      this.snackBar.open('Failed to select file. Please try again.', 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Failed to select file. Please try again.' },
+      });
     }
   }
 
@@ -488,7 +491,9 @@ export class AddExpenseComponent {
    */
   private processSelectedFile(file: File): void {
     if (file.size > 5 * 1024 * 1024) {
-      this.snackBar.open('File is too large. File size limited to 5MB.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'File is too large. File size limited to 5MB.' },
+      });
     } else {
       this.receiptFile.set(file);
       this.fileName.set(file.name);
@@ -685,7 +690,9 @@ export class AddExpenseComponent {
         splits,
         this.receiptFile()
       );
-      this.snackBar.open('Expense added.', 'OK');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Expense added.' },
+      });
       if (saveAndAdd) {
         this.addExpenseForm.reset();
         this.splitsFormArray.clear();
@@ -713,17 +720,18 @@ export class AddExpenseComponent {
       }
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_expense',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not save expense.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not save expense.' },
+        });
       }
     } finally {
       this.loading.loadingOff();

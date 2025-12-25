@@ -10,6 +10,7 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Category, CategoryForm } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
@@ -36,7 +37,7 @@ export class AddCategoryComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
 
@@ -64,17 +65,18 @@ export class AddCategoryComponent {
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'add_category',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not add category.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not add category' },
+        });
       }
     } finally {
       this.loading.loadingOff();

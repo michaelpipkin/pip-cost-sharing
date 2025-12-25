@@ -24,6 +24,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
@@ -61,7 +62,7 @@ export class ManageGroupsComponent {
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
   protected readonly demoService = inject(DemoService);
@@ -171,17 +172,18 @@ export class ManageGroupsComponent {
       });
     } catch (error) {
       if (error instanceof Error) {
-        this.snackBar.open(error.message, 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
         logEvent(this.analytics, 'error', {
           component: this.constructor.name,
           action: 'edit_group',
           message: error.message,
         });
       } else {
-        this.snackBar.open(
-          'Something went wrong - could not edit group.',
-          'Close'
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not edit group' },
+        });
       }
     } finally {
       this.loading.loadingOff();

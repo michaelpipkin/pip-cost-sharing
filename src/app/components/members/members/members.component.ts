@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -68,7 +69,7 @@ export class MembersComponent {
   protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
   user: Signal<User> = this.userStore.user;
@@ -154,7 +155,9 @@ export class MembersComponent {
     const dialogRef = this.dialog.open(AddMemberComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
       if (result.success) {
-        this.snackBar.open('Member added', 'OK');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Member added' },
+        });
       }
     });
   }
@@ -176,7 +179,9 @@ export class MembersComponent {
       const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {
         if (!!result && result.success) {
-          this.snackBar.open(`Member ${result.operation}`, 'OK');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: `Member ${result.operation}` },
+          });
         }
       });
     }

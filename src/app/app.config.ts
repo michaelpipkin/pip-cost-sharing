@@ -1,25 +1,8 @@
 import { DecimalPipe } from '@angular/common';
-import {
-  provideHttpClient,
-  withInterceptorsFromDi,
-} from '@angular/common/http';
-import {
-  ApplicationConfig,
-  importProvidersFrom,
-  provideZonelessChangeDetection,
-} from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import {
-  MAT_DIALOG_DEFAULT_OPTIONS,
-  MatDialogConfig,
-} from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import {
-  MAT_SNACK_BAR_DEFAULT_OPTIONS,
-  MatSnackBarConfig,
-} from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { environment } from '@env/environment';
@@ -36,6 +19,23 @@ import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { appRoutes } from './app.routes';
 import { firebaseConfig } from './firebase.config';
 import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
+import {
+  provideHttpClient,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  provideZonelessChangeDetection,
+} from '@angular/core';
+import {
+  MAT_DIALOG_DEFAULT_OPTIONS,
+  MatDialogConfig,
+} from '@angular/material/dialog';
+import {
+  MAT_SNACK_BAR_DEFAULT_OPTIONS,
+  MatSnackBarConfig,
+} from '@angular/material/snack-bar';
 
 const useEmulators = environment.useEmulators;
 
@@ -89,7 +89,7 @@ export const appConfig: ApplicationConfig = {
       provide: MAT_SNACK_BAR_DEFAULT_OPTIONS,
       useValue: {
         verticalPosition: 'top',
-        duration: 5000,
+        duration: 4000,
       } as MatSnackBarConfig,
     },
     LoadingService,

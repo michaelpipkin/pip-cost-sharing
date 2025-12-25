@@ -11,6 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { RouterModule } from '@angular/router';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { PwaDetectionService } from '@services/pwa-detection.service';
@@ -43,7 +44,7 @@ export class LoginComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
-  protected readonly snackBar = inject(MatSnackBar);
+  protected readonly snackbar = inject(MatSnackBar);
   protected readonly pwaDetection = inject(PwaDetectionService);
 
   hidePassword = model<boolean>(true);
@@ -76,7 +77,9 @@ export class LoginComponent {
       const password = this.loginForm.value.password;
       const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
-        this.snackBar.open('Please sign in with Google', 'Close');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Please sign in with Google' },
+        });
         this.loading.loadingOff();
         return;
       } else {
@@ -84,7 +87,9 @@ export class LoginComponent {
         // Navigation handled automatically by UserService.onAuthStateChanged
       }
     } catch (error: any) {
-      this.snackBar.open(error.message, 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: error.message },
+      });
       this.loading.loadingOff();
     }
   }
@@ -105,7 +110,9 @@ export class LoginComponent {
       }
       // Navigation handled automatically by UserService.onAuthStateChanged
     } catch (error: any) {
-      this.snackBar.open(error.message, 'Close');
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: error.message },
+      });
       this.loading.loadingOff();
     }
   }
