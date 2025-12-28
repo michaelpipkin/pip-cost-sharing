@@ -11,6 +11,7 @@ export class CalculatorOverlayService {
   private overlayRef: OverlayRef | null = null;
   private calculatorRef: ComponentRef<CalculatorComponent> | null = null;
   private isOpen = signal(false);
+  private associatedInputElement: HTMLInputElement | null = null;
 
   openCalculator(
     triggerElement: HTMLElement,
@@ -23,6 +24,9 @@ export class CalculatorOverlayService {
     // Dismiss virtual keyboard on mobile by blurring associated input field
     this.dismissVirtualKeyboard(triggerElement);
 
+    // Store the associated input element for refocusing after calculator closes
+    this.associatedInputElement = this.findAssociatedInput(triggerElement);
+
     const overlayConfig = this.getOverlayConfig(triggerElement);
     this.overlayRef = this.overlay.create(overlayConfig);
 
@@ -33,7 +37,7 @@ export class CalculatorOverlayService {
     // Handle calculator events using direct subscription
     const resultSub = this.calculatorRef.instance.resultSelected.subscribe((result: number) => {
       onResult(result);
-      this.closeCalculator();
+      this.closeCalculator(true); // Trigger blur to format the input
     });
 
     const closedSub = this.calculatorRef.instance.closed.subscribe(() => {
@@ -61,7 +65,7 @@ export class CalculatorOverlayService {
     }
   }
 
-  closeCalculator(): void {
+  closeCalculator(triggerBlur: boolean = false): void {
     if (this.overlayRef && this.calculatorRef) {
       // Clean up subscriptions
       const subs = (this.calculatorRef.instance as any)._subscriptions;
@@ -73,7 +77,26 @@ export class CalculatorOverlayService {
       this.overlayRef = null;
       this.calculatorRef = null;
       this.isOpen.set(false);
+
+      // Trigger blur on the associated input to run formatting directives
+      if (triggerBlur && this.associatedInputElement) {
+        // Use setTimeout to ensure the overlay is fully disposed before triggering blur
+        const inputElement = this.associatedInputElement;
+        setTimeout(() => {
+          inputElement.focus();
+          inputElement.blur();
+        }, 0);
+      }
+      this.associatedInputElement = null;
     }
+  }
+
+  private findAssociatedInput(triggerElement: HTMLElement): HTMLInputElement | null {
+    const matFormField = triggerElement.closest('mat-form-field');
+    if (matFormField) {
+      return matFormField.querySelector('input') as HTMLInputElement;
+    }
+    return null;
   }
 
   private dismissVirtualKeyboard(triggerElement: HTMLElement): void {

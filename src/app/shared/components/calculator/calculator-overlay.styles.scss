@@ -1,6 +1,7 @@
 // Calculator overlay backdrop styling
 .calculator-backdrop {
   background-color: var(--md-sys-color-scrim);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
