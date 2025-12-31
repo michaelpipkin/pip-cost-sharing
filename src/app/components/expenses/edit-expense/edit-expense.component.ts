@@ -352,10 +352,10 @@ export class EditExpenseComponent {
   }
 
   /**
-   * Opens file selection dialog (native) or file picker (web)
+   * Opens file selection dialog
    * First checks if user has accepted receipt policy
-   * On native platforms: shows dialog to choose camera, gallery, or file browser
-   * On web/PWA: directly opens file picker
+   * On native platforms: shows dialog to choose camera, gallery, file browser, or clipboard
+   * On web/PWA: shows dialog to choose file browser or clipboard
    */
   async openFileSelectionDialog(): Promise<void> {
     // Check if user has accepted receipt policy (checked at click time, not component load)
@@ -378,25 +378,15 @@ export class EditExpenseComponent {
     }
 
     const isCameraAvailable = this.cameraService.isAvailable();
+    const isClipboardAvailable = !!navigator.clipboard?.read;
 
-    // On web/PWA, skip dialog and go directly to file picker
-    if (!isCameraAvailable) {
-      const fileInput = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
-      if (fileInput) {
-        fileInput.click();
-      }
-      return;
-    }
-
-    // On native platforms, show selection dialog
     const dialogConfig: MatDialogConfig = {
       disableClose: false,
       maxWidth: '400px',
       data: {
-        showCameraOption: true,
-        showGalleryOption: true,
+        showCameraOption: isCameraAvailable,
+        showGalleryOption: isCameraAvailable,
+        showClipboardOption: isClipboardAvailable,
       },
     };
 
@@ -430,6 +420,9 @@ export class EditExpenseComponent {
           fileInput.click();
         }
         return; // The onFileSelected handler will process the file
+      } else if (result === 'clipboard') {
+        await this.pasteFromClipboard();
+        return;
       }
 
       // Process the file from camera or gallery
@@ -440,6 +433,38 @@ export class EditExpenseComponent {
       console.error('Error selecting file:', error);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Failed to select file. Please try again' },
+      });
+    }
+  }
+
+  /**
+   * Reads an image from the clipboard and processes it as a receipt
+   * Uses the Clipboard API to read image data
+   */
+  private async pasteFromClipboard(): Promise<void> {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((type) => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const extension = imageType.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-receipt.${extension}`, {
+            type: imageType,
+          });
+          this.processSelectedFile(file);
+          return;
+        }
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'No image found in clipboard.' },
+      });
+    } catch (error) {
+      console.error('Error reading from clipboard:', error);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Unable to read from clipboard. Please check permissions.',
+        },
       });
     }
   }
