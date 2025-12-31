@@ -38,6 +38,19 @@
       <mat-icon>folder_open</mat-icon>
       <span>Browse Files</span>
     </button>
+    @if (data.showClipboardOption) {
+      <button
+        mat-raised-button
+        class="btn-primary selection-button"
+        type="button"
+        [mat-dialog-close]="'clipboard'"
+        data-test-id="clipboard-button"
+        aria-label="Paste from clipboard"
+      >
+        <mat-icon>content_paste</mat-icon>
+        <span>Paste from Clipboard</span>
+      </button>
+    }
   </div>
 </mat-dialog-content>
 <mat-dialog-actions data-test-id="dialog-actions">
