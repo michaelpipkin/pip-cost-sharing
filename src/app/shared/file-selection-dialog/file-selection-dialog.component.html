@@ -1,7 +1,7 @@
 <h1 mat-dialog-title data-test-id="dialog-title">Select Receipt</h1>
 <mat-dialog-content data-test-id="dialog-content">
   <div class="selection-options">
-    @if (data.showCameraOption) {
+    @if (data.isNativePlatform) {
       <button
         mat-raised-button
         class="btn-primary selection-button"
@@ -13,8 +13,6 @@
         <mat-icon>camera_alt</mat-icon>
         <span>Take Photo</span>
       </button>
-    }
-    @if (data.showGalleryOption) {
       <button
         mat-raised-button
         class="btn-primary selection-button"
@@ -38,7 +36,7 @@
       <mat-icon>folder_open</mat-icon>
       <span>Browse Files</span>
     </button>
-    @if (data.showClipboardOption) {
+    @if (!data.isNativePlatform) {
       <button
         mat-raised-button
         class="btn-primary selection-button"

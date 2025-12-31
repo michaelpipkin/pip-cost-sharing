@@ -6,9 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 export type FileSelectionOption = 'camera' | 'gallery' | 'file' | 'clipboard';
 
 export type FileSelectionDialogData = {
-  showCameraOption: boolean;
-  showGalleryOption: boolean;
-  showClipboardOption: boolean;
+  isNativePlatform: boolean;
 };
 
 @Component({

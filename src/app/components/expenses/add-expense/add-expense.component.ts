@@ -418,16 +418,11 @@ export class AddExpenseComponent {
       // Policy now accepted, continue with file selection
     }
 
-    const isCameraAvailable = this.cameraService.isAvailable();
-    const isClipboardAvailable = !!navigator.clipboard?.read;
-
     const dialogConfig: MatDialogConfig = {
       disableClose: false,
       maxWidth: '400px',
       data: {
-        showCameraOption: isCameraAvailable,
-        showGalleryOption: isCameraAvailable,
-        showClipboardOption: isClipboardAvailable,
+        isNativePlatform: this.cameraService.isAvailable(),
       },
     };
 
