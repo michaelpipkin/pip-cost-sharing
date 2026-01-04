@@ -6,12 +6,12 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { Capacitor } from '@capacitor/core';
 import { TextZoom } from '@capacitor/text-zoom';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
+import { AdSenseService } from '@services/adsense.service';
 import { DemoService } from '@services/demo.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
@@ -51,13 +51,9 @@ export class AppComponent {
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly pwaDetection = inject(PwaDetectionService);
   private adMobService = inject(AdMobService);
+  private adSenseService = inject(AdSenseService);
 
   isSmallScreen = signal<boolean>(false);
-
-  // Debug info for troubleshooting
-  debugIsNative = Capacitor.isNativePlatform();
-  debugPlatform = Capacitor.getPlatform();
-  debugDisplayMode = this.pwaDetection.getDisplayMode();
 
   user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
