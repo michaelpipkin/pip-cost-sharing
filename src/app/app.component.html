@@ -489,4 +489,17 @@
 <div id="outlet" data-testid="main-content">
   <router-outlet />
 </div>
+<!-- TEMPORARY DEBUG - REMOVE AFTER TESTING -->
+<div
+  style="
+    background: #ff0;
+    color: #000;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+  "
+>
+  DEBUG: isNative={{ debugIsNative }} | platform={{ debugPlatform }} | displayMode={{ debugDisplayMode() }}
+</div>
+<!-- END TEMPORARY DEBUG -->
 <footer data-testid="main-footer"></footer>
