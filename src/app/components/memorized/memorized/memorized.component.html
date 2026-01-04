@@ -83,6 +83,7 @@
             [dataSource]="filteredMemorizeds()"
             multiTemplateDataRows
             class="expandable-table"
+            [class.compact-table]="smallScreen()"
             data-tour="memorized-table"
           >
             <ng-container matColumnDef="id">
