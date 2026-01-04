@@ -492,14 +492,21 @@
 <!-- TEMPORARY DEBUG - REMOVE AFTER TESTING -->
 <div
   style="
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
     background: #ff0;
     color: #000;
     padding: 10px;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 14px;
+    z-index: 9999;
   "
 >
-  DEBUG: isNative={{ debugIsNative }} | platform={{ debugPlatform }} | displayMode={{ debugDisplayMode() }}
+  <div>isNative={{ debugIsNative }}</div>
+  <div>platform={{ debugPlatform }}</div>
+  <div>displayMode={{ debugDisplayMode() }}</div>
 </div>
 <!-- END TEMPORARY DEBUG -->
 <footer data-testid="main-footer"></footer>
