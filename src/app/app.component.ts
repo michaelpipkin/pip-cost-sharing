@@ -6,6 +6,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { TextZoom } from '@capacitor/text-zoom';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
@@ -52,6 +53,11 @@ export class AppComponent {
   private adMobService = inject(AdMobService);
 
   isSmallScreen = signal<boolean>(false);
+
+  // Debug info for troubleshooting
+  debugIsNative = Capacitor.isNativePlatform();
+  debugPlatform = Capacitor.getPlatform();
+  debugDisplayMode = this.pwaDetection.getDisplayMode();
 
   user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
