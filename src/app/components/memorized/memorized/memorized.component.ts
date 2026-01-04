@@ -76,6 +76,7 @@ export class MemorizedComponent {
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group> = this.groupStore.currentGroup;
   memorizeds: Signal<Memorized[]> = this.memorizedStore.memorizedExpenses;
+  smallScreen = signal<boolean>(false);
 
   searchText = model<string>('');
   searchFocused = model<boolean>(false);
@@ -128,6 +129,7 @@ export class MemorizedComponent {
             'create',
             'expand',
           ]);
+          this.smallScreen.set(true);
         } else {
           this.columnsToDisplay.set([
             'paidBy',
@@ -137,6 +139,7 @@ export class MemorizedComponent {
             'create',
             'expand',
           ]);
+          this.smallScreen.set(false);
         }
       });
 
