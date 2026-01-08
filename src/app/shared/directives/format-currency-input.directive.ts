@@ -63,7 +63,7 @@ export class FormatCurrencyInputDirective {
     value: number,
     decimalPlaces: number,
     decimalSeparator: string,
-    symbolPosition: 'prefix' | 'suffix'
+    symbolPosition: 'prefix' | 'suffix' | 'none'
   ): string {
     // Format the number with fixed decimal places
     const fixed = value.toFixed(decimalPlaces);

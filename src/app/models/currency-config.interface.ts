@@ -1,7 +1,7 @@
 export interface CurrencyConfig {
   code: string; // ISO 4217 currency code (USD, EUR, GBP, etc.)
   symbol: string; // Currency symbol ($, €, £, ¥, etc.)
-  symbolPosition: 'prefix' | 'suffix'; // Where to place symbol
+  symbolPosition: 'prefix' | 'suffix' | 'none'; // Where to place symbol
   decimalPlaces: number; // Number of decimal places (2 for most, 0 for JPY)
   decimalSeparator: string; // '.' or ','
   thousandsSeparator: string; // ',' or '.' or ' '
@@ -170,6 +170,24 @@ export const SUPPORTED_CURRENCIES: CurrencyConfig[] = [
     decimalSeparator: '.',
     thousandsSeparator: ',',
     name: 'US Dollar',
+  },
+  {
+    code: 'OT2',
+    symbol: '',
+    symbolPosition: 'none',
+    decimalPlaces: 2,
+    decimalSeparator: '.',
+    thousandsSeparator: ',',
+    name: 'Other with Decimals',
+  },
+  {
+    code: 'OTH',
+    symbol: '',
+    symbolPosition: 'none',
+    decimalPlaces: 0,
+    decimalSeparator: '.',
+    thousandsSeparator: ',',
+    name: 'Other without Decimals',
   },
 ];
 
