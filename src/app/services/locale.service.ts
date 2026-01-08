@@ -63,9 +63,11 @@ export class LocaleService {
         : formattedInteger;
 
     const symbol =
-      curr.symbolPosition === 'prefix'
-        ? `${curr.symbol} ${formatted}`
-        : `${formatted} ${curr.symbol}`;
+      curr.symbolPosition === 'none'
+        ? formatted
+        : curr.symbolPosition === 'prefix'
+          ? `${curr.symbol} ${formatted}`
+          : `${formatted} ${curr.symbol}`;
 
     return value < 0 ? `-${symbol}` : symbol;
   }
@@ -105,7 +107,7 @@ export class LocaleService {
   getFormattedZero(): string {
     const curr = this.currency();
     if (curr.decimalPlaces === 0) {
-      return curr.symbolPosition === 'suffix' ? '0 ' : '0';
+      return '0';
     }
     return `0${curr.decimalSeparator}${'0'.repeat(curr.decimalPlaces)}`;
   }
