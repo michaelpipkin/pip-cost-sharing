@@ -1,4 +1,4 @@
-import { Component, inject, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -18,13 +18,16 @@ export interface HelpDialogData {
   styleUrl: './help-dialog.component.scss',
 })
 export class HelpDialogComponent {
-  private helpContentService = inject(HelpContentService);
+  private readonly helpContentService = inject(HelpContentService);
+  private readonly data: HelpDialogData = inject(MAT_DIALOG_DATA);
 
   helpSection: HelpSection | undefined;
   displayTitle: string;
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: HelpDialogData) {
-    this.helpSection = this.helpContentService.getHelpSection(data.sectionId);
-    this.displayTitle = data.title || this.helpSection?.title || 'Help';
+  constructor() {
+    this.helpSection = this.helpContentService.getHelpSection(
+      this.data.sectionId
+    );
+    this.displayTitle = this.data.title || this.helpSection?.title || 'Help';
   }
 }
