@@ -41,8 +41,8 @@
       "unrs-resolver"
     ],
     "overrides": {
-      "@google-cloud/storage": "^7.15.2",
-      "@types/express-serve-static-core": "^4.19.6",
+      "@google-cloud/storage": ">=7.15.2",
+      "@types/express-serve-static-core": ">=4.19.6",
       "body-parser": ">=2.2.1",
       "brace-expansion": ">=1.1.12",
       "form-data": ">=2.5.4",
