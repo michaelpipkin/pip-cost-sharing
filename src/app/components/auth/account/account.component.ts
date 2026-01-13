@@ -1,30 +1,3 @@
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatOptionModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { MatTabsModule } from '@angular/material/tabs';
-import { RouterLink } from '@angular/router';
-import { environment } from '@env/environment';
-import { Group } from '@models/group';
-import { User } from '@models/user';
-import { ExpenseService } from '@services/expense.service';
-import { GroupService } from '@services/group.service';
-import { HistoryService } from '@services/history.service';
-import { MemberService } from '@services/member.service';
-import { MemorizedService } from '@services/memorized.service';
-import { SplitService } from '@services/split.service';
-import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { GroupStore } from '@store/group.store';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { DocumentReference } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
 import {
   Component,
   effect,
@@ -40,6 +13,31 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatOptionModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { RouterLink } from '@angular/router';
+import { environment } from '@env/environment';
+import { Group } from '@models/group';
+import { User } from '@models/user';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
+import { HistoryService } from '@services/history.service';
+import { MemberService } from '@services/member.service';
+import { MemorizedService } from '@services/memorized.service';
+import { SplitService } from '@services/split.service';
+import { UserService } from '@services/user.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   User as FirebaseUser,
   getAuth,
@@ -47,6 +45,8 @@ import {
   updateEmail,
   updatePassword,
 } from 'firebase/auth';
+import { DocumentReference } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Component({
   selector: 'app-account',
@@ -182,39 +182,81 @@ export class AccountComponent {
           message: err.message,
         });
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - verification email could not be sent' },
+          data: {
+            message:
+              'Something went wrong - verification email could not be sent',
+          },
         });
       });
   }
 
-  onSubmitEmail(): void {
+  async onSubmitEmail(): Promise<void> {
     this.emailForm.disable();
     const newEmail = this.emailForm.value.email;
     if (newEmail !== this.firebaseUser().email) {
-      updateEmail(this.firebaseUser(), newEmail)
-        .then(() => {
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Your email address has been updated' },
-          });
-        })
-        .catch((err) => {
-          logEvent(this.analytics, 'error', {
-            component: this.constructor.name,
-            action: 'update_email',
-            message: err.message,
-          });
-          if (err.code === 'auth/email-already-in-use') {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'This email address is already in use by another account' },
-            });
-          } else {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - your email address could not be updated' },
-            });
-          }
+      try {
+        await updateEmail(this.firebaseUser(), newEmail);
+        // Update the UserStore to reflect unverified email status
+        this.userStore.setIsEmailConfirmed(false);
+        // Send verification email for the new address
+        await this.verifyEmail();
+      } catch (err: any) {
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'update_email',
+          message: err.message,
         });
+        if (err.code === 'auth/email-already-in-use') {
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: {
+              message:
+                'This email address is already in use by another account',
+            },
+          });
+        } else {
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: {
+              message:
+                'Something went wrong - your email address could not be updated',
+            },
+          });
+        }
+      }
     }
     this.emailForm.enable();
+  }
+
+  async syncMemberEmails(): Promise<void> {
+    this.loading.loadingOn();
+    try {
+      const userRef = this.currentUser().ref;
+      const currentEmail = this.currentUser().email;
+      const count = await this.memberService.updateAllMemberEmails(
+        userRef,
+        currentEmail
+      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message:
+            count > 0
+              ? `Updated email on ${count} member record${count > 1 ? 's' : ''}`
+              : 'No member records needed updating',
+        },
+      });
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        component: this.constructor.name,
+        action: 'sync_member_emails',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Something went wrong - could not update member emails',
+        },
+      });
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onSubmitPassword(): void {
@@ -231,7 +273,10 @@ export class AccountComponent {
           })
           .catch(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - your password could not be updated' },
+              data: {
+                message:
+                  'Something went wrong - your password could not be updated',
+              },
             });
           });
       } else {
@@ -275,7 +320,10 @@ export class AccountComponent {
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not update payment service IDs' },
+          data: {
+            message:
+              'Something went wrong - could not update payment service IDs',
+          },
         });
       }
     } finally {
@@ -303,7 +351,9 @@ export class AccountComponent {
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not accept receipt policy' },
+          data: {
+            message: 'Something went wrong - could not accept receipt policy',
+          },
         });
       }
     } finally {
@@ -314,23 +364,8 @@ export class AccountComponent {
   async updateData(): Promise<void> {
     this.loading.loadingOn();
     try {
-      // const verifyEmail = httpsCallable(this.functions, 'verifyUserEmail');
-      // verifyEmail({ uid: 'rUYCPmIYB7fDjfaS3aeoDnHKnsh1' })
-      //   .then((result) => console.log(result))
-      //   .catch((error) => console.error(error));
-      await Promise.all([
-        // this.expenseService.removeHasReceiptField(),
-        // this.expenseService.migrateCategoryIdsToRefs(),
-        // this.memorizedService.migrateCategoryIdsToRefs(),
-        // this.userService.migrateGroupIdsToRefs(),
-        // this.memberService.migrateUserIdsToRefs(),
-        // this.splitService.migrateFieldIdsToRefs(),
-        // this.groupService.normalizeAllGroupDatesToUTC(),
-        // this.groupService.setDefaultCurrencyForAllGroups(),
-        // this.expenseService.migrateDateTimestampToString(),
-        // this.splitService.migrateDateTimestampToString(),
-        // this.historyService.migrateDateTimestampToString(),
-      ]);
+      const syncEmails = httpsCallable(this.functions, 'syncAuthEmailsToUsers');
+      await Promise.all([syncEmails()]);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Data updated' },
       });

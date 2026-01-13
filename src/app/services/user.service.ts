@@ -18,11 +18,16 @@ import {
   setPersistence,
 } from 'firebase/auth';
 import {
+  collectionGroup,
   doc,
   DocumentReference,
   getDoc,
+  getDocs,
   getFirestore,
+  query,
   setDoc,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import { DemoModeService } from './demo-mode.service';
 import { GroupService } from './group.service';
@@ -66,10 +71,12 @@ export class UserService implements IUserService {
             this.historyStore.clearHistory();
             this.splitStore.clearSplits();
 
-            const userData = await this.createUserIfNotExists(firebaseUser.uid);
+            const userData = await this.createUserIfNotExists(
+              firebaseUser.uid,
+              firebaseUser.email
+            );
             const user = new User({
               id: firebaseUser.uid,
-              email: firebaseUser.email,
               ...userData,
             });
             this.userStore.setUser(user);
@@ -118,15 +125,21 @@ export class UserService implements IUserService {
     }
   }
 
-  async createUserIfNotExists(userId: string): Promise<User> {
+  async createUserIfNotExists(userId: string, email: string): Promise<User> {
     try {
       const existingUser = await this.getUserDetails(userId);
       if (existingUser) {
+        if (existingUser.email !== email) {
+          const docRef = doc(this.fs, `users/${userId}`);
+          await setDoc(docRef, { email }, { merge: true });
+          existingUser.email = email;
+        }
         return existingUser;
       }
 
       const docRef = doc(this.fs, `users/${userId}`);
       const defaultUserData = {
+        email: email,
         defaultGroupRef: null,
         receiptPolicy: false,
         venmoId: '',
@@ -160,6 +173,44 @@ export class UserService implements IUserService {
     } catch (error) {
       logEvent(this.analytics, 'error', {
         message: 'Failed to update user',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
+    try {
+      const userId = this.userStore.user().id;
+      const userDocRef = doc(
+        this.fs,
+        `users/${userId}`
+      ) as DocumentReference<User>;
+
+      // Update the email on the user document
+      await setDoc(userDocRef, { email: newEmail }, { merge: true });
+      this.userStore.updateUser({ email: newEmail });
+
+      // Query members collection group for unlinked members with this email
+      const membersQuery = query(
+        collectionGroup(this.fs, 'members'),
+        where('email', '==', newEmail),
+        where('userRef', '==', null)
+      );
+      const membersSnapshot = await getDocs(membersQuery);
+
+      // Link each matching member to this user
+      for (const memberDoc of membersSnapshot.docs) {
+        await updateDoc(memberDoc.ref, { userRef: userDocRef });
+      }
+
+      logEvent(this.analytics, 'email_verified_members_linked', {
+        email: newEmail,
+        membersLinked: membersSnapshot.size,
+      });
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        message: 'Failed to update user email and link members',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
@@ -206,50 +257,4 @@ export class UserService implements IUserService {
       this.router.navigate([ROUTE_PATHS.HOME]);
     }
   }
-
-  // Migration method to update groupId to groupRef in user documents
-
-  // async migrateGroupIdsToRefs(): Promise<boolean | Error> {
-  //   const batch = writeBatch(this.fs);
-
-  //   try {
-  //     // Query all user documents
-  //     const usersCollection = collectionGroup(this.fs, 'users');
-  //     const userDocs = await getDocs(usersCollection);
-
-  //     for (const userDoc of userDocs.docs) {
-  //       const userData = userDoc.data();
-
-  //       // Skip if already migrated (no groupId or groupRef already exists)
-  //       if (!userData.defaultGroupId || userData.defaultGroupRef) {
-  //         continue;
-  //       }
-
-  //       // Create the group document reference
-  //       const groupRef = doc(this.fs, `groups/${userData.defaultGroupId}`);
-
-  //       // Update the document: add groupRef and remove groupId
-  //       batch.update(userDoc.ref, {
-  //         defaultGroupRef: groupRef,
-  //         defaultGroupId: deleteField(), // This removes the field
-  //       });
-  //     }
-
-  //     return await batch
-  //       .commit()
-  //       .then(() => {
-  //         console.log('Successfully migrated all user documents');
-  //         return true;
-  //       })
-  //       .catch((err: Error) => {
-  //         console.error('Error migrating user documents:', err);
-  //         return new Error(err.message);
-  //       });
-  //   } catch (error) {
-  //     console.error('Error during migration:', error);
-  //     return new Error(
-  //       error instanceof Error ? error.message : 'Unknown error occurred'
-  //     );
-  //   }
-  // }
 }

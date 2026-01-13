@@ -11,10 +11,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { RouterModule } from '@angular/router';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { PwaDetectionService } from '@services/pwa-detection.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import {
   fetchSignInMethodsForEmail,
@@ -86,9 +86,12 @@ export class LoginComponent {
         await signInWithEmailAndPassword(this.auth, email, password);
         // Navigation handled automatically by UserService.onAuthStateChanged
       }
-    } catch (error: any) {
+    } catch {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: error.message },
+        data: {
+          message:
+            'Could not sign you in. Please check your email and password.',
+        },
       });
       this.loading.loadingOff();
     }
@@ -109,9 +112,12 @@ export class LoginComponent {
         await signInWithPopup(this.auth, provider);
       }
       // Navigation handled automatically by UserService.onAuthStateChanged
-    } catch (error: any) {
+    } catch {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: error.message },
+        data: {
+          message:
+            'There was a problem signing you in. Please try again or use a different sign-in method.',
+        },
       });
       this.loading.loadingOff();
     }

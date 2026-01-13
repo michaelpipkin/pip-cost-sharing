@@ -6,6 +6,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   addDoc,
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   DocumentReference,
@@ -42,7 +43,7 @@ export class MemberService implements IMemberService {
         limit(1)
       );
       const docSnap = await getDocs(q);
-      
+
       if (!docSnap.empty) {
         const memberDoc = docSnap.docs[0];
         this.memberStore.setCurrentMember(
@@ -61,7 +62,7 @@ export class MemberService implements IMemberService {
         method: 'getMemberByUserRef',
         message: 'Failed to get member by user ref',
         groupId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -72,9 +73,9 @@ export class MemberService implements IMemberService {
       collection(this.fs, `groups/${groupId}/members`),
       orderBy('displayName')
     );
-    
+
     onSnapshot(
-      q, 
+      q,
       (querySnap) => {
         try {
           const groupMembers: Member[] = querySnap.docs.map(
@@ -92,7 +93,7 @@ export class MemberService implements IMemberService {
             method: 'getGroupMembers',
             message: 'Failed to process group members snapshot',
             groupId,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       },
@@ -102,7 +103,7 @@ export class MemberService implements IMemberService {
           method: 'getGroupMembers',
           message: 'Failed to listen to group members',
           groupId,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     );
@@ -136,7 +137,7 @@ export class MemberService implements IMemberService {
       if (!idSnapshot.empty) {
         throw new Error('You are already a member of that group!');
       }
-      
+
       if (!emailSnapshot.empty) {
         // Update existing inactive member
         const userRef = emailSnapshot.docs[0].ref;
@@ -148,10 +149,10 @@ export class MemberService implements IMemberService {
         return; // void return for update case
       } else {
         // Add new member
-        return await addDoc(
+        return (await addDoc(
           collection(this.fs, `groups/${groupId}/members`),
           member
-        ) as DocumentReference<Member>;
+        )) as DocumentReference<Member>;
       }
     } catch (error) {
       logEvent(this.analytics, 'error', {
@@ -159,7 +160,7 @@ export class MemberService implements IMemberService {
         method: 'addMemberToGroup',
         message: 'Failed to add member to group',
         groupId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -175,24 +176,33 @@ export class MemberService implements IMemberService {
         where('email', '==', member.email)
       );
       const membersSnapshot = await getDocs(membersQuery);
-      
+
       if (!membersSnapshot.empty) {
         throw new Error(
           'A member with this email address already exists in the group.'
         );
       }
-      
-      return await addDoc(
+
+      const userQuery = query(
+        collection(this.fs, 'users'),
+        where('email', '==', member.email)
+      );
+      const userSnapshot = await getDocs(userQuery);
+      if (!userSnapshot.empty) {
+        member.userRef = userSnapshot.docs[0].ref as DocumentReference<User>;
+      }
+
+      return (await addDoc(
         collection(this.fs, `groups/${groupId}/members`),
         member
-      ) as DocumentReference<Member>;
+      )) as DocumentReference<Member>;
     } catch (error) {
       logEvent(this.analytics, 'error', {
         service: 'MemberService',
         method: 'addManualMemberToGroup',
         message: 'Failed to add manual member to group',
         groupId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -210,7 +220,7 @@ export class MemberService implements IMemberService {
         method: 'updateMember',
         message: 'Failed to update member',
         memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -229,13 +239,13 @@ export class MemberService implements IMemberService {
           doc.data().owedByMemberRef.eq(memberRef) ||
           doc.data().paidByMemberRef.eq(memberRef)
       );
-      
+
       if (!!memberSplit) {
         throw new Error(
           'This member has existing splits and cannot be deleted.'
         );
       }
-      
+
       await deleteDoc(memberRef);
     } catch (error) {
       logEvent(this.analytics, 'error', {
@@ -244,55 +254,40 @@ export class MemberService implements IMemberService {
         message: 'Failed to remove member from group',
         groupId,
         memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
   }
 
-  // Migration method to update userId to userRef in member documents
+  async updateAllMemberEmails(
+    userRef: DocumentReference<User>,
+    newEmail: string
+  ): Promise<number> {
+    try {
+      const membersQuery = query(
+        collectionGroup(this.fs, 'members'),
+        where('userRef', '==', userRef)
+      );
+      const membersSnapshot = await getDocs(membersQuery);
 
-  // async migrateUserIdsToRefs(): Promise<boolean | Error> {
-  //   const batch = writeBatch(this.fs);
+      for (const memberDoc of membersSnapshot.docs) {
+        await updateDoc(memberDoc.ref, { email: newEmail });
+      }
 
-  //   try {
-  //     // Query all expense documents across all groups
-  //     const membersCollection = collectionGroup(this.fs, 'members');
-  //     const memberDocs = await getDocs(membersCollection);
+      logEvent(this.analytics, 'member_emails_updated', {
+        membersUpdated: membersSnapshot.size,
+      });
 
-  //     for (const memberDoc of memberDocs.docs) {
-  //       const memberData = memberDoc.data();
-
-  //       // Skip if already migrated (no memberId or memberRef already exists)
-  //       if (!memberData.userId || memberData.userRef) {
-  //         continue;
-  //       }
-
-  //       // Create the user document reference
-  //       const userRef = doc(this.fs, `users/${memberData.userId}`);
-
-  //       // Update the document: add userRef and remove userId
-  //       batch.update(memberDoc.ref, {
-  //         userRef: userRef,
-  //         userId: deleteField(), // This removes the field
-  //       });
-  //     }
-
-  //     return await batch
-  //       .commit()
-  //       .then(() => {
-  //         console.log('Successfully migrated all member documents');
-  //         return true;
-  //       })
-  //       .catch((err: Error) => {
-  //         console.error('Error migrating member documents:', err);
-  //         return new Error(err.message);
-  //       });
-  //   } catch (error) {
-  //     console.error('Error during migration:', error);
-  //     return new Error(
-  //       error instanceof Error ? error.message : 'Unknown error occurred'
-  //     );
-  //   }
-  // }
+      return membersSnapshot.size;
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'MemberService',
+        method: 'updateAllMemberEmails',
+        message: 'Failed to update member emails',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
 }

@@ -6,14 +6,12 @@ import { SplitStore } from '@store/split.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   collection,
-  collectionGroup,
   doc,
   DocumentReference,
   getDocs,
   getFirestore,
   onSnapshot,
   query,
-  Timestamp,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -168,144 +166,4 @@ export class SplitService implements ISplitService {
       throw error;
     }
   }
-
-  // Migration methods
-
-  /**
-   * Migrates split date fields from Timestamp to ISO 8601 string format.
-   * Run this once when ready to switch to string-based date storage.
-   */
-  async migrateDateTimestampToString(): Promise<{
-    success: boolean;
-    count: number;
-    error?: string;
-  }> {
-    try {
-      const splitsCollection = collectionGroup(this.fs, 'splits');
-      const splitDocs = await getDocs(splitsCollection);
-
-      let migratedCount = 0;
-      const batchSize = 500; // Firestore batch limit
-      let batch = writeBatch(this.fs);
-      let batchCount = 0;
-
-      for (const splitDoc of splitDocs.docs) {
-        const data = splitDoc.data();
-
-        // Check if date is a Timestamp (has toDate method)
-        if (data.date instanceof Timestamp) {
-          const isoDateString = data.date.toIsoDateString();
-          batch.update(splitDoc.ref, { date: isoDateString });
-          migratedCount++;
-          batchCount++;
-
-          // Commit batch if we hit the limit
-          if (batchCount >= batchSize) {
-            await batch.commit();
-            batch = writeBatch(this.fs);
-            batchCount = 0;
-          }
-        }
-      }
-
-      // Commit any remaining updates
-      if (batchCount > 0) {
-        await batch.commit();
-      }
-
-      console.log(
-        `Successfully migrated ${migratedCount} split date fields to ISO string format`
-      );
-      return { success: true, count: migratedCount };
-    } catch (error) {
-      console.error('Error migrating split date fields:', error);
-      return {
-        success: false,
-        count: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
-  // async migrateFieldIdsToRefs(): Promise<boolean | Error> {
-  //   const batch = writeBatch(this.fs);
-
-  //   try {
-  //     // Query all split documents across all groups
-  //     const splitsCollection = collectionGroup(this.fs, 'splits');
-  //     const splitDocs = await getDocs(splitsCollection);
-
-  //     for (const splitDoc of splitDocs.docs) {
-  //       const splitData = splitDoc.data();
-
-  //       // Extract groupId from the document path
-  //       // Path: groups/{groupId}/splits/{splitId}
-  //       const pathSegments = splitDoc.ref.path.split('/');
-  //       const groupId = pathSegments[1];
-
-  //       const updates: any = {};
-
-  //       // Migrate expenseId to expenseRef
-  //       if (splitData.expenseId && !splitData.expenseRef) {
-  //         const expenseRef = doc(
-  //           this.fs,
-  //           `groups/${groupId}/expenses/${splitData.expenseId}`
-  //         );
-  //         updates.expenseRef = expenseRef;
-  //         updates.expenseId = deleteField();
-  //       }
-
-  //       // Migrate categoryId to categoryRef
-  //       if (splitData.categoryId && !splitData.categoryRef) {
-  //         const categoryRef = doc(
-  //           this.fs,
-  //           `groups/${groupId}/categories/${splitData.categoryId}`
-  //         );
-  //         updates.categoryRef = categoryRef;
-  //         updates.categoryId = deleteField();
-  //       }
-
-  //       // Migrate paidByMemberId to paidByMemberRef
-  //       if (splitData.paidByMemberId && !splitData.paidByMemberRef) {
-  //         const paidByMemberRef = doc(
-  //           this.fs,
-  //           `groups/${groupId}/members/${splitData.paidByMemberId}`
-  //         );
-  //         updates.paidByMemberRef = paidByMemberRef;
-  //         updates.paidByMemberId = deleteField();
-  //       }
-
-  //       // Migrate owedByMemberId to owedByMemberRef
-  //       if (splitData.owedByMemberId && !splitData.owedByMemberRef) {
-  //         const owedByMemberRef = doc(
-  //           this.fs,
-  //           `groups/${groupId}/members/${splitData.owedByMemberId}`
-  //         );
-  //         updates.owedByMemberRef = owedByMemberRef;
-  //         updates.owedByMemberId = deleteField();
-  //       }
-
-  //       // Only update if there are changes to make
-  //       if (Object.keys(updates).length > 0) {
-  //         batch.update(splitDoc.ref, updates);
-  //       }
-  //     }
-
-  //     return await batch
-  //       .commit()
-  //       .then(() => {
-  //         console.log('Successfully migrated all split documents');
-  //         return true;
-  //       })
-  //       .catch((err: Error) => {
-  //         console.error('Error migrating split documents:', err);
-  //         return new Error(err.message);
-  //       });
-  //   } catch (error) {
-  //     console.error('Error during migration:', error);
-  //     return new Error(
-  //       error instanceof Error ? error.message : 'Unknown error occurred'
-  //     );
-  //   }
-  // }
 }
