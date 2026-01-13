@@ -15,7 +15,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { LoadingService } from '@shared/loading/loading.service';
+import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
@@ -52,6 +54,7 @@ export class AccountActionComponent {
   protected readonly analytics = inject(getAnalytics);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
+  protected readonly userService = inject(UserService);
   protected readonly userStore = inject(UserStore);
 
   mode = signal<ActionMode | null>(null);
@@ -79,6 +82,11 @@ export class AccountActionComponent {
     const mode = params['mode'] as ActionMode;
 
     if (!oobCode) {
+      // If user is logged in and verified, redirect to expenses page
+      if (this.auth.currentUser?.emailVerified) {
+        this.router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
+        return;
+      }
       this.errorMessage.set('Invalid link. No code provided.');
       logEvent(this.analytics, 'error', {
         component: this.constructor.name,
@@ -133,6 +141,10 @@ export class AccountActionComponent {
       // Force reload the user to get updated emailVerified status
       if (this.auth.currentUser) {
         await this.auth.currentUser.reload();
+        // Sync the email in Firestore and link any unlinked member records
+        await this.userService.updateUserEmailAndLinkMembers(
+          this.auth.currentUser.email
+        );
         // Update UserStore with new email verification status
         this.userStore.setIsEmailConfirmed(this.auth.currentUser.emailVerified);
       }

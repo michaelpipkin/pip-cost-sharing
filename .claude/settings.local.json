@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(ng build:*)"
+      "Bash(ng build:*)",
+      "Bash(pnpm list:*)",
+      "Bash(firebase --version:*)"
     ],
     "deny": [],
     "ask": []

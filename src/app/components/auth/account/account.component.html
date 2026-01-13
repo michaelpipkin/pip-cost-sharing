@@ -72,6 +72,23 @@
               Update Email
             </button>
           </div>
+          <div class="sync-member-emails" data-testid="sync-member-emails">
+            <p class="helper-text">
+              Update the email address on all of your member<br />
+              records to match your account email address.
+            </p>
+            <button
+              mat-raised-button
+              class="btn-secondary"
+              type="button"
+              [disabled]="emailForm.dirty"
+              (click)="syncMemberEmails()"
+              data-testid="sync-member-emails-button"
+              aria-label="Update all member records with current email"
+            >
+              Sync Member Emails
+            </button>
+          </div>
         </form>
         <form
           [formGroup]="passwordForm"
