@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.12.29",
+  "version": "1.12.30",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -112,6 +112,7 @@
       "brace-expansion": ">=1.1.12",
       "form-data": ">=2.5.4",
       "glob": ">=11.1.0",
+      "hono": ">=4.11.4",
       "jws": ">=4.0.1",
       "qs": ">=6.14.1",
       "sharp": ">=0.34.5",
