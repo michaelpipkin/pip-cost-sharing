@@ -2,7 +2,10 @@ import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -20,13 +23,12 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { IMemberService } from './member.service.interface';
-import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MemberService implements IMemberService {
+  protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
@@ -117,7 +119,8 @@ export class MemberService implements IMemberService {
       // Build queries
       const userIdQuery = query(
         collection(this.fs, `groups/${groupId}/members`),
-        where('userRef', '==', member.userRef)
+        where('userRef', '==', member.userRef),
+        where('active', '==', true)
       );
       const emailQuery = query(
         collection(this.fs, `groups/${groupId}/members`),
@@ -252,6 +255,51 @@ export class MemberService implements IMemberService {
         service: 'MemberService',
         method: 'removeMemberFromGroup',
         message: 'Failed to remove member from group',
+        groupId,
+        memberId: memberRef.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  async leaveGroup(
+    groupId: string,
+    memberRef: DocumentReference<Member>
+  ): Promise<void> {
+    try {
+      const c = collection(this.fs, `groups/${groupId}/members`);
+      const q = query(c, where('groupAdmin', '==', true));
+      const adminSnap = await getDocs(q);
+      if (
+        adminSnap.docs.length === 1 &&
+        adminSnap.docs[0].id === memberRef.id
+      ) {
+        throw new Error(
+          'You are the only group admin. Please assign another member as admin before leaving the group.'
+        );
+      }
+
+      const splits = await getDocs(
+        collection(this.fs, `groups/${groupId}/splits`)
+      );
+      const memberSplit = splits.docs.find(
+        (doc) =>
+          doc.data().owedByMemberRef.eq(memberRef) ||
+          doc.data().paidByMemberRef.eq(memberRef)
+      );
+
+      if (!!memberSplit) {
+        await updateDoc(memberRef, { active: false });
+      } else {
+        await deleteDoc(memberRef);
+      }
+      await updateDoc(this.userStore.user().ref, { defaultGroupRef: null });
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'MemberService',
+        method: 'leaveGroup',
+        message: 'Failed to leave group',
         groupId,
         memberId: memberRef.id,
         error: error instanceof Error ? error.message : 'Unknown error',
