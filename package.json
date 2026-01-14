@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.12.33",
+  "version": "1.12.34",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -111,11 +111,13 @@
       "body-parser": ">=2.2.1",
       "brace-expansion": ">=1.1.12",
       "form-data": ">=2.5.4",
+      "diff": ">=8.0.3",
       "glob": ">=11.1.0",
       "hono": ">=4.11.4",
       "jws": ">=4.0.1",
       "qs": ">=6.14.1",
       "sharp": ">=0.34.5",
+      "undici": ">=7.18.2",
       "vite": ">=7.1.11"
     }
   }
