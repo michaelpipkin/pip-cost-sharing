@@ -149,10 +149,31 @@ export class UserService implements IUserService {
       };
 
       await setDoc(docRef, defaultUserData);
+      const userDocRef = docRef as DocumentReference<User>;
+
+      // Link any unlinked member records with this email to the new user
+      const membersQuery = query(
+        collectionGroup(this.fs, 'members'),
+        where('email', '==', email),
+        where('userRef', '==', null)
+      );
+      const membersSnapshot = await getDocs(membersQuery);
+
+      for (const memberDoc of membersSnapshot.docs) {
+        await updateDoc(memberDoc.ref, { userRef: userDocRef });
+      }
+
+      if (membersSnapshot.size > 0) {
+        logEvent(this.analytics, 'new_user_members_linked', {
+          email: email,
+          membersLinked: membersSnapshot.size,
+        });
+      }
+
       return new User({
         id: userId,
         ...defaultUserData,
-        ref: docRef as DocumentReference<User>,
+        ref: userDocRef,
       });
     } catch (error) {
       logEvent(this.analytics, 'error', {
