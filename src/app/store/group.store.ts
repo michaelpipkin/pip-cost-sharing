@@ -29,6 +29,12 @@ export const GroupStore = signalStore(
     setAllUserGroups: (groups: Group[]) => {
       patchState(store, { allUserGroups: groups, loaded: true });
     },
+    removeGroup: (groupId: string) => {
+      const updatedGroups = store
+        .allUserGroups()
+        .filter((group) => group.id !== groupId);
+      patchState(store, { allUserGroups: updatedGroups });
+    },
     setLoadedState: (loaded: boolean) => {
       patchState(store, { loaded });
     },
