@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Field, form, required } from '@angular/forms/signals';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -10,10 +10,10 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Category, CategoryForm } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 
@@ -28,7 +28,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
     MatFormFieldModule,
     MatButtonModule,
     MatInputModule,
-    Field,
+    FormField,
   ],
 })
 export class AddCategoryComponent {
