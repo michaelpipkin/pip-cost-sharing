@@ -14,6 +14,52 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Check for skip deployment keywords
+        id: check-skip
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find the most recent merged PR to release branch
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'release',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 1
+            });
+
+            const skipKeywords = ['[no-deploy]', '[skip-deploy]'];
+            let shouldSkip = false;
+            let reason = '';
+
+            if (prs.length > 0 && prs[0].merged_at) {
+              const pr = prs[0];
+              const title = pr.title.toLowerCase();
+              const body = (pr.body || '').toLowerCase();
+
+              for (const keyword of skipKeywords) {
+                if (title.includes(keyword) || body.includes(keyword)) {
+                  shouldSkip = true;
+                  reason = `Found "${keyword}" in PR #${pr.number}`;
+                  break;
+                }
+              }
+
+              console.log(`PR #${pr.number}: "${pr.title}"`);
+              console.log(`Skip deployment: ${shouldSkip}${reason ? ' - ' + reason : ''}`);
+            }
+
+            core.setOutput('skip_deploy', shouldSkip.toString());
+            core.setOutput('skip_reason', reason);
+
+      - name: Skip deployment notice
+        if: steps.check-skip.outputs.skip_deploy == 'true'
+        run: |
+          echo "⏭️ Skipping deployment: ${{ steps.check-skip.outputs.skip_reason }}"
+          echo "The merge to main will still occur to keep branches in sync."
+
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
@@ -21,19 +67,23 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install pnpm
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         uses: pnpm/action-setup@v2
         with:
           version: 10.2.0
 
       - name: Install dependencies
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Check for functions changes
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         id: functions-changes
         run: |
           if git diff --quiet HEAD~1 HEAD -- functions/; then
@@ -45,6 +95,7 @@ jobs:
           fi
 
       - name: Create Firebase config file
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         run: |
           cat << EOF > src/app/firebase.config.ts
           export const firebaseConfig = {
@@ -59,6 +110,7 @@ jobs:
           EOF
       
       - name: Create Github config file
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         run: |
           cat << EOF > src/app/github.config.ts
           export const githubConfig = {
@@ -67,17 +119,19 @@ jobs:
           EOF
 
       - name: Install functions dependencies
-        if: steps.functions-changes.outputs.functions_changed == 'true'
+        if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
         run: cd functions && pnpm install
 
       - name: Build Angular App
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         run: pnpm build:ci
 
       - name: Update Firebase CLI
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         run: pnpm add -g firebase-tools
-        
+
       - name: Deploy Firebase Functions
-        if: steps.functions-changes.outputs.functions_changed == 'true'
+        if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
           FIREBASE_CLI_EXPERIMENTS: webframeworks
@@ -87,6 +141,7 @@ jobs:
           rm service-account-key.json
 
       - name: Deploy to Firebase Hosting
+        if: steps.check-skip.outputs.skip_deploy != 'true'
         id: deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
@@ -101,13 +156,13 @@ jobs:
           rm service-account-key.json
 
       - name: Configure Git for merge
-        if: steps.deploy.outcome == 'success'
+        if: steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
       - name: Setup SSH Deploy Key
-        if: steps.deploy.outcome == 'success'
+        if: steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true'
         run: |
           # Create SSH directory
           mkdir -p ~/.ssh
@@ -136,7 +191,7 @@ jobs:
           ssh -T git@github.com || echo "SSH test completed (exit code $?)"
 
       - name: Merge release to main branch
-        if: steps.deploy.outcome == 'success'
+        if: steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true'
         id: merge-to-main
         run: |
           # Configure git
@@ -170,7 +225,7 @@ jobs:
           fi
 
       - name: Cleanup SSH key
-        if: always() && steps.deploy.outcome == 'success'
+        if: always() && (steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true')
         run: |
           # Remove the private key file
           rm -f ~/.ssh/deploy_key
@@ -194,7 +249,7 @@ jobs:
               direction: 'desc',
               per_page: 1
             });
-            
+
             if (prs.length > 0 && prs[0].merged_at) {
               const pr = prs[0];
               await github.rest.issues.createComment({
@@ -202,6 +257,32 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged to main using deploy key\n✅ Main branch now contains the latest deployed code`
+              });
+            }
+
+      - name: Create skip deployment comment
+        if: steps.check-skip.outputs.skip_deploy == 'true' && steps.merge-to-main.outputs.merge_success == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find the most recent merged PR to release branch
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'release',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 1
+            });
+
+            if (prs.length > 0 && prs[0].merged_at) {
+              const pr = prs[0];
+              await github.rest.issues.createComment({
+                issue_number: pr.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `⏭️ **Deployment Skipped**\n\nDeployment was skipped due to skip keyword in PR title or description.\n\n✅ Release branch merged to main to keep branches in sync\n⏭️ No deployment was performed`
               });
             }
 
@@ -235,7 +316,7 @@ jobs:
             core.setFailed('Deployment to Firebase failed')
 
       - name: Handle merge failure
-        if: steps.deploy.outcome == 'success' && steps.merge-to-main.outputs.merge_success == 'false'
+        if: (steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true') && steps.merge-to-main.outputs.merge_success == 'false'
         uses: actions/github-script@v7
         with:
           script: |
