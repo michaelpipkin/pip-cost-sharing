@@ -1,4 +1,23 @@
 import { Component, inject, Signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { Member } from '@models/member';
+import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
+import { MemberService } from '@services/member.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormGroup,
@@ -6,7 +25,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -14,21 +32,6 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Member } from '@models/member';
-import { User } from '@models/user';
-import { DemoService } from '@services/demo.service';
-import { MemberService } from '@services/member.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { MemberStore } from '@store/member.store';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-edit-member',
@@ -51,14 +54,16 @@ export class EditMemberComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
+  protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
+  protected readonly router = inject(Router);
   protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(getAnalytics);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
-  private member: Member = this.data.member;
+  public member: Member = this.data.member;
 
   editMemberForm: FormGroup;
 
@@ -159,7 +164,63 @@ export class EditMemberComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not remove member' },
+              data: {
+                message: 'Something went wrong - could not remove member',
+              },
+            });
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
+      }
+    });
+  }
+
+  leaveGroup(): void {
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Confirm Leaving Group',
+        confirmationText:
+          'Are you sure you want to leave the group? You will no longer have access to group expenses.',
+        cancelButtonText: 'Cancel',
+        confirmButtonText: 'Leave',
+      },
+    };
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe(async (confirm) => {
+      if (confirm) {
+        try {
+          this.loading.loadingOn();
+          await this.memberService.leaveGroup(
+            this.data.groupId,
+            this.member.ref
+          );
+          this.groupStore.clearCurrentGroup();
+          this.groupStore.removeGroup(this.data.groupId);
+          this.userStore.updateUser({ defaultGroupRef: null });
+          localStorage.removeItem('currentGroup');
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: {
+              message: 'You have left the group successfully.',
+            },
+          });
+          this.dialogRef.close();
+          this.router.navigate(['/groups']);
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'leave_group',
+              message: error.message,
+            });
+          } else {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: {
+                message: 'Something went wrong - could not leave group',
+              },
             });
           }
         } finally {

@@ -1,24 +1,52 @@
 <h1 mat-dialog-title data-testid="edit-member-title">Edit Member</h1>
-<form [formGroup]="editMemberForm" data-testid="edit-member-form" aria-label="Edit member form">
+<form
+  [formGroup]="editMemberForm"
+  data-testid="edit-member-form"
+  aria-label="Edit member form"
+>
   <mat-dialog-content data-testid="edit-member-content">
     <div class="content" data-testid="edit-member-fields">
       <mat-form-field appearance="fill" data-testid="edit-member-name-field">
         <mat-label>Member name</mat-label>
-        <input matInput formControlName="memberName" data-testid="edit-member-name-input" aria-label="Member name" />
+        <input
+          matInput
+          formControlName="memberName"
+          data-testid="edit-member-name-input"
+          aria-label="Member name"
+        />
         @if (f.memberName.errors?.['required']) {
-          <mat-error data-testid="edit-member-name-error"> *Required </mat-error>
+          <mat-error data-testid="edit-member-name-error">
+            *Required
+          </mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="fill" data-testid="edit-member-email-field">
         <mat-label>Email</mat-label>
-        <input matInput email formControlName="email" data-testid="edit-member-email-input" aria-label="Member email" />
+        <input
+          matInput
+          email
+          formControlName="email"
+          data-testid="edit-member-email-input"
+          aria-label="Member email"
+        />
         @if (f.email.errors?.['email']) {
-          <mat-error data-testid="edit-member-email-error"> *Not a valid email address </mat-error>
+          <mat-error data-testid="edit-member-email-error">
+            *Not a valid email address
+          </mat-error>
         }
       </mat-form-field>
     </div>
-    <div class="toggle" [class.hidden]="!currentMember().groupAdmin" data-testid="edit-member-toggles">
-      <mat-slide-toggle formControlName="active" data-testid="edit-member-active-toggle" aria-label="Member is active">Active</mat-slide-toggle>
+    <div
+      class="toggle"
+      [class.hidden]="!currentMember().groupAdmin"
+      data-testid="edit-member-toggles"
+    >
+      <mat-slide-toggle
+        formControlName="active"
+        data-testid="edit-member-active-toggle"
+        aria-label="Member is active"
+        >Active</mat-slide-toggle
+      >
       <mat-slide-toggle
         formControlName="groupAdmin"
         [matTooltip]="groupAdminTooltip"
@@ -46,18 +74,31 @@
     >
       Save
     </button>
-    <button
-      mat-raised-button
-      type="button"
-      class="btn-danger"
-      (click)="removeMember()"
-      [disabled]="editMemberForm.disabled"
-      data-testid="remove-member-button"
-      aria-label="Remove member from group"
-    >
-      Remove
-    </button>
-
+    @if (user().ref.eq(member.userRef)) {
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-danger"
+        (click)="leaveGroup()"
+        [disabled]="editMemberForm.disabled"
+        data-testid="leave-group-button"
+        aria-label="Leave group"
+      >
+        Leave Group
+      </button>
+    } @else {
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-danger"
+        (click)="removeMember()"
+        [disabled]="editMemberForm.disabled"
+        data-testid="remove-member-button"
+        aria-label="Remove member from group"
+      >
+        Remove
+      </button>
+    }
     <button
       mat-stroked-button
       type="button"
