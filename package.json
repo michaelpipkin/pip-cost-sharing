@@ -1,12 +1,12 @@
 {
   "name": "pipsplit",
-  "version": "1.12.34",
+  "version": "1.12.35",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
     "start": "ng serve --host=local.dev.com",
-    "start:ci": "ng serve",
+    "start:ci": "ng serve --host=local.dev.com --configuration=ci",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
     "emu:export": "firebase emulators:export seed-data --force",
     "emu:no-data": "firebase emulators:start",
