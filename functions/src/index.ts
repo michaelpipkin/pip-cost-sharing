@@ -9,28 +9,57 @@ const db = admin.firestore();
 const storage = admin.storage();
 
 export const validateHCaptcha = onCall(async (request) => {
-  const secret = await getHCaptchaSecret();
   const token = request.data.token;
+
+  // Validate token presence before making network request
+  if (!token) {
+    throw new HttpsError(
+      'invalid-argument',
+      'The function must be called with a "token".'
+    );
+  }
+
+  const secret = await getHCaptchaSecret();
+  if (!secret) {
+    throw new HttpsError('internal', 'hCaptcha secret is not configured.');
+  }
+
   const formData = new FormData();
-  formData.append('secret', secret!);
+  formData.append('secret', secret);
   formData.append('response', token);
 
   try {
     const res = await fetch('https://api.hcaptcha.com/siteverify', {
       method: 'POST',
       body: formData,
-      redirect: 'follow',
     });
 
-    const data = await res.json();
-    if (data.success) {
-      return 'Success';
-    } else {
-      return 'Failed';
+    if (!res.ok) {
+      throw new HttpsError('unavailable', 'hCaptcha server is unreachable.');
     }
+
+    const data = await res.json();
+
+    if (!data.success) {
+      console.warn('hCaptcha validation failed:', data['error-codes']);
+      throw new HttpsError(
+        'permission-denied',
+        'Captcha validation failed. Please try again.'
+      );
+    }
+
+    return { status: 'verified' };
   } catch (error) {
+    // Re-throw HttpsErrors as-is
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
     console.error('Error validating hCaptcha:', error);
-    throw new HttpsError('internal', 'Error validating hCaptcha');
+    throw new HttpsError(
+      'internal',
+      'An unexpected error occurred during validation.'
+    );
   }
 });
 

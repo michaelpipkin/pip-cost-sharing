@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(ng build:*)",
       "Bash(pnpm list:*)",
-      "Bash(firebase --version:*)"
+      "Bash(firebase --version:*)",
+      "Bash(pnpm run build:*)"
     ],
     "deny": [],
     "ask": []

@@ -81,24 +81,28 @@ export class RegisterComponent {
     afterNextRender(() => {
       const widgetId = hcaptcha.render('hcaptcha-container', {
         sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
-        callback: async (token: String) => {
-          const validateHCaptcha = httpsCallable(
-            this.functions,
-            'validateHCaptcha'
-          );
+        callback: async (token: string) => {
+          const validateHCaptcha = httpsCallable<
+            { token: string },
+            { status: string }
+          >(this.functions, 'validateHCaptcha');
           try {
             const result = await validateHCaptcha({ token: token });
-            if (result.data === 'Success') {
+            if (result.data.status === 'verified') {
               this.passedCaptcha.set(true);
               this.#intervalId = setInterval(() => {
                 hcaptcha.reset(this.hCaptchaWidgetId());
                 this.passedCaptcha.set(false);
               }, 90000);
             }
-          } catch (error) {
+          } catch (error: any) {
             logEvent(this.analytics, 'hCaptcha_error', {
               error: error.message,
             });
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Captcha validation failed. Please try again.' },
+            });
+            hcaptcha.reset(this.hCaptchaWidgetId());
           }
         },
       });
