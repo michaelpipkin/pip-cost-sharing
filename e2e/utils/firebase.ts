@@ -168,8 +168,6 @@ export async function configureFirebaseEmulators(page: Page) {
     (window as any).environment = {
       production: false,
       useEmulators: true,
-      cloudFunctionsBaseUrl:
-        'http://localhost:5001/pip-cost-sharing/us-central1/api',
       buildDate: new Date(),
     };
   });

@@ -17,5 +17,8 @@ export class Group {
   currencyCode: string; // ISO 4217 code (USD, EUR, GBP, etc.)
   currencySymbol: string; // Display symbol ($, €, £, etc.)
   decimalPlaces: number; // Decimal precision (2 for most, 0 for JPY)
+  archived: boolean = false;
   ref?: DocumentReference<Group>;
+  userActiveInGroup?: boolean;
+  userIsAdmin?: boolean;
 }

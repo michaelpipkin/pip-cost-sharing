@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import {
   MAT_DIALOG_DATA,
+  MatDialog,
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
@@ -24,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import {
   getCurrencyConfig,
@@ -60,6 +62,7 @@ export class ManageGroupsComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
   protected readonly expenseService = inject(ExpenseService);
+  protected readonly dialog = inject(MatDialog);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
@@ -188,5 +191,132 @@ export class ManageGroupsComponent {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  archiveGroup(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        dialogTitle: 'Archive Group',
+        confirmationText:
+          'Are you sure you want to archive this group? Archived groups will be hidden from the main group list but can be unarchived later.',
+        cancelButtonText: 'Cancel',
+        confirmButtonText: 'Archive',
+      },
+    });
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        this.loading.loadingOn();
+        try {
+          await this.groupService.updateGroup(this.selectedGroup().ref, {
+            archived: true,
+            active: false,
+          });
+          this.dialogRef.close({
+            success: true,
+            operation: 'archived',
+          });
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'archive_group',
+              message: error.message,
+            });
+          } else {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not archive group' },
+            });
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
+      }
+    });
+  }
+
+  async unarchiveGroup(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    this.loading.loadingOn();
+    try {
+      await this.groupService.updateGroup(this.selectedGroup().ref, {
+        archived: false,
+      });
+      this.dialogRef.close({
+        success: true,
+        operation: 'unarchived',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
+        logEvent(this.analytics, 'error', {
+          component: this.constructor.name,
+          action: 'unarchive_group',
+          message: error.message,
+        });
+      } else {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not unarchive group' },
+        });
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
+  deleteGroup(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        dialogTitle: 'Delete Group',
+        confirmationText:
+          'Are you sure you want to permanently delete this group? This will delete all expenses, members, categories, and other data associated with this group. This action cannot be undone.',
+        cancelButtonText: 'Cancel',
+        confirmButtonText: 'Delete',
+      },
+    });
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        this.loading.loadingOn();
+        try {
+          await this.groupService.deleteGroup(this.selectedGroup().id);
+          this.dialogRef.close({
+            success: true,
+            operation: 'deleted',
+          });
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
+            logEvent(this.analytics, 'error', {
+              component: this.constructor.name,
+              action: 'delete_group',
+              message: error.message,
+            });
+          } else {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: 'Something went wrong - could not delete group' },
+            });
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
+      }
+    });
   }
 }

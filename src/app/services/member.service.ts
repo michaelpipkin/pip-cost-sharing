@@ -11,9 +11,7 @@ import {
   collection,
   collectionGroup,
   deleteDoc,
-  doc,
   DocumentReference,
-  getDoc,
   getDocs,
   getFirestore,
   limit,
@@ -114,64 +112,6 @@ export class MemberService implements IMemberService {
   async addMemberToGroup(
     groupId: string,
     member: Partial<Member>
-  ): Promise<DocumentReference<Member> | void> {
-    try {
-      // Build queries
-      const userIdQuery = query(
-        collection(this.fs, `groups/${groupId}/members`),
-        where('userRef', '==', member.userRef),
-        where('active', '==', true)
-      );
-      const emailQuery = query(
-        collection(this.fs, `groups/${groupId}/members`),
-        where('email', '==', member.email)
-      );
-
-      // Execute all queries in parallel
-      const [groupSnap, idSnapshot, emailSnapshot] = await Promise.all([
-        getDoc(doc(this.fs, `groups/${groupId}`)),
-        getDocs(userIdQuery),
-        getDocs(emailQuery),
-      ]);
-
-      if (!groupSnap.exists()) {
-        throw new Error('Group code not found!');
-      }
-      if (!idSnapshot.empty) {
-        throw new Error('You are already a member of that group!');
-      }
-
-      if (!emailSnapshot.empty) {
-        // Update existing inactive member
-        const userRef = emailSnapshot.docs[0].ref;
-        const existingUser = emailSnapshot.docs[0].data();
-        existingUser.userRef = member.userRef;
-        existingUser.displayName = member.displayName;
-        existingUser.active = true;
-        await updateDoc(userRef, existingUser);
-        return; // void return for update case
-      } else {
-        // Add new member
-        return (await addDoc(
-          collection(this.fs, `groups/${groupId}/members`),
-          member
-        )) as DocumentReference<Member>;
-      }
-    } catch (error) {
-      logEvent(this.analytics, 'error', {
-        service: 'MemberService',
-        method: 'addMemberToGroup',
-        message: 'Failed to add member to group',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
-  }
-
-  async addManualMemberToGroup(
-    groupId: string,
-    member: Partial<Member>
   ): Promise<DocumentReference<Member>> {
     try {
       const membersQuery = query(
@@ -202,8 +142,8 @@ export class MemberService implements IMemberService {
     } catch (error) {
       logEvent(this.analytics, 'error', {
         service: 'MemberService',
-        method: 'addManualMemberToGroup',
-        message: 'Failed to add manual member to group',
+        method: 'addMemberToGroup',
+        message: 'Failed to add member to group',
         groupId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -222,6 +162,38 @@ export class MemberService implements IMemberService {
         service: 'MemberService',
         method: 'updateMember',
         message: 'Failed to update member',
+        memberId: memberRef.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  async updateMemberWithUserMatching(
+    memberRef: DocumentReference<Member>,
+    changes: Partial<Member>,
+    currentUserRef: DocumentReference<User> | null,
+    currentEmail: string
+  ): Promise<void> {
+    try {
+      // Only search for user if member is not already linked and email is changing
+      if (!currentUserRef && changes.email && changes.email !== currentEmail) {
+        const userQuery = query(
+          collection(this.fs, 'users'),
+          where('email', '==', changes.email)
+        );
+        const userSnapshot = await getDocs(userQuery);
+        if (!userSnapshot.empty) {
+          changes.userRef = userSnapshot.docs[0].ref as DocumentReference<User>;
+        }
+      }
+
+      await updateDoc(memberRef, changes);
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'MemberService',
+        method: 'updateMemberWithUserMatching',
+        message: 'Failed to update member with user matching',
         memberId: memberRef.id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });

@@ -361,7 +361,6 @@ export class DemoModeService {
     this.userStore.setIsDemoMode(true);
     this.groupStore.setAllUserGroups([demoGroup]);
     this.groupStore.setCurrentGroup(demoGroup);
-    this.groupStore.setAdminGroupIds([demoGroup.id]);
     this.memberStore.setGroupMembers([alice, bob, charlie]);
     this.memberStore.setCurrentMember(alice); // Set Alice as the current member for demo
     this.categoryStore.setGroupCategories([
