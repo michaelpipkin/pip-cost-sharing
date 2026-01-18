@@ -1,7 +1,7 @@
 import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { NavigationEnd, Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -75,7 +75,6 @@ export class DemoService implements OnDestroy {
     this.userStore.setIsDemoMode(false);
     this.groupStore.clearCurrentGroup();
     this.groupStore.setAllUserGroups([]);
-    this.groupStore.setAdminGroupIds([]);
     this.memberStore.setGroupMembers([]);
     this.memberStore.clearCurrentMember();
     this.categoryStore.clearGroupCategories();

@@ -9,12 +9,6 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
-import { CategoryService } from './category.service';
-import { IGroupService } from './group.service.interface';
-import { HistoryService } from './history.service';
-import { MemberService } from './member.service';
-import { MemorizedService } from './memorized.service';
-import { SplitService } from './split.service';
 import {
   collection,
   collectionGroup,
@@ -30,12 +24,20 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { CategoryService } from './category.service';
+import { IGroupService } from './group.service.interface';
+import { HistoryService } from './history.service';
+import { MemberService } from './member.service';
+import { MemorizedService } from './memorized.service';
+import { SplitService } from './split.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GroupService implements IGroupService {
   protected readonly fs = inject(getFirestore);
+  protected readonly functions = inject(getFunctions);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
@@ -71,19 +73,22 @@ export class GroupService implements IGroupService {
     try {
       const memberQuery = query(
         collectionGroup(this.fs, 'members'),
-        where('userRef', '==', user.ref),
-        where('active', '==', true)
+        where('userRef', '==', user.ref)
       );
 
       onSnapshot(
         memberQuery,
         (memberQuerySnap) => {
           try {
-            const userGroups: { groupId: string; groupAdmin: boolean }[] =
-              memberQuerySnap.docs.map((d) => ({
-                groupId: d.ref.parent.parent.id,
-                groupAdmin: d.data().groupAdmin,
-              }));
+            const userGroups: {
+              groupId: string;
+              active: boolean;
+              groupAdmin: boolean;
+            }[] = memberQuerySnap.docs.map((d) => ({
+              groupId: d.ref.parent.parent.id,
+              active: d.data().active,
+              groupAdmin: d.data().groupAdmin,
+            }));
 
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
@@ -100,37 +105,41 @@ export class GroupService implements IGroupService {
               async (groupQuerySnap) => {
                 try {
                   const userGroupIds = userGroups.map((m) => m.groupId);
-                  this.groupStore.setAdminGroupIds(
-                    userGroups.filter((f) => f.groupAdmin).map((m) => m.groupId)
-                  );
 
                   const groups: Group[] = groupQuerySnap.docs
-                    .map(
-                      (doc) =>
-                        new Group({
-                          id: doc.id,
-                          ...doc.data(),
-                          ref: doc.ref as DocumentReference<Group>,
-                        })
-                    )
+                    .map((doc) => {
+                      const userGroup = userGroups.find(
+                        (g) => g.groupId === doc.id
+                      );
+                      return new Group({
+                        id: doc.id,
+                        ...doc.data(),
+                        userActiveInGroup: userGroup?.active,
+                        userIsAdmin: userGroup?.groupAdmin,
+                        ref: doc.ref as DocumentReference<Group>,
+                      });
+                    })
                     .filter((g) => userGroupIds.includes(g.id));
 
                   this.groupStore.setAllUserGroups(groups);
                   user = this.userStore.user();
                   const activeGroups = groups.filter((g) => g.active);
-                  if (
+
+                  // Skip auto-selection if flag is set (user intentionally cleared group)
+                  if (this.groupStore.skipAutoSelect()) {
+                    // Flag remains set until user manually selects a group
+                  } else if (
                     !!this.groupStore.currentGroup() &&
-                    groups.includes(this.groupStore.currentGroup())
+                    groups.some(
+                      (g) => g.id === this.groupStore.currentGroup()?.id
+                    )
                   ) {
                     await this.getGroup(
                       this.groupStore.currentGroup().ref,
                       user.ref
                     );
                   } else {
-                    if (
-                      !!user.defaultGroupRef &&
-                      user.defaultGroupRef !== null
-                    ) {
+                    if (!!user.defaultGroupRef) {
                       await this.getGroup(user.defaultGroupRef, user.ref);
                     } else if (activeGroups.length === 1) {
                       await this.getGroup(activeGroups[0].ref, user.ref);
@@ -223,6 +232,7 @@ export class GroupService implements IGroupService {
       });
 
       this.groupStore.setCurrentGroup(group);
+      this.groupStore.resetSkipAutoSelect();
       localStorage.setItem('currentGroup', JSON.stringify(group));
 
       await setDoc(
@@ -298,8 +308,8 @@ export class GroupService implements IGroupService {
       const batch = writeBatch(this.fs);
       batch.update(groupRef, changes);
 
-      // If deactivating the group, clear it as default for all users
-      if (!changes.active) {
+      // If deactivating or archiving the group, clear it as default for all users
+      if (!changes.active || changes.archived) {
         const usersRef = collection(this.fs, 'users');
         const usersQuery = query(
           usersRef,
@@ -310,9 +320,9 @@ export class GroupService implements IGroupService {
           batch.update(u.ref, { defaultGroupRef: null });
         });
 
-        // Clear current group if it's the one being deactivated
-        if (this.groupStore.currentGroup().id === groupRef.id) {
-          this.groupStore.clearCurrentGroup();
+        // Clear current group if it's the one being deactivated or archived
+        if (this.groupStore.currentGroup()?.id === groupRef.id) {
+          this.groupStore.clearCurrentGroup(true);
           this.userStore.updateUser({ defaultGroupRef: null });
           localStorage.removeItem('currentGroup');
         }
@@ -330,10 +340,43 @@ export class GroupService implements IGroupService {
     }
   }
 
+  async deleteGroup(groupId: string): Promise<void> {
+    try {
+      const deleteGroupFn = httpsCallable<
+        { groupId: string },
+        { success: boolean; message: string }
+      >(this.functions, 'deleteGroup');
+
+      const result = await deleteGroupFn({ groupId });
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || 'Failed to delete group');
+      }
+
+      // Clear current group if it was the deleted one
+      if (this.groupStore.currentGroup()?.id === groupId) {
+        this.groupStore.clearCurrentGroup(true);
+        this.userStore.updateUser({ defaultGroupRef: null });
+        localStorage.removeItem('currentGroup');
+      }
+
+      // Remove from the store
+      this.groupStore.removeGroup(groupId);
+    } catch (error) {
+      logEvent(this.analytics, 'error', {
+        service: 'GroupService',
+        method: 'deleteGroup',
+        message: 'Failed to delete group',
+        groupId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
   logout(): void {
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
-    this.groupStore.clearAdminGroupIds();
     this.groupStore.setLoadedState(false);
   }
 }

@@ -373,7 +373,7 @@ export class TourService {
         {
           id: 'groups-intro',
           title: 'Groups Overview',
-          text: "This is the Groups page where you can create, join, and manage groups to start sharing expenses with others. Let's take a quick tour to show you around!",
+          text: "This is the Groups page where you can create and manage groups to start sharing expenses with others. Let's take a quick tour to show you around!",
           buttons: [this.getNextButton(), this.getSkipButton()],
         },
         {

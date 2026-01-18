@@ -58,18 +58,6 @@
         </mat-form-field>
       </form>
     </div>
-    @if (selectedGroupRef != null) {
-      <div class="mb-4">
-        <span id="join-code" data-testid="join-code">
-          Group join code: {{ selectedGroupRef.id }}
-          <mat-icon
-            matTooltip="Copy group join code to clipboard"
-            (click)="copyGroupCode()"
-            >content_copy</mat-icon
-          >
-        </span>
-      </div>
-    }
     <div class="flex-wrap fw-center row-gap">
       <button
         data-testid="new-group-button"
@@ -80,15 +68,6 @@
         (click)="addGroup()"
       >
         New Group
-      </button>
-      <button
-        data-testid="join-group-button"
-        mat-raised-button
-        class="btn-primary"
-        type="button"
-        (click)="joinGroup()"
-      >
-        Join Group
       </button>
       @if (allUserGroups().length > 0) {
         <button

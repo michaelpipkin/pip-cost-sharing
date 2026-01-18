@@ -17,7 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -32,6 +31,7 @@ import { User } from '@models/user';
 import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
@@ -114,17 +114,11 @@ export class MembersComponent {
       .observe('(max-width: 1009px)')
       .subscribe((result) => {
         if (result.matches) {
-          this.columnsToDisplay.set([
-            'nameEmail',
-            'send',
-            'active',
-            'groupAdmin',
-          ]);
+          this.columnsToDisplay.set(['nameEmail', 'active', 'groupAdmin']);
         } else {
           this.columnsToDisplay.set([
             'displayName',
             'email',
-            'send',
             'active',
             'groupAdmin',
           ]);

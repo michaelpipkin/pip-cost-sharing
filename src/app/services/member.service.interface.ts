@@ -9,14 +9,16 @@ export interface IMemberService {
   ): Promise<void>;
   getGroupMembers(groupId: string): void;
   addMemberToGroup(groupId: string, member: Partial<Member>): Promise<any>;
-  addManualMemberToGroup(
-    groupId: string,
-    member: Partial<Member>
-  ): Promise<any>;
   updateMember(
     memberRef: DocumentReference<Member>,
     changes: Partial<Member>
   ): Promise<any>;
+  updateMemberWithUserMatching(
+    memberRef: DocumentReference<Member>,
+    changes: Partial<Member>,
+    currentUserRef: DocumentReference<User> | null,
+    currentEmail: string
+  ): Promise<void>;
   removeMemberFromGroup(
     groupId: string,
     memberRef: DocumentReference<Member>

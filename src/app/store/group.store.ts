@@ -11,15 +11,15 @@ import {
 type GroupState = {
   allUserGroups: Group[];
   currentGroup: Group | null;
-  adminGroupIds: string[];
   loaded: boolean;
+  skipAutoSelect: boolean;
 };
 
 const initialState: GroupState = {
   allUserGroups: [],
   currentGroup: null,
-  adminGroupIds: [],
   loaded: false,
+  skipAutoSelect: false,
 };
 
 export const GroupStore = signalStore(
@@ -48,20 +48,22 @@ export const GroupStore = signalStore(
     setCurrentGroup: (group: Group) => {
       patchState(store, { currentGroup: group });
     },
-    clearCurrentGroup: () => {
-      patchState(store, { currentGroup: null });
+    clearCurrentGroup: (skipAutoSelect: boolean = false) => {
+      patchState(store, { currentGroup: null, skipAutoSelect });
     },
-    setAdminGroupIds: (ids: string[]) => {
-      patchState(store, { adminGroupIds: ids });
-    },
-    clearAdminGroupIds: () => {
-      patchState(store, { adminGroupIds: [] });
+    resetSkipAutoSelect: () => {
+      patchState(store, { skipAutoSelect: false });
     },
   })),
-  withComputed(({ allUserGroups, adminGroupIds }) => ({
-    activeUserGroups: computed(() => allUserGroups().filter((g) => g.active)),
+  withComputed(({ allUserGroups }) => ({
+    activeUserGroups: computed(() =>
+      allUserGroups().filter(
+        (g) =>
+          ((g.active && g.userActiveInGroup) || g.userIsAdmin) && !g.archived
+      )
+    ),
     userAdminGroups: computed(() =>
-      allUserGroups().filter((g) => adminGroupIds().includes(g.id))
+      allUserGroups().filter((g) => g.userIsAdmin)
     ),
   }))
 );

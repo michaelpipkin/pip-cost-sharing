@@ -50,7 +50,7 @@ export class AddMemberComponent {
 
   addMemberForm = this.fb.group({
     displayName: ['', Validators.required],
-    email: ['', Validators.email],
+    email: ['', [Validators.required, Validators.email]],
   });
 
   public get f() {
@@ -72,7 +72,7 @@ export class AddMemberComponent {
         active: true,
         groupAdmin: false,
       };
-      await this.memberService.addManualMemberToGroup(
+      await this.memberService.addMemberToGroup(
         this.data.groupId,
         newMember
       );

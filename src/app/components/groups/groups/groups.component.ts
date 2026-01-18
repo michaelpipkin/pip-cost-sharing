@@ -32,7 +32,6 @@ import { UserStore } from '@store/user.store';
 import { getAnalytics } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
-import { JoinGroupComponent } from '../join-group/join-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
 
 @Component({
@@ -118,24 +117,6 @@ export class GroupsComponent {
       });
   }
 
-  joinGroup(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
-    const dialogRef = this.dialog.open(JoinGroupComponent);
-    dialogRef.afterClosed().subscribe((success) => {
-      if (success) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Group joined' },
-        });
-        this.groupForm.patchValue({
-          selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
-        });
-      }
-    });
-  }
-
   async onSelectGroup(e: MatSelectChange): Promise<void> {
     if (this.demoService.isInDemoMode()) {
       // In demo mode, just find and set the group from the store
@@ -150,13 +131,6 @@ export class GroupsComponent {
     await this.groupService.getGroup(e.value, this.#user().ref);
   }
 
-  copyGroupCode(): void {
-    navigator.clipboard.writeText(this.selectedGroupRef.id);
-    this.snackbar.openFromComponent(CustomSnackbarComponent, {
-      data: { message: 'Group join code copied' },
-    });
-  }
-
   manageGroups(): void {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();
@@ -166,16 +140,33 @@ export class GroupsComponent {
       data: { user: this.#user(), group: this.#currentGroup() },
     };
     const dialogRef = this.dialog.open(ManageGroupsComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe((success) => {
-      if (success) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Group updated' },
-        });
-        this.groupForm.patchValue({
-          selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
-        });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .subscribe((result: { success: boolean; operation: string } | false) => {
+        if (result && result.success) {
+          let message = 'Group updated';
+          switch (result.operation) {
+            case 'saved':
+              message = 'Group updated';
+              break;
+            case 'archived':
+              message = 'Group archived';
+              break;
+            case 'unarchived':
+              message = 'Group restored';
+              break;
+            case 'deleted':
+              message = 'Group deleted';
+              break;
+          }
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message },
+          });
+          this.groupForm.patchValue({
+            selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
+          });
+        }
+      });
   }
 
   showHelp(): void {

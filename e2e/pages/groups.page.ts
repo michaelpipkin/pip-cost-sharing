@@ -5,9 +5,7 @@ export class GroupsPage extends BasePage {
   // Main page elements using test IDs
   readonly groupSelect: Locator;
   readonly groupSelectOptions: Locator;
-  readonly joinCodeSpan: Locator;
   readonly newGroupButton: Locator;
-  readonly joinGroupButton: Locator;
   readonly manageGroupsButton: Locator;
   readonly helpButton: Locator;
   readonly loadingMessage: Locator;
@@ -20,14 +18,6 @@ export class GroupsPage extends BasePage {
   readonly autoAddMembersToggle: Locator;
   readonly addGroupSaveButton: Locator;
   readonly addGroupCancelButton: Locator;
-
-  // Join Group Dialog elements
-  readonly joinGroupDialog: Locator;
-  readonly joinGroupTitle: Locator;
-  readonly groupCodeInput: Locator;
-  readonly joinDisplayNameInput: Locator;
-  readonly joinGroupSaveButton: Locator;
-  readonly joinGroupCancelButton: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
@@ -49,9 +39,7 @@ export class GroupsPage extends BasePage {
     // Main page elements using test IDs
     this.groupSelect = page.getByTestId('group-select');
     this.groupSelectOptions = page.locator('mat-option');
-    this.joinCodeSpan = page.getByTestId('join-code');
     this.newGroupButton = page.getByTestId('new-group-button');
-    this.joinGroupButton = page.getByTestId('join-group-button');
     this.manageGroupsButton = page.getByTestId('manage-groups-button');
     this.helpButton = page.getByTestId('help-button');
     this.loadingMessage = page.getByTestId('loading-message');
@@ -64,14 +52,6 @@ export class GroupsPage extends BasePage {
     this.autoAddMembersToggle = page.getByTestId('auto-add-members-toggle');
     this.addGroupSaveButton = page.getByTestId('add-group-save-button');
     this.addGroupCancelButton = page.getByTestId('add-group-cancel-button');
-
-    // Join Group Dialog elements using test IDs
-    this.joinGroupDialog = page.locator('mat-dialog-container');
-    this.joinGroupTitle = page.getByTestId('join-group-title');
-    this.groupCodeInput = page.getByTestId('group-code-input');
-    this.joinDisplayNameInput = page.getByTestId('join-display-name-input');
-    this.joinGroupSaveButton = page.getByTestId('join-group-save-button');
-    this.joinGroupCancelButton = page.getByTestId('join-group-cancel-button');
 
     // Manage Groups Dialog elements using test IDs
     this.manageGroupsDialog = page.locator('mat-dialog-container');
@@ -123,18 +103,8 @@ export class GroupsPage extends BasePage {
     const targetOption = this.groupSelectOptions.filter({ hasText: groupName });
     await expect(targetOption).toBeVisible();
     await targetOption.click();
-    await this.joinCodeSpan.waitFor({ state: 'visible' });
-  }
-
-  async copyJoinCode(): Promise<void> {
-    await this.joinCodeSpan.click();
-    await this.page.waitForTimeout(1000);
-
-    const snackbarVisible = await this.snackbar.isVisible();
-    if (snackbarVisible) {
-      const snackbarText = await this.snackbar.textContent();
-      expect(snackbarText).toMatch(/copied|clipboard|blocked/i);
-    }
+    // Wait for dropdown to close
+    await this.page.waitForTimeout(500);
   }
 
   async openAddGroupDialog(): Promise<void> {
@@ -203,7 +173,6 @@ export class GroupsPage extends BasePage {
   async verifyPageLoaded(): Promise<void> {
     await expect(this.groupSelect).toBeVisible();
     await expect(this.newGroupButton).toBeVisible();
-    await expect(this.joinGroupButton).toBeVisible();
     await expect(this.manageGroupsButton).toBeVisible();
     await expect(this.helpButton).toBeVisible();
   }
@@ -217,14 +186,11 @@ export class GroupsPage extends BasePage {
   }
 
   async verifySaveButtonDisabled(
-    dialogType: 'add' | 'join' | 'manage'
+    dialogType: 'add' | 'manage'
   ): Promise<void> {
     switch (dialogType) {
       case 'add':
         await expect(this.addGroupSaveButton).toBeDisabled();
-        break;
-      case 'join':
-        await expect(this.joinGroupSaveButton).toBeDisabled();
         break;
       case 'manage':
         await expect(this.manageGroupsSaveButton).toBeDisabled();
@@ -235,11 +201,6 @@ export class GroupsPage extends BasePage {
   async cancelAddGroup(): Promise<void> {
     await this.addGroupCancelButton.click();
     await expect(this.addGroupDialog).toBeHidden();
-  }
-
-  async cancelJoinGroup(): Promise<void> {
-    await this.joinGroupCancelButton.click();
-    await expect(this.joinGroupDialog).toBeHidden();
   }
 
   async verifyValidationErrors(expectedErrors: string[]): Promise<void> {
@@ -257,16 +218,6 @@ export class GroupsPage extends BasePage {
       const count = await errorLocator.count();
       expect(count).toBeGreaterThan(0);
     }
-  }
-
-  async getJoinCode(): Promise<string> {
-    const joinCodeText = await this.joinCodeSpan.textContent();
-    return joinCodeText?.replace('Group join code: ', '') || '';
-  }
-
-  async openJoinGroupDialog(): Promise<void> {
-    await this.joinGroupButton.click();
-    await expect(this.joinGroupDialog).toBeVisible();
   }
 
   async openManageGroupsDialog(): Promise<void> {
