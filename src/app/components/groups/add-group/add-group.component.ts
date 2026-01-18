@@ -1,31 +1,31 @@
 import { Component, inject, Signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { MatSelectModule } from '@angular/material/select';
-import { MatOptionModule } from '@angular/material/core';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { User } from '@models/user';
-import {
-  SUPPORTED_CURRENCIES,
-  getCurrencyConfig,
-} from '@models/currency-config.interface';
-import { DemoService } from '@services/demo.service';
-import { GroupService } from '@services/group.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  getCurrencyConfig,
+  SUPPORTED_CURRENCIES,
+} from '@models/currency-config.interface';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { User } from '@models/user';
+import { DemoService } from '@services/demo.service';
+import { GroupService } from '@services/group.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@shared/loading/loading.service';
+import { UserStore } from '@store/user.store';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-add-group',
@@ -83,6 +83,7 @@ export class AddGroupComponent {
         currencyCode: val.currencyCode,
         currencySymbol: currencyConfig.symbol,
         decimalPlaces: currencyConfig.decimalPlaces,
+        archived: false,
       };
       const newMember: Partial<Member> = {
         userRef: this.user().ref,

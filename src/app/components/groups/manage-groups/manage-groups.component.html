@@ -18,8 +18,11 @@
               <mat-option
                 [value]="group.ref"
                 [attr.data-testid]="'manage-group-option-' + group.id"
-                >{{ group.name }}</mat-option
-              >
+                >{{ group.name }}
+                @if (group.archived) {
+                  (Archived)
+                }
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -87,39 +90,82 @@
     </form>
   }
 </mat-dialog-content>
-<mat-dialog-actions>
-  @if (userAdminGroups().length === 0) {
-    <button
-      data-testid="manage-groups-close-button"
-      mat-stroked-button
-      type="button"
-      [mat-dialog-close]="false"
-      [disabled]="editGroupForm.disabled"
-    >
-      Close
-    </button>
-  } @else {
-    <button
-      data-testid="manage-groups-save-button"
-      mat-raised-button
-      class="btn-secondary"
-      type="submit"
-      defaultButton
-      [disabled]="
-        !editGroupForm.valid || editGroupForm.pristine || editGroupForm.disabled
-      "
-      (click)="onSubmit()"
-    >
-      Save
-    </button>
-    <button
-      data-testid="manage-groups-cancel-button"
-      mat-stroked-button
-      type="button"
-      [mat-dialog-close]="false"
-      [disabled]="editGroupForm.disabled"
-    >
-      Cancel
-    </button>
+<mat-dialog-actions class="action-buttons">
+  @if (!!selectedGroup()) {
+    <div class="full-width-btn">
+      @if (selectedGroup().archived) {
+        <button
+          data-testid="unarchive-group-button"
+          mat-raised-button
+          class="btn-tertiary full-width-btn"
+          type="button"
+          (click)="unarchiveGroup()"
+          [disabled]="editGroupForm.disabled"
+        >
+          Unarchive Group
+        </button>
+      } @else {
+        <button
+          data-testid="archive-group-button"
+          mat-raised-button
+          class="btn-danger full-width-btn"
+          type="button"
+          (click)="archiveGroup()"
+          [disabled]="editGroupForm.disabled"
+        >
+          Archive Group
+        </button>
+      }
+    </div>
+    <div class="full-width-btn">
+      <button
+        data-testid="delete-group-button"
+        mat-raised-button
+        class="btn-danger full-width-btn"
+        type="button"
+        (click)="deleteGroup()"
+        [disabled]="editGroupForm.disabled"
+      >
+        Delete Group
+      </button>
+    </div>
   }
+  <div class="standard-actions">
+    @if (userAdminGroups().length === 0) {
+      <button
+        data-testid="manage-groups-close-button"
+        mat-stroked-button
+        type="button"
+        [mat-dialog-close]="false"
+        [disabled]="editGroupForm.disabled"
+      >
+        Close
+      </button>
+    } @else {
+      <button
+        data-testid="manage-groups-save-button"
+        mat-raised-button
+        class="btn-secondary"
+        type="submit"
+        defaultButton
+        [disabled]="
+          !editGroupForm.valid ||
+          editGroupForm.pristine ||
+          editGroupForm.disabled
+        "
+        (click)="onSubmit()"
+      >
+        Save
+      </button>
+      <button
+        data-testid="manage-groups-cancel-button"
+        mat-stroked-button
+        type="button"
+        [mat-dialog-close]="false"
+        [disabled]="editGroupForm.disabled"
+      >
+        Cancel
+      </button>
+    }
+  </div>
 </mat-dialog-actions>

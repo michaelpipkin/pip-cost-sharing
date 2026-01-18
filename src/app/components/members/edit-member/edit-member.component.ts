@@ -107,7 +107,12 @@ export class EditMemberComponent {
         active: form.active,
         groupAdmin: form.groupAdmin,
       };
-      await this.memberService.updateMember(this.member.ref, changes);
+      await this.memberService.updateMemberWithUserMatching(
+        this.member.ref,
+        changes,
+        this.member.userRef,
+        this.member.email
+      );
       this.dialogRef.close({
         success: true,
         operation: 'saved',

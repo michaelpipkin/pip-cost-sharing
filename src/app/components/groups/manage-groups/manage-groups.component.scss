@@ -7,3 +7,21 @@
   display: grid;
   justify-items: start;
 }
+
+.action-buttons {
+  display: flex !important;
+  flex-direction: column !important;
+  align-content: center !important;
+  gap: 0.75rem;
+}
+
+.full-width-btn {
+  width: 100%;
+}
+
+.standard-actions {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.5rem;
+}

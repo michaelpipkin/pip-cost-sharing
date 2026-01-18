@@ -205,6 +205,133 @@ export const deleteUserAccount = onCall(async (request) => {
   }
 });
 
+export const deleteGroup = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  const groupId = request.data.groupId;
+
+  if (!uid) {
+    throw new HttpsError(
+      'unauthenticated',
+      'User must be authenticated to delete a group'
+    );
+  }
+
+  if (!groupId) {
+    throw new HttpsError('invalid-argument', 'Group ID is required');
+  }
+
+  try {
+    // Verify the user is an admin of the group
+    const groupRef = db.collection('groups').doc(groupId);
+    const membersSnapshot = await groupRef
+      .collection('members')
+      .where('userRef', '==', db.collection('users').doc(uid))
+      .where('groupAdmin', '==', true)
+      .get();
+
+    if (membersSnapshot.empty) {
+      throw new HttpsError(
+        'permission-denied',
+        'User must be an admin of the group to delete it'
+      );
+    }
+
+    console.log(`Starting deletion of group: ${groupId} by user: ${uid}`);
+
+    // Define subcollections to delete
+    const subcollections = [
+      'members',
+      'categories',
+      'expenses',
+      'splits',
+      'history',
+      'memorized',
+    ];
+
+    // Delete all documents in each subcollection
+    for (const subcollection of subcollections) {
+      const snapshot = await groupRef.collection(subcollection).get();
+      if (!snapshot.empty) {
+        const batchSize = 500;
+        let batch = db.batch();
+        let count = 0;
+
+        for (const doc of snapshot.docs) {
+          batch.delete(doc.ref);
+          count++;
+
+          if (count >= batchSize) {
+            await batch.commit();
+            batch = db.batch();
+            count = 0;
+          }
+        }
+
+        if (count > 0) {
+          await batch.commit();
+        }
+
+        console.log(
+          `Deleted ${snapshot.size} documents from ${subcollection} subcollection`
+        );
+      }
+    }
+
+    // Delete receipts from storage
+    try {
+      const bucket = storage.bucket();
+      const [files] = await bucket.getFiles({
+        prefix: `groups/${groupId}/receipts/`,
+      });
+
+      for (const file of files) {
+        await file.delete();
+        console.log(`Deleted receipt file: ${file.name}`);
+      }
+
+      console.log(`Deleted ${files.length} receipt files`);
+    } catch (storageError) {
+      console.warn('Error deleting receipt files (may not exist):', storageError);
+    }
+
+    // Clear this group as default for any users who have it set
+    const usersWithDefault = await db
+      .collection('users')
+      .where('defaultGroupRef', '==', groupRef)
+      .get();
+
+    if (!usersWithDefault.empty) {
+      const batch = db.batch();
+      usersWithDefault.docs.forEach((userDoc) => {
+        batch.update(userDoc.ref, { defaultGroupRef: null });
+      });
+      await batch.commit();
+      console.log(
+        `Cleared defaultGroupRef for ${usersWithDefault.size} users`
+      );
+    }
+
+    // Finally, delete the group document itself
+    await groupRef.delete();
+    console.log(`Deleted group document: ${groupId}`);
+
+    return {
+      success: true,
+      message: 'Group and all associated data successfully deleted',
+    };
+  } catch (error: unknown) {
+    console.error('Error deleting group:', error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new HttpsError('internal', `Error deleting group: ${errorMessage}`);
+  }
+});
+
 export const syncAuthEmailsToUsers = onCall(async (request) => {
   console.log('syncAuthEmailsToUsers called');
 

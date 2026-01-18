@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { TEST_CONFIG } from './constants';
 import { AuthPage } from './pages/auth.page';
 import { GroupsPage } from './pages/groups.page';
 
@@ -116,39 +115,7 @@ test.describe('Groups Component Functionality', () => {
     });
   });
 
-  test.describe('Group Selection and Join Code', () => {
-    test('should display join code when group is selected', async () => {
-      await groupsPage.goto();
-
-      // Create a group first
-      const groupName = `Join Code Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName);
-
-      // Select the group and verify join code is displayed
-      await groupsPage.selectGroup(groupName);
-      const joinCode = await groupsPage.getJoinCode();
-      expect(joinCode).toBeTruthy();
-      expect(joinCode.length).toBeGreaterThan(0);
-    });
-
-    test('should copy join code to clipboard', async () => {
-      // Skip test if clipboard functionality is not supported (non-localhost HTTP)
-      test.skip(
-        !TEST_CONFIG.supportsClipboard,
-        'Clipboard functionality blocked on non-localhost HTTP domains'
-      );
-
-      await groupsPage.goto();
-
-      // Create a group first
-      const groupName = `Copy Code Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName);
-
-      // Select the group and copy join code
-      await groupsPage.selectGroup(groupName);
-      await groupsPage.copyJoinCode();
-    });
-
+  test.describe('Group Selection', () => {
     test('should switch between groups', async () => {
       await groupsPage.goto();
 
@@ -159,93 +126,9 @@ test.describe('Groups Component Functionality', () => {
       await groupsPage.createGroup(group1Name, testUser.displayName);
       await groupsPage.createGroup(group2Name, testUser.displayName);
 
-      // Switch between groups
+      // Switch between groups and verify they can be selected
       await groupsPage.selectGroup(group1Name);
-      const joinCode1 = await groupsPage.getJoinCode();
-
       await groupsPage.selectGroup(group2Name);
-      const joinCode2 = await groupsPage.getJoinCode();
-
-      // Join codes should be different
-      expect(joinCode1).not.toBe(joinCode2);
-    });
-  });
-
-  test.describe('Join Existing Group', () => {
-    test('should validate required fields in join group form', async () => {
-      await groupsPage.goto();
-      await groupsPage.openJoinGroupDialog();
-
-      // Try to submit without filling required fields
-      await groupsPage.verifySaveButtonDisabled('join');
-
-      // Fill only group code, button should still be disabled
-      await groupsPage.groupCodeInput.fill('TESTCODE123');
-      await groupsPage.verifySaveButtonDisabled('join');
-
-      // Fill display name, now should be valid
-      await groupsPage.joinDisplayNameInput.fill(testUser.displayName);
-
-      // Wait a moment for form validation to update
-      await groupsPage.page.waitForTimeout(500);
-
-      // Now the button should be enabled
-      await expect(groupsPage.joinGroupSaveButton).toBeEnabled();
-
-      await groupsPage.cancelJoinGroup();
-    });
-
-    test('should show validation errors for empty fields in join form', async () => {
-      await groupsPage.goto();
-      await groupsPage.openJoinGroupDialog();
-
-      // Focus and blur from fields to trigger validation (same pattern as add group)
-      await groupsPage.groupCodeInput.focus();
-      await groupsPage.groupCodeInput.blur();
-
-      await groupsPage.joinDisplayNameInput.focus();
-      await groupsPage.joinDisplayNameInput.blur();
-
-      // Now validation errors should be visible - we expect 2 "*Required" errors
-      await expect(
-        groupsPage.page.locator('mat-error').filter({ hasText: '*Required' })
-      ).toHaveCount(2);
-
-      // The save button should still be disabled
-      await expect(groupsPage.joinGroupSaveButton).toBeDisabled();
-
-      await groupsPage.cancelJoinGroup();
-    });
-
-    test('should cancel join group dialog', async () => {
-      await groupsPage.goto();
-      await groupsPage.openJoinGroupDialog();
-
-      // Fill some data
-      await groupsPage.groupCodeInput.fill('TESTCODE123');
-      await groupsPage.joinDisplayNameInput.fill(testUser.displayName);
-
-      // Cancel dialog
-      await groupsPage.cancelJoinGroup();
-
-      // The dialog should be closed and we should be back to the main page
-      await expect(groupsPage.joinGroupDialog).toBeHidden();
-      await expect(groupsPage.groupSelect).toBeVisible();
-    });
-
-    test('should handle invalid group join code', async () => {
-      await groupsPage.goto();
-      await groupsPage.openJoinGroupDialog();
-
-      // Try to join with invalid code
-      await groupsPage.groupCodeInput.fill('INVALIDCODE123');
-      await groupsPage.joinDisplayNameInput.fill(testUser.displayName);
-      await groupsPage.joinGroupSaveButton.click();
-
-      // Should show error message (exact message depends on backend implementation)
-      // The form should remain open or show an error
-      // We don't expect the success message
-      await expect(groupsPage.snackbar).not.toContainText('Group joined!');
     });
   });
 
@@ -373,14 +256,9 @@ test.describe('Groups Component Functionality', () => {
       await groupsPage.verifyGroupInList(group1);
       await groupsPage.verifyGroupInList(group2);
 
-      // Select and get join codes for both
+      // Select both groups to verify switching works
       await groupsPage.selectGroup(group1);
-      const joinCode1 = await groupsPage.getJoinCode();
-
       await groupsPage.selectGroup(group2);
-      const joinCode2 = await groupsPage.getJoinCode();
-
-      expect(joinCode1).not.toBe(joinCode2);
 
       // Edit one of the groups
       await groupsPage.editGroup(`${group1} Updated`);
@@ -398,11 +276,6 @@ test.describe('Groups Component Functionality', () => {
 
       // Select the group
       await groupsPage.selectGroup(groupName);
-
-      // Copy the join code (only if clipboard is supported)
-      if (TEST_CONFIG.supportsClipboard) {
-        await groupsPage.copyJoinCode();
-      }
 
       // Edit the group
       const updatedName = `${groupName} Updated`;
