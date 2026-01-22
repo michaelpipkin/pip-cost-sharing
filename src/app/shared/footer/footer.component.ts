@@ -34,8 +34,8 @@ export class FooterComponent {
         '(min-width: 600px)',
       ])
       .subscribe((result) => {
-        const date = new Date(this.buildDate());
-        const buildDateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        // const date = new Date(this.buildDate());
+        // const buildDateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
         if (result.breakpoints['(max-width: 499px)']) {
           // Under 500px: v{version}
@@ -43,13 +43,11 @@ export class FooterComponent {
         } else if (
           result.breakpoints['(min-width: 500px) and (max-width: 599px)']
         ) {
-          // 500-599px: v{version} | {build date}
-          this.versionText.set(`v${this.version()} | ${buildDateString}`);
+          // 500-599px: v{version}
+          this.versionText.set(`v${this.version()}`);
         } else {
-          // 600px+: Version {version} | Build Date: {build date}
-          this.versionText.set(
-            `Version ${this.version()} | Build Date: ${buildDateString}`
-          );
+          // 600px+: Version {version}
+          this.versionText.set(`Version ${this.version()}`);
         }
       });
   }
