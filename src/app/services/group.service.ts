@@ -65,7 +65,11 @@ export class GroupService implements IGroupService {
     // Skip group loading if user isn't validated (email not confirmed for non-Google users)
     // Auth guards will handle redirecting to account page if needed
     if (!this.userStore.isValidUser()) {
-      this.router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      // Don't redirect if on account-action page - let verification complete first
+      const currentUrl = this.router.url;
+      if (!currentUrl.includes('/auth/account-action')) {
+        this.router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      }
       this.loading.loadingOff();
       return;
     }
