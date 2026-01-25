@@ -5,7 +5,11 @@
       "Bash(ng build:*)",
       "Bash(pnpm list:*)",
       "Bash(firebase --version:*)",
-      "Bash(pnpm run build:*)"
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm reset-packages:*)",
+      "Bash(npx cap sync android)",
+      "Bash(npx cap open android)",
+      "Bash(npx cap:*)"
     ],
     "deny": [],
     "ask": []
