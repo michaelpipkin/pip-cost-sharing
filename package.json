@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.13.3",
+  "version": "1.13.4",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -45,6 +45,7 @@
     "@capacitor-community/admob": "^8.0.0",
     "@capacitor-firebase/authentication": "^8.0.1",
     "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
     "@capacitor/browser": "^8.0.0",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
@@ -88,6 +89,7 @@
     "prettier": "^3.7.4",
     "prettier-eslint-cli": "^8.0.1",
     "sharp": "^0.34.5",
+    "tar": "^6.2.1",
     "typescript": "^5.9.3",
     "wait-on": "^9.0.3"
   },
@@ -118,7 +120,6 @@
       "lodash": ">=4.17.23",
       "qs": ">=6.14.1",
       "sharp": ">=0.34.5",
-      "tar": ">=7.5.4",
       "undici": ">=7.18.2",
       "vite": ">=7.1.11"
     }
