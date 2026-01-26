@@ -306,7 +306,6 @@ export class ExpensesComponent implements AfterViewInit {
   }
 
   onAddExpenseClick(): void {
-    this.loading.loadingOn();
     if (this.demoService.isInDemoMode()) {
       this.router.navigate(['/demo/expenses/add']);
     } else {
@@ -319,7 +318,6 @@ export class ExpensesComponent implements AfterViewInit {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    this.loading.loadingOn();
     this.router.navigate(['/expenses', expense.id]);
   }
 
