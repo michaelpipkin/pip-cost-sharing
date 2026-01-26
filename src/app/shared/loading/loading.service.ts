@@ -1,17 +1,25 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LoadingService {
-  #loadingSignal = signal<boolean>(false);
-  loading = this.#loadingSignal.asReadonly();
+  #loadingSources = signal<Set<string>>(new Set());
+  loading = computed(() => this.#loadingSources().size > 0);
 
-  loadingOn() {
-    this.#loadingSignal.set(true);
+  loadingOn(source: string = 'content') {
+    this.#loadingSources.update((sources) => {
+      const newSources = new Set(sources);
+      newSources.add(source);
+      return newSources;
+    });
   }
 
-  loadingOff() {
-    this.#loadingSignal.set(false);
+  loadingOff(source: string = 'content') {
+    this.#loadingSources.update((sources) => {
+      const newSources = new Set(sources);
+      newSources.delete(source);
+      return newSources;
+    });
   }
 }

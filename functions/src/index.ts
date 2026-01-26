@@ -8,6 +8,93 @@ admin.initializeApp();
 const db = admin.firestore();
 const storage = admin.storage();
 
+/**
+ * Internal function to delete a group and all its associated data.
+ * Used by both deleteGroup (for user-initiated deletion) and deleteUserAccount
+ * (for orphaned group cleanup).
+ */
+async function deleteGroupInternal(
+  groupRef: admin.firestore.DocumentReference
+): Promise<void> {
+  const groupId = groupRef.id;
+  console.log(`Starting internal deletion of group: ${groupId}`);
+
+  // Define subcollections to delete
+  const subcollections = [
+    'members',
+    'categories',
+    'expenses',
+    'splits',
+    'history',
+    'memorized',
+  ];
+
+  // Delete all documents in each subcollection
+  for (const subcollection of subcollections) {
+    const snapshot = await groupRef.collection(subcollection).get();
+    if (!snapshot.empty) {
+      const batchSize = 500;
+      let batch = db.batch();
+      let count = 0;
+
+      for (const doc of snapshot.docs) {
+        batch.delete(doc.ref);
+        count++;
+
+        if (count >= batchSize) {
+          await batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      console.log(
+        `Deleted ${snapshot.size} documents from ${subcollection} subcollection`
+      );
+    }
+  }
+
+  // Delete receipts from storage
+  try {
+    const bucket = storage.bucket();
+    const [files] = await bucket.getFiles({
+      prefix: `groups/${groupId}/receipts/`,
+    });
+
+    for (const file of files) {
+      await file.delete();
+      console.log(`Deleted receipt file: ${file.name}`);
+    }
+
+    console.log(`Deleted ${files.length} receipt files`);
+  } catch (storageError) {
+    console.warn('Error deleting receipt files (may not exist):', storageError);
+  }
+
+  // Clear this group as default for any users who have it set
+  const usersWithDefault = await db
+    .collection('users')
+    .where('defaultGroupRef', '==', groupRef)
+    .get();
+
+  if (!usersWithDefault.empty) {
+    const batch = db.batch();
+    usersWithDefault.docs.forEach((userDoc) => {
+      batch.update(userDoc.ref, { defaultGroupRef: null });
+    });
+    await batch.commit();
+    console.log(`Cleared defaultGroupRef for ${usersWithDefault.size} users`);
+  }
+
+  // Finally, delete the group document itself
+  await groupRef.delete();
+  console.log(`Deleted group document: ${groupId}`);
+}
+
 export const validateHCaptcha = onCall(async (request) => {
   const token = request.data.token;
 
@@ -151,33 +238,95 @@ export const deleteUserAccount = onCall(async (request) => {
       console.log(`Found user document: ${userDocRef.path}`);
     }
 
+    // Track groups that need to be deleted (where user is the only active member)
+    const groupsToDelete: admin.firestore.DocumentReference[] = [];
+
     try {
       const groupsSnapshot = await db.collection('groups').get();
 
       for (const groupDoc of groupsSnapshot.docs) {
-        const membersSnapshot = await groupDoc.ref
-          .collection('members')
-          .where('userRef', '==', userDocRef)
-          .get();
+        // Get all members for this group
+        const membersSnapshot = await groupDoc.ref.collection('members').get();
 
-        const batch = db.batch();
-        membersSnapshot.docs.forEach((memberDoc) => {
-          batch.update(memberDoc.ref, {
-            email: '',
-            userRef: null,
-          });
-          console.log(`Anonymizing member document: ${memberDoc.ref.path}`);
-        });
+        // Find if user is a member of this group
+        const userMemberDoc = membersSnapshot.docs.find(
+          (doc) => doc.data().userRef?.path === userDocRef.path
+        );
 
-        if (membersSnapshot.size > 0) {
-          await batch.commit();
+        // Skip if user is not a member of this group
+        if (!userMemberDoc) {
+          continue;
+        }
+
+        const userMemberData = userMemberDoc.data();
+        const allMembers = membersSnapshot.docs;
+        const activeMembers = allMembers.filter(
+          (doc) => doc.data().active === true
+        );
+
+        // Check if user is the only active member
+        if (activeMembers.length === 1 && userMemberData.active === true) {
+          // User is the only active member - mark group for deletion
           console.log(
-            `Updated ${membersSnapshot.size} member(s) in group ${groupDoc.id}`
+            `User is the only active member of group ${groupDoc.id} - marking for deletion`
           );
+          groupsToDelete.push(groupDoc.ref);
+        } else {
+          // Check if user is the only admin
+          const admins = allMembers.filter(
+            (doc) => doc.data().groupAdmin === true
+          );
+          const userIsOnlyAdmin =
+            admins.length === 1 && userMemberData.groupAdmin === true;
+
+          if (userIsOnlyAdmin && activeMembers.length > 1) {
+            // User is the only admin but there are other active members
+            // Promote all other active members to admin and demote/anonymize user
+            console.log(
+              `User is the only admin of group ${groupDoc.id} - promoting other members`
+            );
+
+            const batch = db.batch();
+
+            // Promote all other active members to admin
+            for (const memberDoc of activeMembers) {
+              if (memberDoc.id !== userMemberDoc.id) {
+                batch.update(memberDoc.ref, { groupAdmin: true });
+                console.log(`Promoting member ${memberDoc.id} to admin`);
+              }
+            }
+
+            // Demote and anonymize user's member record (keep email)
+            batch.update(userMemberDoc.ref, {
+              groupAdmin: false,
+              userRef: null,
+            });
+            console.log(`Demoting and anonymizing member: ${userMemberDoc.id}`);
+
+            await batch.commit();
+            console.log(`Updated members in group ${groupDoc.id}`);
+          } else {
+            // User is either not an admin, or there are other admins
+            // Just anonymize the user's member record (keep email)
+            await userMemberDoc.ref.update({ userRef: null });
+            console.log(
+              `Anonymizing member document: ${userMemberDoc.ref.path}`
+            );
+          }
+        }
+      }
+
+      // Delete orphaned groups (where user was the only active member)
+      for (const groupRef of groupsToDelete) {
+        try {
+          await deleteGroupInternal(groupRef);
+          console.log(`Deleted orphaned group: ${groupRef.id}`);
+        } catch (error) {
+          console.error(`Error deleting orphaned group ${groupRef.id}:`, error);
         }
       }
     } catch (error) {
-      console.error('Error updating member documents:', error);
+      console.error('Error processing member documents:', error);
     }
 
     if (userDoc.exists) {
@@ -238,82 +387,8 @@ export const deleteGroup = onCall(async (request) => {
 
     console.log(`Starting deletion of group: ${groupId} by user: ${uid}`);
 
-    // Define subcollections to delete
-    const subcollections = [
-      'members',
-      'categories',
-      'expenses',
-      'splits',
-      'history',
-      'memorized',
-    ];
-
-    // Delete all documents in each subcollection
-    for (const subcollection of subcollections) {
-      const snapshot = await groupRef.collection(subcollection).get();
-      if (!snapshot.empty) {
-        const batchSize = 500;
-        let batch = db.batch();
-        let count = 0;
-
-        for (const doc of snapshot.docs) {
-          batch.delete(doc.ref);
-          count++;
-
-          if (count >= batchSize) {
-            await batch.commit();
-            batch = db.batch();
-            count = 0;
-          }
-        }
-
-        if (count > 0) {
-          await batch.commit();
-        }
-
-        console.log(
-          `Deleted ${snapshot.size} documents from ${subcollection} subcollection`
-        );
-      }
-    }
-
-    // Delete receipts from storage
-    try {
-      const bucket = storage.bucket();
-      const [files] = await bucket.getFiles({
-        prefix: `groups/${groupId}/receipts/`,
-      });
-
-      for (const file of files) {
-        await file.delete();
-        console.log(`Deleted receipt file: ${file.name}`);
-      }
-
-      console.log(`Deleted ${files.length} receipt files`);
-    } catch (storageError) {
-      console.warn('Error deleting receipt files (may not exist):', storageError);
-    }
-
-    // Clear this group as default for any users who have it set
-    const usersWithDefault = await db
-      .collection('users')
-      .where('defaultGroupRef', '==', groupRef)
-      .get();
-
-    if (!usersWithDefault.empty) {
-      const batch = db.batch();
-      usersWithDefault.docs.forEach((userDoc) => {
-        batch.update(userDoc.ref, { defaultGroupRef: null });
-      });
-      await batch.commit();
-      console.log(
-        `Cleared defaultGroupRef for ${usersWithDefault.size} users`
-      );
-    }
-
-    // Finally, delete the group document itself
-    await groupRef.delete();
-    console.log(`Deleted group document: ${groupId}`);
+    // Use internal function to perform the deletion
+    await deleteGroupInternal(groupRef);
 
     return {
       success: true,
