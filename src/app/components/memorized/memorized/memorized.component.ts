@@ -167,7 +167,6 @@ export class MemorizedComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    this.loading.loadingOn();
     this.router.navigate(['/memorized', memorized.id]);
   }
 

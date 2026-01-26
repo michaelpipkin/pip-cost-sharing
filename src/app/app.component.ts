@@ -22,6 +22,7 @@ import { UserStore } from '@store/user.store';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
+import { NavigationLoadingService } from './shared/loading/navigation-loading.service';
 
 @Component({
   selector: 'app-root',
@@ -54,6 +55,7 @@ export class AppComponent {
   private adMobService = inject(AdMobService);
   private adSenseService = inject(AdSenseService);
   private deepLinkService = inject(DeepLinkService);
+  private navigationLoading = inject(NavigationLoadingService);
 
   isSmallScreen = signal<boolean>(false);
 
