@@ -353,6 +353,8 @@ export class DemoModeService {
       expenses: [expense1, expense2, expense3, expense4],
       categories: [groceries, restaurants, utilities, entertainment],
       autoAddMembers: false,
+      userActiveInGroup: true,
+      userIsAdmin: true,
       ref: this.createMockDocRef('demo-group-123'),
     });
 
