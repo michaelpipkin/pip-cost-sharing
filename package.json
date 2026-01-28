@@ -89,7 +89,7 @@
     "prettier": "^3.7.4",
     "prettier-eslint-cli": "^8.0.1",
     "sharp": "^0.34.5",
-    "tar": "^6.2.1",
+    "tar": "^7.5.7",
     "typescript": "^5.9.3",
     "wait-on": "^9.0.3"
   },
