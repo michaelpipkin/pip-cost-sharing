@@ -8,7 +8,7 @@ const options = {
     'src/environments/environment.prod.ts',
   ],
   from: /buildDate: (.*)/g,
-  to: `buildDate: new Date('${buildDate.toISOString()}')`,
+  to: `buildDate: new Date('${buildDate.toISOString()}'),`,
   allowEmptyPaths: false,
 };
 

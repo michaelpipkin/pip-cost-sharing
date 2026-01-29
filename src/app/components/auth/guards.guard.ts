@@ -1,11 +1,15 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
+import { environment } from '@env/environment';
 import { GroupStore } from '@store/group.store';
 import { Auth, getAuth, onAuthStateChanged, User } from 'firebase/auth';
 
 // AdSense crawler user email - this user should bypass group requirements
 const ADSENSE_CRAWLER_EMAIL = 'adsensecrawler@google.com';
+
+// App owner email - pulled from environment for prod/emulator flexibility
+export const APP_OWNER_EMAIL = environment.appOwnerEmail;
 
 // Helper function to wait for initial auth state to be determined
 // This resolves immediately once Firebase has loaded the persisted auth state
@@ -116,4 +120,18 @@ export const noCrawlerGuard: CanActivateFn = () => {
     return false;
   }
   return true;
+};
+
+export const adminGuard: CanActivateFn = async () => {
+  const router = inject(Router);
+  const auth = inject(getAuth);
+
+  const user = await waitForAuthInit(auth);
+
+  if (user && user.email === APP_OWNER_EMAIL) {
+    return true;
+  } else {
+    router.navigate([ROUTE_PATHS.HOME]);
+    return false;
+  }
 };

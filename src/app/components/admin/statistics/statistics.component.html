@@ -1,0 +1,112 @@
+<div class="container">
+  <div class="page-header">
+    <div></div>
+    <h3 class="header">Admin Statistics</h3>
+    <div></div>
+  </div>
+
+  @if (statistics(); as stats) {
+    <div class="stats-grid">
+      <mat-card class="stat-card">
+        <mat-card-header>
+          <mat-card-title>Groups</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-row">
+            <span>Total Groups:</span>
+            <span class="stat-value">{{ stats.totalGroups }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Active Groups:</span>
+            <span class="stat-value">{{ stats.activeGroups }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Active with 2+ Members:</span>
+            <span class="stat-value">{{ stats.activeGroupsWithMultipleMembers }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Active with Expenses:</span>
+            <span class="stat-value">{{ stats.activeGroupsWithExpenses }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-header>
+          <mat-card-title>Users & Members</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-row">
+            <span>Total Users:</span>
+            <span class="stat-value">{{ stats.totalUsers }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Total Members:</span>
+            <span class="stat-value">{{ stats.totalMembers }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Active Members:</span>
+            <span class="stat-value">{{ stats.totalActiveMembers }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Avg Members/Active Group:</span>
+            <span class="stat-value">{{ stats.avgMembersPerActiveGroup }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-header>
+          <mat-card-title>Expenses</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-row">
+            <span>Total Expenses:</span>
+            <span class="stat-value">{{ stats.totalExpenses }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Avg Expenses/Active Group:</span>
+            <span class="stat-value">{{ stats.avgExpensesPerActiveGroup }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-header>
+          <mat-card-title>Recent Activity (30 days)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-row">
+            <span>Groups with Activity:</span>
+            <span class="stat-value">{{ stats.groupsWithRecentActivity }}</span>
+          </div>
+          <div class="stat-row">
+            <span>Expenses Created:</span>
+            <span class="stat-value">{{ stats.expensesCreatedLast30Days }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="footer-info">
+      <p>Generated: {{ stats.generatedAt | date : 'medium' }}</p>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        (click)="refreshStatistics()"
+      >
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  }
+
+  @if (error(); as errorMessage) {
+    <div class="error-container">
+      <p>{{ errorMessage }}</p>
+      <button mat-raised-button class="btn-primary" (click)="refreshStatistics()">
+        Retry
+      </button>
+    </div>
+  }
+</div>
