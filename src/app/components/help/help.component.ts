@@ -7,8 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { HelpService } from '@services/help.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -40,7 +40,7 @@ export class HelpComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   helpSections: HelpSection[] = [];
 

@@ -41,8 +41,8 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import {
   HelpDialogComponent,
@@ -86,7 +86,7 @@ export class SummaryComponent implements AfterViewInit {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 
@@ -330,7 +330,7 @@ export class SummaryComponent implements AfterViewInit {
             data: { message: 'Expenses have been marked paid' },
           });
         } catch (err: any) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             component: this.constructor.name,
             action: 'mark_expenses_paid',
             message: err.message,
@@ -375,7 +375,7 @@ export class SummaryComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'copy_summary_to_clipboard',
           message: error.message,

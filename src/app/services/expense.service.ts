@@ -6,7 +6,7 @@ import { Split, SplitDto } from '@models/split';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   collection,
   collectionGroup,
@@ -31,7 +31,7 @@ import { IExpenseService } from './expense.service.interface';
 export class ExpenseService implements IExpenseService {
   protected readonly fs = inject(getFirestore);
   protected readonly storage = inject(getStorage);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
@@ -126,7 +126,7 @@ export class ExpenseService implements IExpenseService {
 
       return expenses;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'ExpenseService',
         method: 'getGroupExpensesByDateRange',
         message: 'Failed to get group expenses by date range',
@@ -193,7 +193,7 @@ export class ExpenseService implements IExpenseService {
 
       return expense;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'ExpenseService',
         method: 'getExpense',
         message: 'Failed to get expense',
@@ -223,7 +223,7 @@ export class ExpenseService implements IExpenseService {
         );
         expense.receiptPath = storageRef.fullPath;
         await uploadBytes(storageRef, receipt);
-        logEvent(this.analytics, 'receipt_uploaded');
+        this.analytics.logEvent('receipt_uploaded');
       }
 
       // Set expense and splits in batch
@@ -244,7 +244,7 @@ export class ExpenseService implements IExpenseService {
           `groups/${groupId}/receipts/${expenseRef.id}`
         );
         deleteObject(storageRef).catch((deleteError) => {
-          logEvent(this.analytics, 'delete_receipt_error', {
+          this.analytics.logEvent('delete_receipt_error', {
             error:
               deleteError instanceof Error
                 ? deleteError.message
@@ -253,7 +253,7 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'ExpenseService',
         method: 'addExpense',
         message: 'Failed to add expense',
@@ -281,9 +281,9 @@ export class ExpenseService implements IExpenseService {
         try {
           await uploadBytes(storageRef, receipt);
           changes.receiptPath = storageRef.fullPath;
-          logEvent(this.analytics, 'receipt_uploaded');
+          this.analytics.logEvent('receipt_uploaded');
         } catch (error) {
-          logEvent(this.analytics, 'receipt_upload_failed', {
+          this.analytics.logEvent('receipt_upload_failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
           throw new Error('Failed to upload receipt');
@@ -318,7 +318,7 @@ export class ExpenseService implements IExpenseService {
           `groups/${groupId}/receipts/${expenseRef.id}`
         );
         deleteObject(storageRef).catch((deleteError) => {
-          logEvent(this.analytics, 'delete_receipt_after_batch_failure', {
+          this.analytics.logEvent('delete_receipt_after_batch_failure', {
             error:
               deleteError instanceof Error
                 ? deleteError.message
@@ -327,7 +327,7 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'ExpenseService',
         method: 'updateExpense',
         message: 'Failed to update expense',
@@ -369,13 +369,13 @@ export class ExpenseService implements IExpenseService {
       if (receiptPath) {
         const receiptRef = ref(this.storage, receiptPath);
         deleteObject(receiptRef).catch((error) => {
-          logEvent(this.analytics, 'delete_receipt_error', {
+          this.analytics.logEvent('delete_receipt_error', {
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         });
       }
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'ExpenseService',
         method: 'deleteExpense',
         message: 'Failed to delete expense',
@@ -400,7 +400,7 @@ export class ExpenseService implements IExpenseService {
       const snapshot = await getDocs(q);
       return !snapshot.empty;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'has_expenses_for_group',
         message: error instanceof Error ? error.message : 'Unknown error',

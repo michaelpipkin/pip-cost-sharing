@@ -8,8 +8,8 @@ import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/cust
 import { Router, RouterModule } from '@angular/router';
 import { Browser } from '@capacitor/browser';
 import { PwaDetectionService } from '@services/pwa-detection.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { passwordMatchValidator } from '../auth-main/password-match-validator';
 import {
@@ -55,7 +55,7 @@ export class RegisterComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
   protected readonly pwaDetection = inject(PwaDetectionService);
   readonly #destroyRef = inject(DestroyRef);
@@ -96,7 +96,7 @@ export class RegisterComponent {
               }, 90000);
             }
           } catch (error: any) {
-            logEvent(this.analytics, 'hCaptcha_error', {
+            this.analytics.logEvent('hCaptcha_error', {
               error: error.message,
             });
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -158,7 +158,7 @@ export class RegisterComponent {
         };
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(
           (err: Error) => {
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'verify_email',
               message: err.message,

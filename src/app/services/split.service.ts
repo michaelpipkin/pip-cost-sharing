@@ -3,7 +3,7 @@ import { Expense } from '@models/expense';
 import { HistoryDto } from '@models/history';
 import { Split, SplitDto } from '@models/split';
 import { SplitStore } from '@store/split.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   collection,
   doc,
@@ -23,7 +23,7 @@ import { ISplitService } from './split.service.interface';
 export class SplitService implements ISplitService {
   protected readonly fs = inject(getFirestore);
   protected readonly splitStore = inject(SplitStore);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(
@@ -46,7 +46,7 @@ export class SplitService implements ISplitService {
           });
           this.splitStore.setSplits(splits);
         } catch (error) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             service: 'SplitService',
             method: 'getUnpaidSplitsForGroup',
             message: 'Failed to process unpaid splits snapshot',
@@ -56,7 +56,7 @@ export class SplitService implements ISplitService {
         }
       },
       (error) => {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           service: 'SplitService',
           method: 'getUnpaidSplitsForGroup',
           message: 'Failed to listen to unpaid splits',
@@ -93,7 +93,7 @@ export class SplitService implements ISplitService {
 
       await batch.commit();
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'SplitService',
         method: 'updateSplit',
         message: 'Failed to update split',
@@ -155,7 +155,7 @@ export class SplitService implements ISplitService {
 
       await batch.commit();
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'SplitService',
         method: 'paySplitsBetweenMembers',
         message: 'Failed to pay splits between members',

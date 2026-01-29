@@ -50,8 +50,8 @@ import { TourService } from '@services/tour.service';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-split',
@@ -77,7 +77,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
@@ -643,7 +643,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,

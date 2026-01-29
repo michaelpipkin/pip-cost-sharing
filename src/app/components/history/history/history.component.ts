@@ -42,8 +42,8 @@ import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
+import { AnalyticsService } from '@services/analytics.service';
 import { MemberStore } from '@store/member.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 
 @Component({
@@ -78,7 +78,7 @@ export class HistoryComponent implements AfterViewInit {
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 
@@ -182,7 +182,7 @@ export class HistoryComponent implements AfterViewInit {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'delete_history',
               message: error.message,
@@ -233,7 +233,7 @@ export class HistoryComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'copy_history_to_clipboard',
           message: error.message,

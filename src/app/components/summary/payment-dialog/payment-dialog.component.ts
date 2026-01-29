@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 
 @Component({
   selector: 'app-payment-dialog',
@@ -22,7 +22,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 })
 export class PaymentDialogComponent {
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   protected readonly data: paymentData = inject(MAT_DIALOG_DATA);
 
@@ -37,7 +37,7 @@ export class PaymentDialogComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'copy_payment_id_to_clipboard',
           message: error.message,

@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AdMob, InterstitialAdPluginEvents } from '@capacitor-community/admob';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from './pwa-detection.service';
 
 @Injectable({
@@ -10,7 +10,7 @@ import { PwaDetectionService } from './pwa-detection.service';
 export class AdMobService {
   private router = inject(Router);
   private pwaService = inject(PwaDetectionService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   // Configuration
   private readonly ADS_FREQUENCY = 4; // Show ad every 4 page navigations
@@ -47,7 +47,7 @@ export class AdMobService {
       // Load the first ad immediately so it's ready
       this.loadInterstitial();
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'initialize_admob',
         message: error.message,
@@ -92,7 +92,7 @@ export class AdMobService {
       await AdMob.prepareInterstitial(options);
       this.isAdLoaded.set(true);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'load_interstitial',
         message: error.message,
@@ -115,7 +115,7 @@ export class AdMobService {
       // Note: We do NOT call loadInterstitial() here.
       // The 'Dismissed' listener in initializeAdMob() handles it safely.
     } catch (error: any) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'show_interstitial',
         message: error?.message || 'Show failed',

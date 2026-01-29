@@ -6,8 +6,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { confirmPasswordReset, getAuth } from 'firebase/auth';
 import { passwordMatchValidator } from '../auth-main/password-match-validator';
 import {
@@ -38,7 +38,7 @@ export class ResetPasswordComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   oobCode = signal<string>(this.route.snapshot.queryParams['oobCode'] || '');
 
@@ -91,7 +91,7 @@ export class ResetPasswordComponent {
             data: { message: 'Reset link expired' },
           });
         } else {
-          logEvent(this.analytics, 'reset_password_error', {
+          this.analytics.logEvent('reset_password_error', {
             error: error.message,
           });
           this.snackbar.openFromComponent(CustomSnackbarComponent, {

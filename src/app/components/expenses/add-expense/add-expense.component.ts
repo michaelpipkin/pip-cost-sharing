@@ -36,8 +36,8 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import {
@@ -104,7 +104,7 @@ import {
 })
 export class AddExpenseComponent {
   protected readonly storage = inject(getStorage);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly fb = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly dialog = inject(MatDialog);
@@ -743,7 +743,7 @@ export class AddExpenseComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'add_expense',
           message: error.message,

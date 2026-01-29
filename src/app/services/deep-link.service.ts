@@ -2,14 +2,14 @@ import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { App, URLOpenListenerEvent } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DeepLinkService {
   private readonly router = inject(Router);
-  private readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   initialize(): void {
     // Only set up listener on native platforms
@@ -32,7 +32,7 @@ export class DeepLinkService {
         queryParams[key] = value;
       });
 
-      logEvent(this.analytics, 'deep_link_received', {
+      this.analytics.logEvent('deep_link_received', {
         path: path,
         hasOobCode: !!queryParams['oobCode'],
         mode: queryParams['mode'] || 'none',
@@ -41,7 +41,7 @@ export class DeepLinkService {
       // Navigate to the path with query parameters
       this.router.navigate([path], { queryParams });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'DeepLinkService',
         action: 'handleDeepLink',
         message: error instanceof Error ? error.message : 'Failed to parse deep link',

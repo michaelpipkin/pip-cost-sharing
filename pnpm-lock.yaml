@@ -57,6 +57,9 @@ importers:
       '@capacitor-community/admob':
         specifier: ^8.0.0
         version: 8.0.0
+      '@capacitor-firebase/analytics':
+        specifier: ^8.0.1
+        version: 8.0.1(@capacitor/core@8.0.2)(firebase@12.8.0)
       '@capacitor-firebase/authentication':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.0.2)(firebase@12.8.0)
@@ -517,6 +520,15 @@ packages:
   '@capacitor-community/admob@8.0.0':
     resolution: {integrity: sha512-+ZIq+UtcNvTMFwjvuhOuGvCjwK2Wu36lTIl9o1/CEjfp2Aj3m4b9zQGx0vXrERYqQmJp/Ven7ee3gGuh2Ym8nA==}
     engines: {node: '>=22.0.0'}
+
+  '@capacitor-firebase/analytics@8.0.1':
+    resolution: {integrity: sha512-/s8T6BhGwML6z4zGxRIfy2TE89ybric+v2yXCd1xscS4jV4ejv9l+TGZioEi0MvFDZyWdQoSCvgnFI0OKM+PRg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+      firebase: ^12.6.0
+    peerDependenciesMeta:
+      firebase:
+        optional: true
 
   '@capacitor-firebase/authentication@8.0.1':
     resolution: {integrity: sha512-F9ocfBGAnMGSvZ7dfwcqACS17HFZEF7B3dSbao34ZBxo5wCDikCROX/T6L5jNq2CGX4ByLOpOmvvzfH+nT5w3A==}
@@ -5725,6 +5737,12 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.0.2
       '@rdlabo/capacitor-docgen': 0.4.1
+
+  '@capacitor-firebase/analytics@8.0.1(@capacitor/core@8.0.2)(firebase@12.8.0)':
+    dependencies:
+      '@capacitor/core': 8.0.2
+    optionalDependencies:
+      firebase: 12.8.0
 
   '@capacitor-firebase/authentication@8.0.1(@capacitor/core@8.0.2)(firebase@12.8.0)':
     dependencies:

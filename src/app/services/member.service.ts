@@ -3,7 +3,7 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import { IMemberService } from './member.service.interface';
 import { SortingService } from './sorting.service';
 import {
@@ -30,7 +30,7 @@ export class MemberService implements IMemberService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   async getMemberByUserRef(
     groupId: string,
@@ -57,7 +57,7 @@ export class MemberService implements IMemberService {
         this.memberStore.clearCurrentMember();
       }
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'getMemberByUserRef',
         message: 'Failed to get member by user ref',
@@ -88,7 +88,7 @@ export class MemberService implements IMemberService {
           );
           this.memberStore.setGroupMembers(groupMembers);
         } catch (error) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             service: 'MemberService',
             method: 'getGroupMembers',
             message: 'Failed to process group members snapshot',
@@ -98,7 +98,7 @@ export class MemberService implements IMemberService {
         }
       },
       (error) => {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           service: 'MemberService',
           method: 'getGroupMembers',
           message: 'Failed to listen to group members',
@@ -140,7 +140,7 @@ export class MemberService implements IMemberService {
         member
       )) as DocumentReference<Member>;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'addMemberToGroup',
         message: 'Failed to add member to group',
@@ -158,7 +158,7 @@ export class MemberService implements IMemberService {
     try {
       await updateDoc(memberRef, changes);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'updateMember',
         message: 'Failed to update member',
@@ -190,7 +190,7 @@ export class MemberService implements IMemberService {
 
       await updateDoc(memberRef, changes);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'updateMemberWithUserMatching',
         message: 'Failed to update member with user matching',
@@ -223,7 +223,7 @@ export class MemberService implements IMemberService {
 
       await deleteDoc(memberRef);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'removeMemberFromGroup',
         message: 'Failed to remove member from group',
@@ -268,7 +268,7 @@ export class MemberService implements IMemberService {
       }
       await updateDoc(this.userStore.user().ref, { defaultGroupRef: null });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'leaveGroup',
         message: 'Failed to leave group',
@@ -295,13 +295,13 @@ export class MemberService implements IMemberService {
         await updateDoc(memberDoc.ref, { email: newEmail });
       }
 
-      logEvent(this.analytics, 'member_emails_updated', {
+      this.analytics.logEvent('member_emails_updated', {
         membersUpdated: membersSnapshot.size,
       });
 
       return membersSnapshot.size;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemberService',
         method: 'updateAllMemberEmails',
         message: 'Failed to update member emails',

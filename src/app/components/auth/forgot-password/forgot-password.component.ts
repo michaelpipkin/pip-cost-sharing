@@ -6,8 +6,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Router, RouterModule } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import {
   FormBuilder,
@@ -36,7 +36,7 @@ export class ForgotPasswordComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   forgotPasswordForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -66,7 +66,7 @@ export class ForgotPasswordComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'add_category',
           message: error.message,

@@ -35,9 +35,9 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   User as FirebaseUser,
   getAuth,
@@ -68,7 +68,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 })
 export class AccountComponent {
   protected readonly auth = inject(getAuth);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
@@ -176,7 +176,7 @@ export class AccountComponent {
         });
       })
       .catch((err: Error) => {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'verify_email',
           message: err.message,
@@ -201,7 +201,7 @@ export class AccountComponent {
         // Send verification email for the new address
         await this.verifyEmail();
       } catch (err: any) {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'update_email',
           message: err.message,
@@ -244,7 +244,7 @@ export class AccountComponent {
         },
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'sync_member_emails',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -285,7 +285,7 @@ export class AccountComponent {
         });
       }
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'update_password',
         message: error.message,
@@ -313,7 +313,7 @@ export class AccountComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'update_payments',
           message: error.message,
@@ -344,7 +344,7 @@ export class AccountComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'accept_receipt_policy',
           message: error.message,
@@ -370,7 +370,7 @@ export class AccountComponent {
         data: { message: 'Data updated' },
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'data_update',
         message: error.message,

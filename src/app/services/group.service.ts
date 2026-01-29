@@ -8,7 +8,7 @@ import { User } from '@models/user';
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   collection,
   collectionGroup,
@@ -47,7 +47,7 @@ export class GroupService implements IGroupService {
   protected readonly historyService = inject(HistoryService);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');
@@ -170,7 +170,7 @@ export class GroupService implements IGroupService {
                     }
                   }
                 } catch (error) {
-                  logEvent(this.analytics, 'error', {
+                  this.analytics.logEvent('error', {
                     service: 'GroupService',
                     method: 'getUserGroups',
                     message: 'Failed to process groups snapshot',
@@ -180,7 +180,7 @@ export class GroupService implements IGroupService {
                 }
               },
               (error) => {
-                logEvent(this.analytics, 'error', {
+                this.analytics.logEvent('error', {
                   service: 'GroupService',
                   method: 'getUserGroups',
                   message: 'Failed to listen to groups',
@@ -190,7 +190,7 @@ export class GroupService implements IGroupService {
               }
             );
           } catch (error) {
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               service: 'GroupService',
               method: 'getUserGroups',
               message: 'Failed to process members snapshot',
@@ -199,7 +199,7 @@ export class GroupService implements IGroupService {
           }
         },
         (error) => {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             service: 'GroupService',
             method: 'getUserGroups',
             message: 'Failed to listen to members',
@@ -208,7 +208,7 @@ export class GroupService implements IGroupService {
         }
       );
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'GroupService',
         method: 'getUserGroups',
         message: 'Failed to initialize user groups query',
@@ -256,7 +256,7 @@ export class GroupService implements IGroupService {
       this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
       this.historyService.getHistoryForGroup(groupRef.id);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'GroupService',
         method: 'getGroup',
         message: 'Failed to get group',
@@ -294,7 +294,7 @@ export class GroupService implements IGroupService {
       await batch.commit();
       return groupRef as DocumentReference<Group>;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'GroupService',
         method: 'addGroup',
         message: 'Failed to add group',
@@ -334,7 +334,7 @@ export class GroupService implements IGroupService {
 
       await batch.commit();
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'GroupService',
         method: 'updateGroup',
         message: 'Failed to update group',
@@ -367,7 +367,7 @@ export class GroupService implements IGroupService {
       // Remove from the store
       this.groupStore.removeGroup(groupId);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'GroupService',
         method: 'deleteGroup',
         message: 'Failed to delete group',
