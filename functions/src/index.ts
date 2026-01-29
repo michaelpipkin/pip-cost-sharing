@@ -500,7 +500,6 @@ export const getAdminStatistics = onCall(async (request) => {
     let activeGroupsWithExpenses = 0;
     let totalMembers = 0;
     let totalActiveMembers = 0;
-    let totalExpenses = 0;
     let groupsWithRecentActivity = 0;
     let expensesCreatedLast30Days = 0;
 
@@ -531,7 +530,6 @@ export const getAdminStatistics = onCall(async (request) => {
 
         if (expenseCount > 0) {
           activeGroupsWithExpenses++;
-          totalExpenses += expenseCount;
 
           // Check for recent activity
           let hasRecentExpense = false;
@@ -539,7 +537,9 @@ export const getAdminStatistics = onCall(async (request) => {
 
           for (const expenseDoc of expensesSnapshot.docs) {
             const expenseData = expenseDoc.data();
-            const expenseDate = expenseData.date?.toDate?.();
+            const expenseDate = expenseData.date
+              ? new Date(expenseData.date)
+              : null;
             if (expenseDate && expenseDate >= thirtyDaysAgo) {
               hasRecentExpense = true;
               recentExpenseCount++;
@@ -563,10 +563,6 @@ export const getAdminStatistics = onCall(async (request) => {
       activeGroups > 0
         ? Math.round((totalActiveMembers / activeGroups) * 100) / 100
         : 0;
-    const avgExpensesPerActiveGroup =
-      activeGroupsWithExpenses > 0
-        ? Math.round((totalExpenses / activeGroupsWithExpenses) * 100) / 100
-        : 0;
 
     return {
       totalGroups,
@@ -576,13 +572,9 @@ export const getAdminStatistics = onCall(async (request) => {
       totalUsers,
       totalMembers,
       totalActiveMembers,
-      totalExpenses,
-      groupsCreatedLast30Days: 0, // Would require createdAt field on groups
-      usersRegisteredLast30Days: 0, // Would require createdAt field on users
       groupsWithRecentActivity,
       expensesCreatedLast30Days,
       avgMembersPerActiveGroup,
-      avgExpensesPerActiveGroup,
       generatedAt: new Date().toISOString(),
     };
   } catch (error: unknown) {
