@@ -12,8 +12,8 @@ import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/cust
 import { Router, RouterLink } from '@angular/router';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -38,7 +38,7 @@ export class DeleteAccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly router = inject(Router);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly functions = inject(getFunctions);
   protected readonly userService = inject(UserService);
@@ -79,7 +79,7 @@ export class DeleteAccountComponent {
 
         this.state.set('completed');
 
-        logEvent(this.analytics, 'account_deleted', {
+        this.analytics.logEvent('account_deleted', {
           component: this.constructor.name,
         });
       }
@@ -89,7 +89,7 @@ export class DeleteAccountComponent {
         data: { message: `Failed to delete account: ${error.message}` },
       });
 
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'delete_account',
         message: error.message,

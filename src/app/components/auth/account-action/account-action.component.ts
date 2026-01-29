@@ -18,8 +18,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { LoadingService } from '@shared/loading/loading.service';
 import { UserService } from '@services/user.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   applyActionCode,
   confirmPasswordReset,
@@ -51,7 +51,7 @@ export class AccountActionComponent {
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly userService = inject(UserService);
@@ -88,7 +88,7 @@ export class AccountActionComponent {
         return;
       }
       this.errorMessage.set('Invalid link. No code provided.');
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'process_action',
         message: 'No oobCode in URL',
@@ -101,7 +101,7 @@ export class AccountActionComponent {
       !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'process_action',
         message: `Invalid mode: ${mode}`,
@@ -151,7 +151,7 @@ export class AccountActionComponent {
 
       this.success.set(true);
 
-      logEvent(this.analytics, 'email_verified', {
+      this.analytics.logEvent('email_verified', {
         component: this.constructor.name,
       });
     } catch (error: any) {
@@ -168,7 +168,7 @@ export class AccountActionComponent {
       await applyActionCode(this.auth, this.oobCode());
       this.success.set(true);
 
-      logEvent(this.analytics, 'email_recovered', {
+      this.analytics.logEvent('email_recovered', {
         component: this.constructor.name,
       });
     } catch (error: any) {
@@ -189,7 +189,7 @@ export class AccountActionComponent {
         data: { message: 'Password reset successfully' },
       });
 
-      logEvent(this.analytics, 'password_reset_success', {
+      this.analytics.logEvent('password_reset_success', {
         component: this.constructor.name,
       });
     } catch (error: any) {
@@ -221,7 +221,7 @@ export class AccountActionComponent {
         data: { message: 'Verification email sent! Please check your inbox' },
       });
 
-      logEvent(this.analytics, 'verification_email_resent', {
+      this.analytics.logEvent('verification_email_resent', {
         component: this.constructor.name,
       });
     } catch (error: any) {
@@ -229,7 +229,7 @@ export class AccountActionComponent {
         data: { message: `Failed to send verification email: ${error.message}` },
       });
 
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'resend_verification_email',
         message: error.message,
@@ -258,7 +258,7 @@ export class AccountActionComponent {
 
     this.errorMessage.set(errorMsg);
 
-    logEvent(this.analytics, 'error', {
+    this.analytics.logEvent('error', {
       component: this.constructor.name,
       action: action,
       message: error.message,

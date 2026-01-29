@@ -16,8 +16,8 @@ import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.compo
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormGroup,
@@ -60,7 +60,7 @@ export class EditMemberComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   public member: Member = this.data.member;
@@ -122,7 +122,7 @@ export class EditMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'edit_member',
           message: error.message,
@@ -162,7 +162,7 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'remove_member',
               message: error.message,
@@ -216,7 +216,7 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'leave_group',
               message: error.message,

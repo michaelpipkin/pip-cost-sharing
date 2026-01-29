@@ -10,7 +10,6 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics } from 'firebase/analytics';
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
@@ -46,7 +45,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 const storage = getStorage(app);
-const analytics = getAnalytics(app);
 const functions = getFunctions(app);
 
 // Connect to emulators if in development mode
@@ -62,7 +60,6 @@ export const appConfig: ApplicationConfig = {
     { provide: getAuth, useValue: auth },
     { provide: getFirestore, useValue: firestore },
     { provide: getStorage, useValue: storage },
-    { provide: getAnalytics, useValue: analytics },
     { provide: getFunctions, useValue: functions },
     provideZonelessChangeDetection(),
     provideHttpClient(withInterceptorsFromDi()),

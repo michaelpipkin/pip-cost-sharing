@@ -13,7 +13,7 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from './loading.service';
 
 @Component({
@@ -27,7 +27,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
   protected readonly loadingService = inject(LoadingService);
   private readonly appRef = inject(ApplicationRef);
   private readonly viewContainerRef = inject(ViewContainerRef);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   protected readonly loadingTemplate =
     viewChild<TemplateRef<unknown>>('loadingTemplate');
@@ -48,7 +48,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
             element.hidePopover();
           }
         } catch (error) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             component: this.constructor.name,
             action: 'show_hide_loading_popover',
             message: error instanceof Error ? error.message : 'Unknown error',

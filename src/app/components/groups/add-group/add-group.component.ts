@@ -24,8 +24,8 @@ import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-add-group',
@@ -51,7 +51,7 @@ export class AddGroupComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
@@ -99,7 +99,7 @@ export class AddGroupComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'add_group',
           message: error.message,

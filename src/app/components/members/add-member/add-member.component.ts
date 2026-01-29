@@ -9,8 +9,8 @@ import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { LoadingService } from '@shared/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   FormBuilder,
   FormsModule,
@@ -45,7 +45,7 @@ export class AddMemberComponent {
   protected readonly groupService = inject(GroupService);
   protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   addMemberForm = this.fb.group({
@@ -82,7 +82,7 @@ export class AddMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'add_member',
           message: error.message,

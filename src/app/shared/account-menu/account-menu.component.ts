@@ -8,8 +8,8 @@ import { User } from '@models/user';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 interface Language {
   code: string;
@@ -35,7 +35,7 @@ export class AccountMenuComponent {
   protected readonly userService = inject(UserService);
   protected readonly themeService = inject(ThemeService);
   protected readonly translate = inject(TranslateService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   readonly routes = ROUTE_PATHS;
 
@@ -57,9 +57,9 @@ export class AccountMenuComponent {
     this.translate.use(langCode);
     try {
       await this.userService.updateUser({ language: langCode });
-      logEvent(this.analytics, 'language_changed', { language: langCode });
+      this.analytics.logEvent('language_changed', { language: langCode });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'switch_language',
         message: error.message,

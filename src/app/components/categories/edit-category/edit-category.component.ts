@@ -22,8 +22,8 @@ import { Category } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-edit-category',
@@ -47,7 +47,7 @@ export class EditCategoryComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly data: { category: Category } = inject(MAT_DIALOG_DATA);
 
   #category = signal<Category>(this.data.category);
@@ -83,7 +83,7 @@ export class EditCategoryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'update_category',
           message: error.message,
@@ -120,7 +120,7 @@ export class EditCategoryComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'delete_category',
               message: error.message,

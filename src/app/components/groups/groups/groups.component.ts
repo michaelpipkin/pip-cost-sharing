@@ -28,8 +28,8 @@ import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.direc
 import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
@@ -60,7 +60,7 @@ export class GroupsComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly fb = inject(FormBuilder);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   #user: Signal<User> = this.userStore.user;
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;
