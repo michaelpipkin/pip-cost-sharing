@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   effect,
   inject,
   model,
@@ -23,6 +24,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
+import { APP_OWNER_EMAIL } from '@components/auth/guards.guard';
 import { environment } from '@env/environment';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -94,6 +96,7 @@ export class AccountComponent {
   prod = signal<boolean>(environment.production);
   isLocalEnvironment = signal<boolean>(!environment.production);
   isLiveData = signal<boolean>(!environment.useEmulators);
+  isAdmin = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);
 
   selectedGroup = model<DocumentReference | null>(
     this.currentUser()?.defaultGroupRef ?? null

@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getHCaptchaSecret } from './common';
 
@@ -7,6 +7,10 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const storage = admin.storage();
+
+// TODO: Replace with your actual Firebase Auth UIDs
+const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
+const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 
 /**
  * Internal function to delete a group and all its associated data.
@@ -467,5 +471,127 @@ export const syncAuthEmailsToUsers = onCall(async (request) => {
       error instanceof Error ? error.message : 'Unknown error';
     console.error('Error syncing emails:', error);
     throw new HttpsError('internal', `Error syncing emails: ${errorMessage}`);
+  }
+});
+
+export const getAdminStatistics = onCall(async (request) => {
+  const uid = request.auth?.uid;
+
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  // Check if user is admin
+  const isAdmin = uid === ADMIN_UID_PROD || uid === ADMIN_UID_EMU;
+  if (!isAdmin) {
+    throw new HttpsError('permission-denied', 'Admin access required');
+  }
+
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Get all groups
+    const groupsSnapshot = await db.collection('groups').get();
+    const totalGroups = groupsSnapshot.size;
+
+    let activeGroups = 0;
+    let activeGroupsWithMultipleMembers = 0;
+    let activeGroupsWithExpenses = 0;
+    let totalMembers = 0;
+    let totalActiveMembers = 0;
+    let totalExpenses = 0;
+    let groupsWithRecentActivity = 0;
+    let expensesCreatedLast30Days = 0;
+
+    for (const groupDoc of groupsSnapshot.docs) {
+      const groupData = groupDoc.data();
+
+      // Count active groups (not archived and active)
+      if (groupData.active && !groupData.archived) {
+        activeGroups++;
+
+        // Get members for this group
+        const membersSnapshot = await groupDoc.ref.collection('members').get();
+        const activeMembers = membersSnapshot.docs.filter(
+          (m) => m.data().active
+        );
+        totalMembers += membersSnapshot.size;
+        totalActiveMembers += activeMembers.length;
+
+        if (activeMembers.length > 1) {
+          activeGroupsWithMultipleMembers++;
+        }
+
+        // Get expenses for this group
+        const expensesSnapshot = await groupDoc.ref
+          .collection('expenses')
+          .get();
+        const expenseCount = expensesSnapshot.size;
+
+        if (expenseCount > 0) {
+          activeGroupsWithExpenses++;
+          totalExpenses += expenseCount;
+
+          // Check for recent activity
+          let hasRecentExpense = false;
+          let recentExpenseCount = 0;
+
+          for (const expenseDoc of expensesSnapshot.docs) {
+            const expenseData = expenseDoc.data();
+            const expenseDate = expenseData.date?.toDate?.();
+            if (expenseDate && expenseDate >= thirtyDaysAgo) {
+              hasRecentExpense = true;
+              recentExpenseCount++;
+            }
+          }
+
+          if (hasRecentExpense) {
+            groupsWithRecentActivity++;
+          }
+          expensesCreatedLast30Days += recentExpenseCount;
+        }
+      }
+    }
+
+    // Get total users
+    const usersSnapshot = await db.collection('users').get();
+    const totalUsers = usersSnapshot.size;
+
+    // Calculate averages
+    const avgMembersPerActiveGroup =
+      activeGroups > 0
+        ? Math.round((totalActiveMembers / activeGroups) * 100) / 100
+        : 0;
+    const avgExpensesPerActiveGroup =
+      activeGroupsWithExpenses > 0
+        ? Math.round((totalExpenses / activeGroupsWithExpenses) * 100) / 100
+        : 0;
+
+    return {
+      totalGroups,
+      activeGroups,
+      activeGroupsWithMultipleMembers,
+      activeGroupsWithExpenses,
+      totalUsers,
+      totalMembers,
+      totalActiveMembers,
+      totalExpenses,
+      groupsCreatedLast30Days: 0, // Would require createdAt field on groups
+      usersRegisteredLast30Days: 0, // Would require createdAt field on users
+      groupsWithRecentActivity,
+      expensesCreatedLast30Days,
+      avgMembersPerActiveGroup,
+      avgExpensesPerActiveGroup,
+      generatedAt: new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    console.error('Error getting admin statistics:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new HttpsError(
+      'internal',
+      `Error getting statistics: ${errorMessage}`
+    );
   }
 });

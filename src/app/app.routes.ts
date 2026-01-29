@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AboutComponent } from '@components/about/about.component';
 import {
+  adminGuard,
   authGuard,
   groupGuard,
   loggedInGuard,
@@ -78,6 +79,12 @@ export const appRoutes: Routes = [
     loadChildren: () =>
       import('@components/demo/demo.routes').then((m) => m.demoRoutes),
     canActivate: [loggedInGuard],
+  },
+  {
+    path: 'admin',
+    loadChildren: () =>
+      import('@components/admin/admin.routes').then((m) => m.adminRoutes),
+    canActivate: [authGuard, adminGuard],
   },
   { path: '**', redirectTo: '' },
 ];
