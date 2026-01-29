@@ -3,7 +3,7 @@ import { Memorized } from '@models/memorized';
 import { CategoryStore } from '@store/category.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   addDoc,
   collection,
@@ -25,7 +25,7 @@ export class MemorizedService implements IMemorizedService {
   protected readonly memorizedStore = inject(MemorizedStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly memberStore = inject(MemberStore);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   getMemorizedExpensesForGroup(groupId: string): void {
     const memorizedCollection = collection(
@@ -64,7 +64,7 @@ export class MemorizedService implements IMemorizedService {
           });
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             service: 'MemorizedService',
             method: 'getMemorizedExpensesForGroup',
             message: 'Failed to process memorized expenses snapshot',
@@ -74,7 +74,7 @@ export class MemorizedService implements IMemorizedService {
         }
       },
       (error) => {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           service: 'MemorizedService',
           method: 'getMemorizedExpensesForGroup',
           message: 'Failed to listen to memorized expenses',
@@ -107,7 +107,7 @@ export class MemorizedService implements IMemorizedService {
         ref: memorizedDoc.ref as DocumentReference<Memorized>,
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemorizedService',
         method: 'getMemorized',
         message: 'Failed to get memorized expense',
@@ -127,7 +127,7 @@ export class MemorizedService implements IMemorizedService {
       const c = collection(this.fs, `groups/${groupId}/memorized`);
       return (await addDoc(c, memorized)) as DocumentReference<Memorized>;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemorizedService',
         method: 'addMemorized',
         message: 'Failed to add memorized expense',
@@ -145,7 +145,7 @@ export class MemorizedService implements IMemorizedService {
     try {
       await updateDoc(memorizedRef, changes);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemorizedService',
         method: 'updateMemorized',
         message: 'Failed to update memorized expense',
@@ -162,7 +162,7 @@ export class MemorizedService implements IMemorizedService {
     try {
       await deleteDoc(memorizedRef);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         service: 'MemorizedService',
         method: 'deleteMemorized',
         message: 'Failed to delete memorized expense',

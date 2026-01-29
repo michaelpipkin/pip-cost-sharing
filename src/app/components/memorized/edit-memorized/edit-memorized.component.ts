@@ -63,8 +63,8 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 
 @Component({
@@ -102,7 +102,7 @@ export class EditMemorizedComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
@@ -465,7 +465,7 @@ export class EditMemorizedComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'edit_memorized_expense',
           message: error.message,
@@ -506,7 +506,7 @@ export class EditMemorizedComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'delete_memorized_expense',
               message: error.message,

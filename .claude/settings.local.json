@@ -9,7 +9,8 @@
       "Bash(pnpm reset-packages:*)",
       "Bash(npx cap sync android)",
       "Bash(npx cap open android)",
-      "Bash(npx cap:*)"
+      "Bash(npx cap:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []

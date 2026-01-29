@@ -17,9 +17,9 @@ import { DemoService } from '@services/demo.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FooterComponent } from './shared/footer/footer.component';
 import { LoadingComponent } from './shared/loading/loading.component';
 import { NavigationLoadingService } from './shared/loading/navigation-loading.service';
@@ -49,7 +49,7 @@ export class AppComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly demoService = inject(DemoService);
   protected readonly router = inject(Router);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly pwaDetection = inject(PwaDetectionService);
   private adMobService = inject(AdMobService);
@@ -70,7 +70,7 @@ export class AppComponent {
   readonly demoRoutes = DEMO_ROUTE_PATHS;
 
   constructor() {
-    logEvent(this.analytics, 'app_initalized');
+    this.analytics.logEvent('app_initalized');
     this.lockTextZoom();
     this.deepLinkService.initialize();
 

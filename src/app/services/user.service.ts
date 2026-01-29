@@ -11,7 +11,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   browserLocalPersistence,
   getAuth,
@@ -39,7 +39,7 @@ import { IUserService } from './user.service.interface';
 export class UserService implements IUserService {
   protected readonly fs = inject(getFirestore);
   protected readonly auth = inject(getAuth);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly expenseStore = inject(ExpenseStore);
@@ -88,7 +88,7 @@ export class UserService implements IUserService {
             this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
             await this.groupService.getUserGroups(user);
           } catch (error) {
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               message: 'Failed to initialize user',
               error: error instanceof Error ? error.message : 'Unknown error',
             });
@@ -96,7 +96,7 @@ export class UserService implements IUserService {
         }
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to set auth persistence',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -116,7 +116,7 @@ export class UserService implements IUserService {
       }
       return null;
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to get user details',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -164,7 +164,7 @@ export class UserService implements IUserService {
       }
 
       if (membersSnapshot.size > 0) {
-        logEvent(this.analytics, 'new_user_members_linked', {
+        this.analytics.logEvent('new_user_members_linked', {
           email: email,
           membersLinked: membersSnapshot.size,
         });
@@ -176,7 +176,7 @@ export class UserService implements IUserService {
         ref: userDocRef,
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to create user',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -192,7 +192,7 @@ export class UserService implements IUserService {
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to update user',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -225,12 +225,12 @@ export class UserService implements IUserService {
         await updateDoc(memberDoc.ref, { userRef: userDocRef });
       }
 
-      logEvent(this.analytics, 'email_verified_members_linked', {
+      this.analytics.logEvent('email_verified_members_linked', {
         email: newEmail,
         membersLinked: membersSnapshot.size,
       });
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to update user email and link members',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -262,7 +262,7 @@ export class UserService implements IUserService {
         return {};
       }
     } catch (error) {
-      logEvent(this.analytics, 'error', {
+      this.analytics.logEvent('error', {
         message: 'Failed to get payment methods',
         error: error instanceof Error ? error.message : 'Unknown error',
       });

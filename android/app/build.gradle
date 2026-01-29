@@ -12,8 +12,8 @@ android {
         applicationId "com.pipsplit.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 21
-        versionName "1.1.6"
+        versionCode 22
+        versionName "1.1.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -56,6 +56,9 @@ dependencies {
 
     // Add Firebase Authentication SDK
     implementation 'com.google.firebase:firebase-auth'
+
+    // Add Firebase Analytics SDK (required for Google Analytics & AdMob metrics)
+    implementation 'com.google.firebase:firebase-analytics'
 
     // Add Google Sign-In SDK required by @capacitor-firebase/authentication
     implementation 'com.google.android.gms:play-services-auth:21.3.0'

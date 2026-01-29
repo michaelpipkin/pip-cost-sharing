@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   addDoc,
   collection,
@@ -26,7 +26,7 @@ export class CategoryService implements ICategoryService {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
 
   getGroupCategories(groupId: string): void {
     const c = collection(this.fs, `groups/${groupId}/categories`);
@@ -46,7 +46,7 @@ export class CategoryService implements ICategoryService {
           );
           this.categoryStore.setGroupCategories(categories);
         } catch (error) {
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             service: 'CategoryService',
             method: 'getGroupCategories',
             message: 'Failed to process categories snapshot',
@@ -55,7 +55,7 @@ export class CategoryService implements ICategoryService {
         }
       },
       (error) => {
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           service: 'CategoryService',
           method: 'getGroupCategories',
           message: 'Failed to listen to categories',

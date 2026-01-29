@@ -37,8 +37,8 @@ import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 
 @Component({
@@ -66,7 +66,7 @@ export class ManageGroupsComponent {
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly demoService = inject(DemoService);
   protected readonly data = inject(MAT_DIALOG_DATA);
@@ -178,7 +178,7 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'edit_group',
           message: error.message,
@@ -224,7 +224,7 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'archive_group',
               message: error.message,
@@ -260,7 +260,7 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'unarchive_group',
           message: error.message,
@@ -303,7 +303,7 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'delete_group',
               message: error.message,

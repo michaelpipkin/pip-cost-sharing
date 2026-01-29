@@ -14,8 +14,8 @@ import { Category, CategoryForm } from '@models/category';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from '@shared/loading/loading.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 
 @Component({
   selector: 'app-add-category',
@@ -38,7 +38,7 @@ export class AddCategoryComponent {
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
 
   protected readonly categoryModel = signal<CategoryForm>({
@@ -68,7 +68,7 @@ export class AddCategoryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'add_category',
           message: error.message,

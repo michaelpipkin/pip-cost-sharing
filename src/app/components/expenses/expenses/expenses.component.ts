@@ -54,8 +54,8 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import {
@@ -95,7 +95,7 @@ import {
 })
 export class ExpensesComponent implements AfterViewInit {
   protected readonly storage = inject(getStorage);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -283,7 +283,7 @@ export class ExpensesComponent implements AfterViewInit {
         this.expenses.set(expenses);
       }
     } catch (error) {
-      logEvent(this.analytics, 'fetch_expenses_error', {
+      this.analytics.logEvent( 'fetch_expenses_error', {
         error: error.message,
       });
       console.error('Error loading expenses:', error);
@@ -372,7 +372,7 @@ export class ExpensesComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        logEvent(this.analytics, 'error', {
+        this.analytics.logEvent( 'error', {
           component: this.constructor.name,
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,

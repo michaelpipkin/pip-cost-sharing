@@ -35,8 +35,8 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { StringUtils } from '@utils/string-utils.service';
-import { getAnalytics, logEvent } from 'firebase/analytics';
 import { FirebaseError } from 'firebase/app';
 import { DocumentReference } from 'firebase/firestore';
 import { getDownloadURL, getStorage } from 'firebase/storage';
@@ -104,7 +104,7 @@ import {
 })
 export class EditExpenseComponent {
   protected readonly storage = inject(getStorage);
-  protected readonly analytics = inject(getAnalytics);
+  private readonly analytics = inject(AnalyticsService);
   protected readonly fb = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute);
@@ -224,12 +224,12 @@ export class EditExpenseComponent {
       } catch (error) {
         if (error instanceof FirebaseError) {
           if (error.code !== 'storage/object-not-found') {
-            logEvent(this.analytics, 'receipt-retrieval-error');
+            this.analytics.logEvent('receipt-retrieval-error');
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'firebase_receipt_retrieval',
               message: error.message,
@@ -239,7 +239,7 @@ export class EditExpenseComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: error.message },
           });
-          logEvent(this.analytics, 'error', {
+          this.analytics.logEvent('error', {
             component: this.constructor.name,
             action: 'firebase_receipt_retrieval',
             message: error.message,
@@ -693,7 +693,7 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'edit_expense',
               message: error.message,
@@ -744,7 +744,7 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            logEvent(this.analytics, 'error', {
+            this.analytics.logEvent('error', {
               component: this.constructor.name,
               action: 'delete_expense',
               message: error.message,
