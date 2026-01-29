@@ -3,4 +3,5 @@ export const environment = {
   production: false,
   useEmulators: true,
   buildDate: new Date(),
+  appOwnerEmail: 'test1@aol.com',
 };
