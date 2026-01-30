@@ -191,7 +191,8 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
           if (
             !!expense &&
             expense.paid &&
-            expense.date.toDate() <
+            expense.date &&
+            new Date(expense.date) <
               new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
           ) {
             await receipt.delete();
