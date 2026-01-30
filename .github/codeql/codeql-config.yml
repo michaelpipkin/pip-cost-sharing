@@ -1,7 +1,7 @@
 name: "CodeQL Config"
 paths-ignore:
   - "**/*test*/**"
-  - "**/*spec*/**" 
+  - "**/*spec*/**"
   - "**/e2e/**"
   - "**/tests/**"
   - "**/*.test.*"
@@ -9,3 +9,6 @@ paths-ignore:
   - "**/cypress/**"
   - "**/playwright/**"
   - "**/*.e2e.*"
+  # Exclude Capacitor Android wrapper code (not part of core application)
+  - "android/**"
+  - "**/node_modules/**"
