@@ -99,7 +99,7 @@
     ],
     "overrides": {
       "@messageformat/runtime": ">=3.0.2",
-      "@modelcontextprotocol/sdk": ">=1.25.2",
+      "@modelcontextprotocol/sdk": ">=1.26.0",
       "body-parser": ">=2.2.1",
       "brace-expansion": ">=1.1.12",
       "eslint": ">=9.26.0",
