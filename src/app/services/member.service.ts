@@ -30,7 +30,7 @@ export class MemberService implements IMemberService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   async getMemberByUserRef(
     groupId: string,

@@ -42,6 +42,19 @@ export async function waitForFirebaseEmulators(page: Page) {
     },
     { timeout: 30000 }
   );
+
+  // Wait for Functions emulator to be ready
+  await page.waitForFunction(
+    async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:5001');
+        return response.ok;
+      } catch {
+        return false;
+      }
+    },
+    { timeout: 30000 }
+  );
 }
 
 /**
@@ -60,7 +73,8 @@ export async function clearFirebaseData(page: Page) {
 }
 
 /**
- * Create a test user in Firebase Auth emulator
+ * Create a test user in Firebase Auth emulator with emailVerified set to true.
+ * Uses the v1 Identity Toolkit REST API endpoints supported by the emulator.
  */
 export async function createTestUser(
   page: Page,
@@ -68,22 +82,51 @@ export async function createTestUser(
   password: string,
   additionalClaims?: Record<string, any>
 ) {
-  const userData = {
-    email,
-    password,
-    returnSecureToken: true,
-    ...additionalClaims,
-  };
-
-  // Use the correct endpoint for Firebase Auth emulator
-  const response = await page.request.post(
-    'http://127.0.0.1:9099/www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=fake-api-key',
+  // Step 1: Create the user via the v1 Identity Toolkit signUp endpoint
+  const signUpResponse = await page.request.post(
+    'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key',
     {
-      data: userData,
+      data: {
+        email,
+        password,
+        returnSecureToken: true,
+      },
     }
   );
 
-  return response.json();
+  if (!signUpResponse.ok()) {
+    const errorText = await signUpResponse.text();
+    throw new Error(
+      `Failed to create test user ${email}: ${signUpResponse.status()} ${errorText}`
+    );
+  }
+
+  const signUpData = await signUpResponse.json();
+
+  // Step 2: Set emailVerified to true via the verifyUserEmail cloud function
+  // (emailVerified can only be set via the Admin SDK, not the client REST API)
+  const verifyResponse = await page.request.post(
+    'http://127.0.0.1:5001/pip-cost-sharing/us-central1/verifyUserEmail',
+    {
+      data: {
+        data: { uid: signUpData.localId },
+      },
+    }
+  );
+
+  if (!verifyResponse.ok()) {
+    const errorText = await verifyResponse.text();
+    console.warn(
+      `Warning: Failed to set emailVerified for ${email}: ${verifyResponse.status()} ${errorText}`
+    );
+  }
+
+  // Step 3: Set custom claims if provided
+  if (additionalClaims && Object.keys(additionalClaims).length > 0) {
+    await setCustomClaims(page, signUpData.localId, additionalClaims);
+  }
+
+  return signUpData;
 }
 
 /**

@@ -51,7 +51,7 @@ export class AccountActionComponent {
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly userService = inject(UserService);

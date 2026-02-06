@@ -22,7 +22,7 @@ import { AnalyticsService } from '@services/analytics.service';
 })
 export class PaymentDialogComponent {
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   protected readonly data: paymentData = inject(MAT_DIALOG_DATA);
 

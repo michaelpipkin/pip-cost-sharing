@@ -25,9 +25,9 @@ import { LoadingService } from './loading.service';
 })
 export class LoadingComponent implements AfterViewInit, OnDestroy {
   protected readonly loadingService = inject(LoadingService);
-  private readonly appRef = inject(ApplicationRef);
-  private readonly viewContainerRef = inject(ViewContainerRef);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly appRef = inject(ApplicationRef);
+  protected readonly viewContainerRef = inject(ViewContainerRef);
+  protected readonly analytics = inject(AnalyticsService);
 
   protected readonly loadingTemplate =
     viewChild<TemplateRef<unknown>>('loadingTemplate');

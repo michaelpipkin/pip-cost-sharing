@@ -55,7 +55,7 @@ export class RegisterComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
   protected readonly pwaDetection = inject(PwaDetectionService);
   readonly #destroyRef = inject(DestroyRef);

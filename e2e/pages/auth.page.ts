@@ -115,21 +115,21 @@ export class AuthPage extends BasePage {
    * Logout (if logout functionality exists)
    */
   async logout() {
-    // Wait for any loading spinners to disappear first
+    // Wait for any loading overlay to disappear first
     await this.page
-      .locator('.spinner-container, .loading')
+      .locator('[data-testid="loading-component"]')
       .waitFor({
         state: 'hidden',
         timeout: 10000,
       })
       .catch(() => {
-        // If no spinner found, that's fine - continue
-        console.log('No loading spinner found, proceeding with logout');
+        // If no loading overlay found, that's fine - continue
+        console.log('No loading overlay found, proceeding with logout');
       });
 
-    // Look for the logout button in the nav bar
+    // Look for the logout button in the nav bar using data-testid
     const logoutButton = this.page.locator(
-      'button[mattooltip="Log out"], button:has-text("logout"), a:has-text("Log out")'
+      '[data-testid="logout-button-desktop"]'
     );
 
     try {
@@ -158,16 +158,14 @@ export class AuthPage extends BasePage {
       // Check for the three elements guaranteed to be visible to any logged-in user:
       // 1. Logout button - always visible when logged in
       const logoutButton = this.page.locator(
-        'button[mattooltip="Log out"], button[aria-label="log out"]'
+        '[data-testid="logout-button-desktop"]'
       );
       // 2. Account button - always visible when logged in
       const accountButton = this.page.locator(
-        'a[mattooltip="Account"], a[aria-label="account"]'
+        '[data-testid="nav-account-desktop"]'
       );
       // 3. Groups link - always visible when logged in (even for users with no groups)
-      const groupsLink = this.page.locator(
-        'a[routerlink="groups"], a[href="/groups"]'
-      );
+      const groupsLink = this.page.locator('[data-testid="nav-groups"]');
 
       // Wait for at least one authenticated element to appear (with longer timeout in CI)
       const authTimeout = process.env.CI ? 10000 : 5000;
@@ -183,7 +181,7 @@ export class AuthPage extends BasePage {
 
       // Check for elements that appear when isLoggedIn() is false
       const loginButton = this.page.locator(
-        'a[routerlink="auth/login"], a[href="/auth/login"], button:has-text("Log in")'
+        '[data-testid="nav-login-desktop"]'
       );
 
       // If login elements are visible, user is not logged in

@@ -25,7 +25,7 @@ export class MemorizedService implements IMemorizedService {
   protected readonly memorizedStore = inject(MemorizedStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly memberStore = inject(MemberStore);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   getMemorizedExpensesForGroup(groupId: string): void {
     const memorizedCollection = collection(

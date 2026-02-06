@@ -36,11 +36,11 @@ import {
 })
 export class HelpComponent {
   protected readonly helpService = inject(HelpService);
-  private readonly helpContentService = inject(HelpContentService);
+  protected readonly helpContentService = inject(HelpContentService);
   protected readonly loading = inject(LoadingService);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   helpSections: HelpSection[] = [];
 

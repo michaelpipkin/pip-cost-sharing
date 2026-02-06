@@ -36,7 +36,7 @@ export class ForgotPasswordComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   forgotPasswordForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
