@@ -10,7 +10,9 @@
       "Bash(npx cap sync android)",
       "Bash(npx cap open android)",
       "Bash(npx cap:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(npx vitest:*)",
+      "Bash(pnpm unit-test:*)"
     ],
     "deny": [],
     "ask": []

@@ -59,11 +59,11 @@ export class AppComponent {
 
   isSmallScreen = signal<boolean>(false);
 
-  user: Signal<User | null> = this.userStore.user;
+  user: Signal<User> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isValidUser: Signal<boolean> = this.userStore.isValidUser;
   isInDemoMode: Signal<boolean> = this.demoService.isInDemoMode;
-  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  currentGroup: Signal<Group> = this.groupStore.currentGroup;
 
   // Route constants for template access
   readonly routes = ROUTE_PATHS;

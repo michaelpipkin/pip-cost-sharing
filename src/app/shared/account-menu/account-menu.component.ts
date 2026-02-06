@@ -6,9 +6,9 @@ import { Router, RouterLink } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { User } from '@models/user';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AnalyticsService } from '@services/analytics.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
 
 interface Language {
@@ -39,7 +39,7 @@ export class AccountMenuComponent {
 
   readonly routes = ROUTE_PATHS;
 
-  currentUser: Signal<User> = this.userStore.user;
+  currentUser: Signal<User | null> = this.userStore.user;
   currentTheme = this.themeService.currentTheme;
   menuClosed = output<void>();
 
