@@ -266,7 +266,7 @@ export class MemberService implements IMemberService {
       } else {
         await deleteDoc(memberRef);
       }
-      await updateDoc(this.userStore.user().ref, { defaultGroupRef: null });
+      await updateDoc(this.userStore.user()!.ref!, { defaultGroupRef: null });
     } catch (error) {
       this.analytics.logEvent('error', {
         service: 'MemberService',

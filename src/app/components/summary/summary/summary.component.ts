@@ -92,33 +92,33 @@ export class SummaryComponent implements AfterViewInit {
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
   splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
-  owedToMemberRef = signal<DocumentReference<Member>>(null);
-  owedByMemberRef = signal<DocumentReference<Member>>(null);
+  owedToMemberRef = signal<DocumentReference<Member>>(null as unknown as DocumentReference<Member>);
+  owedByMemberRef = signal<DocumentReference<Member>>(null as unknown as DocumentReference<Member>);
 
-  selectedMember = model<DocumentReference<Member>>(
+  selectedMember = model<DocumentReference<Member> | null>(
     this.currentMember()?.ref ?? null
   );
   startDate = model<Date | null>(null);
   endDate = model<Date | null>(null);
 
   filteredSplits = computed(() => {
-    var startDate: Date | null;
-    var endDate: Date | null;
+    var startDate: Date;
+    var endDate: Date;
     if (this.startDate() == null) {
       startDate = new Date('1/1/1900');
     } else {
-      startDate = new Date(this.startDate());
+      startDate = new Date(this.startDate()!);
     }
     if (this.endDate() == null) {
       const today = new Date();
       endDate = new Date(today.setFullYear(today.getFullYear() + 100));
     } else {
-      endDate = new Date(this.endDate());
+      endDate = new Date(this.endDate()!);
       endDate = new Date(endDate.setDate(endDate.getDate() + 1));
     }
     return this.splits().filter((split: Split) => {
@@ -128,7 +128,7 @@ export class SummaryComponent implements AfterViewInit {
 
   summaryData = computed(
     (
-      selectedMember: DocumentReference<Member> = this.selectedMember(),
+      selectedMember: DocumentReference<Member> = this.selectedMember()!,
       splits: Split[] = this.filteredSplits()
     ) => {
       var summaryData: AmountDue[] = [];
@@ -140,24 +140,24 @@ export class SummaryComponent implements AfterViewInit {
           );
         });
         this.members()
-          .filter((m) => !m.ref.eq(selectedMember))
+          .filter((m) => !m.ref!.eq(selectedMember))
           .forEach((member) => {
             const owedToSelected = this.localeService.roundToCurrency(
               +memberSplits
-                .filter((m) => m.owedByMemberRef.eq(member.ref))
+                .filter((m) => m.owedByMemberRef.eq(member.ref!))
                 .reduce((total, split) => (total += split.allocatedAmount), 0)
             );
             const owedBySelected = this.localeService.roundToCurrency(
               +memberSplits
-                .filter((m) => m.paidByMemberRef.eq(member.ref))
+                .filter((m) => m.paidByMemberRef.eq(member.ref!))
                 .reduce((total, split) => (total += split.allocatedAmount), 0)
             );
             if (owedToSelected > owedBySelected) {
               summaryData.push(
                 new AmountDue({
-                  owedByMemberRef: member.ref,
+                  owedByMemberRef: member.ref!,
                   owedByMember: member,
-                  owedToMemberRef: selectedMember,
+                  owedToMemberRef: selectedMember!,
                   owedToMember: this.memberStore.getMemberByRef(selectedMember),
                   amount: owedToSelected - owedBySelected,
                 })
@@ -165,9 +165,9 @@ export class SummaryComponent implements AfterViewInit {
             } else if (owedBySelected > owedToSelected) {
               summaryData.push(
                 new AmountDue({
-                  owedToMemberRef: member.ref,
+                  owedToMemberRef: member.ref!,
                   owedToMember: member,
-                  owedByMemberRef: selectedMember,
+                  owedByMemberRef: selectedMember!,
                   owedByMember: this.memberStore.getMemberByRef(selectedMember),
                   amount: owedBySelected - owedToSelected,
                 })
@@ -197,26 +197,26 @@ export class SummaryComponent implements AfterViewInit {
       categories.forEach((category) => {
         if (
           memberSplits.filter((split: Split) =>
-            split.categoryRef.eq(category.ref)
+            split.categoryRef.eq(category.ref!)
           ).length > 0
         ) {
           const owedToMember1 = memberSplits
             .filter(
               (s: Split) =>
                 s.paidByMemberRef.eq(owedToMemberRef) &&
-                s.categoryRef.eq(category.ref)
+                s.categoryRef.eq(category.ref!)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           const owedToMember2 = memberSplits
             .filter(
               (s: Split) =>
                 s.paidByMemberRef.eq(owedByMemberRef) &&
-                s.categoryRef.eq(category.ref)
+                s.categoryRef.eq(category.ref!)
             )
             .reduce((total, split) => (total += split.allocatedAmount), 0);
           detailData.push(
             new AmountDue({
-              categoryRef: category.ref,
+              categoryRef: category.ref!,
               category: category,
               owedByMemberRef: owedByMemberRef,
               owedByMember: this.memberStore.getMemberByRef(owedByMemberRef),
@@ -290,7 +290,7 @@ export class SummaryComponent implements AfterViewInit {
     }
     const dialogConfig: MatDialogConfig = {
       data: {
-        payToMemberName: this.members().find((m) => m.ref.eq(owedToMemberRef))
+        payToMemberName: this.members().find((m) => m.ref!.eq(owedToMemberRef))
           ?.displayName,
         ...paymentMethods,
       },
@@ -313,16 +313,16 @@ export class SummaryComponent implements AfterViewInit {
                 0
               )
             ),
-            lineItems: [],
+            lineItems: [] as { category: string; amount: number }[],
           };
           this.detailData().forEach((split) => {
             history.lineItems.push({
-              category: split.category.name,
+              category: split.category!.name,
               amount: split.amount,
             });
           });
           await this.splitService.paySplitsBetweenMembers(
-            this.currentGroup().id,
+            this.currentGroup()!.id,
             splitsToPay,
             history
           );
@@ -389,8 +389,8 @@ export class SummaryComponent implements AfterViewInit {
   }
 
   private generateSummaryText(amountDue: AmountDue): string {
-    const owedTo = amountDue.owedToMember.displayName;
-    const owedBy = amountDue.owedByMember.displayName;
+    const owedTo = amountDue.owedToMember?.displayName ?? 'Unknown';
+    const owedBy = amountDue.owedByMember?.displayName ?? 'Unknown';
 
     let summaryText = `Expenses Summary\n`;
     summaryText += `${owedBy} owes ${owedTo} ${this.formatCurrency(amountDue.amount)}\n\n`;
@@ -405,12 +405,13 @@ export class SummaryComponent implements AfterViewInit {
       const categoryLines: { name: string; amount: string }[] = [];
 
       categoryDetails.forEach((detail) => {
+        const categoryName = detail.category?.name ?? 'Unknown';
         const formattedAmount = this.formatCurrency(detail.amount);
         const lineLength =
-          detail.category.name.length + 2 + formattedAmount.length; // +2 for ": "
+          categoryName.length + 2 + formattedAmount.length; // +2 for ": "
         maxLineLength = Math.max(maxLineLength, lineLength);
         categoryLines.push({
-          name: detail.category.name,
+          name: categoryName,
           amount: formattedAmount,
         });
       });

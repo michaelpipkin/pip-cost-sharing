@@ -70,10 +70,10 @@ export class EditCategoryComponent {
       this.loading.loadingOn();
       const form = this.editCategoryForm.getRawValue();
       const changes: Partial<Category> = {
-        name: form.categoryName,
-        active: form.active,
+        name: form.categoryName ?? undefined,
+        active: form.active ?? undefined,
       };
-      await this.categoryService.updateCategory(this.#category().ref, changes);
+      await this.categoryService.updateCategory(this.#category().ref!, changes);
       this.dialogRef.close({
         success: true,
         operation: 'saved',
@@ -110,7 +110,7 @@ export class EditCategoryComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.categoryService.deleteCategory(this.#category().ref);
+          await this.categoryService.deleteCategory(this.#category().ref!);
           this.dialogRef.close({
             success: true,
             operation: 'deleted',

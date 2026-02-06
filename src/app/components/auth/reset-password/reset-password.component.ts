@@ -74,7 +74,7 @@ export class ResetPasswordComponent {
   async resetPassword() {
     const password = this.resetPasswordForm.value.password;
     this.loading.loadingOn();
-    await confirmPasswordReset(this.auth, this.oobCode(), password)
+    await confirmPasswordReset(this.auth, this.oobCode(), password!)
       .then(() => {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Password reset successfully' },

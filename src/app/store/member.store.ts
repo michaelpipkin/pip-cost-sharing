@@ -41,10 +41,12 @@ export const MemberStore = signalStore(
         loaded: false,
       });
     },
-    getMemberByRef: (ref: DocumentReference<Member> | null) => {
-      if (!ref) return null;
+    getMemberByRef: (
+      ref: DocumentReference<Member> | null | undefined
+    ): Member | undefined => {
+      if (!ref) return undefined;
       const members = store.groupMembers();
-      return members.find((m) => m.ref.eq(ref)) || null;
+      return members.find((m) => m.ref?.eq(ref));
     },
   })),
   withComputed(({ groupMembers }) => ({

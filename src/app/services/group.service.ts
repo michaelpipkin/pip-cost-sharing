@@ -89,7 +89,7 @@ export class GroupService implements IGroupService {
               active: boolean;
               groupAdmin: boolean;
             }[] = memberQuerySnap.docs.map((d) => ({
-              groupId: d.ref.parent.parent.id,
+              groupId: d.ref.parent.parent!.id,
               active: d.data().active,
               groupAdmin: d.data().groupAdmin,
             }));
@@ -126,7 +126,7 @@ export class GroupService implements IGroupService {
                     .filter((g) => userGroupIds.includes(g.id));
 
                   this.groupStore.setAllUserGroups(groups);
-                  user = this.userStore.user();
+                  user = this.userStore.user()!;
                   const activeGroups = groups.filter((g) => g.active);
 
                   // Skip auto-selection if flag is set (user intentionally cleared group)
@@ -139,14 +139,14 @@ export class GroupService implements IGroupService {
                     )
                   ) {
                     await this.getGroup(
-                      this.groupStore.currentGroup().ref,
-                      user.ref
+                      this.groupStore.currentGroup()!.ref!,
+                      user.ref!
                     );
                   } else {
                     if (!!user.defaultGroupRef) {
-                      await this.getGroup(user.defaultGroupRef, user.ref);
+                      await this.getGroup(user.defaultGroupRef!, user.ref!);
                     } else if (activeGroups.length === 1) {
-                      await this.getGroup(activeGroups[0].ref, user.ref);
+                      await this.getGroup(activeGroups[0].ref!, user.ref!);
                     } else {
                       this.groupStore.clearCurrentGroup();
                       localStorage.removeItem('currentGroup');
@@ -230,8 +230,8 @@ export class GroupService implements IGroupService {
       }
 
       const group = new Group({
-        id: docSnap.id,
         ...docSnap.data(),
+        id: docSnap.id,
         ref: docSnap.ref as DocumentReference<Group>,
       });
 

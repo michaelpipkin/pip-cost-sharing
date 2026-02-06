@@ -64,7 +64,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
 
     // Attach the template portal
     const portal = new TemplatePortal(
-      this.loadingTemplate(),
+      this.loadingTemplate()!,
       this.viewContainerRef
     );
     this.portalOutlet.attach(portal);

@@ -5,14 +5,14 @@ export class History {
   constructor(init?: Partial<History>) {
     Object.assign(this, init);
   }
-  id: string;
-  date: Date;
-  paidByMemberRef: DocumentReference<Member>;
+  id!: string;
+  date!: Date;
+  paidByMemberRef!: DocumentReference<Member>;
   paidByMember?: Member;
-  paidToMemberRef: DocumentReference<Member>;
+  paidToMemberRef!: DocumentReference<Member>;
   paidToMember?: Member;
-  totalPaid: number;
-  lineItems: { category: string; amount: number }[];
+  totalPaid!: number;
+  lineItems!: { category: string; amount: number }[];
   ref?: DocumentReference<History>;
 }
 

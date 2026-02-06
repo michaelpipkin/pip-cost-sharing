@@ -346,7 +346,7 @@ export class ExpenseService implements IExpenseService {
     try {
       const expenseDoc = await getDoc(expenseRef);
       const receiptPath: string | undefined =
-        expenseDoc.exists() && expenseDoc.data()?.receiptPath;
+        (expenseDoc.exists() && expenseDoc.data()?.receiptPath) || undefined;
 
       const batch = writeBatch(this.fs);
 

@@ -124,9 +124,9 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
         this.onCurrencyChange();
       }
 
-      this.totalAmountField().nativeElement.value =
+      this.totalAmountField()!.nativeElement.value =
         this.localeService.getFormattedZero();
-      this.allocatedAmountField().nativeElement.value =
+      this.allocatedAmountField()!.nativeElement.value =
         this.localeService.getFormattedZero();
       this.memberAmounts().forEach((elementRef: ElementRef) => {
         elementRef.nativeElement.value = this.localeService.getFormattedZero();
@@ -180,9 +180,9 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
       });
 
       // Manually update the input field values
-      this.totalAmountField().nativeElement.value =
+      this.totalAmountField()!.nativeElement.value =
         this.localeService.roundToCurrency(65.33);
-      this.allocatedAmountField().nativeElement.value =
+      this.allocatedAmountField()!.nativeElement.value =
         this.localeService.roundToCurrency(17.44);
 
       const memberAmountElements = this.memberAmounts();
@@ -290,7 +290,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
   }
 
   onCurrencyChange(): void {
-    const currencyCode = this.expenseForm.get('currencyCode').value;
+    const currencyCode = this.expenseForm.get('currencyCode')!.value!;
     // Update local state for display
     this.localCurrencyCode.set(currencyCode);
     // Update LocaleService so directives use correct currency
@@ -300,8 +300,8 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
   allocateSharedAmounts(): void {
     const val = this.expenseForm.value;
-    const totalAmount: number = +val.amount;
-    const proportionalAmount: number = +val.allocatedAmount;
+    const totalAmount: number = +val.amount!;
+    const proportionalAmount: number = +val.allocatedAmount!;
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
       for (let i = 0; i < splits.length; ) {
@@ -316,7 +316,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
       }
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const splitTotal: number = this.getAssignedTotal();
-      let evenlySharedAmount: number = +val.sharedAmount;
+      let evenlySharedAmount: number = +val.sharedAmount!;
       const totalSharedSplits: number = this.localeService.roundToCurrency(
         +(evenlySharedAmount + proportionalAmount + splitTotal)
       );
@@ -416,7 +416,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
       }
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const val = this.expenseForm.value;
-      const totalAmount: number = +val.amount;
+      const totalAmount: number = +val.amount!;
       splits.forEach((split: Split) => {
         split.allocatedAmount = this.localeService.roundToCurrency(
           +((totalAmount * +split.percentage) / 100)
@@ -480,7 +480,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     );
 
   expenseFullyAllocated = (): boolean =>
-    this.expenseForm.value.amount == this.getAllocatedTotal();
+    this.expenseForm.value.amount! == this.getAllocatedTotal();
 
   isLastSplit(index: number): boolean {
     return index === this.splitsFormArray.length - 1;
@@ -497,8 +497,8 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
     let summaryText = `Total: ${this.formatCurrency(totalAmount)}\n`;
 
-    if (!this.splitByPercentage() && formValue.sharedAmount > 0) {
-      summaryText += `Evenly shared amount: ${this.formatCurrency(formValue.sharedAmount)}\n`;
+    if (!this.splitByPercentage() && formValue.sharedAmount! > 0) {
+      summaryText += `Evenly shared amount: ${this.formatCurrency(formValue.sharedAmount!)}\n`;
     }
 
     if (!this.splitByPercentage() && allocatedAmount > 0) {
@@ -593,7 +593,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     const proportionalAmount = formValue.allocatedAmount || 0;
     const baseAmount: number = totalAmount - proportionalAmount;
     const evenlySharedAmount: number =
-      (formValue.sharedAmount || 0) / (this.splitsFormArray.length || 1);
+      (formValue.sharedAmount! || 0) / (this.splitsFormArray.length || 1);
 
     const memberProportionalAmount: number =
       (((+split.assignedAmount || 0) + evenlySharedAmount) / baseAmount) *
@@ -604,7 +604,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
   private calculateSharedPortion(): number {
     const formValue = this.expenseForm.value;
-    const sharedAmount = formValue.sharedAmount || 0;
+    const sharedAmount = formValue.sharedAmount! || 0;
     const splitCount = this.splitsFormArray.controls.filter(
       (control) => control.value.owedBy && control.value.owedBy.trim()
     ).length;
@@ -658,7 +658,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
   resetForm(): void {
     // Preserve the current currency selection
-    const currentCurrency = this.expenseForm.get('currencyCode').value;
+    const currentCurrency = this.expenseForm.get('currencyCode')!.value;
     this.expenseForm.reset({
       currencyCode: currentCurrency,
       amount: 0,

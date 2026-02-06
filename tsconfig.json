@@ -2,7 +2,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "sourceMap": true,
     "declaration": false,
     "esModuleInterop": true,

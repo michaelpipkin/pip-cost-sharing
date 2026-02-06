@@ -85,8 +85,8 @@ export class AccountComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly historyService = inject(HistoryService);
 
-  user: Signal<User> = this.userStore.user;
-  currentUser: Signal<User> = this.userStore.user;
+  user: Signal<User | null> = this.userStore.user;
+  currentUser: Signal<User | null> = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
@@ -162,7 +162,7 @@ export class AccountComponent {
   }
 
   passwordMatchValidator(g: FormGroup) {
-    return g.get('password').value === g.get('confirmPassword').value
+    return g.get('password')!.value === g.get('confirmPassword')!.value
       ? null
       : { mismatch: true };
   }
@@ -198,7 +198,7 @@ export class AccountComponent {
     const newEmail = this.emailForm.value.email;
     if (newEmail !== this.firebaseUser().email) {
       try {
-        await updateEmail(this.firebaseUser(), newEmail);
+        await updateEmail(this.firebaseUser()!, newEmail!);
         // Update the UserStore to reflect unverified email status
         this.userStore.setIsEmailConfirmed(false);
         // Send verification email for the new address
@@ -232,8 +232,8 @@ export class AccountComponent {
   async syncMemberEmails(): Promise<void> {
     this.loading.loadingOn();
     try {
-      const userRef = this.currentUser().ref;
-      const currentEmail = this.currentUser().email;
+      const userRef = this.currentUser()!.ref!;
+      const currentEmail = this.currentUser()!.email;
       const count = await this.memberService.updateAllMemberEmails(
         userRef,
         currentEmail
@@ -267,7 +267,7 @@ export class AccountComponent {
     this.loading.loadingOn();
     try {
       if (changes.password !== '') {
-        updatePassword(this.firebaseUser(), changes.password)
+        updatePassword(this.firebaseUser()!, changes.password!)
           .then(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: 'Your password has been updated' },
@@ -303,10 +303,10 @@ export class AccountComponent {
     this.loading.loadingOn();
     try {
       await this.userService.updateUser({
-        venmoId: changes.venmoId,
-        paypalId: changes.paypalId,
-        cashAppId: changes.cashAppId,
-        zelleId: changes.zelleId,
+        venmoId: changes.venmoId ?? undefined,
+        paypalId: changes.paypalId ?? undefined,
+        cashAppId: changes.cashAppId ?? undefined,
+        zelleId: changes.zelleId ?? undefined,
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Payment service IDs updated' },

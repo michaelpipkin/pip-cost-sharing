@@ -34,7 +34,10 @@ export const UserStore = signalStore(
       patchState(store, { user: user });
     },
     updateUser: (changes: Partial<User>) => {
-      patchState(store, { user: { ...store.user(), ...changes } });
+      const currentUser = store.user();
+      if (currentUser) {
+        patchState(store, { user: { ...currentUser, ...changes } });
+      }
     },
     clearUser: () => {
       patchState(store, {

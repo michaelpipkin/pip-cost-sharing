@@ -7,17 +7,17 @@ export class Split {
   constructor(init?: Partial<Split>) {
     Object.assign(this, init);
   }
-  id: string;
-  expenseRef: DocumentReference<Expense>;
-  date: Date;
-  categoryRef: DocumentReference<Category>;
+  id!: string;
+  expenseRef!: DocumentReference<Expense>;
+  date!: Date;
+  categoryRef!: DocumentReference<Category>;
   category?: Category;
   assignedAmount: number = 0;
   percentage: number = 0;
-  allocatedAmount: number;
-  paidByMemberRef: DocumentReference<Member>;
+  allocatedAmount!: number;
+  paidByMemberRef!: DocumentReference<Member>;
   paidByMember?: Member;
-  owedByMemberRef: DocumentReference<Member>;
+  owedByMemberRef!: DocumentReference<Member>;
   owedByMember?: Member;
   paid: boolean = false;
   ref?: DocumentReference<Split>;

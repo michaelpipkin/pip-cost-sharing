@@ -76,8 +76,8 @@ export class UserService implements IUserService {
               firebaseUser.email
             );
             const user = new User({
-              id: firebaseUser.uid,
               ...userData,
+              id: firebaseUser.uid,
             });
             this.userStore.setUser(user);
             this.userStore.setIsDemoMode(false);
@@ -187,7 +187,7 @@ export class UserService implements IUserService {
 
   async updateUser(changes: Partial<User>): Promise<void> {
     try {
-      const userId = this.userStore.user().id;
+      const userId = this.userStore.user()!.id;
       const docRef = doc(this.fs, `users/${userId}`);
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
@@ -202,7 +202,7 @@ export class UserService implements IUserService {
 
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     try {
-      const userId = this.userStore.user().id;
+      const userId = this.userStore.user()!.id;
       const userDocRef = doc(
         this.fs,
         `users/${userId}`
@@ -247,7 +247,10 @@ export class UserService implements IUserService {
         return {};
       }
 
-      const userRef = memberDoc.data().userRef;
+      const userRef = memberDoc.data()?.userRef;
+      if (!userRef) {
+        return {};
+      }
       const userDocSnap = await getDoc(userRef);
 
       if (userDocSnap.exists()) {

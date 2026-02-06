@@ -105,6 +105,7 @@ export const loggedInGuard: CanActivateFn = async () => {
       // } else {
       return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
     }
+    return true;
   } else {
     return true;
   }
