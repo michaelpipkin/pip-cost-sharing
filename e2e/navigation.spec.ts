@@ -70,12 +70,10 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
   test('should handle protected groups route when not authenticated', async ({
     page,
   }) => {
-    await page.goto('/groups');
+    await page.goto('/administration/groups');
     await page.waitForSelector('app-root', { timeout: 10000 });
 
-    // Should either redirect to login or show some auth prompt
-    // The exact behavior depends on your authGuard implementation
-    // We'll just check that we're not stuck on the groups page without auth
+    // Should redirect to login due to authGuard
     const currentUrl = page.url();
     const isRedirected =
       currentUrl.includes('/auth/login') ||
@@ -87,7 +85,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
   test('should handle protected members route when not authenticated', async ({
     page,
   }) => {
-    await page.goto('/members');
+    await page.goto('/administration/members');
     await page.waitForSelector('app-root', { timeout: 10000 });
 
     // Should redirect due to authGuard
@@ -102,7 +100,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
   test('should handle protected categories route when not authenticated', async ({
     page,
   }) => {
-    await page.goto('/categories');
+    await page.goto('/administration/categories');
     await page.waitForSelector('app-root', { timeout: 10000 });
 
     // Should redirect due to authGuard
@@ -117,10 +115,10 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
   test('should handle protected summary route when not authenticated', async ({
     page,
   }) => {
-    await page.goto('/summary');
+    await page.goto('/analysis/summary');
     await page.waitForSelector('app-root', { timeout: 10000 });
 
-    // Should redirect due to authGuard
+    // Should redirect due to authGuard + groupGuard
     const currentUrl = page.url();
     const isRedirected =
       currentUrl.includes('/auth/login') ||
@@ -132,10 +130,10 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
   test('should handle protected history route when not authenticated', async ({
     page,
   }) => {
-    await page.goto('/history');
+    await page.goto('/analysis/history');
     await page.waitForSelector('app-root', { timeout: 10000 });
 
-    // Should redirect due to authGuard
+    // Should redirect due to authGuard + groupGuard
     const currentUrl = page.url();
     const isRedirected =
       currentUrl.includes('/auth/login') ||

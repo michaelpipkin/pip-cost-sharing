@@ -86,7 +86,7 @@ export class SummaryComponent implements AfterViewInit {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 

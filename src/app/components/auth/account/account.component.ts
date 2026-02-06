@@ -70,7 +70,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 })
 export class AccountComponent {
   protected readonly auth = inject(getAuth);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);

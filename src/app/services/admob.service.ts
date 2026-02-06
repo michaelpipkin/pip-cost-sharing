@@ -8,9 +8,9 @@ import { PwaDetectionService } from './pwa-detection.service';
   providedIn: 'root',
 })
 export class AdMobService {
-  private router = inject(Router);
-  private pwaService = inject(PwaDetectionService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly router = inject(Router);
+  protected readonly pwaService = inject(PwaDetectionService);
+  protected readonly analytics = inject(AnalyticsService);
 
   // Configuration
   private readonly ADS_FREQUENCY = 4; // Show ad every 4 page navigations

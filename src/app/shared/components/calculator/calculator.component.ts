@@ -12,7 +12,7 @@ import { StringUtils } from '@utils/string-utils.service';
   styleUrls: ['./calculator.component.scss'],
 })
 export class CalculatorComponent {
-  private stringUtils = inject(StringUtils);
+  protected readonly stringUtils = inject(StringUtils);
 
   resultSelected = output<number>();
   closed = output<void>();

@@ -60,7 +60,7 @@ export class GroupsComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly fb = inject(FormBuilder);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   #user: Signal<User> = this.userStore.user;
   #currentGroup: Signal<Group> = this.groupStore.currentGroup;

@@ -23,7 +23,7 @@ import { ISplitService } from './split.service.interface';
 export class SplitService implements ISplitService {
   protected readonly fs = inject(getFirestore);
   protected readonly splitStore = inject(SplitStore);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   getUnpaidSplitsForGroup(groupId: string): void {
     const splitsQuery = query(

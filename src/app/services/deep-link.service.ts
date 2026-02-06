@@ -8,8 +8,8 @@ import { AnalyticsService } from '@services/analytics.service';
   providedIn: 'root',
 })
 export class DeepLinkService {
-  private readonly router = inject(Router);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly router = inject(Router);
+  protected readonly analytics = inject(AnalyticsService);
 
   initialize(): void {
     // Only set up listener on native platforms

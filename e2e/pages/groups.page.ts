@@ -41,7 +41,7 @@ export class GroupsPage extends BasePage {
     this.groupSelectOptions = page.locator('mat-option');
     this.newGroupButton = page.getByTestId('new-group-button');
     this.manageGroupsButton = page.getByTestId('manage-groups-button');
-    this.helpButton = page.getByTestId('help-button');
+    this.helpButton = page.getByTestId('groups-help-button');
     this.loadingMessage = page.getByTestId('loading-message');
 
     // Add Group Dialog elements using test IDs
@@ -67,11 +67,11 @@ export class GroupsPage extends BasePage {
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.locator('simple-snack-bar');
+    this.snackbar = page.locator('app-custom-snackbar');
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/groups');
+    await this.page.goto('/administration/groups');
     await this.waitForPageLoad();
   }
 
@@ -173,7 +173,7 @@ export class GroupsPage extends BasePage {
   async verifyPageLoaded(): Promise<void> {
     await expect(this.groupSelect).toBeVisible();
     await expect(this.newGroupButton).toBeVisible();
-    await expect(this.manageGroupsButton).toBeVisible();
+    // manageGroupsButton is only visible when the user has groups
     await expect(this.helpButton).toBeVisible();
   }
 

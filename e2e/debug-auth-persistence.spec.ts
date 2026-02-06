@@ -26,11 +26,11 @@ test.describe('Debug Authentication Persistence', () => {
         .isVisible()
         .catch(() => false);
       const accountIconVisible = await preserveDataFirebasePage
-        .locator('mat-icon:has-text("account_circle")')
+        .locator('[data-testid="nav-account-desktop"]')
         .isVisible()
         .catch(() => false);
       const logoutButtonVisible = await preserveDataFirebasePage
-        .locator('button[mattooltip="Log out"]')
+        .locator('[data-testid="logout-button-desktop"]')
         .isVisible()
         .catch(() => false);
 
@@ -72,11 +72,11 @@ test.describe('Debug Authentication Persistence', () => {
         .isVisible()
         .catch(() => false);
       const homeAccountIconVisible = await preserveDataFirebasePage
-        .locator('mat-icon:has-text("account_circle")')
+        .locator('[data-testid="nav-account-desktop"]')
         .isVisible()
         .catch(() => false);
       const homeLogoutButtonVisible = await preserveDataFirebasePage
-        .locator('button[mattooltip="Log out"]')
+        .locator('[data-testid="logout-button-desktop"]')
         .isVisible()
         .catch(() => false);
 
@@ -87,7 +87,7 @@ test.describe('Debug Authentication Persistence', () => {
 
     // Try navigating to a protected route
     console.log('=== Step 4: Try accessing protected route ===');
-    await preserveDataFirebasePage.goto(`${TEST_CONFIG.baseUrl}/groups`);
+    await preserveDataFirebasePage.goto(`${TEST_CONFIG.baseUrl}/administration/groups`);
     await preserveDataFirebasePage.waitForTimeout(2000);
 
     const finalUrl = preserveDataFirebasePage.url();

@@ -30,24 +30,24 @@ test.describe('Debug Login State Detection', () => {
 
     // Check for logout-related elements
     const logoutButton = preserveDataFirebasePage.locator(
-      'button[mattooltip="Log out"], button:has-text("logout"), a:has-text("Log out")'
+      '[data-testid="logout-button-desktop"]'
     );
     const logoutVisible = await logoutButton.isVisible().catch(() => false);
     console.log('Logout button visible:', logoutVisible);
 
     // Check for account-related elements
     const accountButton = preserveDataFirebasePage.locator(
-      'a[mattooltip="Account"], a[aria-label="account"]'
+      '[data-testid="nav-account-desktop"]'
     );
     const accountVisible = await accountButton.isVisible().catch(() => false);
     console.log('Account button visible:', accountVisible);
 
-    // Check for account circle icon
+    // Check for account icon (manage_accounts)
     const accountIcon = preserveDataFirebasePage.locator(
-      'mat-icon:has-text("account_circle")'
+      'mat-icon:has-text("manage_accounts")'
     );
     const accountIconVisible = await accountIcon.isVisible().catch(() => false);
-    console.log('Account circle icon visible:', accountIconVisible);
+    console.log('Account icon visible:', accountIconVisible);
 
     // Look for any buttons or links with "account" text
     const anyAccountElement = preserveDataFirebasePage.locator(

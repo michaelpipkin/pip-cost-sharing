@@ -66,7 +66,7 @@ export class ManageGroupsComponent {
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly demoService = inject(DemoService);
   protected readonly data = inject(MAT_DIALOG_DATA);

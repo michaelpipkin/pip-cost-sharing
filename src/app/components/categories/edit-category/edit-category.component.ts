@@ -47,7 +47,7 @@ export class EditCategoryComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly data: { category: Category } = inject(MAT_DIALOG_DATA);
 
   #category = signal<Category>(this.data.category);

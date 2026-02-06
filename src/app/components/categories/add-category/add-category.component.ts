@@ -38,7 +38,7 @@ export class AddCategoryComponent {
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
 
   protected readonly categoryModel = signal<CategoryForm>({

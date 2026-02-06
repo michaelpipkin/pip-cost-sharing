@@ -60,7 +60,7 @@ export class EditMemberComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   public member: Member = this.data.member;

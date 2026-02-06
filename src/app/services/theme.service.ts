@@ -24,7 +24,7 @@ const THEME_PRIMARY_COLORS: Record<ThemeMode, string> = {
   providedIn: 'root',
 })
 export class ThemeService implements IThemeService {
-  private rendererFactory = inject(RendererFactory2);
+  protected readonly rendererFactory = inject(RendererFactory2);
   private renderer: Renderer2 = this.rendererFactory.createRenderer(null, null);
   private themeKey = 'app-theme-preference';
 

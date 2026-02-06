@@ -47,7 +47,7 @@ export class GroupService implements IGroupService {
   protected readonly historyService = inject(HistoryService);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');

@@ -35,7 +35,7 @@ export class AccountMenuComponent {
   protected readonly userService = inject(UserService);
   protected readonly themeService = inject(ThemeService);
   protected readonly translate = inject(TranslateService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   readonly routes = ROUTE_PATHS;
 

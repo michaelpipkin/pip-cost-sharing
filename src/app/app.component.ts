@@ -12,12 +12,12 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { DeepLinkService } from '@services/deep-link.service';
 import { DemoService } from '@services/demo.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { FooterComponent } from './shared/footer/footer.component';
@@ -49,21 +49,21 @@ export class AppComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly demoService = inject(DemoService);
   protected readonly router = inject(Router);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly pwaDetection = inject(PwaDetectionService);
-  private adMobService = inject(AdMobService);
-  private adSenseService = inject(AdSenseService);
-  private deepLinkService = inject(DeepLinkService);
-  private navigationLoading = inject(NavigationLoadingService);
+  protected readonly adMobService = inject(AdMobService);
+  protected readonly adSenseService = inject(AdSenseService);
+  protected readonly deepLinkService = inject(DeepLinkService);
+  protected readonly navigationLoading = inject(NavigationLoadingService);
 
   isSmallScreen = signal<boolean>(false);
 
-  user: Signal<User> = this.userStore.user;
+  user: Signal<User | null> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isValidUser: Signal<boolean> = this.userStore.isValidUser;
   isInDemoMode: Signal<boolean> = this.demoService.isInDemoMode;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   // Route constants for template access
   readonly routes = ROUTE_PATHS;
@@ -86,11 +86,6 @@ export class AppComponent {
     if (this.pwaDetection.isRunningAsApp()) {
       // Set zoom to 100% (1.0) regardless of system setting
       await TextZoom.set({ value: 1.0 });
-
-      // Status bar is now handled by edge-to-edge configuration in:
-      // - MainActivity.java (WindowInsetsControllerCompat)
-      // - styles.xml (transparent status bar)
-      // - styles.scss (safe area insets)
     }
   }
 

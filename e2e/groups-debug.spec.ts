@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './fixtures';
 import { AuthPage } from './pages/auth.page';
 import { GroupsPage } from './pages/groups.page';
 
@@ -6,9 +6,11 @@ test.describe('Groups Debug Tests', () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
 
-  test('debug authentication and groups page access', async ({ page }) => {
-    authPage = new AuthPage(page);
-    groupsPage = new GroupsPage(page);
+  test('debug authentication and groups page access', async ({
+    preserveDataFirebasePage,
+  }) => {
+    authPage = new AuthPage(preserveDataFirebasePage);
+    groupsPage = new GroupsPage(preserveDataFirebasePage);
 
     console.log('Step 1: Going to auth page...');
     await authPage.goto();
@@ -22,8 +24,8 @@ test.describe('Groups Debug Tests', () => {
 
     if (!isLoggedIn) {
       console.log('Not logged in, taking screenshot...');
-      await page.screenshot({
-        path: 'debug-not-logged-in.png',
+      await preserveDataFirebasePage.screenshot({
+        path: 'test-results/debug-not-logged-in.png',
         fullPage: true,
       });
     }
@@ -32,42 +34,42 @@ test.describe('Groups Debug Tests', () => {
     await groupsPage.goto();
 
     console.log('Step 5: Taking screenshot of groups page...');
-    await page.screenshot({ path: 'debug-groups-page.png', fullPage: true });
+    await preserveDataFirebasePage.screenshot({ path: 'test-results/debug-groups-page.png', fullPage: true });
 
     console.log('Step 6: Checking page content...');
-    const pageContent = await page.textContent('body');
+    const pageContent = await preserveDataFirebasePage.textContent('body');
     console.log('Page content includes:', pageContent?.substring(0, 200));
 
     console.log('Step 7: Looking for potential loading states...');
-    const loadingElements = await page.locator('text=Loading').count();
+    const loadingElements = await preserveDataFirebasePage.locator('text=Loading').count();
     console.log('Loading elements found:', loadingElements);
 
-    const groupElements = await page.locator('text=group').count();
+    const groupElements = await preserveDataFirebasePage.locator('text=group').count();
     console.log('Elements containing "group" text:', groupElements);
 
     // Check if user might need to be redirected
-    const currentUrl = page.url();
+    const currentUrl = preserveDataFirebasePage.url();
     console.log('Current URL:', currentUrl);
 
     // Check if there are any error messages
-    const errorElements = await page
+    const errorElements = await preserveDataFirebasePage
       .locator('[role="alert"], .error, mat-error')
       .count();
     console.log('Error elements found:', errorElements);
 
     // Wait a bit for any async loading
-    await page.waitForTimeout(2000);
+    await preserveDataFirebasePage.waitForTimeout(2000);
 
     console.log('Step 8: Taking final screenshot...');
-    await page.screenshot({ path: 'debug-groups-final.png', fullPage: true });
+    await preserveDataFirebasePage.screenshot({ path: 'test-results/debug-groups-final.png', fullPage: true });
 
     // Try to find any form of navigation or menu
-    const buttons = await page.locator('button').count();
-    const links = await page.locator('a').count();
+    const buttons = await preserveDataFirebasePage.locator('button').count();
+    const links = await preserveDataFirebasePage.locator('a').count();
     console.log('Buttons found:', buttons, 'Links found:', links);
 
     // Look for any Angular Material components
-    const matComponents = await page.locator('[class*="mat-"]').count();
+    const matComponents = await preserveDataFirebasePage.locator('[class*="mat-"]').count();
     console.log('Material components found:', matComponents);
   });
 });

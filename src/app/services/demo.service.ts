@@ -17,14 +17,14 @@ import { DemoModeService } from './demo-mode.service';
   providedIn: 'root',
 })
 export class DemoService implements OnDestroy {
-  private readonly router = inject(Router);
-  private readonly demoModeService = inject(DemoModeService);
-  private readonly snackbar = inject(MatSnackBar);
-  private readonly userStore = inject(UserStore);
-  private readonly groupStore = inject(GroupStore);
-  private readonly memberStore = inject(MemberStore);
-  private readonly categoryStore = inject(CategoryStore);
-  private readonly expenseStore = inject(ExpenseStore);
+  protected readonly router = inject(Router);
+  protected readonly demoModeService = inject(DemoModeService);
+  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly userStore = inject(UserStore);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseStore = inject(ExpenseStore);
   private routerSubscription?: { unsubscribe: () => void };
 
   // Signal to track if user is currently in demo mode

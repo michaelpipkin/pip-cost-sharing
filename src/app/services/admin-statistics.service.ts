@@ -6,7 +6,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
   providedIn: 'root',
 })
 export class AdminStatisticsService {
-  private readonly functions = inject(getFunctions);
+  protected readonly functions = inject(getFunctions);
 
   async getStatistics(): Promise<AdminStatistics> {
     const getStatsFn = httpsCallable<void, AdminStatistics>(

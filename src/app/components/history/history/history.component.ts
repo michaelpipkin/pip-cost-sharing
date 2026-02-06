@@ -78,7 +78,7 @@ export class HistoryComponent implements AfterViewInit {
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 

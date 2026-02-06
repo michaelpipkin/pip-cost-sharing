@@ -18,8 +18,8 @@ export interface HelpDialogData {
   styleUrl: './help-dialog.component.scss',
 })
 export class HelpDialogComponent {
-  private readonly helpContentService = inject(HelpContentService);
-  private readonly data: HelpDialogData = inject(MAT_DIALOG_DATA);
+  protected readonly helpContentService = inject(HelpContentService);
+  protected readonly data: HelpDialogData = inject(MAT_DIALOG_DATA);
 
   helpSection: HelpSection | undefined;
   displayTitle: string;

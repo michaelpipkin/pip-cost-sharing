@@ -38,7 +38,7 @@ export class ResetPasswordComponent {
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   oobCode = signal<string>(this.route.snapshot.queryParams['oobCode'] || '');
 
