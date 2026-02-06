@@ -71,7 +71,7 @@ export class DemoService implements OnDestroy {
    * Clear demo data from all stores when exiting demo mode
    */
   private clearDemoData(): void {
-    this.userStore.setUser(null);
+    this.userStore.clearUser();
     this.userStore.setIsDemoMode(false);
     this.groupStore.clearCurrentGroup();
     this.groupStore.setAllUserGroups([]);

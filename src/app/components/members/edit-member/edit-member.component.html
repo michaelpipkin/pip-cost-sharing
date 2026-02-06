@@ -38,7 +38,7 @@
     </div>
     <div
       class="toggle"
-      [class.hidden]="!currentMember().groupAdmin"
+      [class.hidden]="!currentMember()?.groupAdmin"
       data-testid="edit-member-toggles"
     >
       <mat-slide-toggle
@@ -74,7 +74,7 @@
     >
       Save
     </button>
-    @if (user().ref.eq(member.userRef)) {
+    @if (member.userRef && user()?.ref?.eq(member.userRef)) {
       <button
         mat-raised-button
         type="button"

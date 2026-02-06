@@ -67,8 +67,8 @@ export class AddMemberComponent {
       const val = this.addMemberForm.value;
       const newMember: Partial<Member> = {
         userRef: null,
-        displayName: val.displayName,
-        email: val.email,
+        displayName: val.displayName ?? undefined,
+        email: val.email ?? undefined,
         active: true,
         groupAdmin: false,
       };

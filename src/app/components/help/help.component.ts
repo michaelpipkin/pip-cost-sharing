@@ -71,7 +71,7 @@ export class HelpComponent {
       ? `${issue.body}\n\nSubmitted by: ${issue.email}`
       : issue.body;
 
-    this.helpService.createIssue(issue.title, body).subscribe({
+    this.helpService.createIssue(issue.title!, body!).subscribe({
       next: () => {
         // Success callback
         this.clearForm();

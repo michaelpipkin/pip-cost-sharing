@@ -62,8 +62,8 @@ export class GroupsComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly analytics = inject(AnalyticsService);
 
-  #user: Signal<User> = this.userStore.user;
-  #currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  #user: Signal<User | null> = this.userStore.user;
+  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
@@ -94,7 +94,7 @@ export class GroupsComponent {
   }
 
   get selectedGroupRef() {
-    return this.groupForm.get('selectedGroupRef').value;
+    return this.groupForm.get('selectedGroupRef')!.value;
   }
 
   addGroup(): void {
@@ -121,14 +121,14 @@ export class GroupsComponent {
     if (this.demoService.isInDemoMode()) {
       // In demo mode, just find and set the group from the store
       const selectedGroup = this.allUserGroups().find(
-        (g) => g.ref.id === e.value.id
+        (g) => g.ref!.id === e.value.id
       );
       if (selectedGroup) {
         this.groupStore.setCurrentGroup(selectedGroup);
       }
       return;
     }
-    await this.groupService.getGroup(e.value, this.#user().ref);
+    await this.groupService.getGroup(e.value, this.#user()!.ref!);
   }
 
   manageGroups(): void {

@@ -7,8 +7,8 @@ import { GroupStore } from '@store/group.store';
 export const editMemorizedResolver: ResolveFn<Memorized> = (route) => {
   const memorizedService = inject(MemorizedService);
   const groupStore = inject(GroupStore);
-  const memorizedId = route.paramMap.get('id');
-  const groupId = groupStore.currentGroup().id;
+  const memorizedId = route.paramMap.get('id')!;
+  const groupId = groupStore.currentGroup()!.id;
 
   return memorizedService.getMemorized(groupId, memorizedId);
 };

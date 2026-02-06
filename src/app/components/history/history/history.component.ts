@@ -84,13 +84,13 @@ export class HistoryComponent implements AfterViewInit {
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   history: Signal<History[]> = this.historyStore.groupHistory;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
-  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
-  selectedMember = model<DocumentReference<Member>>(
+  selectedMember = model<DocumentReference<Member> | null>(
     this.currentMember()?.ref ?? null
   );
   startDate = model<Date | null>(
@@ -102,18 +102,18 @@ export class HistoryComponent implements AfterViewInit {
     (selectedMember = this.selectedMember()) => {
       var filteredHistory = this.history().filter((history: History) => {
         return (
-          history.paidByMemberRef.eq(selectedMember) ||
-          history.paidToMemberRef.eq(selectedMember)
+          history.paidByMemberRef.eq(selectedMember!) ||
+          history.paidToMemberRef.eq(selectedMember!)
         );
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date >= this.startDate();
+          return history.date >= this.startDate()!;
         });
       }
       if (this.endDate() !== undefined && this.endDate() !== null) {
         filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date <= this.endDate();
+          return history.date <= this.endDate()!;
         });
       }
       if (filteredHistory.length > 0) {
@@ -172,7 +172,7 @@ export class HistoryComponent implements AfterViewInit {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.historyService.deleteHistory(history.ref);
+          await this.historyService.deleteHistory(history.ref!);
           this.expandedHistory.set(null);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Payment record deleted' },
@@ -247,8 +247,8 @@ export class HistoryComponent implements AfterViewInit {
   }
 
   private generateHistoryText(history: History): string {
-    const paidBy = history.paidByMember.displayName;
-    const paidTo = history.paidToMember.displayName;
+    const paidBy = history.paidByMember?.displayName ?? 'Unknown';
+    const paidTo = history.paidToMember?.displayName ?? 'Unknown';
     const date = history.date.toLocaleDateString();
     let summaryText = `Payment History\n`;
     summaryText += `${paidBy} paid ${paidTo} ${this.formatCurrency(history.totalPaid)} on ${date}\n\n`;

@@ -109,8 +109,8 @@ export class AddMemorizedComponent {
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
 
-  currentMember: Signal<Member> = this.memberStore.currentMember;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
   #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
@@ -130,20 +130,20 @@ export class AddMemorizedComponent {
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    category: [null as DocumentReference<Category>, Validators.required],
+    category: [null as unknown as DocumentReference<Category>, Validators.required],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
-  autoAddMembers = computed<boolean>(() => this.currentGroup()?.autoAddMembers);
+  autoAddMembers = computed<boolean>(() => this.currentGroup()?.autoAddMembers ?? false);
 
   constructor() {
     this.loading.loadingOn();
     afterNextRender(() => {
-      this.totalAmountField().nativeElement.value =
+      this.totalAmountField()!.nativeElement.value =
         this.localeService.getFormattedZero();
-      this.allocatedAmountField().nativeElement.value =
+      this.allocatedAmountField()!.nativeElement.value =
         this.localeService.getFormattedZero();
       this.memberAmounts().forEach((elementRef: ElementRef) => {
         elementRef.nativeElement.value = this.localeService.getFormattedZero();
@@ -192,7 +192,7 @@ export class AddMemorizedComponent {
 
   createSplitFormGroup(): FormGroup {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberRef').value.id
+      (control) => control.get('owedByMemberRef')!.value.id
     );
     const availableMembers = this.activeMembers().filter(
       (m) => !existingMembers.includes(m.id)
@@ -248,7 +248,7 @@ export class AddMemorizedComponent {
 
   addAllActiveGroupMembers(): void {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberRef').value.id
+      (control) => control.get('owedByMemberRef')!.value.id
     );
 
     this.activeMembers().forEach((member: Member) => {
@@ -316,9 +316,9 @@ export class AddMemorizedComponent {
   allocateSharedAmounts(): void {
     const val = this.addMemorizedForm.value;
     const input = {
-      totalAmount: val.amount,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
+      totalAmount: val.amount!,
+      sharedAmount: val.sharedAmount!,
+      allocatedAmount: val.allocatedAmount!,
       splits: this.splitsFormArray.value.map((split) => ({
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
@@ -369,7 +369,7 @@ export class AddMemorizedComponent {
         (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.addMemorizedForm.value;
-      const totalAmount: number = +val.amount;
+      const totalAmount: number = +val.amount!;
       splits.forEach((split: Split) => {
         split.allocatedAmount = this.localeService.roundToCurrency(
           +((totalAmount * +split.percentage) / 100)
@@ -446,21 +446,21 @@ export class AddMemorizedComponent {
     }
     const val = this.addMemorizedForm.getRawValue();
     const memorized: Partial<Memorized> = {
-      description: val.description,
-      categoryRef: val.category,
-      paidByMemberRef: val.paidByMember,
-      sharedAmount: +val.sharedAmount,
-      allocatedAmount: +val.allocatedAmount,
-      totalAmount: +val.amount,
+      description: val.description ?? undefined,
+      categoryRef: val.category ?? undefined,
+      paidByMemberRef: val.paidByMember ?? undefined,
+      sharedAmount: +val.sharedAmount!,
+      allocatedAmount: +val.allocatedAmount!,
+      totalAmount: +val.amount!,
       splitByPercentage: this.splitByPercentage(),
     };
-    let splits = [];
+    let splits: Partial<Split>[] = [];
     this.splitsFormArray.getRawValue().forEach((s) => {
       const split = {
         assignedAmount: +s.assignedAmount,
         percentage: +s.percentage,
         allocatedAmount: +s.allocatedAmount,
-        paidByMemberRef: val.paidByMember,
+        paidByMemberRef: val.paidByMember!,
         owedByMemberRef: s.owedByMemberRef,
       };
       splits.push(split);
@@ -469,7 +469,7 @@ export class AddMemorizedComponent {
     this.loading.loadingOn();
     try {
       await this.memorizedService.addMemorized(
-        this.currentGroup().id,
+        this.currentGroup()!.id,
         memorized
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {

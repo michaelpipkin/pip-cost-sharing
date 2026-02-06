@@ -109,26 +109,26 @@ export class EditMemorizedComponent {
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
 
-  #currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   memorized = signal<Memorized>(this.route.snapshot.data.memorized);
 
   categories = computed<Category[]>(() => {
     return this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.ref.eq(this.memorized().categoryRef));
+      .filter((c) => c.active || c.ref!.eq(this.memorized().categoryRef));
   });
   memorizedMembers = computed<Member[]>(() => {
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || m.ref.eq(this.memorized().paidByMemberRef));
+      .filter((m) => m.active || m.ref!.eq(this.memorized().paidByMemberRef));
   });
   splitMembers = computed<Member[]>(() => {
     const splitMembers: DocumentReference<Member>[] =
-      this.memorized().splits?.map((s: Split) => s.owedByMemberRef);
+      this.memorized().splits?.map((s: Split) => s.owedByMemberRef!) ?? [];
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || splitMembers.includes(m.ref));
+      .filter((m) => m.active || splitMembers.includes(m.ref!));
   });
 
   splitByPercentage = model<boolean>(
@@ -141,10 +141,10 @@ export class EditMemorizedComponent {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   editMemorizedForm = this.fb.group({
-    paidByMember: [null as DocumentReference<Member>, Validators.required],
+    paidByMember: [null as unknown as DocumentReference<Member>, Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    category: [null as DocumentReference<Category>, Validators.required],
+    category: [null as unknown as DocumentReference<Category>, Validators.required],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -174,9 +174,9 @@ export class EditMemorizedComponent {
 
     afterNextRender(() => {
       const memorized = this.memorized();
-      this.totalAmountField().nativeElement.value =
+      this.totalAmountField()!.nativeElement.value =
         this.decimalPipe.transform(memorized.totalAmount, '1.2-2') || '0.00';
-      this.proportionalAmountField().nativeElement.value =
+      this.proportionalAmountField()!.nativeElement.value =
         this.decimalPipe.transform(memorized.allocatedAmount, '1.2-2') ||
         '0.00';
       this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
@@ -212,7 +212,7 @@ export class EditMemorizedComponent {
 
   createSplitFormGroup(): FormGroup {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberRef').value.id
+      (control) => control.get('owedByMemberRef')!.value.id
     );
     const availableMembers = this.memorizedMembers().filter(
       (m) => !existingMembers.includes(m.id)
@@ -300,9 +300,9 @@ export class EditMemorizedComponent {
   allocateSharedAmounts(): void {
     const val = this.editMemorizedForm.value;
     const input = {
-      totalAmount: val.amount,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
+      totalAmount: val.amount!,
+      sharedAmount: val.sharedAmount!,
+      allocatedAmount: val.allocatedAmount!,
       splits: this.splitsFormArray.value.map((split) => ({
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
@@ -353,7 +353,7 @@ export class EditMemorizedComponent {
         (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.editMemorizedForm.value;
-      const totalAmount: number = +val.amount;
+      const totalAmount: number = +val.amount!;
       splits.forEach((split: Split) => {
         split.allocatedAmount = this.localeService.roundToCurrency(
           +((totalAmount * +split.percentage) / 100)
@@ -432,28 +432,28 @@ export class EditMemorizedComponent {
       this.loading.loadingOn();
       const val = this.editMemorizedForm.getRawValue();
       const changes: Partial<Memorized> = {
-        description: val.description,
-        categoryRef: val.category,
-        paidByMemberRef: val.paidByMember,
-        sharedAmount: val.sharedAmount,
-        allocatedAmount: val.allocatedAmount,
-        totalAmount: val.amount,
+        description: val.description ?? undefined,
+        categoryRef: val.category ?? undefined,
+        paidByMemberRef: val.paidByMember ?? undefined,
+        sharedAmount: val.sharedAmount!,
+        allocatedAmount: val.allocatedAmount!,
+        totalAmount: val.amount!,
         splitByPercentage: this.splitByPercentage(),
       };
-      let splits = [];
+      let splits: Partial<Split>[] = [];
       this.splitsFormArray.getRawValue().forEach((s) => {
         const split = {
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
           allocatedAmount: s.allocatedAmount,
-          paidByMemberRef: val.paidByMember,
+          paidByMemberRef: val.paidByMember!,
           owedByMemberRef: s.owedByMemberRef,
         };
         splits.push(split);
       });
       changes.splits = splits;
       await this.memorizedService.updateMemorized(
-        this.memorized().ref,
+        this.memorized().ref!,
         changes
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -496,7 +496,7 @@ export class EditMemorizedComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.memorizedService.deleteMemorized(this.memorized().ref);
+          await this.memorizedService.deleteMemorized(this.memorized().ref!);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Memorized expense deleted' },
           });

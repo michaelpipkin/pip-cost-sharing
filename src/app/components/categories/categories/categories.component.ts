@@ -68,8 +68,8 @@ export class CategoriesComponent implements AfterViewInit {
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
 
-  currentMember: Signal<Member> = this.memberStore.currentMember;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
   sortField = signal<string>('name');
@@ -122,7 +122,7 @@ export class CategoriesComponent implements AfterViewInit {
       return;
     }
     const dialogConfig: MatDialogConfig = {
-      data: this.currentGroup().id,
+      data: this.currentGroup()!.id,
     };
     const dialogRef = this.dialog.open(AddCategoryComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((success) => {
@@ -139,7 +139,7 @@ export class CategoriesComponent implements AfterViewInit {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    if (this.currentMember().groupAdmin) {
+    if (this.currentMember()!.groupAdmin) {
       const dialogConfig: MatDialogConfig = {
         data: {
           category: category,

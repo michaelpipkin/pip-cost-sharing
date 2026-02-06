@@ -67,8 +67,8 @@ export class EditMemberComponent {
 
   editMemberForm: FormGroup;
 
-  currentMember: Signal<Member> = this.memberStore.currentMember;
-  user: Signal<User> = this.userStore.user;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
+  user: Signal<User | null> = this.userStore.user;
 
   groupAdminTooltip: string = '';
 
@@ -80,11 +80,11 @@ export class EditMemberComponent {
       groupAdmin: [
         {
           value: this.member.groupAdmin,
-          disabled: this.member.userRef?.eq(this.user().ref),
+          disabled: this.member.userRef?.eq(this.user()!.ref!),
         },
       ],
     });
-    if (this.member.userRef?.eq(this.user().ref)) {
+    if (this.member.userRef?.eq(this.user()!.ref!)) {
       this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
     }
   }
@@ -108,7 +108,7 @@ export class EditMemberComponent {
         groupAdmin: form.groupAdmin,
       };
       await this.memberService.updateMemberWithUserMatching(
-        this.member.ref,
+        this.member.ref!,
         changes,
         this.member.userRef,
         this.member.email
@@ -151,7 +151,7 @@ export class EditMemberComponent {
           this.loading.loadingOn();
           await this.memberService.removeMemberFromGroup(
             this.data.groupId,
-            this.member.ref
+            this.member.ref!
           );
           this.dialogRef.close({
             success: true,
@@ -198,7 +198,7 @@ export class EditMemberComponent {
           this.loading.loadingOn();
           await this.memberService.leaveGroup(
             this.data.groupId,
-            this.member.ref
+            this.member.ref!
           );
           this.groupStore.clearCurrentGroup();
           this.groupStore.removeGroup(this.data.groupId);

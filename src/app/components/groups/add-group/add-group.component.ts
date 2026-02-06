@@ -61,7 +61,7 @@ export class AddGroupComponent {
     autoAddMembers: [false],
     currencyCode: ['USD', Validators.required],
   });
-  user: Signal<User> = this.userStore.user;
+  user: Signal<User | null> = this.userStore.user;
 
   public get f() {
     return this.newGroupForm.controls;
@@ -75,20 +75,20 @@ export class AddGroupComponent {
     try {
       this.loading.loadingOn();
       const val = this.newGroupForm.value;
-      const currencyConfig = getCurrencyConfig(val.currencyCode);
+      const currencyConfig = getCurrencyConfig(val.currencyCode!)!;
       const newGroup: Partial<Group> = {
-        name: val.groupName,
+        name: val.groupName ?? undefined,
         active: true,
-        autoAddMembers: val.autoAddMembers,
-        currencyCode: val.currencyCode,
+        autoAddMembers: val.autoAddMembers ?? undefined,
+        currencyCode: val.currencyCode ?? undefined,
         currencySymbol: currencyConfig.symbol,
         decimalPlaces: currencyConfig.decimalPlaces,
         archived: false,
       };
       const newMember: Partial<Member> = {
-        userRef: this.user().ref,
-        displayName: val.displayName,
-        email: this.user().email,
+        userRef: this.user()!.ref,
+        displayName: val.displayName ?? undefined,
+        email: this.user()!.email,
         active: true,
         groupAdmin: true,
       };

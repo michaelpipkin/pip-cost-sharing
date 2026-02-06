@@ -72,9 +72,9 @@ export class MemorizedComponent {
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
-  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   memorizeds: Signal<Memorized[]> = this.memorizedStore.memorizedExpenses;
   smallScreen = signal<boolean>(false);
 
@@ -91,11 +91,11 @@ export class MemorizedComponent {
               .toLowerCase()
               .includes(searchText.toLowerCase()) ||
             this.members()
-              .find((m) => m.ref.eq(memorized.paidByMemberRef))
+              .find((m) => m.ref!.eq(memorized.paidByMemberRef))
               ?.displayName.toLowerCase()
               .includes(searchText.toLowerCase()) ||
             this.categories()
-              .find((c) => c.ref.eq(memorized.categoryRef))
+              .find((c) => c.ref!.eq(memorized.categoryRef))
               ?.name.toLowerCase()
               .includes(searchText.toLowerCase())
           );
@@ -186,9 +186,9 @@ export class MemorizedComponent {
       totalAmount: expense.totalAmount,
       splitByPercentage: expense.splitByPercentage,
       splits: expense.splits.map((split) => ({
-        assignedAmount: split.assignedAmount,
-        percentage: split.percentage,
-        allocatedAmount: split.allocatedAmount,
+        assignedAmount: split.assignedAmount ?? 0,
+        percentage: split.percentage ?? 0,
+        allocatedAmount: split.allocatedAmount ?? 0,
         owedByMemberId: split.owedByMemberRef?.id,
       })),
     };

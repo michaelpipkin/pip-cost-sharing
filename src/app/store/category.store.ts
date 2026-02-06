@@ -29,10 +29,12 @@ export const CategoryStore = signalStore(
     clearGroupCategories: () => {
       patchState(store, { groupCategories: [], loaded: false });
     },
-    getCategoryByRef: (categoryRef: DocumentReference<Category> | null) => {
-      if (!categoryRef) return null;
+    getCategoryByRef: (
+      categoryRef: DocumentReference<Category> | null | undefined
+    ): Category | undefined => {
+      if (!categoryRef) return undefined;
       const categories = store.groupCategories();
-      return categories.find((c) => c.ref.eq(categoryRef)) || null;
+      return categories.find((c) => c.ref?.eq(categoryRef));
     },
   })),
   withComputed(({ groupCategories }) => ({
