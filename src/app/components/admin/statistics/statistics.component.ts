@@ -17,10 +17,10 @@ import { LoadingService } from '@shared/loading/loading.service';
   imports: [MatCardModule, MatButtonModule, MatIconModule, DatePipe],
 })
 export class AdminStatisticsComponent implements OnInit {
-  private readonly statisticsService = inject(AdminStatisticsService);
-  private readonly loading = inject(LoadingService);
-  private readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly statisticsService = inject(AdminStatisticsService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly analytics = inject(AnalyticsService);
 
   statistics = signal<AdminStatistics | null>(null);
   error = signal<string | null>(null);

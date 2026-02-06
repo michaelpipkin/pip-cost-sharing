@@ -1,12 +1,15 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { TEST_CONFIG } from './constants';
 import { AuthPage } from './pages/auth.page';
 
 test.describe('Groups Direct Navigation Test', () => {
-  test('navigate directly to groups after auth', async ({ page }) => {
-    const authPage = new AuthPage(page);
+  test('navigate directly to groups after auth', async ({
+    preserveDataFirebasePage,
+  }) => {
+    const authPage = new AuthPage(preserveDataFirebasePage);
 
     console.log('Step 1: Go to home page and authenticate...');
-    await page.goto('http://localhost:4200/');
+    await preserveDataFirebasePage.goto(`${TEST_CONFIG.baseUrl}/`);
     await authPage.createAndLoginTestUser();
 
     const isLoggedIn = await authPage.isLoggedIn();
@@ -14,25 +17,32 @@ test.describe('Groups Direct Navigation Test', () => {
     expect(isLoggedIn).toBe(true);
 
     console.log('Step 2: Navigate directly to groups page...');
-    await page.goto('http://localhost:4200/groups');
+    await preserveDataFirebasePage.goto(
+      `${TEST_CONFIG.baseUrl}/administration/groups`
+    );
 
     console.log('Step 3: Wait for page to load...');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await preserveDataFirebasePage.waitForSelector('app-root', {
+      timeout: 10000,
+    });
 
     console.log('Step 4: Check URL...');
-    const currentUrl = page.url();
+    const currentUrl = preserveDataFirebasePage.url();
     console.log('Current URL:', currentUrl);
 
     console.log('Step 5: Take screenshot...');
-    await page.screenshot({ path: 'direct-groups-page.png', fullPage: true });
+    await preserveDataFirebasePage.screenshot({
+      path: 'test-results/direct-groups-page.png',
+      fullPage: true,
+    });
 
     console.log('Step 6: Wait for any loading to complete...');
-    await page.waitForTimeout(3000);
+    await preserveDataFirebasePage.waitForTimeout(3000);
 
     console.log('Step 7: Look for groups-specific content...');
 
     // Look for loading state first
-    const loadingText = await page
+    const loadingText = await preserveDataFirebasePage
       .locator('text=Loading groups')
       .isVisible({ timeout: 2000 })
       .catch(() => false);
@@ -40,7 +50,7 @@ test.describe('Groups Direct Navigation Test', () => {
 
     if (loadingText) {
       console.log('Waiting for loading to complete...');
-      await page
+      await preserveDataFirebasePage
         .locator('text=Loading groups')
         .waitFor({ state: 'hidden', timeout: 10000 })
         .catch(() => {
@@ -49,34 +59,30 @@ test.describe('Groups Direct Navigation Test', () => {
     }
 
     // Look for key elements
-    const groupSelectExists = await page
-      .locator('#group-select')
+    const groupSelectExists = await preserveDataFirebasePage
+      .locator('[data-testid="group-select"]')
       .isVisible({ timeout: 5000 })
       .catch(() => false);
     console.log('Group select visible:', groupSelectExists);
 
-    const newGroupButton = await page
-      .locator('button:has-text("New Group")')
+    const newGroupButton = await preserveDataFirebasePage
+      .locator('[data-testid="new-group-button"]')
       .isVisible({ timeout: 5000 })
       .catch(() => false);
     console.log('New Group button visible:', newGroupButton);
 
-    const joinGroupButton = await page
-      .locator('button:has-text("Join Group")')
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    console.log('Join Group button visible:', joinGroupButton);
-
     // Check page content
-    const pageText = await page.textContent('body');
-    const hasGroupsContent =
-      pageText?.includes('New Group') || pageText?.includes('Join Group');
+    const pageText = await preserveDataFirebasePage.textContent('body');
+    const hasGroupsContent = pageText?.includes('New Group');
     console.log('Page contains groups content:', hasGroupsContent);
 
     console.log('Step 8: Final screenshot...');
-    await page.screenshot({ path: 'direct-groups-final.png', fullPage: true });
+    await preserveDataFirebasePage.screenshot({
+      path: 'test-results/direct-groups-final.png',
+      fullPage: true,
+    });
 
-    // If we can see buttons, that means we're on the groups page successfully
-    expect(newGroupButton || joinGroupButton).toBe(true);
+    // If we can see the New Group button, we're on the groups page successfully
+    expect(newGroupButton).toBe(true);
   });
 });

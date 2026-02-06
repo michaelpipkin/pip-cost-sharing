@@ -104,7 +104,7 @@ import {
 })
 export class AddExpenseComponent {
   protected readonly storage = inject(getStorage);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly fb = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly dialog = inject(MatDialog);

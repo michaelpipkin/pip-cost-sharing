@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { AuthPage } from './pages/auth.page';
 import { GroupsPage } from './pages/groups.page';
 
@@ -11,13 +11,12 @@ test.describe('Groups Component Functionality', () => {
     displayName: 'Test User',
   };
 
-  test.beforeEach(async ({ page }) => {
-    authPage = new AuthPage(page);
-    groupsPage = new GroupsPage(page);
+  test.beforeEach(async ({ preserveDataFirebasePage }) => {
+    authPage = new AuthPage(preserveDataFirebasePage);
+    groupsPage = new GroupsPage(preserveDataFirebasePage);
 
-    // Navigate to auth and create/login test user
-    await authPage.goto();
-    await authPage.createAndLoginTestUser(testUser.email, testUser.password);
+    // Create and login a unique test user via Firebase emulator
+    await authPage.createAndLoginTestUser();
 
     // Verify logged in
     const isLoggedIn = await authPage.isLoggedIn();
@@ -226,8 +225,8 @@ test.describe('Groups Component Functionality', () => {
       // Cancel dialog
       await groupsPage.cancelManageGroups();
 
-      // Changes should not be saved
-      await expect(groupsPage.snackbar).not.toContainText('Group updated');
+      // Changes should not be saved - no snackbar should appear
+      await expect(groupsPage.snackbar).not.toBeVisible();
     });
   });
 

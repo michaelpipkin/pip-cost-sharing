@@ -5,7 +5,7 @@ import { LocaleService } from '@services/locale.service';
   providedIn: 'root',
 })
 export class StringUtils {
-  private localeService = inject(LocaleService);
+  protected readonly localeService = inject(LocaleService);
 
   toNumber(str: string): number {
     try {

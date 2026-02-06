@@ -95,7 +95,7 @@ import {
 })
 export class ExpensesComponent implements AfterViewInit {
   protected readonly storage = inject(getStorage);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -116,7 +116,7 @@ export class ExpensesComponent implements AfterViewInit {
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
   // Table filter service
-  expenseFilterService = inject(TableFilterService<Expense>);
+  protected readonly expenseFilterService = inject(TableFilterService<Expense>);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member> = this.memberStore.currentMember;

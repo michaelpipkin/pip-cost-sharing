@@ -59,8 +59,8 @@ export const TEST_DATA = {
 // Common selectors (if not using data-testid)
 export const SELECTORS = {
   // Navigation
-  navbar: '[data-testid="navbar"]',
-  menuButton: '[data-testid="menu-button"]',
+  navbar: '[data-testid="main-toolbar"]',
+  menuButton: '[data-testid="mobile-menu-toggle"]',
 
   // Forms
   emailInput: 'input[type="email"]',
@@ -68,9 +68,9 @@ export const SELECTORS = {
   submitButton: 'button[type="submit"]',
 
   // Common elements
-  loadingSpinner: '[data-testid="loading-spinner"]',
-  errorMessage: '[data-testid="error-message"]',
-  successMessage: '[data-testid="success-message"]',
+  loadingSpinner: '[data-testid="loading-component"]',
+  errorMessage: '[role="alert"], mat-error',
+  successMessage: 'simple-snack-bar',
 } as const;
 
 // API endpoints for mocking

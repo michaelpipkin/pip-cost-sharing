@@ -7,7 +7,7 @@ import { DocumentReference } from 'firebase/firestore';
   standalone: true,
 })
 export class DocRefCompareDirective {
-  private matSelect = inject(MatSelect);
+  protected readonly matSelect = inject(MatSelect);
 
   constructor() {
     this.matSelect.compareWith = this.compareDocRefs;

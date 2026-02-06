@@ -39,7 +39,7 @@ import { IUserService } from './user.service.interface';
 export class UserService implements IUserService {
   protected readonly fs = inject(getFirestore);
   protected readonly auth = inject(getAuth);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly expenseStore = inject(ExpenseStore);

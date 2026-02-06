@@ -40,8 +40,8 @@ export interface TourConfig {
   providedIn: 'root',
 })
 export class TourService {
-  private readonly demoService = inject(DemoService);
-  private readonly router = inject(Router);
+  protected readonly demoService = inject(DemoService);
+  protected readonly router = inject(Router);
 
   // Current active tour instance
   private currentTour: Tour | null = null;

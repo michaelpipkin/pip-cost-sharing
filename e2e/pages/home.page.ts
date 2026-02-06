@@ -9,10 +9,10 @@ export class HomePage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.title = this.getByTestId('app-title');
-    this.navigationToolbar = this.getByTestId('navigation-toolbar');
-    this.themeToggleButton = this.getByTestId('theme-toggle');
-    this.splitPageLink = this.getByTestId('split-page-link');
+    this.title = this.getByTestId('welcome-title');
+    this.navigationToolbar = this.getByTestId('main-toolbar');
+    this.themeToggleButton = this.getByTestId('theme-toggle-desktop');
+    this.splitPageLink = this.getByTestId('split-expense-button');
   }
 
   /**
@@ -42,8 +42,7 @@ export class HomePage extends BasePage {
    */
   async isAuthenticated(): Promise<boolean> {
     try {
-      // Adjust this selector based on your actual authenticated state indicators
-      await this.getByTestId('user-menu').waitFor({
+      await this.getByTestId('logout-button-desktop').waitFor({
         state: 'visible',
         timeout: 3000,
       });

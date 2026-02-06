@@ -91,7 +91,7 @@ import { getStorage } from 'firebase/storage';
 })
 export class AddMemorizedComponent {
   protected readonly storage = inject(getStorage);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly dialog = inject(MatDialog);
   protected readonly router = inject(Router);
   protected readonly fb = inject(FormBuilder);

@@ -15,7 +15,7 @@ test.describe('Debug Register Page', () => {
     console.log('Current URL after navigation:', currentUrl);
 
     // Take a screenshot for debugging
-    await page.screenshot({ path: 'debug-register-page.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/debug-register-page.png', fullPage: true });
 
     // Check if we were redirected
     if (!currentUrl.includes('/auth/register')) {

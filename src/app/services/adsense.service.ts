@@ -5,7 +5,7 @@ import { PwaDetectionService } from './pwa-detection.service';
   providedIn: 'root',
 })
 export class AdSenseService {
-  private pwaService = inject(PwaDetectionService);
+  protected readonly pwaService = inject(PwaDetectionService);
   private isLoaded = false;
 
   constructor() {

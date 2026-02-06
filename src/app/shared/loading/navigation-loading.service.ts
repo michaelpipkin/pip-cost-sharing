@@ -13,8 +13,8 @@ import { LoadingService } from './loading.service';
   providedIn: 'root',
 })
 export class NavigationLoadingService {
-  private readonly router = inject(Router);
-  private readonly loadingService = inject(LoadingService);
+  protected readonly router = inject(Router);
+  protected readonly loadingService = inject(LoadingService);
 
   constructor() {
     this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {

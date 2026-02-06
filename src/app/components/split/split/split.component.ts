@@ -77,7 +77,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);

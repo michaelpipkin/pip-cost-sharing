@@ -51,7 +51,7 @@ export class AddGroupComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
   protected readonly snackbar = inject(MatSnackBar);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
 

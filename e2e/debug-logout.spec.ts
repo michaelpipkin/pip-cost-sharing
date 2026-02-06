@@ -15,7 +15,7 @@ test.describe('Debug Logout Process', () => {
 
     console.log('=== Step 2: Check UI state before logout ===');
     const logoutButtonBefore = await preserveDataFirebasePage
-      .locator('button[mattooltip="Log out"]')
+      .locator('[data-testid="logout-button-desktop"]')
       .isVisible()
       .catch(() => false);
     const loginButtonBefore = await preserveDataFirebasePage
@@ -23,7 +23,7 @@ test.describe('Debug Logout Process', () => {
       .isVisible()
       .catch(() => false);
     const accountButtonBefore = await preserveDataFirebasePage
-      .locator('a[mattooltip="Account"]')
+      .locator('[data-testid="nav-account-desktop"]')
       .isVisible()
       .catch(() => false);
 
@@ -36,7 +36,7 @@ test.describe('Debug Logout Process', () => {
 
     console.log('=== Step 4: Check UI state immediately after logout ===');
     const logoutButtonAfter = await preserveDataFirebasePage
-      .locator('button[mattooltip="Log out"]')
+      .locator('[data-testid="logout-button-desktop"]')
       .isVisible()
       .catch(() => false);
     const loginButtonAfter = await preserveDataFirebasePage
@@ -44,7 +44,7 @@ test.describe('Debug Logout Process', () => {
       .isVisible()
       .catch(() => false);
     const accountButtonAfter = await preserveDataFirebasePage
-      .locator('a[mattooltip="Account"]')
+      .locator('[data-testid="nav-account-desktop"]')
       .isVisible()
       .catch(() => false);
 
@@ -60,7 +60,7 @@ test.describe('Debug Logout Process', () => {
     await preserveDataFirebasePage.waitForTimeout(3000);
 
     const logoutButtonFinal = await preserveDataFirebasePage
-      .locator('button[mattooltip="Log out"]')
+      .locator('[data-testid="logout-button-desktop"]')
       .isVisible()
       .catch(() => false);
     const loginButtonFinal = await preserveDataFirebasePage
@@ -68,7 +68,7 @@ test.describe('Debug Logout Process', () => {
       .isVisible()
       .catch(() => false);
     const accountButtonFinal = await preserveDataFirebasePage
-      .locator('a[mattooltip="Account"]')
+      .locator('[data-testid="nav-account-desktop"]')
       .isVisible()
       .catch(() => false);
 
