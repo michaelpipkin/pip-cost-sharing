@@ -12,9 +12,13 @@
       "Bash(npx cap:*)",
       "Bash(pnpm add:*)",
       "Bash(npx vitest:*)",
-      "Bash(pnpm unit-test:*)"
+      "Bash(pnpm unit-test:*)",
+      "Read(//c/Users/mpipk/.claude/plans/**)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "c:\\Users\\mpipk\\source\\repos\\michaelpipkin\\pip-cost-sharing"
+    ]
   }
 }
