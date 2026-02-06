@@ -125,19 +125,19 @@ export class EditExpenseComponent {
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
 
-  #currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   expense = signal<Expense>(this.route.snapshot.data.expense);
 
   categories = computed<Category[]>(() => {
     return this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.ref.eq(this.expense().categoryRef));
+      .filter((c) => c.active || c.ref!.eq(this.expense().categoryRef));
   });
   expenseMembers = computed<Member[]>(() => {
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || m.ref.eq(this.expense().paidByMemberRef));
+      .filter((m) => m.active || m.ref!.eq(this.expense().paidByMemberRef));
   });
   splitMembers = computed<Member[]>(() => {
     const splitMembers: DocumentReference<Member>[] = this.expense().splits.map(
@@ -145,12 +145,12 @@ export class EditExpenseComponent {
     );
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || splitMembers.includes(m.ref));
+      .filter((m) => m.active || splitMembers.includes(m.ref!));
   });
 
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
-  receiptUrl = model<string>(null);
+  receiptUrl = model<string>(null as unknown as string);
   splitByPercentage = model<boolean>(false);
 
   datePicker = viewChild<ElementRef>('datePicker');
@@ -160,11 +160,11 @@ export class EditExpenseComponent {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   editExpenseForm = this.fb.group({
-    paidByMember: [null as DocumentReference<Member>, Validators.required],
+    paidByMember: [null as unknown as DocumentReference<Member>, Validators.required],
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    category: [null as DocumentReference<Category>, Validators.required],
+    category: [null as unknown as DocumentReference<Category>, Validators.required],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -173,9 +173,9 @@ export class EditExpenseComponent {
   constructor() {
     afterNextRender(() => {
       const expense = this.expense();
-      this.totalAmountField().nativeElement.value =
+      this.totalAmountField()!.nativeElement.value =
         this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
-      this.allocatedAmountField().nativeElement.value =
+      this.allocatedAmountField()!.nativeElement.value =
         this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') || '0.00';
       this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
         elementRef.nativeElement.value =
@@ -217,7 +217,7 @@ export class EditExpenseComponent {
     });
     if (expense.hasReceipt) {
       try {
-        const url = await getDownloadURL(expense.receiptRef);
+        const url = await getDownloadURL(expense.receiptRef!);
         if (!!url) {
           this.receiptUrl.set(<string>url);
         }
@@ -273,7 +273,7 @@ export class EditExpenseComponent {
 
   createSplitFormGroup(): FormGroup {
     const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberRef').value.id
+      (control) => control.get('owedByMemberRef')!.value.id
     );
     const availableMembers = this.expenseMembers().filter(
       (m) => !existingMembers.includes(m.id)
@@ -503,9 +503,9 @@ export class EditExpenseComponent {
   allocateSharedAmounts(): void {
     const val = this.editExpenseForm.value;
     const input = {
-      totalAmount: val.amount,
-      sharedAmount: val.sharedAmount,
-      allocatedAmount: val.allocatedAmount,
+      totalAmount: val.amount!,
+      sharedAmount: val.sharedAmount!,
+      allocatedAmount: val.allocatedAmount!,
       splits: this.splitsFormArray.value.map((split) => ({
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
@@ -556,7 +556,7 @@ export class EditExpenseComponent {
         (s) => s.owedByMemberRef !== null
       ).length;
       const val = this.editExpenseForm.value;
-      const totalAmount: number = +val.amount;
+      const totalAmount: number = +val.amount!;
       splits.forEach((split) => {
         split.allocatedAmount = this.localeService.roundToCurrency(
           +((totalAmount * +split.percentage) / 100)
@@ -647,15 +647,15 @@ export class EditExpenseComponent {
         try {
           this.loading.loadingOn();
           const val = this.editExpenseForm.getRawValue();
-          const expenseDate = val.date.toIsoFormat();
+          const expenseDate = val.date!.toIsoFormat();
           const changes: Partial<ExpenseDto> = {
             date: expenseDate,
-            description: val.description,
-            categoryRef: val.category,
-            paidByMemberRef: val.paidByMember,
-            sharedAmount: +val.sharedAmount,
-            allocatedAmount: +val.allocatedAmount,
-            totalAmount: +val.amount,
+            description: val.description ?? undefined,
+            categoryRef: val.category ?? undefined,
+            paidByMemberRef: val.paidByMember ?? undefined,
+            sharedAmount: +val.sharedAmount!,
+            allocatedAmount: +val.allocatedAmount!,
+            totalAmount: +val.amount!,
             splitByPercentage: this.splitByPercentage(),
             paid: false,
           };
@@ -663,19 +663,19 @@ export class EditExpenseComponent {
           this.splitsFormArray.getRawValue().forEach((s) => {
             const split: Partial<SplitDto> = {
               date: expenseDate,
-              categoryRef: val.category,
+              categoryRef: val.category ?? undefined,
               assignedAmount: +s.assignedAmount,
               percentage: +s.percentage,
               allocatedAmount: +s.allocatedAmount,
-              paidByMemberRef: val.paidByMember,
+              paidByMemberRef: val.paidByMember ?? undefined,
               owedByMemberRef: s.owedByMemberRef,
-              paid: s.owedByMemberRef.eq(val.paidByMember),
+              paid: s.owedByMemberRef.eq(val.paidByMember!),
             };
             splits.push(split);
           });
           await this.expenseService.updateExpense(
-            this.#currentGroup().id,
-            this.expense().ref,
+            this.#currentGroup()!.id,
+            this.expense().ref!,
             changes,
             splits,
             this.receiptFile()
@@ -728,8 +728,8 @@ export class EditExpenseComponent {
         try {
           this.loading.loadingOn();
           await this.expenseService.deleteExpense(
-            this.#currentGroup().id,
-            this.expense().ref
+            this.#currentGroup()!.id,
+            this.expense().ref!
           );
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Expense deleted' },

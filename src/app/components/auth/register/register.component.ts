@@ -140,7 +140,7 @@ export class RegisterComponent {
       this.loading.loadingOn();
       const email = this.registerForm.value.email;
       const password = this.registerForm.value.password;
-      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email!);
       if (signInMethods.length > 0 && signInMethods.includes('password')) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Account already exists for this email address' },
@@ -149,8 +149,8 @@ export class RegisterComponent {
       } else {
         const userCredential = await createUserWithEmailAndPassword(
           this.auth,
-          email,
-          password
+          email!,
+          password!
         );
         const actionCodeSettings = {
           url: window.location.origin + '/auth/account-action',

@@ -56,7 +56,7 @@ export class ForgotPasswordComponent {
         handleCodeInApp: true,
       };
       
-      await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
+      await sendPasswordResetEmail(this.auth, email!, actionCodeSettings);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Password reset email sent. Please check your email.' },
       });

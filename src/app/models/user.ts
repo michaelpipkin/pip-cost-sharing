@@ -5,8 +5,8 @@ export class User {
   constructor(init?: Partial<User>) {
     Object.assign(this, init);
   }
-  id: string;
-  email: string;
+  id!: string;
+  email!: string;
   defaultGroupRef?: DocumentReference<Group> | null;
   venmoId?: string = '';
   paypalId?: string = '';

@@ -5,11 +5,11 @@ export class Member {
   constructor(init?: Partial<Member>) {
     Object.assign(this, init);
   }
-  id: string;
-  userRef: DocumentReference<User>;
-  displayName: string;
-  email: string;
-  active: boolean;
-  groupAdmin: boolean;
+  id!: string;
+  userRef!: DocumentReference<User> | null;
+  displayName!: string;
+  email!: string;
+  active!: boolean;
+  groupAdmin!: boolean;
   ref?: DocumentReference<Member>;
 }

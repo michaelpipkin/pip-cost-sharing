@@ -94,9 +94,9 @@ export class ManageGroupsComponent {
   private async initializeForm(): Promise<void> {
     if (
       this.selectedGroup() !== null &&
-      this.adminGroupIds().includes(this.selectedGroup().id)
+      this.adminGroupIds().includes(this.selectedGroup()!.id)
     ) {
-      const group = this.selectedGroup();
+      const group = this.selectedGroup()!;
 
       // Check if group has expenses
       const hasExpenses = await this.expenseService.hasExpensesForGroup(
@@ -105,7 +105,7 @@ export class ManageGroupsComponent {
       this.groupHasExpenses.set(hasExpenses);
 
       this.editGroupForm.patchValue({
-        groupRef: group.ref,
+        groupRef: group.ref ?? null,
         groupName: group.name,
         active: group.active ?? false,
         autoAddMembers: group.autoAddMembers ?? false,
@@ -126,12 +126,12 @@ export class ManageGroupsComponent {
 
   async onSelectGroup(): Promise<void> {
     const group = this.userAdminGroups().find((g) =>
-      g.ref.eq(this.f.groupRef.value)
+      g.ref!.eq(this.f.groupRef.value!)
     );
-    this.selectedGroup.set(group);
+    this.selectedGroup.set(group ?? null);
 
     // Check if group has expenses
-    const hasExpenses = await this.expenseService.hasExpensesForGroup(group.id);
+    const hasExpenses = await this.expenseService.hasExpensesForGroup(group!.id);
     this.groupHasExpenses.set(hasExpenses);
 
     // Enable/disable currency field based on expenses
@@ -142,10 +142,10 @@ export class ManageGroupsComponent {
     }
 
     this.editGroupForm.patchValue({
-      groupName: this.selectedGroup().name,
-      active: this.selectedGroup().active ?? false,
-      autoAddMembers: this.selectedGroup().autoAddMembers ?? false,
-      currencyCode: this.selectedGroup().currencyCode ?? 'USD',
+      groupName: this.selectedGroup()!.name,
+      active: this.selectedGroup()!.active ?? false,
+      autoAddMembers: this.selectedGroup()!.autoAddMembers ?? false,
+      currencyCode: this.selectedGroup()!.currencyCode ?? 'USD',
     });
     this.editGroupForm.markAsPristine();
     this.editGroupForm.markAsUntouched();
@@ -157,18 +157,18 @@ export class ManageGroupsComponent {
       return;
     }
     const form = this.editGroupForm.getRawValue();
-    const currencyConfig = getCurrencyConfig(form.currencyCode);
+    const currencyConfig = getCurrencyConfig(form.currencyCode!)!;
     const changes: Partial<Group> = {
-      name: form.groupName,
-      active: form.active,
-      autoAddMembers: form.autoAddMembers,
-      currencyCode: form.currencyCode,
+      name: form.groupName ?? undefined,
+      active: form.active ?? undefined,
+      autoAddMembers: form.autoAddMembers ?? undefined,
+      currencyCode: form.currencyCode ?? undefined,
       currencySymbol: currencyConfig.symbol,
       decimalPlaces: currencyConfig.decimalPlaces,
     };
     this.loading.loadingOn();
     try {
-      await this.groupService.updateGroup(this.selectedGroup().ref, changes);
+      await this.groupService.updateGroup(this.selectedGroup()!.ref!, changes);
       this.dialogRef.close({
         success: true,
         operation: 'saved',
@@ -211,7 +211,7 @@ export class ManageGroupsComponent {
       if (result) {
         this.loading.loadingOn();
         try {
-          await this.groupService.updateGroup(this.selectedGroup().ref, {
+          await this.groupService.updateGroup(this.selectedGroup()!.ref!, {
             archived: true,
             active: false,
           });
@@ -248,7 +248,7 @@ export class ManageGroupsComponent {
     }
     this.loading.loadingOn();
     try {
-      await this.groupService.updateGroup(this.selectedGroup().ref, {
+      await this.groupService.updateGroup(this.selectedGroup()!.ref!, {
         archived: false,
       });
       this.dialogRef.close({
@@ -293,7 +293,7 @@ export class ManageGroupsComponent {
       if (result) {
         this.loading.loadingOn();
         try {
-          await this.groupService.deleteGroup(this.selectedGroup().id);
+          await this.groupService.deleteGroup(this.selectedGroup()!.id);
           this.dialogRef.close({
             success: true,
             operation: 'deleted',

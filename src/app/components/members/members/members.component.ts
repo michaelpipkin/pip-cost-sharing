@@ -72,10 +72,10 @@ export class MembersComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
-  user: Signal<User> = this.userStore.user;
-  currentMember: Signal<Member> = this.memberStore.currentMember;
+  user: Signal<User | null> = this.userStore.user;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
   #groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);
@@ -143,7 +143,7 @@ export class MembersComponent {
     }
     const dialogConfig: MatDialogConfig = {
       data: {
-        groupId: this.currentGroup().id,
+        groupId: this.currentGroup()!.id,
       },
     };
     const dialogRef = this.dialog.open(AddMemberComponent, dialogConfig);
@@ -161,12 +161,12 @@ export class MembersComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    if (this.currentMember().groupAdmin || this.user().ref.eq(member.userRef)) {
+    if (this.currentMember()!.groupAdmin || (!!member.userRef && this.user()!.ref!.eq(member.userRef))) {
       const dialogConfig: MatDialogConfig = {
         data: {
-          groupId: this.currentGroup().id,
-          userId: this.user().id,
-          isGroupAdmin: this.currentMember().groupAdmin,
+          groupId: this.currentGroup()!.id,
+          userId: this.user()!.id,
+          isGroupAdmin: this.currentMember()!.groupAdmin,
           member: member,
         },
       };

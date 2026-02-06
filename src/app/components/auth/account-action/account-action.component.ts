@@ -143,7 +143,7 @@ export class AccountActionComponent {
         await this.auth.currentUser.reload();
         // Sync the email in Firestore and link any unlinked member records
         await this.userService.updateUserEmailAndLinkMembers(
-          this.auth.currentUser.email
+          this.auth.currentUser.email!
         );
         // Update UserStore with new email verification status
         this.userStore.setIsEmailConfirmed(this.auth.currentUser.emailVerified);
@@ -183,7 +183,7 @@ export class AccountActionComponent {
     this.loading.loadingOn();
 
     try {
-      await confirmPasswordReset(this.auth, this.oobCode(), password);
+      await confirmPasswordReset(this.auth, this.oobCode(), password!);
       this.success.set(true);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Password reset successfully' },

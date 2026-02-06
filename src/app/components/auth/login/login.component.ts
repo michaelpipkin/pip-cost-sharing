@@ -75,7 +75,7 @@ export class LoginComponent {
       this.loading.loadingOn();
       const email = this.loginForm.value.email;
       const password = this.loginForm.value.password;
-      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email!);
       if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Please sign in with Google' },
@@ -83,7 +83,7 @@ export class LoginComponent {
         this.loading.loadingOff();
         return;
       } else {
-        await signInWithEmailAndPassword(this.auth, email, password);
+        await signInWithEmailAndPassword(this.auth, email!, password!);
         // Navigation handled automatically by UserService.onAuthStateChanged
       }
     } catch {

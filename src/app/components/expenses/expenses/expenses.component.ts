@@ -119,9 +119,9 @@ export class ExpensesComponent implements AfterViewInit {
   protected readonly expenseFilterService = inject(TableFilterService<Expense>);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
-  currentMember: Signal<Member> = this.memberStore.currentMember;
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
-  currentGroup: Signal<Group> = this.groupStore.currentGroup;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   expenses = signal<Expense[]>([]);
   isLoaded = signal<boolean>(false);
@@ -273,9 +273,9 @@ export class ExpensesComponent implements AfterViewInit {
         // Fall back to Firebase service
         const expenses: Expense[] =
           await this.expenseService.getGroupExpensesByDateRange(
-            this.currentGroup().id,
-            this.startDate(),
-            this.endDate(),
+            this.currentGroup()!.id,
+            this.startDate() ?? undefined,
+            this.endDate() ?? undefined,
             this.unpaidOnly(),
             this.searchPayer(),
             this.searchCategory()
@@ -284,7 +284,7 @@ export class ExpensesComponent implements AfterViewInit {
       }
     } catch (error) {
       this.analytics.logEvent( 'fetch_expenses_error', {
-        error: error.message,
+        error: (error as Error).message,
       });
       console.error('Error loading expenses:', error);
       // Set empty array on error so the UI shows "No expenses found" instead of hanging
@@ -332,9 +332,9 @@ export class ExpensesComponent implements AfterViewInit {
     this.loading.loadingOn();
     try {
       await this.splitService.updateSplit(
-        this.currentGroup().id,
-        expense.ref,
-        split.ref,
+        this.currentGroup()!.id,
+        expense.ref!,
+        split.ref!,
         changes
       );
       this.loadExpenses();
@@ -390,8 +390,8 @@ export class ExpensesComponent implements AfterViewInit {
 
     let summaryText = `Date: ${date}\n`;
     summaryText += `Description: ${expense.description}\n`;
-    summaryText += `Category: ${expense.category.name}\n`;
-    summaryText += `Paid by: ${expense.paidByMember.displayName}\n`;
+    summaryText += `Category: ${expense.category?.name}\n`;
+    summaryText += `Paid by: ${expense.paidByMember?.displayName}\n`;
     summaryText += `Total: ${this.formatCurrency(expense.totalAmount)}\n`;
 
     // Add breakdown information similar to split component
@@ -409,7 +409,7 @@ export class ExpensesComponent implements AfterViewInit {
 
     // First pass: collect all lines and calculate max lengths
     expense.splits.forEach((split) => {
-      const owedBy = split.owedByMember.displayName;
+      const owedBy = split.owedByMember?.displayName;
       // Only show paid status if the person who owes is different from the person who paid
       const showPaidStatus = !expense.paidByMemberRef.eq(split.owedByMemberRef);
       const paidStatus = showPaidStatus

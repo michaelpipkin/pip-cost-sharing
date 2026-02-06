@@ -11,10 +11,11 @@ export class ClearSelectDirective {
 
   @HostListener('click')
   onClick() {
-    if (this.appClearSelect) {
-      this.appClearSelect().value = this.clearValue();
+    const select = this.appClearSelect();
+    if (select) {
+      select.value = this.clearValue();
       setTimeout(() => {
-        this.appClearSelect().close();
+        select.close();
       }, 10);
     }
   }

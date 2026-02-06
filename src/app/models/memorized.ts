@@ -7,17 +7,17 @@ export class Memorized {
   constructor(init?: Partial<Memorized>) {
     Object.assign(this, init);
   }
-  id: string;
-  description: string;
-  categoryRef: DocumentReference<Category>;
+  id!: string;
+  description!: string;
+  categoryRef!: DocumentReference<Category>;
   category?: Category;
-  paidByMemberRef: DocumentReference<Member>;
+  paidByMemberRef!: DocumentReference<Member>;
   paidByMember?: Member;
-  sharedAmount: number;
-  allocatedAmount: number;
-  totalAmount: number;
+  sharedAmount!: number;
+  allocatedAmount!: number;
+  totalAmount!: number;
   splitByPercentage: boolean = false;
-  splits: Partial<Split>[];
+  splits!: Partial<Split>[];
   ref?: DocumentReference<Memorized>;
 }
 

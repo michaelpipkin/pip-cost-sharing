@@ -8,18 +8,18 @@ export class Expense {
   constructor(init?: Partial<Expense>) {
     Object.assign(this, init);
   }
-  id: string;
-  date: Date;
-  description: string;
-  categoryRef: DocumentReference<Category>;
+  id!: string;
+  date!: Date;
+  description!: string;
+  categoryRef!: DocumentReference<Category>;
   category?: Category;
-  paidByMemberRef: DocumentReference<Member>;
+  paidByMemberRef!: DocumentReference<Member>;
   paidByMember?: Member;
-  sharedAmount: number;
-  allocatedAmount: number;
-  totalAmount: number;
+  sharedAmount!: number;
+  allocatedAmount!: number;
+  totalAmount!: number;
   splitByPercentage: boolean = false;
-  splits: Split[];
+  splits!: Split[];
   receiptPath?: string | null; // Store the storage path as a string
   paid: boolean = false;
   ref?: DocumentReference<Expense>;
