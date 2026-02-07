@@ -72,7 +72,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
     // Get reference to the popover element after it's attached to the DOM
     setTimeout(() => {
       const element = document.querySelector(
-        '[data-test-id="loading-spinner-container"]'
+        '[data-testid="loading-spinner-container"]'
       ) as HTMLElement;
       if (element) {
         // Setting the signal will trigger the effect

@@ -4,6 +4,9 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Category } from '@models/category';
 import { User } from '@models/user';
+import { History } from '@models/history';
+import { Split } from '@models/split';
+import { AmountDue } from '@models/amount-due';
 
 // ---- Mock DocumentReference ----
 
@@ -64,6 +67,46 @@ export function mockUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     email: 'test@example.com',
     ref: mockDocRef('users/user-1'),
+    ...overrides,
+  });
+}
+
+export function mockHistory(overrides: Partial<History> = {}): History {
+  return new History({
+    id: 'history-1',
+    date: new Date('2024-01-15'),
+    totalPaid: 50,
+    paidByMemberRef: mockDocRef('groups/group-1/members/member-1'),
+    paidToMemberRef: mockDocRef('groups/group-1/members/member-2'),
+    lineItems: [{ category: 'Food', amount: 50 }],
+    ref: mockDocRef('groups/group-1/history/history-1'),
+    ...overrides,
+  });
+}
+
+export function mockSplit(overrides: Partial<Split> = {}): Split {
+  return new Split({
+    id: 'split-1',
+    date: new Date('2024-01-15'),
+    expenseRef: mockDocRef('groups/group-1/expenses/expense-1'),
+    paidByMemberRef: mockDocRef('groups/group-1/members/member-1'),
+    owedByMemberRef: mockDocRef('groups/group-1/members/member-2'),
+    categoryRef: mockDocRef('groups/group-1/categories/cat-1'),
+    assignedAmount: 0,
+    percentage: 0,
+    allocatedAmount: 50,
+    paid: false,
+    ref: mockDocRef('groups/group-1/splits/split-1'),
+    ...overrides,
+  });
+}
+
+export function mockAmountDue(overrides: Partial<AmountDue> = {}): AmountDue {
+  return new AmountDue({
+    owedByMemberRef: mockDocRef('groups/group-1/members/member-1'),
+    owedToMemberRef: mockDocRef('groups/group-1/members/member-2'),
+    categoryRef: mockDocRef('groups/group-1/categories/cat-1'),
+    amount: 50,
     ...overrides,
   });
 }
@@ -172,6 +215,34 @@ export function createMockUserStore() {
   };
 }
 
+export function createMockHistoryStore() {
+  const groupHistory = signal<History[]>([]);
+  const loaded = signal(true);
+  return {
+    groupHistory,
+    loaded,
+    setGroupHistory: vi.fn((history: History[]) => groupHistory.set(history)),
+    clearGroupHistory: vi.fn(() => {
+      groupHistory.set([]);
+      loaded.set(false);
+    }),
+  };
+}
+
+export function createMockSplitStore() {
+  const unpaidSplits = signal<Split[]>([]);
+  const loaded = signal(true);
+  return {
+    unpaidSplits,
+    loaded,
+    setUnpaidSplits: vi.fn((splits: Split[]) => unpaidSplits.set(splits)),
+    clearUnpaidSplits: vi.fn(() => {
+      unpaidSplits.set([]);
+      loaded.set(false);
+    }),
+  };
+}
+
 // ---- Mock Service Factories ----
 
 export function createMockLoadingService() {
@@ -206,6 +277,7 @@ export function createMockSortingService() {
 export function createMockTourService() {
   return {
     checkForContinueTour: vi.fn(),
+    startWelcomeTour: vi.fn(),
     startMembersTour: vi.fn(),
     startCategoriesTour: vi.fn(),
     startHistoryTour: vi.fn(),
@@ -255,5 +327,51 @@ export function createMockCategoryService() {
     addCategory: vi.fn(),
     updateCategory: vi.fn(),
     deleteCategory: vi.fn(),
+  };
+}
+
+export function createMockCalculatorOverlayService() {
+  return {
+    openCalculator: vi.fn(),
+  };
+}
+
+export function createMockExpenseService() {
+  return {
+    addExpense: vi.fn(() => Promise.resolve()),
+    updateExpense: vi.fn(() => Promise.resolve()),
+    deleteExpense: vi.fn(() => Promise.resolve()),
+    getExpense: vi.fn(),
+    getExpenses: vi.fn(),
+  };
+}
+
+export function createMockMemorizedService() {
+  const memorized = signal<any[]>([]);
+  return {
+    memorized,
+    loaded: signal(true),
+    addMemorized: vi.fn(),
+    updateMemorized: vi.fn(),
+    deleteMemorized: vi.fn(),
+  };
+}
+
+export function createMockCameraService() {
+  return {
+    takePicture: vi.fn(() => Promise.resolve(null)),
+    chooseFromGallery: vi.fn(() => Promise.resolve(null)),
+  };
+}
+
+export function createMockHistoryService() {
+  return {
+    deleteHistory: vi.fn(() => Promise.resolve()),
+  };
+}
+
+export function createMockSplitService() {
+  return {
+    markAsPaid: vi.fn(() => Promise.resolve()),
   };
 }

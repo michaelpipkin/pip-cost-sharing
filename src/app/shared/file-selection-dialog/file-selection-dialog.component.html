@@ -1,5 +1,5 @@
-<h1 mat-dialog-title data-test-id="dialog-title">Select Receipt</h1>
-<mat-dialog-content data-test-id="dialog-content">
+<h1 mat-dialog-title data-testid="dialog-title">Select Receipt</h1>
+<mat-dialog-content data-testid="dialog-content">
   <div class="selection-options">
     @if (data.isNativePlatform) {
       <button
@@ -7,7 +7,7 @@
         class="btn-primary selection-button"
         type="button"
         [mat-dialog-close]="'camera'"
-        data-test-id="camera-button"
+        data-testid="camera-button"
         aria-label="Take a photo with camera"
       >
         <mat-icon>camera_alt</mat-icon>
@@ -18,7 +18,7 @@
         class="btn-primary selection-button"
         type="button"
         [mat-dialog-close]="'gallery'"
-        data-test-id="gallery-button"
+        data-testid="gallery-button"
         aria-label="Choose from photo gallery"
       >
         <mat-icon>photo_library</mat-icon>
@@ -30,7 +30,7 @@
       class="btn-primary selection-button"
       type="button"
       [mat-dialog-close]="'file'"
-      data-test-id="file-button"
+      data-testid="file-button"
       aria-label="Browse files"
     >
       <mat-icon>folder_open</mat-icon>
@@ -42,7 +42,7 @@
         class="btn-primary selection-button"
         type="button"
         [mat-dialog-close]="'clipboard'"
-        data-test-id="clipboard-button"
+        data-testid="clipboard-button"
         aria-label="Paste from clipboard"
       >
         <mat-icon>content_paste</mat-icon>
@@ -51,12 +51,12 @@
     }
   </div>
 </mat-dialog-content>
-<mat-dialog-actions data-test-id="dialog-actions">
+<mat-dialog-actions data-testid="dialog-actions">
   <button
     mat-stroked-button
     type="button"
     [mat-dialog-close]="null"
-    data-test-id="cancel-button"
+    data-testid="cancel-button"
     aria-label="Cancel"
   >
     Cancel
