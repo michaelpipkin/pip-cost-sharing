@@ -1,20 +1,20 @@
 <div
   class="footer"
   [class.no-emulation]="!production() && !emulators()"
-  data-test-id="app-footer"
+  data-testid="app-footer"
 >
-  <div data-test-id="footer-left" class="footer-left">
-    <span data-test-id="copyright-text"> &copy; {{ currentYear() }}</span>
+  <div data-testid="footer-left" class="footer-left">
+    <span data-testid="copyright-text"> &copy; {{ currentYear() }}</span>
     <a
       [routerLink]="['/about']"
-      data-test-id="about-link"
+      data-testid="about-link"
       aria-label="About Us"
     >
       About Us
     </a>
     <a
       [routerLink]="['/help']"
-      data-test-id="contact-link"
+      data-testid="contact-link"
       aria-label="Contact Us"
     >
       Contact Us
@@ -23,25 +23,25 @@
       href="/privacy-policy.html"
       target="_blank"
       (click)="openPrivacyPolicy($event)"
-      data-test-id="privacy-link"
+      data-testid="privacy-link"
       aria-label="Privacy Policy"
     >
       Privacy Policy
     </a>
   </div>
-  <div class="footer-right" data-test-id="version-section">
+  <div class="footer-right" data-testid="version-section">
     @if (!production()) {
       @if (emulators()) {
-        <span data-test-id="dev-emulated-status"
+        <span data-testid="dev-emulated-status"
           >*** DEV :: USING EMULATED DATA ***</span
         >
       } @else {
-        <span data-test-id="dev-production-status"
+        <span data-testid="dev-production-status"
           >*** DEV :: USING PRODUCTION DATA ***</span
         >
       }
     } @else {
-      <span data-test-id="version-info">
+      <span data-testid="version-info">
         {{ versionText() }}
       </span>
     }

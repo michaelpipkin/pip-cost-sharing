@@ -29,7 +29,7 @@ describe('CalculatorComponent', () => {
   });
 
   function query(testId: string): HTMLElement | null {
-    return el.querySelector(`[data-test-id="${testId}"]`);
+    return el.querySelector(`[data-testid="${testId}"]`);
   }
 
   function click(testId: string): void {

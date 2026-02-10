@@ -277,7 +277,7 @@ body.dark-theme {
     }
 
     // Hide copyright when container is narrow (< 500px)
-    [data-test-id='copyright-text'] {
+    [data-testid='copyright-text'] {
       white-space: nowrap;
 
       @container footer (max-width: 400px) {

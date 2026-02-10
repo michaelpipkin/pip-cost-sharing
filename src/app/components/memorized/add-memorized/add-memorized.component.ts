@@ -36,7 +36,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
@@ -49,10 +48,12 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -62,7 +63,6 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -130,13 +130,18 @@ export class AddMemorizedComponent {
     date: [new Date(), Validators.required],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    category: [null as unknown as DocumentReference<Category>, Validators.required],
+    category: [
+      null as unknown as DocumentReference<Category>,
+      Validators.required,
+    ],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
-  autoAddMembers = computed<boolean>(() => this.currentGroup()?.autoAddMembers ?? false);
+  autoAddMembers = computed<boolean>(
+    () => this.currentGroup()?.autoAddMembers ?? false
+  );
 
   constructor() {
     this.loading.loadingOn();
@@ -284,6 +289,15 @@ export class AddMemorizedComponent {
     }
   }
 
+  availableMembersForSplit(index: number): Member[] {
+    const selectedMemberIds = this.splitsFormArray.controls
+      .filter((_, i) => i !== index)
+      .map((control) => control.get('owedByMemberRef')!.value.id);
+    return this.activeMembers().filter(
+      (member) => !selectedMemberIds.includes(member.id)
+    );
+  }
+
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
     if (this.splitByPercentage()) {
@@ -319,7 +333,7 @@ export class AddMemorizedComponent {
       totalAmount: val.amount!,
       sharedAmount: val.sharedAmount!,
       allocatedAmount: val.allocatedAmount!,
-      splits: this.splitsFormArray.value.map((split) => ({
+      splits: this.splitsFormArray.value.map((split: Split) => ({
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
         percentage: split.percentage,
@@ -473,8 +487,8 @@ export class AddMemorizedComponent {
         memorized
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Memorized expense added' },
-        });
+        data: { message: 'Memorized expense added' },
+      });
       this.router.navigate(['/memorized']);
     } catch (error) {
       if (error instanceof Error) {
@@ -488,7 +502,9 @@ export class AddMemorizedComponent {
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not memorize expense' },
+          data: {
+            message: 'Something went wrong - could not memorize expense',
+          },
         });
       }
     } finally {
