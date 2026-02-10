@@ -43,6 +43,8 @@ export const test = base.extend<TestFixtures>({
 
   // Page with Firebase emulators pre-configured
   firebasePage: async ({ page, cleanFirebase }, use) => {
+    // Grant clipboard permissions for copy-to-clipboard tests
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await use(page);
   },
 
@@ -54,6 +56,9 @@ export const test = base.extend<TestFixtures>({
 
       // Configure the page to use emulators (but don't clear existing data)
       await configureFirebaseEmulators(page);
+
+      // Grant clipboard permissions for copy-to-clipboard tests
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
       await use(page);
 
