@@ -1,5 +1,5 @@
-<div class="calculator" data-test-id="calculator">
-  <div class="calculator-display" data-test-id="calculator-display">
+<div class="calculator" data-testid="calculator">
+  <div class="calculator-display" data-testid="calculator-display">
     <div class="expression">{{ expression() || '0' }}</div>
     <div class="result" [class.error]="hasError()">
       {{ hasError() ? 'Error' : (result() | number: '1.2-2') }}
@@ -12,7 +12,7 @@
         mat-raised-button
         class="calc-btn secondary"
         (click)="clear()"
-        data-test-id="clear-btn"
+        data-testid="clear-btn"
       >
         C
       </button>
@@ -20,7 +20,7 @@
         mat-icon-button
         class="calc-btn secondary"
         (click)="backspace()"
-        data-test-id="backspace-btn"
+        data-testid="backspace-btn"
       >
         <mat-icon>backspace</mat-icon>
       </button>
@@ -28,7 +28,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation('(')"
-        data-test-id="open-paren-btn"
+        data-testid="open-paren-btn"
       >
         (
       </button>
@@ -36,7 +36,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation(')')"
-        data-test-id="close-paren-btn"
+        data-testid="close-paren-btn"
       >
         )
       </button>
@@ -47,7 +47,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('7')"
-        data-test-id="num-7-btn"
+        data-testid="num-7-btn"
       >
         7
       </button>
@@ -55,7 +55,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('8')"
-        data-test-id="num-8-btn"
+        data-testid="num-8-btn"
       >
         8
       </button>
@@ -63,7 +63,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('9')"
-        data-test-id="num-9-btn"
+        data-testid="num-9-btn"
       >
         9
       </button>
@@ -71,7 +71,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation('/')"
-        data-test-id="divide-btn"
+        data-testid="divide-btn"
       >
         ÷
       </button>
@@ -82,7 +82,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('4')"
-        data-test-id="num-4-btn"
+        data-testid="num-4-btn"
       >
         4
       </button>
@@ -90,7 +90,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('5')"
-        data-test-id="num-5-btn"
+        data-testid="num-5-btn"
       >
         5
       </button>
@@ -98,7 +98,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('6')"
-        data-test-id="num-6-btn"
+        data-testid="num-6-btn"
       >
         6
       </button>
@@ -106,7 +106,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation('*')"
-        data-test-id="multiply-btn"
+        data-testid="multiply-btn"
       >
         ×
       </button>
@@ -117,7 +117,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('1')"
-        data-test-id="num-1-btn"
+        data-testid="num-1-btn"
       >
         1
       </button>
@@ -125,7 +125,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('2')"
-        data-test-id="num-2-btn"
+        data-testid="num-2-btn"
       >
         2
       </button>
@@ -133,7 +133,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('3')"
-        data-test-id="num-3-btn"
+        data-testid="num-3-btn"
       >
         3
       </button>
@@ -141,7 +141,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation('-')"
-        data-test-id="subtract-btn"
+        data-testid="subtract-btn"
       >
         -
       </button>
@@ -152,7 +152,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('0')"
-        data-test-id="num-0-btn"
+        data-testid="num-0-btn"
       >
         0
       </button>
@@ -160,7 +160,7 @@
         mat-raised-button
         class="calc-btn number"
         (click)="addNumber('.')"
-        data-test-id="decimal-btn"
+        data-testid="decimal-btn"
       >
         .
       </button>
@@ -168,7 +168,7 @@
         mat-raised-button
         class="calc-btn primary"
         (click)="useResult()"
-        data-test-id="equals-btn"
+        data-testid="equals-btn"
       >
         =
       </button>
@@ -176,7 +176,7 @@
         mat-raised-button
         class="calc-btn operator"
         (click)="addOperation('+')"
-        data-test-id="add-btn"
+        data-testid="add-btn"
       >
         +
       </button>

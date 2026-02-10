@@ -36,7 +36,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -49,10 +48,12 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
@@ -63,7 +64,6 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -125,7 +125,8 @@ export class EditMemorizedComponent {
   });
   splitMembers = computed<Member[]>(() => {
     const splitMembers: DocumentReference<Member>[] =
-      this.memorized().splits?.map((s: Split) => s.owedByMemberRef!) ?? [];
+      this.memorized().splits?.map((s: Partial<Split>) => s.owedByMemberRef!) ??
+      [];
     return this.memberStore
       .groupMembers()
       .filter((m) => m.active || splitMembers.includes(m.ref!));
@@ -141,10 +142,16 @@ export class EditMemorizedComponent {
   memberAmounts = viewChildren<ElementRef>('memberAmount');
 
   editMemorizedForm = this.fb.group({
-    paidByMember: [null as unknown as DocumentReference<Member>, Validators.required],
+    paidByMember: [
+      null as unknown as DocumentReference<Member>,
+      Validators.required,
+    ],
     amount: [0, [Validators.required, this.amountValidator()]],
     description: ['', Validators.required],
-    category: [null as unknown as DocumentReference<Category>, Validators.required],
+    category: [
+      null as unknown as DocumentReference<Category>,
+      Validators.required,
+    ],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
@@ -161,7 +168,7 @@ export class EditMemorizedComponent {
       sharedAmount: memorized.sharedAmount,
       allocatedAmount: memorized.allocatedAmount,
     });
-    memorized.splits.forEach((s: Split) => {
+    memorized.splits.forEach((s: Partial<Split>) => {
       this.splits.push(
         this.fb.group({
           owedByMemberRef: s.owedByMemberRef,
@@ -267,6 +274,15 @@ export class EditMemorizedComponent {
     this.editMemorizedForm.markAsDirty();
   }
 
+  availableMembersForSplit(index: number): Member[] {
+    const selectedMemberIds = this.splitsFormArray.controls
+      .filter((_, i) => i !== index)
+      .map((control) => control.get('owedByMemberRef')!.value.id);
+    return this.splitMembers().filter(
+      (member) => !selectedMemberIds.includes(member.id)
+    );
+  }
+
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
     if (this.splitByPercentage()) {
@@ -303,7 +319,7 @@ export class EditMemorizedComponent {
       totalAmount: val.amount!,
       sharedAmount: val.sharedAmount!,
       allocatedAmount: val.allocatedAmount!,
-      splits: this.splitsFormArray.value.map((split) => ({
+      splits: this.splitsFormArray.value.map((split: Split) => ({
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
         percentage: split.percentage,
@@ -472,7 +488,10 @@ export class EditMemorizedComponent {
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not update memorized expense' },
+          data: {
+            message:
+              'Something went wrong - could not update memorized expense',
+          },
         });
       }
     } finally {
@@ -513,7 +532,10 @@ export class EditMemorizedComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not delete memorized expense' },
+              data: {
+                message:
+                  'Something went wrong - could not delete memorized expense',
+              },
             });
           }
         } finally {

@@ -28,6 +28,7 @@ import { APP_OWNER_EMAIL } from '@components/auth/guards.guard';
 import { environment } from '@env/environment';
 import { Group } from '@models/group';
 import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { HistoryService } from '@services/history.service';
@@ -37,7 +38,6 @@ import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import {
@@ -291,7 +291,7 @@ export class AccountComponent {
       this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'update_password',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       this.loading.loadingOff();
@@ -376,7 +376,7 @@ export class AccountComponent {
       this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'data_update',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Something went wrong - could not update data' },

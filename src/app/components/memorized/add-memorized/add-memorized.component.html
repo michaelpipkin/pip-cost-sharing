@@ -12,7 +12,6 @@
       >
     </div>
   </div>
-  @let members = activeMembers();
   <div class="sub-container mb-2">
     <form
       [formGroup]="addMemorizedForm"
@@ -28,7 +27,7 @@
             name="paidByMember"
             docRefCompare
           >
-            @for (member of members; track member.ref) {
+            @for (member of activeMembers(); track member.ref) {
               <mat-option [value]="member.ref">{{
                 member.displayName
               }}</mat-option>
@@ -165,6 +164,7 @@
           class="btn-primary"
           type="button"
           (click)="addSplit()"
+          [disabled]="activeMembers().length === splitsFormArray.length"
         >
           Add New Split
         </button>
@@ -173,6 +173,7 @@
           class="btn-primary"
           type="button"
           (click)="addAllActiveGroupMembers()"
+          [disabled]="activeMembers().length === splitsFormArray.length"
         >
           Add All Members
         </button>
@@ -184,7 +185,7 @@
             [class.btn-unselected]="splitByPercentage()"
             type="button"
             (click)="onSplitByAmountClick()"
-            data-test-id="split-by-amount-button"
+            data-testid="split-by-amount-button"
             aria-label="Change to split by amount"
             matTooltip="Split by Amount"
           >
@@ -197,7 +198,7 @@
             [class.btn-unselected]="!splitByPercentage()"
             type="button"
             (click)="onSplitByPercentageClick()"
-            data-test-id="split-by-percentage-button"
+            data-testid="split-by-percentage-button"
             aria-label="Change to split by percentage"
             matTooltip="Split by Percentage"
           >
@@ -220,7 +221,7 @@
                   (selectionChange)="allocateSharedAmounts()"
                   docRefCompare
                 >
-                  @for (member of members; track member.ref) {
+                  @for (member of availableMembersForSplit(i); track member.ref) {
                     <mat-option [value]="member.ref">{{
                       member.displayName
                     }}</mat-option>

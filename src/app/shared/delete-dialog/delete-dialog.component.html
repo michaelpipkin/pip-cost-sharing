@@ -1,22 +1,22 @@
-<h1 mat-dialog-title data-test-id="delete-dialog-title">Confirm {{ operation() }}</h1>
-<mat-dialog-content data-test-id="delete-dialog-content">
-  <p data-test-id="delete-warning-text">
+<h1 mat-dialog-title data-testid="delete-dialog-title">Confirm {{ operation() }}</h1>
+<mat-dialog-content data-testid="delete-dialog-content">
+  <p data-testid="delete-warning-text">
     WARNING! This action cannot be undone. Are you sure you want to
     {{ operation().toLowerCase() }} {{ target() }}?
   </p>
 </mat-dialog-content>
-<mat-dialog-actions data-test-id="delete-dialog-actions">
+<mat-dialog-actions data-testid="delete-dialog-actions">
   <button
     mat-raised-button
     type="button"
     class="btn-danger"
     [mat-dialog-close]="true"
-    data-test-id="delete-confirm-button"
+    data-testid="delete-confirm-button"
     [aria-label]="operation() + ' ' + target()"
   >
     {{ operation() }}
   </button>
-  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-test-id="delete-cancel-button" aria-label="Cancel delete operation">
+  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-testid="delete-cancel-button" aria-label="Cancel delete operation">
     Cancel
   </button>
 </mat-dialog-actions>

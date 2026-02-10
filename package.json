@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.13.22",
+  "version": "1.13.23",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -27,10 +27,8 @@
     "e2e:local:headed": "playwright test --headed",
     "e2e:local:fast": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium",
     "e2e:local:fast:headed": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium --headed",
-    "e2e:with-firebase": "echo 'Make sure Firebase emulators are running (pnpm emu:data)' && playwright test",
-    "test:full": "concurrently --kill-others --success first \"pnpm emu:data\" \"wait-on http://localhost:8080 && playwright test\"",
-    "unit-test": "ng test --watch=false",
-    "unit-test:watch": "ng test"
+    "test": "ng test --watch=false",
+    "test:watch": "ng test"
   },
   "private": true,
   "dependencies": {
