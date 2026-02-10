@@ -12,7 +12,6 @@
       >
     </div>
   </div>
-  @let memberList = expenseMembers();
   @let hasReceipt = !!receiptUrl();
   <div class="sub-container mb-2">
     <form
@@ -29,7 +28,7 @@
             name="paidByMember"
             docRefCompare
           >
-            @for (member of memberList; track member.ref) {
+            @for (member of expenseMembers(); track member.ref) {
               <mat-option [value]="member.ref">{{
                 member.displayName
               }}</mat-option>
@@ -214,6 +213,7 @@
           class="btn-primary"
           type="button"
           (click)="addSplit()"
+          [disabled]="splitMembers().length === splitsFormArray.length"
         >
           Add New Split
         </button>
@@ -270,7 +270,7 @@
                   (selectionChange)="allocateSharedAmounts()"
                   docRefCompare
                 >
-                  @for (member of splitMembers(); track member.ref) {
+                  @for (member of availableMembersForSplit(i); track member.ref) {
                     <mat-option [value]="member.ref">{{
                       member.displayName
                     }}</mat-option>

@@ -1,14 +1,4 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -21,10 +11,6 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -40,6 +26,20 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-members',
@@ -148,7 +148,7 @@ export class MembersComponent {
     };
     const dialogRef = this.dialog.open(AddMemberComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
-      if (result.success) {
+      if (result) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Member added' },
         });
@@ -161,7 +161,10 @@ export class MembersComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    if (this.currentMember()!.groupAdmin || (!!member.userRef && this.user()!.ref!.eq(member.userRef))) {
+    if (
+      this.currentMember()!.groupAdmin ||
+      (!!member.userRef && this.user()!.ref!.eq(member.userRef))
+    ) {
       const dialogConfig: MatDialogConfig = {
         data: {
           groupId: this.currentGroup()!.id,
