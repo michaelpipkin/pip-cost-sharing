@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.13.23",
+  "version": "1.13.24",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -8,9 +8,9 @@
     "start": "ng serve --host=local.dev.com",
     "start:ci": "ng serve --host=local.dev.com --configuration=ci",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
-    "emu:export": "firebase emulators:export seed-data --force",
-    "emu:no-data": "firebase emulators:start",
+    "emu": "firebase emulators:start",
     "emu:data": "firebase emulators:start --import seed-data",
+    "emu:export": "firebase emulators:export seed-data --force",
     "get-indexes": "firebase firestore:indexes",
     "build:cap": "ng build --configuration=production && npx cap sync",
     "build:prod": "pnpm --no-git-tag-version version patch && node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
@@ -99,6 +99,8 @@
       "msgpackr-extract",
       "protobufjs"
     ],
-    "overrides": {}
+    "overrides": {
+      "wait-on>axios": ">=1.13.5"
+    }
   }
 }
