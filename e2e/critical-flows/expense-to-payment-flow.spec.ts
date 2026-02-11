@@ -5,6 +5,7 @@ import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
 import { SummaryPage } from '../pages/summary.page';
 import { HistoryPage } from '../pages/history.page';
+import { MembersPage } from '../pages/members.page';
 
 test.describe('Critical Flow: Expense → Payment → History', () => {
   test('should create expense, pay it, and verify in history', async ({
@@ -24,30 +25,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // STEP 1b: Add a second member to the group
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.waitForSelector('[data-testid="add-member-button"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.waitForTimeout(500);
-
-    // Fill in member details in the dialog
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill(
-      '[data-testid="member-email-input"]',
-      'testuser@example.com'
-    );
-    await preserveDataFirebasePage.waitForTimeout(500);
-
-    // Save the new member
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // STEP 2: Create expense (Admin pays $100, to be split equally)
     // With auto-add members enabled, all group members are automatically added as splits
@@ -122,17 +102,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
     await expensesPage.gotoAddExpense();
@@ -171,17 +143,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create first expense: Admin pays $100, split 50/50 between members
     await expensesPage.gotoAddExpense();
@@ -247,17 +211,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $30, Test User $30)
     await expensesPage.gotoAddExpense();
@@ -295,17 +251,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $25, Test User $25)
     await expensesPage.gotoAddExpense();
@@ -359,17 +307,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $22.50, Test User $22.50)
     await expensesPage.gotoAddExpense();
@@ -408,17 +348,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $50, Test User $50)
     await expensesPage.gotoAddExpense();
@@ -465,17 +397,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill('[data-testid="member-email-input"]', 'testuser@example.com');
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense (auto-splits equally: Admin $40, Test User $40)
     await expensesPage.gotoAddExpense();

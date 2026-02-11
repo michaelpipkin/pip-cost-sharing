@@ -5,6 +5,7 @@ import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
 import { SummaryPage } from '../pages/summary.page';
 import { HistoryPage } from '../pages/history.page';
+import { MembersPage } from '../pages/members.page';
 
 test.describe('Critical Flow: History', () => {
   test('should display payment history after payment', async ({
@@ -24,26 +25,9 @@ test.describe('Critical Flow: History', () => {
     await groupsPage.createGroup('Test Group', 'Admin User', true);
 
     // Add a second member
-    await preserveDataFirebasePage.goto('/members');
-    await preserveDataFirebasePage.waitForSelector('[data-testid="add-member-button"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-    await preserveDataFirebasePage.click('[data-testid="add-member-button"]');
-    await preserveDataFirebasePage.waitForTimeout(500);
-    await preserveDataFirebasePage.fill('[data-testid="member-name-input"]', 'Test User');
-    await preserveDataFirebasePage.fill(
-      '[data-testid="member-email-input"]',
-      'testuser@example.com'
-    );
-    await preserveDataFirebasePage.waitForTimeout(500);
-    await preserveDataFirebasePage.click('[data-testid="add-member-save-button"]');
-
-    // Wait for success snackbar to confirm member was added
-    await expect(
-      preserveDataFirebasePage.locator('[data-testid="snackbar"]')
-    ).toContainText('Member added', { timeout: 5000 });
-    await preserveDataFirebasePage.waitForTimeout(500);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
+    await membersPage.goto();
+    await membersPage.addMember('Test User', 'testuser@example.com');
 
     // Create expense - auto-add will add both members as splits
     await expensesPage.gotoAddExpense();
