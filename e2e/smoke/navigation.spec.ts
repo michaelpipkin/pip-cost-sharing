@@ -1,10 +1,18 @@
-import { expect, test } from '@playwright/test';
-import { TEST_CONFIG } from './constants';
+import { expect, test } from '../fixtures';
+import { TEST_CONFIG } from '../constants';
+import type { Page } from '@playwright/test';
+
+/**
+ * Helper function to wait for page load
+ */
+async function waitForPageLoad(page: Page): Promise<void> {
+  await page.waitForSelector('app-root', { timeout: 10000 });
+}
 
 test.describe('Navigation - Public Routes', () => {
   test('should navigate to home page', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Check we're on the home page
     await expect(page).toHaveURL('/');
@@ -13,7 +21,7 @@ test.describe('Navigation - Public Routes', () => {
 
   test('should navigate to help page', async ({ page }) => {
     await page.goto('/help');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Check we're on the help page
     await expect(page).toHaveURL('/help');
@@ -22,7 +30,7 @@ test.describe('Navigation - Public Routes', () => {
 
   test('should navigate to split expense page', async ({ page }) => {
     await page.goto('/split');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Check we're on the split page
     await expect(page).toHaveURL('/split');
@@ -31,7 +39,7 @@ test.describe('Navigation - Public Routes', () => {
 
   test('should navigate to login page', async ({ page }) => {
     await page.goto('/auth/login');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Check we're on the login page
     await expect(page).toHaveURL('/auth/login');
@@ -40,7 +48,7 @@ test.describe('Navigation - Public Routes', () => {
 
   test('should navigate to register page', async ({ page }) => {
     await page.goto('/auth/register');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Check we're on the register page
     await expect(page).toHaveURL('/auth/register');
@@ -51,7 +59,7 @@ test.describe('Navigation - Public Routes', () => {
 test.describe('Navigation - Route Redirects', () => {
   test('should redirect from root to home', async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // The route config shows '' redirects to '', so we should stay on root
     await expect(page).toHaveURL('/');
@@ -59,7 +67,7 @@ test.describe('Navigation - Route Redirects', () => {
 
   test('should redirect unknown routes to home', async ({ page }) => {
     await page.goto('/nonexistent-page');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect to home due to wildcard route
     await expect(page).toHaveURL('/');
@@ -71,7 +79,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     page,
   }) => {
     await page.goto('/administration/groups');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect to login due to authGuard
     const currentUrl = page.url();
@@ -86,7 +94,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     page,
   }) => {
     await page.goto('/administration/members');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect due to authGuard
     const currentUrl = page.url();
@@ -101,7 +109,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     page,
   }) => {
     await page.goto('/administration/categories');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect due to authGuard
     const currentUrl = page.url();
@@ -116,7 +124,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     page,
   }) => {
     await page.goto('/analysis/summary');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
     const currentUrl = page.url();
@@ -131,7 +139,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     page,
   }) => {
     await page.goto('/analysis/history');
-    await page.waitForSelector('app-root', { timeout: 10000 });
+    await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
     const currentUrl = page.url();

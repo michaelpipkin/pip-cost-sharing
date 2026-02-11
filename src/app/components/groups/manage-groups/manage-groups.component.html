@@ -93,7 +93,7 @@
 <mat-dialog-actions class="action-buttons">
   @if (!!selectedGroup()) {
     <div class="full-width-btn">
-      @if (selectedGroup().archived) {
+      @if (selectedGroup()?.archived) {
         <button
           data-testid="unarchive-group-button"
           mat-raised-button

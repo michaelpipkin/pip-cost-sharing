@@ -172,7 +172,7 @@ export class AddMemorizedComponent {
       // Set default category if only one exists
       if (this.activeCategories().length === 1) {
         this.addMemorizedForm.patchValue({
-          category: this.activeCategories()[0].ref,
+          category: this.activeCategories()[0]!.ref,
         });
       }
       // Turn off loading once stores are populated
@@ -204,7 +204,7 @@ export class AddMemorizedComponent {
     );
     return this.fb.group({
       owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0].ref : null,
+        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
         Validators.required,
       ],
       assignedAmount: [
@@ -292,7 +292,9 @@ export class AddMemorizedComponent {
   availableMembersForSplit(index: number): Member[] {
     const selectedMemberIds = this.splitsFormArray.controls
       .filter((_, i) => i !== index)
-      .map((control) => control.get('owedByMemberRef')!.value.id);
+      .map((control) => control.get('owedByMemberRef')!.value)
+      .filter((memberRef) => memberRef !== null)
+      .map((memberRef) => memberRef.id);
     return this.activeMembers().filter(
       (member) => !selectedMemberIds.includes(member.id)
     );

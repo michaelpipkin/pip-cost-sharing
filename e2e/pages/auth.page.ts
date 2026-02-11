@@ -15,20 +15,17 @@ export class AuthPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    // Use the actual selectors from your Angular Material forms
-    this.emailInput = this.page.locator('input[type="email"]');
-    // Use more specific selectors for password fields to avoid conflicts
-    this.passwordInput = this.page.locator('input[formControlName="password"]');
+    // Use data-testid selectors for reliable element selection
+    this.emailInput = this.page.getByTestId('email-input');
+    this.passwordInput = this.page.getByTestId('password-input');
     this.confirmPasswordInput = this.page.locator(
       'input[formControlName="confirmPassword"]'
     );
-    this.loginButton = this.page.locator('button:has-text("Login")');
+    this.loginButton = this.page.getByTestId('login-submit-button');
     this.signUpButton = this.page.locator(
       'button:has-text("Sign Up"), button:has-text("Register")'
     );
-    this.forgotPasswordLink = this.page.locator(
-      'a:has-text("Forgot"), a:has-text("forgot")'
-    );
+    this.forgotPasswordLink = this.page.getByTestId('forgot-password-link');
     this.errorMessage = this.page.locator(
       '.error, .alert-danger, [role="alert"]'
     );
@@ -41,6 +38,13 @@ export class AuthPage extends BasePage {
   async gotoLogin() {
     await super.goto('/auth/login');
     await this.waitForLoad();
+    // Wait for the login form to be visible
+    await this.page.waitForSelector('[data-testid="login-form"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
+    // Give Angular time to initialize
+    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -49,19 +53,56 @@ export class AuthPage extends BasePage {
   async gotoSignUp() {
     await super.goto('/auth/register');
     // Don't wait for networkidle on register page due to hCaptcha
-    // Instead, wait for domcontentloaded and then for form elements
+    // Instead, wait for domcontentloaded
     await this.page.waitForLoadState('domcontentloaded');
-    await this.emailInput.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Wait for register form email input (has different testid than login page)
+    await this.page
+      .getByTestId('register-email-input')
+      .waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**
    * Login with email and password
    */
   async login(email: string, password: string) {
+    // Wait for the form to be fully loaded
+    await this.page.waitForSelector('[data-testid="login-form"]', {
+      state: 'visible',
+      timeout: 5000,
+    });
+
+    // Fill the form fields
     await this.emailInput.fill(email);
+    await this.page.waitForTimeout(300);
     await this.passwordInput.fill(password);
+    await this.page.waitForTimeout(300);
+
+    // Wait for the button to be enabled (form validation)
+    await this.loginButton.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Check if the button is enabled before clicking
+    const isDisabled = await this.loginButton.isDisabled();
+    if (isDisabled) {
+      throw new Error('Login button is disabled - form may be invalid');
+    }
+
+    // Click the button
     await this.loginButton.click();
-    await this.waitForLoad();
+
+    // Wait for successful login (navigation to groups page or removal of login form)
+    await Promise.race([
+      this.page.waitForURL('**/groups', { timeout: 10000 }),
+      this.page.waitForSelector('[data-testid="logout-button-desktop"]', {
+        state: 'visible',
+        timeout: 10000,
+      }),
+    ]).catch(() => {
+      console.log('Login may have failed - no navigation detected');
+    });
+
+    // Give time for auth state to settle
+    await this.page.waitForTimeout(1000);
   }
 
   /**
@@ -115,18 +156,6 @@ export class AuthPage extends BasePage {
    * Logout (if logout functionality exists)
    */
   async logout() {
-    // Wait for any loading overlay to disappear first
-    await this.page
-      .locator('[data-testid="loading-component"]')
-      .waitFor({
-        state: 'hidden',
-        timeout: 10000,
-      })
-      .catch(() => {
-        // If no loading overlay found, that's fine - continue
-        console.log('No loading overlay found, proceeding with logout');
-      });
-
     // Look for the logout button in the nav bar using data-testid
     const logoutButton = this.page.locator(
       '[data-testid="logout-button-desktop"]'
@@ -155,40 +184,25 @@ export class AuthPage extends BasePage {
       const waitTime = process.env.CI ? 3000 : 1500;
       await this.page.waitForTimeout(waitTime);
 
-      // Check for the three elements guaranteed to be visible to any logged-in user:
-      // 1. Logout button - always visible when logged in
-      const logoutButton = this.page.locator(
-        '[data-testid="logout-button-desktop"]'
-      );
-      // 2. Account button - always visible when logged in
-      const accountButton = this.page.locator(
-        '[data-testid="nav-account-desktop"]'
-      );
-      // 3. Groups link - always visible when logged in (even for users with no groups)
-      const groupsLink = this.page.locator('[data-testid="nav-groups"]');
-
-      // Wait for at least one authenticated element to appear (with longer timeout in CI)
-      const authTimeout = process.env.CI ? 10000 : 5000;
-      try {
-        await Promise.race([
-          logoutButton.waitFor({ state: 'visible', timeout: authTimeout }),
-          accountButton.waitFor({ state: 'visible', timeout: authTimeout }),
-          groupsLink.waitFor({ state: 'visible', timeout: authTimeout }),
-        ]);
-      } catch {
-        // If none appear within timeout, continue with normal checks
-      }
-
-      // Check for elements that appear when isLoggedIn() is false
+      // Check for elements that appear when logged out first (faster)
       const loginButton = this.page.locator(
         '[data-testid="nav-login-desktop"]'
       );
 
-      // If login elements are visible, user is not logged in
+      // If login button is visible, user is not logged in
       const loginVisible = await loginButton.isVisible().catch(() => false);
       if (loginVisible) {
         return false;
       }
+
+      // Check for logged-in elements
+      const logoutButton = this.page.locator(
+        '[data-testid="logout-button-desktop"]'
+      );
+      const accountButton = this.page.locator(
+        '[data-testid="nav-account-desktop"]'
+      );
+      const groupsLink = this.page.locator('[data-testid="nav-groups"]');
 
       // Check if any of the three guaranteed logged-in elements are visible
       const logoutVisible = await logoutButton.isVisible().catch(() => false);

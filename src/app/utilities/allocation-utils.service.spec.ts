@@ -70,8 +70,8 @@ describe('AllocationUtilsService', () => {
       };
       const result = service.allocateSharedAmounts(input);
       expect(result.splits.length).toBe(2);
-      expect(result.splits[0].allocatedAmount).toBe(50);
-      expect(result.splits[1].allocatedAmount).toBe(50);
+      expect(result.splits[0]!.allocatedAmount).toBe(50);
+      expect(result.splits[1]!.allocatedAmount).toBe(50);
       const total = result.splits.reduce(
         (sum, s) => sum + s.allocatedAmount,
         0

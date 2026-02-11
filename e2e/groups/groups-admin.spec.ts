@@ -1,6 +1,6 @@
-import { expect, test } from './fixtures';
-import { AuthPage } from './pages/auth.page';
-import { GroupsPage } from './pages/groups.page';
+import { expect, test } from '../fixtures';
+import { AuthPage } from '../pages/auth.page';
+import { GroupsPage } from '../pages/groups.page';
 
 test.describe('Groups Component Functionality', () => {
   let authPage: AuthPage;
@@ -87,6 +87,7 @@ test.describe('Groups Component Functionality', () => {
       await groupsPage.displayNameInput.blur();
 
       // Now validation errors should be visible - we expect 2 "*Required" errors
+      // Note: mat-error is correct - Material form validation errors don't have MDC variant
       await expect(
         groupsPage.page.locator('mat-error').filter({ hasText: '*Required' })
       ).toHaveCount(2);

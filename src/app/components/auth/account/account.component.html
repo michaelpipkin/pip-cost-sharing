@@ -41,17 +41,17 @@
               mat-raised-button
               class="btn-tertiary"
               type="button"
-              [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
+              [disabled]="firebaseUser().emailVerified || emailForm.dirty"
               (click)="verifyEmail()"
               data-testid="verify-email-button"
               [aria-label]="
-                firebaseUser()?.emailVerified
+                firebaseUser().emailVerified
                   ? 'Email already verified'
                   : 'Send email verification'
               "
             >
               {{
-                firebaseUser()?.emailVerified
+                firebaseUser().emailVerified
                   ? 'Email Verified'
                   : 'Verify Email'
               }}
@@ -62,7 +62,7 @@
               type="submit"
               [disabled]="
                 emailForm.invalid ||
-                e.email?.value === firebaseUser()?.email ||
+                e.email.value === firebaseUser().email ||
                 e.email.value === ''
               "
               (click)="onSubmitEmail()"
@@ -111,7 +111,7 @@
               matIconSuffix
               (click)="toggleHidePassword()"
               [attr.aria-label]="'Hide password'"
-              [attr.aria-pressed]="hidePassword"
+              [attr.aria-pressed]="hidePassword()"
               data-testid="toggle-new-password-visibility"
             >
               <mat-icon>{{
@@ -132,7 +132,7 @@
               matIconSuffix
               (click)="toggleHideConfirm()"
               [attr.aria-label]="'Hide password'"
-              [attr.aria-pressed]="hideConfirm"
+              [attr.aria-pressed]="hideConfirm()"
             >
               <mat-icon>{{
                 hideConfirm() ? 'visibility_off' : 'visibility'
@@ -148,7 +148,7 @@
             type="submit"
             [disabled]="
               passwordForm.invalid ||
-              passwordForm.controls.confirmPassword.value === ''
+              passwordForm.controls['confirmPassword']?.value === ''
             "
             (click)="onSubmitPassword()"
           >

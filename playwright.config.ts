@@ -11,8 +11,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
-  /* Limit workers since all tests share the same Firebase emulators */
-  workers: 1,
+  /* Parallel workers enabled - tests are isolated by unique user accounts */
+  workers: process.env.CI ? 2 : 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
@@ -21,10 +21,8 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    /* Use local.dev.com for local development (hCaptcha compatibility), localhost for CI */
-    baseURL: process.env.CI
-      ? 'http://localhost:4200'
-      : 'http://local.dev.com:4200',
+    /* Use localhost for all environments - tests don't use registration page (which requires hCaptcha) */
+    baseURL: 'http://localhost:4200',
 
     /* Faster timeouts for CI */
     actionTimeout: process.env.CI ? 10000 : 30000,
@@ -73,8 +71,8 @@ export default defineConfig({
   /* Firebase emulators should be started manually during development */
   webServer: {
     command: process.env.CI ? 'pnpm start:ci' : 'pnpm start',
-    /* Use the appropriate URL based on environment */
-    url: process.env.CI ? 'http://localhost:4200' : 'http://local.dev.com:4200',
+    /* Use localhost for all environments - tests don't require hCaptcha */
+    url: 'http://localhost:4200',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

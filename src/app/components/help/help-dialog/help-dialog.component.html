@@ -1,11 +1,11 @@
-<div class="help-dialog-header" data-testid="help-dialog-header">
-  <h4 class="help-header-text" data-testid="help-dialog-title">{{ displayTitle }} Help</h4>
-  <mat-icon mat-dialog-close class="help-header-close" data-testid="help-dialog-close-button" aria-label="Close help dialog">close</mat-icon>
+<div class="help-dialog-header" [attr.data-testid]="'help-dialog-header'">
+  <h4 class="help-header-text" [attr.data-testid]="'help-dialog-title'">{{ displayTitle }} Help</h4>
+  <mat-icon mat-dialog-close class="help-header-close" [attr.data-testid]="'help-dialog-close-button'" aria-label="Close help dialog">close</mat-icon>
 </div>
-<mat-dialog-content class="help-dialog-content" data-testid="help-dialog-content">
+<mat-dialog-content class="help-dialog-content" [attr.data-testid]="'help-dialog-content'">
   @if (helpSection) {
     @for (paragraph of helpSection.content; track $index) {
-      <p data-testid="help-paragraph-{{ $index }}">{{ paragraph }}</p>
+      <p [attr.data-testid]="'help-paragraph-' + $index">{{ paragraph }}</p>
     }
   }
 </mat-dialog-content>

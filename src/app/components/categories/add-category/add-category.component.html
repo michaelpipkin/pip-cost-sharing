@@ -10,8 +10,8 @@
         data-testid="category-name-input"
         aria-label="Category name"
       />
-      @for (error of newCategoryForm.categoryName().errors(); track error) {
-        <mat-error data-testid="category-name-error-{{ error.key }}">
+      @for (error of newCategoryForm.categoryName().errors(); track error; let i = $index) {
+        <mat-error [attr.data-testid]="'category-name-error-' + i">
           {{ error.message }}
         </mat-error>
       }

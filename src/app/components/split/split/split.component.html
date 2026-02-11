@@ -142,7 +142,7 @@
           <div class="mock-input" [class.hidden]="splitByPercentage()">
             <span class="mock-label">Evenly Shared Remainder</span>
             <span class="mock-value-right">
-              {{ e.sharedAmount.value | currency }}
+              {{ (e.sharedAmount.value ?? 0) | currency }}
             </span>
           </div>
         </div>
@@ -228,7 +228,7 @@
                       #memberPercentage
                       class="number-right"
                       parentControlName="splits"
-                      [index]="i"
+                      [attr.data-index]="i"
                       formControlName="percentage"
                       [readonly]="isLastSplit(i)"
                       (blur)="allocateByPercentage()"
@@ -248,7 +248,7 @@
                       #memberAmount
                       class="number-right"
                       parentControlName="splits"
-                      [index]="i"
+                      [attr.data-index]="i"
                       formControlName="assignedAmount"
                       appFormatCurrencyInput
                       (blur)="allocateSharedAmounts()"
@@ -280,7 +280,7 @@
                 <div class="mock-input">
                   <span class="mock-label">Allocated Amount</span>
                   <span class="mock-value-right">
-                    {{ splitForm.get('allocatedAmount').value | currency }}
+                    {{ (splitForm.get('allocatedAmount')?.value ?? 0) | currency }}
                   </span>
                 </div>
               </div>
@@ -334,21 +334,21 @@
       <div class="summary-content">
         <div class="summary-line">
           <span class="summary-label">Total:</span>
-          <span class="summary-value">{{ e.amount.value | currency }}</span>
+          <span class="summary-value">{{ (e.amount.value ?? 0) | currency }}</span>
         </div>
-        @if (!splitByPercentage() && e.sharedAmount.value > 0) {
+        @if (!splitByPercentage() && (e.sharedAmount.value ?? 0) > 0) {
           <div class="summary-line">
             <span class="summary-label">Evenly shared amount:</span>
             <span class="summary-value">{{
-              e.sharedAmount.value | currency
+              (e.sharedAmount.value ?? 0) | currency
             }}</span>
           </div>
         }
-        @if (!splitByPercentage() && e.allocatedAmount.value > 0) {
+        @if (!splitByPercentage() && (e.allocatedAmount.value ?? 0) > 0) {
           <div class="summary-line">
             <span class="summary-label">Proportional amount:</span>
             <span class="summary-value">{{
-              e.allocatedAmount.value | currency
+              (e.allocatedAmount.value ?? 0) | currency
             }}</span>
           </div>
         }
@@ -368,7 +368,7 @@
                   }}%):</span
                 >
                 <span class="summary-value">{{
-                  splitForm.get('allocatedAmount')?.value | currency
+                  (splitForm.get('allocatedAmount')?.value ?? 0) | currency
                 }}</span>
               </div>
             } @else {
@@ -379,23 +379,23 @@
                     >{{ splitForm.get('owedBy')?.value }}:</span
                   >
                   <span class="summary-value">{{
-                    splitForm.get('allocatedAmount')?.value | currency
+                    (splitForm.get('allocatedAmount')?.value ?? 0) | currency
                   }}</span>
                 </div>
                 <div class="summary-breakdown">
-                  @if (splitForm.get('assignedAmount')?.value > 0) {
+                  @if ((splitForm.get('assignedAmount')?.value ?? 0) > 0) {
                     <div class="summary-line breakdown-line">
                       <span class="summary-label">Personal:</span>
                       <span class="summary-value">{{
-                        splitForm.get('assignedAmount')?.value | currency
+                        (splitForm.get('assignedAmount')?.value ?? 0) | currency
                       }}</span>
                     </div>
                   }
-                  @if (calculateSharedPortion(splitForm.value) > 0) {
+                  @if (calculateSharedPortion() > 0) {
                     <div class="summary-line breakdown-line">
                       <span class="summary-label">Shared:</span>
                       <span class="summary-value">{{
-                        calculateSharedPortion(splitForm.value) | currency
+                        calculateSharedPortion() | currency
                       }}</span>
                     </div>
                   }

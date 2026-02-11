@@ -19,7 +19,6 @@ import {
 
 describe('AddCategoryComponent', () => {
   let fixture: ComponentFixture<AddCategoryComponent>;
-  let component: AddCategoryComponent;
   let el: HTMLElement;
 
   beforeEach(async () => {
@@ -38,7 +37,6 @@ describe('AddCategoryComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(AddCategoryComponent);
-    component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
   });

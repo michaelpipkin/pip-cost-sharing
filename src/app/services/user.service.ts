@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -11,9 +12,9 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { AnalyticsService } from '@services/analytics.service';
 import {
   browserLocalPersistence,
+  User as FirebaseUser,
   getAuth,
   setPersistence,
 } from 'firebase/auth';
@@ -59,42 +60,44 @@ export class UserService implements IUserService {
   private async initializeAuth(): Promise<void> {
     try {
       await setPersistence(this.auth, browserLocalPersistence);
-      this.auth.onAuthStateChanged(async (firebaseUser) => {
-        if (!!firebaseUser) {
-          try {
-            // Clear all demo data from stores when a real user logs in
-            this.groupStore.clearAllUserGroups();
-            this.expenseStore.clearGroupExpenses();
-            this.categoryStore.clearGroupCategories();
-            this.memberStore.clearGroupMembers();
-            this.memorizedStore.clearMemorizedExpenses();
-            this.historyStore.clearHistory();
-            this.splitStore.clearSplits();
+      this.auth.onAuthStateChanged(
+        async (firebaseUser: FirebaseUser | null) => {
+          if (!!firebaseUser) {
+            try {
+              // Clear all demo data from stores when a real user logs in
+              this.groupStore.clearAllUserGroups();
+              this.expenseStore.clearGroupExpenses();
+              this.categoryStore.clearGroupCategories();
+              this.memberStore.clearGroupMembers();
+              this.memorizedStore.clearMemorizedExpenses();
+              this.historyStore.clearHistory();
+              this.splitStore.clearSplits();
 
-            const userData = await this.createUserIfNotExists(
-              firebaseUser.uid,
-              firebaseUser.email
-            );
-            const user = new User({
-              ...userData,
-              id: firebaseUser.uid,
-            });
-            this.userStore.setUser(user);
-            this.userStore.setIsDemoMode(false);
+              const userData = await this.createUserIfNotExists(
+                firebaseUser.uid,
+                firebaseUser.email!
+              );
+              const user = new User({
+                ...userData,
+                id: firebaseUser.uid,
+              });
+              this.userStore.setUser(user);
+              this.userStore.setIsDemoMode(false);
 
-            this.userStore.setIsGoogleUser(
-              firebaseUser.providerData[0].providerId === 'google.com'
-            );
-            this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
-            await this.groupService.getUserGroups(user);
-          } catch (error) {
-            this.analytics.logEvent('error', {
-              message: 'Failed to initialize user',
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
+              this.userStore.setIsGoogleUser(
+                firebaseUser.providerData[0]?.providerId === 'google.com'
+              );
+              this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
+              await this.groupService.getUserGroups(user);
+            } catch (error) {
+              this.analytics.logEvent('error', {
+                message: 'Failed to initialize user',
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
+            }
           }
         }
-      });
+      );
     } catch (error) {
       this.analytics.logEvent('error', {
         message: 'Failed to set auth persistence',

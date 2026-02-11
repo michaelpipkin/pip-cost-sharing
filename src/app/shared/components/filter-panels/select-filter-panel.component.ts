@@ -98,9 +98,7 @@ export class SelectFilterPanelComponent {
   displayFn = input<(option: any) => string>(
     (option) => option?.toString() || ''
   );
-  trackByFn = input<(index: number, option: any) => any>(
-    (index, option) => option
-  );
+  trackByFn = input<(index: number, option: any) => any>((_, option) => option);
 
   apply = output<SelectFilterValue>();
   clear = output<void>();

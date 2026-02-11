@@ -1,11 +1,9 @@
 // Test environment configuration
 export const TEST_CONFIG = {
-  // Use local.dev.com for local development (hCaptcha compatibility), localhost for CI
-  baseUrl: process.env.CI
-    ? 'http://localhost:4200'
-    : 'http://local.dev.com:4200',
-  // Clipboard functionality is blocked on non-localhost HTTP domains
-  supportsClipboard: process.env.CI || process.env.USE_LOCALHOST === 'true',
+  // Use localhost for all environments - tests don't use registration page (which requires hCaptcha)
+  baseUrl: 'http://localhost:4200',
+  // Clipboard functionality works on localhost
+  supportsClipboard: true,
   timeout: {
     short: 5000,
     medium: 10000,
@@ -68,7 +66,6 @@ export const SELECTORS = {
   submitButton: 'button[type="submit"]',
 
   // Common elements
-  loadingSpinner: '[data-testid="loading-component"]',
   errorMessage: '[role="alert"], mat-error',
   successMessage: 'simple-snack-bar',
 } as const;

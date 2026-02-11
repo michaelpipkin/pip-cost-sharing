@@ -1,7 +1,6 @@
-import { expect, test } from '@playwright/test';
-import { TEST_DATA } from './constants';
-import { AuthPage } from './pages/auth.page';
-// Use base test, no fixtures
+import { expect, test } from '../fixtures';
+import { TEST_DATA } from '../constants';
+import { AuthPage } from '../pages/auth.page';
 
 test.describe('Authentication - Unauthenticated User Tests', () => {
   test('should display login form', async ({ page }) => {
@@ -18,11 +17,13 @@ test.describe('Authentication - Unauthenticated User Tests', () => {
     const authPage = new AuthPage(page);
     await authPage.gotoSignUp();
 
-    // Check that register form elements are visible
-    // Note: This page has hCaptcha which prevents networkidle state
-    await expect(authPage.emailInput).toBeVisible();
-    await expect(authPage.passwordInput).toBeVisible();
-    await expect(authPage.signUpButton).toBeVisible();
+    // Check that register form is visible
+    // Note: Register page uses component-prefixed testids and some elements lack testids
+    await expect(page.getByTestId('register-form')).toBeVisible();
+    await expect(page.getByTestId('register-email-input')).toBeVisible();
+    // Password field and submit button don't have testids, use formControlName/text selectors
+    await expect(page.locator('input[formControlName="password"]')).toBeVisible();
+    await expect(page.locator('button:has-text("Register")')).toBeVisible();
   });
 
   test('should show validation errors for invalid email', async ({ page }) => {
@@ -59,8 +60,8 @@ test.describe('Authentication - Unauthenticated User Tests', () => {
     await authPage.loginButton.click();
 
     // Should show some kind of error message
-    // Wait a bit for any async validation/error display
-    await page.waitForTimeout(2000);
+    // Wait for async Firebase auth validation (standard timeout for backend operations)
+    await page.waitForTimeout(1500);
 
     const hasErrorMessage = await authPage.errorMessage
       .isVisible()

@@ -14,7 +14,7 @@
           data-testid="edit-member-name-input"
           aria-label="Member name"
         />
-        @if (f.memberName.errors?.['required']) {
+        @if (f['memberName']?.errors?.['required']) {
           <mat-error data-testid="edit-member-name-error">
             *Required
           </mat-error>
@@ -29,7 +29,7 @@
           data-testid="edit-member-email-input"
           aria-label="Member email"
         />
-        @if (f.email.errors?.['email']) {
+        @if (f['email']?.errors?.['email']) {
           <mat-error data-testid="edit-member-email-error">
             *Not a valid email address
           </mat-error>
