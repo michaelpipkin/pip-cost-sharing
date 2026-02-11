@@ -85,7 +85,7 @@ export class UserService implements IUserService {
               this.userStore.setIsDemoMode(false);
 
               this.userStore.setIsGoogleUser(
-                firebaseUser.providerData[0].providerId === 'google.com'
+                firebaseUser.providerData[0]?.providerId === 'google.com'
               );
               this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
               await this.groupService.getUserGroups(user);

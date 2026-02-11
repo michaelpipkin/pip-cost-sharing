@@ -185,7 +185,7 @@ export class AddExpenseComponent {
           (elementRef: ElementRef, index: number) => {
             elementRef.nativeElement.value =
               this.decimalPipe.transform(
-                expense.splits[index].assignedAmount,
+                expense.splits[index]!.assignedAmount,
                 '1.2-2'
               ) || '0.00';
           }
@@ -219,7 +219,7 @@ export class AddExpenseComponent {
         }
         if (this.activeCategories().length === 1) {
           this.addExpenseForm.patchValue({
-            category: this.activeCategories()[0].ref,
+            category: this.activeCategories()[0]!.ref,
           });
         }
         // Turn off loading once stores are populated
@@ -291,7 +291,7 @@ export class AddExpenseComponent {
     );
     return this.fb.group({
       owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0].ref : null,
+        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
         Validators.required,
       ],
       assignedAmount: [
@@ -379,7 +379,9 @@ export class AddExpenseComponent {
   availableMembersForSplit(index: number): Member[] {
     const selectedMemberIds = this.splitsFormArray.controls
       .filter((_, i) => i !== index)
-      .map((control) => control.get('owedByMemberRef')!.value.id);
+      .map((control) => control.get('owedByMemberRef')!.value)
+      .filter((memberRef) => memberRef !== null)
+      .map((memberRef) => memberRef.id);
     return this.activeMembers().filter(
       (member) => !selectedMemberIds.includes(member.id)
     );
@@ -397,8 +399,10 @@ export class AddExpenseComponent {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      const file: File = input.files[0];
-      this.processSelectedFile(file);
+      const file = input.files[0];
+      if (file) {
+        this.processSelectedFile(file);
+      }
     }
   }
 
@@ -591,17 +595,17 @@ export class AddExpenseComponent {
     if (this.splitsFormArray.length > 0) {
       let splits: Split[] = [...this.splitsFormArray.getRawValue()];
       for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
+        if (!splits[i]!.owedByMemberRef && splits[i]!.assignedAmount === 0) {
           splits.splice(i, 1);
         } else {
           if (i < splits.length - 1) {
-            splits[i].percentage = +splits[i].percentage;
-            totalPercentage += splits[i].percentage;
+            splits[i]!.percentage = +splits[i]!.percentage;
+            totalPercentage += splits[i]!.percentage;
           } else {
             const remainingPercentage: number =
               this.localeService.roundToCurrency(+(100 - totalPercentage));
-            splits[i].percentage = remainingPercentage;
-            this.splitsFormArray.at(i).patchValue({
+            splits[i]!.percentage = remainingPercentage;
+            this.splitsFormArray.at(i)!.patchValue({
               percentage: remainingPercentage,
             });
           }
@@ -635,10 +639,10 @@ export class AddExpenseComponent {
         const increment = this.localeService.getSmallestIncrement();
         for (let i = 0; diff != 0; ) {
           if (diff > 0) {
-            splits[i].allocatedAmount += increment;
+            splits[i]!.allocatedAmount += increment;
             diff = this.localeService.roundToCurrency(+(diff - increment));
           } else {
-            splits[i].allocatedAmount -= increment;
+            splits[i]!.allocatedAmount -= increment;
             diff = this.localeService.roundToCurrency(+(diff + increment));
           }
           if (i < splits.length - 1) {
@@ -650,7 +654,7 @@ export class AddExpenseComponent {
       }
       // Patch the allocatedAmount back into the form array
       splits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
+        this.splitsFormArray.at(index)!.patchValue({
           allocatedAmount: split.allocatedAmount,
         });
       });

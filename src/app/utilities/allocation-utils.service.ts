@@ -44,8 +44,8 @@ export class AllocationUtilsService {
 
     // Remove empty splits (no member selected and no assigned amount)
     for (let i = 0; i < splits.length; ) {
-      const memberRef = splits[i].owedByMemberRef;
-      if (!memberRef && splits[i].assignedAmount === 0) {
+      const memberRef = splits[i]!.owedByMemberRef;
+      if (!memberRef && splits[i]!.assignedAmount === 0) {
         splits.splice(i, 1);
       } else {
         i++;
@@ -110,10 +110,10 @@ export class AllocationUtilsService {
       const increment = this.localeService.getSmallestIncrement();
       for (let i = 0; diff != 0; ) {
         if (diff > 0) {
-          splits[i].allocatedAmount += increment;
+          splits[i]!.allocatedAmount += increment;
           diff = this.localeService.roundToCurrency(diff - increment);
         } else {
-          splits[i].allocatedAmount -= increment;
+          splits[i]!.allocatedAmount -= increment;
           diff = this.localeService.roundToCurrency(diff + increment);
         }
         if (i < splits.length - 1) {
@@ -144,7 +144,7 @@ export class AllocationUtilsService {
     // Create a map of existing form controls by member reference for faster lookup
     const formControlMap = new Map();
     for (let i = 0; i < formArray.length; i++) {
-      const control = formArray.at(i);
+      const control = formArray.at(i)!;
       const memberRef = control.get(memberRefFieldName)?.value;
       if (memberRef) {
         // Use a string identifier that works for both DocumentReference objects and simple values
@@ -159,8 +159,8 @@ export class AllocationUtilsService {
       if (memberRef) {
         const key = memberRef.id || memberRef.toString() || memberRef;
         if (formControlMap.has(key)) {
-          const formIndex = formControlMap.get(key);
-          formArray.at(formIndex).patchValue({
+          const formIndex = formControlMap.get(key)!;
+          formArray.at(formIndex)!.patchValue({
             allocatedAmount: split.allocatedAmount,
           });
         }

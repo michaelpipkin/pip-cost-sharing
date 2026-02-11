@@ -50,7 +50,7 @@ export class AccountMenuComponent {
 
   get currentLanguage(): Language {
     const langCode = this.currentUser()?.language || 'en';
-    return this.languages.find((l) => l.code === langCode) || this.languages[0];
+    return this.languages.find((l) => l.code === langCode) || this.languages[0]!;
   }
 
   async switchLanguage(langCode: string): Promise<void> {

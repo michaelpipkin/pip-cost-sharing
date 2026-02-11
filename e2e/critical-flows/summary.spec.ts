@@ -77,7 +77,6 @@ test.describe('Critical Flow: Summary', () => {
 
     // Go to summary
     await summaryPage.goto();
-    const initialCount = await summaryPage.summaryRows.count();
 
     // Filter by member
     await summaryPage.filterByMember('Member 1');

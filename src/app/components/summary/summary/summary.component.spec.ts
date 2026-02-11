@@ -262,17 +262,17 @@ describe('SummaryComponent', () => {
       expect(summary.length).toBe(1);
 
       // Bob owes Alice $30, Alice owes Bob $20, net: Bob owes Alice $10
-      const debt = summary[0];
+      const debt = summary[0]!;
       expect(debt.amount).toBe(10);
     });
 
     it('should show Alice is owed by Bob', () => {
-      const alice = mockMemberStore.groupMembers()[0];
-      const bob = mockMemberStore.groupMembers()[1];
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
       component.selectedMember.set(alice.ref!);
 
       const summary = component.summaryData();
-      const debt = summary[0];
+      const debt = summary[0]!;
       expect(debt.owedByMemberRef.path).toBe(bob.ref!.path);
       expect(debt.owedToMemberRef.path).toBe(alice.ref!.path);
     });
@@ -286,9 +286,9 @@ describe('SummaryComponent', () => {
     });
 
     it('should handle zero net amount (balanced)', () => {
-      const alice = mockMemberStore.groupMembers()[0];
-      const bob = mockMemberStore.groupMembers()[1];
-      const foodCategory = mockCategoryStore.groupCategories()[0];
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      const foodCategory = mockCategoryStore.groupCategories()[0]!;
 
       // Set balanced splits
       mockSplitStore.unpaidSplits.set([
@@ -315,7 +315,7 @@ describe('SummaryComponent', () => {
   describe('Detail breakdown', () => {
     it('should expand detail on click', () => {
       const summary = component.summaryData();
-      const amountDue = summary[0];
+      const amountDue = summary[0]!;
 
       component.onExpandClick(amountDue);
 
@@ -326,7 +326,7 @@ describe('SummaryComponent', () => {
 
     it('should collapse detail on second click', () => {
       const summary = component.summaryData();
-      const amountDue = summary[0];
+      const amountDue = summary[0]!;
 
       component.onExpandClick(amountDue);
       component.onExpandClick(amountDue);
@@ -336,7 +336,7 @@ describe('SummaryComponent', () => {
 
     it('should calculate detail by category', () => {
       const summary = component.summaryData();
-      const amountDue = summary[0];
+      const amountDue = summary[0]!;
       component.onExpandClick(amountDue);
 
       const detail = component.detailData();
@@ -345,7 +345,7 @@ describe('SummaryComponent', () => {
 
     it('should reset detail', () => {
       const summary = component.summaryData();
-      component.onExpandClick(summary[0]);
+      component.onExpandClick(summary[0]!);
       component.resetDetail();
 
       expect(component.expandedDetail()).toBeNull();
@@ -354,8 +354,8 @@ describe('SummaryComponent', () => {
 
   describe('Payment dialog', () => {
     it('should open payment dialog', async () => {
-      const alice = mockMemberStore.groupMembers()[0];
-      const bob = mockMemberStore.groupMembers()[1];
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
 
       await component.payExpenses(alice.ref!, bob.ref!);
 
@@ -365,8 +365,8 @@ describe('SummaryComponent', () => {
 
     it('should block payment in demo mode', async () => {
       mockDemoService.isInDemoMode = vi.fn(() => true);
-      const alice = mockMemberStore.groupMembers()[0];
-      const bob = mockMemberStore.groupMembers()[1];
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
 
       await component.payExpenses(alice.ref!, bob.ref!);
 
@@ -388,8 +388,8 @@ describe('SummaryComponent', () => {
 
     it('should block payment with restriction message', async () => {
       mockDemoService.isInDemoMode = vi.fn(() => true);
-      const alice = mockMemberStore.groupMembers()[0];
-      const bob = mockMemberStore.groupMembers()[1];
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
 
       await component.payExpenses(alice.ref!, bob.ref!);
 

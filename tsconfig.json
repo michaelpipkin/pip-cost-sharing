@@ -9,9 +9,8 @@
     "allowUnreachableCode": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    // "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-    // "exactOptionalPropertyTypes": true,
     "sourceMap": true,
     "declaration": false,
     "esModuleInterop": true,
@@ -42,7 +41,7 @@
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
-    // "strictTemplates": true,
+    "strictTemplates": true,
     "strictInputAccessModifiers": true,
     "strictNullInputTypes": true
   }

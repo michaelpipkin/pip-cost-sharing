@@ -146,7 +146,7 @@ export class GroupService implements IGroupService {
                     if (!!user.defaultGroupRef) {
                       await this.getGroup(user.defaultGroupRef!, user.ref!);
                     } else if (activeGroups.length === 1) {
-                      await this.getGroup(activeGroups[0].ref!, user.ref!);
+                      await this.getGroup(activeGroups[0]!.ref!, user.ref!);
                     } else {
                       this.groupStore.clearCurrentGroup();
                       localStorage.removeItem('currentGroup');

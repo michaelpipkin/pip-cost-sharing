@@ -1,4 +1,4 @@
-import { TEST_CONFIG, TEST_DATA } from '../constants';
+import { TEST_CONFIG } from '../constants';
 import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 import { ExpensesPage } from '../pages/expenses.page';

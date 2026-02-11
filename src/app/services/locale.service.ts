@@ -48,7 +48,9 @@ export class LocaleService {
     // Format manually using currency's decimal and thousands separators
     const absValue = Math.abs(value);
     const fixed = absValue.toFixed(curr.decimalPlaces);
-    const [integerPart, decimalPart] = fixed.split('.');
+    const parts = fixed.split('.');
+    const integerPart = parts[0]!;
+    const decimalPart = parts[1]!;
 
     // Add thousands separators
     const formattedInteger = integerPart.replace(

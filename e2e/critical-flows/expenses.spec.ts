@@ -1,4 +1,3 @@
-import { TEST_DATA } from '../constants';
 import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 import { GroupsPage } from '../pages/groups.page';

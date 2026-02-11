@@ -52,10 +52,6 @@ describe('HistoryComponent', () => {
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockLocaleService: any;
 
-  function query(testId: string): HTMLElement | null {
-    return el.querySelector(`[data-testid="${testId}"]`);
-  }
-
   beforeEach(async () => {
     mockGroupStore = createMockGroupStore();
     mockMemberStore = createMockMemberStore();
@@ -202,7 +198,7 @@ describe('HistoryComponent', () => {
 
   describe('Filtering', () => {
     it('should filter by selected member', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      const adminMember = mockMemberStore.groupMembers()[0]!;
       component.selectedMember.set(adminMember.ref!);
       component.startDate.set(null);
       component.endDate.set(null);
@@ -214,7 +210,7 @@ describe('HistoryComponent', () => {
     });
 
     it('should filter by start date only', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      const adminMember = mockMemberStore.groupMembers()[0]!;
       component.selectedMember.set(adminMember.ref!);
       // Set start date between h1 (15 days ago) and h2 (10 days ago)
       component.startDate.set(new Date(Date.now() - 12 * 24 * 60 * 60 * 1000));
@@ -224,11 +220,11 @@ describe('HistoryComponent', () => {
       const filtered = component.filteredHistory();
       // Only h2 (10 days ago) should match
       expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe('h2');
+      expect(filtered[0]!.id).toBe('h2');
     });
 
     it('should filter by end date only', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      const adminMember = mockMemberStore.groupMembers()[0]!;
       component.selectedMember.set(adminMember.ref!);
       component.startDate.set(null);
       // Set end date between h1 (15 days ago) and h2 (10 days ago)
@@ -238,11 +234,11 @@ describe('HistoryComponent', () => {
       const filtered = component.filteredHistory();
       // Only h1 (15 days ago) should match
       expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe('h1');
+      expect(filtered[0]!.id).toBe('h1');
     });
 
     it('should filter by date range (both start and end)', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      const adminMember = mockMemberStore.groupMembers()[0]!;
       component.selectedMember.set(adminMember.ref!);
       // Set range that only includes h1 (15 days ago)
       component.startDate.set(new Date(Date.now() - 20 * 24 * 60 * 60 * 1000));
@@ -252,11 +248,11 @@ describe('HistoryComponent', () => {
       const filtered = component.filteredHistory();
       // Only h1 (15 days ago) should match
       expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe('h1');
+      expect(filtered[0]!.id).toBe('h1');
     });
 
     it('should show all when dates are null', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      const adminMember = mockMemberStore.groupMembers()[0]!;
       component.selectedMember.set(adminMember.ref!);
       component.startDate.set(null);
       component.endDate.set(null);
@@ -267,7 +263,7 @@ describe('HistoryComponent', () => {
     });
 
     it('should handle combined member and date filtering', async () => {
-      const regularMember = mockMemberStore.groupMembers()[1];
+      const regularMember = mockMemberStore.groupMembers()[1]!;
       component.selectedMember.set(regularMember.ref!);
       // Set range that only includes h1 (15 days ago)
       component.startDate.set(new Date(Date.now() - 20 * 24 * 60 * 60 * 1000));
@@ -277,11 +273,11 @@ describe('HistoryComponent', () => {
       const filtered = component.filteredHistory();
       // Only h1 matches: regularMember is paidTo and date is 15 days ago
       expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe('h1');
+      expect(filtered[0]!.id).toBe('h1');
     });
 
     it('should update filteredHistory computed signal when filters change', async () => {
-      const adminMember = mockMemberStore.groupMembers()[0];
+      mockMemberStore.groupMembers()[0]!;
       const initialFiltered = component.filteredHistory();
       const initialLength = initialFiltered.length;
 
@@ -343,7 +339,7 @@ describe('HistoryComponent', () => {
     });
 
     it('should open delete dialog on delete click', () => {
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       component.onDeleteClick(history);
 
       expect(mockDialog.open).toHaveBeenCalled();
@@ -355,7 +351,7 @@ describe('HistoryComponent', () => {
     it('should block delete in demo mode', () => {
       mockDemoService.isInDemoMode = vi.fn(() => true);
 
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       component.onDeleteClick(history);
 
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
@@ -365,7 +361,7 @@ describe('HistoryComponent', () => {
 
   describe('Copy to clipboard', () => {
     it('should generate formatted text with history entry', () => {
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       const text = component['generateHistoryText'](history);
 
       expect(text).toContain('Payment History');
@@ -375,7 +371,7 @@ describe('HistoryComponent', () => {
     });
 
     it('should include category breakdown in text', () => {
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       const text = component['generateHistoryText'](history);
 
       expect(text).toContain('Breakdown by Category');
@@ -390,7 +386,7 @@ describe('HistoryComponent', () => {
         },
       });
 
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       await component.copyHistoryToClipboard(history);
 
       expect(writeTextMock).toHaveBeenCalled();
@@ -410,7 +406,7 @@ describe('HistoryComponent', () => {
     it('should block delete with restriction message in demo mode', () => {
       mockDemoService.isInDemoMode = vi.fn(() => true);
 
-      const history = mockHistoryStore.groupHistory()[0];
+      const history = mockHistoryStore.groupHistory()[0]!;
       component.onDeleteClick(history);
 
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
