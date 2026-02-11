@@ -186,7 +186,7 @@ export class EditExpenseComponent {
       this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
         elementRef.nativeElement.value =
           this.decimalPipe.transform(
-            expense.splits[index].assignedAmount,
+            expense.splits[index]!.assignedAmount,
             '1.2-2'
           ) || '0.00';
       });
@@ -288,7 +288,7 @@ export class EditExpenseComponent {
     );
     return this.fb.group({
       owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0].ref : null,
+        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
         Validators.required,
       ],
       assignedAmount: [
@@ -339,7 +339,9 @@ export class EditExpenseComponent {
   availableMembersForSplit(index: number): Member[] {
     const selectedMemberIds = this.splitsFormArray.controls
       .filter((_, i) => i !== index)
-      .map((control) => control.get('owedByMemberRef')!.value.id);
+      .map((control) => control.get('owedByMemberRef')!.value)
+      .filter((memberRef) => memberRef !== null)
+      .map((memberRef) => memberRef.id);
     return this.splitMembers().filter(
       (member) => !selectedMemberIds.includes(member.id)
     );
@@ -358,8 +360,10 @@ export class EditExpenseComponent {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      const file: File = input.files[0];
-      this.processSelectedFile(file);
+      const file = input.files[0];
+      if (file) {
+        this.processSelectedFile(file);
+      }
     }
   }
 

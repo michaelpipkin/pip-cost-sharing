@@ -8,7 +8,6 @@ export class GroupsPage extends BasePage {
   readonly newGroupButton: Locator;
   readonly manageGroupsButton: Locator;
   readonly helpButton: Locator;
-  readonly loadingMessage: Locator;
 
   // Add Group Dialog elements
   readonly addGroupDialog: Locator;
@@ -42,7 +41,6 @@ export class GroupsPage extends BasePage {
     this.newGroupButton = page.getByTestId('new-group-button');
     this.manageGroupsButton = page.getByTestId('manage-groups-button');
     this.helpButton = page.getByTestId('groups-help-button');
-    this.loadingMessage = page.getByTestId('loading-message');
 
     // Add Group Dialog elements using test IDs
     this.addGroupDialog = page.locator('mat-dialog-container');
@@ -77,24 +75,7 @@ export class GroupsPage extends BasePage {
 
   async waitForPageLoad(): Promise<void> {
     await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-    await Promise.race([
-      this.loadingMessage
-        .waitFor({ state: 'visible', timeout: 5000 })
-        .catch(() => {}),
-      this.groupSelect
-        .waitFor({ state: 'visible', timeout: 5000 })
-        .catch(() => {}),
-    ]);
-
-    const isLoadingVisible = await this.loadingMessage
-      .isVisible()
-      .catch(() => false);
-    if (isLoadingVisible) {
-      await this.loadingMessage.waitFor({ state: 'hidden', timeout: 10000 });
-    }
-
-    await this.groupSelect.waitFor({ state: 'visible', timeout: 5000 });
+    await this.groupSelect.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async selectGroup(groupName: string): Promise<void> {

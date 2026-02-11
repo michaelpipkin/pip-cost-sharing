@@ -144,7 +144,7 @@
         Add New Expense
       </button>
     </div>
-    @if (expenses()?.length >= 200) {
+    @if (expenses().length >= 200) {
       <div class="alert alert-warning mt-3" role="alert">
         <strong>Note:</strong> You have reached the maximum number of expenses
         (200) that can be fetched at once.<br />
@@ -152,7 +152,7 @@
         results.
       </div>
     }
-    @if (expenses()?.length > 0) {
+    @if (expenses().length > 0) {
       <div class="table-container mat-elevation-z8" data-tour="expenses-list">
         <div class="scrollable-table">
           <table

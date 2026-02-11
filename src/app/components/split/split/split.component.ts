@@ -173,7 +173,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     // Wait for the DOM to update, then populate the split values
     setTimeout(() => {
       demoSplits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
+        this.splitsFormArray.at(index)!.patchValue({
           owedBy: split.name,
           assignedAmount: this.localeService.roundToCurrency(split.amount),
         });
@@ -187,11 +187,11 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
 
       const memberAmountElements = this.memberAmounts();
       if (memberAmountElements.length >= 3) {
-        memberAmountElements[0].nativeElement.value =
+        memberAmountElements[0]!.nativeElement.value =
           this.localeService.roundToCurrency(12.55);
-        memberAmountElements[1].nativeElement.value =
+        memberAmountElements[1]!.nativeElement.value =
           this.localeService.roundToCurrency(13.37);
-        memberAmountElements[2].nativeElement.value =
+        memberAmountElements[2]!.nativeElement.value =
           this.localeService.roundToCurrency(14.02);
       }
 
@@ -587,7 +587,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
   }
 
   // Helper methods to calculate breakdown amounts
-  private calculateProportionalAmount(split: any): number {
+  protected calculateProportionalAmount(split: any): number {
     const formValue = this.expenseForm.value;
     const totalAmount = formValue.amount || 0;
     const proportionalAmount = formValue.allocatedAmount || 0;
@@ -602,7 +602,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     return this.localeService.roundToCurrency(+memberProportionalAmount);
   }
 
-  private calculateSharedPortion(): number {
+  protected calculateSharedPortion(): number {
     const formValue = this.expenseForm.value;
     const sharedAmount = formValue.sharedAmount! || 0;
     const splitCount = this.splitsFormArray.controls.filter(

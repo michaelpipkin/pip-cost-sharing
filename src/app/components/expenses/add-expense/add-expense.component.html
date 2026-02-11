@@ -206,7 +206,7 @@
         <div class="mock-input" [class.hidden]="splitByPercentage()">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
-            {{ e.sharedAmount.value | currency }}
+            {{ (e.sharedAmount.value ?? 0) | currency }}
           </span>
         </div>
       </div>
@@ -356,7 +356,7 @@
                     #memberPercentage
                     class="number-right"
                     parentControlName="splits"
-                    [index]="i"
+                    [attr.data-index]="i"
                     formControlName="percentage"
                     [readonly]="isLastSplit(i)"
                     (blur)="allocateByPercentage()"
@@ -376,7 +376,7 @@
                     #memberAmount
                     class="number-right"
                     parentControlName="splits"
-                    [index]="i"
+                    [attr.data-index]="i"
                     formControlName="assignedAmount"
                     appFormatCurrencyInput
                     (blur)="allocateSharedAmounts()"
@@ -410,7 +410,7 @@
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
                 <span class="mock-value-right" aria-label="Allocated amount" data-testid="allocated-amount">
-                  {{ splitForm.get('allocatedAmount').value | currency }}
+                  {{ ((splitForm.get('allocatedAmount'))?.value ?? 0) | currency }}
                 </span>
               </div>
             </div>

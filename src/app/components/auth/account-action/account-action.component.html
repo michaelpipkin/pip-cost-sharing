@@ -50,7 +50,7 @@
                 type="button"
                 (click)="toggleHidePassword()"
                 [attr.aria-label]="'Hide password'"
-                [attr.aria-pressed]="hidePassword"
+                [attr.aria-pressed]="hidePassword()"
               >
                 <mat-icon>{{
                   hidePassword() ? 'visibility_off' : 'visibility'
@@ -73,7 +73,7 @@
                 type="button"
                 (click)="toggleHideConfirmPassword()"
                 [attr.aria-label]="'Hide password'"
-                [attr.aria-pressed]="hideConfirmPassword"
+                [attr.aria-pressed]="hideConfirmPassword()"
               >
                 <mat-icon>{{
                   hideConfirmPassword() ? 'visibility_off' : 'visibility'

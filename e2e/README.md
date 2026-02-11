@@ -29,18 +29,97 @@ Each test runs with a clean Firebase state and can create test users and data as
 
 ```
 e2e/
-├── constants/          # Test constants and Firebase configuration
-├── fixtures/           # Test fixtures with Firebase emulator setup
-├── pages/             # Page Object Model classes
-│   ├── base.page.ts   # Base page object class
-│   ├── home.page.ts   # Home page object
-│   └── auth.page.ts   # Authentication page object
-├── utils/             # Helper utilities for tests
-│   ├── helpers.ts     # General test helpers
-│   └── firebase.ts    # Firebase emulator utilities
-├── tsconfig.json      # TypeScript configuration for e2e tests
-└── README.md          # This documentation
+├── critical-flows/      # HIGH PRIORITY - Core business value tests
+│   ├── expenses.spec.ts              # Expense CRUD, FormArray, receipts (13 scenarios)
+│   ├── expense-to-payment-flow.spec.ts # End-to-end workflow (8 scenarios)
+│   ├── summary.spec.ts               # Payment summary, filtering (11 scenarios)
+│   └── history.spec.ts               # Payment history, deletion (10 scenarios)
+├── auth/                # Authentication tests
+│   ├── auth.spec.ts                  # Emulator connectivity
+│   ├── auth-authenticated.spec.ts    # Authenticated user tests
+│   └── auth-unauthenticated.spec.ts  # Login/register tests
+├── smoke/               # Basic smoke tests
+│   ├── navigation.spec.ts            # Routing, PWA, mobile menu
+│   └── homepage.spec.ts              # Dashboard display
+├── groups/              # Group administration
+│   └── groups-admin.spec.ts          # Group CRUD, settings
+├── pages/               # Page Object Model classes
+│   ├── base.page.ts                  # Base page object class
+│   ├── auth.page.ts                  # Authentication pages
+│   ├── home.page.ts                  # Home/dashboard page
+│   ├── groups.page.ts                # Groups administration
+│   ├── expenses.page.ts              # Expense creation/editing
+│   ├── summary.page.ts               # Payment summary
+│   └── history.page.ts               # Payment history
+├── fixtures/            # Test fixtures with Firebase emulator setup
+├── constants/           # Test constants and Firebase configuration
+├── utils/               # Helper utilities for tests
+├── tsconfig.json        # TypeScript configuration for e2e tests
+└── README.md            # This documentation
 ```
+
+## Testing Philosophy
+
+This e2e test suite follows a **pragmatic testing approach**:
+
+- **Critical Flows**: Focus on user journeys that require e2e validation (async flows, Firebase integration, dialog confirmations)
+- **Unit Test Coverage**: Complex component logic is tested in unit tests (332/332 passing with Vitest)
+- **E2E Test Coverage**: Integration scenarios that were deferred from unit tests due to jsdom limitations
+- **No Over-Testing**: Test critical paths and integration points, not every edge case
+
+## Test Coverage Summary
+
+### Critical Flows (42 scenarios)
+
+**expense-to-payment-flow.spec.ts** (8 scenarios)
+- Full end-to-end: Create expense → Pay → Verify history
+- Payment cancellation and confirmation
+- Net amount calculation with mutual debts
+- Multiple categories in payment tracking
+- Date range filtering
+- Clipboard integration
+- Payment method selection
+
+**expenses.spec.ts** (13 scenarios)
+- Create expense with multiple splits
+- Form validation (required fields, zero amount)
+- Add/remove splits dynamically
+- "Add All Members" functionality
+- Equal and proportional split allocation
+- Percentage mode toggle
+- Save & Add Another workflow
+- Memorize expense for reuse
+- Receipt upload (deferred to future implementation)
+- Date picker integration
+- Category auto-selection
+
+**summary.spec.ts** (11 scenarios)
+- Display who-owes-whom from unpaid splits
+- Filter by member and date range
+- Calculate net amounts (mutual debt netting)
+- Expand/collapse category breakdown
+- Copy summary to clipboard
+- Payment dialog integration
+- Clear filters functionality
+- Empty state handling
+
+**history.spec.ts** (10 scenarios)
+- Display payment history with sorting
+- Filter by member (paid by/paid to)
+- Filter by date range
+- Sort by date/amount/member
+- Expand detail for category breakdown
+- Copy history to clipboard
+- Delete payment record (admin only)
+- Delete confirmation and cancellation
+- Empty state handling
+- Clear filters
+
+### Auth & Smoke Tests (Existing)
+
+**auth/** - User authentication flows
+**smoke/** - Navigation and basic functionality
+**groups/** - Group administration and settings
 
 ## Running Tests
 
@@ -73,7 +152,10 @@ pnpm test:full        # Starts emulators + runs tests automatically
 
 The main configuration is in `playwright.config.ts` at the project root. Key features:
 
-- **Base URL**: Set to `http://local.dev.com:4200` (matching your dev server)
+- **Base URL**: Set to `http://localhost:4200` for all environments
+  - Tests use Firebase Auth emulator API to create users (not the registration page)
+  - Registration page requires hCaptcha, but tests bypass it entirely
+  - localhost enables clipboard API for copy-to-clipboard tests
 - **Firebase Emulators**: Automatically starts `pnpm emu:data` before tests
 - **Web Server Integration**: Starts your Angular dev server after emulators
 - **Multiple Projects**: Tests run on different browsers and mobile viewports

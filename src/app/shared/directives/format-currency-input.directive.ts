@@ -18,8 +18,11 @@ export class FormatCurrencyInputDirective {
 
   constructor(private el: ElementRef) {}
 
-  @HostListener('blur', ['$event.target.value']) onBlur(value: string) {
-    value = value.trim().replace(/\.([^\d]|$)/g, '$1');
+  @HostListener('blur', ['$event']) onBlur(event: FocusEvent) {
+    const target = event.target as HTMLInputElement;
+    if (!target || !target.value) return;
+
+    let value = target.value.trim().replace(/\.([^\d]|$)/g, '$1');
     const calc = this.stringUtils.toNumber(value);
 
     if (this.formGroupDirective) {
@@ -29,7 +32,7 @@ export class FormatCurrencyInputDirective {
         const parentControl = this.formGroupDirective.form.get(
           parentControlName
         ) as FormArray;
-        const index = this.el.nativeElement.index;
+        const index = this.el.nativeElement.getAttribute('data-index');
         const controlName =
           this.el.nativeElement.getAttribute('formControlName');
         const control = parentControl.at(+index).get(controlName);

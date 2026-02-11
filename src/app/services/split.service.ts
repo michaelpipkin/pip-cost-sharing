@@ -129,8 +129,8 @@ export class SplitService implements ISplitService {
 
       // Process each split with its corresponding query result
       for (let i = 0; i < splits.length; i++) {
-        const split = splits[i];
-        const splitsQuerySnap = splitQueryResults[i];
+        const split = splits[i]!;
+        const splitsQuerySnap = splitQueryResults[i]!;
 
         // Update the split document to mark it as paid
         batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {

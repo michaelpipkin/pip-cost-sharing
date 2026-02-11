@@ -1,6 +1,6 @@
-import { TEST_CONFIG } from './constants';
-import { expect, test } from './fixtures';
-import { AuthPage } from './pages/auth.page';
+import { TEST_CONFIG } from '../constants';
+import { expect, test } from '../fixtures';
+import { AuthPage } from '../pages/auth.page';
 // Use our fixtures for Firebase emulator integration
 
 test.describe('Authentication - Authenticated User Tests', () => {
@@ -24,33 +24,13 @@ test.describe('Authentication - Authenticated User Tests', () => {
     // This will create a user in Firebase Auth emulator and login
     await authPage.createAndLoginTestUser();
 
-    // Wait for potential redirects and UI updates after login
-    await preserveDataFirebasePage.waitForTimeout(3000);
-
-    // Check URL - we should be redirected away from login page after successful login
-    const currentUrl = preserveDataFirebasePage.url();
-    console.log('Current URL after login:', currentUrl);
-
-    // Check that we're logged in (adjust based on your app's behavior)
+    // Check that we're logged in - isLoggedIn() handles its own waits
     const isLoggedIn = await authPage.isLoggedIn();
-    console.log('Is logged in result:', isLoggedIn);
-
-    // Additional debug: check what's visible on the page
-    const pageContent = await preserveDataFirebasePage.textContent('body');
-    console.log(
-      'Page contains "logout":',
-      pageContent?.toLowerCase().includes('logout')
-    );
-    console.log(
-      'Page contains "account":',
-      pageContent?.toLowerCase().includes('account')
-    );
-    console.log(
-      'Page contains "groups":',
-      pageContent?.toLowerCase().includes('groups')
-    );
-
     expect(isLoggedIn).toBeTruthy();
+
+    // Verify we're redirected away from login page
+    const currentUrl = preserveDataFirebasePage.url();
+    expect(currentUrl).not.toContain('/auth/login');
   });
 
   test('should redirect authenticated users away from login page', async ({
@@ -67,9 +47,9 @@ test.describe('Authentication - Authenticated User Tests', () => {
 
     // Now try to navigate to login page - should be redirected
     await preserveDataFirebasePage.goto(`${TEST_CONFIG.baseUrl}/auth/login`);
+    await preserveDataFirebasePage.waitForSelector('app-root', { timeout: 10000 });
 
-    // Should not be on login page anymore
-    await preserveDataFirebasePage.waitForTimeout(1000); // Give time for redirect
+    // Should not be on login page anymore - authGuard should redirect
     const currentUrl = preserveDataFirebasePage.url();
     expect(currentUrl).not.toContain('/auth/login');
   });
@@ -88,9 +68,9 @@ test.describe('Authentication - Authenticated User Tests', () => {
 
     // Now try to navigate to register page - should be redirected
     await preserveDataFirebasePage.goto(`${TEST_CONFIG.baseUrl}/auth/register`);
+    await preserveDataFirebasePage.waitForSelector('app-root', { timeout: 10000 });
 
-    // Should not be on register page anymore
-    await preserveDataFirebasePage.waitForTimeout(1000); // Give time for redirect
+    // Should not be on register page anymore - authGuard should redirect
     const currentUrl = preserveDataFirebasePage.url();
     expect(currentUrl).not.toContain('/auth/register');
   });

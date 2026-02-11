@@ -16,10 +16,10 @@
         data-testid="register-email-input"
         aria-label="Email address"
       />
-      @if (r.email?.errors?.required) {
+      @if (r.email.errors?.required) {
         <mat-error>Email is required.</mat-error>
       }
-      @if (r.email?.errors?.email) {
+      @if (r.email.errors?.email) {
         <mat-error>Invalid email address.</mat-error>
       }
     </mat-form-field>
@@ -36,7 +36,7 @@
         matIconSuffix
         (click)="toggleHidePassword()"
         [attr.aria-label]="'Hide password'"
-        [attr.aria-pressed]="hidePassword"
+        [attr.aria-pressed]="hidePassword()"
         tabindex="-1"
       >
         <mat-icon fontSet="material-symbols-outlined">{{
@@ -57,7 +57,7 @@
         matIconSuffix
         (click)="toggleHideConfirmPassword()"
         [attr.aria-label]="'Hide password'"
-        [attr.aria-pressed]="hideConfirmPassword"
+        [attr.aria-pressed]="hideConfirmPassword()"
         tabindex="-1"
       >
         <mat-icon fontSet="material-symbols-outlined">{{

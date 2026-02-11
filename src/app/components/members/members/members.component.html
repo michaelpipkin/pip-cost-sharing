@@ -81,7 +81,7 @@
         </button>
       </div>
     }
-    @if (filteredMembers()?.length > 0) {
+    @if (filteredMembers().length > 0) {
       <div
         class="table-container mat-elevation-z8"
         data-testid="members-table-container"
@@ -142,7 +142,7 @@
               *matRowDef="let member; columns: columnsToDisplay()"
               (click)="onRowClick(member)"
               [class.clickable-row]="
-                currentMember()?.groupAdmin || user()?.ref.eq(member.userRef)
+                currentMember()?.groupAdmin || user()?.ref?.eq(member.userRef)
               "
               [attr.data-testid]="'member-row-' + member.id"
               [attr.aria-label]="'Member: ' + member.displayName"

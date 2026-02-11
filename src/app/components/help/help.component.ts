@@ -64,33 +64,29 @@ export class HelpComponent {
     this.issueForm.markAsUntouched();
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     this.loading.loadingOn();
     const issue = this.issueForm.value;
     const body = !!issue.email
       ? `${issue.body}\n\nSubmitted by: ${issue.email}`
       : issue.body;
 
-    this.helpService.createIssue(issue.title!, body!).subscribe({
-      next: () => {
-        // Success callback
-        this.clearForm();
-        this.loading.loadingOff();
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Issue submitted. Thank you!' },
-        });
-      },
-      error: (err: Error) => {
-        // Error callback
-        this.loading.loadingOff();
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Error creating issue' },
-        });
-        this.analytics.logEvent('issue_created', {
-          action: 'submit_issue',
-          message: err.message,
-        });
-      },
-    });
+    try {
+      await this.helpService.createIssue(issue.title!, body!);
+      this.clearForm();
+      this.loading.loadingOff();
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Issue submitted. Thank you!' },
+      });
+    } catch (err) {
+      this.loading.loadingOff();
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Error creating issue' },
+      });
+      this.analytics.logEvent('issue_created', {
+        action: 'submit_issue',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
   }
 }

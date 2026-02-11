@@ -8,7 +8,6 @@ import {
   inject,
   model,
   signal,
-  Signal,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -44,7 +43,6 @@ import {
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
@@ -108,8 +106,6 @@ export class EditMemorizedComponent {
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
-
-  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   memorized = signal<Memorized>(this.route.snapshot.data.memorized);
 
@@ -189,7 +185,7 @@ export class EditMemorizedComponent {
       this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
         elementRef.nativeElement.value =
           this.decimalPipe.transform(
-            memorized.splits[index].assignedAmount,
+            memorized.splits[index]!.assignedAmount,
             '1.2-2'
           ) || '0.00';
       });
@@ -226,7 +222,7 @@ export class EditMemorizedComponent {
     );
     return this.fb.group({
       owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0].ref : null,
+        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
         Validators.required,
       ],
       assignedAmount: [
@@ -277,7 +273,9 @@ export class EditMemorizedComponent {
   availableMembersForSplit(index: number): Member[] {
     const selectedMemberIds = this.splitsFormArray.controls
       .filter((_, i) => i !== index)
-      .map((control) => control.get('owedByMemberRef')!.value.id);
+      .map((control) => control.get('owedByMemberRef')!.value)
+      .filter((memberRef) => memberRef !== null)
+      .map((memberRef) => memberRef.id);
     return this.splitMembers().filter(
       (member) => !selectedMemberIds.includes(member.id)
     );

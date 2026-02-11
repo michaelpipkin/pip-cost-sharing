@@ -45,7 +45,7 @@ export class MemberService implements IMemberService {
       const docSnap = await getDocs(q);
 
       if (!docSnap.empty) {
-        const memberDoc = docSnap.docs[0];
+        const memberDoc = docSnap.docs[0]!;
         this.memberStore.setCurrentMember(
           new Member({
             id: memberDoc.id,
@@ -132,7 +132,7 @@ export class MemberService implements IMemberService {
       );
       const userSnapshot = await getDocs(userQuery);
       if (!userSnapshot.empty) {
-        member.userRef = userSnapshot.docs[0].ref as DocumentReference<User>;
+        member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
       }
 
       return (await addDoc(
@@ -184,7 +184,7 @@ export class MemberService implements IMemberService {
         );
         const userSnapshot = await getDocs(userQuery);
         if (!userSnapshot.empty) {
-          changes.userRef = userSnapshot.docs[0].ref as DocumentReference<User>;
+          changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
         }
       }
 
@@ -245,7 +245,7 @@ export class MemberService implements IMemberService {
       const adminSnap = await getDocs(q);
       if (
         adminSnap.docs.length === 1 &&
-        adminSnap.docs[0].id === memberRef.id
+        adminSnap.docs[0]!.id === memberRef.id
       ) {
         throw new Error(
           'You are the only group admin. Please assign another member as admin before leaving the group.'

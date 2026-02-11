@@ -137,23 +137,6 @@ describe('AddExpenseComponent', () => {
     return el.querySelector(`[data-testid="${testId}"]`);
   }
 
-  async function setupValidForm(): Promise<void> {
-    component.addExpenseForm.patchValue({
-      amount: 100,
-      description: 'Test expense',
-      category: mockCategoryStore.groupCategories()[0].ref,
-      allocatedAmount: 0,
-    });
-    component.addSplit();
-    await fixture.whenStable();
-    component.splitsFormArray.at(0).patchValue({
-      owedByMemberRef: mockMemberStore.groupMembers()[0].ref,
-      assignedAmount: 0,
-      allocatedAmount: 100,
-    });
-    await fixture.whenStable();
-  }
-
   describe('initial render and store integration', () => {
     it('should render page title', () => {
       expect(query('page-title')?.textContent?.trim()).toBe('Add Expense');
@@ -486,24 +469,7 @@ describe('AddExpenseComponent', () => {
   });
 
   describe('memorized expense loading', () => {
-    it('should load memorized expense from navigation state', async () => {
-      const memorizedData = {
-        totalAmount: 50,
-        allocatedAmount: 10,
-        splits: [
-          { assignedAmount: 40 },
-          { assignedAmount: 0 },
-        ],
-      };
-
-      const mockNavigationState = {
-        currentNavigation: () => ({
-          extras: {
-            state: { expense: memorizedData },
-          },
-        }),
-      };
-
+    it('should check memorized expense on load', async () => {
       // Can't easily test navigation state in this test setup
       // This would require integration with Router testing utilities
       expect(component.memorizedExpense()).toBeNull();
