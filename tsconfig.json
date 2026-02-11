@@ -3,6 +3,15 @@
   "compileOnSave": false,
   "compilerOptions": {
     "strictNullChecks": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "allowUnreachableCode": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    // "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    // "exactOptionalPropertyTypes": true,
     "sourceMap": true,
     "declaration": false,
     "esModuleInterop": true,
@@ -32,6 +41,9 @@
     "typeRoots": ["node_modules/@types", "node_modules/@hcaptcha"]
   },
   "angularCompilerOptions": {
-    "enableI18nLegacyMessageIdFormat": false
+    "enableI18nLegacyMessageIdFormat": false,
+    // "strictTemplates": true,
+    "strictInputAccessModifiers": true,
+    "strictNullInputTypes": true
   }
 }

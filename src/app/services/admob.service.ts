@@ -50,7 +50,7 @@ export class AdMobService {
       this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'initialize_admob',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -95,7 +95,7 @@ export class AdMobService {
       this.analytics.logEvent('error', {
         component: this.constructor.name,
         action: 'load_interstitial',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
       this.isAdLoaded.set(false);
     }

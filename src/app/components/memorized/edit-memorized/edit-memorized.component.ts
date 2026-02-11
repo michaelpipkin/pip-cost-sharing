@@ -8,7 +8,6 @@ import {
   inject,
   model,
   signal,
-  Signal,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -44,7 +43,6 @@ import {
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
@@ -108,8 +106,6 @@ export class EditMemorizedComponent {
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
-
-  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   memorized = signal<Memorized>(this.route.snapshot.data.memorized);
 

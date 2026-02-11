@@ -1,3 +1,3 @@
 export interface IHelpService {
-  createIssue(title: string, body: string);
+  createIssue(title: string, body: string): Promise<object>;
 }
