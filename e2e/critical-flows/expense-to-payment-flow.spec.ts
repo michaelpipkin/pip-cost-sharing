@@ -3,9 +3,9 @@ import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
-import { SummaryPage } from '../pages/summary.page';
 import { HistoryPage } from '../pages/history.page';
 import { MembersPage } from '../pages/members.page';
+import { SummaryPage } from '../pages/summary.page';
 
 test.describe('Critical Flow: Expense → Payment → History', () => {
   test('should create expense, pay it, and verify in history', async ({
@@ -15,6 +15,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     test.setTimeout(60000); // 60 seconds
     const authPage = new AuthPage(preserveDataFirebasePage);
     const groupsPage = new GroupsPage(preserveDataFirebasePage);
+    const membersPage = new MembersPage(preserveDataFirebasePage);
     const expensesPage = new ExpensesPage(preserveDataFirebasePage);
     const summaryPage = new SummaryPage(preserveDataFirebasePage);
     const historyPage = new HistoryPage(preserveDataFirebasePage);
@@ -22,24 +23,26 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // STEP 1: Setup - Create user and group with auto-add members enabled
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // STEP 1b: Add a second member to the group
-    const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // STEP 2: Create expense (Admin pays $100, to be split equally)
     // With auto-add members enabled, all group members are automatically added as splits
     // The form automatically does equal splitting - no need to manually allocate amounts
     await expensesPage.gotoAddExpense();
+    // Wait for auto-added splits to appear and auto-allocate equally
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Team Lunch',
       amount: 100,
     });
-
-    // Wait for auto-added splits to appear and auto-allocate equally
-    await preserveDataFirebasePage.waitForTimeout(1500);
 
     // Verify both members have splits (auto-added with equal allocation)
     const splitCount = await expensesPage.splitRows.count();
@@ -50,9 +53,11 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
     // Verify success message
     await expect(expensesPage.snackbar).toContainText('Expense added');
+    await expensesPage.waitForLoadingComplete();
 
     // STEP 3: Navigate to Summary and verify amounts
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.verifyPageLoaded();
 
     // Verify summary shows the debt
@@ -67,10 +72,13 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await summaryPage.submitPayment();
 
     // Verify success message
-    await expect(summaryPage.snackbar).toContainText('Expenses have been marked paid');
+    await expect(summaryPage.snackbar).toContainText(
+      'Expenses have been marked paid'
+    );
 
     // STEP 5: Verify payment appears in history
     await historyPage.goto();
+    await historyPage.waitForLoadingComplete();
     await historyPage.verifyPageLoaded();
 
     // Verify at least one history record exists
@@ -83,13 +91,16 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
     // STEP 6: Verify splits are marked as paid (removed from Summary)
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
 
     // The summary should now have fewer entries (or be empty)
     const newSummaryCount = await summaryPage.summaryRows.count();
     expect(newSummaryCount).toBeLessThanOrEqual(summaryCount);
   });
 
-  test('should handle payment cancellation', async ({ preserveDataFirebasePage }) => {
+  test('should handle payment cancellation', async ({
+    preserveDataFirebasePage,
+  }) => {
     test.setTimeout(60000);
     const authPage = new AuthPage(preserveDataFirebasePage);
     const groupsPage = new GroupsPage(preserveDataFirebasePage);
@@ -99,28 +110,35 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Cancelled Payment Test',
       amount: 75,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Go to Summary
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     const initialCount = await summaryPage.summaryRows.count();
 
     // Open payment dialog and cancel
     await summaryPage.openPaymentDialog(0);
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.cancelPayment();
 
     // Verify summary unchanged
@@ -140,32 +158,34 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add enabled
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create first expense: Admin pays $100, split 50/50 between members
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Expense 1',
       amount: 100,
     });
     // Auto-add creates splits for both members, update to specific amounts
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.updateSplitAmount(0, 50); // Admin User
     await expensesPage.updateSplitAmount(1, 50); // Test User
-    await preserveDataFirebasePage.waitForTimeout(1000);
     await expensesPage.saveExpense();
-
-    // Wait for navigation
-    await preserveDataFirebasePage.waitForTimeout(1000);
+    await expensesPage.waitForLoadingComplete();
 
     // Create second expense: Test User pays $30, Admin owes $30
     // (Net result: Test User owes Admin $20)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Change payer to Test User
     await expensesPage.payerSelect.click();
@@ -177,17 +197,16 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await expensesPage.descriptionInput.fill('Expense 2');
     await expensesPage.totalAmountInput.fill('30');
     await expensesPage.totalAmountInput.blur();
-    await preserveDataFirebasePage.waitForTimeout(500);
 
     // Auto-add creates splits for both members, update to specific amounts
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.updateSplitAmount(0, 30); // Admin User owes $30
-    await expensesPage.updateSplitAmount(1, 0);  // Test User owes $0
-    await preserveDataFirebasePage.waitForTimeout(1000);
+    await expensesPage.updateSplitAmount(1, 0); // Test User owes $0
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Check Summary for net amount
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.verifyPageLoaded();
 
     // Should show net debt of $20 (50 - 30)
@@ -208,29 +227,38 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $30, Test User $30)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Food Expense',
       amount: 60,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Pay the expense
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.openPaymentDialog(0);
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.submitPayment();
+    await summaryPage.waitForLoadingComplete();
 
     // Verify in history with category breakdown
     await historyPage.goto();
+    await historyPage.waitForLoadingComplete();
     await historyPage.verifyPageLoaded();
     await historyPage.expandDetail(0);
 
@@ -238,7 +266,9 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     await expect(historyPage.detailRows.first()).toBeVisible();
   });
 
-  test('should filter summary by date range', async ({ preserveDataFirebasePage }) => {
+  test('should filter summary by date range', async ({
+    preserveDataFirebasePage,
+  }) => {
     test.setTimeout(60000);
     const authPage = new AuthPage(preserveDataFirebasePage);
     const groupsPage = new GroupsPage(preserveDataFirebasePage);
@@ -248,24 +278,30 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $25, Test User $25)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Recent Expense',
       amount: 50,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Go to Summary
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     const initialCount = await summaryPage.summaryRows.count();
     expect(initialCount).toBeGreaterThan(0);
 
@@ -304,29 +340,38 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $22.50, Test User $22.50)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Clipboard Test',
       amount: 45,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Pay the expense
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.openPaymentDialog(0);
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.submitPayment();
+    await summaryPage.waitForLoadingComplete();
 
     // Go to history and copy
     await historyPage.goto();
+    await historyPage.waitForLoadingComplete();
     await historyPage.copyToClipboard(0);
 
     // Verify success message
@@ -345,25 +390,32 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $50, Test User $50)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Payment Method Test',
       amount: 100,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // Pay with specific payment method
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.openPaymentDialog(0);
+    await summaryPage.waitForLoadingComplete();
 
     // Select payment method (if available)
     const paymentMethodVisible = await summaryPage.paymentMethodSelect
@@ -377,9 +429,12 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     }
 
     await summaryPage.submitPayment();
+    await summaryPage.waitForLoadingComplete();
 
     // Verify success
-    await expect(summaryPage.snackbar).toContainText('Expenses have been marked paid');
+    await expect(summaryPage.snackbar).toContainText(
+      'Expenses have been marked paid'
+    );
   });
 
   test('should verify summary detail breakdown by category', async ({
@@ -394,24 +449,30 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     // Setup - Create group with auto-add members
     await authPage.createAndLoginTestUser();
     await groupsPage.goto();
+    await groupsPage.waitForLoadingComplete();
     await groupsPage.createGroup('Test Group', 'Admin User', true);
+    await groupsPage.waitForLoadingComplete();
 
     // Add second member
     const membersPage = new MembersPage(preserveDataFirebasePage);
     await membersPage.goto();
+    await membersPage.waitForLoadingComplete();
     await membersPage.addMember('Test User', 'testuser@example.com');
+    await membersPage.waitForLoadingComplete();
 
     // Create expense (auto-splits equally: Admin $40, Test User $40)
     await expensesPage.gotoAddExpense();
+    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Category Detail Test',
       amount: 80,
     });
-    await preserveDataFirebasePage.waitForTimeout(1500);
     await expensesPage.saveExpense();
+    await expensesPage.waitForLoadingComplete();
 
     // View detail in Summary
     await summaryPage.goto();
+    await summaryPage.waitForLoadingComplete();
     await summaryPage.expandDetail(0);
 
     // Verify detail content is visible (detail-table-container appears)
