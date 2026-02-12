@@ -69,4 +69,22 @@ export abstract class BasePage {
   getByPlaceholder(text: string | RegExp): Locator {
     return this.page.getByPlaceholder(text);
   }
+
+  /**
+   * Wait for loading spinner to appear
+   */
+  async waitForLoading() {
+    await this.page
+      .locator('[data-testid="loading-spinner-container"]')
+      .waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Wait for loading spinner to disappear (most common use case)
+   */
+  async waitForLoadingComplete() {
+    await this.page
+      .locator('[data-testid="loading-spinner-container"]')
+      .waitFor({ state: 'hidden' });
+  }
 }
