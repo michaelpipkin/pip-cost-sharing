@@ -26,12 +26,13 @@ test.describe('Groups Component Functionality', () => {
   test.describe('Page Loading and Basic Display', () => {
     test('should load groups page and display main elements', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
       await groupsPage.verifyPageState();
     });
 
     test('should show loading state initially', async () => {
       await groupsPage.goto();
-      // Note: Loading might be too fast to catch in tests, but structure is ready
+      await groupsPage.waitForLoadingComplete();
       await groupsPage.waitForGroupsToLoad();
     });
   });
@@ -39,25 +40,26 @@ test.describe('Groups Component Functionality', () => {
   test.describe('Create New Group', () => {
     test('should successfully create a new group', async () => {
       await groupsPage.goto();
-
+      await groupsPage.waitForLoadingComplete();
       const groupName = `Test Group ${Date.now()}`;
       await groupsPage.createGroup(groupName, testUser.displayName);
-
+      await groupsPage.waitForLoadingComplete();
       // Verify the group appears in the dropdown
       await groupsPage.verifyGroupInList(groupName);
     });
 
     test('should create group with auto-add members enabled', async () => {
       await groupsPage.goto();
-
+      await groupsPage.waitForLoadingComplete();
       const groupName = `Auto-Add Group ${Date.now()}`;
       await groupsPage.createGroup(groupName, testUser.displayName, true);
-
+      await groupsPage.waitForLoadingComplete();
       await groupsPage.verifyGroupInList(groupName);
     });
 
     test('should validate required fields in create group form', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
       await groupsPage.openAddGroupDialog();
 
       // Try to submit without filling required fields
@@ -146,6 +148,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should edit group name', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
 
       // Create a group first
       const originalName = `Original Group ${Date.now()}`;
@@ -161,6 +164,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should toggle group active status', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
 
       // Create a group first
       const groupName = `Toggle Group ${Date.now()}`;
@@ -177,6 +181,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should toggle auto-add members setting', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
 
       // Create a group first
       const groupName = `AutoAdd Group ${Date.now()}`;
@@ -193,7 +198,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should validate required fields in manage groups form', async () => {
       await groupsPage.goto();
-
+      await groupsPage.waitForLoadingComplete();
       // Create a group first
       const groupName = `Validation Group ${Date.now()}`;
       await groupsPage.createGroup(groupName, testUser.displayName);
@@ -213,7 +218,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should cancel manage groups dialog', async () => {
       await groupsPage.goto();
-
+      await groupsPage.waitForLoadingComplete();
       // Create a group first
       const groupName = `Cancel Group ${Date.now()}`;
       await groupsPage.createGroup(groupName, testUser.displayName);
@@ -234,6 +239,7 @@ test.describe('Groups Component Functionality', () => {
   test.describe('Help Functionality', () => {
     test('should open help dialog', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
       await groupsPage.openHelp();
 
       // Note: The actual help dialog testing would be done in a separate test file
@@ -244,7 +250,7 @@ test.describe('Groups Component Functionality', () => {
   test.describe('Integration Scenarios', () => {
     test('should create multiple groups and manage them', async () => {
       await groupsPage.goto();
-
+      await groupsPage.waitForLoadingComplete();
       // Create multiple groups
       const group1 = `Multi Group 1 ${Date.now()}`;
       const group2 = `Multi Group 2 ${Date.now()}`;
@@ -267,6 +273,7 @@ test.describe('Groups Component Functionality', () => {
 
     test('should handle workflow from group creation to selection', async () => {
       await groupsPage.goto();
+      await groupsPage.waitForLoadingComplete();
 
       // Start with no groups scenario
       const groupName = `Workflow Group ${Date.now()}`;

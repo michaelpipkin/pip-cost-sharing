@@ -70,7 +70,7 @@ export class GroupsPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.page.goto('/administration/groups');
-    await this.waitForPageLoad();
+    await this.waitForLoadingComplete();
   }
 
   async waitForPageLoad(): Promise<void> {
@@ -110,6 +110,7 @@ export class GroupsPage extends BasePage {
 
   async submitAddGroupForm(): Promise<void> {
     await this.addGroupSaveButton.click();
+    await this.waitForLoadingComplete();
     await expect(this.addGroupDialog).toBeHidden();
   }
 
@@ -121,25 +122,14 @@ export class GroupsPage extends BasePage {
     await this.openAddGroupDialog();
     await this.fillAddGroupForm(groupName, displayName, autoAddMembers);
     await this.submitAddGroupForm();
-
-    // Wait for any success messages and ensure dialog is completely closed
-    await this.page.waitForTimeout(2000);
+    await this.waitForLoadingComplete();
 
     // Verify the group was created and appears in the select
     await this.verifyGroupInList(groupName);
   }
 
   async verifyGroupInList(groupName: string): Promise<void> {
-    // First wait for any dialogs to be hidden
-    await this.page.waitForTimeout(1000);
-
-    // Try to dismiss any overlay/backdrop that might be present
-    const backdrop = this.page.locator('.cdk-overlay-backdrop');
-    const isBackdropVisible = await backdrop.isVisible().catch(() => false);
-    if (isBackdropVisible) {
-      await backdrop.click({ force: true });
-      await this.page.waitForTimeout(500);
-    }
+    await this.waitForLoadingComplete();
 
     // Now try to interact with the group select
     await this.groupSelect.click({ force: true });
@@ -148,7 +138,7 @@ export class GroupsPage extends BasePage {
 
     // Close the dropdown by clicking the select again or pressing Escape
     await this.page.keyboard.press('Escape');
-    await this.page.waitForTimeout(500);
+    await this.waitForLoadingComplete();
   }
 
   async verifyPageLoaded(): Promise<void> {
@@ -163,12 +153,10 @@ export class GroupsPage extends BasePage {
   }
 
   async waitForGroupsToLoad(): Promise<void> {
-    await this.waitForPageLoad();
+    await this.waitForLoadingComplete();
   }
 
-  async verifySaveButtonDisabled(
-    dialogType: 'add' | 'manage'
-  ): Promise<void> {
+  async verifySaveButtonDisabled(dialogType: 'add' | 'manage'): Promise<void> {
     switch (dialogType) {
       case 'add':
         await expect(this.addGroupSaveButton).toBeDisabled();
@@ -209,7 +197,7 @@ export class GroupsPage extends BasePage {
 
   async openHelp(): Promise<void> {
     await this.helpButton.click();
-    await this.page.waitForTimeout(1000);
+    await this.waitForLoadingComplete();
   }
 
   async cancelManageGroups(): Promise<void> {
@@ -224,15 +212,11 @@ export class GroupsPage extends BasePage {
   ): Promise<void> {
     await this.openManageGroupsDialog();
 
-    // First group is pre-selected by default, so no need to select it
-    // Wait for the form to populate with the selected group's data
-    await this.page.waitForTimeout(1000);
+    await this.waitForLoadingComplete();
+    // await this.page.waitForTimeout(500); // Ensure any initial loading is complete
 
-    // Wait for the group name field to be populated (indicates form is loaded)
-    await expect(this.manageGroupNameInput).not.toHaveValue('');
-
-    // Additional wait to ensure toggle states are also loaded
-    await this.page.waitForTimeout(500);
+    // Verify save button is initially disabled (no changes made yet)
+    await expect(this.manageGroupsSaveButton).toBeDisabled();
 
     // Make changes to trigger form dirty state
     if (newGroupName !== undefined) {
@@ -262,7 +246,7 @@ export class GroupsPage extends BasePage {
     }
 
     // Wait for form state to update after changes
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(500);
 
     // Only try to save if we made any changes
     if (
@@ -273,6 +257,7 @@ export class GroupsPage extends BasePage {
       // Save changes
       await expect(this.manageGroupsSaveButton).toBeEnabled();
       await this.manageGroupsSaveButton.click();
+      await this.waitForLoadingComplete();
       await expect(this.manageGroupsDialog).toBeHidden();
     } else {
       // No changes were made, just close the dialog
@@ -283,15 +268,7 @@ export class GroupsPage extends BasePage {
   async toggleActiveStatus(): Promise<{ wasToggled: boolean }> {
     await this.openManageGroupsDialog();
 
-    // First group is pre-selected by default, so no need to select it
-    // Wait for the form to populate with the selected group's data
-    await this.page.waitForTimeout(1000);
-
-    // Wait for the group name field to be populated (indicates form is loaded)
-    await expect(this.manageGroupNameInput).not.toHaveValue('');
-
-    // Additional wait to ensure toggle states are also loaded
-    await this.page.waitForTimeout(500);
+    await this.waitForLoadingComplete();
 
     // Verify save button is initially disabled (no changes made yet)
     await expect(this.manageGroupsSaveButton).toBeDisabled();
@@ -300,7 +277,7 @@ export class GroupsPage extends BasePage {
     await this.manageActiveToggle.click();
 
     // Wait for form state to update after changes
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(500);
 
     // If the toggle worked, the save button should now be enabled
     let wasToggled = false;
@@ -314,6 +291,7 @@ export class GroupsPage extends BasePage {
     if (wasToggled) {
       // Save changes
       await this.manageGroupsSaveButton.click();
+      await this.waitForLoadingComplete();
       await expect(this.manageGroupsDialog).toBeHidden();
     } else {
       // Cancel if no change was detected
@@ -326,16 +304,7 @@ export class GroupsPage extends BasePage {
   async toggleAutoAddMembers(): Promise<{ wasToggled: boolean }> {
     await this.openManageGroupsDialog();
 
-    // First group is pre-selected by default, so no need to select it
-    // Wait for the form to populate with the selected group's data
-    await this.page.waitForTimeout(1000);
-
-    // Wait for the group name field to be populated (indicates form is loaded)
-    await expect(this.manageGroupNameInput).not.toHaveValue('');
-
-    // Additional wait to ensure toggle states are also loaded
-    await this.page.waitForTimeout(500);
-
+    await this.waitForLoadingComplete();
     // Verify save button is initially disabled (no changes made yet)
     await expect(this.manageGroupsSaveButton).toBeDisabled();
 
@@ -343,7 +312,7 @@ export class GroupsPage extends BasePage {
     await this.manageAutoAddToggle.click();
 
     // Wait for form state to update after changes
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(500);
 
     // If the toggle worked, the save button should now be enabled
     let wasToggled = false;
@@ -357,6 +326,7 @@ export class GroupsPage extends BasePage {
     if (wasToggled) {
       // Save changes
       await this.manageGroupsSaveButton.click();
+      await this.waitForLoadingComplete();
       await expect(this.manageGroupsDialog).toBeHidden();
     } else {
       // Cancel if no change was detected
