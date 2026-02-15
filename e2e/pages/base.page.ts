@@ -73,16 +73,21 @@ export abstract class BasePage {
   /**
    * Wait for loading spinner to appear
    */
-  async waitForLoading() {
+  async waitForLoading(options?: { timeout?: number }) {
     await this.page
       .locator('[data-testid="loading-spinner-container"]')
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: 'visible', ...options });
   }
 
   /**
    * Wait for loading spinner to disappear (most common use case)
    */
   async waitForLoadingComplete() {
+    try {
+      await this.waitForLoading({ timeout: 1000 });
+    } catch {
+      // Ignore timeout error if spinner doesn't appear - we just want to ensure it's not visible before proceeding
+    }
     await this.page
       .locator('[data-testid="loading-spinner-container"]')
       .waitFor({ state: 'hidden' });
