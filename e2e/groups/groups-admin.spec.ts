@@ -5,18 +5,32 @@ import { GroupsPage } from '../pages/groups.page';
 test.describe('Groups Component Functionality', () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
-  const testUser = {
-    email: 'groups-admin@test.com',
-    password: 'password123',
-    displayName: 'Groups Admin Tester',
-  };
+
+  // Unique user per test run (enables parallel execution)
+  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
+  let testUser: { email: string; password: string; displayName: string };
+
+  // Create the user once before all tests
+  test.beforeAll(async ({ browser }) => {
+    // Generate unique email for this test run
+    testUser = {
+      email: `groups-admin-${Date.now()}@test.com`,
+      password: 'password123',
+      displayName: 'Groups Admin Tester',
+    };
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const { createTestUser } = await import('../utils/firebase');
+    await createTestUser(page, testUser.email, testUser.password);
+    await context.close();
+  });
 
   test.beforeEach(async ({ preserveDataFirebasePage }) => {
     authPage = new AuthPage(preserveDataFirebasePage);
     groupsPage = new GroupsPage(preserveDataFirebasePage);
 
-    // Login or create the shared test user (reuses same user across all tests in this spec)
-    // This allows groups created in serial workflow tests to be accessible in subsequent tests
+    // Login unique test user (already created in beforeAll)
     await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
     // Verify logged in

@@ -10,11 +10,25 @@ test.describe('Critical Flow: Expenses', () => {
   let membersPage: MembersPage;
   let expensesPage: ExpensesPage;
 
-  const testUser = {
-    email: 'expenses-tester@test.com',
-    password: 'password123',
-    displayName: 'Expenses Tester',
-  };
+  // Unique user per test run (enables parallel execution)
+  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
+  let testUser: { email: string; password: string; displayName: string };
+
+  // Create the user once before all tests
+  test.beforeAll(async ({ browser }) => {
+    // Generate unique email for this test run
+    testUser = {
+      email: `expenses-tester-${Date.now()}@test.com`,
+      password: 'password123',
+      displayName: 'Expenses Tester',
+    };
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const { createTestUser } = await import('../utils/firebase');
+    await createTestUser(page, testUser.email, testUser.password);
+    await context.close();
+  });
 
   test.beforeEach(async ({ preserveDataFirebasePage }) => {
     authPage = new AuthPage(preserveDataFirebasePage);
@@ -22,7 +36,7 @@ test.describe('Critical Flow: Expenses', () => {
     membersPage = new MembersPage(preserveDataFirebasePage);
     expensesPage = new ExpensesPage(preserveDataFirebasePage);
 
-    // Login or create the shared test user
+    // Login unique test user (already created in beforeAll)
     await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
     // Verify logged in
@@ -41,7 +55,7 @@ test.describe('Critical Flow: Expenses', () => {
 
       // Add second member
       await membersPage.goto();
-      await membersPage.addMember('Member 1', 'member1@example.com');
+      await membersPage.addMember('Member 1', `member1-${Date.now()}@example.com`);
 
       // Create expense - auto-add creates splits for both members
       await expensesPage.gotoAddExpense();
@@ -133,7 +147,7 @@ test.describe('Critical Flow: Expenses', () => {
 
       // Add second member
       await membersPage.goto();
-      await membersPage.addMember('Member 2', 'member2@example.com');
+      await membersPage.addMember('Member 2', `member2-${Date.now()}@example.com`);
 
       // Create expense
       await expensesPage.gotoAddExpense();
@@ -216,7 +230,7 @@ test.describe('Critical Flow: Expenses', () => {
 
       // Add second member
       await membersPage.goto();
-      await membersPage.addMember('Member 3', 'member3@example.com');
+      await membersPage.addMember('Member 3', `member3-${Date.now()}@example.com`);
 
       // Create expense with proportional split
       await expensesPage.gotoAddExpense();
@@ -250,7 +264,7 @@ test.describe('Critical Flow: Expenses', () => {
       // Add third member to group
       await membersPage.goto();
       await membersPage.openAddMemberDialog();
-      await membersPage.fillAddMemberForm('Member 4', 'member4@example.com');
+      await membersPage.fillAddMemberForm('Member 4', `member4-${Date.now()}@example.com`);
       await membersPage.submitAddMemberForm();
 
       // Create expense with complex allocation
@@ -325,7 +339,7 @@ test.describe('Critical Flow: Expenses', () => {
     test('should auto-select single category', async () => {
       // Add second member
       await membersPage.goto();
-      await membersPage.addMember('Member 5', 'member5@example.com');
+      await membersPage.addMember('Member 5', `member5-${Date.now()}@example.com`);
 
       // Go to add expense
       await expensesPage.gotoAddExpense();

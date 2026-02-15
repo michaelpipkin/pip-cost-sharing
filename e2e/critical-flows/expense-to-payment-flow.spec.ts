@@ -15,11 +15,25 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
   let summaryPage: SummaryPage;
   let historyPage: HistoryPage;
 
-  const testUser = {
-    email: 'e2e-flow-tester@test.com',
-    password: 'password123',
-    displayName: 'E2E Flow Tester',
-  };
+  // Unique user per test run (enables parallel execution)
+  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
+  let testUser: { email: string; password: string; displayName: string };
+
+  // Create the user once before all tests
+  test.beforeAll(async ({ browser }) => {
+    // Generate unique email for this test run
+    testUser = {
+      email: `e2e-flow-tester-${Date.now()}@test.com`,
+      password: 'password123',
+      displayName: 'E2E Flow Tester',
+    };
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const { createTestUser } = await import('../utils/firebase');
+    await createTestUser(page, testUser.email, testUser.password);
+    await context.close();
+  });
 
   test.beforeEach(async ({ preserveDataFirebasePage }) => {
     authPage = new AuthPage(preserveDataFirebasePage);
@@ -29,7 +43,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
     summaryPage = new SummaryPage(preserveDataFirebasePage);
     historyPage = new HistoryPage(preserveDataFirebasePage);
 
-    // Login or create the shared test user
+    // Login unique test user (already created in beforeAll)
     await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
     // Verify logged in
@@ -48,7 +62,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
       // Add a second member to the group
       await membersPage.goto();
-      await membersPage.addMember('Test User 1', 'testuser1@example.com');
+      await membersPage.addMember('Test User 1', `testuser1-${Date.now()}@example.com`);
 
       // Create expense (Admin pays $100, to be split equally)
       await expensesPage.gotoAddExpense();
@@ -144,7 +158,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
       // Add second member with unique email
       await membersPage.goto();
-      await membersPage.addMember('Test User 2', 'testuser2@example.com');
+      await membersPage.addMember('Test User 2', `testuser2-${Date.now()}@example.com`);
 
       // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
       await expensesPage.gotoAddExpense();
@@ -211,7 +225,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
       // Add second member with unique email
       await membersPage.goto();
-      await membersPage.addMember('Test User 3', 'testuser3@example.com');
+      await membersPage.addMember('Test User 3', `testuser3-${Date.now()}@example.com`);
 
       // Create expense (auto-splits equally: Admin $25, Test User $25)
       await expensesPage.gotoAddExpense();
@@ -273,7 +287,7 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
     // Add second member with unique email
     await membersPage.goto();
-    await membersPage.addMember('Test User 4', 'testuser4@example.com');
+    await membersPage.addMember('Test User 4', `testuser4-${Date.now()}@example.com`);
 
     // Create first expense: Admin pays $100, split 50/50 between members
     await expensesPage.gotoAddExpense();

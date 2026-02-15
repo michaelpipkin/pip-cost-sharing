@@ -37,8 +37,7 @@ export class AuthPage extends BasePage {
    */
   async gotoLogin() {
     await super.goto('/auth/login');
-    await this.waitForLoad();
-    // Wait for the login form to be visible
+    // Wait for the login form to be visible (no need for networkidle wait)
     await this.page.waitForSelector('[data-testid="login-form"]', {
       state: 'visible',
       timeout: 5000,
@@ -160,7 +159,38 @@ export class AuthPage extends BasePage {
    * @param email - Email address for the user
    * @param password - Password for the user
    */
-  async loginOrCreateTestUser(email: string, password: string) {
+  async loginOrCreateTestUser(
+    email: string,
+    password: string,
+    options?: { assumeNew?: boolean }
+  ) {
+    // If we know the user is new (e.g., timestamp-based email), skip the login attempt
+    if (options?.assumeNew) {
+      try {
+        // Create the user in Firebase Auth emulator
+        await createTestUser(this.page, email, password);
+
+        // Navigate to login page and login
+        await this.gotoLogin();
+        await this.waitForLoadingComplete();
+        await this.login(email, password);
+        await this.waitForLoadingComplete();
+
+        // Verify login succeeded
+        const loggedIn = await this.isLoggedIn();
+        if (!loggedIn) {
+          throw new Error(
+            `Created user ${email} but login failed - check Firebase Auth emulator`
+          );
+        }
+        return;
+      } catch (createError) {
+        throw new Error(
+          `Failed to create and login new user ${email}: ${createError.message}`
+        );
+      }
+    }
+
     // Navigate to login page
     await this.gotoLogin();
     await this.waitForLoadingComplete();

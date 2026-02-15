@@ -15,11 +15,9 @@ test.describe('Critical Flow: History', () => {
   let historyPage: HistoryPage;
   let membersPage: MembersPage;
 
-  const testUser = {
-    email: 'history-tester@test.com',
-    password: 'password123',
-    displayName: 'History Tester',
-  };
+  // Unique user per test run (enables parallel execution)
+  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
+  let testUser: { email: string; password: string; displayName: string };
 
   test.beforeEach(async ({ preserveDataFirebasePage }) => {
     authPage = new AuthPage(preserveDataFirebasePage);
@@ -29,7 +27,7 @@ test.describe('Critical Flow: History', () => {
     historyPage = new HistoryPage(preserveDataFirebasePage);
     membersPage = new MembersPage(preserveDataFirebasePage);
 
-    // Login or create the shared test user
+    // Login or create unique test user
     await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
     // Verify logged in
@@ -39,6 +37,22 @@ test.describe('Critical Flow: History', () => {
 
   // Serial workflow - all tests build on same group/data
   test.describe.serial('Payment History Workflow', () => {
+    // Create the user once before all tests in this serial group
+    test.beforeAll(async ({ browser }) => {
+      // Generate unique email for this test run
+      testUser = {
+        email: `history-tester-${Date.now()}@test.com`,
+        password: 'password123',
+        displayName: 'History Tester',
+      };
+
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      const { createTestUser } = await import('../utils/firebase');
+      await createTestUser(page, testUser.email, testUser.password);
+      await context.close();
+    });
+
     test('should show empty state when no history', async () => {
       // Setup - create group without any payments
       await groupsPage.goto();
@@ -47,7 +61,10 @@ test.describe('Critical Flow: History', () => {
 
       // Add a second member (needed for later tests)
       await membersPage.goto();
-      await membersPage.addMember('Test User', 'testuser@example.com');
+      await membersPage.addMember(
+        'Test User',
+        `testuser-${Date.now()}@example.com`
+      );
 
       // View history - should be empty initially
       await historyPage.goto();
