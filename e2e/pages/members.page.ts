@@ -76,12 +76,7 @@ export class MembersPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.page.goto('/administration/members');
-    await this.waitForPageLoad();
-  }
-
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-    await this.pageTitle.waitFor({ state: 'visible', timeout: 10000 });
+    await this.waitForLoadingComplete();
   }
 
   async verifyPageLoaded(): Promise<void> {
@@ -112,6 +107,7 @@ export class MembersPage extends BasePage {
     await this.addMemberButton.click();
     await expect(this.addMemberDialog).toBeVisible();
     await expect(this.addMemberTitle).toHaveText('Add Member');
+    await this.waitForLoadingComplete();
   }
 
   async fillAddMemberForm(name: string, email: string): Promise<void> {
@@ -122,6 +118,7 @@ export class MembersPage extends BasePage {
   async submitAddMemberForm(): Promise<void> {
     await this.addMemberSaveButton.click();
     await expect(this.addMemberDialog).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async cancelAddMember(): Promise<void> {
@@ -134,9 +131,6 @@ export class MembersPage extends BasePage {
     await this.fillAddMemberForm(name, email);
     await this.submitAddMemberForm();
 
-    // Wait for any success messages and ensure dialog is completely closed
-    await this.page.waitForTimeout(2000);
-
     // Verify the member was created and appears in the table
     await this.verifyMemberInTable(name);
   }
@@ -147,6 +141,7 @@ export class MembersPage extends BasePage {
     await memberRow.click();
     await expect(this.editMemberDialog).toBeVisible();
     await expect(this.editMemberTitle).toHaveText('Edit Member');
+    await this.waitForLoadingComplete();
   }
 
   async fillEditMemberForm(name?: string, email?: string): Promise<void> {
@@ -177,6 +172,7 @@ export class MembersPage extends BasePage {
   async submitEditMemberForm(): Promise<void> {
     await this.editMemberSaveButton.click();
     await expect(this.editMemberDialog).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async cancelEditMember(): Promise<void> {
@@ -267,9 +263,7 @@ export class MembersPage extends BasePage {
     await expect(noMembersMessage).toHaveText('No members found');
   }
 
-  async verifySaveButtonDisabled(
-    dialogType: 'add' | 'edit'
-  ): Promise<void> {
+  async verifySaveButtonDisabled(dialogType: 'add' | 'edit'): Promise<void> {
     switch (dialogType) {
       case 'add':
         await expect(this.addMemberSaveButton).toBeDisabled();

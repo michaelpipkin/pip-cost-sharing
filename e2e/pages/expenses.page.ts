@@ -65,14 +65,18 @@ export class ExpensesPage extends BasePage {
     this.proportionalAmountInput = page.locator(
       'input[formControlName="allocatedAmount"]'
     );
-    this.calculatorButton = page.locator('button[aria-label="Open calculator"]').first();
+    this.calculatorButton = page
+      .locator('button[aria-label="Open calculator"]')
+      .first();
     this.percentageToggle = page.getByTestId('split-by-percentage-button');
     this.addSplitButton = page.getByTestId('add-split-button');
     this.addAllMembersButton = page.getByTestId('add-all-members-button');
     this.saveButton = page
       .getByTestId('save-button')
       .filter({ hasText: 'Save' });
-    this.saveAndAddAnotherButton = page.getByTestId('save-and-add-another-button');
+    this.saveAndAddAnotherButton = page.getByTestId(
+      'save-and-add-another-button'
+    );
     this.cancelButton = page.getByTestId('cancel-button');
     this.memorizeButton = page.getByTestId('memorize-button');
     this.receiptInput = page.locator('input[type="file"]');
@@ -81,7 +85,9 @@ export class ExpensesPage extends BasePage {
 
     // Split elements - count mat-selects with formControlName="owedByMemberRef"
     // since there's exactly one per split
-    this.splitRows = page.locator('mat-select[formControlName="owedByMemberRef"]');
+    this.splitRows = page.locator(
+      'mat-select[formControlName="owedByMemberRef"]'
+    );
     this.deleteSplitButtons = page.getByTestId('remove-split');
 
     // Generic
@@ -93,17 +99,12 @@ export class ExpensesPage extends BasePage {
 
   async gotoList(): Promise<void> {
     await this.page.goto('/expenses');
-    await this.waitForPageLoad();
+    await this.waitForLoadingComplete();
   }
 
   async gotoAddExpense(): Promise<void> {
     await this.page.goto('/expenses/add');
-    await this.waitForPageLoad();
-  }
-
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-    await this.page.waitForTimeout(300);
+    await this.waitForLoadingComplete();
   }
 
   async fillExpenseForm(data: {
@@ -128,7 +129,9 @@ export class ExpensesPage extends BasePage {
       .catch(() => false);
     if (proportionalVisible && data.proportionalAmount !== undefined) {
       // Test explicitly set it - use that value
-      await this.proportionalAmountInput.fill(data.proportionalAmount.toString());
+      await this.proportionalAmountInput.fill(
+        data.proportionalAmount.toString()
+      );
       await this.proportionalAmountInput.blur();
     }
     // Otherwise leave proportional amount at its default (usually 0)
@@ -139,8 +142,12 @@ export class ExpensesPage extends BasePage {
 
   async addSplit(member: string, amount?: number): Promise<void> {
     // Wait for any loading spinners to disappear before clicking addSplit
-    const loadingSpinner = this.page.locator('[data-testid="loading-spinner-container"]');
-    const isSpinnerVisible = await loadingSpinner.isVisible().catch(() => false);
+    const loadingSpinner = this.page.locator(
+      '[data-testid="loading-spinner-container"]'
+    );
+    const isSpinnerVisible = await loadingSpinner
+      .isVisible()
+      .catch(() => false);
     if (isSpinnerVisible) {
       await loadingSpinner.waitFor({ state: 'hidden', timeout: 10000 });
     }
@@ -183,7 +190,9 @@ export class ExpensesPage extends BasePage {
       const splitRow = this.page
         .locator('div[formArrayName="splits"] > div')
         .nth(splitCount - 1);
-      const amountInput = splitRow.locator('input[formControlName="assignedAmount"]');
+      const amountInput = splitRow.locator(
+        'input[formControlName="assignedAmount"]'
+      );
       await amountInput.fill(amount.toString());
       await amountInput.blur();
     }
@@ -205,7 +214,9 @@ export class ExpensesPage extends BasePage {
     const splitRow = this.page
       .locator('div[formArrayName="splits"] > div')
       .nth(index);
-    const amountInput = splitRow.locator('input[formControlName="assignedAmount"]');
+    const amountInput = splitRow.locator(
+      'input[formControlName="assignedAmount"]'
+    );
     await amountInput.fill(amount.toString());
     await amountInput.blur();
     await this.page.waitForTimeout(500);
@@ -247,18 +258,19 @@ export class ExpensesPage extends BasePage {
     await this.saveButton.click();
 
     // Wait for navigation or success message
-    await this.page.waitForTimeout(1500);
+    await this.waitForLoadingComplete();
   }
 
   async saveAndAddAnother(): Promise<void> {
     await this.saveAndAddAnotherButton.click();
+    await this.waitForLoadingComplete();
     // Wait for form to reset
     await this.page.waitForTimeout(1000);
   }
 
   async memorizeExpense(): Promise<void> {
     await this.memorizeButton.click();
-    await this.page.waitForTimeout(500);
+    await this.waitForLoadingComplete();
   }
 
   async cancelExpense(): Promise<void> {

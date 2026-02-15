@@ -67,6 +67,7 @@ export default defineConfig({
     // },
   ],
 
+  timeout: 60 * 1000,
   /* Run your local dev server before starting the tests */
   /* Firebase emulators should be started manually during development */
   webServer: {

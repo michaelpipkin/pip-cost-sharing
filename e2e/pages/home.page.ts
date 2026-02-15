@@ -35,6 +35,7 @@ export class HomePage extends BasePage {
    */
   async goToSplitPage() {
     await this.splitPageLink.click();
+    await this.waitForLoadingComplete();
   }
 
   /**

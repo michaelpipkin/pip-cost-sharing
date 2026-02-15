@@ -73,19 +73,15 @@ export class GroupsPage extends BasePage {
     await this.waitForLoadingComplete();
   }
 
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-    await this.groupSelect.waitFor({ state: 'visible', timeout: 10000 });
-  }
-
   async selectGroup(groupName: string): Promise<void> {
     await this.groupSelect.click();
+    await this.page.waitForTimeout(500); // Wait for dropdown animation
     await this.groupSelectOptions.first().waitFor({ state: 'visible' });
     const targetOption = this.groupSelectOptions.filter({ hasText: groupName });
     await expect(targetOption).toBeVisible();
     await targetOption.click();
-    // Wait for dropdown to close
-    await this.page.waitForTimeout(500);
+    // Wait for group to load after selection
+    await this.waitForLoadingComplete();
   }
 
   async openAddGroupDialog(): Promise<void> {
@@ -129,16 +125,14 @@ export class GroupsPage extends BasePage {
   }
 
   async verifyGroupInList(groupName: string): Promise<void> {
-    await this.waitForLoadingComplete();
-
-    // Now try to interact with the group select
     await this.groupSelect.click({ force: true });
+    await this.page.waitForTimeout(500); // Wait for dropdown animation
     const groupOption = this.groupSelectOptions.filter({ hasText: groupName });
     await expect(groupOption).toBeVisible();
 
-    // Close the dropdown by clicking the select again or pressing Escape
-    await this.page.keyboard.press('Escape');
-    await this.waitForLoadingComplete();
+    // Close the dropdown by clicking the select again
+    await this.groupSelect.click({ force: true });
+    await this.page.waitForTimeout(1000);
   }
 
   async verifyPageLoaded(): Promise<void> {
@@ -193,6 +187,7 @@ export class GroupsPage extends BasePage {
     await this.manageGroupsButton.click();
     await expect(this.manageGroupsDialog).toBeVisible();
     await expect(this.manageGroupsTitle).toHaveText('Manage Groups');
+    await this.waitForLoadingComplete();
   }
 
   async openHelp(): Promise<void> {

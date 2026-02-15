@@ -1,555 +1,389 @@
 import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
-import { GroupsPage } from '../pages/groups.page';
 import { ExpensesPage } from '../pages/expenses.page';
+import { GroupsPage } from '../pages/groups.page';
 import { MembersPage } from '../pages/members.page';
 
 test.describe('Critical Flow: Expenses', () => {
-  test('should create expense with single payer and multiple splits', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
+  let authPage: AuthPage;
+  let groupsPage: GroupsPage;
+  let membersPage: MembersPage;
+  let expensesPage: ExpensesPage;
 
-    // Setup - use auto-add and 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
+  const testUser = {
+    email: 'expenses-tester@test.com',
+    password: 'password123',
+    displayName: 'Expenses Tester',
+  };
 
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
+  test.beforeEach(async ({ preserveDataFirebasePage }) => {
+    authPage = new AuthPage(preserveDataFirebasePage);
+    groupsPage = new GroupsPage(preserveDataFirebasePage);
+    membersPage = new MembersPage(preserveDataFirebasePage);
+    expensesPage = new ExpensesPage(preserveDataFirebasePage);
 
-    // Create expense - auto-add creates splits for both members
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Multiple Splits Test',
-      amount: 150,
-    });
+    // Login or create the shared test user
+    await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
-    // Verify save button is enabled
-    const isEnabled = await expensesPage.verifySaveButtonEnabled();
-    expect(isEnabled).toBeTruthy();
-
-    // Save
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Verify success
-    await expect(expensesPage.snackbar).toContainText('Expense added');
+    // Verify logged in
+    const isLoggedIn = await authPage.isLoggedIn();
+    expect(isLoggedIn).toBe(true);
   });
 
-  test('should validate required fields', async ({ preserveDataFirebasePage }) => {
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Go to add expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Save button should be disabled with empty form
-    const isDisabled = await expensesPage.verifySaveButtonDisabled();
-    expect(isDisabled).toBeTruthy();
-
-    // Fill only description (missing amount)
-    await expensesPage.descriptionInput.fill('Incomplete Expense');
-
-    // Should still be disabled
-    const stillDisabled = await expensesPage.verifySaveButtonDisabled();
-    expect(stillDisabled).toBeTruthy();
-  });
-
-  test('should add all members at once', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - create group WITHOUT auto-add to test the button, but with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', false);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Add All Members Test',
-      amount: 100,
-    });
-
-    // Click "Add All Members" - should add both members
-    await expensesPage.addAllMembers();
-
-    // Verify 2 splits were added
-    const splitCount = await expensesPage.splitRows.count();
-    expect(splitCount).toBe(2);
-
-    // Save
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expect(expensesPage.snackbar).toContainText('Expense added');
-  });
-
-  test('should remove splits dynamically', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense - auto-add creates 2 splits
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Remove Split Test',
-      amount: 90,
-    });
-
-    const initialCount = await expensesPage.splitRows.count();
-    expect(initialCount).toBe(2);
-
-    // Remove first split
-    await expensesPage.removeSplit(0);
-
-    const afterRemoveCount = await expensesPage.splitRows.count();
-    expect(afterRemoveCount).toBe(1);
-  });
-
-  test('should handle complex proportional allocation', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000); // Increase timeout for member setup
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - need 3 distinct members for this test
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Add third member (reuse membersPage instance - already on /members)
-    await membersPage.openAddMemberDialog();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.fillAddMemberForm('Member 3', 'member3@example.com');
-    await membersPage.submitAddMemberForm();
-    await membersPage.waitForLoadingComplete();
-
-    // Verify 3 members exist in the group before creating expense
-    const memberRows = preserveDataFirebasePage.locator('table.mat-mdc-table tbody tr.mat-mdc-row');
-    await expect(memberRows).toHaveCount(3);
-
-    // Create expense with comprehensive scenario:
-    // Total: $150, Proportional: $24.76, Member amounts: $34.99, $32.85, $43.15
-    // Evenly Shared Remainder: $14.25, Expected allocated: $47.60, $45.03, $57.37
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Add description first
-    await expensesPage.descriptionInput.fill('Complex Allocation Test');
-
-    // Set proportional amount FIRST (before total) to avoid auto-fill interference
-    await expensesPage.proportionalAmountInput.fill('24.76');
-    await expensesPage.proportionalAmountInput.blur();
-
-    // Then set total amount
-    await expensesPage.totalAmountInput.fill('150');
-    await expensesPage.totalAmountInput.blur();
-
-    // Update the auto-added splits with specific member amounts
-    await expensesPage.updateSplitAmount(0, 34.99); // Member 1
-    await expensesPage.updateSplitAmount(1, 32.85); // Member 2
-    await expensesPage.updateSplitAmount(2, 43.15); // Member 3
-
-    // Verify allocated amounts sum to $150 (accounting for ±$0.01 rounding adjustments)
-    const allocatedAmounts = preserveDataFirebasePage.locator('[data-testid="allocated-amount"]');
-    const count = await allocatedAmounts.count();
-    expect(count).toBe(3);
-
-    // Collect all allocated amounts
-    const amounts: number[] = [];
-    for (let i = 0; i < count; i++) {
-      const text = await allocatedAmounts.nth(i).textContent();
-      const amount = parseFloat(text?.replace(/[$,\s]/g, '') || '0');
-      amounts.push(amount);
-    }
-
-    // Sum should equal total ($150), allowing for $0.01 rounding tolerance
-    const totalAllocated = amounts.reduce((sum, amt) => sum + amt, 0);
-    expect(totalAllocated).toBeCloseTo(150, 2);
-
-    // Individual amounts should be close to expected (may have ±$0.01 adjustments)
-    // Expected: $47.60, $45.03, $57.37
-    expect(amounts[0]).toBeCloseTo(47.60, 1);
-    expect(amounts[1]).toBeCloseTo(45.03, 1);
-    expect(amounts[2]).toBeCloseTo(57.37, 1);
-  });
-
-  test('should toggle percentage mode', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Percentage Mode Test',
-      amount: 200,
-    });
-
-    // Toggle to percentage mode
-    await expensesPage.togglePercentageMode();
-
-    // Proportional amount should be hidden
-    const isProportionalVisible = await expensesPage.proportionalAmountInput
-      .isVisible()
-      .catch(() => false);
-    expect(isProportionalVisible).toBeFalsy();
-
-    // Split should have percentage input
-    // Note: percentage input is not inside mat-select, locate it directly
-    const percentageInput = preserveDataFirebasePage
-      .locator('input[formControlName="percentage"]')
-      .first();
-    await expect(percentageInput).toBeVisible();
-  });
-
-  test('should save and add another expense', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create first expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'First Expense',
-      amount: 50,
-    });
-
-    // Save and add another
-    await expensesPage.saveAndAddAnother();
-    await expensesPage.waitForLoadingComplete();
-
-    // Should still be on add expense page
-    await expect(expensesPage.pageTitle).toHaveText('Add Expense');
-
-    // Form should be reset
-    const descriptionValue = await expensesPage.descriptionInput.inputValue();
-    expect(descriptionValue).toBe('');
-  });
-
-  test('should memorize expense for reuse', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Memorize Test',
-      amount: 75,
-    });
-
-    // Memorize
-    const memorizeVisible = await expensesPage.memorizeButton
-      .isVisible()
-      .catch(() => false);
-
-    if (memorizeVisible) {
-      await expensesPage.memorizeExpense();
-      await expect(expensesPage.snackbar).toContainText('Memorized');
-    }
-  });
-
-  test('should cancel expense creation', async ({ preserveDataFirebasePage }) => {
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Start creating expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Cancelled Expense',
-      amount: 100,
-    });
-
-    // Cancel
-    const cancelVisible = await expensesPage.cancelButton
-      .isVisible()
-      .catch(() => false);
-
-    if (cancelVisible) {
-      await expensesPage.cancelExpense();
-      await expensesPage.waitForLoadingComplete();
-
-      // Should navigate away from add expense page
-      const url = preserveDataFirebasePage.url();
-      expect(url).not.toContain('/add');
-    }
-  });
-
-  test('should auto-select single category', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Go to add expense
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // If there's only one category, the select should be hidden
-    const categoryVisible = await expensesPage.categorySelect
-      .isVisible()
-      .catch(() => false);
-
-    // This is expected behavior - single category auto-selected
-    if (!categoryVisible) {
-      // Category is auto-selected, continue with expense
+  // Serial workflow - basic expense operations
+  test.describe.serial('Basic Expense Operations', () => {
+    test('should create expense with single payer and multiple splits', async () => {
+      // Setup - use auto-add and 2 members
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName);
+
+      // Add second member
+      await membersPage.goto();
+      await membersPage.addMember('Member 1', 'member1@example.com');
+
+      // Create expense - auto-add creates splits for both members
+      await expensesPage.gotoAddExpense();
       await expensesPage.fillExpenseForm({
-        description: 'Auto Category Test',
-        amount: 40,
+        description: 'Multiple Splits Test',
+        amount: 150,
       });
+
+      // Verify save button is enabled
+      const isEnabled = await expensesPage.verifySaveButtonEnabled();
+      expect(isEnabled).toBeTruthy();
+
+      // Save
       await expensesPage.saveExpense();
-      await expensesPage.waitForLoadingComplete();
+
+      // Verify success
       await expect(expensesPage.snackbar).toContainText('Expense added');
-    }
+    });
+
+    test('should save and add another expense', async () => {
+      // Create first expense (reuses group from previous test)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'First Expense',
+        amount: 50,
+      });
+
+      // Save and add another
+      await expensesPage.saveAndAddAnother();
+
+      // Should still be on add expense page
+      await expect(expensesPage.pageTitle).toHaveText('Add Expense');
+
+      // Form should be reset
+      const descriptionValue = await expensesPage.descriptionInput.inputValue();
+      expect(descriptionValue).toBe('');
+    });
+
+    test('should memorize expense for reuse', async () => {
+      // Create expense (reuses group from previous tests)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Memorize Test',
+        amount: 75,
+      });
+
+      // Memorize
+      const memorizeVisible = await expensesPage.memorizeButton
+        .isVisible()
+        .catch(() => false);
+
+      if (memorizeVisible) {
+        await expensesPage.memorizeExpense();
+        await expect(expensesPage.snackbar).toContainText('Memorized');
+      }
+    });
+
+    test('should cancel expense creation', async () => {
+      // Start creating expense
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Cancelled Expense',
+        amount: 100,
+      });
+
+      // Cancel
+      const cancelVisible = await expensesPage.cancelButton
+        .isVisible()
+        .catch(() => false);
+
+      if (cancelVisible) {
+        await expensesPage.cancelExpense();
+
+        // Should navigate away from add expense page
+        const url = expensesPage.page.url();
+        expect(url).not.toContain('/add');
+      }
+    });
   });
 
-  test('should handle simple proportional allocation', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
+  // Serial workflow - split management
+  test.describe.serial('Split Management', () => {
+    test('should add all members at once', async () => {
+      // Setup - create group WITHOUT auto-add to test the button, but with 2 members
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, false);
+      await groupsPage.selectGroup(groupName);
 
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
+      // Add second member
+      await membersPage.goto();
+      await membersPage.addMember('Member 2', 'member2@example.com');
 
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
+      // Create expense
+      await expensesPage.gotoAddExpense();
 
-    // Create expense with proportional split
-    // Total: $150, Member Amount: $90 (Member 1), Proportional: $60
-    // Evenly Shared Remainder: $150 - $90 - $60 = $0
-    // Member 1: $90 member amount + ($90/$90) × $60 proportional = $150
-    // Member 2: $0 member amount + ($0/$90) × $60 proportional = $0
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
+      // Click "Add All Members" first (before filling form, while button is enabled)
+      await expensesPage.addAllMembers();
 
-    await expensesPage.totalAmountInput.fill('150');
-    await expensesPage.totalAmountInput.blur();
+      // Then fill the form
+      await expensesPage.fillExpenseForm({
+        description: 'Add All Members Test',
+        amount: 100,
+      });
 
-    await expensesPage.proportionalAmountInput.fill('60');
-    await expensesPage.proportionalAmountInput.blur();
+      // Verify 2 splits were added
+      const splitCount = await expensesPage.splitRows.count();
+      expect(splitCount).toBe(2);
 
-    await expensesPage.descriptionInput.fill('Proportional Test');
+      // Save
+      await expensesPage.saveExpense();
+      await expect(expensesPage.snackbar).toContainText('Expense added');
+    });
 
-    // Update Member 1's split (index 0) to $90 member amount
-    await expensesPage.updateSplitAmount(0, 90);
+    test('should remove splits dynamically', async () => {
+      // Create expense - no auto-add, so manually add members
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Remove Split Test',
+        amount: 90,
+      });
 
-    // Member 1's Allocated Amount = Member Amount + share of remainder + share of proportional
-    // = $90 + $0 + $60 = $150 total owed by Member 1
-    const allocatedSpan = preserveDataFirebasePage
-      .locator('[data-testid="allocated-amount"]')
-      .first();
-    const allocatedText = await allocatedSpan.textContent();
-    const allocatedValue = parseFloat(allocatedText?.replace(/[$,\s]/g, '') || '0');
+      // Add all members
+      await expensesPage.addAllMembers();
 
-    // Should be exactly $150 (Member 1's total amount owed)
-    expect(allocatedValue).toBeCloseTo(150, 2);
+      const initialCount = await expensesPage.splitRows.count();
+      expect(initialCount).toBe(2);
+
+      // Remove first split
+      await expensesPage.removeSplit(0);
+
+      const afterRemoveCount = await expensesPage.splitRows.count();
+      expect(afterRemoveCount).toBe(1);
+    });
+
+    test('should toggle percentage mode', async () => {
+      // Create expense
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Percentage Mode Test',
+        amount: 200,
+      });
+
+      // Add all members
+      await expensesPage.addAllMembers();
+
+      // Toggle to percentage mode
+      await expensesPage.togglePercentageMode();
+
+      // Proportional amount should be hidden
+      const isProportionalVisible = await expensesPage.proportionalAmountInput
+        .isVisible()
+        .catch(() => false);
+      expect(isProportionalVisible).toBeFalsy();
+
+      // Split should have percentage input
+      const percentageInput = expensesPage.page
+        .locator('input[formControlName="percentage"]')
+        .first();
+      await expect(percentageInput).toBeVisible();
+    });
   });
 
-  test('should validate zero amount', async ({ preserveDataFirebasePage }) => {
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
+  // Serial workflow - proportional allocation
+  test.describe.serial('Proportional Allocation', () => {
+    test('should handle simple proportional allocation', async () => {
+      // Setup - use auto-add with 2 members
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName);
 
-    // Setup
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
+      // Add second member
+      await membersPage.goto();
+      await membersPage.addMember('Member 3', 'member3@example.com');
 
-    // Try to create expense with zero amount
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.descriptionInput.fill('Zero Amount Test');
-    await expensesPage.totalAmountInput.fill('0');
-    await expensesPage.totalAmountInput.blur();
+      // Create expense with proportional split
+      await expensesPage.gotoAddExpense();
 
-    // Should show error
-    await expect(expensesPage.formErrors.filter({ hasText: 'Cannot be zero' })).toBeVisible();
+      await expensesPage.totalAmountInput.fill('150');
+      await expensesPage.totalAmountInput.blur();
 
-    // Save button should be disabled
-    const isDisabled = await expensesPage.verifySaveButtonDisabled();
-    expect(isDisabled).toBeTruthy();
+      await expensesPage.proportionalAmountInput.fill('60');
+      await expensesPage.proportionalAmountInput.blur();
+
+      await expensesPage.descriptionInput.fill('Proportional Test');
+
+      // Update Expenses Tester's split (index 0) to $90 member amount
+      await expensesPage.updateSplitAmount(0, 90);
+
+      // Expenses Tester's Allocated Amount should be $150
+      const allocatedSpan = expensesPage.page
+        .locator('[data-testid="allocated-amount"]')
+        .first();
+      const allocatedText = await allocatedSpan.textContent();
+      const allocatedValue = parseFloat(
+        allocatedText?.replace(/[$,\s]/g, '') || '0'
+      );
+
+      expect(allocatedValue).toBeCloseTo(150, 2);
+    });
+
+    test('should handle complex proportional allocation', async ({
+      preserveDataFirebasePage,
+    }) => {
+      // Add third member to group
+      await membersPage.goto();
+      await membersPage.openAddMemberDialog();
+      await membersPage.fillAddMemberForm('Member 4', 'member4@example.com');
+      await membersPage.submitAddMemberForm();
+
+      // Create expense with complex allocation
+      await expensesPage.gotoAddExpense();
+
+      // Add description first
+      await expensesPage.descriptionInput.fill('Complex Allocation Test');
+
+      // Set proportional amount FIRST
+      await expensesPage.proportionalAmountInput.fill('24.76');
+      await expensesPage.proportionalAmountInput.blur();
+
+      // Then set total amount
+      await expensesPage.totalAmountInput.fill('150');
+      await expensesPage.totalAmountInput.blur();
+
+      // Update the auto-added splits
+      await expensesPage.updateSplitAmount(0, 34.99); // Expenses Tester
+      await expensesPage.updateSplitAmount(1, 32.85); // Member 3
+      await expensesPage.updateSplitAmount(2, 43.15); // Member 4
+
+      // Verify allocated amounts sum to $150
+      const allocatedAmounts = preserveDataFirebasePage.locator(
+        '[data-testid="allocated-amount"]'
+      );
+      const count = await allocatedAmounts.count();
+      expect(count).toBe(3);
+
+      // Collect all allocated amounts
+      const amounts: number[] = [];
+      for (let i = 0; i < count; i++) {
+        const text = await allocatedAmounts.nth(i).textContent();
+        const amount = parseFloat(text?.replace(/[$,\s]/g, '') || '0');
+        amounts.push(amount);
+      }
+
+      // Sum should equal total ($150)
+      const totalAllocated = amounts.reduce((sum, amt) => sum + amt, 0);
+      expect(totalAllocated).toBeCloseTo(150, 2);
+
+      // Individual amounts should be close to expected
+      expect(amounts[0]).toBeCloseTo(47.6, 1);
+      expect(amounts[1]).toBeCloseTo(45.03, 1);
+      expect(amounts[2]).toBeCloseTo(57.37, 1);
+    });
   });
 
-  test('should handle date selection', async ({ preserveDataFirebasePage }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
+  // Serial workflow - validation and UI
+  test.describe.serial('Validation and UI', () => {
+    test('should validate required fields', async () => {
+      // Setup
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName);
 
-    // Setup - use auto-add with 2 members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Member 1', true);
-    await groupsPage.waitForLoadingComplete();
+      // Go to add expense
+      await expensesPage.gotoAddExpense();
 
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Member 2', 'member2@example.com');
-    await membersPage.waitForLoadingComplete();
+      // Save button should be disabled with empty form
+      const isDisabled = await expensesPage.verifySaveButtonDisabled();
+      expect(isDisabled).toBeTruthy();
 
-    // Create expense with specific date
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
+      // Fill only description (missing amount)
+      await expensesPage.descriptionInput.fill('Incomplete Expense');
 
-    // Open date picker
-    await expensesPage.datePickerToggle.click();
+      // Should still be disabled
+      const stillDisabled = await expensesPage.verifySaveButtonDisabled();
+      expect(stillDisabled).toBeTruthy();
+    });
 
-    // Click on a date (15th of current month)
-    await preserveDataFirebasePage
-      .locator('.mat-calendar-body-cell-content:has-text("15")')
-      .first()
-      .click();
+    test('should auto-select single category', async () => {
+      // Add second member
+      await membersPage.goto();
+      await membersPage.addMember('Member 5', 'member5@example.com');
 
-    // Complete the expense
-    await expensesPage.descriptionInput.fill('Date Test');
-    await expensesPage.totalAmountInput.fill('55');
-    await expensesPage.totalAmountInput.blur();
+      // Go to add expense
+      await expensesPage.gotoAddExpense();
 
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expect(expensesPage.snackbar).toContainText('Expense added');
+      // If there's only one category, the select should be hidden
+      const categoryVisible = await expensesPage.categorySelect
+        .isVisible()
+        .catch(() => false);
+
+      // This is expected behavior - single category auto-selected
+      if (!categoryVisible) {
+        // Category is auto-selected, continue with expense
+        await expensesPage.fillExpenseForm({
+          description: 'Auto Category Test',
+          amount: 40,
+        });
+        await expensesPage.saveExpense();
+        await expect(expensesPage.snackbar).toContainText('Expense added');
+      }
+    });
+
+    test('should validate zero amount', async () => {
+      // Try to create expense with zero amount
+      await expensesPage.gotoAddExpense();
+      await expensesPage.descriptionInput.fill('Zero Amount Test');
+      await expensesPage.totalAmountInput.fill('0');
+      await expensesPage.totalAmountInput.blur();
+
+      // Should show error
+      await expect(
+        expensesPage.formErrors.filter({ hasText: 'Cannot be zero' })
+      ).toBeVisible();
+
+      // Save button should be disabled
+      const isDisabled = await expensesPage.verifySaveButtonDisabled();
+      expect(isDisabled).toBeTruthy();
+    });
+
+    test('should handle date selection', async () => {
+      // Create expense with specific date
+      await expensesPage.gotoAddExpense();
+
+      // Open date picker
+      await expensesPage.datePickerToggle.click();
+
+      // Click on a date (15th of current month)
+      await expensesPage.page
+        .locator('.mat-calendar-body-cell-content:has-text("15")')
+        .first()
+        .click();
+
+      // Complete the expense
+      await expensesPage.descriptionInput.fill('Date Test');
+      await expensesPage.totalAmountInput.fill('55');
+      await expensesPage.totalAmountInput.blur();
+
+      await expensesPage.saveExpense();
+      await expect(expensesPage.snackbar).toContainText('Expense added');
+    });
   });
 });
