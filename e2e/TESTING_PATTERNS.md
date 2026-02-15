@@ -404,45 +404,13 @@ await this.page.waitForTimeout(500);  // Filter changes, blur events, form valid
 // Long waits - Async backend operations
 await this.page.waitForTimeout(1500); // Auto-add members, save operations, Firebase writes
 await this.page.waitForTimeout(2000); // Group creation, complex dialogs
-
-// Test-level timeouts
-test.setTimeout(60000); // 60 seconds for comprehensive e2e flows
-```
-
-### Promise.race for Loading States
-
-Use `Promise.race` to handle both fast and slow loading scenarios:
-
-```typescript
-async waitForPageLoad(): Promise<void> {
-  // Wait for app root
-  await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-  // Race between loading appearing or content appearing
-  await Promise.race([
-    this.loadingMessage
-      .waitFor({ state: 'visible', timeout: 5000 })
-      .catch(() => {}),  // Swallow timeout if loading doesn't appear
-    this.summaryTable
-      .waitFor({ state: 'visible', timeout: 5000 })
-      .catch(() => {}),
-  ]);
-
-  // If loading appeared, wait for it to disappear
-  const isLoadingVisible = await this.loadingMessage
-    .isVisible()
-    .catch(() => false);
-  if (isLoadingVisible) {
-    await this.loadingMessage.waitFor({ state: 'hidden', timeout: 10000 });
-  }
-}
 ```
 
 ### When to Use Which Wait
 
 | Scenario | Method | Timeout |
 |----------|--------|---------|
-| Page navigation | `waitForPageLoad()` | 10s |
+| Page navigation | `waitForLoadingComplete()` | 10s |
 | Element appears | `waitFor({ state: 'visible' })` | 5s |
 | Element disappears | `waitFor({ state: 'hidden' })` | 10s |
 | UI animation | `waitForTimeout()` | 300ms |
@@ -507,22 +475,7 @@ export class ComponentPage extends BasePage {
   // 3. Navigation with loading wait
   async goto(): Promise<void> {
     await this.page.goto('/route');
-    await this.waitForPageLoad();
-  }
-
-  // 4. Custom waitForPageLoad using Promise.race pattern
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-    await Promise.race([
-      this.loadingMessage.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
-      this.table.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
-    ]);
-
-    const isLoadingVisible = await this.loadingMessage.isVisible().catch(() => false);
-    if (isLoadingVisible) {
-      await this.loadingMessage.waitFor({ state: 'hidden', timeout: 10000 });
-    }
+    await this.waitForLoadingComplete();
   }
 
   // 5. Action methods with appropriate waits
@@ -583,29 +536,6 @@ constructor(page: Page) {
   super(page);
   this.loadingMessage = page.getByTestId('loading-summary-message');
   // Or: page.locator('[data-testid="loading-component"]')
-}
-
-async waitForPageLoad(): Promise<void> {
-  // 1. Wait for app-root to exist
-  await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-  // 2. Race: either loading appears OR content appears
-  await Promise.race([
-    this.loadingMessage
-      .waitFor({ state: 'visible', timeout: 5000 })
-      .catch(() => {}),
-    this.contentElement
-      .waitFor({ state: 'visible', timeout: 5000 })
-      .catch(() => {}),
-  ]);
-
-  // 3. If loading is visible, wait for it to hide
-  const isLoadingVisible = await this.loadingMessage
-    .isVisible()
-    .catch(() => false);
-  if (isLoadingVisible) {
-    await this.loadingMessage.waitFor({ state: 'hidden', timeout: 10000 });
-  }
 }
 ```
 
@@ -799,7 +729,7 @@ async goto(): Promise<void> {
 // ✅ CORRECT - Wait for loading
 async goto(): Promise<void> {
   await this.page.goto('/summary');
-  await this.waitForPageLoad();
+  await this.waitForLoadingComplete();
 }
 ```
 

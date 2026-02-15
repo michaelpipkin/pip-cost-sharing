@@ -8,190 +8,307 @@ import { MembersPage } from '../pages/members.page';
 import { SummaryPage } from '../pages/summary.page';
 
 test.describe('Critical Flow: Expense → Payment → History', () => {
-  test('should create expense, pay it, and verify in history', async ({
-    preserveDataFirebasePage,
-  }) => {
-    // This is a comprehensive end-to-end test - increase timeout
-    test.setTimeout(60000); // 60 seconds
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-    const historyPage = new HistoryPage(preserveDataFirebasePage);
+  let authPage: AuthPage;
+  let groupsPage: GroupsPage;
+  let membersPage: MembersPage;
+  let expensesPage: ExpensesPage;
+  let summaryPage: SummaryPage;
+  let historyPage: HistoryPage;
 
-    // STEP 1: Setup - Create user and group with auto-add members enabled
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
+  // Unique user per test run (enables parallel execution)
+  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
+  let testUser: { email: string; password: string; displayName: string };
 
-    // STEP 1b: Add a second member to the group
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
+  // Create the user once before all tests
+  test.beforeAll(async ({ browser }) => {
+    // Generate unique email for this test run
+    testUser = {
+      email: `e2e-flow-tester-${Date.now()}@test.com`,
+      password: 'password123',
+      displayName: 'E2E Flow Tester',
+    };
 
-    // STEP 2: Create expense (Admin pays $100, to be split equally)
-    // With auto-add members enabled, all group members are automatically added as splits
-    // The form automatically does equal splitting - no need to manually allocate amounts
-    await expensesPage.gotoAddExpense();
-    // Wait for auto-added splits to appear and auto-allocate equally
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Team Lunch',
-      amount: 100,
-    });
-
-    // Verify both members have splits (auto-added with equal allocation)
-    const splitCount = await expensesPage.splitRows.count();
-    expect(splitCount).toBe(2);
-
-    // Save expense
-    await expensesPage.saveExpense();
-
-    // Verify success message
-    await expect(expensesPage.snackbar).toContainText('Expense added');
-    await expensesPage.waitForLoadingComplete();
-
-    // STEP 3: Navigate to Summary and verify amounts
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.verifyPageLoaded();
-
-    // Verify summary shows the debt
-    const summaryCount = await summaryPage.summaryRows.count();
-    expect(summaryCount).toBeGreaterThan(0);
-
-    // STEP 4: Pay the expense (Pay button is on main row, no need to expand detail)
-    await summaryPage.openPaymentDialog(0);
-    await expect(summaryPage.paymentDialogTitle).toBeVisible();
-
-    // Submit payment (amount should be pre-filled)
-    await summaryPage.submitPayment();
-
-    // Verify success message
-    await expect(summaryPage.snackbar).toContainText(
-      'Expenses have been marked paid'
-    );
-
-    // STEP 5: Verify payment appears in history
-    await historyPage.goto();
-    await historyPage.waitForLoadingComplete();
-    await historyPage.verifyPageLoaded();
-
-    // Verify at least one history record exists
-    const historyCount = await historyPage.historyRows.count();
-    expect(historyCount).toBeGreaterThan(0);
-
-    // Verify the payment record contains expected data
-    const historyRecord = await historyPage.getHistoryRecord(0);
-    expect(historyRecord.amount).toContain('50'); // Should show $50 payment
-
-    // STEP 6: Verify splits are marked as paid (removed from Summary)
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-
-    // The summary should now have fewer entries (or be empty)
-    const newSummaryCount = await summaryPage.summaryRows.count();
-    expect(newSummaryCount).toBeLessThanOrEqual(summaryCount);
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const { createTestUser } = await import('../utils/firebase');
+    await createTestUser(page, testUser.email, testUser.password);
+    await context.close();
   });
 
-  test('should handle payment cancellation', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
+  test.beforeEach(async ({ preserveDataFirebasePage }) => {
+    authPage = new AuthPage(preserveDataFirebasePage);
+    groupsPage = new GroupsPage(preserveDataFirebasePage);
+    membersPage = new MembersPage(preserveDataFirebasePage);
+    expensesPage = new ExpensesPage(preserveDataFirebasePage);
+    summaryPage = new SummaryPage(preserveDataFirebasePage);
+    historyPage = new HistoryPage(preserveDataFirebasePage);
 
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
+    // Login unique test user (already created in beforeAll)
+    await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
 
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Cancelled Payment Test',
-      amount: 75,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Go to Summary
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    const initialCount = await summaryPage.summaryRows.count();
-
-    // Open payment dialog and cancel
-    await summaryPage.openPaymentDialog(0);
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.cancelPayment();
-
-    // Verify summary unchanged
-    const afterCancelCount = await summaryPage.summaryRows.count();
-    expect(afterCancelCount).toBe(initialCount);
+    // Verify logged in
+    const isLoggedIn = await authPage.isLoggedIn();
+    expect(isLoggedIn).toBe(true);
   });
 
+  // Serial workflow - comprehensive payment flow with history features
+  test.describe.serial('Payment Workflow and History', () => {
+    test('should create expense, pay it, and verify in history', async () => {
+      // Setup - Create group with auto-add members enabled
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName); // Make this the active group
+
+      // Add a second member to the group
+      await membersPage.goto();
+      await membersPage.addMember('Test User 1', `testuser1-${Date.now()}@example.com`);
+
+      // Create expense (Admin pays $100, to be split equally)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Team Lunch',
+        amount: 100,
+      });
+
+      // Verify both members have splits (auto-added with equal allocation)
+      const splitCount = await expensesPage.splitRows.count();
+      expect(splitCount).toBe(2);
+
+      // Save expense
+      await expensesPage.saveExpense();
+
+      // Verify success message
+      await expect(expensesPage.snackbar).toContainText('Expense added');
+
+      // Navigate to Summary and verify amounts
+      await summaryPage.goto();
+      await summaryPage.verifyPageLoaded();
+
+      // Verify summary shows the debt
+      const summaryCount = await summaryPage.summaryRows.count();
+      expect(summaryCount).toBeGreaterThan(0);
+
+      // Pay the expense
+      await summaryPage.openPaymentDialog(0);
+      await expect(summaryPage.paymentDialogTitle).toBeVisible();
+
+      // Submit payment (amount should be pre-filled)
+      await summaryPage.submitPayment();
+
+      // Verify success message
+      await expect(summaryPage.snackbar).toContainText(
+        'Expenses have been marked paid'
+      );
+
+      // Verify payment appears in history
+      await historyPage.goto();
+      await historyPage.verifyPageLoaded();
+
+      // Verify at least one history record exists
+      const historyCount = await historyPage.historyRows.count();
+      expect(historyCount).toBeGreaterThan(0);
+
+      // Verify the payment record contains expected data
+      const historyRecord = await historyPage.getHistoryRecord(0);
+      expect(historyRecord.amount).toContain('50'); // Should show $50 payment
+
+      // Verify splits are marked as paid (removed from Summary)
+      await summaryPage.goto();
+
+      // The summary should now have fewer entries (or be empty)
+      const newSummaryCount = await summaryPage.summaryRows.count();
+      expect(newSummaryCount).toBeLessThanOrEqual(summaryCount);
+    });
+
+    test('should copy payment history to clipboard', async () => {
+      // Skip if clipboard not supported
+      if (!TEST_CONFIG.supportsClipboard) {
+        test.skip();
+        return;
+      }
+
+      // Copy the payment created in the previous test
+      await historyPage.goto();
+      await historyPage.copyToClipboard(0);
+
+      // Verify success message
+      await expect(historyPage.snackbar).toContainText('copied');
+    });
+
+    test('should handle multiple categories in payment history', async () => {
+      // Expand detail on the payment from the first test
+      await historyPage.goto();
+      await historyPage.verifyPageLoaded();
+      await historyPage.expandDetail(0);
+
+      // Detail should show category breakdown
+      await expect(historyPage.detailRows.first()).toBeVisible();
+    });
+  });
+
+  // Serial workflow - payment interactions
+  test.describe.serial('Payment Interactions', () => {
+    test('should handle payment cancellation', async () => {
+      // Setup - Create group with auto-add members
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName); // Make this the active group
+
+      // Add second member with unique email
+      await membersPage.goto();
+      await membersPage.addMember('Test User 2', `testuser2-${Date.now()}@example.com`);
+
+      // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Cancelled Payment Test',
+        amount: 75,
+      });
+      await expensesPage.saveExpense();
+
+      // Go to Summary
+      await summaryPage.goto();
+      const initialCount = await summaryPage.summaryRows.count();
+
+      // Open payment dialog and cancel
+      await summaryPage.openPaymentDialog(0);
+      await summaryPage.cancelPayment();
+
+      // Verify summary unchanged
+      const afterCancelCount = await summaryPage.summaryRows.count();
+      expect(afterCancelCount).toBe(initialCount);
+    });
+
+    test('should handle payment with payment method selection', async () => {
+      // Create another expense (reuses group and members from previous test)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Payment Method Test',
+        amount: 100,
+      });
+      await expensesPage.saveExpense();
+
+      // Pay with specific payment method
+      await summaryPage.goto();
+      await summaryPage.openPaymentDialog(0);
+
+      // Select payment method (if available)
+      const paymentMethodVisible = await summaryPage.paymentMethodSelect
+        .isVisible()
+        .catch(() => false);
+
+      if (paymentMethodVisible) {
+        await summaryPage.fillPaymentForm({
+          paymentMethod: 'Cash',
+        });
+      }
+
+      await summaryPage.submitPayment();
+
+      // Verify success
+      await expect(summaryPage.snackbar).toContainText(
+        'Expenses have been marked paid'
+      );
+    });
+  });
+
+  // Serial workflow - summary features
+  test.describe.serial('Summary Features', () => {
+    test('should filter summary by date range', async () => {
+      // Setup - Create group with auto-add members
+      await groupsPage.goto();
+      const groupName = `Test Group ${Date.now()}`;
+      await groupsPage.createGroup(groupName, testUser.displayName, true);
+      await groupsPage.selectGroup(groupName); // Make this the active group
+
+      // Add second member with unique email
+      await membersPage.goto();
+      await membersPage.addMember('Test User 3', `testuser3-${Date.now()}@example.com`);
+
+      // Create expense (auto-splits equally: Admin $25, Test User $25)
+      await expensesPage.gotoAddExpense();
+      await expensesPage.fillExpenseForm({
+        description: 'Recent Expense',
+        amount: 50,
+      });
+      await expensesPage.saveExpense();
+
+      // Go to Summary
+      await summaryPage.goto();
+      const initialCount = await summaryPage.summaryRows.count();
+      expect(initialCount).toBeGreaterThan(0);
+
+      // Filter to future dates (should show nothing)
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      await summaryPage.filterByDateRange(futureDate, undefined);
+
+      // Should show no results
+      await summaryPage.verifyEmptyState();
+
+      // Clear filters
+      await summaryPage.clearFilters();
+
+      // Should show results again
+      const afterClearCount = await summaryPage.summaryRows.count();
+      expect(afterClearCount).toBe(initialCount);
+    });
+
+    test('should verify summary detail breakdown by category', async () => {
+      // View detail on the expense from previous test
+      await summaryPage.goto();
+      await summaryPage.expandDetail(0);
+
+      // Verify detail content is visible (detail-table-container appears)
+      const detailContent = summaryPage.detailRows
+        .first()
+        .locator('.detail-table-container');
+      await expect(detailContent).toBeVisible();
+
+      // Collapse detail
+      await summaryPage.expandDetail(0);
+
+      // Detail content should be hidden (row still exists but content is gone)
+      await expect(detailContent).not.toBeVisible();
+    });
+  });
+
+  // Independent test - complex setup with mutual debts
   test('should calculate net amounts correctly with mutual debts', async ({
     preserveDataFirebasePage,
   }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-
     // Setup - Create group with auto-add enabled
-    await authPage.createAndLoginTestUser();
     await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
+    const groupName = `Test Group ${Date.now()}`;
+    await groupsPage.createGroup(groupName, testUser.displayName, true);
+    await groupsPage.selectGroup(groupName); // Make this the active group
 
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
+    // Add second member with unique email
     await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
+    await membersPage.addMember('Test User 4', `testuser4-${Date.now()}@example.com`);
 
     // Create first expense: Admin pays $100, split 50/50 between members
     await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
     await expensesPage.fillExpenseForm({
       description: 'Expense 1',
       amount: 100,
     });
     // Auto-add creates splits for both members, update to specific amounts
-    await expensesPage.updateSplitAmount(0, 50); // Admin User
-    await expensesPage.updateSplitAmount(1, 50); // Test User
+    await expensesPage.updateSplitAmount(0, 50); // E2E Flow Tester
+    await expensesPage.updateSplitAmount(1, 50); // Test User 4
     await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
 
-    // Create second expense: Test User pays $30, Admin owes $30
-    // (Net result: Test User owes Admin $20)
+    // Create second expense: Test User 4 pays $30, Admin owes $30
+    // (Net result: Test User 4 owes Admin $20)
     await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
 
-    // Change payer to Test User
+    // Change payer to Test User 4
     await expensesPage.payerSelect.click();
     await preserveDataFirebasePage
       .locator('mat-option')
-      .filter({ hasText: 'Test User' })
+      .filter({ hasText: 'Test User 4' })
       .click();
 
     await expensesPage.descriptionInput.fill('Expense 2');
@@ -200,291 +317,15 @@ test.describe('Critical Flow: Expense → Payment → History', () => {
 
     // Auto-add creates splits for both members, update to specific amounts
     await expensesPage.updateSplitAmount(0, 30); // Admin User owes $30
-    await expensesPage.updateSplitAmount(1, 0); // Test User owes $0
+    await expensesPage.updateSplitAmount(1, 0); // Test User 4 owes $0
     await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
 
     // Check Summary for net amount
     await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
     await summaryPage.verifyPageLoaded();
 
     // Should show net debt of $20 (50 - 30)
     const netAmount = await summaryPage.getNetAmount(0);
     expect(netAmount).toContain('20');
-  });
-
-  test('should handle multiple categories in payment history', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-    const historyPage = new HistoryPage(preserveDataFirebasePage);
-
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $30, Test User $30)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Food Expense',
-      amount: 60,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Pay the expense
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.openPaymentDialog(0);
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.submitPayment();
-    await summaryPage.waitForLoadingComplete();
-
-    // Verify in history with category breakdown
-    await historyPage.goto();
-    await historyPage.waitForLoadingComplete();
-    await historyPage.verifyPageLoaded();
-    await historyPage.expandDetail(0);
-
-    // Detail should show category breakdown
-    await expect(historyPage.detailRows.first()).toBeVisible();
-  });
-
-  test('should filter summary by date range', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $25, Test User $25)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Recent Expense',
-      amount: 50,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Go to Summary
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    const initialCount = await summaryPage.summaryRows.count();
-    expect(initialCount).toBeGreaterThan(0);
-
-    // Filter to future dates (should show nothing)
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 7);
-    await summaryPage.filterByDateRange(futureDate, undefined);
-
-    // Should show no results
-    await summaryPage.verifyEmptyState();
-
-    // Clear filters
-    await summaryPage.clearFilters();
-
-    // Should show results again
-    const afterClearCount = await summaryPage.summaryRows.count();
-    expect(afterClearCount).toBe(initialCount);
-  });
-
-  test('should copy payment history to clipboard', async ({
-    preserveDataFirebasePage,
-  }) => {
-    // Skip if clipboard not supported
-    if (!TEST_CONFIG.supportsClipboard) {
-      test.skip();
-      return;
-    }
-
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-    const historyPage = new HistoryPage(preserveDataFirebasePage);
-
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $22.50, Test User $22.50)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Clipboard Test',
-      amount: 45,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Pay the expense
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.openPaymentDialog(0);
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.submitPayment();
-    await summaryPage.waitForLoadingComplete();
-
-    // Go to history and copy
-    await historyPage.goto();
-    await historyPage.waitForLoadingComplete();
-    await historyPage.copyToClipboard(0);
-
-    // Verify success message
-    await expect(historyPage.snackbar).toContainText('copied');
-  });
-
-  test('should handle payment with payment method selection', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $50, Test User $50)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Payment Method Test',
-      amount: 100,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // Pay with specific payment method
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.openPaymentDialog(0);
-    await summaryPage.waitForLoadingComplete();
-
-    // Select payment method (if available)
-    const paymentMethodVisible = await summaryPage.paymentMethodSelect
-      .isVisible()
-      .catch(() => false);
-
-    if (paymentMethodVisible) {
-      await summaryPage.fillPaymentForm({
-        paymentMethod: 'Cash',
-      });
-    }
-
-    await summaryPage.submitPayment();
-    await summaryPage.waitForLoadingComplete();
-
-    // Verify success
-    await expect(summaryPage.snackbar).toContainText(
-      'Expenses have been marked paid'
-    );
-  });
-
-  test('should verify summary detail breakdown by category', async ({
-    preserveDataFirebasePage,
-  }) => {
-    test.setTimeout(60000);
-    const authPage = new AuthPage(preserveDataFirebasePage);
-    const groupsPage = new GroupsPage(preserveDataFirebasePage);
-    const expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    const summaryPage = new SummaryPage(preserveDataFirebasePage);
-
-    // Setup - Create group with auto-add members
-    await authPage.createAndLoginTestUser();
-    await groupsPage.goto();
-    await groupsPage.waitForLoadingComplete();
-    await groupsPage.createGroup('Test Group', 'Admin User', true);
-    await groupsPage.waitForLoadingComplete();
-
-    // Add second member
-    const membersPage = new MembersPage(preserveDataFirebasePage);
-    await membersPage.goto();
-    await membersPage.waitForLoadingComplete();
-    await membersPage.addMember('Test User', 'testuser@example.com');
-    await membersPage.waitForLoadingComplete();
-
-    // Create expense (auto-splits equally: Admin $40, Test User $40)
-    await expensesPage.gotoAddExpense();
-    await expensesPage.waitForLoadingComplete();
-    await expensesPage.fillExpenseForm({
-      description: 'Category Detail Test',
-      amount: 80,
-    });
-    await expensesPage.saveExpense();
-    await expensesPage.waitForLoadingComplete();
-
-    // View detail in Summary
-    await summaryPage.goto();
-    await summaryPage.waitForLoadingComplete();
-    await summaryPage.expandDetail(0);
-
-    // Verify detail content is visible (detail-table-container appears)
-    const detailContent = summaryPage.detailRows
-      .first()
-      .locator('.detail-table-container');
-    await expect(detailContent).toBeVisible();
-
-    // Collapse detail
-    await summaryPage.expandDetail(0);
-
-    // Detail content should be hidden (row still exists but content is gone)
-    await expect(detailContent).not.toBeVisible();
   });
 });

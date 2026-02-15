@@ -55,7 +55,9 @@ export class HistoryPage extends BasePage {
     this.sortHeaders = page.locator('th[mat-sort-header]');
 
     // Detail - History rows are clickable to expand/collapse (no separate buttons)
-    this.expandButtons = page.locator('table.mat-mdc-table tbody tr.mat-mdc-row');
+    this.expandButtons = page.locator(
+      'table.mat-mdc-table tbody tr.mat-mdc-row'
+    );
     this.detailRows = page.locator('tr.mat-mdc-row.detail-row');
 
     // Actions
@@ -72,17 +74,7 @@ export class HistoryPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.page.goto('/history');
-    await this.waitForPageLoad();
-  }
-
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-    // Wait for either the table (history exists) or empty state message (no history)
-    await Promise.race([
-      this.historyTable.waitFor({ state: 'visible', timeout: 10000 }),
-      this.page.waitForSelector('text=No history found', { timeout: 10000 }),
-    ]);
+    await this.waitForLoadingComplete();
   }
 
   async filterByMember(memberName: string): Promise<void> {
@@ -115,18 +107,35 @@ export class HistoryPage extends BasePage {
   }
 
   async expandDetail(rowIndex: number): Promise<void> {
-    await this.expandButtons.nth(rowIndex).click();
+    // Wait for the table to be fully loaded with data rows
+    await expect(this.historyRows.first()).toBeVisible();
+
+    // Get the specific row and ensure it's visible and stable
+    const row = this.expandButtons.nth(rowIndex);
+    await expect(row).toBeVisible();
+
+    // Scroll the row into view to ensure it's clickable
+    await row.scrollIntoViewIfNeeded();
+
+    // Wait a moment for any animations/transitions to complete
+    await this.page.waitForTimeout(200);
+
+    // Click the row
+    await row.click();
     await this.page.waitForTimeout(300);
   }
 
-  async deleteHistory(rowIndex: number, confirm: boolean = true): Promise<void> {
+  async deleteHistory(
+    rowIndex: number,
+    confirm: boolean = true
+  ): Promise<void> {
     await this.deleteButtons.nth(rowIndex).click();
     await expect(this.deleteDialog).toBeVisible();
 
     if (confirm) {
       await this.confirmDeleteButton.click();
       await expect(this.deleteDialog).toBeHidden();
-      await this.page.waitForTimeout(1000);
+      await this.waitForLoadingComplete();
     } else {
       await this.cancelDeleteButton.click();
       await expect(this.deleteDialog).toBeHidden();

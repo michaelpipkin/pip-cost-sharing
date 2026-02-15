@@ -37,8 +37,7 @@ export class AuthPage extends BasePage {
    */
   async gotoLogin() {
     await super.goto('/auth/login');
-    await this.waitForLoad();
-    // Wait for the login form to be visible
+    // Wait for the login form to be visible (no need for networkidle wait)
     await this.page.waitForSelector('[data-testid="login-form"]', {
       state: 'visible',
       timeout: 5000,
@@ -153,6 +152,87 @@ export class AuthPage extends BasePage {
   }
 
   /**
+   * Login or create a test user with specific credentials.
+   * This method tries to login first, and only creates the user if login fails.
+   * Useful for test specs that want to reuse the same user across multiple tests.
+   *
+   * @param email - Email address for the user
+   * @param password - Password for the user
+   */
+  async loginOrCreateTestUser(
+    email: string,
+    password: string,
+    options?: { assumeNew?: boolean }
+  ) {
+    // If we know the user is new (e.g., timestamp-based email), skip the login attempt
+    if (options?.assumeNew) {
+      try {
+        // Create the user in Firebase Auth emulator
+        await createTestUser(this.page, email, password);
+
+        // Navigate to login page and login
+        await this.gotoLogin();
+        await this.waitForLoadingComplete();
+        await this.login(email, password);
+        await this.waitForLoadingComplete();
+
+        // Verify login succeeded
+        const loggedIn = await this.isLoggedIn();
+        if (!loggedIn) {
+          throw new Error(
+            `Created user ${email} but login failed - check Firebase Auth emulator`
+          );
+        }
+        return;
+      } catch (createError) {
+        throw new Error(
+          `Failed to create and login new user ${email}: ${createError.message}`
+        );
+      }
+    }
+
+    // Navigate to login page
+    await this.gotoLogin();
+    await this.waitForLoadingComplete();
+
+    // Try to login first (user may already exist from previous test)
+    await this.login(email, password);
+    await this.waitForLoadingComplete();
+
+    // Check if login was successful
+    const loggedIn = await this.isLoggedIn();
+
+    if (loggedIn) {
+      // Login succeeded - user already exists
+      return;
+    }
+
+    // Login failed, user doesn't exist yet - create and try again
+    try {
+      // Create the user in Firebase Auth emulator
+      await createTestUser(this.page, email, password);
+
+      // Navigate back to login page and try again
+      await this.gotoLogin();
+      await this.waitForLoadingComplete();
+      await this.login(email, password);
+      await this.waitForLoadingComplete();
+
+      // Verify login succeeded this time
+      const finalLoginStatus = await this.isLoggedIn();
+      if (!finalLoginStatus) {
+        throw new Error(
+          `Created user ${email} but login still failed - check Firebase Auth emulator`
+        );
+      }
+    } catch (createError) {
+      throw new Error(
+        `Failed to create and login user ${email}: ${createError.message}`
+      );
+    }
+  }
+
+  /**
    * Logout (if logout functionality exists)
    */
   async logout() {
@@ -167,8 +247,8 @@ export class AuthPage extends BasePage {
       // Use force click to bypass any overlay issues
       await logoutButton.click({ force: true });
 
-      // Don't wait for network idle after logout as it might redirect
-      await this.page.waitForTimeout(2000);
+      // Wait for logout operation to complete
+      await this.waitForLoadingComplete();
     } catch (error) {
       throw new Error(`Could not find logout button: ${error.message}`);
     }
@@ -180,9 +260,7 @@ export class AuthPage extends BasePage {
    */
   async isLoggedIn(): Promise<boolean> {
     try {
-      // Wait longer in CI environments for UI to settle after potential state changes
-      const waitTime = process.env.CI ? 3000 : 1500;
-      await this.page.waitForTimeout(waitTime);
+      await this.waitForLoadingComplete();
 
       // Check for elements that appear when logged out first (faster)
       const loginButton = this.page.locator(
@@ -202,15 +280,13 @@ export class AuthPage extends BasePage {
       const accountButton = this.page.locator(
         '[data-testid="nav-account-desktop"]'
       );
-      const groupsLink = this.page.locator('[data-testid="nav-groups"]');
 
-      // Check if any of the three guaranteed logged-in elements are visible
+      // Check if any of the two guaranteed logged-in elements are visible
       const logoutVisible = await logoutButton.isVisible().catch(() => false);
       const accountVisible = await accountButton.isVisible().catch(() => false);
-      const groupsVisible = await groupsLink.isVisible().catch(() => false);
 
-      // User is logged in if any of these three elements are visible
-      return logoutVisible || accountVisible || groupsVisible;
+      // User is logged in if any of these two elements are visible
+      return logoutVisible || accountVisible;
     } catch (error) {
       console.log('Error checking login status:', error);
       // If we can't determine state, assume logged out
@@ -226,6 +302,6 @@ export class AuthPage extends BasePage {
     await this.emailInput.fill(email);
     const resetButton = this.getByTestId('reset-password-button');
     await resetButton.click();
-    await this.waitForLoad();
+    await this.waitForLoadingComplete();
   }
 }

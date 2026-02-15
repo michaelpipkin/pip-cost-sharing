@@ -54,7 +54,9 @@ export class SummaryPage extends BasePage {
     // Summary table - no data-testid on table, use Material classes
     // Angular Material renders mat-table directive as .mat-mdc-table class
     this.summaryTable = page.locator('table.mat-mdc-table');
-    this.summaryRows = page.locator('table.mat-mdc-table tbody tr.mat-mdc-row.summary-row');
+    this.summaryRows = page.locator(
+      'table.mat-mdc-table tbody tr.mat-mdc-row.summary-row'
+    );
     this.noDataMessage = page.getByText('No outstanding expenses found');
 
     // Detail - Summary rows are clickable to expand/collapse (no separate buttons)
@@ -78,17 +80,7 @@ export class SummaryPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.page.goto('/summary');
-    await this.waitForPageLoad();
-  }
-
-  async waitForPageLoad(): Promise<void> {
-    await this.page.waitForSelector('app-root', { timeout: 10000 });
-
-    // Wait for either the table (expenses exist) or empty state message (no expenses)
-    await Promise.race([
-      this.summaryTable.waitFor({ state: 'visible', timeout: 10000 }),
-      this.page.waitForSelector('text=No outstanding expenses', { timeout: 10000 }),
-    ]);
+    await this.waitForLoadingComplete();
   }
 
   async filterByMember(memberName: string): Promise<void> {
@@ -132,13 +124,14 @@ export class SummaryPage extends BasePage {
   async getNetAmount(rowIndex: number): Promise<string> {
     const row = this.summaryRows.nth(rowIndex);
     const amountCell = row.locator('td').nth(2); // Assuming amount is in 3rd column
-    return await amountCell.textContent() || '';
+    return (await amountCell.textContent()) || '';
   }
 
   async openPaymentDialog(rowIndex: number): Promise<void> {
     await this.payButtons.nth(rowIndex).click();
     await this.page.waitForTimeout(500);
     await expect(this.paymentDialog).toBeVisible();
+    await this.waitForLoadingComplete();
   }
 
   async fillPaymentForm(data: {
@@ -160,7 +153,7 @@ export class SummaryPage extends BasePage {
   async submitPayment(): Promise<void> {
     await this.paymentSaveButton.click();
     await expect(this.paymentDialog).toBeHidden();
-    await this.page.waitForTimeout(1000);
+    await this.waitForLoadingComplete();
   }
 
   async cancelPayment(): Promise<void> {
@@ -172,7 +165,9 @@ export class SummaryPage extends BasePage {
     // First expand the detail row if not already expanded
     await this.expandDetail(rowIndex);
     // Click on the detail content to copy to clipboard
-    const detailContent = this.detailRows.nth(rowIndex).locator('.detail-table-container');
+    const detailContent = this.detailRows
+      .nth(rowIndex)
+      .locator('.detail-table-container');
     await detailContent.click();
     await this.page.waitForTimeout(500);
   }

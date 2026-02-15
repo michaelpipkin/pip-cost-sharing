@@ -25,19 +25,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
 import { Group } from '@models/group';
+import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -88,6 +88,7 @@ export class ManageGroupsComponent {
   });
 
   constructor() {
+    this.loading.loadingOn();
     this.initializeForm();
   }
 
@@ -118,6 +119,7 @@ export class ManageGroupsComponent {
     } else {
       this.selectedGroup.set(null);
     }
+    this.loading.loadingOff();
   }
 
   public get f() {
@@ -131,7 +133,9 @@ export class ManageGroupsComponent {
     this.selectedGroup.set(group ?? null);
 
     // Check if group has expenses
-    const hasExpenses = await this.expenseService.hasExpensesForGroup(group!.id);
+    const hasExpenses = await this.expenseService.hasExpensesForGroup(
+      group!.id
+    );
     this.groupHasExpenses.set(hasExpenses);
 
     // Enable/disable currency field based on expenses
@@ -231,7 +235,9 @@ export class ManageGroupsComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not archive group' },
+              data: {
+                message: 'Something went wrong - could not archive group',
+              },
             });
           }
         } finally {
@@ -310,7 +316,9 @@ export class ManageGroupsComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not delete group' },
+              data: {
+                message: 'Something went wrong - could not delete group',
+              },
             });
           }
         } finally {
