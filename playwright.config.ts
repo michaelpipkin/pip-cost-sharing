@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  /* Global setup - runs once before all tests to clear Firestore emulator */
+  globalSetup: './e2e/global-setup.ts',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -12,7 +14,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Parallel workers enabled - tests are isolated by unique user accounts */
-  workers: process.env.CI ? 2 : 4,
+  workers: process.env.CI ? 2 : 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],

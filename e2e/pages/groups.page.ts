@@ -95,12 +95,17 @@ export class GroupsPage extends BasePage {
     displayName: string,
     autoAddMembers: boolean = false
   ): Promise<void> {
-    // Use force: true to handle Material UI floating labels
     await this.groupNameInput.fill(groupName);
     await this.displayNameInput.fill(displayName);
-
+    await this.page.waitForTimeout(500); // Wait for validation to process
     if (autoAddMembers) {
       await this.autoAddMembersToggle.click();
+    }
+    if ((await this.groupNameInput.inputValue()) === '') {
+      await this.groupNameInput.fill(groupName);
+    }
+    if ((await this.displayNameInput.inputValue()) === '') {
+      await this.displayNameInput.fill(displayName);
     }
   }
 

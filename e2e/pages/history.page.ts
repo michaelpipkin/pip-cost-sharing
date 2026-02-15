@@ -107,7 +107,21 @@ export class HistoryPage extends BasePage {
   }
 
   async expandDetail(rowIndex: number): Promise<void> {
-    await this.expandButtons.nth(rowIndex).click();
+    // Wait for the table to be fully loaded with data rows
+    await expect(this.historyRows.first()).toBeVisible();
+
+    // Get the specific row and ensure it's visible and stable
+    const row = this.expandButtons.nth(rowIndex);
+    await expect(row).toBeVisible();
+
+    // Scroll the row into view to ensure it's clickable
+    await row.scrollIntoViewIfNeeded();
+
+    // Wait a moment for any animations/transitions to complete
+    await this.page.waitForTimeout(200);
+
+    // Click the row
+    await row.click();
     await this.page.waitForTimeout(300);
   }
 
