@@ -218,13 +218,60 @@ The application has three distinct user states that affect navigation:
   - Number of members
   - Created date (or other metadata)
 
+**Business Rules**:
+
+**Add Group (`addGroup`):**
+- ✅ **Batch creation**: Creates group, first member, and default category in single transaction
+  - Group document with provided details
+  - Creator added as first member with `groupAdmin: true`
+  - "Default" category created with `active: true`
+- Transaction ensures all-or-nothing creation
+
+**Update Group (`updateGroup`):**
+- ✅ **Deactivation logic**: When setting `active: false` or `archived: true`:
+  - Clears group as `defaultGroupRef` for all users who had it set
+  - If current group is being deactivated, clears it from current session
+  - Removes from localStorage
+  - User must select another group to continue working
+
+**Delete Group (`deleteGroup`):**
+- ✅ **Cloud function deletion**: Uses Firebase Cloud Function for complete cascade delete
+  - Deletes group document
+  - Deletes all subcollections (members, categories, expenses, splits, memorized, history)
+  - Ensures data integrity
+- ✅ **Current group handling**: If deleting current group:
+  - Clears from current session
+  - Clears user's `defaultGroupRef`
+  - Removes from localStorage
+- ✅ **Permission check**: Likely requires admin rights (enforced by cloud function)
+
+**Select/Switch Group:**
+- Sets as current group in application state
+- Saves to localStorage for persistence
+- Sets as user's `defaultGroupRef` in database
+- Loads all group data (categories, members, expenses, splits, memorized, history)
+
 **Testable Behaviors**:
 - [ ] All user's groups are displayed
 - [ ] Current group is visually indicated
-- [ ] Add group dialog opens and creates new group
+- [ ] Add group dialog opens
+- [ ] Add group creates group, first member (admin), and Default category
+- [ ] Creator is automatically set as group admin
+- [ ] Default category is created and active
+- [ ] New group creation is atomic (all or nothing)
 - [ ] Edit group dialog opens and updates group
+- [ ] Deactivating group clears it as default for all users
+- [ ] Deactivating current group clears session and localStorage
+- [ ] User redirected to groups page when current group deactivated
 - [ ] Delete group removes group (with confirmation)
+- [ ] Delete group removes all subcollections (members, categories, etc.)
+- [ ] Deleting current group clears session and defaultGroupRef
+- [ ] Delete requires confirmation
+- [ ] Only admins can delete groups
 - [ ] Switching groups updates the current group
+- [ ] Switch saves to localStorage
+- [ ] Switch sets as user's defaultGroupRef
+- [ ] Switch loads all group data (categories, members, etc.)
 - [ ] Group selection persists across page refreshes
 - [ ] Deleting current group selects another group or null
 
@@ -239,17 +286,70 @@ The application has three distinct user states that affect navigation:
 - Delete member button (for each member)
 - Member card/row shows:
   - Member name
-  - Member email (optional)
   - Active/Inactive status
-  - Default split percentage (optional)
+
+**Important Notes**:
+- Members are stored as a subcollection under Groups
+- Members do NOT have special features like default split percentages
+- Payment service handles (PayPal, Venmo, Zelle, CashApp) are stored at the **User** level, not Member level
+  - This makes sense since a user can be a member of multiple groups
+  - Handles are pulled from the Users collection when displaying payment options
+
+**Business Rules**:
+
+**Add Member (`addMemberToGroup`):**
+- ✅ **Duplicate email check**: Cannot add member if one with the same email already exists in the group
+  - Error: "A member with this email address already exists in the group."
+- ✅ **Auto user linking**: If a User account exists with the member's email, automatically links member to that user
+  - This allows the member to see the group when they log in
+  - Links `userRef` on member document to user document
+
+**Update Member (`updateMember`, `updateMemberWithUserMatching`):**
+- ✅ **Duplicate email check**: Cannot update email if another member with that email already exists in the group
+  - Excludes current member from duplicate check
+  - Error: "A member with this email address already exists in the group."
+- ✅ **Auto user linking on email change**: When email is updated and member isn't already linked:
+  - Searches for User account with new email
+  - Automatically links if found
+
+**Delete Member (`removeMemberFromGroup`):**
+- ✅ **Dependency check**: Cannot delete if member has any splits (as payer OR owed by)
+  - Error: "This member has existing splits and cannot be deleted."
+  - **Solution**: Make member inactive instead
+- Member is fully deleted if no splits exist
+
+**Leave Group (`leaveGroup`):**
+- ✅ **Admin requirement**: If leaving member is the only group admin, cannot leave
+  - Error: "You are the only group admin. Please assign another member as admin before leaving the group."
+  - Must promote another member to admin first
+- ✅ **Smart delete logic**:
+  - If member has splits: Sets `active = false` (preserves data)
+  - If member has no splits: Fully deletes member document
+- Clears user's `defaultGroupRef`
 
 **Testable Behaviors**:
 - [ ] All members of current group are displayed
 - [ ] Add member dialog creates new member
-- [ ] Edit member dialog updates member
+- [ ] Cannot add member with duplicate email in same group
+- [ ] Error shown when attempting to add duplicate email
+- [ ] Adding member with existing user email auto-links to user
+- [ ] Edit member dialog updates member information
+- [ ] Cannot update member email to duplicate email in same group
+- [ ] Error shown when attempting to update to duplicate email
+- [ ] Can update member email to unique email successfully
+- [ ] Updating email to existing user auto-links if not already linked
 - [ ] Delete member removes member (with confirmation)
-- [ ] Cannot delete member if they have expenses
+- [ ] Cannot delete member if they have splits (as payer or owed by)
+- [ ] Error shown when attempting to delete member with splits
+- [ ] Can delete member with no splits successfully
+- [ ] Leave group fails if user is only admin
+- [ ] Error shown when only admin tries to leave
+- [ ] Leave group with splits makes member inactive
+- [ ] Leave group without splits deletes member
+- [ ] Leave group clears user's defaultGroupRef
 - [ ] Active/inactive status can be toggled
+- [ ] Inactive members don't appear in expense form dropdowns
+- [ ] Inactive members appear in summary if they have unpaid splits
 - [ ] Member list updates when group changes
 
 ### Categories Page (`/administration/categories`)
@@ -263,17 +363,68 @@ The application has three distinct user states that affect navigation:
 - Delete category button (for each category)
 - Category card/row shows:
   - Category name
-  - Category icon/color
   - Active/Inactive status
+
+**Important Notes**:
+- Categories do NOT have special attributes like icons or colors
+- Only have name and active/inactive status
+- **Default Category Behavior**:
+  - When a new group is created, a "Default" category is automatically added
+  - If a group only has one category, it indicates the group doesn't care about tracking categories
+  - **Smart Dropdown Logic**: Category dropdown is **hidden** on expense/memorized forms when:
+    - Group has only one active category
+    - Expense is automatically assigned to that single category
+  - Category dropdown is **visible** when:
+    - Group has more than one active category
+    - User needs to select which category applies
+
+**Business Rules**:
+
+**Add Category (`addCategory`):**
+- ✅ **Duplicate name check**: Cannot add category if one with the same name already exists in the group
+  - Error: "This category already exists."
+  - Check is case-sensitive
+
+**Update Category (`updateCategory`):**
+- ✅ **Duplicate name check**: Cannot rename category if another category with that name already exists
+  - Excludes current category from duplicate check
+  - Error: "This category already exists."
+
+**Delete Category (`deleteCategory`):**
+- ✅ **Dependency check**: Cannot delete if category is assigned to any expenses
+  - Error: "This category is assigned to expenses and cannot be deleted."
+  - **Solution**: Make category inactive instead of deleting
+- Category is fully deleted if no expenses use it
+
+**Auto-creation:**
+- ✅ **Default category**: When new group is created, "Default" category is automatically added
+  - Created with `active: true`
+  - Part of group creation batch write
 
 **Testable Behaviors**:
 - [ ] All categories of current group are displayed
+- [ ] New groups automatically have "Default" category created
+- [ ] Default category is created as active
 - [ ] Add category dialog creates new category
+- [ ] Cannot add category with duplicate name in same group
+- [ ] Error shown when attempting to add duplicate name
+- [ ] Category names are case-sensitive for duplicates
 - [ ] Edit category dialog updates category
+- [ ] Cannot rename category to existing category name
+- [ ] Error shown when attempting to rename to duplicate
+- [ ] Can rename category to unique name successfully
 - [ ] Delete category removes category (with confirmation)
-- [ ] Cannot delete category if it has expenses
+- [ ] Cannot delete category if it has expenses assigned
+- [ ] Error shown when attempting to delete category with expenses
+- [ ] Can delete category with no expenses successfully
 - [ ] Active/inactive status can be toggled
+- [ ] Making category inactive removes it from dropdowns
+- [ ] Making category active adds it back to dropdowns
 - [ ] Category list updates when group changes
+- [ ] Category dropdown hidden on expense forms when only 1 active category
+- [ ] Category dropdown visible on expense forms when 2+ active categories
+- [ ] Category dropdown shows only active categories
+- [ ] Expenses with only 1 active category auto-assign to that category
 
 ---
 
@@ -292,29 +443,91 @@ The application has three distinct user states that affect navigation:
 - Edit expense button (for each expense)
 - Delete expense button (for each expense)
 - Clone expense button (create from existing)
-- Expense row/card shows:
-  - Date
-  - Description
-  - Category
-  - Total amount
-  - Who paid
-  - Split method indicator
-  - Members involved
+
+**Expense Table Columns**:
+  - **Date**: Expense date
+  - **Payer**: Member who paid the expense
+  - **Description**: Expense description
+  - **Category**: Expense category
+  - **Amount**: Total expense amount
+  - **Rcpt**: Receipt indicator (shows if receipt attached)
+  - **Paid**: Shows "No" if any splits are unpaid, or indicator of payment status
+  - **Expand Arrow**: Down arrow button to expand split details
+
+**Expandable Split Details**:
+- Click down arrow in last column to expand expense
+- Shows breakdown of how expense is split among members
+- Detail table columns:
+  - **Owed By**: Member name
+  - **Amount**: How much this member owes
+  - **Paid**: Payment status for this split
+  - **Mark Paid/Unpaid**: Button to toggle split payment status
+
+**Individual Split Payment Management**:
+- Each split (except the payer's) has a Mark Paid/Unpaid button
+- Payer's row shows "N/A" (they paid the expense, so don't owe anything)
+- **Green button** (with $ icon): Split is unpaid
+  - Click to mark this single split as paid
+- **Red button**: Split is paid
+  - Click to mark this single split as unpaid
+- This marks only ONE split at a time (not all splits between two members)
+- Does NOT create a history record (unlike Summary page Pay button)
+
+**Business Rules**:
+
+**Delete Expense (`deleteExpense`):**
+- ✅ **Cascade delete**: Deletes expense and all associated splits in batch
+- ✅ **Receipt cleanup**: Deletes receipt from Firebase Storage if one exists
+  - Receipt path stored in expense document
+  - Deletion happens after batch commit
+  - Failures logged but don't block expense deletion
+- Batch ensures all-or-nothing deletion
 
 **Testable Behaviors**:
+
+**List and Filtering**:
 - [ ] All expenses for current group are displayed
-- [ ] Filtering by date works correctly
+- [ ] Table shows all columns: Date, Payer, Description, Category, Amount, Rcpt, Paid, Expand
+- [ ] Filtering by date range works correctly
 - [ ] Filtering by category works correctly
 - [ ] Filtering by member works correctly
 - [ ] Search by description works correctly
 - [ ] Sorting works correctly
 - [ ] Multiple filters can be combined
-- [ ] Add expense navigates to add page
-- [ ] Edit expense navigates to edit page
-- [ ] Delete expense removes expense (with confirmation)
-- [ ] Clone expense pre-fills add form
 - [ ] Pagination works if many expenses
 - [ ] Expense list updates when group changes
+
+**Actions**:
+- [ ] Add expense button navigates to add page
+- [ ] Edit expense button navigates to edit page with expense ID
+- [ ] Delete expense removes expense (with confirmation)
+- [ ] Delete expense removes all associated splits
+- [ ] Delete expense removes receipt from storage
+- [ ] Expense deletion is atomic (all or nothing)
+- [ ] Clone expense button pre-fills add form with expense data
+
+**Expandable Split Details**:
+- [ ] Down arrow button expands expense to show splits
+- [ ] Clicking expand again collapses the details
+- [ ] Expanded detail shows all splits for the expense
+- [ ] Detail table shows: Owed By, Amount, Paid, Mark Paid/Unpaid
+- [ ] Payer's split shows "N/A" for Paid status
+- [ ] Payer's split does not have Mark Paid/Unpaid button
+- [ ] Other members show their owed amount
+- [ ] Split amounts sum to total expense amount
+- [ ] Paid status correctly reflects split payment state
+
+**Individual Split Payment**:
+- [ ] Mark Paid/Unpaid button appears for each non-payer split
+- [ ] Button is green when split is unpaid
+- [ ] Button is red when split is paid
+- [ ] Clicking green button marks split as paid
+- [ ] Clicking red button marks split as unpaid
+- [ ] Marking split as paid updates button to red
+- [ ] Marking split as unpaid updates button to green
+- [ ] Paid column in expense row updates when all splits paid
+- [ ] Individual split payment does NOT create history record
+- [ ] Only affects single split (not all splits between members)
 
 ### Add Expense Page (`/expenses/add`)
 **Route**: `/expenses/add`
@@ -331,6 +544,31 @@ The application has three distinct user states that affect navigation:
 - Save button
 - Cancel button
 - Option to create from memorized expense
+
+**Business Rules**:
+
+**Add Expense (`addExpense`):**
+- ✅ **Batch write**: Creates expense and all splits in single transaction
+  - Ensures all-or-nothing creation
+  - If any part fails, entire transaction rolls back
+- ✅ **Receipt handling**: If receipt provided:
+  - Uploads to Firebase Storage first
+  - Stores path in expense document
+  - If batch commit fails, uploaded receipt is deleted (cleanup)
+- ✅ **Split creation**: Creates one split document per member allocation
+  - Each split references the expense
+  - Splits contain member refs, amounts, paid status, etc.
+
+**Update Expense (`updateExpense`):**
+- ✅ **Batch write**: Updates expense, deletes old splits, creates new splits
+  - All changes are atomic
+- ✅ **Split replacement**: Deletes ALL old splits and creates ALL new splits
+  - Cannot partially update splits - full replacement
+  - Ensures data consistency
+- ✅ **Receipt handling**: If new receipt provided:
+  - Uploads to Firebase Storage (overwrites if exists)
+  - Updates path in expense document
+  - If batch commit fails, deletes uploaded receipt (cleanup)
 
 #### Split Allocation Logic
 
@@ -600,18 +838,77 @@ This page provides a member-centric view of balances (not a group-wide simplifie
 **Guards**: `authGuard`, `groupGuard`
 
 **Functionality**:
-- Chronological list of all expenses
-- May include filters similar to Expenses page
-- May show running balance over time
-- May include export functionality
-- Shows expense details similar to Expenses page
+This page is a **payment log** that records settlements made between members. It does NOT show individual expenses.
+
+**Important Characteristics**:
+- Records are created when the Pay button is used on the Summary page
+- Each record is a snapshot of the payment and category breakdown at that moment
+- Purely informational/archival (like receipts)
+- No functional connection to original expenses or splits
+- Deleting a history record has **no effect** on expenses or splits
+- Records are **immutable** once created (cannot be edited)
+- Only **group admins** can delete history records
+
+**Page Components**:
+- **Member Dropdown**:
+  - Filter to show only history records involving selected member
+  - Shows records where member is either Paid To or Paid By
+
+- **Date Filters**:
+  - Start Date field (defaults to 30 days ago when page loads)
+  - End Date field
+  - Filters history records by payment date
+
+- **History Table**:
+  - Columns:
+    - **Date**: Date of payment
+    - **Paid To**: Member who received payment
+    - **Paid By**: Member who made payment
+    - **Amount**: Total amount paid
+    - **Delete**: Trash icon button (only visible to group admins)
+  - Default sort: Ascending date order (oldest first)
+  - Sortable columns: Date, Paid To, Paid By (click header to sort)
+
+- **Expandable Row Details**:
+  - Click any history row to expand
+  - Shows category breakdown of the payment (snapshot from Summary at time of payment)
+  - Detail table shows:
+    - Category name
+    - Amount per category (can be positive or negative)
+  - Click anywhere on expanded detail to **copy to clipboard**
+  - Useful for sharing payment receipt with other member
+
+**What Creates History Records**:
+- Using Pay button on Summary page creates a history record
+- Record includes payment info + category breakdown from that moment
+- Individual split payments made on Expenses page do NOT create history records
 
 **Testable Behaviors**:
-- [ ] All expenses shown chronologically
-- [ ] Filters work correctly
-- [ ] Export functionality works (if present)
-- [ ] Updates when expenses change
-- [ ] Updates when group changes
+- [ ] Member dropdown filters records correctly
+- [ ] Only records involving selected member are shown
+- [ ] Start date defaults to 30 days ago on page load
+- [ ] End date filter works correctly
+- [ ] Date range filtering works correctly
+- [ ] Default sort is ascending by date
+- [ ] Clicking Date header toggles sort order
+- [ ] Clicking Paid To header sorts by that column
+- [ ] Clicking Paid By header sorts by that column
+- [ ] All history records for current group are shown (within filters)
+- [ ] Table shows correct columns: Date, Paid To, Paid By, Amount, Delete
+- [ ] Delete button only visible to group admins
+- [ ] Delete button not visible to non-admin members
+- [ ] Clicking delete removes history record (with confirmation)
+- [ ] Deleting history record does not affect expenses or splits
+- [ ] Row expansion shows category breakdown correctly
+- [ ] Category breakdown matches snapshot from original payment
+- [ ] Amounts in detail can be positive or negative
+- [ ] Category amounts in detail sum to total payment amount
+- [ ] Clicking expanded detail copies to clipboard
+- [ ] Copy-to-clipboard provides properly formatted text
+- [ ] History records cannot be edited
+- [ ] New history records appear when payments made on Summary page
+- [ ] History updates when group changes
+- [ ] Empty state shown when no history records match filters
 
 ---
 
@@ -669,24 +966,99 @@ This page provides a member-centric view of balances (not a group-wide simplifie
 
 ### Split Page (`/split`)
 **Route**: `/split`
-**No guards**
+**No guards** (accessible without authentication)
 
 **Functionality**:
-- Quick expense splitting calculator
-- Works without authentication
-- Simple interface:
-  - Total amount input
-  - Number of people or list of people
-  - Calculate button
-  - Shows amount per person
-- May allow saving as expense if logged in
+A standalone quick expense calculator for splitting bills without requiring login or group membership. Similar to Add Expense page but simplified for ad-hoc scenarios.
 
-**Testable Behaviors**:
-- [ ] Works without login
-- [ ] Calculates split correctly
-- [ ] Updates when inputs change
-- [ ] Handles decimal amounts
-- [ ] Can save to expenses if logged in with group
+**Use Case**:
+- Quick splits for non-group scenarios (e.g., dinner with friends not in the app)
+- Calculate split including tax & tip
+- Share breakdown via copy-to-clipboard
+- No data is saved - purely a calculator
+
+**Two States:**
+
+#### 1. Entry Screen
+
+**Differences from Add Expense Page:**
+- **Currency Selector**: Choose currency before starting (not tied to group settings)
+- **No Date Field**: Not applicable for quick calculator
+- **No Category Field**: Not applicable for quick calculator
+- **Text Inputs for Names**: Member dropdown replaced with manual text entry (no group members)
+- **Generate Summary Button**: Instead of Save button
+- **Reset Button**: Clear all data and start over
+
+**Fields:**
+- Currency selector dropdown
+- Amount input (Total Amount)
+- Paid by text input (manual name entry)
+- Split method toggle button (By Amount / By Percentage)
+- Member allocation interface:
+  - Text input for each person's name (not dropdown)
+  - Same allocation logic as Add Expense (see Add Expense section for details)
+  - Member Amount, Proportional Amount, Evenly Shared Remainder (for By Amount)
+  - Percentage inputs (for By Percentage)
+
+**Split Allocation:**
+- Uses same allocation logic as Add Expense page
+- By Amount method: Member Amount + Proportional Amount + Evenly Shared Remainder
+- By Percentage method: Percentage per person
+- Same rounding adjustment logic
+- See Add Expense section for complete calculation details
+
+#### 2. Summary Screen
+
+**Generated after clicking "Generate Summary"**
+
+**Displays:**
+- Breakdown of who owes what
+- Shows each person's allocated amount
+- Formatted for easy reading and sharing
+
+**Actions:**
+- **Copy to Clipboard Button**: Copies the entire breakdown for sharing
+- **Edit Splits Button**: Returns to entry screen with all data intact (allows corrections)
+- **Start Over Button**: Returns to entry screen with all data cleared (fresh start)
+
+**Testable Behaviors:**
+
+**Entry Screen:**
+- [ ] Page loads without authentication required
+- [ ] Currency selector shows available currencies
+- [ ] Selecting currency updates amount input formatting
+- [ ] Amount input accepts decimal values appropriate for selected currency
+- [ ] Paid by text input accepts name
+- [ ] Split method toggle switches between By Amount and By Percentage
+- [ ] Can add/remove people (split lines)
+- [ ] Name text inputs accept any text
+- [ ] All split allocation logic works same as Add Expense
+- [ ] By Amount split: Member Amount, Proportional Amount, Evenly Shared Remainder
+- [ ] By Percentage split: Percentages auto-calculate for last person
+- [ ] Reset button clears all fields
+- [ ] Reset button prompts for confirmation if data entered
+- [ ] Generate Summary button validates input before proceeding
+- [ ] Validation shows errors for incomplete/invalid data
+
+**Summary Screen:**
+- [ ] Summary displays correct breakdown
+- [ ] Each person's allocated amount is shown correctly
+- [ ] Amounts sum to total expense amount
+- [ ] Copy to Clipboard button copies formatted breakdown
+- [ ] Copied text is properly formatted for sharing
+- [ ] Edit Splits button returns to entry with data preserved
+- [ ] All previously entered data is intact after Edit Splits
+- [ ] Start Over button returns to entry with cleared data
+- [ ] Start Over prompts for confirmation
+- [ ] Currency formatting is correct in summary
+
+**General:**
+- [ ] Works on mobile and desktop
+- [ ] No data is saved or persisted
+- [ ] Refreshing page clears all data
+- [ ] Can be used multiple times without login
+- [ ] Does not create expenses in any group
+- [ ] Does not require or interact with user account
 
 ### Demo Mode (`/demo/*`)
 **Route**: `/demo/*`
@@ -786,12 +1158,66 @@ This page provides a member-centric view of balances (not a group-wide simplifie
 14. Adds first expense
 15. Views Summary to see balances
 
-### Settlement Flow
-1. User views Summary page
-2. Sees who owes whom
-3. Makes real-world payment
-4. (Optional) Records payment as negative expense
-5. Summary updates to show new balances
+### Settlement Flow - Two Methods
+
+The app provides two different ways to mark splits as paid, each with different purposes:
+
+#### Method 1: Summary Page Pay Button (Bulk Payment with History)
+**Use Case**: Settling up all expenses between two members at once
+
+1. User navigates to Summary page
+2. Selects member from dropdown (defaults to logged-in user)
+3. Views balances with each other member
+4. Makes real-world payment (Venmo, PayPal, cash, etc.)
+5. Clicks Pay button on the summary row
+6. Payment Confirmation Dialog opens
+7. Views payment service handles for member owed (if available)
+8. Clicks Confirm button
+9. **All splits** between those two members are marked as paid (`paid` flag = true)
+10. **History record is created** with:
+    - Payment date, amount, members involved
+    - Category breakdown snapshot
+11. Summary table updates (row may disappear if fully settled)
+12. User can view payment receipt in History page
+
+**Key Characteristics**:
+- Marks ALL splits between two members (not just one expense)
+- Creates permanent history record
+- Shows payment service handles
+- Category breakdown preserved for reference
+- Typical use: Monthly settlement between roommates
+
+#### Method 2: Expenses Page Individual Split Button (Single Split, No History)
+**Use Case**: Marking individual expense splits as paid separately
+
+1. User navigates to Expenses page
+2. Finds specific expense in the list
+3. Clicks down arrow to expand split details
+4. Views all splits for that expense
+5. Makes real-world payment for one person's share
+6. Clicks Mark Paid/Unpaid button (green $ icon) for that split
+7. **Only that single split** is marked as paid (`paid` flag = true)
+8. Button turns red to indicate paid status
+9. **No history record is created**
+10. User can later mark as unpaid if needed (click red button)
+
+**Key Characteristics**:
+- Marks only ONE split at a time
+- No history record created
+- Can toggle paid/unpaid status
+- Button changes color (green = unpaid, red = paid)
+- Typical use: Individual expense settlement, not bulk payment
+
+#### Comparison
+
+| Feature | Summary Page Pay Button | Expenses Page Split Button |
+|---------|------------------------|---------------------------|
+| Scope | All splits between 2 members | Single split only |
+| History Record | Yes - creates permanent record | No |
+| Payment Handles | Shows service handles | Not shown |
+| Category Breakdown | Saved in history | Not saved |
+| Can Undo | Can mark splits unpaid individually | Yes - click red button |
+| Typical Use | Monthly bulk settlement | Individual expense payment |
 
 ---
 
