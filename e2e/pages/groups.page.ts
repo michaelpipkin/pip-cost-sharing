@@ -96,16 +96,15 @@ export class GroupsPage extends BasePage {
     autoAddMembers: boolean = false
   ): Promise<void> {
     await this.groupNameInput.fill(groupName);
+    await this.groupNameInput.blur();
+    await expect(this.groupNameInput).toHaveValue(groupName);
+
     await this.displayNameInput.fill(displayName);
-    await this.page.waitForTimeout(500); // Wait for validation to process
+    await this.displayNameInput.blur();
+    await expect(this.displayNameInput).toHaveValue(displayName);
+
     if (autoAddMembers) {
       await this.autoAddMembersToggle.click();
-    }
-    if ((await this.groupNameInput.inputValue()) === '') {
-      await this.groupNameInput.fill(groupName);
-    }
-    if ((await this.displayNameInput.inputValue()) === '') {
-      await this.displayNameInput.fill(displayName);
     }
   }
 
@@ -222,6 +221,8 @@ export class GroupsPage extends BasePage {
     if (newGroupName !== undefined) {
       await this.manageGroupNameInput.clear();
       await this.manageGroupNameInput.fill(newGroupName);
+      await this.manageGroupNameInput.blur();
+      await expect(this.manageGroupNameInput).toHaveValue(newGroupName);
     }
 
     if (active !== undefined) {

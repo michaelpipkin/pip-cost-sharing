@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 import { TEST_DATA } from '../constants';
 import { createTestUser } from '../utils/firebase';
@@ -73,9 +73,12 @@ export class AuthPage extends BasePage {
 
     // Fill the form fields
     await this.emailInput.fill(email);
-    await this.page.waitForTimeout(300);
+    await this.emailInput.blur();
+    await expect(this.emailInput).toHaveValue(email);
+
     await this.passwordInput.fill(password);
-    await this.page.waitForTimeout(300);
+    await this.passwordInput.blur();
+    await expect(this.passwordInput).toHaveValue(password);
 
     // Wait for the button to be enabled (form validation)
     await this.loginButton.waitFor({ state: 'visible', timeout: 5000 });
@@ -109,10 +112,19 @@ export class AuthPage extends BasePage {
    */
   async signUp(email: string, password: string, confirmPassword?: string) {
     await this.emailInput.fill(email);
+    await this.emailInput.blur();
+    await expect(this.emailInput).toHaveValue(email);
+
     await this.passwordInput.fill(password);
+    await this.passwordInput.blur();
+    await expect(this.passwordInput).toHaveValue(password);
+
     if (confirmPassword && this.confirmPasswordInput) {
       await this.confirmPasswordInput.fill(confirmPassword);
+      await this.confirmPasswordInput.blur();
+      await expect(this.confirmPasswordInput).toHaveValue(confirmPassword);
     }
+
     await this.signUpButton.click();
     // Don't wait for networkidle after signup due to potential hCaptcha interaction
     await this.page.waitForLoadState('domcontentloaded');
@@ -300,6 +312,8 @@ export class AuthPage extends BasePage {
   async forgotPassword(email: string) {
     await this.forgotPasswordLink.click();
     await this.emailInput.fill(email);
+    await this.emailInput.blur();
+    await expect(this.emailInput).toHaveValue(email);
     const resetButton = this.getByTestId('reset-password-button');
     await resetButton.click();
     await this.waitForLoadingComplete();
