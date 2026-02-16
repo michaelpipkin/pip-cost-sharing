@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class ExpensesPage extends BasePage {
@@ -115,12 +115,12 @@ export class ExpensesPage extends BasePage {
     // Fill description
     await this.descriptionInput.fill(data.description);
     await this.descriptionInput.blur();
-    await this.page.waitForTimeout(300);
+    await expect(this.descriptionInput).toHaveValue(data.description);
 
     // Fill total amount
     await this.totalAmountInput.fill(data.amount.toString());
     await this.totalAmountInput.blur();
-    await this.page.waitForTimeout(500);
+    await expect(this.totalAmountInput).toHaveValue(data.amount.toString());
 
     // Handle proportional amount (only if explicitly provided by test)
     // Proportional amount should always be LESS than total amount
@@ -133,6 +133,9 @@ export class ExpensesPage extends BasePage {
         data.proportionalAmount.toString()
       );
       await this.proportionalAmountInput.blur();
+      await expect(this.proportionalAmountInput).toHaveValue(
+        data.proportionalAmount.toString()
+      );
     }
     // Otherwise leave proportional amount at its default (usually 0)
 
@@ -195,6 +198,7 @@ export class ExpensesPage extends BasePage {
       );
       await amountInput.fill(amount.toString());
       await amountInput.blur();
+      await expect(amountInput).toHaveValue(amount.toString());
     }
 
     await this.page.waitForTimeout(300);
@@ -219,6 +223,7 @@ export class ExpensesPage extends BasePage {
     );
     await amountInput.fill(amount.toString());
     await amountInput.blur();
+    await expect(amountInput).toHaveValue(amount.toString());
     await this.page.waitForTimeout(500);
   }
 
