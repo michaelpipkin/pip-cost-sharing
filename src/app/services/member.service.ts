@@ -11,6 +11,7 @@ import {
   collection,
   collectionGroup,
   deleteDoc,
+  documentId,
   DocumentReference,
   getDocs,
   getFirestore,
@@ -156,6 +157,22 @@ export class MemberService implements IMemberService {
     changes: Partial<Member>
   ): Promise<void> {
     try {
+      // Check for duplicate email if email is being changed
+      if (changes.email) {
+        const q = query(
+          memberRef.parent,
+          where('email', '==', changes.email),
+          where(documentId(), '!=', memberRef.id)
+        );
+        const snap = await getDocs(q);
+
+        if (snap.size > 0) {
+          throw new Error(
+            'A member with this email address already exists in the group.'
+          );
+        }
+      }
+
       await updateDoc(memberRef, changes);
     } catch (error) {
       this.analytics.logEvent('error', {

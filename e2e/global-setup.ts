@@ -5,7 +5,10 @@ import { execSync } from 'child_process';
  * Clears Auth and Firestore emulator data to ensure clean state
  */
 export default async function globalSetup() {
-  console.log('\n🧹 Clearing Firebase emulator data...');
+  const timestamp = new Date().toISOString();
+  console.log(
+    `\n🧹 [${timestamp}] GLOBAL SETUP RUNNING - Clearing Firebase emulator data...`
+  );
 
   try {
     // Clear Auth emulator data
@@ -22,7 +25,10 @@ export default async function globalSetup() {
       { stdio: 'pipe' }
     );
 
-    console.log('✅ Firebase emulator data cleared successfully\n');
+    const finishTime = new Date().toISOString();
+    console.log(
+      `✅ [${finishTime}] GLOBAL SETUP COMPLETE - Firebase emulator data cleared successfully\n`
+    );
   } catch (error) {
     console.warn('⚠️  Failed to clear emulator data:', error);
     console.warn('Tests will continue but may have stale data\n');

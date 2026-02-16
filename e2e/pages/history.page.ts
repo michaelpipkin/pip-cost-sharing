@@ -85,12 +85,16 @@ export class HistoryPage extends BasePage {
 
   async filterByDateRange(startDate?: Date, endDate?: Date): Promise<void> {
     if (startDate) {
-      await this.startDateInput.fill(startDate.toLocaleDateString());
+      const dateString = startDate.toLocaleDateString();
+      await this.startDateInput.fill(dateString);
       await this.startDateInput.blur();
+      await expect(this.startDateInput).toHaveValue(dateString);
     }
     if (endDate) {
-      await this.endDateInput.fill(endDate.toLocaleDateString());
+      const dateString = endDate.toLocaleDateString();
+      await this.endDateInput.fill(dateString);
       await this.endDateInput.blur();
+      await expect(this.endDateInput).toHaveValue(dateString);
     }
     await this.page.waitForTimeout(500);
   }

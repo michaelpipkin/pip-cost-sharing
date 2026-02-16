@@ -89,6 +89,8 @@ export class MembersPage extends BasePage {
   // Filter methods
   async searchMembers(searchText: string): Promise<void> {
     await this.memberSearchInput.fill(searchText);
+    await this.memberSearchInput.blur();
+    await expect(this.memberSearchInput).toHaveValue(searchText);
     await this.page.waitForTimeout(500);
   }
 
@@ -112,7 +114,12 @@ export class MembersPage extends BasePage {
 
   async fillAddMemberForm(name: string, email: string): Promise<void> {
     await this.memberNameInput.fill(name);
+    await this.memberNameInput.blur();
+    await expect(this.memberNameInput).toHaveValue(name);
+
     await this.memberEmailInput.fill(email);
+    await this.memberEmailInput.blur();
+    await expect(this.memberEmailInput).toHaveValue(email);
   }
 
   async submitAddMemberForm(): Promise<void> {
@@ -148,11 +155,15 @@ export class MembersPage extends BasePage {
     if (name !== undefined) {
       await this.editMemberNameInput.clear();
       await this.editMemberNameInput.fill(name);
+      await this.editMemberNameInput.blur();
+      await expect(this.editMemberNameInput).toHaveValue(name);
     }
 
     if (email !== undefined) {
       await this.editMemberEmailInput.clear();
       await this.editMemberEmailInput.fill(email);
+      await this.editMemberEmailInput.blur();
+      await expect(this.editMemberEmailInput).toHaveValue(email);
     }
 
     // Wait for form to update
