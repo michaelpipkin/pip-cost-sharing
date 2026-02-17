@@ -1,13 +1,3 @@
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -18,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
@@ -27,12 +16,14 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -41,15 +32,24 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
-import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
-import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
-import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -98,8 +98,12 @@ export class SummaryComponent implements AfterViewInit {
   splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
-  owedToMemberRef = signal<DocumentReference<Member>>(null as unknown as DocumentReference<Member>);
-  owedByMemberRef = signal<DocumentReference<Member>>(null as unknown as DocumentReference<Member>);
+  owedToMemberRef = signal<DocumentReference<Member>>(
+    null as unknown as DocumentReference<Member>
+  );
+  owedByMemberRef = signal<DocumentReference<Member>>(
+    null as unknown as DocumentReference<Member>
+  );
 
   selectedMember = model<DocumentReference<Member> | null>(
     this.currentMember()?.ref ?? null
@@ -179,6 +183,15 @@ export class SummaryComponent implements AfterViewInit {
       return summaryData;
     }
   );
+
+  summaryMemberCount = computed(() => {
+    const memberPaths = new Set<string>();
+    this.leastTransfers().forEach((transfer) => {
+      memberPaths.add(transfer.owedByMemberRef.path);
+      memberPaths.add(transfer.owedToMemberRef.path);
+    });
+    return memberPaths.size;
+  });
 
   detailData = computed(
     (
@@ -413,7 +426,9 @@ export class SummaryComponent implements AfterViewInit {
             message: err.message,
           });
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Something went wrong - could not mark expenses paid' },
+            data: {
+              message: 'Something went wrong - could not mark expenses paid',
+            },
           });
         } finally {
           this.loading.loadingOff();
@@ -444,9 +459,12 @@ export class SummaryComponent implements AfterViewInit {
     const transfers = this.leastTransfers();
     if (transfers.length === 0) return;
     const dialogConfig: MatDialogConfig = {
-      data: { transfers },
+      data: { transfers, settlementText: this.generateSettlementText(transfers) },
     };
-    const dialogRef = this.dialog.open(SettleGroupDialogComponent, dialogConfig);
+    const dialogRef = this.dialog.open(
+      SettleGroupDialogComponent,
+      dialogConfig
+    );
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         try {
@@ -523,8 +541,7 @@ export class SummaryComponent implements AfterViewInit {
       categoryDetails.forEach((detail) => {
         const categoryName = detail.category?.name ?? 'Unknown';
         const formattedAmount = this.formatCurrency(detail.amount);
-        const lineLength =
-          categoryName.length + 2 + formattedAmount.length; // +2 for ": "
+        const lineLength = categoryName.length + 2 + formattedAmount.length; // +2 for ": "
         maxLineLength = Math.max(maxLineLength, lineLength);
         categoryLines.push({
           name: categoryName,
@@ -544,6 +561,45 @@ export class SummaryComponent implements AfterViewInit {
     }
 
     return summaryText.trim();
+  }
+
+  async copySettlementToClipboard(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const settlementText = this.generateSettlementText(this.leastTransfers());
+    try {
+      await navigator.clipboard.writeText(settlementText);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Settlement copied to clipboard' },
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
+        this.analytics.logEvent('error', {
+          component: this.constructor.name,
+          action: 'copy_settlement_to_clipboard',
+          message: error.message,
+        });
+      } else {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Failed to copy settlement' },
+        });
+      }
+    }
+  }
+
+  private generateSettlementText(transfers: AmountDue[]): string {
+    let text = 'Group Settlement Transfers\n\n';
+    transfers.forEach((transfer) => {
+      const owedBy = transfer.owedByMember?.displayName ?? 'Unknown';
+      const owedTo = transfer.owedToMember?.displayName ?? 'Unknown';
+      text += `${owedBy} pays ${owedTo}: ${this.formatCurrency(transfer.amount)}\n`;
+    });
+    return text.trim();
   }
 
   // Helper method to format currency
