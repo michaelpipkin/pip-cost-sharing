@@ -8,8 +8,8 @@ import {
   Signal,
 } from '@angular/core';
 import {
+  AbstractControl,
   FormBuilder,
-  FormGroup,
   FormsModule,
   ReactiveFormsModule,
   Validators,
@@ -161,7 +161,7 @@ export class AccountComponent {
     this.hideConfirm.update((h) => !h);
   }
 
-  passwordMatchValidator(g: FormGroup) {
+  passwordMatchValidator(g: AbstractControl) {
     return g.get('password')!.value === g.get('confirmPassword')!.value
       ? null
       : { mismatch: true };

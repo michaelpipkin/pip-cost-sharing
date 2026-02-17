@@ -85,7 +85,10 @@ export class ThemeService implements IThemeService {
     }
 
     const primaryColor = THEME_PRIMARY_COLORS[theme];
-    await EdgeToEdge.setBackgroundColor({ color: primaryColor });
+    await Promise.all([
+      EdgeToEdge.setStatusBarColor({ color: primaryColor }),
+      EdgeToEdge.setNavigationBarColor({ color: primaryColor }),
+    ]);
 
     // Set status bar icon style based on background color brightness
     // Light theme (dark background) = dark icons param but light visual icons

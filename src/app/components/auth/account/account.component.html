@@ -148,7 +148,7 @@
             type="submit"
             [disabled]="
               passwordForm.invalid ||
-              passwordForm.controls['confirmPassword']?.value === ''
+              passwordForm.controls['confirmPassword'].value === ''
             "
             (click)="onSubmitPassword()"
           >
