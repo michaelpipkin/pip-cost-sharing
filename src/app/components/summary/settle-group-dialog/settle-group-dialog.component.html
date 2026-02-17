@@ -28,6 +28,16 @@
   </button>
   <button
     mat-stroked-button
+    class="btn-tertiary"
+    type="button"
+    (click)="copyToClipboard()"
+    data-testid="copy-settlement-button"
+    aria-label="Copy settlement transfers to clipboard"
+  >
+    Copy to Clipboard
+  </button>
+  <button
+    mat-stroked-button
     type="button"
     [mat-dialog-close]="false"
     data-testid="cancel-settle-button"
