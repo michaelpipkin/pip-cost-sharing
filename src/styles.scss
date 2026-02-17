@@ -479,6 +479,11 @@ tfoot tr {
   font-weight: bold;
 }
 
+table thead th {
+  background-color: tokens.color('primary');
+  color: tokens.color('on-primary');
+}
+
 table tbody tr td {
   border-bottom-width: 0 !important;
 }

@@ -1,0 +1,38 @@
+<h1 mat-dialog-title data-testid="settle-group-dialog-title">Settle Group</h1>
+<mat-dialog-content data-testid="settle-group-dialog-content">
+  <p data-testid="settle-group-warning">
+    Please confirm that all members have completed their transfers as listed
+    below. Once confirmed, all related expenses will be marked as paid. This
+    action cannot be undone.
+  </p>
+  <ul data-testid="settle-group-transfers-list">
+    @for (transfer of data.transfers; track $index) {
+      <li>
+        {{ transfer.owedByMember?.displayName }} pays
+        {{ transfer.owedToMember?.displayName }}
+        {{ transfer.amount | currency }}
+      </li>
+    }
+  </ul>
+</mat-dialog-content>
+<mat-dialog-actions data-testid="settle-group-dialog-actions">
+  <button
+    mat-raised-button
+    class="btn-primary"
+    type="button"
+    [mat-dialog-close]="true"
+    data-testid="confirm-settle-button"
+    aria-label="Confirm group settlement"
+  >
+    Confirm Settlement
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-testid="cancel-settle-button"
+    aria-label="Cancel group settlement"
+  >
+    Cancel
+  </button>
+</mat-dialog-actions>

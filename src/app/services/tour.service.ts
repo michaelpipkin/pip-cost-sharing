@@ -807,7 +807,7 @@ export class TourService {
         {
           id: 'summary-intro',
           title: 'Payment Summary',
-          text: 'This is where the magic happens! We calculate the optimal way to settle all debts with the fewest transactions.',
+          text: 'The Summary page has two sections: a member-to-member view for individual payments, and a Least Transfers Settlement section that calculates the minimum number of transactions needed to zero out all debts.',
           buttons: [this.getNextButton(), this.getSkipButton()],
         },
         {
@@ -816,8 +816,8 @@ export class TourService {
             element: '[data-tour="payment-flow"]',
             on: 'top',
           },
-          title: 'Who Owes Whom',
-          text: 'These are the payments needed to settle everyone up. Click on any row to view the category breakdown between the members.',
+          title: 'Member-to-Member View',
+          text: 'Select a group member from the dropdown to see who owes them and who they owe. Click any row to expand the category breakdown. Use the pay button to record a payment and mark those splits as paid — history records include a full category breakdown.',
           buttons: [
             this.getBackButton(),
             this.getNextButton(),
@@ -825,9 +825,27 @@ export class TourService {
           ],
         },
         {
-          id: 'summary-algorithm',
-          title: 'Simplified Settlements',
-          text: "Our algorithm minimizes the number of transactions. Instead of everyone paying everyone, we find the most efficient path. Finally, let's check out the payment history!",
+          id: 'summary-least-transfers',
+          attachTo: {
+            element: '[data-tour="least-transfers-table"]',
+            on: 'top',
+          },
+          title: 'Least Transfers Settlement',
+          text: 'This table shows the minimum number of payments needed to settle all debts across the whole group. Our algorithm calculates net balances and finds the most efficient path — for example, if Alice owes Bob and Bob owes Carol, Alice might pay Carol directly instead.',
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'summary-settle-group',
+          attachTo: {
+            element: '[data-tour="settle-group-button"]',
+            on: 'top',
+          },
+          title: 'Settle Group',
+          text: "Once all members have completed their transfers, click Settle Group to mark all outstanding expenses as paid in one action. A confirmation dialog lists the expected transfers first. History records are created for each transfer. Let's check out the payment history next!",
           buttons: [
             this.getBackButton(),
             {
