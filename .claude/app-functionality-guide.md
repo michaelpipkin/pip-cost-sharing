@@ -1066,8 +1066,9 @@ A standalone quick expense calculator for splitting bills without requiring logi
 
 **Functionality**:
 - Parallel set of all main routes with demo data
-- Pre-populated with sample groups, members, expenses
-- All CRUD operations work but don't persist
+- Pre-populated with sample groups, members, expenses, memorized expenses, and history records
+- Data is loaded into in-memory stores on first visit to a demo route and cleared when leaving demo routes
+- **CRUD operations are blocked**: Any attempt to add, edit, or delete data shows a snackbar: "Data modification is disabled in demo mode" — the in-memory data is not updated
 - Allows users to explore without creating account
 - Exit demo button returns to home
 
@@ -1084,9 +1085,12 @@ A standalone quick expense calculator for splitting bills without requiring logi
 
 **Testable Behaviors**:
 - [ ] Demo mode accessible when not logged in
-- [ ] Demo data is pre-populated
-- [ ] All features work with demo data
-- [ ] Changes don't persist across sessions
+- [ ] Demo data is pre-populated (groups, members, categories, expenses, memorized, history)
+- [ ] Read-only features work correctly with demo data (filtering, sorting, expanding rows, etc.)
+- [ ] Attempting to add, edit, or delete any data shows snackbar: "Data modification is disabled in demo mode"
+- [ ] In-memory data is unchanged after a blocked CRUD attempt
+- [ ] Exiting demo routes clears all demo data from stores
+- [ ] Re-entering demo routes re-initializes demo data
 - [ ] Exit demo returns to home
 - [ ] Cannot access demo when logged in
 
@@ -1095,14 +1099,11 @@ A standalone quick expense calculator for splitting bills without requiring logi
 **Guards**: `authGuard`, `adminGuard`
 
 **Functionality**:
-- Statistics page showing app-wide metrics
-- Only accessible to admin users
-- Shows user counts, group counts, expense totals, etc.
+- Statistics page showing app-wide usage metrics (user counts, group counts, expense totals, etc.)
+- Restricted to the app owner only — no regular user will ever have access
+- Not part of the normal user-facing application
 
-**Testable Behaviors**:
-- [ ] Only accessible to admin users
-- [ ] Statistics display correctly
-- [ ] Regular users cannot access
+**Testing Note**: This section is out of scope for e2e testing. It is only accessible to the app owner and does not represent functionality available to any other user.
 
 ---
 
@@ -1224,8 +1225,8 @@ The app provides two different ways to mark splits as paid, each with different 
 ## Testing Considerations
 
 ### Loading States
-- The app uses a `LoadingService` with full-screen overlay
-- Forms should be disabled during loading
+- The app uses a `LoadingService` with full-screen overlay that covers the entire UI during async operations
+- The overlay effectively disables all user interaction — individual form disabling is unnecessary and not done
 - Loading indicator should appear for async operations
 
 ### Responsive Design
