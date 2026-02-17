@@ -764,7 +764,7 @@ The app supports two split methods with a toggle button to switch between them:
 **Guards**: `authGuard`, `groupGuard`
 
 **Functionality**:
-This page provides a member-centric view of balances (not a group-wide simplified settlement).
+This page has two sections: a member-centric view of pairwise balances, and a group-wide Least Transfers Settlement view that calculates the minimum number of transactions needed to settle all debts at once.
 
 **Page Components**:
 - **Member Dropdown** (at top):
@@ -773,20 +773,20 @@ This page provides a member-centric view of balances (not a group-wide simplifie
   - Shows that member's balance with each other member in the group
 
 - **Date Filter**:
-  - Limits which expenses are included in the summary
+  - Limits which expenses are included in both summary sections
   - Use case: Expenses entered in advance, but only want to pay through today
   - Filter applies to expense dates
 
-- **Summary Table**:
+- **Section 1 — Member-to-Member Summary Table**:
   - One row per member relationship (selected member ↔ another member)
   - Columns:
-    - **Owed To**: Member who is owed money
     - **Owed By**: Member who owes money
-    - **Balance**: Absolute value of amount (direction determined by column placement)
+    - **Owed To**: Member who is owed money
+    - **Amount**: Absolute value of amount (direction determined by column placement)
   - Selected member appears in either "Owed To" or "Owed By" column depending on direction
   - Only shows members with outstanding balances (includes inactive members if they have splits)
 
-- **Pay Button** (on each row):
+- **Pay Button** (on each row in Section 1):
   - Opens Payment Confirmation Dialog
   - Dialog shows payment service handles for the member in the "Owed To" column:
     - PayPal
@@ -796,24 +796,44 @@ This page provides a member-centric view of balances (not a group-wide simplifie
   - Handles only shown if member has entered them
   - Confirm button marks all splits between those two members as paid
   - Sets `paid` flag to `true` on all relevant splits
+  - Creates history record with full category breakdown
 
-- **Expandable Row Details**:
+- **Expandable Row Details** (Section 1):
   - Click any summary row to expand
   - Shows detailed breakdown of the balance by category
   - Click on expanded detail to **copy to clipboard**
   - Useful for sharing breakdown with other member
 
+- **Section 2 — Least Transfers Settlement Table**:
+  - Calculates the minimum number of payments needed to zero out all debts across the entire group
+  - Uses a greedy net-balance algorithm: each member's net balance is computed, then the largest debtor is matched to the largest creditor
+  - Example: If Alice owes Bob $40 and Bob owes Carol $40, Alice pays Carol $40 directly (one transfer instead of two)
+  - Columns: **Pays From**, **Pays To**, **Amount**
+  - Same date range filters apply as Section 1
+  - No per-row pay buttons — settlement is an all-or-nothing group action
+
+- **Settle Group Button** (below Section 2 table):
+  - Opens Settle Group Confirmation Dialog
+  - Dialog lists each expected transfer so members can verify before confirming
+  - On confirmation:
+    - All splits in the current date range are marked as `paid: true`
+    - Parent expense `paid` status updated accordingly
+    - One history record created per transfer row (no category breakdown / empty `lineItems`)
+  - Demo mode blocks this action
+
 **Copy-to-Clipboard Feature**:
-- Available on expanded detail rows in Summary, Expenses, and History pages
+- Available on expanded detail rows in Summary (Section 1), Expenses, and History pages
 - Clicking copies the detail breakdown for easy sharing
 
 **Testable Behaviors**:
+
+**Section 1 — Member-to-Member**:
 - [ ] Member dropdown shows all group members
 - [ ] Member dropdown defaults to logged-in user
 - [ ] Selecting different member updates the summary table
 - [ ] Summary table shows correct balances for selected member
 - [ ] Each row shows correct Owed To / Owed By member placement
-- [ ] Balance column shows absolute value
+- [ ] Amount column shows absolute value
 - [ ] Only members with outstanding balances are shown
 - [ ] Inactive members included if they have unpaid splits
 - [ ] Date filter limits expenses correctly
@@ -830,8 +850,23 @@ This page provides a member-centric view of balances (not a group-wide simplifie
 - [ ] Summary updates when expenses are added/edited/deleted
 - [ ] Summary updates when group changes
 
-**Future Enhancement Consideration**:
-- Group-wide simplified settlement view (minimize number of transactions for entire group)
+**Section 2 — Least Transfers Settlement**:
+- [ ] Least Transfers table is always visible below the member-to-member section
+- [ ] Table shows correct minimum-transfer rows (verified by manual calculation)
+- [ ] Algorithm correctly consolidates indirect debts (A→B→C simplifies to A→C)
+- [ ] Same date range filters affect Least Transfers table as Section 1
+- [ ] Changing date filter updates Least Transfers table
+- [ ] When no outstanding expenses, table shows empty state message
+- [ ] Settle Group button is visible when Least Transfers table has rows
+- [ ] Settle Group button opens confirmation dialog
+- [ ] Confirmation dialog lists all expected transfers
+- [ ] Confirming settlement marks all filtered splits as paid
+- [ ] Confirming settlement updates parent expense paid status correctly
+- [ ] Settlement creates one history record per transfer row
+- [ ] Settlement history records have empty lineItems (no category breakdown)
+- [ ] After settlement, both tables show empty state
+- [ ] Demo mode blocks Settle Group action with appropriate message
+- [ ] Loading overlay is shown during settlement operation
 
 ### History Page (`/analysis/history`)
 **Route**: `/analysis/history`
@@ -879,8 +914,8 @@ This page is a **payment log** that records settlements made between members. It
   - Useful for sharing payment receipt with other member
 
 **What Creates History Records**:
-- Using Pay button on Summary page creates a history record
-- Record includes payment info + category breakdown from that moment
+- Using Pay button on Summary page (Section 1) creates a history record with full category breakdown
+- Using Settle Group on Summary page (Section 2) creates one history record per transfer, but with empty `lineItems` (no category breakdown, since net transfer amounts don't map to individual categories)
 - Individual split payments made on Expenses page do NOT create history records
 
 **Testable Behaviors**:
@@ -906,7 +941,9 @@ This page is a **payment log** that records settlements made between members. It
 - [ ] Clicking expanded detail copies to clipboard
 - [ ] Copy-to-clipboard provides properly formatted text
 - [ ] History records cannot be edited
-- [ ] New history records appear when payments made on Summary page
+- [ ] New history records appear when Pay button used on Summary page (with category breakdown)
+- [ ] New history records appear when Settle Group used on Summary page (no category breakdown)
+- [ ] History records from Settle Group show appropriate message in detail expansion (no category data)
 - [ ] History updates when group changes
 - [ ] Empty state shown when no history records match filters
 
@@ -1159,12 +1196,12 @@ A standalone quick expense calculator for splitting bills without requiring logi
 14. Adds first expense
 15. Views Summary to see balances
 
-### Settlement Flow - Two Methods
+### Settlement Flow - Three Methods
 
-The app provides two different ways to mark splits as paid, each with different purposes:
+The app provides three different ways to mark splits as paid, each with different purposes:
 
-#### Method 1: Summary Page Pay Button (Bulk Payment with History)
-**Use Case**: Settling up all expenses between two members at once
+#### Method 1: Summary Page Pay Button (Pairwise Payment with History)
+**Use Case**: Settling up all expenses between two specific members at once
 
 1. User navigates to Summary page
 2. Selects member from dropdown (defaults to logged-in user)
@@ -1183,12 +1220,33 @@ The app provides two different ways to mark splits as paid, each with different 
 
 **Key Characteristics**:
 - Marks ALL splits between two members (not just one expense)
-- Creates permanent history record
+- Creates permanent history record with category breakdown
 - Shows payment service handles
-- Category breakdown preserved for reference
-- Typical use: Monthly settlement between roommates
+- Typical use: Monthly settlement between two roommates
 
-#### Method 2: Expenses Page Individual Split Button (Single Split, No History)
+#### Method 2: Summary Page Settle Group Button (Group-wide Settlement)
+**Use Case**: Settling all outstanding debts across the entire group in one action, using the minimum number of transfers
+
+1. User navigates to Summary page
+2. Optionally sets date range filters
+3. Views the Least Transfers Settlement table (Section 2) showing minimum transfers needed
+4. Members make real-world transfers as shown in the table
+5. User clicks Settle Group button
+6. Settle Group Confirmation Dialog opens, listing all expected transfers
+7. User confirms all transfers have been completed
+8. **All filtered splits** are marked as paid (`paid` flag = true)
+9. Parent expense `paid` status updated accordingly
+10. **One history record per transfer** is created with date and amount, but **no category breakdown** (empty `lineItems`)
+11. Both summary sections update (show empty state when fully settled)
+
+**Key Characteristics**:
+- Marks ALL splits in the current date range as paid (all members, not just two)
+- Creates history records without category breakdown
+- No payment service handles shown (transfers arranged out-of-band)
+- Uses minimum-transfer algorithm to calculate optimal payment plan
+- Typical use: Periodic group-wide settlement (end of month, end of trip)
+
+#### Method 3: Expenses Page Individual Split Button (Single Split, No History)
 **Use Case**: Marking individual expense splits as paid separately
 
 1. User navigates to Expenses page
@@ -1211,14 +1269,14 @@ The app provides two different ways to mark splits as paid, each with different 
 
 #### Comparison
 
-| Feature | Summary Page Pay Button | Expenses Page Split Button |
-|---------|------------------------|---------------------------|
-| Scope | All splits between 2 members | Single split only |
-| History Record | Yes - creates permanent record | No |
-| Payment Handles | Shows service handles | Not shown |
-| Category Breakdown | Saved in history | Not saved |
-| Can Undo | Can mark splits unpaid individually | Yes - click red button |
-| Typical Use | Monthly bulk settlement | Individual expense payment |
+| Feature | Summary — Pay Button | Summary — Settle Group | Expenses — Split Button |
+|---------|---------------------|------------------------|------------------------|
+| Scope | All splits between 2 members | All splits in date range (entire group) | Single split only |
+| History Record | Yes — with category breakdown | Yes — no category breakdown | No |
+| Payment Handles | Shows service handles | Not shown | Not shown |
+| Category Breakdown | Saved in history | Not saved | Not saved |
+| Can Undo | Can mark splits unpaid individually | Can mark splits unpaid individually | Yes — click red button |
+| Typical Use | Pairwise monthly settlement | Group-wide periodic settlement | Individual expense payment |
 
 ---
 

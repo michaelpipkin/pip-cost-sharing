@@ -49,6 +49,7 @@ import {
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -233,6 +234,82 @@ export class SummaryComponent implements AfterViewInit {
 
   expandedDetail = model<AmountDue | null>(null);
 
+  leastTransfers = computed(() => {
+    const splits = this.filteredSplits();
+    if (splits.length === 0) return [];
+
+    // Accumulate net balance per member, keyed by document path
+    const balances = new Map<string, number>();
+    const refByPath = new Map<string, DocumentReference<Member>>();
+
+    for (const split of splits) {
+      const creditorPath = split.paidByMemberRef.path;
+      const debtorPath = split.owedByMemberRef.path;
+      refByPath.set(creditorPath, split.paidByMemberRef);
+      refByPath.set(debtorPath, split.owedByMemberRef);
+      balances.set(
+        creditorPath,
+        (balances.get(creditorPath) ?? 0) + split.allocatedAmount
+      );
+      balances.set(
+        debtorPath,
+        (balances.get(debtorPath) ?? 0) - split.allocatedAmount
+      );
+    }
+
+    // Separate into creditors (positive) and debtors (negative)
+    const creditors: { path: string; balance: number }[] = [];
+    const debtors: { path: string; balance: number }[] = [];
+
+    balances.forEach((balance, path) => {
+      const rounded = this.localeService.roundToCurrency(balance);
+      if (rounded > 0) creditors.push({ path, balance: rounded });
+      else if (rounded < 0) debtors.push({ path, balance: rounded });
+    });
+
+    // Sort by absolute value descending
+    creditors.sort((a, b) => b.balance - a.balance);
+    debtors.sort((a, b) => a.balance - b.balance); // most negative first
+
+    // Greedy matching: pair largest debtor with largest creditor
+    const transfers: AmountDue[] = [];
+    let ci = 0;
+    let di = 0;
+
+    while (ci < creditors.length && di < debtors.length) {
+      const creditor = creditors[ci]!;
+      const debtor = debtors[di]!;
+      const amount = this.localeService.roundToCurrency(
+        Math.min(creditor.balance, -debtor.balance)
+      );
+
+      const owedByRef = refByPath.get(debtor.path)!;
+      const owedToRef = refByPath.get(creditor.path)!;
+
+      transfers.push(
+        new AmountDue({
+          owedByMemberRef: owedByRef,
+          owedByMember: this.memberStore.getMemberByRef(owedByRef),
+          owedToMemberRef: owedToRef,
+          owedToMember: this.memberStore.getMemberByRef(owedToRef),
+          amount,
+        })
+      );
+
+      creditor.balance = this.localeService.roundToCurrency(
+        creditor.balance - amount
+      );
+      debtor.balance = this.localeService.roundToCurrency(
+        debtor.balance + amount
+      );
+
+      if (creditor.balance === 0) ci++;
+      if (debtor.balance === 0) di++;
+    }
+
+    return transfers;
+  });
+
   constructor() {
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
@@ -357,6 +434,45 @@ export class SummaryComponent implements AfterViewInit {
   startTour(): void {
     // Force start the Summary Tour (ignoring completion state)
     this.tourService.startSummaryTour(true);
+  }
+
+  async settleGroupAction(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const transfers = this.leastTransfers();
+    if (transfers.length === 0) return;
+    const dialogConfig: MatDialogConfig = {
+      data: { transfers },
+    };
+    const dialogRef = this.dialog.open(SettleGroupDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe(async (confirm) => {
+      if (confirm) {
+        try {
+          this.loading.loadingOn();
+          await this.splitService.settleGroup(
+            this.currentGroup()!.id,
+            this.filteredSplits(),
+            transfers
+          );
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Group settlement completed successfully' },
+          });
+        } catch (err: any) {
+          this.analytics.logEvent('error', {
+            component: this.constructor.name,
+            action: 'settle_group',
+            message: err.message,
+          });
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Something went wrong - could not settle group' },
+          });
+        } finally {
+          this.loading.loadingOff();
+        }
+      }
+    });
   }
 
   async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {
