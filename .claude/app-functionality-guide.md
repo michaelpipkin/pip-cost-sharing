@@ -1206,10 +1206,10 @@ The app provides three different ways to mark splits as paid, each with differen
 1. User navigates to Summary page
 2. Selects member from dropdown (defaults to logged-in user)
 3. Views balances with each other member
-4. Makes real-world payment (Venmo, PayPal, cash, etc.)
-5. Clicks Pay button on the summary row
-6. Payment Confirmation Dialog opens
-7. Views payment service handles for member owed (if available)
+4. Clicks Pay button on the summary row
+5. Payment Confirmation Dialog opens
+6. Views payment service handles for member owed (if available)
+7. Makes real-world payment (Venmo, PayPal, cash, etc.)
 8. Clicks Confirm button
 9. **All splits** between those two members are marked as paid (`paid` flag = true)
 10. **History record is created** with:
