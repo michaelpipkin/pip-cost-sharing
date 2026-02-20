@@ -10,9 +10,6 @@
 - Styling
   Whenever possible, use styles from the './src/styles.scss' stylesheet. Add any needed potentially useful shared styles to that stylesheet. Only add styles in component-specific stylesheets for very specific needs.
 
-- Defense Against Corrupt Conversations
-  After developing an implementation approach for any task, create a README markdown file in the .claude folder with the full implementation approach, including all TODOS. Update the document after completing each TODO. If a conversation becomes corrupted and cannot be continued, we can pick up where we left off in a new conversation using the README file.
-
 - Package management
   We use pnpm, not npm, for all package management and script execution in this project.
 
