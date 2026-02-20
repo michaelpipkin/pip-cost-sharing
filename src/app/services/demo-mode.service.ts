@@ -318,10 +318,7 @@ export class DemoModeService {
       paidToMemberRef: alice.ref,
       paidToMember: alice,
       totalPaid: 45.5,
-      lineItems: [
-        { category: 'Groceries', amount: 30.0 },
-        { category: 'Restaurants', amount: 15.5 },
-      ],
+      splitsPaid: [],
       ref: this.createMockDocRef('hist-1'),
     });
 
@@ -333,10 +330,7 @@ export class DemoModeService {
       paidToMemberRef: alice.ref,
       paidToMember: alice,
       totalPaid: 22.75,
-      lineItems: [
-        { category: 'Entertainment', amount: 12.0 },
-        { category: 'Utilities', amount: 10.75 },
-      ],
+      splitsPaid: [],
       ref: this.createMockDocRef('hist-2'),
     });
 

@@ -78,7 +78,7 @@ export function mockHistory(overrides: Partial<History> = {}): History {
     totalPaid: 50,
     paidByMemberRef: mockDocRef('groups/group-1/members/member-1'),
     paidToMemberRef: mockDocRef('groups/group-1/members/member-2'),
-    lineItems: [{ category: 'Food', amount: 50 }],
+    splitsPaid: [],
     ref: mockDocRef('groups/group-1/history/history-1'),
     ...overrides,
   });
