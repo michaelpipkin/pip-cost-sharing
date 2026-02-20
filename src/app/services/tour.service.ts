@@ -887,7 +887,7 @@ export class TourService {
             on: 'top',
           },
           title: 'Historical Payments',
-          text: 'All recorded settlements appear here with dates, amounts, and involved members. Click on a row to show the category breakdown for that payment. Admins can also delete history records.',
+          text: 'All recorded settlements appear here with dates, amounts, and involved members. The Type column shows whether it was a direct member payment (person icon) or a group settle payment (group icon). Click on a member payment row to navigate to a detailed breakdown of that payment.',
           buttons: [
             this.getBackButton(),
             this.getNextButton(),

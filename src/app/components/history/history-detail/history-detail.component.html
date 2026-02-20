@@ -1,0 +1,183 @@
+@if (history()) {
+  <div class="container pt-3" data-testid="history-detail-container">
+    <div class="page-header" data-testid="history-detail-page-header">
+      <div>
+        <button
+          mat-icon-button
+          (click)="goBack()"
+          matTooltip="Back to History"
+          aria-label="Back to history"
+          data-testid="back-button"
+        >
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+      </div>
+      <h3 data-testid="history-detail-page-title">Payment Detail</h3>
+      <div class="help-icon" data-testid="history-detail-help-icon-container">
+        <mat-icon
+          matTooltip="Help"
+          (click)="showHelp()"
+          data-testid="history-detail-help-button"
+          aria-label="Show help for payment detail"
+          >help</mat-icon
+        >
+      </div>
+    </div>
+    <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
+
+    <div class="payment-summary mb-3" data-testid="payment-summary">
+      <div class="payment-summary-info">
+        <span data-testid="paid-by-name"
+          ><strong>Paid By:</strong> {{ history()!.paidByMember?.displayName }}</span
+        >
+        <span data-testid="paid-to-name"
+          ><strong>Paid To:</strong> {{ history()!.paidToMember?.displayName }}</span
+        >
+        <span data-testid="payment-date"
+          ><strong>Date:</strong>
+          {{ history()!.date | date: 'M/d/yyyy' }}</span
+        >
+        <span data-testid="payment-total"
+          ><strong>Amount:</strong>
+          {{ history()!.totalPaid | currency }}</span
+        >
+      </div>
+      <div class="payment-summary-actions flex-wrap fw-end mt-2">
+        <button
+          mat-stroked-button
+          (click)="copyToClipboard()"
+          matTooltip="Copy payment summary to clipboard"
+          aria-label="Copy payment summary to clipboard"
+          data-testid="copy-button"
+        >
+          <mat-icon>content_copy</mat-icon>
+          Copy
+        </button>
+        @if (isAdmin() && !isGroupSettle()) {
+          <button
+            mat-raised-button
+            class="btn btn-danger"
+            (click)="onUnpayAll()"
+            matTooltip="Mark all splits as unpaid and delete this record"
+            aria-label="Unpay all splits"
+            data-testid="unpay-all-button"
+          >
+            <mat-icon>money_off</mat-icon>
+            Unpay Payment
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (isGroupSettle()) {
+      <p data-testid="group-settle-message">
+        Paid via Group Settle — breakdown not available.
+      </p>
+    } @else {
+      <div class="table-container mat-elevation-z8 mb-3" data-testid="splits-table-container">
+        <div class="scrollable-table">
+          <table
+            mat-table
+            [dataSource]="paidSplits()"
+            class="static-table"
+            data-testid="splits-table"
+          >
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let split" class="no-wrap">
+                {{ split.date | date: 'M/d/yyyy' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let split">
+                {{ split.category?.name ?? 'Unknown' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef class="cell-right">
+                Amount
+              </th>
+              <td mat-cell *matCellDef="let split" class="cell-right amount-cell">
+                {{ getSplitDirectedAmount(split) | currency }}
+              </td>
+            </ng-container>
+            @if (isAdmin()) {
+              <ng-container matColumnDef="unpay">
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  class="cell-center"
+                  aria-label="Unpay split"
+                >
+                  Unpay
+                </th>
+                <td mat-cell *matCellDef="let split" class="cell-center">
+                  <button
+                    mat-mini-fab
+                    class="btn btn-danger"
+                    aria-label="Mark split unpaid"
+                    data-testid="unpay-split-button"
+                    (click)="onUnpaySplit(split)"
+                    matTooltip="Mark split unpaid"
+                  >
+                    <mat-icon>money_off</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+            }
+            <tr
+              mat-header-row
+              *matHeaderRowDef="splitsColumnsToDisplay(); sticky: true"
+            ></tr>
+            <tr
+              mat-row
+              *matRowDef="let split; columns: splitsColumnsToDisplay()"
+            ></tr>
+            <tr class="mat-row" *matNoDataRow>
+              <td
+                class="mat-cell"
+                [colSpan]="splitsColumnsToDisplay().length"
+              >
+                No splits found.
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <h5 data-testid="category-summary-title">Category Summary</h5>
+      <div class="table-container mat-elevation-z8" data-testid="category-summary-container">
+        <div class="scrollable-table">
+          <table
+            mat-table
+            [dataSource]="categoryTotals()"
+            class="static-table"
+            data-testid="category-summary-table"
+          >
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Category</th>
+              <td mat-cell *matCellDef="let item">{{ item.category }}</td>
+            </ng-container>
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef class="cell-right">
+                Amount
+              </th>
+              <td mat-cell *matCellDef="let item" class="cell-right amount-cell">
+                {{ item.amount | currency }}
+              </td>
+            </ng-container>
+            <tr
+              mat-header-row
+              *matHeaderRowDef="categoryColumnsToDisplay; sticky: true"
+            ></tr>
+            <tr
+              mat-row
+              *matRowDef="let item; columns: categoryColumnsToDisplay"
+            ></tr>
+          </table>
+        </div>
+      </div>
+    }
+  </div>
+}

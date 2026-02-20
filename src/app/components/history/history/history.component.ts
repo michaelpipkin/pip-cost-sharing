@@ -13,36 +13,33 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
-import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
-import { AnalyticsService } from '@services/analytics.service';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -60,7 +57,6 @@ import { DocumentReference } from 'firebase/firestore';
     MatSortModule,
     MatTooltipModule,
     MatIconModule,
-    MatSlideToggleModule,
     MatInputModule,
     MatDatepickerModule,
     CurrencyPipe,
@@ -71,14 +67,13 @@ import { DocumentReference } from 'firebase/firestore';
 export class HistoryComponent implements AfterViewInit {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
-  protected readonly historyService = inject(HistoryService);
   protected readonly historyStore = inject(HistoryStore);
   protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
+  protected readonly router = inject(Router);
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 
@@ -127,13 +122,7 @@ export class HistoryComponent implements AfterViewInit {
     }
   );
 
-  expandedHistory = model<History | null>(null);
-
-  columnsToDisplay = computed<string[]>(() => {
-    return this.currentMember()?.groupAdmin
-      ? ['date', 'paidTo', 'paidBy', 'amount', 'delete']
-      : ['date', 'paidTo', 'paidBy', 'amount'];
-  });
+  columnsToDisplay = ['date', 'paidTo', 'paidBy', 'amount', 'type'];
 
   constructor() {
     effect(() => {
@@ -152,51 +141,14 @@ export class HistoryComponent implements AfterViewInit {
     this.tourService.checkForContinueTour('history');
   }
 
-  onExpandClick(history: History): void {
-    this.expandedHistory.update((h) => (h === history ? null : history));
-  }
-
-  onDeleteClick(history: History): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
+  onRowClick(history: History): void {
+    if (!history.splitsPaid || history.splitsPaid.length === 0) {
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'This payment doesn\'t have a breakdown available' },
+      });
       return;
     }
-    const dialogConfig: MatDialogConfig = {
-      data: {
-        operation: 'Delete',
-        target: 'this payment record',
-      },
-    };
-    const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
-    dialogRef.afterClosed().subscribe(async (confirm) => {
-      if (confirm) {
-        try {
-          this.loading.loadingOn();
-          await this.historyService.deleteHistory(history.ref!);
-          this.expandedHistory.set(null);
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Payment record deleted' },
-          });
-        } catch (error) {
-          if (error instanceof Error) {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: error.message },
-            });
-            this.analytics.logEvent('error', {
-              component: this.constructor.name,
-              action: 'delete_history',
-              message: error.message,
-            });
-          } else {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not delete payment record' },
-            });
-          }
-        } finally {
-          this.loading.loadingOff();
-        }
-      }
-    });
+    this.router.navigate(['/analysis/history', history.id]);
   }
 
   sortHistory(h: { active: string; direction: string }): void {
@@ -204,9 +156,7 @@ export class HistoryComponent implements AfterViewInit {
     this.sortAsc.set(h.direction === 'asc');
   }
 
-  resetHistoryTable(): void {
-    this.expandedHistory.set(null);
-  }
+  resetHistoryTable(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig<HelpDialogData> = {
@@ -219,72 +169,5 @@ export class HistoryComponent implements AfterViewInit {
 
   startTour(): void {
     this.tourService.startHistoryTour(true);
-  }
-
-  async copyHistoryToClipboard(history: History): Promise<void> {
-    const summaryText = this.generateHistoryText(history);
-    try {
-      await navigator.clipboard.writeText(summaryText);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Payment history copied to clipboard' },
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: error.message },
-        });
-        this.analytics.logEvent('error', {
-          component: this.constructor.name,
-          action: 'copy_history_to_clipboard',
-          message: error.message,
-        });
-      } else {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Failed to copy payment history' },
-        });
-      }
-    }
-  }
-
-  private generateHistoryText(history: History): string {
-    const paidBy = history.paidByMember?.displayName ?? 'Unknown';
-    const paidTo = history.paidToMember?.displayName ?? 'Unknown';
-    const date = history.date.toLocaleDateString();
-    let summaryText = `Payment History\n`;
-    summaryText += `${paidBy} paid ${paidTo} ${this.formatCurrency(history.totalPaid)} on ${date}\n\n`;
-
-    // Add category breakdown
-    if (history.lineItems && history.lineItems.length > 0) {
-      summaryText += `Breakdown by Category:\n`;
-
-      // Calculate the maximum line length for alignment
-      let maxLineLength = 0;
-      const categoryLines: { name: string; amount: string }[] = [];
-
-      history.lineItems.forEach((lineItem) => {
-        const categoryName = lineItem.category;
-        const formattedAmount = this.formatCurrency(lineItem.amount);
-        const lineLength = categoryName.length + 2 + formattedAmount.length; // +2 for ": "
-        maxLineLength = Math.max(maxLineLength, lineLength);
-        categoryLines.push({ name: categoryName, amount: formattedAmount });
-      });
-
-      summaryText += `${'='.repeat(maxLineLength + 1)}\n`;
-
-      // Add padded category lines
-      categoryLines.forEach((line) => {
-        const spacesNeeded =
-          maxLineLength - line.name.length - line.amount.length;
-        const padding = ' '.repeat(spacesNeeded);
-        summaryText += `${line.name}:${padding}${line.amount}\n`;
-      });
-    }
-
-    return summaryText.trim();
-  }
-
-  // Helper method to format currency
-  private formatCurrency(amount: number): string {
-    return this.localeService.formatCurrency(amount);
   }
 }

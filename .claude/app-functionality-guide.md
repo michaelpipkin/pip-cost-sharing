@@ -818,12 +818,12 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
   - On confirmation:
     - All splits in the current date range are marked as `paid: true`
     - Parent expense `paid` status updated accordingly
-    - One history record created per transfer row (no category breakdown / empty `lineItems`)
+    - One history record created per transfer row (no category breakdown / empty `splitsPaid`)
   - Demo mode blocks this action
 
 **Copy-to-Clipboard Feature**:
-- Available on expanded detail rows in Summary (Section 1), Expenses, and History pages
-- Clicking copies the detail breakdown for easy sharing
+- Available on expanded detail rows in Summary (Section 1) and Expenses pages
+- On the History Detail page, a Copy button copies the payment summary for easy sharing
 
 **Testable Behaviors**:
 
@@ -863,7 +863,7 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] Confirming settlement marks all filtered splits as paid
 - [ ] Confirming settlement updates parent expense paid status correctly
 - [ ] Settlement creates one history record per transfer row
-- [ ] Settlement history records have empty lineItems (no category breakdown)
+- [ ] Settlement history records have empty splitsPaid (no category breakdown)
 - [ ] After settlement, both tables show empty state
 - [ ] Demo mode blocks Settle Group action with appropriate message
 - [ ] Loading overlay is shown during settlement operation
@@ -877,12 +877,9 @@ This page is a **payment log** that records settlements made between members. It
 
 **Important Characteristics**:
 - Records are created when the Pay button is used on the Summary page
-- Each record is a snapshot of the payment and category breakdown at that moment
-- Purely informational/archival (like receipts)
-- No functional connection to original expenses or splits
-- Deleting a history record has **no effect** on expenses or splits
-- Records are **immutable** once created (cannot be edited)
-- Only **group admins** can delete history records
+- Each history record stores `splitsPaid`: an array of DocumentReferences to all splits that were paid as part of the payment
+- Group settle records have an empty `splitsPaid` array (no individual split mapping)
+- Group admins can "unpay" a payment from the History Detail page, which marks all splits as unpaid and deletes the history record
 
 **Page Components**:
 - **Member Dropdown**:
@@ -900,22 +897,15 @@ This page is a **payment log** that records settlements made between members. It
     - **Paid To**: Member who received payment
     - **Paid By**: Member who made payment
     - **Amount**: Total amount paid
-    - **Delete**: Trash icon button (only visible to group admins)
+    - **Type**: Icon showing payment type — person icon for member-to-member payment, group icon for group settle
   - Default sort: Ascending date order (oldest first)
   - Sortable columns: Date, Paid To, Paid By (click header to sort)
-
-- **Expandable Row Details**:
-  - Click any history row to expand
-  - Shows category breakdown of the payment (snapshot from Summary at time of payment)
-  - Detail table shows:
-    - Category name
-    - Amount per category (can be positive or negative)
-  - Click anywhere on expanded detail to **copy to clipboard**
-  - Useful for sharing payment receipt with other member
+  - Clicking a member payment row navigates to the **Payment Detail page**
+  - Clicking a group settle row shows a snackbar: "Group settle payments don't have a breakdown available"
 
 **What Creates History Records**:
-- Using Pay button on Summary page (Section 1) creates a history record with full category breakdown
-- Using Settle Group on Summary page (Section 2) creates one history record per transfer, but with empty `lineItems` (no category breakdown, since net transfer amounts don't map to individual categories)
+- Using Pay button on Summary page (Section 1) creates a history record with `splitsPaid` containing all split refs paid
+- Using Settle Group on Summary page (Section 2) creates one history record per transfer, with empty `splitsPaid` (no breakdown)
 - Individual split payments made on Expenses page do NOT create history records
 
 **Testable Behaviors**:
@@ -929,23 +919,55 @@ This page is a **payment log** that records settlements made between members. It
 - [ ] Clicking Paid To header sorts by that column
 - [ ] Clicking Paid By header sorts by that column
 - [ ] All history records for current group are shown (within filters)
-- [ ] Table shows correct columns: Date, Paid To, Paid By, Amount, Delete
-- [ ] Delete button only visible to group admins
-- [ ] Delete button not visible to non-admin members
-- [ ] Clicking delete removes history record (with confirmation)
-- [ ] Deleting history record does not affect expenses or splits
-- [ ] Row expansion shows category breakdown correctly
-- [ ] Category breakdown matches snapshot from original payment
-- [ ] Amounts in detail can be positive or negative
-- [ ] Category amounts in detail sum to total payment amount
-- [ ] Clicking expanded detail copies to clipboard
-- [ ] Copy-to-clipboard provides properly formatted text
-- [ ] History records cannot be edited
-- [ ] New history records appear when Pay button used on Summary page (with category breakdown)
-- [ ] New history records appear when Settle Group used on Summary page (no category breakdown)
-- [ ] History records from Settle Group show appropriate message in detail expansion (no category data)
+- [ ] Table shows correct columns: Date, Paid To, Paid By, Amount, Type
+- [ ] Type column shows person icon for member-to-member payments
+- [ ] Type column shows group icon for group settle payments
+- [ ] Clicking member payment row navigates to Payment Detail page
+- [ ] Clicking group settle row shows snackbar notification
 - [ ] History updates when group changes
 - [ ] Empty state shown when no history records match filters
+
+### Payment Detail Page (`/analysis/history/:id`)
+**Route**: `/analysis/history/:id`
+**Guards**: `authGuard`, `groupGuard`, `noCrawlerGuard`
+
+**Functionality**:
+Shows the full breakdown of a single payment, including every split that was paid and a category summary. Provides admin controls to unpay splits or the entire payment.
+
+**Page Components**:
+- **Back Button**: Returns to History page
+- **Payment Summary**: Paid By, Paid To, Date, Total Amount
+- **Copy Button**: Copies payment summary text to clipboard
+- **Unpay Payment Button** (admin only): Opens confirmation dialog and unpays all splits, then deletes the history record
+- **Splits Table**: Each split that was paid, with Date, Category, Amount, and (admin) Unpay button per row
+- **Category Summary Table**: Aggregated amounts per category
+
+**Unpay All Logic**:
+- All splits referenced in `splitsPaid` are marked `paid: false`
+- All unique related expenses are marked `paid: false`
+- The history record is deleted from Firestore
+- User is navigated back to History page
+
+**Unpay Single Split Logic**:
+- The selected split is marked `paid: false`
+- The related expense is marked `paid: false`
+- The split's DocumentReference is removed from the history record's `splitsPaid` array
+- `totalPaid` is recalculated: decreased by `allocatedAmount` if the split was a positive direction (payer owed payee), increased if negative direction (payee owed payer)
+- If `splitsPaid` becomes empty after removal, the history record is deleted and user is navigated back
+
+**Testable Behaviors**:
+- [ ] Page loads splits correctly from splitsPaid refs
+- [ ] Splits table shows Date, Category, Amount for each split
+- [ ] Category summary correctly aggregates amounts by category
+- [ ] Copy button copies formatted payment summary to clipboard
+- [ ] Unpay Payment button only visible to admins
+- [ ] Unpay split button only visible to admins
+- [ ] Unpay Payment confirmation dialog shows correct count and warning
+- [ ] Unpay Payment marks all splits as unpaid, marks expenses as unpaid, deletes history record
+- [ ] Unpay single split marks that split as unpaid, updates history record totalPaid and splitsPaid
+- [ ] Unpaying last split in record deletes the history record and navigates back
+- [ ] Demo mode blocks unpay actions
+- [ ] Help dialog shows payment detail help content
 
 ---
 
@@ -1214,13 +1236,13 @@ The app provides three different ways to mark splits as paid, each with differen
 9. **All splits** between those two members are marked as paid (`paid` flag = true)
 10. **History record is created** with:
     - Payment date, amount, members involved
-    - Category breakdown snapshot
+    - `splitsPaid`: array of DocumentReferences to all splits paid
 11. Summary table updates (row may disappear if fully settled)
-12. User can view payment receipt in History page
+12. User can view payment receipt in History Detail page
 
 **Key Characteristics**:
 - Marks ALL splits between two members (not just one expense)
-- Creates permanent history record with category breakdown
+- Creates permanent history record with split refs (allows unpay from History Detail page)
 - Shows payment service handles
 - Typical use: Monthly settlement between two roommates
 
@@ -1236,7 +1258,7 @@ The app provides three different ways to mark splits as paid, each with differen
 7. User confirms all transfers have been completed
 8. **All filtered splits** are marked as paid (`paid` flag = true)
 9. Parent expense `paid` status updated accordingly
-10. **One history record per transfer** is created with date and amount, but **no category breakdown** (empty `lineItems`)
+10. **One history record per transfer** is created with date and amount, but **no category breakdown** (empty `splitsPaid`)
 11. Both summary sections update (show empty state when fully settled)
 
 **Key Characteristics**:
@@ -1272,10 +1294,9 @@ The app provides three different ways to mark splits as paid, each with differen
 | Feature | Summary — Pay Button | Summary — Settle Group | Expenses — Split Button |
 |---------|---------------------|------------------------|------------------------|
 | Scope | All splits between 2 members | All splits in date range (entire group) | Single split only |
-| History Record | Yes — with category breakdown | Yes — no category breakdown | No |
+| History Record | Yes — with split refs | Yes — no split refs | No |
 | Payment Handles | Shows service handles | Not shown | Not shown |
-| Category Breakdown | Saved in history | Not saved | Not saved |
-| Can Undo | Can mark splits unpaid individually | Can mark splits unpaid individually | Yes — click red button |
+| Unpay / Undo | Admin: Unpay all or per-split on History Detail page | Not available (no split refs) | Yes — click red button |
 | Typical Use | Pairwise monthly settlement | Group-wide periodic settlement | Individual expense payment |
 
 ---

@@ -107,8 +107,18 @@ export class HelpContentService {
       title: 'History',
       content: [
         'Select a group member from the dropdown list to view a history of payments made to and from that member.',
-        'Click on any row to view a breakdown of the amounts by category for the payment. Clicking the detail breakdown will copy a summary of the payment to the clipboard for easy sharing.',
-        'Group admins may delete history records. Payment history records are informational only -- deleting a payment history record does not mark the associated expenses as unpaid.',
+        'Each row shows the Type of payment: a person icon indicates a direct member-to-member payment, and a group icon indicates a group settle payment. Click on any member payment row to view the full breakdown of that payment, including each individual split paid.',
+        'Group settle payments do not have a split breakdown available — clicking a group settle row will show a notification.',
+      ],
+    },
+    {
+      id: 'history-detail',
+      title: 'Payment Detail',
+      content: [
+        'This page shows the full details of a recorded payment, including a table of every split that was paid and a category summary.',
+        'Click the Copy button to copy a summary of the payment to your clipboard for easy sharing.',
+        'Group admins can mark individual splits as unpaid using the Unpay button on each split row — the payment total will be updated automatically, and if the last split is removed, the history record will also be deleted.',
+        'Group admins can also unpay the entire payment at once using the Unpay Payment button. This will mark all splits in the payment as unpaid, mark the associated expenses as unpaid, and delete the history record.',
       ],
     },
     {

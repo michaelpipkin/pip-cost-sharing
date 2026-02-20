@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { HistoryComponent } from '@components/history/history/history.component';
 import { SummaryComponent } from '@components/summary/summary/summary.component';
 
 export const analysisRoutes: Routes = [
@@ -10,7 +9,9 @@ export const analysisRoutes: Routes = [
   },
   {
     path: 'history',
-    title: 'History',
-    component: HistoryComponent,
+    loadChildren: () =>
+      import('@components/history/history.routes').then(
+        (m) => m.historyRoutes
+      ),
   },
 ];

@@ -1,5 +1,6 @@
 import { DocumentReference } from 'firebase/firestore';
 import { Member } from './member';
+import { Split } from './split';
 
 export class History {
   constructor(init?: Partial<History>) {
@@ -12,7 +13,7 @@ export class History {
   paidToMemberRef!: DocumentReference<Member>;
   paidToMember?: Member;
   totalPaid!: number;
-  lineItems!: { category: string; amount: number }[];
+  splitsPaid: DocumentReference<Split>[] | null = null;
   ref?: DocumentReference<History>;
 }
 
