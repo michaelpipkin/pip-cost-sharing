@@ -403,14 +403,8 @@ export class SummaryComponent implements AfterViewInit {
                 0
               )
             ),
-            lineItems: [] as { category: string; amount: number }[],
+            splitsPaid: splitsToPay.map((s) => s.ref!),
           };
-          this.detailData().forEach((split) => {
-            history.lineItems.push({
-              category: split.category!.name,
-              amount: split.amount,
-            });
-          });
           await this.splitService.paySplitsBetweenMembers(
             this.currentGroup()!.id,
             splitsToPay,

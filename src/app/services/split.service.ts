@@ -229,7 +229,7 @@ export class SplitService implements ISplitService {
           paidToMemberRef: transfer.owedToMemberRef,
           date: new Date().toIsoFormat(),
           totalPaid: transfer.amount,
-          lineItems: [],
+          splitsPaid: [],
         });
       }
 
