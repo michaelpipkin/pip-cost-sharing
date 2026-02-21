@@ -1,9 +1,9 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import {
+  afterNextRender,
   Component,
   computed,
   inject,
-  OnInit,
   signal,
   Signal,
 } from '@angular/core';
@@ -49,7 +49,7 @@ import { Expense } from '@models/expense';
     DatePipe,
   ],
 })
-export class HistoryDetailComponent implements OnInit {
+export class HistoryDetailComponent {
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
   protected readonly groupStore = inject(GroupStore);
@@ -102,19 +102,21 @@ export class HistoryDetailComponent implements OnInit {
 
   categoryColumnsToDisplay = ['category', 'amount'];
 
-  async ngOnInit(): Promise<void> {
-    const historyId = this.route.snapshot.paramMap.get('id')!;
-    const foundHistory = this.historyStore
-      .groupHistory()
-      .find((h) => h.id === historyId);
-    if (!foundHistory) {
-      this.router.navigate(['/analysis/history']);
-      return;
-    }
-    this.history.set(foundHistory);
-    if (foundHistory.splitsPaid && foundHistory.splitsPaid.length > 0) {
-      await this.loadSplits(foundHistory.splitsPaid);
-    }
+  constructor() {
+    afterNextRender(() => {
+      const historyId = this.route.snapshot.paramMap.get('id')!;
+      const foundHistory = this.historyStore
+        .groupHistory()
+        .find((h) => h.id === historyId);
+      if (!foundHistory) {
+        this.router.navigate(['/analysis/history']);
+        return;
+      }
+      this.history.set(foundHistory);
+      if (foundHistory.splitsPaid && foundHistory.splitsPaid.length > 0) {
+        this.loadSplits(foundHistory.splitsPaid);
+      }
+    });
   }
 
   private async loadSplits(
