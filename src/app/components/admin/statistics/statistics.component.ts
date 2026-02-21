@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { afterNextRender, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,7 +16,7 @@ import { LoadingService } from '@shared/loading/loading.service';
   styleUrl: './statistics.component.scss',
   imports: [MatCardModule, MatButtonModule, MatIconModule, DatePipe],
 })
-export class AdminStatisticsComponent implements OnInit {
+export class AdminStatisticsComponent {
   protected readonly statisticsService = inject(AdminStatisticsService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -25,8 +25,10 @@ export class AdminStatisticsComponent implements OnInit {
   statistics = signal<AdminStatistics | null>(null);
   error = signal<string | null>(null);
 
-  async ngOnInit(): Promise<void> {
-    await this.loadStatistics();
+  constructor() {
+    afterNextRender(async () => {
+      await this.loadStatistics();
+    });
   }
 
   async loadStatistics(): Promise<void> {
