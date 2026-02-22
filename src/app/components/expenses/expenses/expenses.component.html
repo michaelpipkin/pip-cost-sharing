@@ -457,29 +457,41 @@
                             expense.paidByMemberRef.path !=
                             split.owedByMemberRef.path
                           ) {
-                            <button
-                              mat-mini-fab
-                              class="btn"
-                              [class]="
-                                split.paid ? 'btn-danger' : 'btn-success'
-                              "
-                              (click)="
-                                markSplitPaidUnpaid(expense, split);
-                                $event.stopPropagation()
-                              "
-                              (mouseenter)="tableTooltip.disabled = true"
-                              (mouseleave)="
-                                tableTooltip.disabled = false;
-                                tableTooltip.show()
-                              "
-                              [title]="
-                                split.paid
-                                  ? 'Mark split unpaid'
-                                  : 'Mark split paid'
-                              "
-                            >
-                              <mat-icon>paid</mat-icon>
-                            </button>
+                            @if (split.paid) {
+                              <button
+                                mat-mini-fab
+                                class="btn btn-danger"
+                                (click)="
+                                  markSplitPaidUnpaid(expense, split);
+                                  $event.stopPropagation()
+                                "
+                                (mouseenter)="tableTooltip.disabled = true"
+                                (mouseleave)="
+                                  tableTooltip.disabled = false;
+                                  tableTooltip.show()
+                                "
+                                title="Mark split unpaid"
+                              >
+                                <mat-icon>money_off</mat-icon>
+                              </button>
+                            } @else {
+                              <button
+                                mat-mini-fab
+                                class="btn btn-success"
+                                (click)="
+                                  markSplitPaidUnpaid(expense, split);
+                                  $event.stopPropagation()
+                                "
+                                (mouseenter)="tableTooltip.disabled = true"
+                                (mouseleave)="
+                                  tableTooltip.disabled = false;
+                                  tableTooltip.show()
+                                "
+                                title="Mark split paid"
+                              >
+                                <mat-icon>attach_money</mat-icon>
+                              </button>
+                            }
                           }
                         </td>
                       </ng-container>
