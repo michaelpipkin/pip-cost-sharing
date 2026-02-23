@@ -1,6 +1,7 @@
 @if (!memberStore.loaded()) {
-  <div class="container pt-3" data-testid="members-loading-container">
-    <h3 data-testid="loading-members-message">Loading members...</h3>
+  <div class="placeholder-content" data-testid="members-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">face</mat-icon>
+    <p class="placeholder-text" data-testid="loading-members-message">Loading members...</p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="members-main-container">
@@ -151,8 +152,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3" data-testid="no-members-container">
-        <h5 data-testid="no-members-message">No members found</h5>
+      <div class="placeholder-content" data-testid="no-members-container">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">group_off</mat-icon>
+        <p class="placeholder-text" data-testid="no-members-message">No members found</p>
       </div>
     }
   </div>

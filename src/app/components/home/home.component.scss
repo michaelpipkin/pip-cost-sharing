@@ -77,7 +77,7 @@
       display: grid;
       grid-template-rows: auto;
       grid-template-columns: 1fr;
-      row-gap: 2px;
+      row-gap: 1rem;
     }
   }
 }
@@ -109,12 +109,12 @@
 .feature-container {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  column-gap: 2px;
+  column-gap: 1rem;
 }
 
 .feature {
   display: grid;
-  grid-template-rows: 64px max-content auto;
+  grid-template-rows: 72px max-content auto;
   padding: 8px;
   gap: 1rem;
 }
@@ -124,9 +124,9 @@
 }
 
 .feature-icon mat-icon {
-  height: 36px;
-  width: 36px;
-  font-size: 36px;
+  height: 48px;
+  width: 48px;
+  font-size: 48px;
 }
 
 .feature-title {

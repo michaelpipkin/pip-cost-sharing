@@ -1,6 +1,7 @@
 @if (!groupStore.loaded()) {
-  <div class="container pt-3" data-testid="groups-loading-container">
-    <h3 data-testid="loading-message">Loading groups...</h3>
+  <div class="placeholder-content" data-testid="groups-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">groups</mat-icon>
+    <p class="placeholder-text" data-testid="loading-message">Loading groups...</p>
   </div>
 } @else {
   <div class="container pt-3" data-testid="groups-main-container">

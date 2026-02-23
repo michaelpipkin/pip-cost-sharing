@@ -1,5 +1,13 @@
-h2 {
-  margin-bottom: 1em;
+.login-card {
+  max-width: 500px;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.login-logo {
+  height: 40px;
+  width: 40px;
+  object-fit: contain;
 }
 
 .login {
@@ -8,6 +16,13 @@ h2 {
   mat-form-field {
     width: 100%;
   }
+}
+
+.google-login-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1em;
 }
 
 @media screen and (max-width: 400px) {
@@ -51,6 +66,6 @@ h2 {
 
   hr {
     border: 0;
-    border-top: 1px solid black;
+    border-top: 1px solid var(--border);
   }
 }
