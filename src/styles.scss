@@ -196,12 +196,13 @@ body.dark-theme {
   }
 
   .links .mat-mdc-button.active {
-    background-color: color-mix(
-      in srgb,
-      tokens.color('on-primary') 20%,
-      transparent
-    ) !important;
+    background-color: tokens.color('secondary') !important;
+    color: tokens.color('on-secondary') !important;
     border-radius: 0.5em !important;
+    font-weight: 500 !important;
+    mat-icon {
+      color: tokens.color('on-secondary') !important;
+    }
   }
 
   .account.links {
