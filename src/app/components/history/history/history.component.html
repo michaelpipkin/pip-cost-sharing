@@ -1,6 +1,7 @@
 @if (!historyStore.loaded()) {
-  <div class="container pt-3" data-testid="history-loading-container">
-    <h3 data-testid="loading-history-message">Loading history...</h3>
+  <div class="placeholder-content" data-testid="history-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">receipt</mat-icon>
+    <p class="placeholder-text" data-testid="loading-history-message">Loading history...</p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="history-main-container">
@@ -194,8 +195,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No history found</h5>
+      <div class="placeholder-content">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">receipt_long</mat-icon>
+        <p class="placeholder-text">No history found</p>
       </div>
     }
   </div>

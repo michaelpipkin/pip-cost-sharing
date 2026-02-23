@@ -1,6 +1,7 @@
 @if (!categoryStore.loaded()) {
-  <div class="container pt-3" data-testid="categories-loading-container">
-    <h3 data-testid="loading-categories-message">Loading categories...</h3>
+  <div class="placeholder-content" data-testid="categories-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">category</mat-icon>
+    <p class="placeholder-text" data-testid="loading-categories-message">Loading categories...</p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="categories-main-container">
@@ -97,8 +98,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3" data-testid="no-categories-container">
-        <h5 data-testid="no-categories-message">No categories found</h5>
+      <div class="placeholder-content" data-testid="no-categories-container">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">category</mat-icon>
+        <p class="placeholder-text" data-testid="no-categories-message">No categories found</p>
       </div>
     }
   </div>

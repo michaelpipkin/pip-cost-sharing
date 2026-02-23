@@ -1,6 +1,7 @@
 @if (!splitStore.loaded()) {
-  <div class="container pt-3" data-testid="summary-loading-container">
-    <h3 data-testid="loading-summary-message">Loading summary...</h3>
+  <div class="placeholder-content" data-testid="summary-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">compare_arrows</mat-icon>
+    <p class="placeholder-text" data-testid="loading-summary-message">Loading summary...</p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="summary-main-container">
@@ -254,8 +255,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No outstanding expenses found for selected member.</h5>
+      <div class="placeholder-content">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">check_circle</mat-icon>
+        <p class="placeholder-text">No outstanding expenses found for selected member.</p>
       </div>
     }
     @if (summaryMemberCount() > 2) {
@@ -323,8 +325,9 @@
           </button>
         </div>
       } @else {
-        <div class="container pt-3" data-testid="least-transfers-empty">
-          <h5>No outstanding expenses to settle.</h5>
+        <div class="placeholder-content" data-testid="least-transfers-empty">
+          <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">check_circle</mat-icon>
+          <p class="placeholder-text">No outstanding expenses to settle.</p>
         </div>
       }
     }
