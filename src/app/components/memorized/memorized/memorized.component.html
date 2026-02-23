@@ -1,8 +1,7 @@
 @if (!memorizedStore.loaded()) {
-  <div class="container pt-3" data-testid="memorized-loading-container">
-    <h3 data-testid="loading-memorized-message">
-      Loading memorized expenses...
-    </h3>
+  <div class="placeholder-content" data-testid="memorized-loading-container">
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">currency_exchange</mat-icon>
+    <p class="placeholder-text" data-testid="loading-memorized-message">Loading memorized expenses...</p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="memorized-main-container">
@@ -240,8 +239,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No memorized expenses found</h5>
+      <div class="placeholder-content">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">currency_exchange</mat-icon>
+        <p class="placeholder-text">No memorized expenses found</p>
       </div>
     }
   </div>

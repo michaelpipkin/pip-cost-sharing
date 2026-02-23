@@ -1,103 +1,117 @@
 <div class="container" data-testid="login-container">
-  <h2 data-testid="login-title">Login</h2>
-  <form
-    [formGroup]="loginForm"
-    class="login"
-    (submit)="emailLogin()"
-    data-testid="login-form"
-    aria-label="Login form"
-  >
-    <mat-form-field data-testid="email-field">
-      <mat-label>Email</mat-label>
-      <input
-        matInput
-        type="email"
-        formControlName="email"
-        #emailInput
-        data-testid="email-input"
-        aria-label="Email address"
-      />
-      @if (l.email.errors?.email) {
-        <mat-error data-testid="email-error">Invalid email address</mat-error>
-      }
-    </mat-form-field>
-    <mat-form-field data-testid="password-field">
-      <mat-label>Password</mat-label>
-      <input
-        matInput
-        [type]="hidePassword() ? 'password' : 'text'"
-        formControlName="password"
-        (keydown.enter)="
-          $event.preventDefault(); loginForm.valid && emailLogin()
-        "
-        #passwordInput
-        data-testid="password-input"
-        aria-label="Password"
-      />
-      <button
-        mat-icon-button
-        type="button"
-        matIconSuffix
-        (click)="toggleHidePassword()"
-        [attr.aria-label]="'Hide password'"
-        [attr.aria-pressed]="hidePassword()"
-        tabindex="-1"
-      >
-        <mat-icon fontSet="material-symbols-outlined">{{
-          hidePassword() ? 'visibility_off' : 'visibility'
-        }}</mat-icon>
-      </button>
-    </mat-form-field>
-    <div class="buttons" data-testid="login-buttons">
-      <button
-        mat-raised-button
-        type="submit"
-        class="btn-primary mb-3"
-        data-testid="login-submit-button"
-        aria-label="Login to your account"
-      >
-        <span class="login-button">Login</span>
-      </button>
-      <a
-        class="primary-link"
-        routerLink="/auth/forgot-password"
-        data-testid="forgot-password-link"
-        aria-label="Forgot password?"
-        >Forgot password?</a
-      >
-    </div>
-    <div class="create-account" data-testid="create-account-section">
-      Don't have an account?
-      <a
-        class="primary-link"
-        routerLink="/auth/register"
-        data-testid="register-link"
-        aria-label="Create a new account"
-        >Create one.</a
-      >
-    </div>
-  </form>
-  <div class="divider-with-text" data-testid="login-divider">
-    <hr />
-    <span>Or</span>
-    <hr />
-  </div>
-  <div data-testid="google-login-section">
-    <button
-      mat-stroked-button
-      (click)="googleLogin()"
-      data-testid="google-login-button"
-      aria-label="Sign in with Google"
-    >
+  <mat-card class="login-card" data-testid="login-card">
+    <mat-card-header>
       <img
-        class="google-g me-2"
-        alt="Google logo"
-        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-        data-testid="google-logo"
+        mat-card-avatar
+        src="/assets/images/pip_split_icon_192x192.png"
+        alt="PipSplit logo"
+        class="login-logo"
+        data-testid="login-logo"
       />
-      <span class="login-button">Sign in with Google</span>
-    </button>
-  </div>
+      <mat-card-title data-testid="login-title">Login</mat-card-title>
+      <mat-card-subtitle>Sign in to your PipSplit account</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <form
+        [formGroup]="loginForm"
+        class="login"
+        (submit)="emailLogin()"
+        data-testid="login-form"
+        aria-label="Login form"
+      >
+        <mat-form-field data-testid="email-field">
+          <mat-label>Email</mat-label>
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            #emailInput
+            data-testid="email-input"
+            aria-label="Email address"
+          />
+          @if (l.email.errors?.email) {
+            <mat-error data-testid="email-error">Invalid email address</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field data-testid="password-field">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password"
+            (keydown.enter)="
+              $event.preventDefault(); loginForm.valid && emailLogin()
+            "
+            #passwordInput
+            data-testid="password-input"
+            aria-label="Password"
+          />
+          <button
+            mat-icon-button
+            type="button"
+            matIconSuffix
+            (click)="toggleHidePassword()"
+            [attr.aria-label]="'Hide password'"
+            [attr.aria-pressed]="hidePassword()"
+            tabindex="-1"
+          >
+            <mat-icon fontSet="material-symbols-outlined">{{
+              hidePassword() ? 'visibility_off' : 'visibility'
+            }}</mat-icon>
+          </button>
+        </mat-form-field>
+        <div class="buttons" data-testid="login-buttons">
+          <button
+            mat-raised-button
+            type="submit"
+            class="btn-primary mb-3"
+            data-testid="login-submit-button"
+            aria-label="Login to your account"
+          >
+            <span class="login-button">Login</span>
+          </button>
+          <a
+            class="primary-link"
+            routerLink="/auth/forgot-password"
+            data-testid="forgot-password-link"
+            aria-label="Forgot password?"
+            >Forgot password?</a
+          >
+        </div>
+        <div class="create-account" data-testid="create-account-section">
+          Don't have an account?
+          <a
+            class="primary-link"
+            routerLink="/auth/register"
+            data-testid="register-link"
+            aria-label="Create a new account"
+            >Create one.</a
+          >
+        </div>
+      </form>
+      <div class="divider-with-text" data-testid="login-divider">
+        <hr />
+        <span>Or</span>
+        <hr />
+      </div>
+      <div class="google-login-section" data-testid="google-login-section">
+        <button
+          mat-stroked-button
+          (click)="googleLogin()"
+          data-testid="google-login-button"
+          aria-label="Sign in with Google"
+        >
+          <img
+            class="google-g me-2"
+            alt="Google logo"
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            data-testid="google-logo"
+          />
+          <span class="login-button">Sign in with Google</span>
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
   <mat-divider class="standard-divider"></mat-divider>
   <div class="platform-message" data-testid="platform-message">
     @if (isRunningInBrowser()) {

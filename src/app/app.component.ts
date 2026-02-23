@@ -5,7 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { TextZoom } from '@capacitor/text-zoom';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
@@ -31,6 +36,7 @@ import { NavigationLoadingService } from './shared/loading/navigation-loading.se
   imports: [
     MatButtonModule,
     RouterLink,
+    RouterLinkActive,
     MatIconModule,
     MatToolbarModule,
     MatMenuModule,
@@ -76,7 +82,7 @@ export class AppComponent {
 
     // Observe breakpoint changes for responsive layout
     this.breakpointObserver
-      .observe('(max-width: 1100px)')
+      .observe('(max-width: 1115px)')
       .subscribe((result) => {
         this.isSmallScreen.set(result.matches);
       });

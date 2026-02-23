@@ -133,7 +133,7 @@
         class="btn-primary fetch-button"
         (click)="loadExpenses()"
       >
-        Fetch Expenses
+        Search Expenses
       </button>
       <button
         matButton="elevated"
@@ -545,8 +545,9 @@
         </div>
       </div>
     } @else {
-      <div class="container pt-3">
-        <h5>No expenses found</h5>
+      <div class="placeholder-content">
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">search_off</mat-icon>
+        <p class="placeholder-text">No expenses found</p>
       </div>
     }
   </div>

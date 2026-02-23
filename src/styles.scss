@@ -195,6 +195,15 @@ body.dark-theme {
     border-radius: 0.5em !important;
   }
 
+  .links .mat-mdc-button.active {
+    background-color: color-mix(
+      in srgb,
+      tokens.color('on-primary') 20%,
+      transparent
+    ) !important;
+    border-radius: 0.5em !important;
+  }
+
   .account.links {
     display: flex;
     gap: 0.1rem;
@@ -228,9 +237,9 @@ body.dark-theme {
 #title {
   display: inline-block;
   margin-right: 0.75rem;
-  line-height: 3rem;
-  font-size: 1.25rem;
-  font-weight: 400;
+  line-height: 3rem !important;
+  font-size: 1.4rem !important;
+  font-weight: 600;
   text-decoration: none;
 }
 
