@@ -481,6 +481,11 @@ body.dark-theme {
   cursor: pointer;
 }
 
+table thead,
+tfoot {
+  background-color: tokens.color('primary') !important;
+}
+
 table thead tr,
 tfoot tr {
   background-color: tokens.color('primary') !important;
