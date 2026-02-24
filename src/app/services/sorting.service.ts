@@ -6,8 +6,26 @@ import { Injectable } from '@angular/core';
 export class SortingService {
   constructor() {}
 
-  sort(data: any[], col: string, asc: boolean) {
-    if (typeof data[0][col] === 'string') {
+  sort(data: any[], col: string, asc: boolean, property: string = '') {
+    if (typeof data[0][col] === 'object' && property) {
+      data = data.sort(function (a: any, b: any) {
+        if (asc) {
+          return a[col][property]?.toLowerCase() >
+            b[col][property]?.toLowerCase()
+            ? 1
+            : a[col][property]?.toLowerCase() < b[col][property]?.toLowerCase()
+              ? -1
+              : 0;
+        } else {
+          return b[col][property]?.toLowerCase() >
+            a[col][property]?.toLowerCase()
+            ? 1
+            : b[col][property]?.toLowerCase() < a[col][property]?.toLowerCase()
+              ? -1
+              : 0;
+        }
+      });
+    } else if (typeof data[0][col] === 'string') {
       data = data.sort(function (a: any, b: any) {
         if (asc) {
           return a[col].toLowerCase() > b[col].toLowerCase()

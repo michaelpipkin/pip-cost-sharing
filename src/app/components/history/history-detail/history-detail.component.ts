@@ -11,6 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -18,6 +19,7 @@ import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@components/help/help-dialog/help-dialog.component';
+import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -26,15 +28,15 @@ import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
+import { SortingService } from '@services/sorting.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
-import { CategoryStore } from '@store/category.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference, getDoc } from 'firebase/firestore';
-import { Expense } from '@models/expense';
 
 @Component({
   selector: 'app-history-detail',
@@ -43,6 +45,7 @@ import { Expense } from '@models/expense';
   imports: [
     MatButtonModule,
     MatIconModule,
+    MatSortModule,
     MatTableModule,
     MatTooltipModule,
     CurrencyPipe,
@@ -58,6 +61,7 @@ export class HistoryDetailComponent {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly historyService = inject(HistoryService);
   protected readonly loading = inject(LoadingService);
+  protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -70,9 +74,27 @@ export class HistoryDetailComponent {
   history = signal<History | null>(null);
   paidSplits = signal<Split[]>([]);
 
+  sortField = signal<string>('date');
+  sortAsc = signal<boolean>(true);
+
+  sortedPaidSplits = computed(() => {
+    let splits = [...this.paidSplits()];
+    if (splits.length > 0) {
+      splits = this.sorter.sort(
+        splits,
+        this.sortField(),
+        this.sortAsc(),
+        this.sortField() === 'category' ? 'name' : ''
+      );
+    }
+    return splits;
+  });
+
   isAdmin = computed(() => this.currentMember()?.groupAdmin ?? false);
   isGroupSettle = computed(
-    () => !this.history()?.splitsPaid || (this.history()?.splitsPaid?.length ?? 0) === 0
+    () =>
+      !this.history()?.splitsPaid ||
+      (this.history()?.splitsPaid?.length ?? 0) === 0
   );
 
   categoryTotals = computed<{ category: string; amount: number }[]>(() => {
@@ -97,7 +119,9 @@ export class HistoryDetailComponent {
   });
 
   splitsColumnsToDisplay = computed<string[]>(() =>
-    this.isAdmin() ? ['date', 'category', 'amount', 'unpay'] : ['date', 'category', 'amount']
+    this.isAdmin()
+      ? ['date', 'category', 'amount', 'unpay']
+      : ['date', 'category', 'amount']
   );
 
   categoryColumnsToDisplay = ['category', 'amount'];
@@ -159,6 +183,11 @@ export class HistoryDetailComponent {
       : -split.allocatedAmount;
   }
 
+  sortHistory(e: { active: string; direction: string }): void {
+    this.sortField.set(e.active);
+    this.sortAsc.set(e.direction == 'asc');
+  }
+
   goBack(): void {
     this.router.navigate(['/analysis/history']);
   }
@@ -192,10 +221,7 @@ export class HistoryDetailComponent {
       if (confirm) {
         this.loading.loadingOn();
         try {
-          await this.historyService.unpayHistory(
-            this.currentGroup()!.id,
-            h
-          );
+          await this.historyService.unpayHistory(this.currentGroup()!.id, h);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Payment marked as unpaid' },
           });
@@ -212,7 +238,9 @@ export class HistoryDetailComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not unpay payment' },
+              data: {
+                message: 'Something went wrong - could not unpay payment',
+              },
             });
           }
         } finally {
@@ -234,7 +262,7 @@ export class HistoryDetailComponent {
         dialogTitle: 'Confirm Unpay Split',
         confirmationText: isLastSplit
           ? 'This will mark this split as unpaid. Since it is the last split in this payment record, the history record will also be deleted.'
-          : 'This will mark this split as unpaid and remove it from this payment record. The payment\'s total will be updated accordingly.',
+          : "This will mark this split as unpaid and remove it from this payment record. The payment's total will be updated accordingly.",
         confirmButtonText: 'Unpay',
         cancelButtonText: 'Cancel',
       },
