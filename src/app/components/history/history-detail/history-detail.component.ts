@@ -7,9 +7,11 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
@@ -43,8 +45,10 @@ import { DocumentReference, getDoc } from 'firebase/firestore';
   templateUrl: './history-detail.component.html',
   styleUrl: './history-detail.component.scss',
   imports: [
+    FormsModule,
     MatButtonModule,
     MatIconModule,
+    MatRadioModule,
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
@@ -76,6 +80,8 @@ export class HistoryDetailComponent {
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
+
+  viewMode: 'summary' | 'details' = 'details';
 
   sortedPaidSplits = computed(() => {
     let splits = [...this.paidSplits()];
@@ -199,6 +205,10 @@ export class HistoryDetailComponent {
       data: { sectionId: 'history-detail' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  onRowClick(split: Split): void {
+    this.router.navigate(['/expenses', split.expenseRef.id]);
   }
 
   async onUnpayAll(): Promise<void> {

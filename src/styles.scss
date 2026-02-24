@@ -313,7 +313,7 @@ body.dark-theme {
 #outlet {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   width: 98.75vw;
   margin-left: 1.25vw;
   padding-bottom: 1.25rem;
@@ -328,9 +328,15 @@ body.dark-theme {
   flex-direction: column;
   align-items: center;
   margin: 0 auto 24px auto;
+  padding: 0 4rem;
+  height: 100%;
+  width: fit-content;
+
+  &.scrollable {
+    overflow-y: auto;
+  }
 
   &.with-table {
-    height: calc(100vh - 132px);
     overflow: hidden;
   }
 }
@@ -418,18 +424,17 @@ body.dark-theme {
 
 .table-container {
   min-height: 0; /* Important for proper flexbox behavior */
-  max-height: 100%;
   display: flex;
   flex-direction: column;
   margin-top: 8px;
   margin-bottom: 8px;
+  border: 12px solid tokens.color('surface');
   justify-content: center;
   overflow: hidden; /* Prevent overflow outside the container */
 }
 
 .scrollable-table {
   overflow-y: auto;
-  border: 12px solid tokens.color('surface');
 }
 
 .detail-table-container {
