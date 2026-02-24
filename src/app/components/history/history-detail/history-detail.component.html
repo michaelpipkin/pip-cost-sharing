@@ -1,5 +1,5 @@
 @if (history()) {
-  <div class="container pt-3" data-testid="history-detail-container">
+  <div class="container scrollable pt-3" data-testid="history-detail-container">
     <div class="page-header" data-testid="history-detail-page-header">
       <div>
         <button
@@ -28,18 +28,18 @@
     <div class="payment-summary mb-3" data-testid="payment-summary">
       <div class="payment-summary-info">
         <span data-testid="paid-by-name"
-          ><strong>Paid By:</strong> {{ history()!.paidByMember?.displayName }}</span
+          ><strong>Paid By:</strong>
+          {{ history()!.paidByMember?.displayName }}</span
         >
         <span data-testid="paid-to-name"
-          ><strong>Paid To:</strong> {{ history()!.paidToMember?.displayName }}</span
+          ><strong>Paid To:</strong>
+          {{ history()!.paidToMember?.displayName }}</span
         >
         <span data-testid="payment-date"
-          ><strong>Date:</strong>
-          {{ history()!.date | date: 'M/d/yyyy' }}</span
+          ><strong>Date:</strong> {{ history()!.date | date: 'M/d/yyyy' }}</span
         >
         <span data-testid="payment-total"
-          ><strong>Amount:</strong>
-          {{ history()!.totalPaid | currency }}</span
+          ><strong>Amount:</strong> {{ history()!.totalPaid | currency }}</span
         >
       </div>
       <div class="payment-summary-actions flex-wrap fw-end mt-2">
@@ -74,112 +74,139 @@
         Paid via Group Settle — breakdown not available.
       </p>
     } @else {
-      <div class="table-container mat-elevation-z8 mb-3" data-testid="splits-table-container">
-        <div class="scrollable-table">
-          <table
-            mat-table
-            matSort
-            [dataSource]="sortedPaidSplits()"
-            (matSortChange)="sortHistory($event)"
-            class="static-table"
-            data-testid="splits-table"
-          >
-            <ng-container matColumnDef="date">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-              <td mat-cell *matCellDef="let split" class="no-wrap">
-                {{ split.date | date: 'M/d/yyyy' }}
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-              <td mat-cell *matCellDef="let split">
-                {{ split.category?.name ?? 'Unknown' }}
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="amount">
-              <th mat-header-cell *matHeaderCellDef class="cell-right">
-                Amount
-              </th>
-              <td mat-cell *matCellDef="let split" class="cell-right amount-cell">
-                {{ getSplitDirectedAmount(split) | currency }}
-              </td>
-            </ng-container>
-            @if (isAdmin()) {
-              <ng-container matColumnDef="unpay">
-                <th
-                  mat-header-cell
-                  *matHeaderCellDef
-                  class="cell-center"
-                  aria-label="Unpay split"
-                >
-                  Unpay
-                </th>
-                <td mat-cell *matCellDef="let split" class="cell-center">
-                  <button
-                    mat-mini-fab
-                    class="btn btn-danger"
-                    aria-label="Mark split unpaid"
-                    data-testid="unpay-split-button"
-                    (click)="onUnpaySplit(split)"
-                    matTooltip="Mark split unpaid"
-                  >
-                    <mat-icon>money_off</mat-icon>
-                  </button>
+      <mat-radio-group [(ngModel)]="viewMode" class="mb-2">
+        <mat-radio-button value="details" data-testid="history-details-option" class="me-2">
+          Split Details
+        </mat-radio-button>
+        <mat-radio-button value="summary" data-testid="history-summary-option">
+          Summary by Category
+        </mat-radio-button>
+      </mat-radio-group>
+      @if (viewMode === 'details') {
+        <div
+          class="table-container mat-elevation-z8 mb-3"
+          data-testid="splits-table-container"
+        >
+          <div class="scrollable-table">
+            <table
+              mat-table
+              matSort
+              [dataSource]="sortedPaidSplits()"
+              (matSortChange)="sortHistory($event)"
+              class="static-table"
+              data-testid="splits-table"
+            >
+              <ng-container matColumnDef="date">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                <td mat-cell *matCellDef="let split" class="no-wrap">
+                  {{ split.date | date: 'M/d/yyyy' }}
                 </td>
               </ng-container>
-            }
-            <tr
-              mat-header-row
-              *matHeaderRowDef="splitsColumnsToDisplay(); sticky: true"
-            ></tr>
-            <tr
-              mat-row
-              *matRowDef="let split; columns: splitsColumnsToDisplay()"
-            ></tr>
-            <tr class="mat-row" *matNoDataRow>
-              <td
-                class="mat-cell"
-                [colSpan]="splitsColumnsToDisplay().length"
-              >
-                No splits found.
-              </td>
-            </tr>
-          </table>
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Category
+                </th>
+                <td mat-cell *matCellDef="let split">
+                  {{ split.category?.name ?? 'Unknown' }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef class="cell-right">
+                  Amount
+                </th>
+                <td
+                  mat-cell
+                  *matCellDef="let split"
+                  class="cell-right amount-cell"
+                >
+                  {{ getSplitDirectedAmount(split) | currency }}
+                </td>
+              </ng-container>
+              @if (isAdmin()) {
+                <ng-container matColumnDef="unpay">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="cell-center"
+                    aria-label="Unpay split"
+                  >
+                    Unpay
+                  </th>
+                  <td mat-cell *matCellDef="let split" class="cell-center">
+                    <button
+                      mat-mini-fab
+                      class="btn btn-danger"
+                      aria-label="Mark split unpaid"
+                      data-testid="unpay-split-button"
+                      (click)="onUnpaySplit(split); $event.stopPropagation();"
+                      matTooltip="Mark split unpaid"
+                    >
+                      <mat-icon>money_off</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+              }
+              <tr
+                mat-header-row
+                *matHeaderRowDef="splitsColumnsToDisplay(); sticky: true"
+              ></tr>
+              <tr
+                mat-row
+                *matRowDef="let split; columns: splitsColumnsToDisplay()"
+                class="clickable-row"
+                (click)="onRowClick(split)"
+              ></tr>
+              <tr class="mat-row" *matNoDataRow>
+                <td
+                  class="mat-cell"
+                  [colSpan]="splitsColumnsToDisplay().length"
+                >
+                  No splits found.
+                </td>
+              </tr>
+            </table>
+          </div>
         </div>
-      </div>
-
-      <h5 data-testid="category-summary-title">Category Summary</h5>
-      <div class="table-container mat-elevation-z8" data-testid="category-summary-container">
-        <div class="scrollable-table">
-          <table
-            mat-table
-            [dataSource]="categoryTotals()"
-            class="static-table"
-            data-testid="category-summary-table"
-          >
-            <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef>Category</th>
-              <td mat-cell *matCellDef="let item">{{ item.category }}</td>
-            </ng-container>
-            <ng-container matColumnDef="amount">
-              <th mat-header-cell *matHeaderCellDef class="cell-right">
-                Amount
-              </th>
-              <td mat-cell *matCellDef="let item" class="cell-right amount-cell">
-                {{ item.amount | currency }}
-              </td>
-            </ng-container>
-            <tr
-              mat-header-row
-              *matHeaderRowDef="categoryColumnsToDisplay; sticky: true"
-            ></tr>
-            <tr
-              mat-row
-              *matRowDef="let item; columns: categoryColumnsToDisplay"
-            ></tr>
-          </table>
+      } @else {
+        <div
+          class="table-container mat-elevation-z8"
+          data-testid="category-summary-container"
+        >
+          <div class="scrollable-table">
+            <table
+              mat-table
+              [dataSource]="categoryTotals()"
+              class="static-table"
+              data-testid="category-summary-table"
+            >
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef>Category</th>
+                <td mat-cell *matCellDef="let item">{{ item.category }}</td>
+              </ng-container>
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef class="cell-right">
+                  Amount
+                </th>
+                <td
+                  mat-cell
+                  *matCellDef="let item"
+                  class="cell-right amount-cell"
+                >
+                  {{ item.amount | currency }}
+                </td>
+              </ng-container>
+              <tr
+                mat-header-row
+                *matHeaderRowDef="categoryColumnsToDisplay; sticky: true"
+              ></tr>
+              <tr
+                mat-row
+                *matRowDef="let item; columns: categoryColumnsToDisplay"
+              ></tr>
+            </table>
+          </div>
         </div>
-      </div>
+      }
     }
   </div>
 }
