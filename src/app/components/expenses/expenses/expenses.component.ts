@@ -22,7 +22,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -32,6 +31,7 @@ import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
@@ -39,6 +39,7 @@ import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
+import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
 import { DateRangeFilterDirective } from '@shared/directives/filters/date-range-filter.directive';
@@ -54,7 +55,6 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -217,6 +217,10 @@ export class ExpensesComponent implements AfterViewInit {
   searchCategory = model<DocumentReference<Category> | null>(null);
   unpaidOnly = model<boolean>(true);
 
+  currentSearchPayer = model<DocumentReference<Member> | null>(null);
+  currentSearchCategory = model<DocumentReference<Category> | null>(null);
+  currentUnpaidOnly = model<boolean>(true);
+
   filteredExpenses = computed(() => {
     // Create a copy to avoid mutating the original signal array
     var filteredExpenses = [...this.expenses()];
@@ -281,9 +285,12 @@ export class ExpensesComponent implements AfterViewInit {
             this.searchCategory()
           );
         this.expenses.set(expenses);
+        this.currentSearchCategory.set(this.searchCategory());
+        this.currentSearchPayer.set(this.searchPayer());
+        this.currentUnpaidOnly.set(this.unpaidOnly());
       }
     } catch (error) {
-      this.analytics.logEvent( 'fetch_expenses_error', {
+      this.analytics.logEvent('fetch_expenses_error', {
         error: (error as Error).message,
       });
       console.error('Error loading expenses:', error);
@@ -339,7 +346,9 @@ export class ExpensesComponent implements AfterViewInit {
       );
       this.loadExpenses();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}` },
+        data: {
+          message: `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}`,
+        },
       });
     } finally {
       this.loading.loadingOff();
@@ -372,7 +381,7 @@ export class ExpensesComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent( 'error', {
+        this.analytics.logEvent('error', {
           component: this.constructor.name,
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,
