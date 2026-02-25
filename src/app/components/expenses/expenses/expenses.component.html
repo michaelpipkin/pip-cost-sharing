@@ -176,12 +176,13 @@
                 mat-sort-header
                 class="cell-left no-wrap"
                 appSelectFilter
+                [columnHeader]="'Payer'"
                 [filterKey]="'paidByMemberRef'"
                 [filterService]="expenseFilterService"
-                [columnHeader]="'Payer'"
                 [filterOptions]="members()"
                 [filterLabel]="'Select payer'"
                 [displayFn]="memberDisplayFn"
+                [enabled]="currentSearchPayer() === null"
               >
                 Date<br />Payer
               </th>
@@ -219,6 +220,7 @@
                 [filterOptions]="members()"
                 [filterLabel]="'Select payer'"
                 [displayFn]="memberDisplayFn"
+                [enabled]="currentSearchPayer() === null"
               >
                 Payer
               </th>
@@ -237,6 +239,7 @@
                 [filterOptions]="categories()"
                 [filterLabel]="'Select category'"
                 [displayFn]="categoryDisplayFn"
+                [enabled]="currentSearchCategory() === null"
               >
                 Description<br />Category
               </th>
@@ -272,6 +275,7 @@
                 [filterOptions]="categories()"
                 [filterLabel]="'Select category'"
                 [displayFn]="categoryDisplayFn"
+                [enabled]="currentSearchCategory() === null"
               >
                 Category
               </th>
@@ -317,6 +321,7 @@
                 [filterKey]="'paid'"
                 [filterService]="expenseFilterService"
                 [columnHeader]="'Paid'"
+                [enabled]="!currentUnpaidOnly()"
               >
                 Paid
               </th>
@@ -334,6 +339,7 @@
                 [filterKey]="'paid'"
                 [filterService]="expenseFilterService"
                 [columnHeader]="'Paid'"
+                [enabled]="!currentUnpaidOnly()"
               >
                 Rcpt<br />Paid
               </th>
@@ -546,7 +552,9 @@
       </div>
     } @else {
       <div class="placeholder-content">
-        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">search_off</mat-icon>
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined"
+          >search_off</mat-icon
+        >
         <p class="placeholder-text">No expenses found</p>
       </div>
     }

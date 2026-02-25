@@ -4,6 +4,7 @@ import {
   Directive,
   ElementRef,
   input,
+  untracked,
   ViewContainerRef,
   inject,
   Renderer2,
@@ -53,6 +54,12 @@ export abstract class BaseFilterDirective {
    */
   columnHeader = input<string>();
 
+  /**
+   * Controls whether the filter icon is shown. When false, the icon is hidden
+   * and any active filter for this column is cleared. Defaults to true.
+   */
+  enabled = input<boolean>(true);
+
   protected overlayRef: OverlayRef | null = null;
   protected filterIcon: HTMLElement | null = null;
   protected isFilterActive = false;
@@ -64,6 +71,22 @@ export abstract class BaseFilterDirective {
       if (service) {
         const hasFilter = service.hasFilter(this.filterKey());
         this.updateIconState(hasFilter);
+      }
+    });
+
+    // Reactively show/hide the filter icon based on the enabled input.
+    // Using untracked for the clearFilter call to avoid circular dependencies.
+    effect(() => {
+      const isEnabled = this.enabled();
+      if (this.filterIcon) {
+        if (isEnabled) {
+          this.renderer.removeStyle(this.filterIcon, 'display');
+        } else {
+          this.renderer.setStyle(this.filterIcon, 'display', 'none');
+          if (this.isFilterActive) {
+            untracked(() => this.clearFilter());
+          }
+        }
       }
     });
 
@@ -105,6 +128,11 @@ export abstract class BaseFilterDirective {
       headerCell.querySelector('.mat-sort-header-content');
     const targetElement = sortHeaderContent || headerCell;
     this.renderer.appendChild(targetElement, this.filterIcon);
+
+    // Apply initial enabled state
+    if (!this.enabled()) {
+      this.renderer.setStyle(this.filterIcon, 'display', 'none');
+    }
 
     // Update initial state
     const hasFilter = this.filterService().hasFilter(this.filterKey());
