@@ -69,64 +69,52 @@ export class CategoryService implements ICategoryService {
     groupId: string,
     category: Partial<Category>
   ): Promise<DocumentReference<Category>> {
-    try {
-      const c = collection(this.fs, `groups/${groupId}/categories`);
-      const q = query(c, where('name', '==', category.name));
-      const snap = await getDocs(q);
+    const c = collection(this.fs, `groups/${groupId}/categories`);
+    const q = query(c, where('name', '==', category.name));
+    const snap = await getDocs(q);
 
-      if (snap.size > 0) {
-        throw new Error('This category already exists.');
-      }
-      return (await addDoc(c, category)) as DocumentReference<Category>;
-    } catch (error) {
-      throw error;
+    if (snap.size > 0) {
+      throw new Error('This category already exists.');
     }
+    return (await addDoc(c, category)) as DocumentReference<Category>;
   }
 
   async updateCategory(
     categoryRef: DocumentReference<Category>,
     changes: Partial<Category>
   ): Promise<void> {
-    try {
-      const q = query(
-        categoryRef.parent,
-        where('name', '==', changes.name),
-        where(documentId(), '!=', categoryRef.id)
-      );
-      const snap = await getDocs(q);
+    const q = query(
+      categoryRef.parent,
+      where('name', '==', changes.name),
+      where(documentId(), '!=', categoryRef.id)
+    );
+    const snap = await getDocs(q);
 
-      if (snap.size > 0) {
-        throw new Error('This category already exists.');
-      }
-      await updateDoc(categoryRef, changes);
-    } catch (error) {
-      throw error;
+    if (snap.size > 0) {
+      throw new Error('This category already exists.');
     }
+    await updateDoc(categoryRef, changes);
   }
 
   async deleteCategory(
     categoryRef: DocumentReference<Category>
   ): Promise<void> {
-    try {
-      const groupId = categoryRef.parent.parent?.id;
-      if (!groupId) {
-        throw new Error(
-          'Invalid category reference - cannot determine group ID.'
-        );
-      }
-
-      const c = collection(this.fs, `groups/${groupId}/expenses`);
-      const q = query(c, where('categoryRef', '==', categoryRef));
-      const snap = await getDocs(q);
-
-      if (snap.size > 0) {
-        throw new Error(
-          'This category is assigned to expenses and cannot be deleted.'
-        );
-      }
-      await deleteDoc(categoryRef);
-    } catch (error) {
-      throw error;
+    const groupId = categoryRef.parent.parent?.id;
+    if (!groupId) {
+      throw new Error(
+        'Invalid category reference - cannot determine group ID.'
+      );
     }
+
+    const c = collection(this.fs, `groups/${groupId}/expenses`);
+    const q = query(c, where('categoryRef', '==', categoryRef));
+    const snap = await getDocs(q);
+
+    if (snap.size > 0) {
+      throw new Error(
+        'This category is assigned to expenses and cannot be deleted.'
+      );
+    }
+    await deleteDoc(categoryRef);
   }
 }

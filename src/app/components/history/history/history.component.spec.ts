@@ -9,7 +9,6 @@ import { HistoryComponent } from './history.component';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { HistoryStore } from '@store/history.store';
-import { HistoryService } from '@services/history.service';
 import { TourService } from '@services/tour.service';
 import { SortingService } from '@services/sorting.service';
 import { LocaleService } from '@services/locale.service';
@@ -20,7 +19,6 @@ import {
   createMockGroupStore,
   createMockMemberStore,
   createMockHistoryStore,
-  createMockHistoryService,
   createMockTourService,
   createMockSortingService,
   createMockDemoService,
@@ -42,7 +40,6 @@ describe('HistoryComponent', () => {
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockHistoryStore: ReturnType<typeof createMockHistoryStore>;
-  let mockHistoryService: ReturnType<typeof createMockHistoryService>;
   let mockTourService: ReturnType<typeof createMockTourService>;
   let mockSortingService: ReturnType<typeof createMockSortingService>;
   let mockDemoService: ReturnType<typeof createMockDemoService>;
@@ -56,7 +53,6 @@ describe('HistoryComponent', () => {
     mockGroupStore = createMockGroupStore();
     mockMemberStore = createMockMemberStore();
     mockHistoryStore = createMockHistoryStore();
-    mockHistoryService = createMockHistoryService();
     mockTourService = createMockTourService();
     mockSortingService = createMockSortingService();
     mockDemoService = createMockDemoService();
@@ -95,7 +91,6 @@ describe('HistoryComponent', () => {
         paidByMember: adminMember,
         paidToMemberRef: regularMember.ref!,
         paidToMember: regularMember,
-        lineItems: [{ category: 'Food', amount: 50 }],
       }),
       mockHistory({
         id: 'h2',
@@ -105,7 +100,6 @@ describe('HistoryComponent', () => {
         paidByMember: regularMember,
         paidToMemberRef: adminMember.ref!,
         paidToMember: adminMember,
-        lineItems: [{ category: 'Gas', amount: 75 }],
       }),
     ]);
 
@@ -129,7 +123,6 @@ describe('HistoryComponent', () => {
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: HistoryStore, useValue: mockHistoryStore },
-        { provide: HistoryService, useValue: mockHistoryService },
         { provide: TourService, useValue: mockTourService },
         { provide: SortingService, useValue: mockSortingService },
         { provide: LocaleService, useValue: mockLocaleService },
@@ -323,73 +316,20 @@ describe('HistoryComponent', () => {
     });
   });
 
-  describe('Delete functionality', () => {
-    it('should show delete column for admin', () => {
-      const columns = component.columnsToDisplay();
-      expect(columns).toContain('delete');
-    });
-
-    it('should hide delete column for non-admin', async () => {
-      const regularMember = mockMember({ groupAdmin: false });
-      mockMemberStore.currentMember.set(regularMember);
-      await fixture.whenStable();
-
-      const columns = component.columnsToDisplay();
-      expect(columns).not.toContain('delete');
-    });
-
-    it('should open delete dialog on delete click', () => {
-      const history = mockHistoryStore.groupHistory()[0]!;
-      component.onDeleteClick(history);
-
-      expect(mockDialog.open).toHaveBeenCalled();
-    });
-
-    // Note: Full delete flow with dialog confirmation, service call, and snackbar
-    // is better tested in e2e tests where real async dialog behavior works properly.
-
-    it('should block delete in demo mode', () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-
-      const history = mockHistoryStore.groupHistory()[0]!;
-      component.onDeleteClick(history);
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Copy to clipboard', () => {
-    it('should generate formatted text with history entry', () => {
-      const history = mockHistoryStore.groupHistory()[0]!;
-      const text = component['generateHistoryText'](history);
-
-      expect(text).toContain('Payment History');
-      expect(text).toContain('Admin');
-      expect(text).toContain('Regular');
-      expect(text).toContain('$50.00');
-    });
-
-    it('should include category breakdown in text', () => {
-      const history = mockHistoryStore.groupHistory()[0]!;
-      const text = component['generateHistoryText'](history);
-
-      expect(text).toContain('Breakdown by Category');
-      expect(text).toContain('Food');
-    });
-
-    it('should copy to clipboard and show success snackbar', async () => {
-      const writeTextMock = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: writeTextMock,
-        },
+  describe('Row click', () => {
+    it('should navigate to history detail when splitsPaid is non-empty', () => {
+      const history = mockHistory({
+        id: 'h1',
+        splitsPaid: [mockDocRef('groups/group-1/splits/split-1')] as any,
       });
+      const navigateSpy = vi.spyOn(component['router'], 'navigate');
+      component.onRowClick(history);
+      expect(navigateSpy).toHaveBeenCalledWith(['/analysis/history', 'h1']);
+    });
 
-      const history = mockHistoryStore.groupHistory()[0]!;
-      await component.copyHistoryToClipboard(history);
-
-      expect(writeTextMock).toHaveBeenCalled();
+    it('should show snackbar when splitsPaid is null or empty', () => {
+      const history = mockHistory({ splitsPaid: [] });
+      component.onRowClick(history);
       expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
     });
   });
@@ -401,15 +341,6 @@ describe('HistoryComponent', () => {
 
       // The tour button would be visible in the template when isInDemoMode returns true
       expect(mockDemoService.isInDemoMode()).toBe(true);
-    });
-
-    it('should block delete with restriction message in demo mode', () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-
-      const history = mockHistoryStore.groupHistory()[0]!;
-      component.onDeleteClick(history);
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
     });
 
     it('should always show help button', () => {

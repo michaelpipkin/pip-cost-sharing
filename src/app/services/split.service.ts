@@ -112,60 +112,48 @@ export class SplitService implements ISplitService {
     splits: Split[],
     history: Partial<HistoryDto>
   ): Promise<void> {
-    try {
-      const batch = writeBatch(this.fs);
+    const batch = writeBatch(this.fs);
 
-      // Build all split queries in parallel
-      const splitQueries = splits.map((split) =>
-        query(
-          collection(this.fs, `groups/${groupId}/splits`),
-          where('expenseRef', '==', split.expenseRef)
-        )
-      );
+    // Build all split queries in parallel
+    const splitQueries = splits.map((split) =>
+      query(
+        collection(this.fs, `groups/${groupId}/splits`),
+        where('expenseRef', '==', split.expenseRef)
+      )
+    );
 
-      // Execute all queries in parallel
-      const splitQueryResults = await Promise.all(
-        splitQueries.map((query) => getDocs(query))
-      );
+    // Execute all queries in parallel
+    const splitQueryResults = await Promise.all(
+      splitQueries.map((query) => getDocs(query))
+    );
 
-      // Process each split with its corresponding query result
-      for (let i = 0; i < splits.length; i++) {
-        const split = splits[i]!;
-        const splitsQuerySnap = splitQueryResults[i]!;
+    // Process each split with its corresponding query result
+    for (let i = 0; i < splits.length; i++) {
+      const split = splits[i]!;
+      const splitsQuerySnap = splitQueryResults[i]!;
 
-        // Update the split document to mark it as paid
-        batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
-          paid: true,
-        });
-
-        // Determine if the expense is paid
-        const expensePaid =
-          splitsQuerySnap.docs.filter(
-            (doc) => doc.id !== split.id && !doc.data().paid
-          ).length === 0;
-
-        // Update the expense document
-        batch.update(split.expenseRef, { paid: expensePaid });
-      }
-
-      // Add history record
-      const newHistoryDoc = doc(
-        collection(this.fs, `groups/${groupId}/history`)
-      );
-      batch.set(newHistoryDoc, history);
-
-      await batch.commit();
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'SplitService',
-        method: 'paySplitsBetweenMembers',
-        message: 'Failed to pay splits between members',
-        groupId,
-        splitCount: splits.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
+      // Update the split document to mark it as paid
+      batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
+        paid: true,
       });
-      throw error;
+
+      // Determine if the expense is paid
+      const expensePaid =
+        splitsQuerySnap.docs.filter(
+          (doc) => doc.id !== split.id && !doc.data().paid
+        ).length === 0;
+
+      // Update the expense document
+      batch.update(split.expenseRef, { paid: expensePaid });
     }
+
+    // Add history record
+    const newHistoryDoc = doc(
+      collection(this.fs, `groups/${groupId}/history`)
+    );
+    batch.set(newHistoryDoc, history);
+
+    await batch.commit();
   }
 
   async settleGroup(
@@ -173,77 +161,65 @@ export class SplitService implements ISplitService {
     splits: Split[],
     transfers: AmountDue[]
   ): Promise<void> {
-    try {
-      const batch = writeBatch(this.fs);
+    const batch = writeBatch(this.fs);
 
-      // Collect unique expense refs (keyed by path to avoid reference equality issues)
-      const expenseRefMap = new Map<string, DocumentReference<Expense>>();
-      for (const split of splits) {
-        if (!expenseRefMap.has(split.expenseRef.path)) {
-          expenseRefMap.set(split.expenseRef.path, split.expenseRef);
-        }
+    // Collect unique expense refs (keyed by path to avoid reference equality issues)
+    const expenseRefMap = new Map<string, DocumentReference<Expense>>();
+    for (const split of splits) {
+      if (!expenseRefMap.has(split.expenseRef.path)) {
+        expenseRefMap.set(split.expenseRef.path, split.expenseRef);
       }
-      const uniqueExpenseRefs = [...expenseRefMap.values()];
-
-      // Query all splits for each expense in parallel
-      const expenseQueries = uniqueExpenseRefs.map((expenseRef) =>
-        query(
-          collection(this.fs, `groups/${groupId}/splits`),
-          where('expenseRef', '==', expenseRef)
-        )
-      );
-      const expenseQueryResults = await Promise.all(
-        expenseQueries.map((q) => getDocs(q))
-      );
-
-      // Set of split IDs being paid in this batch
-      const paidSplitIds = new Set(splits.map((s) => s.id));
-
-      // Mark all splits as paid
-      for (const split of splits) {
-        batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
-          paid: true,
-        });
-      }
-
-      // Update each expense's paid status
-      for (let i = 0; i < uniqueExpenseRefs.length; i++) {
-        const expenseRef = uniqueExpenseRefs[i]!;
-        const querySnap = expenseQueryResults[i]!;
-
-        // Expense is paid if every split will be paid after this batch
-        const expensePaid = querySnap.docs.every(
-          (d) => paidSplitIds.has(d.id) || d.data().paid
-        );
-
-        batch.update(expenseRef, { paid: expensePaid });
-      }
-
-      // Create one history record per transfer (no line items)
-      for (const transfer of transfers) {
-        const newHistoryDoc = doc(
-          collection(this.fs, `groups/${groupId}/history`)
-        );
-        batch.set(newHistoryDoc, {
-          paidByMemberRef: transfer.owedByMemberRef,
-          paidToMemberRef: transfer.owedToMemberRef,
-          date: new Date().toIsoFormat(),
-          totalPaid: transfer.amount,
-          splitsPaid: [],
-        });
-      }
-
-      await batch.commit();
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'SplitService',
-        method: 'settleGroup',
-        message: 'Failed to settle group',
-        groupId,
-        splitCount: splits.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+    const uniqueExpenseRefs = [...expenseRefMap.values()];
+
+    // Query all splits for each expense in parallel
+    const expenseQueries = uniqueExpenseRefs.map((expenseRef) =>
+      query(
+        collection(this.fs, `groups/${groupId}/splits`),
+        where('expenseRef', '==', expenseRef)
+      )
+    );
+    const expenseQueryResults = await Promise.all(
+      expenseQueries.map((q) => getDocs(q))
+    );
+
+    // Set of split IDs being paid in this batch
+    const paidSplitIds = new Set(splits.map((s) => s.id));
+
+    // Mark all splits as paid
+    for (const split of splits) {
+      batch.update(doc(this.fs, `groups/${groupId}/splits/${split.id}`), {
+        paid: true,
+      });
+    }
+
+    // Update each expense's paid status
+    for (let i = 0; i < uniqueExpenseRefs.length; i++) {
+      const expenseRef = uniqueExpenseRefs[i]!;
+      const querySnap = expenseQueryResults[i]!;
+
+      // Expense is paid if every split will be paid after this batch
+      const expensePaid = querySnap.docs.every(
+        (d) => paidSplitIds.has(d.id) || d.data().paid
+      );
+
+      batch.update(expenseRef, { paid: expensePaid });
+    }
+
+    // Create one history record per transfer (no line items)
+    for (const transfer of transfers) {
+      const newHistoryDoc = doc(
+        collection(this.fs, `groups/${groupId}/history`)
+      );
+      batch.set(newHistoryDoc, {
+        paidByMemberRef: transfer.owedByMemberRef,
+        paidToMemberRef: transfer.owedToMemberRef,
+        date: new Date().toIsoFormat(),
+        totalPaid: transfer.amount,
+        splitsPaid: [],
+      });
+    }
+
+    await batch.commit();
   }
 }

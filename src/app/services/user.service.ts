@@ -204,41 +204,33 @@ export class UserService implements IUserService {
   }
 
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
-    try {
-      const userId = this.userStore.user()!.id;
-      const userDocRef = doc(
-        this.fs,
-        `users/${userId}`
-      ) as DocumentReference<User>;
+    const userId = this.userStore.user()!.id;
+    const userDocRef = doc(
+      this.fs,
+      `users/${userId}`
+    ) as DocumentReference<User>;
 
-      // Update the email on the user document
-      await setDoc(userDocRef, { email: newEmail }, { merge: true });
-      this.userStore.updateUser({ email: newEmail });
+    // Update the email on the user document
+    await setDoc(userDocRef, { email: newEmail }, { merge: true });
+    this.userStore.updateUser({ email: newEmail });
 
-      // Query members collection group for unlinked members with this email
-      const membersQuery = query(
-        collectionGroup(this.fs, 'members'),
-        where('email', '==', newEmail),
-        where('userRef', '==', null)
-      );
-      const membersSnapshot = await getDocs(membersQuery);
+    // Query members collection group for unlinked members with this email
+    const membersQuery = query(
+      collectionGroup(this.fs, 'members'),
+      where('email', '==', newEmail),
+      where('userRef', '==', null)
+    );
+    const membersSnapshot = await getDocs(membersQuery);
 
-      // Link each matching member to this user
-      for (const memberDoc of membersSnapshot.docs) {
-        await updateDoc(memberDoc.ref, { userRef: userDocRef });
-      }
-
-      this.analytics.logEvent('email_verified_members_linked', {
-        email: newEmail,
-        membersLinked: membersSnapshot.size,
-      });
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        message: 'Failed to update user email and link members',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
+    // Link each matching member to this user
+    for (const memberDoc of membersSnapshot.docs) {
+      await updateDoc(memberDoc.ref, { userRef: userDocRef });
     }
+
+    this.analytics.logEvent('email_verified_members_linked', {
+      email: newEmail,
+      membersLinked: membersSnapshot.size,
+    });
   }
 
   async getPaymentMethods(

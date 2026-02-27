@@ -231,7 +231,7 @@ export class HistoryDetailComponent {
       if (confirm) {
         this.loading.loadingOn();
         try {
-          await this.historyService.unpayHistory(this.currentGroup()!.id, h);
+          await this.historyService.unpayHistory(h);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Payment marked as unpaid' },
           });
@@ -286,7 +286,6 @@ export class HistoryDetailComponent {
             h.paidByMemberRef
           );
           await this.historyService.unpaySingleSplitFromHistory(
-            this.currentGroup()!.id,
             split.ref!,
             split.expenseRef as DocumentReference<Expense>,
             h,
