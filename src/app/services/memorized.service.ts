@@ -123,53 +123,20 @@ export class MemorizedService implements IMemorizedService {
     groupId: string,
     memorized: Partial<Memorized>
   ): Promise<DocumentReference<Memorized>> {
-    try {
-      const c = collection(this.fs, `groups/${groupId}/memorized`);
-      return (await addDoc(c, memorized)) as DocumentReference<Memorized>;
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemorizedService',
-        method: 'addMemorized',
-        message: 'Failed to add memorized expense',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
+    const c = collection(this.fs, `groups/${groupId}/memorized`);
+    return (await addDoc(c, memorized)) as DocumentReference<Memorized>;
   }
 
   async updateMemorized(
     memorizedRef: DocumentReference<Memorized>,
     changes: Partial<Memorized>
   ): Promise<void> {
-    try {
-      await updateDoc(memorizedRef, changes);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemorizedService',
-        method: 'updateMemorized',
-        message: 'Failed to update memorized expense',
-        memorizedId: memorizedRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
+    await updateDoc(memorizedRef, changes);
   }
 
   async deleteMemorized(
     memorizedRef: DocumentReference<Memorized>
   ): Promise<void> {
-    try {
-      await deleteDoc(memorizedRef);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemorizedService',
-        method: 'deleteMemorized',
-        message: 'Failed to delete memorized expense',
-        memorizedId: memorizedRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
+    await deleteDoc(memorizedRef);
   }
 }

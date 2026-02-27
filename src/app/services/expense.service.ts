@@ -44,97 +44,86 @@ export class ExpenseService implements IExpenseService {
     memberRef?: DocumentReference<Member> | null,
     categoryRef?: DocumentReference<Category> | null
   ): Promise<Expense[]> {
-    try {
-      // Wait for stores to be loaded before processing
-      while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-
-      const isoStartDate = startDate ? startDate.toIsoFormat() : null;
-      const isoEndDate = endDate ? endDate.toIsoFormat() : null;
-
-      // Build split query
-      let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
-      if (startDate) {
-        splitQuery = query(splitQuery, where('date', '>=', isoStartDate));
-      }
-      if (endDate) {
-        splitQuery = query(splitQuery, where('date', '<=', isoEndDate));
-      }
-
-      // Build expense query
-      let expenseQuery = query(
-        collection(this.fs, `groups/${groupId}/expenses`)
-      );
-      if (startDate) {
-        expenseQuery = query(expenseQuery, where('date', '>=', isoStartDate));
-      }
-      if (endDate) {
-        expenseQuery = query(expenseQuery, where('date', '<=', isoEndDate));
-      }
-      if (unpaidOnly) {
-        expenseQuery = query(expenseQuery, where('paid', '==', false));
-      }
-      if (memberRef) {
-        expenseQuery = query(
-          expenseQuery,
-          where('paidByMemberRef', '==', memberRef)
-        );
-      }
-      if (categoryRef) {
-        expenseQuery = query(
-          expenseQuery,
-          where('categoryRef', '==', categoryRef)
-        );
-      }
-
-      expenseQuery = query(expenseQuery, orderBy('date', 'desc'), limit(200));
-
-      // Execute all queries in parallel
-      const [splitSnap, expenseSnap] = await Promise.all([
-        getDocs(splitQuery),
-        getDocs(expenseQuery),
-      ]);
-
-      // Process splits
-      const splits = splitSnap.docs.map((doc) => {
-        const data = doc.data();
-        return new Split({
-          id: doc.id,
-          ...data,
-          date: data.date.parseDate(),
-          category: this.categoryStore.getCategoryByRef(data.categoryRef),
-          paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
-          owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
-          ref: doc.ref as DocumentReference<Split>,
-        });
-      });
-
-      // Build and return expenses
-      const expenses = expenseSnap.docs.map((doc) => {
-        const data = doc.data();
-        return new Expense({
-          id: doc.id,
-          ...data,
-          date: data.date.parseDate(),
-          category: this.categoryStore.getCategoryByRef(data.categoryRef),
-          paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
-          ref: doc.ref as DocumentReference<Expense>,
-          splits: splits.filter((s) => s.expenseRef.eq(doc.ref)),
-        });
-      });
-
-      return expenses;
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'ExpenseService',
-        method: 'getGroupExpensesByDateRange',
-        message: 'Failed to get group expenses by date range',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
+    // Wait for stores to be loaded before processing
+    while (!this.categoryStore.loaded() || !this.memberStore.loaded()) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
+
+    const isoStartDate = startDate ? startDate.toIsoFormat() : null;
+    const isoEndDate = endDate ? endDate.toIsoFormat() : null;
+
+    // Build split query
+    let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
+    if (startDate) {
+      splitQuery = query(splitQuery, where('date', '>=', isoStartDate));
+    }
+    if (endDate) {
+      splitQuery = query(splitQuery, where('date', '<=', isoEndDate));
+    }
+
+    // Build expense query
+    let expenseQuery = query(
+      collection(this.fs, `groups/${groupId}/expenses`)
+    );
+    if (startDate) {
+      expenseQuery = query(expenseQuery, where('date', '>=', isoStartDate));
+    }
+    if (endDate) {
+      expenseQuery = query(expenseQuery, where('date', '<=', isoEndDate));
+    }
+    if (unpaidOnly) {
+      expenseQuery = query(expenseQuery, where('paid', '==', false));
+    }
+    if (memberRef) {
+      expenseQuery = query(
+        expenseQuery,
+        where('paidByMemberRef', '==', memberRef)
+      );
+    }
+    if (categoryRef) {
+      expenseQuery = query(
+        expenseQuery,
+        where('categoryRef', '==', categoryRef)
+      );
+    }
+
+    expenseQuery = query(expenseQuery, orderBy('date', 'desc'), limit(200));
+
+    // Execute all queries in parallel
+    const [splitSnap, expenseSnap] = await Promise.all([
+      getDocs(splitQuery),
+      getDocs(expenseQuery),
+    ]);
+
+    // Process splits
+    const splits = splitSnap.docs.map((doc) => {
+      const data = doc.data();
+      return new Split({
+        id: doc.id,
+        ...data,
+        date: data.date.parseDate(),
+        category: this.categoryStore.getCategoryByRef(data.categoryRef),
+        paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
+        owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
+        ref: doc.ref as DocumentReference<Split>,
+      });
+    });
+
+    // Build and return expenses
+    const expenses = expenseSnap.docs.map((doc) => {
+      const data = doc.data();
+      return new Expense({
+        id: doc.id,
+        ...data,
+        date: data.date.parseDate(),
+        category: this.categoryStore.getCategoryByRef(data.categoryRef),
+        paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
+        ref: doc.ref as DocumentReference<Expense>,
+        splits: splits.filter((s) => s.expenseRef.eq(doc.ref)),
+      });
+    });
+
+    return expenses;
   }
 
   async getExpense(groupId: string, expenseId: string): Promise<Expense> {
@@ -343,47 +332,35 @@ export class ExpenseService implements IExpenseService {
     groupId: string,
     expenseRef: DocumentReference<Expense>
   ): Promise<void> {
-    try {
-      const expenseDoc = await getDoc(expenseRef);
-      const receiptPath: string | undefined =
-        (expenseDoc.exists() && expenseDoc.data()?.receiptPath) || undefined;
+    const expenseDoc = await getDoc(expenseRef);
+    const receiptPath: string | undefined =
+      (expenseDoc.exists() && expenseDoc.data()?.receiptPath) || undefined;
 
-      const batch = writeBatch(this.fs);
+    const batch = writeBatch(this.fs);
 
-      // Delete associated splits
-      const splitQuery = query(
-        collection(this.fs, `/groups/${groupId}/splits/`),
-        where('expenseRef', '==', expenseRef)
-      );
-      const queryDocs = await getDocs(splitQuery);
-      queryDocs.forEach((d) => {
-        batch.delete(d.ref);
-      });
+    // Delete associated splits
+    const splitQuery = query(
+      collection(this.fs, `/groups/${groupId}/splits/`),
+      where('expenseRef', '==', expenseRef)
+    );
+    const queryDocs = await getDocs(splitQuery);
+    queryDocs.forEach((d) => {
+      batch.delete(d.ref);
+    });
 
-      // Delete the expense
-      batch.delete(expenseRef);
+    // Delete the expense
+    batch.delete(expenseRef);
 
-      await batch.commit();
+    await batch.commit();
 
-      // Delete receipt from storage if it exists
-      if (receiptPath) {
-        const receiptRef = ref(this.storage, receiptPath);
-        deleteObject(receiptRef).catch((error) => {
-          this.analytics.logEvent('delete_receipt_error', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+    // Delete receipt from storage if it exists
+    if (receiptPath) {
+      const receiptRef = ref(this.storage, receiptPath);
+      deleteObject(receiptRef).catch((error) => {
+        this.analytics.logEvent('delete_receipt_error', {
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
-      }
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'ExpenseService',
-        method: 'deleteExpense',
-        message: 'Failed to delete expense',
-        groupId,
-        expenseId: expenseRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
       });
-      throw error;
     }
   }
 

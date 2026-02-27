@@ -271,111 +271,80 @@ export class GroupService implements IGroupService {
     group: Partial<Group>,
     member: Partial<Member>
   ): Promise<DocumentReference<Group>> {
-    try {
-      const batch = writeBatch(this.fs);
-      const groupRef = doc(collection(this.fs, 'groups'));
+    const batch = writeBatch(this.fs);
+    const groupRef = doc(collection(this.fs, 'groups'));
 
-      batch.set(groupRef, group);
+    batch.set(groupRef, group);
 
-      const memberRef = doc(
-        collection(this.fs, `groups/${groupRef.id}/members`)
-      );
-      batch.set(memberRef, member);
+    const memberRef = doc(
+      collection(this.fs, `groups/${groupRef.id}/members`)
+    );
+    batch.set(memberRef, member);
 
-      const categoryRef = doc(
-        collection(this.fs, `groups/${groupRef.id}/categories`)
-      );
-      const category: Partial<Category> = {
-        name: 'Default',
-        active: true,
-      };
-      batch.set(categoryRef, category);
+    const categoryRef = doc(
+      collection(this.fs, `groups/${groupRef.id}/categories`)
+    );
+    const category: Partial<Category> = {
+      name: 'Default',
+      active: true,
+    };
+    batch.set(categoryRef, category);
 
-      await batch.commit();
-      return groupRef as DocumentReference<Group>;
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'GroupService',
-        method: 'addGroup',
-        message: 'Failed to add group',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
+    await batch.commit();
+    return groupRef as DocumentReference<Group>;
   }
 
   async updateGroup(
     groupRef: DocumentReference<Group>,
     changes: Partial<Group>
   ): Promise<void> {
-    try {
-      const batch = writeBatch(this.fs);
-      batch.update(groupRef, changes);
+    const batch = writeBatch(this.fs);
+    batch.update(groupRef, changes);
 
-      // If deactivating or archiving the group, clear it as default for all users
-      if (!changes.active || changes.archived) {
-        const usersRef = collection(this.fs, 'users');
-        const usersQuery = query(
-          usersRef,
-          where('defaultGroupRef', '==', groupRef)
-        );
-        const users = await getDocs(usersQuery);
-        users.forEach((u) => {
-          batch.update(u.ref, { defaultGroupRef: null });
-        });
-
-        // Clear current group if it's the one being deactivated or archived
-        if (this.groupStore.currentGroup()?.id === groupRef.id) {
-          this.groupStore.clearCurrentGroup(true);
-          this.userStore.updateUser({ defaultGroupRef: null });
-          localStorage.removeItem('currentGroup');
-        }
-      }
-
-      await batch.commit();
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'GroupService',
-        method: 'updateGroup',
-        message: 'Failed to update group',
-        error: error instanceof Error ? error.message : 'Unknown error',
+    // If deactivating or archiving the group, clear it as default for all users
+    if (!changes.active || changes.archived) {
+      const usersRef = collection(this.fs, 'users');
+      const usersQuery = query(
+        usersRef,
+        where('defaultGroupRef', '==', groupRef)
+      );
+      const users = await getDocs(usersQuery);
+      users.forEach((u) => {
+        batch.update(u.ref, { defaultGroupRef: null });
       });
-      throw error;
-    }
-  }
 
-  async deleteGroup(groupId: string): Promise<void> {
-    try {
-      const deleteGroupFn = httpsCallable<
-        { groupId: string },
-        { success: boolean; message: string }
-      >(this.functions, 'deleteGroup');
-
-      const result = await deleteGroupFn({ groupId });
-
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to delete group');
-      }
-
-      // Clear current group if it was the deleted one
-      if (this.groupStore.currentGroup()?.id === groupId) {
+      // Clear current group if it's the one being deactivated or archived
+      if (this.groupStore.currentGroup()?.id === groupRef.id) {
         this.groupStore.clearCurrentGroup(true);
         this.userStore.updateUser({ defaultGroupRef: null });
         localStorage.removeItem('currentGroup');
       }
-
-      // Remove from the store
-      this.groupStore.removeGroup(groupId);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'GroupService',
-        method: 'deleteGroup',
-        message: 'Failed to delete group',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+
+    await batch.commit();
+  }
+
+  async deleteGroup(groupId: string): Promise<void> {
+    const deleteGroupFn = httpsCallable<
+      { groupId: string },
+      { success: boolean; message: string }
+    >(this.functions, 'deleteGroup');
+
+    const result = await deleteGroupFn({ groupId });
+
+    if (!result.data.success) {
+      throw new Error(result.data.message || 'Failed to delete group');
+    }
+
+    // Clear current group if it was the deleted one
+    if (this.groupStore.currentGroup()?.id === groupId) {
+      this.groupStore.clearCurrentGroup(true);
+      this.userStore.updateUser({ defaultGroupRef: null });
+      localStorage.removeItem('currentGroup');
+    }
+
+    // Remove from the store
+    this.groupStore.removeGroup(groupId);
   }
 
   logout(): void {
