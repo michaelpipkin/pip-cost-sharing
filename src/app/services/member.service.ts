@@ -114,76 +114,54 @@ export class MemberService implements IMemberService {
     groupId: string,
     member: Partial<Member>
   ): Promise<DocumentReference<Member>> {
-    try {
-      const membersQuery = query(
-        collection(this.fs, `groups/${groupId}/members`),
-        where('email', '==', member.email)
+    const membersQuery = query(
+      collection(this.fs, `groups/${groupId}/members`),
+      where('email', '==', member.email)
+    );
+    const membersSnapshot = await getDocs(membersQuery);
+
+    if (!membersSnapshot.empty) {
+      throw new Error(
+        'A member with this email address already exists in the group.'
       );
-      const membersSnapshot = await getDocs(membersQuery);
-
-      if (!membersSnapshot.empty) {
-        throw new Error(
-          'A member with this email address already exists in the group.'
-        );
-      }
-
-      const userQuery = query(
-        collection(this.fs, 'users'),
-        where('email', '==', member.email)
-      );
-      const userSnapshot = await getDocs(userQuery);
-      if (!userSnapshot.empty) {
-        member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
-      }
-
-      return (await addDoc(
-        collection(this.fs, `groups/${groupId}/members`),
-        member
-      )) as DocumentReference<Member>;
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemberService',
-        method: 'addMemberToGroup',
-        message: 'Failed to add member to group',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+
+    const userQuery = query(
+      collection(this.fs, 'users'),
+      where('email', '==', member.email)
+    );
+    const userSnapshot = await getDocs(userQuery);
+    if (!userSnapshot.empty) {
+      member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
+    }
+
+    return (await addDoc(
+      collection(this.fs, `groups/${groupId}/members`),
+      member
+    )) as DocumentReference<Member>;
   }
 
   async updateMember(
     memberRef: DocumentReference<Member>,
     changes: Partial<Member>
   ): Promise<void> {
-    try {
-      // Check for duplicate email if email is being changed
-      if (changes.email) {
-        const q = query(
-          memberRef.parent,
-          where('email', '==', changes.email),
-          where(documentId(), '!=', memberRef.id)
+    // Check for duplicate email if email is being changed
+    if (changes.email) {
+      const q = query(
+        memberRef.parent,
+        where('email', '==', changes.email),
+        where(documentId(), '!=', memberRef.id)
+      );
+      const snap = await getDocs(q);
+
+      if (snap.size > 0) {
+        throw new Error(
+          'A member with this email address already exists in the group.'
         );
-        const snap = await getDocs(q);
-
-        if (snap.size > 0) {
-          throw new Error(
-            'A member with this email address already exists in the group.'
-          );
-        }
       }
-
-      await updateDoc(memberRef, changes);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemberService',
-        method: 'updateMember',
-        message: 'Failed to update member',
-        memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+
+    await updateDoc(memberRef, changes);
   }
 
   async updateMemberWithUserMatching(
@@ -192,109 +170,74 @@ export class MemberService implements IMemberService {
     currentUserRef: DocumentReference<User> | null,
     currentEmail: string
   ): Promise<void> {
-    try {
-      // Only search for user if member is not already linked and email is changing
-      if (!currentUserRef && changes.email && changes.email !== currentEmail) {
-        const userQuery = query(
-          collection(this.fs, 'users'),
-          where('email', '==', changes.email)
-        );
-        const userSnapshot = await getDocs(userQuery);
-        if (!userSnapshot.empty) {
-          changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
-        }
+    // Only search for user if member is not already linked and email is changing
+    if (!currentUserRef && changes.email && changes.email !== currentEmail) {
+      const userQuery = query(
+        collection(this.fs, 'users'),
+        where('email', '==', changes.email)
+      );
+      const userSnapshot = await getDocs(userQuery);
+      if (!userSnapshot.empty) {
+        changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
       }
-
-      await updateDoc(memberRef, changes);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemberService',
-        method: 'updateMemberWithUserMatching',
-        message: 'Failed to update member with user matching',
-        memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+
+    await updateDoc(memberRef, changes);
   }
 
   async removeMemberFromGroup(
     groupId: string,
     memberRef: DocumentReference<Member>
   ): Promise<void> {
-    try {
-      const splits = await getDocs(
-        collection(this.fs, `groups/${groupId}/splits`)
-      );
-      const memberSplit = splits.docs.find(
-        (doc) =>
-          doc.data().owedByMemberRef.eq(memberRef) ||
-          doc.data().paidByMemberRef.eq(memberRef)
-      );
+    const splits = await getDocs(
+      collection(this.fs, `groups/${groupId}/splits`)
+    );
+    const memberSplit = splits.docs.find(
+      (doc) =>
+        doc.data().owedByMemberRef.eq(memberRef) ||
+        doc.data().paidByMemberRef.eq(memberRef)
+    );
 
-      if (!!memberSplit) {
-        throw new Error(
-          'This member has existing splits and cannot be deleted.'
-        );
-      }
-
-      await deleteDoc(memberRef);
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemberService',
-        method: 'removeMemberFromGroup',
-        message: 'Failed to remove member from group',
-        groupId,
-        memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
+    if (!!memberSplit) {
+      throw new Error(
+        'This member has existing splits and cannot be deleted.'
+      );
     }
+
+    await deleteDoc(memberRef);
   }
 
   async leaveGroup(
     groupId: string,
     memberRef: DocumentReference<Member>
   ): Promise<void> {
-    try {
-      const c = collection(this.fs, `groups/${groupId}/members`);
-      const q = query(c, where('groupAdmin', '==', true));
-      const adminSnap = await getDocs(q);
-      if (
-        adminSnap.docs.length === 1 &&
-        adminSnap.docs[0]!.id === memberRef.id
-      ) {
-        throw new Error(
-          'You are the only group admin. Please assign another member as admin before leaving the group.'
-        );
-      }
-
-      const splits = await getDocs(
-        collection(this.fs, `groups/${groupId}/splits`)
+    const c = collection(this.fs, `groups/${groupId}/members`);
+    const q = query(c, where('groupAdmin', '==', true));
+    const adminSnap = await getDocs(q);
+    if (
+      adminSnap.docs.length === 1 &&
+      adminSnap.docs[0]!.id === memberRef.id
+    ) {
+      throw new Error(
+        'You are the only group admin. Please assign another member as admin before leaving the group.'
       );
-      const memberSplit = splits.docs.find(
-        (doc) =>
-          doc.data().owedByMemberRef.eq(memberRef) ||
-          doc.data().paidByMemberRef.eq(memberRef)
-      );
-
-      if (!!memberSplit) {
-        await updateDoc(memberRef, { active: false });
-      } else {
-        await deleteDoc(memberRef);
-      }
-      await updateDoc(this.userStore.user()!.ref!, { defaultGroupRef: null });
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        service: 'MemberService',
-        method: 'leaveGroup',
-        message: 'Failed to leave group',
-        groupId,
-        memberId: memberRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
     }
+
+    const splits = await getDocs(
+      collection(this.fs, `groups/${groupId}/splits`)
+    );
+    const memberSplit = splits.docs.find(
+      (doc) =>
+        doc.data().owedByMemberRef.eq(memberRef) ||
+        doc.data().paidByMemberRef.eq(memberRef)
+    );
+
+    if (!!memberSplit) {
+      await updateDoc(memberRef, { active: false });
+    } else {
+      await deleteDoc(memberRef);
+    }
+    await updateDoc(this.userStore.user()!.ref!, { defaultGroupRef: null });
   }
 
   async updateAllMemberEmails(
