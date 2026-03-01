@@ -198,7 +198,7 @@ export class MemberService implements IMemberService {
         doc.data().paidByMemberRef.eq(memberRef)
     );
 
-    if (!!memberSplit) {
+    if (memberSplit) {
       throw new Error(
         'This member has existing splits and cannot be deleted.'
       );
@@ -232,7 +232,7 @@ export class MemberService implements IMemberService {
         doc.data().paidByMemberRef.eq(memberRef)
     );
 
-    if (!!memberSplit) {
+    if (memberSplit) {
       await updateDoc(memberRef, { active: false });
     } else {
       await deleteDoc(memberRef);

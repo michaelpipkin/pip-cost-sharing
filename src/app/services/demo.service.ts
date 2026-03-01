@@ -51,7 +51,7 @@ export class DemoService implements OnDestroy {
    * Check if the current URL is a demo route
    */
   private updateDemoMode(url: string): void {
-    const isDemoRoute = url.includes('/demo');
+    const isDemoRoute = url === '/demo' || url.startsWith('/demo/');
     const wasInDemoMode = this.isInDemoMode();
     this.isInDemoMode.set(isDemoRoute);
 
