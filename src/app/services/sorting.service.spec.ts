@@ -44,9 +44,51 @@ describe('SortingService', () => {
     });
   });
 
-  it('should return the same array reference (mutating sort)', () => {
-    const data = [{ name: 'B' }, { name: 'A' }];
-    const result = service.sort(data, 'name', true);
-    expect(result).toBe(data);
+  describe('nested object property sorting', () => {
+    it('should sort by nested object property ascending', () => {
+      const data = [
+        { member: { name: 'Charlie' } },
+        { member: { name: 'alice' } },
+        { member: { name: 'Bob' } },
+      ];
+      const result = service.sort(data, 'member', true, 'name');
+      expect(result.map((d) => d.member.name)).toEqual(['alice', 'Bob', 'Charlie']);
+    });
+
+    it('should sort by nested object property descending', () => {
+      const data = [
+        { member: { name: 'Charlie' } },
+        { member: { name: 'alice' } },
+        { member: { name: 'Bob' } },
+      ];
+      const result = service.sort(data, 'member', false, 'name');
+      expect(result.map((d) => d.member.name)).toEqual(['Charlie', 'Bob', 'alice']);
+    });
+
+    it('should handle null nested property gracefully', () => {
+      const data = [{ member: { name: 'Bob' } }, { member: { name: null } }, { member: { name: 'Alice' } }];
+      const result = service.sort(data, 'member', true, 'name');
+      expect(result.length).toBe(3);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return an empty array unchanged', () => {
+      const result = service.sort([], 'name', true);
+      expect(result).toEqual([]);
+    });
+
+    it('should not mutate the original array', () => {
+      const data = [{ name: 'B' }, { name: 'A' }];
+      const original = [...data];
+      service.sort(data, 'name', true);
+      expect(data.map((d) => d.name)).toEqual(original.map((d) => d.name));
+    });
+
+    it('should return a new array reference', () => {
+      const data = [{ name: 'B' }, { name: 'A' }];
+      const result = service.sort(data, 'name', true);
+      expect(result).not.toBe(data);
+    });
   });
 });

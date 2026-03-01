@@ -4,6 +4,8 @@
 - Coding conventions and preferences
   We should always prefer the newer signals API over older conventions. This includes using signals-based methods like effect() and afterNextRender() in constructors in place of ngOnInit. No components should be implementing the older lifecycle hooks. We do not use rxjs at all in this project. We should also always use the newer @if and @for blocks instead of *ngIf, *ngFor, etc. All class-level `inject()` calls should use `protected readonly` (e.g., `protected readonly analytics = inject(AnalyticsService)`). Exceptions are `#field` private class fields (JS-level privacy) and function-scoped `const` injections in guards/resolvers.
 
+  Any time you touch a file during a task, actively look for and flag opportunities to improve code quality — including no-op code, potential bugs, inefficiencies, outdated patterns, and convention violations — and fix them as part of the same task unless the scope would be disproportionately large.
+
 - Firebase documents
   Whenever possible, we should use Document References rather than id when referring to documents. I have created a custom equality operator to compare Document References (`object1.ref.eq(object2.ref)`), and a custom directive (docRefCompare) to allow mat-selects to use Document References as the value.
 
