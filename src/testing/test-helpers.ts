@@ -1,10 +1,12 @@
 import { computed, signal } from '@angular/core';
 import { vi } from 'vitest';
+import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Category } from '@models/category';
 import { User } from '@models/user';
 import { History } from '@models/history';
+import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { AmountDue } from '@models/amount-due';
 
@@ -243,7 +245,52 @@ export function createMockSplitStore() {
   };
 }
 
+export function createMockMemorizedStore() {
+  const memorizedExpenses = signal<Memorized[]>([]);
+  const loaded = signal(true);
+  return {
+    memorizedExpenses,
+    loaded,
+    setMemorizedExpenses: vi.fn((expenses: Memorized[]) =>
+      memorizedExpenses.set(expenses)
+    ),
+    clearMemorizedExpenses: vi.fn(() => {
+      memorizedExpenses.set([]);
+      loaded.set(false);
+    }),
+  };
+}
+
+export function createMockExpenseStore() {
+  const groupExpenses = signal<Expense[]>([]);
+  const loaded = signal(true);
+  return {
+    groupExpenses,
+    loaded,
+    unpaidGroupExpenses: computed(() => groupExpenses().filter((e) => !e.paid)),
+    setGroupExpenses: vi.fn((expenses: Expense[]) =>
+      groupExpenses.set(expenses)
+    ),
+    clearGroupExpenses: vi.fn(() => {
+      groupExpenses.set([]);
+      loaded.set(false);
+    }),
+  };
+}
+
 // ---- Mock Service Factories ----
+
+export function createMockThemeService() {
+  const currentTheme = signal<'light' | 'dark'>('light');
+  return {
+    currentTheme: currentTheme.asReadonly(),
+    setTheme: vi.fn((theme: 'light' | 'dark') => currentTheme.set(theme)),
+    toggleTheme: vi.fn(() =>
+      currentTheme.update((t) => (t === 'light' ? 'dark' : 'light'))
+    ),
+    updateTheme: vi.fn((theme: 'light' | 'dark') => currentTheme.set(theme)),
+  };
+}
 
 export function createMockLoadingService() {
   return {
@@ -277,10 +324,13 @@ export function createMockSortingService() {
 export function createMockTourService() {
   return {
     checkForContinueTour: vi.fn(),
+    resetAllTours: vi.fn(),
     startWelcomeTour: vi.fn(),
     startMembersTour: vi.fn(),
     startCategoriesTour: vi.fn(),
     startHistoryTour: vi.fn(),
+    startMemorizedTour: vi.fn(),
+    startExpensesTour: vi.fn(),
   };
 }
 
@@ -316,9 +366,12 @@ export function createMockDialogRef() {
 export function createMockGroupService() {
   return {
     addGroup: vi.fn(),
+    getGroup: vi.fn(() => Promise.resolve()),
     updateGroup: vi.fn(),
     deleteGroup: vi.fn(),
     archiveGroup: vi.fn(),
+    unarchiveGroup: vi.fn(),
+    setCurrentGroup: vi.fn(),
   };
 }
 
@@ -343,6 +396,7 @@ export function createMockExpenseService() {
     deleteExpense: vi.fn(() => Promise.resolve()),
     getExpense: vi.fn(),
     getExpenses: vi.fn(),
+    getGroupExpensesByDateRange: vi.fn(() => Promise.resolve([])),
   };
 }
 
@@ -375,5 +429,6 @@ export function createMockHistoryService() {
 export function createMockSplitService() {
   return {
     markAsPaid: vi.fn(() => Promise.resolve()),
+    updateSplit: vi.fn(() => Promise.resolve()),
   };
 }
