@@ -4,52 +4,27 @@ import { Injectable } from '@angular/core';
   providedIn: 'root',
 })
 export class SortingService {
-  constructor() {}
+  sort(data: any[], col: string, asc: boolean, property: string = ''): any[] {
+    if (!data.length) return data;
 
-  sort(data: any[], col: string, asc: boolean, property: string = '') {
-    if (typeof data[0][col] === 'object' && property) {
-      data = data.sort(function (a: any, b: any) {
-        if (asc) {
-          return a[col][property]?.toLowerCase() >
-            b[col][property]?.toLowerCase()
-            ? 1
-            : a[col][property]?.toLowerCase() < b[col][property]?.toLowerCase()
-              ? -1
-              : 0;
-        } else {
-          return b[col][property]?.toLowerCase() >
-            a[col][property]?.toLowerCase()
-            ? 1
-            : b[col][property]?.toLowerCase() < a[col][property]?.toLowerCase()
-              ? -1
-              : 0;
-        }
+    const copy = [...data];
+
+    if (typeof copy[0][col] === 'object' && property) {
+      return copy.sort((a, b) => {
+        const aVal = a[col][property]?.toLowerCase() ?? '';
+        const bVal = b[col][property]?.toLowerCase() ?? '';
+        return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       });
-    } else if (typeof data[0][col] === 'string') {
-      data = data.sort(function (a: any, b: any) {
-        if (asc) {
-          return a[col].toLowerCase() > b[col].toLowerCase()
-            ? 1
-            : a[col].toLowerCase() < b[col].toLowerCase()
-              ? -1
-              : 0;
-        } else {
-          return b[col].toLowerCase() > a[col].toLowerCase()
-            ? 1
-            : b[col].toLowerCase() < a[col].toLowerCase()
-              ? -1
-              : 0;
-        }
+    } else if (typeof copy[0][col] === 'string') {
+      return copy.sort((a, b) => {
+        const aVal = a[col].toLowerCase();
+        const bVal = b[col].toLowerCase();
+        return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       });
     } else {
-      data = data.sort(function (a: any, b: any) {
-        if (asc) {
-          return a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0;
-        } else {
-          return b[col] > a[col] ? 1 : b[col] < a[col] ? -1 : 0;
-        }
-      });
+      return copy.sort((a, b) =>
+        asc ? (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) : b[col] > a[col] ? 1 : b[col] < a[col] ? -1 : 0,
+      );
     }
-    return data;
   }
 }

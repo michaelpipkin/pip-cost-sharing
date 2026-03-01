@@ -84,18 +84,22 @@ export class ThemeService implements IThemeService {
       return;
     }
 
-    const primaryColor = THEME_PRIMARY_COLORS[theme];
-    await Promise.all([
-      EdgeToEdge.setStatusBarColor({ color: primaryColor }),
-      EdgeToEdge.setNavigationBarColor({ color: primaryColor }),
-    ]);
+    try {
+      const primaryColor = THEME_PRIMARY_COLORS[theme];
+      await Promise.all([
+        EdgeToEdge.setStatusBarColor({ color: primaryColor }),
+        EdgeToEdge.setNavigationBarColor({ color: primaryColor }),
+      ]);
 
-    // Set status bar icon style based on background color brightness
-    // Light theme (dark background) = dark icons param but light visual icons
-    // Dark theme (light background) = light icons param but dark visual icons
-    // Note: 'light' style = dark icons on light background, 'dark' style = light icons on dark background
-    const style = theme === 'light' ? 'dark' : 'light';
-    await SystemBars.setStyle({ style });
+      // Set status bar icon style based on background color brightness
+      // Light theme (dark background) = dark icons param but light visual icons
+      // Dark theme (light background) = light icons param but dark visual icons
+      // Note: 'light' style = dark icons on light background, 'dark' style = light icons on dark background
+      const style = theme === 'light' ? 'dark' : 'light';
+      await SystemBars.setStyle({ style });
+    } catch (error) {
+      console.error('Failed to update system bar colors:', error);
+    }
   }
 
   private getSavedTheme(): ThemeMode {
