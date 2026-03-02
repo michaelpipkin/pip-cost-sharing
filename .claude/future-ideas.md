@@ -7,7 +7,7 @@ This document captures ideas and rough plans for future features. Items are not 
 ## Table of Contents
 
 1. [Payment Notification Emails](#payment-notification-emails) ✅ *implemented — pending production validation*
-2. [Admin Module Expansion](#admin-module-expansion)
+2. [Admin Module Expansion](#admin-module-expansion) ✅ *implemented — pending production validation*
 3. [Account Page Redesign](#account-page-redesign)
 
 ---
@@ -182,6 +182,9 @@ No changes to the Member or User models are needed — emails are already on Mem
 ---
 
 ## Admin Module Expansion
+
+> **Status: ✅ Implemented — pending production validation.**
+> Implementation complete as of March 2026. Includes `AdminShellComponent` with `MatTabNav`, `AdminEmailLogComponent`, `AdminMailService`, and `MailDocument`/`MailDelivery`/`MailDeliveryInfo` models.
 
 ### Motivation
 

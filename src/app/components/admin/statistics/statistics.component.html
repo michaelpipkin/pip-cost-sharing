@@ -22,7 +22,9 @@
           </div>
           <div class="stat-row">
             <span>Active with 2+ Members:</span>
-            <span class="stat-value">{{ stats.activeGroupsWithMultipleMembers }}</span>
+            <span class="stat-value">{{
+              stats.activeGroupsWithMultipleMembers
+            }}</span>
           </div>
           <div class="stat-row">
             <span>Active with Expenses:</span>
@@ -66,14 +68,16 @@
           </div>
           <div class="stat-row">
             <span>Expenses Created:</span>
-            <span class="stat-value">{{ stats.expensesCreatedLast30Days }}</span>
+            <span class="stat-value">{{
+              stats.expensesCreatedLast30Days
+            }}</span>
           </div>
         </mat-card-content>
       </mat-card>
     </div>
 
     <div class="footer-info">
-      <p>Generated: {{ stats.generatedAt | date : 'medium' }}</p>
+      <p>Generated: {{ stats.generatedAt | date: 'medium' }}</p>
       <button
         mat-raised-button
         class="btn-primary"
@@ -85,10 +89,31 @@
     </div>
   }
 
+  @if (isLocalEnvironment()) {
+    <button
+      mat-raised-button
+      class="btn-danger mt-3"
+      type="button"
+      (click)="updateData()"
+      data-testid="update-data-button"
+      aria-label="Update live data"
+    >
+      @if (isLiveData()) {
+        Update Live Data
+      } @else {
+        Update Emulator Data
+      }
+    </button>
+  }
+
   @if (error(); as errorMessage) {
     <div class="error-container">
       <p>{{ errorMessage }}</p>
-      <button mat-raised-button class="btn-primary" (click)="refreshStatistics()">
+      <button
+        mat-raised-button
+        class="btn-primary"
+        (click)="refreshStatistics()"
+      >
         Retry
       </button>
     </div>
