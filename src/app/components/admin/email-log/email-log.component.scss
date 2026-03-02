@@ -1,0 +1,86 @@
+.log-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+// State filter chips
+.state-chip {
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+
+  &--selected {
+    opacity: 1;
+    font-weight: 600;
+  }
+
+  &--success    { background-color: var(--primary) !important; }
+  &--error      { background-color: var(--error) !important; }
+  &--retry      { background-color: var(--tertiary) !important; }
+  &--pending, &--processing, &--all { background-color: var(--surface-variant) !important; }
+}
+
+// Inline state badges in the table
+.state-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--success    { background-color: var(--primary);      color: var(--on-primary); }
+  &--error      { background-color: var(--error);        color: var(--on-error); }
+  &--retry      { background-color: var(--tertiary);     color: var(--on-tertiary); }
+  &--pending    { background-color: var(--surface-variant); color: var(--on-surface); }
+  &--processing { background-color: var(--secondary);    color: var(--on-secondary); }
+}
+
+.error-cell {
+  color: var(--error);
+  font-style: italic;
+  max-width: 240px;
+  word-break: break-word;
+}
+
+// Expanded detail panel
+.detail-content {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-section {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.detail-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.detail-value {
+  word-break: break-all;
+  color: var(--on-surface);
+}
+
+.no-data {
+  margin-top: 2rem;
+  color: var(--outline);
+  font-style: italic;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  color: var(--error);
+}
