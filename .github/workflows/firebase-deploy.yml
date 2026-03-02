@@ -94,6 +94,18 @@ jobs:
             echo "Changes detected in functions folder"
           fi
 
+      - name: Check for Firestore config changes
+        if: steps.check-skip.outputs.skip_deploy != 'true'
+        id: firestore-changes
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- firestore.rules firestore.indexes.json; then
+            echo "firestore_changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in Firestore config files"
+          else
+            echo "firestore_changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in Firestore config files"
+          fi
+
       - name: Create Firebase config file
         if: steps.check-skip.outputs.skip_deploy != 'true'
         run: |
@@ -138,6 +150,15 @@ jobs:
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
           firebase deploy --only functions --project pip-cost-sharing --non-interactive
+          rm service-account-key.json
+
+      - name: Deploy Firestore Rules and Indexes
+        if: steps.check-skip.outputs.skip_deploy != 'true' && steps.firestore-changes.outputs.firestore_changed == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
+          firebase deploy --only firestore:rules,firestore:indexes --project pip-cost-sharing --non-interactive
           rm service-account-key.json
 
       - name: Deploy to Firebase Hosting
