@@ -207,6 +207,10 @@ export class SplitService implements ISplitService {
     }
 
     // Create one history record per transfer (no line items)
+    const batchId =
+      crypto.randomUUID?.() ??
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const batchSize = transfers.length;
     for (const transfer of transfers) {
       const newHistoryDoc = doc(
         collection(this.fs, `groups/${groupId}/history`)
@@ -217,6 +221,8 @@ export class SplitService implements ISplitService {
         date: new Date().toIsoFormat(),
         totalPaid: transfer.amount,
         splitsPaid: [],
+        batchId,
+        batchSize,
       });
     }
 

@@ -2,6 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Deny all client access to the mail collection.
+    // The Firebase Trigger Email extension (Admin SDK) bypasses these rules,
+    // so Cloud Functions can still write here. This prevents authenticated
+    // users from sending spam via the app's SMTP account.
+    match /mail/{document} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write, delete: if request.auth != null;
     }

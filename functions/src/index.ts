@@ -1,4 +1,6 @@
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getHCaptchaSecret } from './common';
@@ -11,6 +13,139 @@ const storage = admin.storage();
 // TODO: Replace with your actual Firebase Auth UIDs
 const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
+
+// ---------------------------------------------------------------------------
+// Payment Notification Email helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a monetary amount using the group's currency settings.
+ * Falls back to symbol + toFixed for non-ISO codes (OTH, OT2).
+ */
+function formatAmount(
+  amount: number,
+  currencyCode: string,
+  currencySymbol: string,
+  decimalPlaces: number
+): string {
+  if (currencyCode === 'OTH' || currencyCode === 'OT2') {
+    const plain = amount.toFixed(decimalPlaces);
+    return currencySymbol ? `${currencySymbol}${plain}` : plain;
+  }
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces,
+    }).format(amount);
+  } catch {
+    const plain = amount.toFixed(decimalPlaces);
+    return currencySymbol ? `${currencySymbol}${plain}` : plain;
+  }
+}
+
+/**
+ * Build a newline-separated list of payment method lines for a user.
+ * Returns a fallback string if no payment methods are configured.
+ */
+function buildPaymentMethodLines(
+  userData: admin.firestore.DocumentData
+): string {
+  const methods: string[] = [];
+  if (userData['venmoId'])
+    methods.push(
+      `Venmo: @${(userData['venmoId'] as string).replace(/^@/, '')}`
+    );
+  if (userData['paypalId']) methods.push(`PayPal: ${userData['paypalId']}`);
+  if (userData['cashAppId'])
+    methods.push(`Cash App: $${userData['cashAppId']}`);
+  if (userData['zelleId']) methods.push(`Zelle: ${userData['zelleId']}`);
+  return methods.length > 0
+    ? methods.join('\n')
+    : '(No payment methods on file)';
+}
+
+/**
+ * Build a per-category breakdown of a member-to-member payment, matching the
+ * "Summary by Category" view in the history detail screen.
+ *
+ * Amounts are direction-adjusted from the payer's perspective:
+ *   positive  → payer owed this split (they are paying it)
+ *   negative  → payee owed this split (it offsets what the payer owes)
+ *
+ * Returns a formatted multi-line string ready to embed in an email, or an
+ * empty string if no splits are provided.
+ */
+async function buildCategoryBreakdown(
+  splitRefs: admin.firestore.DocumentReference[],
+  payerMemberRef: admin.firestore.DocumentReference,
+  currencyCode: string,
+  currencySymbol: string,
+  decimalPlaces: number
+): Promise<string> {
+  if (splitRefs.length === 0) return '';
+
+  // Fetch all split docs in parallel
+  const splitDocs = await Promise.all(splitRefs.map((ref) => ref.get()));
+
+  // Collect unique category refs
+  const categoryRefMap = new Map<string, admin.firestore.DocumentReference>();
+  for (const splitDoc of splitDocs) {
+    if (!splitDoc.exists) continue;
+    const categoryRef = splitDoc.data()!['categoryRef'] as
+      | admin.firestore.DocumentReference
+      | undefined;
+    if (categoryRef) categoryRefMap.set(categoryRef.path, categoryRef);
+  }
+
+  // Fetch all category docs in parallel
+  const categoryDocs = await Promise.all(
+    [...categoryRefMap.values()].map((ref) => ref.get())
+  );
+  const categoryNameMap = new Map<string, string>();
+  for (const categoryDoc of categoryDocs) {
+    if (categoryDoc.exists) {
+      categoryNameMap.set(
+        categoryDoc.ref.path,
+        (categoryDoc.data()!['name'] as string | undefined) ?? 'Unknown'
+      );
+    }
+  }
+
+  // Accumulate direction-adjusted totals per category
+  const totalsMap = new Map<string, number>();
+  for (const splitDoc of splitDocs) {
+    if (!splitDoc.exists) continue;
+    const splitData = splitDoc.data()!;
+    const categoryRef = splitData['categoryRef'] as
+      | admin.firestore.DocumentReference
+      | undefined;
+    const owedByRef = splitData[
+      'owedByMemberRef'
+    ] as admin.firestore.DocumentReference;
+    const allocatedAmount = splitData['allocatedAmount'] as number;
+
+    const categoryName = categoryRef
+      ? (categoryNameMap.get(categoryRef.path) ?? 'Unknown')
+      : 'Unknown';
+
+    // Positive if the payer owes this split; negative if the payee owes it
+    const contribution =
+      owedByRef.path === payerMemberRef.path ? allocatedAmount : -allocatedAmount;
+
+    totalsMap.set(categoryName, (totalsMap.get(categoryName) ?? 0) + contribution);
+  }
+
+  // Sort alphabetically and format
+  return [...totalsMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([category, amount]) => {
+      const formatted = formatAmount(amount, currencyCode, currencySymbol, decimalPlaces);
+      return `  ${category}: ${formatted}`;
+    })
+    .join('\n');
+}
 
 /**
  * Internal function to delete a group and all its associated data.
@@ -31,6 +166,7 @@ async function deleteGroupInternal(
     'splits',
     'history',
     'memorized',
+    'settleBatches',
   ];
 
   // Delete all documents in each subcollection
@@ -588,3 +724,351 @@ export const getAdminStatistics = onCall(async (request) => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// Payment notification email trigger
+// ---------------------------------------------------------------------------
+
+export const sendPaymentNotificationEmail = onDocumentCreated(
+  'groups/{groupId}/history/{historyId}',
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const groupId = event.params['groupId'];
+    const splitsPaid: unknown[] = data['splitsPaid'] ?? null;
+    const isSettleTransfer =
+      Array.isArray(splitsPaid) && splitsPaid.length === 0;
+    const isMemberPayment = Array.isArray(splitsPaid) && splitsPaid.length > 0;
+
+    if (!isSettleTransfer && !isMemberPayment) {
+      // splitsPaid is null — unexpected state, skip
+      console.warn(
+        `History doc ${event.params['historyId']} has null splitsPaid, skipping.`
+      );
+      return;
+    }
+
+    const groupRef = db.collection('groups').doc(groupId);
+
+    try {
+      if (isMemberPayment) {
+        await handleMemberPaymentEmail(data, groupRef, splitsPaid.length);
+      } else {
+        await handleSettleEmail(data, groupRef, groupId);
+      }
+    } catch (error) {
+      console.error('Error sending payment notification email:', error);
+    }
+  }
+);
+
+async function handleMemberPaymentEmail(
+  data: admin.firestore.DocumentData,
+  groupRef: admin.firestore.DocumentReference,
+  splitCount: number
+): Promise<void> {
+  const payerMemberRef = data[
+    'paidByMemberRef'
+  ] as admin.firestore.DocumentReference;
+  const payeeMemberRef = data[
+    'paidToMemberRef'
+  ] as admin.firestore.DocumentReference;
+  const totalPaid = data['totalPaid'] as number;
+
+  const [payerDoc, payeeDoc, groupDoc] = await Promise.all([
+    payerMemberRef.get(),
+    payeeMemberRef.get(),
+    groupRef.get(),
+  ]);
+
+  if (!payerDoc.exists || !payeeDoc.exists || !groupDoc.exists) {
+    console.warn(
+      'handleMemberPaymentEmail: missing payer, payee, or group doc'
+    );
+    return;
+  }
+
+  const payerData = payerDoc.data()!;
+  const payeeData = payeeDoc.data()!;
+  const groupData = groupDoc.data()!;
+
+  const payerName: string = payerData['displayName'] ?? 'Someone';
+  const payeeName: string = payeeData['displayName'] ?? 'Someone';
+  const payerEmail: string = payerData['email'] ?? '';
+  const payeeEmail: string = payeeData['email'] ?? '';
+  const groupName: string = groupData['name'] ?? 'your group';
+  const currencyCode: string = groupData['currencyCode'] ?? 'USD';
+  const currencySymbol: string = groupData['currencySymbol'] ?? '$';
+  const decimalPlaces: number = groupData['decimalPlaces'] ?? 2;
+
+  const formattedAmount = formatAmount(
+    totalPaid,
+    currencyCode,
+    currencySymbol,
+    decimalPlaces
+  );
+
+  const splitRefs = (data['splitsPaid'] as admin.firestore.DocumentReference[]) ?? [];
+
+  // Fetch payee payment methods and category breakdown in parallel
+  const payeeUserRef = payeeData[
+    'userRef'
+  ] as admin.firestore.DocumentReference | null;
+  const [payeeUserDoc, categoryBreakdown] = await Promise.all([
+    payeeUserRef ? payeeUserRef.get() : Promise.resolve(null),
+    buildCategoryBreakdown(
+      splitRefs,
+      payerMemberRef,
+      currencyCode,
+      currencySymbol,
+      decimalPlaces
+    ),
+  ]);
+
+  const paymentMethodLines =
+    payeeUserDoc?.exists
+      ? buildPaymentMethodLines(payeeUserDoc.data()!)
+      : '(No payment methods on file)';
+
+  const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
+
+  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+
+  if (payerEmail) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: payerEmail,
+        message: {
+          subject: 'You marked a payment as complete in PipSplit',
+          text: [
+            `Hi ${payerName},`,
+            '',
+            `You've recorded a payment of ${formattedAmount} to ${payeeName} in the group "${groupName}".`,
+            '',
+            `Category breakdown:`,
+            categoryBreakdown,
+            '',
+            `If you haven't already sent the money, ${payeeName} is set up on:`,
+            paymentMethodLines,
+            '',
+            `This payment covers ${splitCount} shared ${expenseWord}.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  if (payeeEmail) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: payeeEmail,
+        message: {
+          subject: `${payerName} has marked a payment to you as complete in PipSplit`,
+          text: [
+            `Hi ${payeeName},`,
+            '',
+            `${payerName} has recorded a payment of ${formattedAmount} to you in the group "${groupName}".`,
+            '',
+            `Category breakdown:`,
+            categoryBreakdown,
+            '',
+            `Please be on the lookout for ${formattedAmount} from ${payerName} via your P2P payment provider.`,
+            '',
+            `This payment covers ${splitCount} shared ${expenseWord}.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Member payment emails sent: payer="${payerEmail}", payee="${payeeEmail}"`
+  );
+}
+
+async function handleSettleEmail(
+  data: admin.firestore.DocumentData,
+  groupRef: admin.firestore.DocumentReference,
+  groupId: string
+): Promise<void> {
+  const batchId: string = data['batchId'];
+  const batchSize: number = data['batchSize'];
+
+  if (!batchId || !batchSize) {
+    console.warn('handleSettleEmail: missing batchId or batchSize, skipping');
+    return;
+  }
+
+  // Wait until all history docs for this batch are present
+  const historySnap = await groupRef
+    .collection('history')
+    .where('batchId', '==', batchId)
+    .get();
+
+  if (historySnap.size < batchSize) {
+    // Not all transfers written yet — another trigger will handle it
+    return;
+  }
+
+  // Atomically claim responsibility for sending this batch's emails
+  const batchMarkerRef = groupRef.collection('settleBatches').doc(batchId);
+  let shouldSendEmails = false;
+  await db.runTransaction(async (txn) => {
+    const markerDoc = await txn.get(batchMarkerRef);
+    if (!markerDoc.exists) {
+      txn.set(batchMarkerRef, {
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      shouldSendEmails = true;
+    }
+  });
+
+  if (!shouldSendEmails) {
+    // Another function instance already claimed this batch
+    return;
+  }
+
+  const groupDoc = await groupRef.get();
+  if (!groupDoc.exists) {
+    console.warn(`handleSettleEmail: group ${groupId} not found`);
+    return;
+  }
+  const groupData = groupDoc.data()!;
+  const groupName: string = groupData['name'] ?? 'your group';
+  const currencyCode: string = groupData['currencyCode'] ?? 'USD';
+  const currencySymbol: string = groupData['currencySymbol'] ?? '$';
+  const decimalPlaces: number = groupData['decimalPlaces'] ?? 2;
+
+  // Collect all transfer docs in this batch
+  const transfers = historySnap.docs.map((d) => d.data());
+
+  // Collect unique member refs (both sides)
+  const memberRefMap = new Map<string, admin.firestore.DocumentReference>();
+  for (const transfer of transfers) {
+    const payerRef = transfer[
+      'paidByMemberRef'
+    ] as admin.firestore.DocumentReference;
+    const payeeRef = transfer[
+      'paidToMemberRef'
+    ] as admin.firestore.DocumentReference;
+    memberRefMap.set(payerRef.path, payerRef);
+    memberRefMap.set(payeeRef.path, payeeRef);
+  }
+
+  // Fetch all member docs in parallel
+  const memberRefs = [...memberRefMap.values()];
+  const memberDocs = await Promise.all(memberRefs.map((ref) => ref.get()));
+
+  // Build a map: path → { doc data }
+  const memberDataMap = new Map<string, admin.firestore.DocumentData>();
+  for (const memberDoc of memberDocs) {
+    if (memberDoc.exists) {
+      memberDataMap.set(memberDoc.ref.path, memberDoc.data()!);
+    }
+  }
+
+  // Fetch user docs for members that have a userRef
+  const userRefMap = new Map<string, admin.firestore.DocumentReference>();
+  for (const [path, memberData] of memberDataMap.entries()) {
+    const userRef = memberData[
+      'userRef'
+    ] as admin.firestore.DocumentReference | null;
+    if (userRef) {
+      userRefMap.set(path, userRef);
+    }
+  }
+  const userDocs = await Promise.all(
+    [...userRefMap.values()].map((ref) => ref.get())
+  );
+  const userDataMap = new Map<string, admin.firestore.DocumentData>();
+  for (const userDoc of userDocs) {
+    if (userDoc.exists) {
+      userDataMap.set(userDoc.ref.path, userDoc.data()!);
+    }
+  }
+
+  // Build per-member email
+  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+
+  for (const [memberPath, memberData] of memberDataMap.entries()) {
+    const memberEmail: string = memberData['email'] ?? '';
+    const memberName: string = memberData['displayName'] ?? 'Member';
+    if (!memberEmail) continue;
+
+    // Find transfers this member is involved in
+    const owesLines: string[] = [];
+    const owedLines: string[] = [];
+
+    for (const transfer of transfers) {
+      const payerRef = transfer[
+        'paidByMemberRef'
+      ] as admin.firestore.DocumentReference;
+      const payeeRef = transfer[
+        'paidToMemberRef'
+      ] as admin.firestore.DocumentReference;
+      const amount = transfer['totalPaid'] as number;
+      const formattedAmount = formatAmount(
+        amount,
+        currencyCode,
+        currencySymbol,
+        decimalPlaces
+      );
+
+      if (payerRef.path === memberPath) {
+        // This member owes money — include payee's payment methods
+        const payeeData = memberDataMap.get(payeeRef.path);
+        const payeeName: string =
+          payeeData?.['displayName'] ?? 'another member';
+        const payeeUserRef = payeeData?.['userRef'] as
+          | admin.firestore.DocumentReference
+          | null
+          | undefined;
+        const payeeUserData = payeeUserRef
+          ? userDataMap.get(payeeUserRef.path)
+          : undefined;
+        const paymentMethods = payeeUserData
+          ? buildPaymentMethodLines(payeeUserData)
+          : '(No payment methods on file)';
+        owesLines.push(
+          `- You owe ${formattedAmount} to ${payeeName}\n  ${payeeName}'s payment methods:\n  ${paymentMethods.split('\n').join('\n  ')}`
+        );
+      } else if (payeeRef.path === memberPath) {
+        // This member is owed money
+        const payerData = memberDataMap.get(payerRef.path);
+        const payerName: string =
+          payerData?.['displayName'] ?? 'another member';
+        owedLines.push(
+          `- ${payerName} owes you ${formattedAmount} — be on the lookout for this payment.`
+        );
+      }
+    }
+
+    const transferLines = [...owesLines, ...owedLines].join('\n\n');
+
+    mailWrites.push(
+      db.collection('mail').add({
+        to: memberEmail,
+        message: {
+          subject: `Group "${groupName}" has been settled in PipSplit`,
+          text: [
+            `Hi ${memberName},`,
+            '',
+            `A group settlement has been recorded for "${groupName}".`,
+            '',
+            'Your transfers:',
+            transferLines,
+            '',
+            'All outstanding balances in the group have been marked as settled in PipSplit.',
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Settle emails sent for batchId=${batchId}: ${mailWrites.length} email(s)`
+  );
+}

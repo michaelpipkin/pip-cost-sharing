@@ -14,6 +14,8 @@ export class History {
   paidToMember?: Member;
   totalPaid!: number;
   splitsPaid: DocumentReference<Split>[] | null = null;
+  batchId?: string;
+  batchSize?: number;
   ref?: DocumentReference<History>;
 }
 
