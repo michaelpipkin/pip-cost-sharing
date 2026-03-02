@@ -51,9 +51,7 @@
               "
             >
               {{
-                firebaseUser().emailVerified
-                  ? 'Email Verified'
-                  : 'Verify Email'
+                firebaseUser().emailVerified ? 'Email Verified' : 'Verify Email'
               }}
             </button>
             <button
@@ -169,11 +167,11 @@
         <a
           mat-raised-button
           class="btn-secondary mt-2"
-          [routerLink]="['/admin', 'statistics']"
+          [routerLink]="['/admin']"
           data-testid="admin-stats-button"
-          aria-label="View admin statistics"
+          aria-label="Go to admin area"
         >
-          Admin Statistics
+          Admin
         </a>
       }
     </mat-tab>
@@ -285,20 +283,4 @@
       </div>
     </mat-tab>
   </mat-tab-group>
-  @if (isLocalEnvironment()) {
-    <button
-      mat-raised-button
-      class="btn-danger mt-3"
-      type="button"
-      (click)="updateData()"
-      data-testid="update-data-button"
-      aria-label="Update live data"
-    >
-      @if (isLiveData()) {
-        Update Live Data
-      } @else {
-        Update Emulator Data
-      }
-    </button>
-  }
 </div>

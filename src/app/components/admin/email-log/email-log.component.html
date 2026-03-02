@@ -1,0 +1,191 @@
+<div class="container scrollable with-table">
+  <div class="page-header">
+    <div></div>
+    <h3 class="header">Email Delivery Log</h3>
+    <div></div>
+  </div>
+
+  <div class="log-controls">
+    <mat-chip-set aria-label="Filter by delivery state">
+      @for (filter of stateFilters; track filter) {
+        <mat-chip
+          [class]="'state-chip state-chip--' + filter.toLowerCase()"
+          [class.state-chip--selected]="selectedState() === filter"
+          [style.--mat-chip-label-text-color]="chipTextColor(filter)"
+          (click)="selectedState.set(filter)"
+          [attr.aria-pressed]="selectedState() === filter"
+        >
+          {{ filter }}
+        </mat-chip>
+      }
+    </mat-chip-set>
+    <button
+      mat-raised-button
+      class="btn-primary"
+      (click)="loadMailDocuments()"
+      aria-label="Refresh email log"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  @if (error(); as errorMessage) {
+    <div class="error-container">
+      <p>{{ errorMessage }}</p>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        (click)="loadMailDocuments()"
+      >
+        Retry
+      </button>
+    </div>
+  }
+
+  @if (filteredDocuments().length > 0) {
+    <div class="table-container mat-elevation-z8">
+      <div class="scrollable-table">
+        <table
+          mat-table
+          [dataSource]="filteredDocuments()"
+          multiTemplateDataRows
+          class="expandable-table"
+        >
+          <ng-container matColumnDef="dateTime">
+            <th mat-header-cell *matHeaderCellDef>Date / Time</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.delivery?.startTime?.toDate() | date: 'MM/dd/yy, h:mm a' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="recipient">
+            <th mat-header-cell *matHeaderCellDef>Recipient</th>
+            <td mat-cell *matCellDef="let row">
+              {{ formatRecipient(row.to) }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="subject">
+            <th mat-header-cell *matHeaderCellDef>Subject</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.message?.subject }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="state">
+            <th mat-header-cell *matHeaderCellDef class="cell-center">State</th>
+            <td mat-cell *matCellDef="let row" class="cell-center">
+              @if (row.delivery?.state; as state) {
+                <span
+                  [class]="'state-badge state-badge--' + state.toLowerCase()"
+                >
+                  {{ state }}
+                </span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="attempts">
+            <th mat-header-cell *matHeaderCellDef class="cell-center">
+              Attempts
+            </th>
+            <td mat-cell *matCellDef="let row" class="cell-center">
+              {{ row.delivery?.attempts ?? '—' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="error">
+            <th mat-header-cell *matHeaderCellDef>Error</th>
+            <td mat-cell *matCellDef="let row" class="error-cell">
+              {{ truncate(row.delivery?.error) }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="expandedDetail">
+            <td
+              mat-cell
+              *matCellDef="let row"
+              [colSpan]="columnsToDisplay.length"
+            >
+              @if (row === expandedRow()) {
+                <div
+                  class="detail-table-container"
+                  animate.enter="detail-expand"
+                  animate.leave="detail-collapse"
+                >
+                  <div class="detail-content">
+                    @if (row.delivery?.error) {
+                      <div class="detail-section">
+                        <span class="detail-label">Full Error:</span>
+                        <span class="detail-value">{{
+                          row.delivery?.error
+                        }}</span>
+                      </div>
+                    }
+                    @if (row.delivery?.info?.response) {
+                      <div class="detail-section">
+                        <span class="detail-label">SMTP Response:</span>
+                        <span class="detail-value">{{
+                          row.delivery?.info?.response
+                        }}</span>
+                      </div>
+                    }
+                    @if (row.delivery?.info?.accepted?.length) {
+                      <div class="detail-section">
+                        <span class="detail-label">Accepted:</span>
+                        <span class="detail-value">{{
+                          row.delivery?.info?.accepted?.join(', ')
+                        }}</span>
+                      </div>
+                    }
+                    @if (row.delivery?.info?.rejected?.length) {
+                      <div class="detail-section">
+                        <span class="detail-label">Rejected:</span>
+                        <span class="detail-value">{{
+                          row.delivery?.info?.rejected?.join(', ')
+                        }}</span>
+                      </div>
+                    }
+                    @if (row.delivery?.endTime) {
+                      <div class="detail-section">
+                        <span class="detail-label">Completed:</span>
+                        <span class="detail-value">
+                          {{ row.delivery?.endTime?.toDate() | date: 'medium' }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </td>
+          </ng-container>
+
+          <tr
+            mat-header-row
+            *matHeaderRowDef="columnsToDisplay; sticky: true"
+          ></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: columnsToDisplay"
+            class="summary-row clickable-row expandable-row"
+            [class.expanded-row]="row === expandedRow()"
+            (click)="onRowClick(row)"
+          ></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: ['expandedDetail']"
+            class="detail-row"
+          ></tr>
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+              No emails found.
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  } @else if (!error()) {
+    <p class="no-data">No email records found.</p>
+  }
+</div>

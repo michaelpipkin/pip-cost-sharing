@@ -48,7 +48,6 @@ import {
   updatePassword,
 } from 'firebase/auth';
 import { DocumentReference } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Component({
   selector: 'app-account',
@@ -71,7 +70,6 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 export class AccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly functions = inject(getFunctions);
   protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
@@ -94,8 +92,6 @@ export class AccountComponent {
 
   firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
   prod = signal<boolean>(environment.production);
-  isLocalEnvironment = signal<boolean>(!environment.production);
-  isLiveData = signal<boolean>(!environment.useEmulators);
   isAdmin = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);
 
   selectedGroup = model<DocumentReference | null>(
@@ -359,28 +355,6 @@ export class AccountComponent {
           },
         });
       }
-    } finally {
-      this.loading.loadingOff();
-    }
-  }
-
-  async updateData(): Promise<void> {
-    this.loading.loadingOn();
-    try {
-      const syncEmails = httpsCallable(this.functions, 'syncAuthEmailsToUsers');
-      await Promise.all([syncEmails()]);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Data updated' },
-      });
-    } catch (error) {
-      this.analytics.logEvent('error', {
-        component: this.constructor.name,
-        action: 'data_update',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Something went wrong - could not update data' },
-      });
     } finally {
       this.loading.loadingOff();
     }
