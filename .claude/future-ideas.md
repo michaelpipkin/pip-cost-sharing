@@ -6,13 +6,16 @@ This document captures ideas and rough plans for future features. Items are not 
 
 ## Table of Contents
 
-1. [Payment Notification Emails](#payment-notification-emails)
+1. [Payment Notification Emails](#payment-notification-emails) ✅ *implemented — pending production validation*
 2. [Admin Module Expansion](#admin-module-expansion)
 3. [Account Page Redesign](#account-page-redesign)
 
 ---
 
 ## Payment Notification Emails
+
+> **Status: ✅ Implemented — pending production validation.**
+> Implementation complete as of March 2026. Emulator-tested. Awaiting first production deploy to confirm end-to-end email delivery.
 
 ### Motivation
 
