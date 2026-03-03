@@ -277,6 +277,9 @@ No Firestore schema changes needed — the extension defines the shape.
 
 ## Account Page Redesign
 
+> **Status: ✅ Implemented — pending production validation.**
+> Implementation complete as of March 2026. AccountComponent refactored to a sidebar navigation layout shell. Five child route sections: Profile, Security, Payments, Preferences, Legal. Admin nav entry at bottom (admin-only) replaces the old admin button; routes to `/admin`. Responsive master-detail behavior via `BreakpointObserver`.
+
 ### Motivation
 
 The current account page uses three sparse `MatTabGroup` tabs:

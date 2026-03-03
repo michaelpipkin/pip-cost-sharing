@@ -51,6 +51,48 @@ export const authRoutes: Routes = [
             (m) => m.AccountComponent
           ),
         canActivate: [basicAuthGuard],
+        children: [
+          {
+            path: 'profile',
+            title: 'Profile',
+            loadComponent: () =>
+              import(
+                '@components/auth/account/profile/account-profile.component'
+              ).then((m) => m.AccountProfileComponent),
+          },
+          {
+            path: 'security',
+            title: 'Security',
+            loadComponent: () =>
+              import(
+                '@components/auth/account/security/account-security.component'
+              ).then((m) => m.AccountSecurityComponent),
+          },
+          {
+            path: 'payments',
+            title: 'Payments',
+            loadComponent: () =>
+              import(
+                '@components/auth/account/payments/account-payments.component'
+              ).then((m) => m.AccountPaymentsComponent),
+          },
+          {
+            path: 'preferences',
+            title: 'Preferences',
+            loadComponent: () =>
+              import(
+                '@components/auth/account/preferences/account-preferences.component'
+              ).then((m) => m.AccountPreferencesComponent),
+          },
+          {
+            path: 'legal',
+            title: 'Legal',
+            loadComponent: () =>
+              import(
+                '@components/auth/account/legal/account-legal.component'
+              ).then((m) => m.AccountLegalComponent),
+          },
+        ],
       },
       {
         path: 'account-action',
