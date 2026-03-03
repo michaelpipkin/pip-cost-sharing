@@ -1,0 +1,57 @@
+<div class="container" data-testid="payments-container">
+  <h4 data-testid="payments-title">Payment Service IDs</h4>
+  <form
+    [formGroup]="paymentsForm"
+    class="container payments"
+    data-testid="payments-form"
+    aria-label="Payment service IDs form"
+  >
+    <mat-form-field data-testid="venmo-field">
+      <mat-label>Venmo</mat-label>
+      <input
+        matInput
+        formControlName="venmoId"
+        data-testid="venmo-input"
+        aria-label="Venmo ID"
+      />
+    </mat-form-field>
+    <mat-form-field data-testid="paypal-field">
+      <mat-label>PayPal</mat-label>
+      <input
+        matInput
+        formControlName="paypalId"
+        data-testid="paypal-input"
+        aria-label="PayPal ID"
+      />
+    </mat-form-field>
+    <mat-form-field data-testid="cashapp-field">
+      <mat-label>CashApp</mat-label>
+      <input
+        matInput
+        formControlName="cashAppId"
+        data-testid="cashapp-input"
+        aria-label="CashApp ID"
+      />
+    </mat-form-field>
+    <mat-form-field data-testid="zelle-field">
+      <mat-label>Zelle</mat-label>
+      <input
+        matInput
+        formControlName="zelleId"
+        data-testid="zelle-input"
+        aria-label="Zelle ID"
+      />
+    </mat-form-field>
+    <button
+      mat-raised-button
+      class="btn-primary"
+      type="submit"
+      [disabled]="paymentsForm.pristine"
+      (click)="onSubmitPayments()"
+      data-testid="save-payments-button"
+      aria-label="Save payment service IDs"
+    >
+      Save
+    </button>
+  </form>
+</div>

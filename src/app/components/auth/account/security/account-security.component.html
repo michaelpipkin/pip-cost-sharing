@@ -1,0 +1,75 @@
+<div class="container" data-testid="security-container">
+  <h4 data-testid="security-title">Change Password</h4>
+  @if (isGoogleUser()) {
+    <p class="helper-text" data-testid="google-security-note">
+      Your account security is managed by Google.
+    </p>
+  } @else {
+    <form
+      [formGroup]="passwordForm"
+      class="container"
+      data-testid="password-form"
+      aria-label="Change password form"
+    >
+      <mat-form-field data-testid="new-password-field">
+        <mat-label>New Password</mat-label>
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          autocomplete="new-password"
+          formControlName="password"
+          data-testid="new-password-input"
+          aria-label="Enter new password"
+        />
+        <button
+          mat-icon-button
+          matIconSuffix
+          (click)="toggleHidePassword()"
+          [attr.aria-label]="'Hide password'"
+          [attr.aria-pressed]="hidePassword()"
+          data-testid="toggle-new-password-visibility"
+        >
+          <mat-icon>{{
+            hidePassword() ? 'visibility_off' : 'visibility'
+          }}</mat-icon>
+        </button>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Confirm Password</mat-label>
+        <input
+          matInput
+          [type]="hideConfirm() ? 'password' : 'text'"
+          autocomplete="new-password"
+          formControlName="confirmPassword"
+        />
+        <button
+          mat-icon-button
+          matIconSuffix
+          (click)="toggleHideConfirm()"
+          [attr.aria-label]="'Hide password'"
+          [attr.aria-pressed]="hideConfirm()"
+        >
+          <mat-icon>{{
+            hideConfirm() ? 'visibility_off' : 'visibility'
+          }}</mat-icon>
+        </button>
+        @if (passwordForm.errors?.['mismatch']) {
+          <mat-error> Passwords do not match. </mat-error>
+        }
+      </mat-form-field>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="submit"
+        [disabled]="
+          passwordForm.invalid ||
+          passwordForm.controls['confirmPassword'].value === ''
+        "
+        (click)="onSubmitPassword()"
+        data-testid="change-password-button"
+      >
+        Change Password
+      </button>
+    </form>
+  }
+</div>
