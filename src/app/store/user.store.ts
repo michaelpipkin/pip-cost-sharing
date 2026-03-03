@@ -47,6 +47,13 @@ export const UserStore = signalStore(
         defaultGroupRef: null,
       });
     },
+    initUser: (
+      user: User,
+      isGoogleUser: boolean,
+      isEmailConfirmed: boolean
+    ) => {
+      patchState(store, { user, isGoogleUser, isEmailConfirmed, isDemoMode: false });
+    },
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),
     setIsEmailConfirmed: (isEmailConfirmed: boolean) =>

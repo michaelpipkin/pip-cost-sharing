@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { getFunctions } from 'firebase/functions';
 import { AdminStatisticsComponent } from './statistics.component';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
 import { LoadingService } from '@shared/loading/loading.service';
@@ -36,6 +37,7 @@ describe('AdminStatisticsComponent', () => {
       imports: [AdminStatisticsComponent],
       providers: [
         provideNoopAnimations(),
+        { provide: getFunctions, useValue: {} },
         { provide: AdminStatisticsService, useValue: mockStatisticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatSnackBar, useValue: mockSnackBar },

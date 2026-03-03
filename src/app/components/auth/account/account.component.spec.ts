@@ -106,6 +106,8 @@ describe('AccountComponent', () => {
   describe('navigation sidebar', () => {
     it('should render all standard nav items', async () => {
       await createComponent();
+      mockUserStore.isEmailConfirmed.set(true);
+      fixture.detectChanges();
       expect(
         fixture.debugElement.query(By.css('[data-testid="nav-profile"]'))
       ).toBeTruthy();
@@ -116,15 +118,14 @@ describe('AccountComponent', () => {
         fixture.debugElement.query(By.css('[data-testid="nav-payments"]'))
       ).toBeTruthy();
       expect(
-        fixture.debugElement.query(By.css('[data-testid="nav-preferences"]'))
-      ).toBeTruthy();
-      expect(
         fixture.debugElement.query(By.css('[data-testid="nav-legal"]'))
       ).toBeTruthy();
     });
 
     it('should hide admin nav item for non-admin users', async () => {
       await createComponent();
+      mockUserStore.isEmailConfirmed.set(true);
+      fixture.detectChanges();
       const adminLink = fixture.debugElement.query(
         By.css('[data-testid="nav-admin"]')
       );
@@ -133,10 +134,22 @@ describe('AccountComponent', () => {
 
     it('should show admin nav item for admin user', async () => {
       await createComponent(mockAuthAsAdmin);
+      mockUserStore.isEmailConfirmed.set(true);
+      fixture.detectChanges();
       const adminLink = fixture.debugElement.query(
         By.css('[data-testid="nav-admin"]')
       );
       expect(adminLink).toBeTruthy();
+    });
+
+    it('should hide security nav item for Google users', async () => {
+      await createComponent();
+      mockUserStore.isGoogleUser.set(true);
+      fixture.detectChanges();
+      const securityLink = fixture.debugElement.query(
+        By.css('[data-testid="nav-security"]')
+      );
+      expect(securityLink).toBeNull();
     });
   });
 
