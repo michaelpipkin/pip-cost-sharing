@@ -29,7 +29,7 @@
 }
 
 .account-sidebar {
-  width: 180px;
+  width: 10rem;
   flex-shrink: 0;
   border-right: 1px solid var(--mat-sys-outline-variant);
 
@@ -39,11 +39,29 @@
     border-bottom: 1px solid var(--mat-sys-outline-variant);
   }
 
-  a.active-link {
-    background-color: var(--mat-sys-secondary-container);
-    color: var(--mat-sys-on-secondary-container);
-    font-weight: 600;
-    border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+
+  a[mat-flat-button] {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 0;
+    --mdc-filled-button-container-color: color-mix(
+      in srgb,
+      var(--mat-sys-secondary-container) 35%,
+      transparent
+    );
+    --mdc-filled-button-label-text-color: var(--mat-sys-on-surface-variant);
+
+    &.active-link {
+      --mdc-filled-button-container-color: var(--mat-sys-secondary-container);
+      --mdc-filled-button-label-text-color: var(
+        --mat-sys-on-secondary-container
+      );
+      font-weight: 600;
+    }
   }
 }
 

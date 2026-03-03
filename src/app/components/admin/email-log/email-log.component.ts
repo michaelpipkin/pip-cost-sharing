@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,11 +38,13 @@ export class AdminEmailLogComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   mailDocuments = signal<MailDocument[]>([]);
   selectedState = model<DeliveryStateFilter>('ALL');
   error = signal<string | null>(null);
   expandedRow = model<MailDocument | null>(null);
+  isMobile = signal(false);
 
   readonly stateFilters: DeliveryStateFilter[] = [
     'ALL',
@@ -52,14 +55,10 @@ export class AdminEmailLogComponent {
     'RETRY',
   ];
 
-  readonly columnsToDisplay = [
-    'dateTime',
-    'recipient',
-    'subject',
-    'state',
-    'attempts',
-    'error',
-  ];
+  columnsToDisplay = computed(() => {
+    const base = ['dateTime', 'recipient', 'state', 'attempts', 'error'];
+    return this.isMobile() ? base : ['dateTime', 'recipient', 'subject', ...base.slice(2)];
+  });
 
   filteredDocuments = computed<MailDocument[]>(() => {
     const state = this.selectedState();
@@ -70,6 +69,9 @@ export class AdminEmailLogComponent {
   });
 
   constructor() {
+    this.breakpointObserver.observe('(max-width: 799px)').subscribe((result) => {
+      this.isMobile.set(result.matches);
+    });
     afterNextRender(async () => {
       await this.loadMailDocuments();
     });

@@ -18,60 +18,68 @@
     data-testid="account-layout"
   >
     @if (!isMobile() || !isChildActive()) {
-      <mat-nav-list class="account-sidebar" data-testid="account-sidebar">
+      <nav class="account-sidebar" data-testid="account-sidebar">
         <a
-          mat-list-item
+          mat-flat-button
           routerLink="profile"
           routerLinkActive="active-link"
           data-testid="nav-profile"
           aria-label="Profile"
-          >Profile</a
+          ><mat-icon fontSet="material-symbols-outlined">person</mat-icon>
+          Profile</a
         >
         @if (!isGoogleUser()) {
           <a
-            mat-list-item
+            mat-flat-button
             routerLink="security"
             routerLinkActive="active-link"
             data-testid="nav-security"
             aria-label="Security"
-            >Password</a
+            ><mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
+            Password</a
           >
         }
         <a
-          mat-list-item
+          mat-flat-button
           routerLink="payments"
           routerLinkActive="active-link"
           data-testid="nav-payments"
           aria-label="Payments"
-          >Payments</a
+          ><mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
+          Payments</a
         >
         <!-- <a
-          mat-list-item
+          mat-flat-button
           routerLink="preferences"
           routerLinkActive="active-link"
           data-testid="nav-preferences"
           aria-label="Preferences"
-          >Preferences</a
+          ><mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
+          Preferences</a
         > -->
         <a
-          mat-list-item
+          mat-flat-button
           routerLink="legal"
           routerLinkActive="active-link"
           data-testid="nav-legal"
           aria-label="Legal"
-          >Legal</a
+          ><mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
+          Legal</a
         >
         @if (isAdmin()) {
           <a
-            mat-list-item
+            mat-flat-button
             routerLink="/admin"
             routerLinkActive="active-link"
             data-testid="nav-admin"
             aria-label="Go to admin area"
-            >Admin</a
+            ><mat-icon fontSet="material-symbols-outlined"
+              >admin_panel_settings</mat-icon
+            >
+            Admin</a
           >
         }
-      </mat-nav-list>
+      </nav>
     }
     @if (!isMobile() || isChildActive()) {
       <div class="account-content" data-testid="account-content">
