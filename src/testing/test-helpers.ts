@@ -211,6 +211,12 @@ export function createMockUserStore() {
       isEmailConfirmed.set(false);
       defaultGroupRef.set(null);
     }),
+    initUser: vi.fn((u: User, isGoogle: boolean, isEmailConf: boolean) => {
+      user.set(u);
+      isGoogleUser.set(isGoogle);
+      isEmailConfirmed.set(isEmailConf);
+      isDemoMode.set(false);
+    }),
     setIsGoogleUser: vi.fn((val: boolean) => isGoogleUser.set(val)),
     setIsEmailConfirmed: vi.fn((val: boolean) => isEmailConfirmed.set(val)),
     setIsDemoMode: vi.fn((val: boolean) => isDemoMode.set(val)),

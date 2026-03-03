@@ -8,7 +8,7 @@ This document captures ideas and rough plans for future features. Items are not 
 
 1. [Payment Notification Emails](#payment-notification-emails) ✅ *implemented — pending production validation*
 2. [Admin Module Expansion](#admin-module-expansion) ✅ *implemented — pending production validation*
-3. [Account Page Redesign](#account-page-redesign)
+3. [Account Page Redesign](#account-page-redesign) ✅ *implemented — pending production validation*
 
 ---
 

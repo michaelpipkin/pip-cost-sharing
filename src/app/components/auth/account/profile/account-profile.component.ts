@@ -54,6 +54,7 @@ export class AccountProfileComponent {
   protected readonly snackbar = inject(MatSnackBar);
 
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
+  isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
   currentUser = this.userStore.user;
 
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
