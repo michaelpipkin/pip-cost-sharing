@@ -1,3 +1,24 @@
 .container {
   margin-top: 2em;
+  height: fit-content;
+}
+
+.account-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  mat-icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  h1 {
+    margin: 0;
+  }
 }

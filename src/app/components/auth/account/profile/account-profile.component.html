@@ -1,0 +1,92 @@
+<div class="container" data-testid="profile-container">
+  <h4 data-testid="profile-title">Profile</h4>
+  @if (isGoogleUser()) {
+    <p class="helper-text" data-testid="google-account-note">
+      Your account is linked to Google. Your email address and password are
+      managed through your Google account settings.
+    </p>
+  } @else {
+    <form
+      [formGroup]="emailForm"
+      class="container"
+      data-testid="email-form"
+      aria-label="Update email form"
+    >
+      <mat-form-field class="email-input" data-testid="account-email-field">
+        <mat-label>Email Address</mat-label>
+        <input
+          matInput
+          type="email"
+          formControlName="email"
+          data-testid="account-email-input"
+          aria-label="Email address"
+        />
+        @if (e.email.errors?.email) {
+          <mat-error data-testid="account-email-error">
+            Invalid email address
+          </mat-error>
+        }
+      </mat-form-field>
+      <div class="buttons" data-testid="email-buttons">
+        <button
+          mat-raised-button
+          class="btn-tertiary"
+          type="button"
+          [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
+          (click)="verifyEmail()"
+          data-testid="verify-email-button"
+          [aria-label]="
+            firebaseUser()?.emailVerified
+              ? 'Email already verified'
+              : 'Send email verification'
+          "
+        >
+          {{
+            firebaseUser()?.emailVerified ? 'Email Verified' : 'Verify Email'
+          }}
+        </button>
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="submit"
+          [disabled]="
+            emailForm.invalid ||
+            e.email.value === firebaseUser()?.email ||
+            e.email.value === ''
+          "
+          (click)="onSubmitEmail()"
+          data-testid="update-email-button"
+          aria-label="Update email address"
+        >
+          Update Email
+        </button>
+      </div>
+      <div class="sync-member-emails" data-testid="sync-member-emails">
+        <p class="helper-text">
+          Update the email address on all of your member records to match your
+          account email address.
+        </p>
+        <button
+          mat-raised-button
+          class="btn-secondary"
+          type="button"
+          [disabled]="emailForm.dirty"
+          (click)="syncMemberEmails()"
+          data-testid="sync-member-emails-button"
+          aria-label="Update all member records with current email"
+        >
+          Sync Member Emails
+        </button>
+      </div>
+    </form>
+  }
+  <a
+    mat-raised-button
+    class="btn-danger mt-3"
+    [routerLink]="['/auth', 'delete-account']"
+    data-testid="delete-account-button"
+    aria-label="Delete account"
+  >
+    Delete Account
+  </a>
+</div>

@@ -7,280 +7,94 @@
       <mat-icon>warning</mat-icon>
       <span
         >You must confirm your email address before you can access the app.
-        Check your email for a verification link, or click "Verify Email" below
-        to resend it.</span
+        Check your email for a verification link, or click "Verify Email" in the
+        Profile section to resend it.</span
       >
     </div>
   }
-  <mat-tab-group dynamicHeight class="account-tabs" data-testid="account-tabs">
-    <mat-tab label="Account" data-testid="account-tab">
-      @if (!isGoogleUser()) {
-        <form
-          [formGroup]="emailForm"
-          class="container"
-          data-testid="email-form"
-          aria-label="Update email form"
-        >
-          <mat-form-field class="email-input" data-testid="account-email-field">
-            <mat-label>Email Address</mat-label>
-            <input
-              matInput
-              type="email"
-              formControlName="email"
-              data-testid="account-email-input"
-              aria-label="Email address"
-            />
-            @if (e.email.errors?.email) {
-              <mat-error data-testid="account-email-error">
-                Invalid email address
-              </mat-error>
-            }
-          </mat-form-field>
-          <div class="buttons" data-testid="email-buttons">
-            <button
-              mat-raised-button
-              class="btn-tertiary"
-              type="button"
-              [disabled]="firebaseUser().emailVerified || emailForm.dirty"
-              (click)="verifyEmail()"
-              data-testid="verify-email-button"
-              [aria-label]="
-                firebaseUser().emailVerified
-                  ? 'Email already verified'
-                  : 'Send email verification'
-              "
-            >
-              {{
-                firebaseUser().emailVerified ? 'Email Verified' : 'Verify Email'
-              }}
-            </button>
-            <button
-              mat-raised-button
-              class="btn-primary"
-              type="submit"
-              [disabled]="
-                emailForm.invalid ||
-                e.email.value === firebaseUser().email ||
-                e.email.value === ''
-              "
-              (click)="onSubmitEmail()"
-              data-testid="update-email-button"
-              aria-label="Update email address"
-            >
-              Update Email
-            </button>
-          </div>
-          <div class="sync-member-emails" data-testid="sync-member-emails">
-            <p class="helper-text">
-              Update the email address on all of your member<br />
-              records to match your account email address.
-            </p>
-            <button
-              mat-raised-button
-              class="btn-secondary"
-              type="button"
-              [disabled]="emailForm.dirty"
-              (click)="syncMemberEmails()"
-              data-testid="sync-member-emails-button"
-              aria-label="Update all member records with current email"
-            >
-              Sync Member Emails
-            </button>
-          </div>
-        </form>
-        <form
-          [formGroup]="passwordForm"
-          class="container mt-3"
-          data-testid="password-form"
-          aria-label="Change password form"
-        >
-          <mat-form-field data-testid="new-password-field">
-            <mat-label>New Password</mat-label>
-            <input
-              matInput
-              [type]="hidePassword() ? 'password' : 'text'"
-              autocomplete="new-password"
-              formControlName="password"
-              data-testid="new-password-input"
-              aria-label="Enter new password"
-            />
-            <button
-              mat-icon-button
-              matIconSuffix
-              (click)="toggleHidePassword()"
-              [attr.aria-label]="'Hide password'"
-              [attr.aria-pressed]="hidePassword()"
-              data-testid="toggle-new-password-visibility"
-            >
-              <mat-icon>{{
-                hidePassword() ? 'visibility_off' : 'visibility'
-              }}</mat-icon>
-            </button>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Confirm Password</mat-label>
-            <input
-              matInput
-              [type]="hideConfirm() ? 'password' : 'text'"
-              autocomplete="new-password"
-              formControlName="confirmPassword"
-            />
-            <button
-              mat-icon-button
-              matIconSuffix
-              (click)="toggleHideConfirm()"
-              [attr.aria-label]="'Hide password'"
-              [attr.aria-pressed]="hideConfirm()"
-            >
-              <mat-icon>{{
-                hideConfirm() ? 'visibility_off' : 'visibility'
-              }}</mat-icon>
-            </button>
-            @if (passwordForm.errors?.['mismatch']) {
-              <mat-error> Passwords do not match. </mat-error>
-            }
-          </mat-form-field>
-          <button
-            mat-raised-button
-            class="btn-primary"
-            type="submit"
-            [disabled]="
-              passwordForm.invalid ||
-              passwordForm.controls['confirmPassword'].value === ''
-            "
-            (click)="onSubmitPassword()"
-          >
-            Change Password
-          </button>
-        </form>
-      }
-      <a
-        mat-raised-button
-        class="btn-danger"
-        [routerLink]="['/auth', 'delete-account']"
-        data-testid="delete-account-button"
-        aria-label="Delete account"
-      >
-        Delete Account
-      </a>
-      @if (isAdmin()) {
+  <div
+    class="account-layout"
+    [class.mobile]="isMobile()"
+    data-testid="account-layout"
+  >
+    @if (!isMobile() || !isChildActive()) {
+      <nav class="account-sidebar" data-testid="account-sidebar">
         <a
-          mat-raised-button
-          class="btn-secondary mt-2"
-          [routerLink]="['/admin']"
-          data-testid="admin-stats-button"
-          aria-label="Go to admin area"
+          mat-flat-button
+          routerLink="profile"
+          routerLinkActive="active-link"
+          data-testid="nav-profile"
+          aria-label="Profile"
+          ><mat-icon fontSet="material-symbols-outlined">person</mat-icon>
+          Profile</a
         >
-          Admin
-        </a>
-      }
-    </mat-tab>
-    <mat-tab label="Payment Services" data-testid="payment-services-tab">
-      <h4 data-testid="payment-services-title">Payment Service IDs</h4>
-      <form
-        [formGroup]="paymentsForm"
-        class="container payments"
-        data-testid="payments-form"
-        aria-label="Payment service IDs form"
-      >
-        <mat-form-field data-testid="venmo-field">
-          <mat-label>Venmo</mat-label>
-          <input
-            matInput
-            formControlName="venmoId"
-            data-testid="venmo-input"
-            aria-label="Venmo ID"
-          />
-        </mat-form-field>
-        <mat-form-field data-testid="paypal-field">
-          <mat-label>PayPal</mat-label>
-          <input
-            matInput
-            formControlName="paypalId"
-            data-testid="paypal-input"
-            aria-label="PayPal ID"
-          />
-        </mat-form-field>
-        <mat-form-field data-testid="cashapp-field">
-          <mat-label>CashApp</mat-label>
-          <input
-            matInput
-            formControlName="cashAppId"
-            data-testid="cashapp-input"
-            aria-label="CashApp ID"
-          />
-        </mat-form-field>
-        <mat-form-field data-testid="zelle-field">
-          <mat-label>Zelle</mat-label>
-          <input
-            matInput
-            formControlName="zelleId"
-            data-testid="zelle-input"
-            aria-label="Zelle ID"
-          />
-        </mat-form-field>
-        <button
-          mat-raised-button
-          class="btn-primary"
-          type="submit"
-          [disabled]="paymentsForm.pristine"
-          (click)="onSubmitPayments()"
-          data-testid="save-payments-button"
-          aria-label="Save payment service IDs"
-        >
-          Save
-        </button>
-      </form>
-    </mat-tab>
-    <mat-tab label="Receipt Policy" data-testid="receipt-policy-tab">
-      <div
-        class="container receipt-policy"
-        data-testid="receipt-policy-content"
-      >
-        <h4 data-testid="receipt-policy-title">Receipt Retention Policy</h4>
-        <p data-testid="policy-text-1">
-          PipSplit retains receipts for 90 days from the expense date. After 90
-          days have passed and all expense splits are marked as paid, receipts
-          are permanently deleted from our servers and cannot be recovered.
-        </p>
-        <p data-testid="policy-text-2">
-          If you wish to keep a copy of your receipts, please save a copy
-          elsewhere.
-        </p>
-
-        @if (user()?.receiptPolicy) {
-          <div class="policy-accepted" data-testid="policy-accepted">
-            <mat-icon class="check-icon">check_circle</mat-icon>
-            <span>You have accepted the receipt retention policy.</span>
-          </div>
-        } @else {
-          <div class="policy-acceptance" data-testid="policy-acceptance">
-            <p data-testid="acceptance-prompt">
-              By checking the box below, you confirm that you understand and
-              accept this receipt retention policy.
-            </p>
-            <div class="policy-controls" data-testid="policy-controls">
-              <mat-checkbox
-                [(ngModel)]="receiptPolicyAcknowledged"
-                data-testid="policy-checkbox"
-              >
-                I acknowledge and accept the receipt retention policy.
-              </mat-checkbox>
-              <button
-                mat-raised-button
-                class="btn-primary mt-2"
-                type="button"
-                [disabled]="!receiptPolicyAcknowledged()"
-                (click)="acceptReceiptPolicy()"
-                data-testid="accept-policy-button"
-                aria-label="Accept receipt retention policy"
-              >
-                Accept Policy
-              </button>
-            </div>
-          </div>
+        @if (!isGoogleUser()) {
+          <a
+            mat-flat-button
+            routerLink="security"
+            routerLinkActive="active-link"
+            data-testid="nav-security"
+            aria-label="Security"
+            ><mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
+            Password</a
+          >
         }
+        <a
+          mat-flat-button
+          routerLink="payments"
+          routerLinkActive="active-link"
+          data-testid="nav-payments"
+          aria-label="Payments"
+          ><mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
+          Payments</a
+        >
+        <!-- <a
+          mat-flat-button
+          routerLink="preferences"
+          routerLinkActive="active-link"
+          data-testid="nav-preferences"
+          aria-label="Preferences"
+          ><mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
+          Preferences</a
+        > -->
+        <a
+          mat-flat-button
+          routerLink="legal"
+          routerLinkActive="active-link"
+          data-testid="nav-legal"
+          aria-label="Legal"
+          ><mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
+          Legal</a
+        >
+        @if (isAdmin()) {
+          <a
+            mat-flat-button
+            routerLink="/admin"
+            routerLinkActive="active-link"
+            data-testid="nav-admin"
+            aria-label="Go to admin area"
+            ><mat-icon fontSet="material-symbols-outlined"
+              >admin_panel_settings</mat-icon
+            >
+            Admin</a
+          >
+        }
+      </nav>
+    }
+    @if (!isMobile() || isChildActive()) {
+      <div class="account-content" data-testid="account-content">
+        @if (isMobile()) {
+          <button
+            mat-icon-button
+            (click)="navigateToList()"
+            aria-label="Back to account settings"
+            data-testid="back-button"
+          >
+            <mat-icon>arrow_back</mat-icon>
+          </button>
+        }
+        <router-outlet />
       </div>
-    </mat-tab>
-  </mat-tab-group>
+    }
+  </div>
 </div>

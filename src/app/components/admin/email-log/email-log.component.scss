@@ -1,9 +1,15 @@
 .log-controls {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 0.5rem;
+}
+
+::ng-deep .mdc-evolution-chip-set__chips {
+  display: flex;
+  justify-content: center;
 }
 
 // State filter chips
@@ -17,10 +23,20 @@
     font-weight: 600;
   }
 
-  &--success    { background-color: var(--primary) !important; }
-  &--error      { background-color: var(--error) !important; }
-  &--retry      { background-color: var(--tertiary) !important; }
-  &--pending, &--processing, &--all { background-color: var(--surface-variant) !important; }
+  &--success {
+    background-color: var(--primary) !important;
+  }
+  &--error {
+    background-color: var(--error) !important;
+  }
+  &--retry {
+    background-color: var(--tertiary) !important;
+  }
+  &--pending,
+  &--processing,
+  &--all {
+    background-color: var(--surface-variant) !important;
+  }
 }
 
 // Inline state badges in the table
@@ -32,11 +48,38 @@
   font-weight: 600;
   white-space: nowrap;
 
-  &--success    { background-color: var(--primary);      color: var(--on-primary); }
-  &--error      { background-color: var(--error);        color: var(--on-error); }
-  &--retry      { background-color: var(--tertiary);     color: var(--on-tertiary); }
-  &--pending    { background-color: var(--surface-variant); color: var(--on-surface); }
-  &--processing { background-color: var(--secondary);    color: var(--on-secondary); }
+  &--success {
+    background-color: var(--primary);
+    color: var(--on-primary);
+  }
+  &--error {
+    background-color: var(--error);
+    color: var(--on-error);
+  }
+  &--retry {
+    background-color: var(--tertiary);
+    color: var(--on-tertiary);
+  }
+  &--pending {
+    background-color: var(--surface-variant);
+    color: var(--on-surface);
+  }
+  &--processing {
+    background-color: var(--secondary);
+    color: var(--on-secondary);
+  }
+}
+
+.table-container {
+  max-width: 97.5vw;
+}
+
+.compact-table {
+  --mat-table-row-item-horizontal-inset: 8px;
+}
+
+.recipient-cell {
+  word-break: break-all;
 }
 
 .error-cell {

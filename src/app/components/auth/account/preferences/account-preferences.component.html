@@ -1,0 +1,38 @@
+<div class="container" data-testid="preferences-container">
+  <h4 data-testid="preferences-title">Preferences</h4>
+  <form
+    [formGroup]="groupForm"
+    class="container"
+    data-testid="preferences-form"
+    aria-label="Preferences form"
+  >
+    <mat-form-field data-testid="default-group-field">
+      <mat-label>Default Group</mat-label>
+      <mat-select
+        formControlName="groupRef"
+        docRefCompare
+        data-testid="default-group-select"
+        aria-label="Default group"
+      >
+        <mat-option [value]="null">-- None --</mat-option>
+        @for (group of activeUserGroups(); track group.ref) {
+          <mat-option [value]="group.ref">{{ group.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p class="helper-text" data-testid="default-group-hint">
+      The selected group will be automatically loaded when you open PipSplit.
+    </p>
+    <button
+      mat-raised-button
+      class="btn-primary"
+      type="submit"
+      [disabled]="groupForm.pristine"
+      (click)="onSubmitGroup()"
+      data-testid="save-preferences-button"
+      aria-label="Save preferences"
+    >
+      Save
+    </button>
+  </form>
+</div>

@@ -6,7 +6,7 @@
   </div>
 
   <div class="log-controls">
-    <mat-chip-set aria-label="Filter by delivery state">
+    <mat-chip-set aria-label="Filter by delivery state" class="center-chips">
       @for (filter of stateFilters; track filter) {
         <mat-chip
           [class]="'state-chip state-chip--' + filter.toLowerCase()"
@@ -51,17 +51,23 @@
           [dataSource]="filteredDocuments()"
           multiTemplateDataRows
           class="expandable-table"
+          [class.compact-table]="isMobile()"
         >
           <ng-container matColumnDef="dateTime">
             <th mat-header-cell *matHeaderCellDef>Date / Time</th>
             <td mat-cell *matCellDef="let row">
-              {{ row.delivery?.startTime?.toDate() | date: 'MM/dd/yy, h:mm a' }}
+              {{ row.delivery?.startTime?.toDate() | date: 'MM/dd/yy,' }}<br />
+              {{ row.delivery?.startTime?.toDate() | date: 'h:mm a' }}
             </td>
           </ng-container>
 
           <ng-container matColumnDef="recipient">
             <th mat-header-cell *matHeaderCellDef>Recipient</th>
-            <td mat-cell *matCellDef="let row">
+            <td
+              mat-cell
+              *matCellDef="let row"
+              [class.recipient-cell]="isMobile()"
+            >
               {{ formatRecipient(row.to) }}
             </td>
           </ng-container>
@@ -106,7 +112,7 @@
             <td
               mat-cell
               *matCellDef="let row"
-              [colSpan]="columnsToDisplay.length"
+              [colSpan]="columnsToDisplay().length"
             >
               @if (row === expandedRow()) {
                 <div
@@ -163,11 +169,11 @@
 
           <tr
             mat-header-row
-            *matHeaderRowDef="columnsToDisplay; sticky: true"
+            *matHeaderRowDef="columnsToDisplay(); sticky: true"
           ></tr>
           <tr
             mat-row
-            *matRowDef="let row; columns: columnsToDisplay"
+            *matRowDef="let row; columns: columnsToDisplay()"
             class="summary-row clickable-row expandable-row"
             [class.expanded-row]="row === expandedRow()"
             (click)="onRowClick(row)"
@@ -178,7 +184,7 @@
             class="detail-row"
           ></tr>
           <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell" [colSpan]="columnsToDisplay.length">
+            <td class="mat-cell" [colSpan]="columnsToDisplay().length">
               No emails found.
             </td>
           </tr>
