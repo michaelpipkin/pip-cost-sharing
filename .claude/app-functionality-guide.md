@@ -162,26 +162,104 @@ The application has three distinct user states that affect navigation:
 - [ ] Invalid or expired token shows error
 - [ ] User is redirected to login after successful reset
 
-### Account Page (`/auth/account`)
-**Route**: `/auth/account`
+### Account Module (`/auth/account`)
+**Route**: `/auth/account` (container) with child routes for each section
 **Guard**: `basicAuthGuard` (requires authentication)
 
+**Architecture**: The account module is a multi-page layout with a sidebar-nav shell (`AccountComponent`) rendered inside the `AuthMainComponent` wrapper which displays a "My Account" heading and divider. Child routes are loaded into a `<router-outlet>` inside the shell.
+
+**Shell Behavior**:
+- Desktop (≥768px): sidebar + content side-by-side. Automatically navigates to `profile` when landing at `/auth/account` with no child active.
+- Mobile (<768px): shows sidebar list OR content, never both. A back button in the content area returns to the nav list.
+- Email verification banner appears across all sections for unverified non-Google users.
+- Sidebar is only shown when the user has a Google account or has confirmed their email.
+
+**Sidebar Navigation Items**:
+- **Profile** (`/auth/account/profile`) — always shown
+- **Password** (`/auth/account/security`) — hidden for Google users (they manage credentials via Google)
+- **Payments** (`/auth/account/payments`) — always shown
+- **Legal** (`/auth/account/legal`) — always shown
+- **Admin** (routes to `/admin`) — shown only for the app owner
+
+---
+
+### Account Profile (`/auth/account/profile`)
+
 **Functionality**:
-- Display user information (email, display name)
-- Change display name
-- Change email
-- Change password
-- Delete account option
-- Email verification status
-- Send verification email button
+- **Google users**: Informational note explaining that email/password are managed through Google account settings. Delete Account button.
+- **Email/password users**: Email address form with Verify Email and Update Email buttons. Sync Member Emails section (only when email is confirmed). Delete Account button (only when Google user or email confirmed).
+
+**Key Behaviors**:
+- `verifyEmail()`: Sends a Firebase verification email; shows confirmation or error snackbar.
+- `onSubmitEmail()`: Calls `updateEmail` (Firebase) only when the email field value differs from the current Firebase user email; on success triggers email verification; handles `auth/email-already-in-use` error distinctly.
+- `syncMemberEmails()`: Calls `MemberService.updateAllMemberEmails()` to update all Firestore member records linked to the user with the current email; shows updated count in snackbar.
 
 **Testable Behaviors**:
-- [ ] Display name can be updated
-- [ ] Email can be updated (may require re-authentication)
-- [ ] Password can be changed
-- [ ] Delete account flow works (with confirmation)
-- [ ] Email verification email can be sent
-- [ ] Unverified email shows appropriate warning
+- [ ] Google users see info note, no email form, and Delete Account button
+- [ ] Non-Google unconfirmed users see email form, enabled Verify Email button, no Sync Member Emails, no Delete Account
+- [ ] Non-Google confirmed users see email form, Sync Member Emails section, and Delete Account button
+- [ ] Verify Email button is disabled when email is already verified
+- [ ] Update Email button calls Firebase updateEmail then sends verification email
+- [ ] Email-already-in-use error shows specific message
+- [ ] Sync Member Emails shows count of updated records
+- [ ] Sync Member Emails shows "No member records needed updating" when already in sync
+- [ ] Errors in sync show error snackbar and log analytics event
+
+---
+
+### Account Security (`/auth/account/security`)
+**Note**: Only accessible/visible for non-Google users (Google users manage credentials through Google).
+
+**Functionality**:
+- Change password form: current password, new password, confirm new password, with show/hide toggles for each field.
+
+**Testable Behaviors**:
+- [ ] Form validation (required fields, passwords match)
+- [ ] Password can be changed successfully
+- [ ] Mismatched passwords show validation error
+- [ ] Incorrect current password shows error message
+
+---
+
+### Account Payments (`/auth/account/payments`)
+
+**Functionality**:
+- Input fields for payment service handles: Venmo, PayPal, Zelle, CashApp.
+- These handles are displayed to other members in the Payment Confirmation dialog on the Summary page when settling debts.
+
+**Testable Behaviors**:
+- [ ] Payment handle fields can be filled in and saved
+- [ ] Saved handles appear in the Summary payment dialog
+- [ ] Fields can be cleared (remove a handle)
+
+---
+
+### Account Legal (`/auth/account/legal`)
+
+**Functionality**:
+- Displays the receipt retention policy text.
+- Users can acknowledge/accept the policy.
+
+**Testable Behaviors**:
+- [ ] Policy text is displayed
+- [ ] Accept policy action saves acknowledgement
+- [ ] Accepted state is persisted and shown on return visit
+
+---
+
+### Account Module — Shell-level Testable Behaviors
+
+- [ ] Navigating to `/auth/account` on desktop auto-redirects to `/auth/account/profile`
+- [ ] Sidebar displays Profile, Payments, Legal for all authenticated users
+- [ ] Sidebar hides Password section for Google users
+- [ ] Sidebar shows Admin link only for the app owner email
+- [ ] On mobile, sidebar and content are never shown simultaneously
+- [ ] On mobile, tapping a section hides the sidebar and shows the content area
+- [ ] On mobile, back button in content area returns to the sidebar list
+- [ ] Email verification banner visible for unverified non-Google users on all sections
+- [ ] Email verification banner hidden for Google users
+- [ ] Email verification banner hidden once email is confirmed
+- [ ] "My Account" heading and icon visible in the auth-main wrapper
 
 ### Account Action Page (`/auth/account-action`)
 **Route**: `/auth/account-action`

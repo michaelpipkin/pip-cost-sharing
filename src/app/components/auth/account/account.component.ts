@@ -41,6 +41,7 @@ export class AccountComponent {
   protected readonly route = inject(ActivatedRoute);
   protected readonly breakpointObserver = inject(BreakpointObserver);
 
+  isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
 

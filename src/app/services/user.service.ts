@@ -81,13 +81,11 @@ export class UserService implements IUserService {
                 ...userData,
                 id: firebaseUser.uid,
               });
-              this.userStore.setUser(user);
-              this.userStore.setIsDemoMode(false);
-
-              this.userStore.setIsGoogleUser(
-                firebaseUser.providerData[0]?.providerId === 'google.com'
+              this.userStore.initUser(
+                user,
+                firebaseUser.providerData[0]?.providerId === 'google.com',
+                !!firebaseUser.emailVerified
               );
-              this.userStore.setIsEmailConfirmed(!!firebaseUser.emailVerified);
               await this.groupService.getUserGroups(user);
             } catch (error) {
               this.analytics.logEvent('error', {
