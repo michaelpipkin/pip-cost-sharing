@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="ad.size" content="width=480,height=320">
+  <title>PipSplit</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 480px; height: 320px; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer; background: #a3c498; position: relative;
+      border: 1px solid rgba(0,0,0,0.12);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── FRAMES ─────────────────────────────────────────── */
+    .frame {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: row;
+      align-items: stretch;
+      background: #a3c498;
+      padding-bottom: 68px;
+      opacity: 0; transition: opacity 0.45s ease;
+    }
+    .frame.active { opacity: 1; }
+
+    /* Shared column structure */
+    .col-left, .col-right {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .col-left  { width: 192px; padding: 20px 16px; }
+    .col-right { flex: 1;     padding: 20px 16px; }
+    .col-left  { border-right: 1px solid rgba(29,74,26,0.2); }
+
+    /* ── SHARED ──────────────────────────────────────────── */
+    .logo, .cta-logo { display: block; }
+    .logo     { margin-bottom: 6px; }
+    .cta-logo { margin: 8px 0 6px; }
+
+    /* ── INTRO ───────────────────────────────────────────── */
+    #intro .pip-title {
+      font-size: 38px; font-weight: 800; color: #111;
+      letter-spacing: -1px; line-height: 1; margin-top: 8px;
+    }
+    #intro .tagline {
+      font-size: 16px; font-weight: 800; color: #111;
+      text-align: center; line-height: 1.3; margin-bottom: 14px;
+    }
+    #intro .bullets { list-style: none; width: 100%; }
+    #intro .bullets li {
+      font-size: 12px; font-weight: 600; color: #1a2e1a;
+      padding: 5px 0; border-bottom: 1px solid rgba(29,74,26,0.15);
+      display: flex; align-items: center; gap: 6px;
+    }
+    #intro .bullets li:last-child { border-bottom: none; }
+    #intro .bullets .chk {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #2d6b21; color: white; font-size: 9px;
+      flex-shrink: 0;
+    }
+
+    /* ── DEMO ────────────────────────────────────────────── */
+    #demo .demo-tagline {
+      font-size: 13px; font-weight: 800; color: #111;
+      text-align: center; line-height: 1.3; margin-bottom: 10px;
+    }
+    #demo .demo-note {
+      font-size: 11px; font-weight: 700; color: #1a3a1a; text-align: center;
+    }
+    #demo .card {
+      width: 240px; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 3px 16px rgba(0,0,0,0.22);
+    }
+    #demo .card-hd {
+      background: #1d4a1a; color: white; text-align: center;
+      padding: 7px 10px; font-size: 13px; font-weight: 700;
+    }
+    #demo .card-body { background: #f0f2e8; }
+    #demo .row {
+      display: flex; justify-content: space-between;
+      padding: 7px 12px; font-size: 12px; color: #1a2e1a;
+      border-bottom: 1px solid #dce8d4;
+    }
+    #demo .row:nth-child(even) { background: #e8f5e3; }
+    #demo .row .name { font-weight: 600; }
+    #demo .row .amt  { font-weight: 700; color: #1d4a1a; }
+    #demo .card-ft {
+      background: #1d4a1a; display: flex; justify-content: space-between;
+      padding: 7px 12px; font-size: 12px; font-weight: 700; color: white;
+    }
+
+    /* ── CTA ─────────────────────────────────────────────── */
+    #cta .cta-head {
+      font-size: 32px; font-weight: 800; color: #111;
+      text-align: center; line-height: 1.1; margin-bottom: 8px;
+    }
+    #cta .cta-tag {
+      font-size: 12px; font-weight: 600; color: #222;
+      text-align: center;
+    }
+  </style>
+</head>
+<body onclick="window.open(window.clickTag)">
+<script>var clickTag = "https://play.google.com/store/apps/details?id=com.pipsplit.app";</script>
+
+<!-- ── FRAME 1: INTRO ──────────────────────────────────── -->
+<div id="intro" class="frame active">
+  <div class="col-left">
+    <img class="logo" src="__ICON_DATA_URI__" width="80" height="80" alt="PipSplit">
+    <div class="pip-title">PipSplit</div>
+  </div>
+  <div class="col-right">
+    <div class="tagline">Fair Expense Splitting,<br>Made Easy</div>
+    <ul class="bullets">
+      <li><span class="chk">&#10003;</span>Track expenses for unlimited groups</li>
+      <li><span class="chk">&#10003;</span>See who owes what at a glance</li>
+      <li><span class="chk">&#10003;</span>No account needed to split a bill</li>
+      <li><span class="chk">&#10003;</span>Free — no subscriptions</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ── FRAME 2: DEMO ──────────────────────────────────── -->
+<div id="demo" class="frame">
+  <div class="col-left">
+    <div class="demo-tagline">Split any expense<br>in seconds</div>
+    <div class="demo-note">No account needed!</div>
+  </div>
+  <div class="col-right">
+    <div class="card">
+      <div class="card-hd">Split Expense</div>
+      <div class="card-body">
+        <div class="row"><span class="name">Alice</span><span class="amt">$20.74</span></div>
+        <div class="row"><span class="name">Bob</span><span class="amt">$21.85</span></div>
+        <div class="row"><span class="name">Charlie</span><span class="amt">$22.74</span></div>
+      </div>
+      <div class="card-ft"><span>Total</span><span>$65.33</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FRAME 3: CTA ───────────────────────────────────── -->
+<div id="cta" class="frame">
+  <div class="col-left">
+    <div class="cta-head">Try<br>PipSplit<br>Today!</div>
+    <div class="cta-tag">Fair Expense Splitting,<br>Made Easy</div>
+  </div>
+  <div class="col-right">
+    <img class="cta-logo" src="__ICON_DATA_URI__" width="68" height="68" alt="PipSplit">
+  </div>
+</div>
+
+<script>
+  var f = ['intro', 'demo', 'cta'];
+  function show(i) {
+    f.forEach(function(id, j) {
+      document.getElementById(id).classList.toggle('active', j === i);
+    });
+  }
+  setTimeout(function() { show(1); }, 3200);
+  setTimeout(function() { show(2); }, 6400);
+  setInterval(function() {
+    show(0);
+    setTimeout(function() { show(1); }, 3200);
+    setTimeout(function() { show(2); }, 6400);
+  }, 9600);
+</script>
+</body>
+</html>

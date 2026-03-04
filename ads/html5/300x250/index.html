@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="ad.size" content="width=300,height=250">
+  <title>PipSplit</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 300px; height: 250px; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer; background: #a3c498; position: relative;
+      border: 1px solid rgba(0,0,0,0.12);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── FRAMES ─────────────────────────────────────────── */
+    .frame {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #a3c498; padding: 14px;
+      opacity: 0; transition: opacity 0.45s ease;
+    }
+    .frame.active { opacity: 1; }
+
+    /* ── SHARED ──────────────────────────────────────────── */
+    .logo, .cta-logo { display: block; }
+    .logo     { margin: 8px 0 6px; }
+    .cta-logo { margin: 0 0 5px; }
+    .play-badge { display: block; }
+
+    /* ── INTRO ───────────────────────────────────────────── */
+    #intro .pip-title {
+      font-size: 40px; font-weight: 800; color: #111;
+      letter-spacing: -1px; line-height: 1;
+    }
+    #intro .tagline {
+      font-size: 12px; font-weight: 700; color: #1a2e1a;
+      text-align: center;
+    }
+
+    /* ── DEMO ────────────────────────────────────────────── */
+    #demo .card {
+      width: 245px; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 3px 16px rgba(0,0,0,0.22);
+    }
+    #demo .card-hd {
+      background: #1d4a1a; color: white; text-align: center;
+      padding: 7px 10px; font-size: 13px; font-weight: 700;
+    }
+    #demo .card-body { background: #f0f2e8; }
+    #demo .row {
+      display: flex; justify-content: space-between;
+      padding: 6px 12px; font-size: 12px; color: #1a2e1a;
+      border-bottom: 1px solid #dce8d4;
+    }
+    #demo .row:nth-child(even) { background: #e8f5e3; }
+    #demo .row .name { font-weight: 600; }
+    #demo .row .amt  { font-weight: 700; color: #1d4a1a; }
+    #demo .card-ft {
+      background: #1d4a1a; display: flex; justify-content: space-between;
+      padding: 6px 12px; font-size: 12px; font-weight: 700; color: white;
+    }
+    #demo .note {
+      margin-top: 8px; font-size: 10px; font-weight: 700;
+      color: #1a3a1a; text-align: center;
+    }
+
+    /* ── CTA ─────────────────────────────────────────────── */
+    #cta .cta-head {
+      font-size: 27px; font-weight: 800; color: #111;
+      text-align: center; line-height: 1.15; margin-bottom: 4px;
+    }
+    #cta .cta-tag {
+      font-size: 11px; font-weight: 600; color: #222;
+      text-align: center; margin-bottom: 8px;
+    }
+    #cta .site {
+      font-size: 10px; font-weight: 700; color: #1a3a1a; margin-top: 4px;
+    }
+    #cta.active .play-badge {
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.04); }
+    }
+  </style>
+</head>
+<body onclick="window.open(window.clickTag)">
+<script>var clickTag = "https://play.google.com/store/apps/details?id=com.pipsplit.app";</script>
+
+<!-- ── FRAME 1: INTRO ──────────────────────────────────── -->
+<div id="intro" class="frame active">
+  <div class="pip-title">PipSplit</div>
+  <img class="logo" src="__ICON_DATA_URI__" width="76" height="76" alt="PipSplit">
+  <div class="tagline">Fair Expense Splitting, Made Easy</div>
+</div>
+
+<!-- ── FRAME 2: DEMO ──────────────────────────────────── -->
+<div id="demo" class="frame">
+  <div class="card">
+    <div class="card-hd">Split Expense</div>
+    <div class="card-body">
+      <div class="row"><span class="name">Alice</span><span class="amt">$20.74</span></div>
+      <div class="row"><span class="name">Bob</span><span class="amt">$21.85</span></div>
+      <div class="row"><span class="name">Charlie</span><span class="amt">$22.74</span></div>
+    </div>
+    <div class="card-ft"><span>Total</span><span>$65.33</span></div>
+  </div>
+  <div class="note">No account needed to split a single expense!</div>
+</div>
+
+<!-- ── FRAME 3: CTA ───────────────────────────────────── -->
+<div id="cta" class="frame">
+  <div class="cta-head">Try PipSplit<br>Today!</div>
+  <img class="cta-logo" src="__ICON_DATA_URI__" width="52" height="52" alt="PipSplit">
+  <div class="cta-tag">Fair Expense Splitting, Made Easy</div>
+  <img class="play-badge" src="__BADGE_DATA_URI__" width="155" height="60" alt="Get it on Google Play">
+  <div class="site">pipsplit.com</div>
+</div>
+
+<script>
+  var f = ['intro', 'demo', 'cta'];
+  function show(i) {
+    f.forEach(function(id, j) {
+      document.getElementById(id).classList.toggle('active', j === i);
+    });
+  }
+  setTimeout(function() { show(1); }, 3200);
+  setTimeout(function() { show(2); }, 6400);
+  setInterval(function() {
+    show(0);
+    setTimeout(function() { show(1); }, 3200);
+    setTimeout(function() { show(2); }, 6400);
+  }, 9600);
+</script>
+</body>
+</html>
