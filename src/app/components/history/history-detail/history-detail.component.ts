@@ -411,8 +411,10 @@ export class HistoryDetailComponent {
       groupName: this.currentGroup()!.name,
       paidByName: h.paidByMember?.displayName ?? '',
       paidByEmail: h.paidByMember?.email ?? '',
+      paidByMemberRefPath: h.paidByMemberRef?.path ?? null,
       paidToName: h.paidToMember?.displayName ?? '',
       paidToEmail: h.paidToMember?.email ?? '',
+      paidToMemberRefPath: h.paidToMemberRef?.path ?? null,
       formattedAmount: this.localeService.formatCurrency(h.totalPaid),
       splitCount: h.splitsPaid?.length ?? 0,
     });
@@ -423,18 +425,23 @@ export class HistoryDetailComponent {
       this.functions,
       'sendGroupSettleUnpayNotification'
     );
-    const memberMap = new Map<string, { displayName: string; email: string }>();
+    const memberMap = new Map<
+      string,
+      { displayName: string; email: string; memberRefPath: string | null }
+    >();
     for (const transfer of this.batchTransfers()) {
       if (transfer.paidByMember) {
         memberMap.set(transfer.paidByMemberRef.path, {
           displayName: transfer.paidByMember.displayName,
           email: transfer.paidByMember.email,
+          memberRefPath: transfer.paidByMemberRef?.path ?? null,
         });
       }
       if (transfer.paidToMember) {
         memberMap.set(transfer.paidToMemberRef.path, {
           displayName: transfer.paidToMember.displayName,
           email: transfer.paidToMember.email,
+          memberRefPath: transfer.paidToMemberRef?.path ?? null,
         });
       }
     }
