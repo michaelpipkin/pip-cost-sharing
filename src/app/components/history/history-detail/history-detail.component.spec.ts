@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { getFunctions } from 'firebase/functions';
 import { HistoryDetailComponent } from './history-detail.component';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -127,6 +128,7 @@ describe('HistoryDetailComponent', () => {
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: getFunctions, useValue: {} },
       ],
     }).compileComponents();
 

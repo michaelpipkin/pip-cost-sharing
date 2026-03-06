@@ -10,7 +10,7 @@ This document captures ideas and rough plans for future features. Items are not 
 2. [Admin Module Expansion](#admin-module-expansion) ✅ *implemented and production validated*
 3. [Account Page Redesign](#account-page-redesign) ✅ *implemented and production validated*
 4. [Group Settle History — Show Splits and Allow Full Unpay](#group-settle-history--show-splits-and-allow-full-unpay) ✅ *implemented — pending production validation*
-5. [Unpay Notification Emails](#unpay-notification-emails)
+5. [Unpay Notification Emails](#unpay-notification-emails) ✅ *implemented — pending production validation*
 
 ---
 
@@ -441,6 +441,9 @@ Unpaying a group settle should trigger notification emails. See [Unpay Notificat
 ---
 
 ## Unpay Notification Emails
+
+> **Status: ✅ Implemented — pending production validation.**
+> Implementation complete as of March 2026. Two `onCall` Cloud Functions added (`sendMemberPaymentUnpayNotification`, `sendGroupSettleUnpayNotification`). History detail component calls them (best-effort, non-blocking) before each unpay write. Single-split unpay (`onUnpaySplit`) intentionally excluded per spec.
 
 ### Motivation
 

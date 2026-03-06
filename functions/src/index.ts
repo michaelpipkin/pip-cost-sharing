@@ -888,6 +888,104 @@ async function handleMemberPaymentEmail(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Unpay notification email onCall functions
+// ---------------------------------------------------------------------------
+
+export const sendMemberPaymentUnpayNotification = onCall<{
+  groupName: string;
+  paidByName: string;
+  paidByEmail: string;
+  paidToName: string;
+  paidToEmail: string;
+  formattedAmount: string;
+  splitCount: number;
+}>(async (request) => {
+  const {
+    groupName,
+    paidByName,
+    paidByEmail,
+    paidToName,
+    paidToEmail,
+    formattedAmount,
+    splitCount,
+  } = request.data;
+  const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
+  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+
+  if (paidByEmail) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: paidByEmail,
+        message: {
+          subject: `A payment from you to ${paidToName} in PipSplit has been reversed`,
+          text: [
+            `Hi ${paidByName},`,
+            '',
+            `A payment of ${formattedAmount} from you to ${paidToName} in the group "${groupName}" has been reversed in PipSplit.`,
+            '',
+            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  if (paidToEmail) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: paidToEmail,
+        message: {
+          subject: `A payment from ${paidByName} to you in PipSplit has been reversed`,
+          text: [
+            `Hi ${paidToName},`,
+            '',
+            `A payment of ${formattedAmount} from ${paidByName} to you in the group "${groupName}" has been reversed in PipSplit.`,
+            '',
+            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Member payment unpay emails sent: payer="${paidByEmail}", payee="${paidToEmail}"`
+  );
+});
+
+export const sendGroupSettleUnpayNotification = onCall<{
+  groupName: string;
+  settleDate: string;
+  members: { displayName: string; email: string }[];
+}>(async (request) => {
+  const { groupName, settleDate, members } = request.data;
+
+  const mailWrites = members
+    .filter((m) => !!m.email)
+    .map((m) =>
+      db.collection('mail').add({
+        to: m.email,
+        message: {
+          subject: `The group settle for "${groupName}" has been reversed in PipSplit`,
+          text: [
+            `Hi ${m.displayName},`,
+            '',
+            `A group admin has reversed the group settlement for "${groupName}" that was recorded on ${settleDate}.`,
+            '',
+            'All outstanding balances have been restored. Please check your current balance in PipSplit.',
+          ].join('\n'),
+        },
+      })
+    );
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Group settle unpay emails sent for "${groupName}" (${settleDate}): ${mailWrites.length} email(s)`
+  );
+});
+
 async function handleSettleEmail(
   data: admin.firestore.DocumentData,
   groupRef: admin.firestore.DocumentReference,

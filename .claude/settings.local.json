@@ -46,7 +46,8 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(''exports:'', json.dumps\\(d.get\\(''exports'',{}\\), indent=2\\)[:2000]\\)\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,'':'',v\\) for k,v in d.items\\(\\) if k in [''module'',''main'',''browser'',''exports'',''type'']]\")",
       "Bash(ng test --no-watch --include=\"**/admin-statistics.service.spec.ts\")",
-      "Bash(pnpm ng test --no-watch)"
+      "Bash(pnpm ng test --no-watch)",
+      "Bash(ng test --include=\"**/history-detail/**\")"
     ],
     "deny": [],
     "ask": [],
