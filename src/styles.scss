@@ -267,6 +267,14 @@ body.dark-theme {
   container-type: inline-size;
   container-name: footer;
 
+  &.dev {
+    background-color: rgb(255, 153, 0) !important;
+  }
+
+  &.prod-data {
+    background-color: #f60 !important;
+  }
+
   .footer-left {
     display: flex;
     gap: 0.5rem;
@@ -274,10 +282,14 @@ body.dark-theme {
     align-items: center;
     flex-wrap: nowrap; // Prevent wrapping
 
+    :first-child {
+      padding-left: 0 !important;
+    }
+
     a {
       color: tokens.color('on-primary');
       text-decoration: none;
-      padding: 0 0.5rem 0 0.5rem;
+      padding: 0 0 0 0.15rem;
       height: 1.5rem;
       white-space: nowrap; // Prevent text wrapping within links
     }
@@ -933,10 +945,6 @@ mat-dialog-actions {
 /* ========================================
    UTILITY CLASSES
 ======================================== */
-
-.no-emulation {
-  background-color: #f60 !important;
-}
 
 .primary-link {
   color: tokens.color('primary') !important;
