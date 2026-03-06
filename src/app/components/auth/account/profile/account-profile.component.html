@@ -82,7 +82,23 @@
       }
     </form>
   }
+  <mat-divider class="standard-divider" data-testid="divider1"></mat-divider>
+  <div class="email-notifications" data-testid="email-notifications">
+    <p class="helper-text">
+      When enabled, you will receive email notifications when payments are
+      recorded or reversed.
+    </p>
+    <mat-slide-toggle
+      [checked]="!currentUser()?.emailOptOut"
+      (change)="onToggleEmailOptOut($event)"
+      data-testid="email-notifications-toggle"
+      aria-label="Toggle email notifications"
+    >
+      Receive email notifications
+    </mat-slide-toggle>
+  </div>
   @if (isGoogleUser() || isEmailConfirmed()) {
+    <mat-divider class="standard-divider" data-testid="divider2"></mat-divider>
     <a
       mat-raised-button
       class="btn-danger mt-3"

@@ -39,6 +39,7 @@ import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Component({
   selector: 'app-history-detail',
@@ -71,6 +72,7 @@ export class HistoryDetailComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
+  protected readonly functions = inject(getFunctions);
 
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
@@ -97,11 +99,16 @@ export class HistoryDetailComponent {
   });
 
   isAdmin = computed(() => this.currentMember()?.groupAdmin ?? false);
-  isGroupSettle = computed(
-    () =>
-      !this.history()?.splitsPaid ||
-      (this.history()?.splitsPaid?.length ?? 0) === 0
-  );
+  isGroupSettle = computed(() => !!this.history()?.batchId);
+
+  batchTransfers = computed<History[]>(() => {
+    const batchId = this.history()?.batchId;
+    if (!batchId) return [];
+    return this.historyStore
+      .groupHistory()
+      .filter((h) => h.batchId === batchId)
+      .sort((a, b) => (a.paidByMember?.displayName ?? '').localeCompare(b.paidByMember?.displayName ?? ''));
+  });
 
   categoryTotals = computed<{ category: string; amount: number }[]>(() => {
     const h = this.history();
@@ -110,10 +117,11 @@ export class HistoryDetailComponent {
     for (const split of this.paidSplits()) {
       const category = this.categoryStore.getCategoryByRef(split.categoryRef);
       const categoryName = category?.name ?? 'Unknown';
-      const isPositive = split.owedByMemberRef.eq(h.paidByMemberRef);
-      const contribution = isPositive
+      const contribution = this.isGroupSettle()
         ? split.allocatedAmount
-        : -split.allocatedAmount;
+        : split.owedByMemberRef.eq(h.paidByMemberRef)
+          ? split.allocatedAmount
+          : -split.allocatedAmount;
       totalsMap.set(
         categoryName,
         (totalsMap.get(categoryName) ?? 0) + contribution
@@ -125,7 +133,7 @@ export class HistoryDetailComponent {
   });
 
   splitsColumnsToDisplay = computed<string[]>(() =>
-    this.isAdmin()
+    this.isAdmin() && !this.isGroupSettle()
       ? ['date', 'category', 'amount', 'unpay']
       : ['date', 'category', 'amount']
   );
@@ -183,6 +191,7 @@ export class HistoryDetailComponent {
   }
 
   getSplitDirectedAmount(split: Split): number {
+    if (this.isGroupSettle()) return split.allocatedAmount;
     const h = this.history()!;
     return split.owedByMemberRef.eq(h.paidByMemberRef)
       ? split.allocatedAmount
@@ -231,6 +240,11 @@ export class HistoryDetailComponent {
       if (confirm) {
         this.loading.loadingOn();
         try {
+          await this.notifyMemberPaymentUnpay(h);
+        } catch {
+          // notification failure should not block unpay
+        }
+        try {
           await this.historyService.unpayHistory(h);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Payment marked as unpaid' },
@@ -250,6 +264,63 @@ export class HistoryDetailComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
                 message: 'Something went wrong - could not unpay payment',
+              },
+            });
+          }
+        } finally {
+          this.loading.loadingOff();
+        }
+      }
+    });
+  }
+
+  async onUnpayGroupSettle(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const h = this.history()!;
+    const batchSize = h.batchSize ?? 1;
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Confirm Unpay Group Settle',
+        confirmationText: `This will mark all splits in this group settle as unpaid and delete all ${batchSize} associated history record${batchSize !== 1 ? 's' : ''}. All associated expenses will also be marked as unpaid. This cannot be undone.`,
+        confirmButtonText: 'Unpay',
+        cancelButtonText: 'Cancel',
+      },
+    };
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe(async (confirm) => {
+      if (confirm) {
+        this.loading.loadingOn();
+        try {
+          await this.notifyGroupSettleUnpay(h);
+        } catch {
+          // notification failure should not block unpay
+        }
+        try {
+          await this.historyService.unpayGroupSettle(
+            this.currentGroup()!.id,
+            h.batchId!
+          );
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Group settle marked as unpaid' },
+          });
+          this.goBack();
+        } catch (error) {
+          if (error instanceof Error) {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: { message: error.message },
+            });
+            this.analytics.logEvent('error', {
+              component: this.constructor.name,
+              action: 'unpay_group_settle',
+              message: error.message,
+            });
+          } else {
+            this.snackbar.openFromComponent(CustomSnackbarComponent, {
+              data: {
+                message: 'Something went wrong - could not unpay group settle',
               },
             });
           }
@@ -328,6 +399,56 @@ export class HistoryDetailComponent {
           this.loading.loadingOff();
         }
       }
+    });
+  }
+
+  private async notifyMemberPaymentUnpay(h: History): Promise<void> {
+    const fn = httpsCallable(
+      this.functions,
+      'sendMemberPaymentUnpayNotification'
+    );
+    await fn({
+      groupName: this.currentGroup()!.name,
+      paidByName: h.paidByMember?.displayName ?? '',
+      paidByEmail: h.paidByMember?.email ?? '',
+      paidByMemberRefPath: h.paidByMemberRef?.path ?? null,
+      paidToName: h.paidToMember?.displayName ?? '',
+      paidToEmail: h.paidToMember?.email ?? '',
+      paidToMemberRefPath: h.paidToMemberRef?.path ?? null,
+      formattedAmount: this.localeService.formatCurrency(h.totalPaid),
+      splitCount: h.splitsPaid?.length ?? 0,
+    });
+  }
+
+  private async notifyGroupSettleUnpay(h: History): Promise<void> {
+    const fn = httpsCallable(
+      this.functions,
+      'sendGroupSettleUnpayNotification'
+    );
+    const memberMap = new Map<
+      string,
+      { displayName: string; email: string; memberRefPath: string | null }
+    >();
+    for (const transfer of this.batchTransfers()) {
+      if (transfer.paidByMember) {
+        memberMap.set(transfer.paidByMemberRef.path, {
+          displayName: transfer.paidByMember.displayName,
+          email: transfer.paidByMember.email,
+          memberRefPath: transfer.paidByMemberRef?.path ?? null,
+        });
+      }
+      if (transfer.paidToMember) {
+        memberMap.set(transfer.paidToMemberRef.path, {
+          displayName: transfer.paidToMember.displayName,
+          email: transfer.paidToMember.email,
+          memberRefPath: transfer.paidToMemberRef?.path ?? null,
+        });
+      }
+    }
+    await fn({
+      groupName: this.currentGroup()!.name,
+      settleDate: h.date.toLocaleDateString(),
+      members: [...memberMap.values()],
     });
   }
 

@@ -13,4 +13,5 @@ export interface IHistoryService {
     splitAllocatedAmount: number,
     isPositiveDirection: boolean
   ): Promise<void>;
+  unpayGroupSettle(groupId: string, batchId: string): Promise<void>;
 }

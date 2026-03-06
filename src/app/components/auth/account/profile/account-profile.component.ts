@@ -1,17 +1,6 @@
-import {
-  Component,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -23,6 +12,18 @@ import { UserService } from '@services/user.service';
 import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
+import {
+  Component,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  MatSlideToggleChange,
+  MatSlideToggleModule,
+} from '@angular/material/slide-toggle';
 import {
   User as FirebaseUser,
   getAuth,
@@ -40,7 +41,9 @@ import {
     MatInputModule,
     MatButtonModule,
     MatIconModule,
+    MatSlideToggleModule,
     RouterLink,
+    MatDividerModule,
   ],
 })
 export class AccountProfileComponent {
@@ -132,6 +135,30 @@ export class AccountProfileComponent {
       }
     }
     this.emailForm.enable();
+  }
+
+  async onToggleEmailOptOut(event: MatSlideToggleChange): Promise<void> {
+    try {
+      await this.userService.updateUser({ emailOptOut: !event.checked });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: event.checked
+            ? 'Email notifications enabled'
+            : 'Email notifications disabled',
+        },
+      });
+    } catch (err: any) {
+      this.analytics.logEvent('error', {
+        component: this.constructor.name,
+        action: 'toggle_email_opt_out',
+        message: err.message,
+      });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Something went wrong - preference could not be saved',
+        },
+      });
+    }
   }
 
   async syncMemberEmails(): Promise<void> {

@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   computed,
   effect,
@@ -64,7 +64,7 @@ import { DocumentReference } from 'firebase/firestore';
     DocRefCompareDirective,
   ],
 })
-export class HistoryComponent implements AfterViewInit {
+export class HistoryComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly historyStore = inject(HistoryStore);
@@ -128,6 +128,9 @@ export class HistoryComponent implements AfterViewInit {
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
+    afterNextRender(() => {
+      this.tourService.checkForContinueTour('history');
+    });
     effect(() => {
       if (!this.historyStore.loaded()) {
         this.loading.loadingOn();
@@ -135,10 +138,6 @@ export class HistoryComponent implements AfterViewInit {
         this.loading.loadingOff();
       }
     });
-  }
-
-  ngAfterViewInit(): void {
-    this.tourService.checkForContinueTour('history');
   }
 
   onRowClick(history: History): void {
