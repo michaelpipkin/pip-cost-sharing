@@ -16,3 +16,10 @@
   max-width: 27rem;
   text-align: center;
 }
+
+.email-notifications {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}

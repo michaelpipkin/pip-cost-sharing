@@ -429,6 +429,7 @@ export function createMockHistoryService() {
     deleteHistory: vi.fn(() => Promise.resolve()),
     unpayHistory: vi.fn(() => Promise.resolve()),
     unpaySingleSplitFromHistory: vi.fn(() => Promise.resolve()),
+    unpayGroupSettle: vi.fn(() => Promise.resolve()),
   };
 }
 

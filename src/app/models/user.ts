@@ -14,5 +14,6 @@ export class User {
   zelleId?: string = '';
   language?: string = 'en';
   receiptPolicy?: boolean = false;
+  emailOptOut?: boolean = false;
   ref?: DocumentReference<User>;
 }

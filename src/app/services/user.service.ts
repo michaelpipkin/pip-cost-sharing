@@ -143,6 +143,7 @@ export class UserService implements IUserService {
         email: email,
         defaultGroupRef: null,
         receiptPolicy: false,
+        emailOptOut: false,
         venmoId: '',
         paypalId: '',
         cashAppId: '',

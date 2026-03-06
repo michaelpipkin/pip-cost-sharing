@@ -132,16 +132,26 @@ async function buildCategoryBreakdown(
 
     // Positive if the payer owes this split; negative if the payee owes it
     const contribution =
-      owedByRef.path === payerMemberRef.path ? allocatedAmount : -allocatedAmount;
+      owedByRef.path === payerMemberRef.path
+        ? allocatedAmount
+        : -allocatedAmount;
 
-    totalsMap.set(categoryName, (totalsMap.get(categoryName) ?? 0) + contribution);
+    totalsMap.set(
+      categoryName,
+      (totalsMap.get(categoryName) ?? 0) + contribution
+    );
   }
 
   // Sort alphabetically and format
   return [...totalsMap.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([category, amount]) => {
-      const formatted = formatAmount(amount, currencyCode, currencySymbol, decimalPlaces);
+      const formatted = formatAmount(
+        amount,
+        currencyCode,
+        currencySymbol,
+        decimalPlaces
+      );
       return `  ${category}: ${formatted}`;
     })
     .join('\n');
@@ -809,13 +819,18 @@ async function handleMemberPaymentEmail(
     decimalPlaces
   );
 
-  const splitRefs = (data['splitsPaid'] as admin.firestore.DocumentReference[]) ?? [];
+  const splitRefs =
+    (data['splitsPaid'] as admin.firestore.DocumentReference[]) ?? [];
 
-  // Fetch payee payment methods and category breakdown in parallel
+  // Fetch payer/payee user docs and category breakdown in parallel
+  const payerUserRef = payerData[
+    'userRef'
+  ] as admin.firestore.DocumentReference | null;
   const payeeUserRef = payeeData[
     'userRef'
   ] as admin.firestore.DocumentReference | null;
-  const [payeeUserDoc, categoryBreakdown] = await Promise.all([
+  const [payerUserDoc, payeeUserDoc, categoryBreakdown] = await Promise.all([
+    payerUserRef ? payerUserRef.get() : Promise.resolve(null),
     payeeUserRef ? payeeUserRef.get() : Promise.resolve(null),
     buildCategoryBreakdown(
       splitRefs,
@@ -826,25 +841,29 @@ async function handleMemberPaymentEmail(
     ),
   ]);
 
-  const paymentMethodLines =
-    payeeUserDoc?.exists
-      ? buildPaymentMethodLines(payeeUserDoc.data()!)
-      : '(No payment methods on file)';
+  const paymentMethodLines = payeeUserDoc?.exists
+    ? buildPaymentMethodLines(payeeUserDoc.data()!)
+    : '(No payment methods on file)';
 
   const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
 
   const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
 
-  if (payerEmail) {
+  const payerOptedOut =
+    payerUserDoc?.exists && payerUserDoc.data()!['emailOptOut'] === true;
+  const payeeOptedOut =
+    payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
+
+  if (payerEmail && !payerOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: payerEmail,
         message: {
-          subject: 'You marked a payment as complete in PipSplit',
+          subject: `A payment from you to ${payeeName} in PipSplit has been marked as complete`,
           text: [
             `Hi ${payerName},`,
             '',
-            `You've recorded a payment of ${formattedAmount} to ${payeeName} in the group "${groupName}".`,
+            `A payment of ${formattedAmount} to ${payeeName} has been recorded in the group ${groupName}.`,
             '',
             `Category breakdown:`,
             categoryBreakdown,
@@ -859,16 +878,16 @@ async function handleMemberPaymentEmail(
     );
   }
 
-  if (payeeEmail) {
+  if (payeeEmail && !payeeOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: payeeEmail,
         message: {
-          subject: `${payerName} has marked a payment to you as complete in PipSplit`,
+          subject: `A payment from ${payerName} to you in PipSplit has been marked as complete`,
           text: [
             `Hi ${payeeName},`,
             '',
-            `${payerName} has recorded a payment of ${formattedAmount} to you in the group "${groupName}".`,
+            `A payment of ${formattedAmount} from ${payerName} to you has been recorded in the group ${groupName}.`,
             '',
             `Category breakdown:`,
             categoryBreakdown,
@@ -887,6 +906,168 @@ async function handleMemberPaymentEmail(
     `Member payment emails sent: payer="${payerEmail}", payee="${payeeEmail}"`
   );
 }
+
+// ---------------------------------------------------------------------------
+// Unpay notification email onCall functions
+// ---------------------------------------------------------------------------
+
+export const sendMemberPaymentUnpayNotification = onCall<{
+  groupName: string;
+  paidByName: string;
+  paidByEmail: string;
+  paidByMemberRefPath: string | null;
+  paidToName: string;
+  paidToEmail: string;
+  paidToMemberRefPath: string | null;
+  formattedAmount: string;
+  splitCount: number;
+}>(async (request) => {
+  const {
+    groupName,
+    paidByName,
+    paidByEmail,
+    paidByMemberRefPath,
+    paidToName,
+    paidToEmail,
+    paidToMemberRefPath,
+    formattedAmount,
+    splitCount,
+  } = request.data;
+
+  // Look up opt-out status from user docs via member refs
+  const [paidByMemberDoc, paidToMemberDoc] = await Promise.all([
+    paidByMemberRefPath
+      ? db.doc(paidByMemberRefPath).get()
+      : Promise.resolve(null),
+    paidToMemberRefPath
+      ? db.doc(paidToMemberRefPath).get()
+      : Promise.resolve(null),
+  ]);
+  const [paidByUserDoc, paidToUserDoc] = await Promise.all([
+    paidByMemberDoc?.exists
+      ? (() => {
+          const ref = paidByMemberDoc.data()![
+            'userRef'
+          ] as admin.firestore.DocumentReference | null;
+          return ref ? ref.get() : Promise.resolve(null);
+        })()
+      : Promise.resolve(null),
+    paidToMemberDoc?.exists
+      ? (() => {
+          const ref = paidToMemberDoc.data()![
+            'userRef'
+          ] as admin.firestore.DocumentReference | null;
+          return ref ? ref.get() : Promise.resolve(null);
+        })()
+      : Promise.resolve(null),
+  ]);
+  const paidByOptedOut =
+    paidByUserDoc?.exists && paidByUserDoc.data()!['emailOptOut'] === true;
+  const paidToOptedOut =
+    paidToUserDoc?.exists && paidToUserDoc.data()!['emailOptOut'] === true;
+
+  const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
+  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+
+  if (paidByEmail && !paidByOptedOut) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: paidByEmail,
+        message: {
+          subject: `A payment from you to ${paidToName} in PipSplit has been reversed`,
+          text: [
+            `Hi ${paidByName},`,
+            '',
+            `A payment of ${formattedAmount} from you to ${paidToName} in the group ${groupName} has been reversed in PipSplit.`,
+            '',
+            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  if (paidToEmail && !paidToOptedOut) {
+    mailWrites.push(
+      db.collection('mail').add({
+        to: paidToEmail,
+        message: {
+          subject: `A payment from ${paidByName} to you in PipSplit has been reversed`,
+          text: [
+            `Hi ${paidToName},`,
+            '',
+            `A payment of ${formattedAmount} from ${paidByName} to you in the group "${groupName}" has been reversed in PipSplit.`,
+            '',
+            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.`,
+          ].join('\n'),
+        },
+      })
+    );
+  }
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Member payment unpay emails sent: payer="${paidByEmail}", payee="${paidToEmail}"`
+  );
+});
+
+export const sendGroupSettleUnpayNotification = onCall<{
+  groupName: string;
+  settleDate: string;
+  members: {
+    displayName: string;
+    email: string;
+    memberRefPath: string | null;
+  }[];
+}>(async (request) => {
+  const { groupName, settleDate, members } = request.data;
+
+  // Look up user opt-out status for all members
+  const memberDocs = await Promise.all(
+    members.map((m) =>
+      m.memberRefPath ? db.doc(m.memberRefPath).get() : Promise.resolve(null)
+    )
+  );
+  const userDocs = await Promise.all(
+    memberDocs.map((memberDoc) => {
+      if (!memberDoc?.exists) return Promise.resolve(null);
+      const userRef = memberDoc.data()![
+        'userRef'
+      ] as admin.firestore.DocumentReference | null;
+      return userRef ? userRef.get() : Promise.resolve(null);
+    })
+  );
+  const optedOutSet = new Set<string>();
+  members.forEach((m, i) => {
+    const userDoc = userDocs[i];
+    if (userDoc?.exists && userDoc.data()!['emailOptOut'] === true) {
+      optedOutSet.add(m.email);
+    }
+  });
+
+  const mailWrites = members
+    .filter((m) => !!m.email && !optedOutSet.has(m.email))
+    .map((m) =>
+      db.collection('mail').add({
+        to: m.email,
+        message: {
+          subject: `The group settle for "${groupName}" has been reversed in PipSplit`,
+          text: [
+            `Hi ${m.displayName},`,
+            '',
+            `A group admin has reversed the group settlement for "${groupName}" that was recorded on ${settleDate}.`,
+            '',
+            'All outstanding balances have been restored. Please check your current balance in PipSplit.',
+          ].join('\n'),
+        },
+      })
+    );
+
+  await Promise.all(mailWrites);
+  console.log(
+    `Group settle unpay emails sent for "${groupName}" (${settleDate}): ${mailWrites.length} email(s)`
+  );
+});
 
 async function handleSettleEmail(
   data: admin.firestore.DocumentData,
@@ -996,6 +1177,14 @@ async function handleSettleEmail(
     const memberEmail: string = memberData['email'] ?? '';
     const memberName: string = memberData['displayName'] ?? 'Member';
     if (!memberEmail) continue;
+
+    const memberUserRef = memberData[
+      'userRef'
+    ] as admin.firestore.DocumentReference | null;
+    const memberUserData = memberUserRef
+      ? userDataMap.get(memberUserRef.path)
+      : undefined;
+    if (memberUserData?.['emailOptOut'] === true) continue;
 
     // Find transfers this member is involved in
     const owesLines: string[] = [];

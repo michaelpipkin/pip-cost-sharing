@@ -27,20 +27,54 @@
 
     <div class="payment-summary mb-3" data-testid="payment-summary">
       <div class="payment-summary-info">
-        <span data-testid="paid-by-name"
-          ><strong>Paid By:</strong>
-          {{ history()!.paidByMember?.displayName }}</span
-        >
-        <span data-testid="paid-to-name"
-          ><strong>Paid To:</strong>
-          {{ history()!.paidToMember?.displayName }}</span
-        >
-        <span data-testid="payment-date"
-          ><strong>Date:</strong> {{ history()!.date | date: 'M/d/yyyy' }}</span
-        >
-        <span data-testid="payment-total"
-          ><strong>Amount:</strong> {{ history()!.totalPaid | currency }}</span
-        >
+        @if (isGroupSettle()) {
+          <div class="payment-date">
+            <span data-testid="payment-date"
+              ><strong>Date:</strong>
+              {{ history()!.date | date: 'M/d/yyyy' }}</span
+            >
+          </div>
+          <table
+            class="settle-transfers-table mt-1"
+            data-testid="settle-transfers-table"
+          >
+            <thead>
+              <tr>
+                <th>Paid By</th>
+                <th>Paid To</th>
+                <th class="cell-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (transfer of batchTransfers(); track transfer.id) {
+                <tr>
+                  <td>{{ transfer.paidByMember?.displayName }}</td>
+                  <td>{{ transfer.paidToMember?.displayName }}</td>
+                  <td class="cell-right">
+                    {{ transfer.totalPaid | currency }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <span data-testid="paid-by-name"
+            ><strong>Paid By:</strong>
+            {{ history()!.paidByMember?.displayName }}</span
+          >
+          <span data-testid="paid-to-name"
+            ><strong>Paid To:</strong>
+            {{ history()!.paidToMember?.displayName }}</span
+          >
+          <span data-testid="payment-date"
+            ><strong>Date:</strong>
+            {{ history()!.date | date: 'M/d/yyyy' }}</span
+          >
+          <span data-testid="payment-total"
+            ><strong>Amount:</strong>
+            {{ history()!.totalPaid | currency }}</span
+          >
+        }
       </div>
       <div class="payment-summary-actions flex-wrap fw-end mt-2">
         <button
@@ -66,16 +100,33 @@
             Unpay Payment
           </button>
         }
+        @if (isAdmin() && isGroupSettle()) {
+          <button
+            mat-raised-button
+            class="btn btn-danger"
+            (click)="onUnpayGroupSettle()"
+            matTooltip="Mark all group settle splits as unpaid and delete all batch history records"
+            aria-label="Unpay group settle"
+            data-testid="unpay-group-settle-button"
+          >
+            <mat-icon>money_off</mat-icon>
+            Unpay Group Settle
+          </button>
+        }
       </div>
     </div>
 
-    @if (isGroupSettle()) {
+    @if (isGroupSettle() && (history()?.splitsPaid?.length ?? 0) === 0) {
       <p data-testid="group-settle-message">
         Paid via Group Settle — breakdown not available.
       </p>
     } @else {
       <mat-radio-group [(ngModel)]="viewMode" class="mb-2">
-        <mat-radio-button value="details" data-testid="history-details-option" class="me-2">
+        <mat-radio-button
+          value="details"
+          data-testid="history-details-option"
+          class="me-2"
+        >
           Split Details
         </mat-radio-button>
         <mat-radio-button value="summary" data-testid="history-summary-option">
@@ -138,7 +189,7 @@
                       class="btn btn-danger"
                       aria-label="Mark split unpaid"
                       data-testid="unpay-split-button"
-                      (click)="onUnpaySplit(split); $event.stopPropagation();"
+                      (click)="onUnpaySplit(split); $event.stopPropagation()"
                       matTooltip="Mark split unpaid"
                     >
                       <mat-icon>money_off</mat-icon>
