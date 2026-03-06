@@ -5,11 +5,7 @@
 >
   <div data-testid="footer-left" class="footer-left">
     <span data-testid="copyright-text"> &copy; {{ currentYear() }}</span>
-    <a
-      [routerLink]="['/about']"
-      data-testid="about-link"
-      aria-label="About Us"
-    >
+    <a [routerLink]="['/about']" data-testid="about-link" aria-label="About Us">
       About Us
     </a>
     <a
@@ -42,7 +38,7 @@
       }
     } @else {
       <span data-testid="version-info">
-        {{ versionText() }}
+        {{ version() }}
       </span>
     }
   </div>
