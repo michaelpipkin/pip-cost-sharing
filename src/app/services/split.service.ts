@@ -206,11 +206,14 @@ export class SplitService implements ISplitService {
       batch.update(expenseRef, { paid: expensePaid });
     }
 
-    // Create one history record per transfer (no line items)
+    // Create one history record per transfer with full split ref list
     const batchId =
       crypto.randomUUID?.() ??
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     const batchSize = transfers.length;
+    const splitRefs = splits
+      .filter((s) => s.ref != null)
+      .map((s) => s.ref as DocumentReference<Split>);
     for (const transfer of transfers) {
       const newHistoryDoc = doc(
         collection(this.fs, `groups/${groupId}/history`)
@@ -220,7 +223,7 @@ export class SplitService implements ISplitService {
         paidToMemberRef: transfer.owedToMemberRef,
         date: new Date().toIsoFormat(),
         totalPaid: transfer.amount,
-        splitsPaid: [],
+        splitsPaid: splitRefs,
         batchId,
         batchSize,
       });

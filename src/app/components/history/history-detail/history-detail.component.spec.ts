@@ -170,28 +170,43 @@ describe('HistoryDetailComponent', () => {
       expect(component.isAdmin()).toBe(false);
     });
 
-    it('should return isGroupSettle true when splitsPaid is empty', () => {
-      component.history.set(mockHistory({ splitsPaid: [] }));
+    it('should return isGroupSettle true when batchId is set', () => {
+      component.history.set(mockHistory({ batchId: 'batch-1' }));
       expect(component.isGroupSettle()).toBe(true);
     });
 
-    it('should return isGroupSettle true when splitsPaid is null', () => {
-      component.history.set(mockHistory({ splitsPaid: null as any }));
-      expect(component.isGroupSettle()).toBe(true);
-    });
-
-    it('should return isGroupSettle false when splitsPaid has entries', () => {
-      component.history.set(
-        mockHistory({
-          splitsPaid: [mockDocRef('groups/group-1/splits/s-1')] as any,
-        })
-      );
+    it('should return isGroupSettle false when batchId is not set', () => {
+      component.history.set(mockHistory({ batchId: undefined }));
       expect(component.isGroupSettle()).toBe(false);
     });
 
-    it('should include unpay column in splitsColumnsToDisplay for admin', () => {
+    it('should return all history records with the same batchId in batchTransfers', () => {
+      const h1 = mockHistory({ id: 'h1', batchId: 'batch-1' });
+      const h2 = mockHistory({ id: 'h2', batchId: 'batch-1' });
+      const h3 = mockHistory({ id: 'h3', batchId: 'batch-2' });
+      mockHistoryStore.groupHistory.set([h1, h2, h3]);
+      component.history.set(h1);
+      expect(component.batchTransfers().map((h) => h.id)).toEqual(
+        expect.arrayContaining(['h1', 'h2'])
+      );
+      expect(component.batchTransfers().map((h) => h.id)).not.toContain('h3');
+    });
+
+    it('should return empty array for batchTransfers when not a group settle', () => {
+      component.history.set(mockHistory({ batchId: undefined }));
+      expect(component.batchTransfers()).toEqual([]);
+    });
+
+    it('should include unpay column in splitsColumnsToDisplay for admin on member payment', () => {
       mockMemberStore.currentMember.set(adminMember);
+      component.history.set(mockHistory({ batchId: undefined }));
       expect(component.splitsColumnsToDisplay()).toContain('unpay');
+    });
+
+    it('should exclude unpay column in splitsColumnsToDisplay for admin on group settle', () => {
+      mockMemberStore.currentMember.set(adminMember);
+      component.history.set(mockHistory({ batchId: 'batch-1' }));
+      expect(component.splitsColumnsToDisplay()).not.toContain('unpay');
     });
 
     it('should exclude unpay column in splitsColumnsToDisplay for non-admin', () => {
@@ -255,6 +270,13 @@ describe('HistoryDetailComponent', () => {
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
       expect(mockDialog.open).not.toHaveBeenCalled();
     });
+
+    it('should show restriction message and not open dialog on onUnpayGroupSettle', async () => {
+      component.history.set(mockHistory({ batchId: 'batch-1', batchSize: 2 }));
+      await component.onUnpayGroupSettle();
+      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
+      expect(mockDialog.open).not.toHaveBeenCalled();
+    });
   });
 
   describe('Dialog interactions', () => {
@@ -274,6 +296,13 @@ describe('HistoryDetailComponent', () => {
       mockDemoService.isInDemoMode = vi.fn(() => false);
       const split = mockSplit();
       await component.onUnpaySplit(split);
+      expect(mockDialog.open).toHaveBeenCalled();
+    });
+
+    it('should open confirm dialog on onUnpayGroupSettle when not in demo mode', async () => {
+      mockDemoService.isInDemoMode = vi.fn(() => false);
+      component.history.set(mockHistory({ batchId: 'batch-1', batchSize: 2 }));
+      await component.onUnpayGroupSettle();
       expect(mockDialog.open).toHaveBeenCalled();
     });
   });

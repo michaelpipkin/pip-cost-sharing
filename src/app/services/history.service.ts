@@ -9,10 +9,12 @@ import {
   collection,
   DocumentReference,
   getDoc,
+  getDocs,
   getFirestore,
   onSnapshot,
   orderBy,
   query,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 import { IHistoryService } from './history.service.interface';
@@ -125,6 +127,49 @@ export class HistoryService implements IHistoryService {
       });
     }
 
+    await batch.commit();
+  }
+
+  async unpayGroupSettle(groupId: string, batchId: string): Promise<void> {
+    // 1. Query all history records in this batch
+    const batchSnap = await getDocs(
+      query(
+        collection(this.fs, `groups/${groupId}/history`),
+        where('batchId', '==', batchId)
+      )
+    );
+
+    // 2. Collect de-duplicated split refs
+    const splitRefMap = new Map<string, DocumentReference<Split>>();
+    for (const histDoc of batchSnap.docs) {
+      for (const splitRef of (histDoc.data()['splitsPaid'] as DocumentReference<Split>[] ?? [])) {
+        if (!splitRefMap.has(splitRef.path)) {
+          splitRefMap.set(splitRef.path, splitRef);
+        }
+      }
+    }
+
+    // 3. Fetch split docs to get expense refs
+    const splitDocs = await Promise.all(
+      [...splitRefMap.values()].map((r) => getDoc(r))
+    );
+
+    // 4. Collect de-duplicated expense refs
+    const expenseRefMap = new Map<string, DocumentReference<Expense>>();
+    for (const splitDoc of splitDocs) {
+      if (splitDoc.exists()) {
+        const expenseRef = splitDoc.data()!['expenseRef'] as DocumentReference<Expense>;
+        if (!expenseRefMap.has(expenseRef.path)) {
+          expenseRefMap.set(expenseRef.path, expenseRef);
+        }
+      }
+    }
+
+    // 5. Batch write: unmark splits/expenses, delete history records
+    const batch = writeBatch(this.fs);
+    for (const ref of splitRefMap.values()) batch.update(ref, { paid: false });
+    for (const ref of expenseRefMap.values()) batch.update(ref, { paid: false });
+    for (const histDoc of batchSnap.docs) batch.delete(histDoc.ref);
     await batch.commit();
   }
 }

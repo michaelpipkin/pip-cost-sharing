@@ -6,16 +6,18 @@ This document captures ideas and rough plans for future features. Items are not 
 
 ## Table of Contents
 
-1. [Payment Notification Emails](#payment-notification-emails) ✅ *implemented — pending production validation*
-2. [Admin Module Expansion](#admin-module-expansion) ✅ *implemented — pending production validation*
-3. [Account Page Redesign](#account-page-redesign) ✅ *implemented — pending production validation*
+1. [Payment Notification Emails](#payment-notification-emails) ✅ *implemented and production validated*
+2. [Admin Module Expansion](#admin-module-expansion) ✅ *implemented and production validated*
+3. [Account Page Redesign](#account-page-redesign) ✅ *implemented and production validated*
+4. [Group Settle History — Show Splits and Allow Full Unpay](#group-settle-history--show-splits-and-allow-full-unpay) ✅ *implemented — pending production validation*
+5. [Unpay Notification Emails](#unpay-notification-emails)
 
 ---
 
 ## Payment Notification Emails
 
-> **Status: ✅ Implemented — pending production validation.**
-> Implementation complete as of March 2026. Emulator-tested. Awaiting first production deploy to confirm end-to-end email delivery.
+> **Status: ✅ Implemented and production validated.**
+> Implementation complete as of March 2026.
 
 ### Motivation
 
@@ -179,11 +181,13 @@ No changes to the Member or User models are needed — emails are already on Mem
 - For group settle aggregation: Cloud Task delay vs. `onCall` from Angular?
 - Should group admins receive a separate summary email when someone else in the group settles?
 
+*See also: [Unpay Notification Emails](#unpay-notification-emails) for reversals of recorded payments.*
+
 ---
 
 ## Admin Module Expansion
 
-> **Status: ✅ Implemented — pending production validation.**
+> **Status: ✅ Implemented and production validated.**
 > Implementation complete as of March 2026. Includes `AdminShellComponent` with `MatTabNav`, `AdminEmailLogComponent`, `AdminMailService`, and `MailDocument`/`MailDelivery`/`MailDeliveryInfo` models.
 
 ### Motivation
@@ -277,7 +281,7 @@ No Firestore schema changes needed — the extension defines the shape.
 
 ## Account Page Redesign
 
-> **Status: ✅ Implemented — pending production validation.**
+> **Status: ✅ Implemented and production validated.**
 > Implementation complete as of March 2026. AccountComponent refactored to a sidebar navigation layout shell. Five child route sections: Profile, Security, Payments, Preferences, Legal. Admin nav entry at bottom (admin-only) replaces the old admin button; routes to `/admin`. Responsive master-detail behavior via `BreakpointObserver`.
 
 ### Motivation
@@ -367,3 +371,172 @@ The same child route components render in both desktop and mobile contexts — `
 - Should "Profile" surface a display name? The `User` model has no `displayName` — it lives on `Member` records (one per group). Worth deciding what to show for identity beyond email address.
 - Should the admin link become its own sidebar section entry visible only to the admin user, or remain a button within the Security section?
 - Should notification preferences be added as a stub/placeholder now (to anticipate the email notification feature) or only introduced when that feature is actually implemented?
+
+---
+
+## Group Settle History — Show Splits and Allow Full Unpay
+
+> **Status: ✅ Implemented — pending production validation.**
+> Implementation complete as of March 2026. `settleGroup()` now persists all split refs on each history record. History detail shows a full transfer summary and expense breakdown for group settles, with all amounts positive. "Unpay Group Settle" reverses the entire batch atomically.
+
+### Motivation
+
+When a group settle is performed, `settleGroup()` currently writes `splitsPaid: []` (an empty array) on each history record because there is no clean 1:1 mapping of individual splits to specific payer/payee transfer pairs. As a result, clicking a group settle row in the history table shows a snackbar: "Paid via Group Settle — breakdown not available."
+
+However, the expense split data IS available at settle time — it is just not being persisted. Saving it would allow the history detail screen to show the full expense breakdown for a group settle, and would unlock full-batch unpay (reversing the entire settle at once).
+
+The one thing that remains impossible is per-split unpay: because a group settle computes net transfers across all members rather than attributing any individual split to a specific payer, there is no meaningful way to reverse a single split without breaking the integrity of the settle.
+
+---
+
+### Relevant Existing Code
+
+| Layer | File | Key Symbol |
+|---|---|---|
+| Split service | `src/app/services/split.service.ts` | `settleGroup()` |
+| History service | `src/app/services/history.service.ts` | `unpayHistory()` |
+| History model | `src/app/models/history.ts` | `History.splitsPaid`, `History.batchId`, `History.batchSize` |
+| History detail component | `src/app/components/history/history-detail/` | splits table, unpay button |
+
+---
+
+### Proposed Changes
+
+#### Schema / service change
+
+In `settleGroup()`, populate `splitsPaid` on every history record in the batch with the full array of all settled split `DocumentReference`s (the same `splits` array passed into `settleGroup()`). Every record in the batch receives the same full list — a group settle is an atomic action with no per-record split subset.
+
+#### History detail UI
+
+The detail screen for a group settle record shows the same two-mode splits table (Split Details / Summary by Category) as member-to-member payments, with one difference: the per-split unpay column is omitted from the column definitions.
+
+Replace the current snackbar fallback with the full splits table.
+
+The existing "Unpay Payment" button becomes **"Unpay Group Settle"** for settle records. Clicking it triggers a new full-batch undo operation in HistoryService (e.g., `unpayGroupSettle(batchId)`):
+- Query all history records in `groups/{groupId}/history` where `batchId == history.batchId`
+- For each record: mark all splits in `splitsPaid` as `paid: false`, mark related expenses as `paid: false`, delete the history record
+
+Because all records in a batch share the same `splitsPaid` array, de-duplication of split/expense updates is needed (process each split ref once, not once per transfer record).
+
+#### Notification email
+
+Unpaying a group settle should trigger notification emails. See [Unpay Notification Emails](#unpay-notification-emails).
+
+---
+
+### Implementation Steps (rough order)
+
+1. **Update `settleGroup()`** — populate `splitsPaid` with the full splits array on every batch history record instead of `[]`.
+2. **Add `unpayGroupSettle(groupId, batchId)` to HistoryService** — queries all batch records, de-duplicates split refs, marks splits/expenses unpaid, deletes all batch history records.
+3. **Update history detail component** — detect group settle records (`batchId` present, `splitsPaid` non-empty) and render the splits table without the unpay-single-split column; show "Unpay Group Settle" button instead of "Unpay Payment".
+4. **Send unpay notification emails** — call notification function before executing the undo write (see Unpay Notification Emails section).
+
+---
+
+### Open Questions
+
+- Should the "Unpay Group Settle" confirmation dialog communicate that ALL batch records will be reversed, not just the one being viewed?
+- If a group settle batch is very large (many splits), storing the full split ref array on every batch history record may be redundant. Is this a practical concern given typical group sizes?
+
+---
+
+## Unpay Notification Emails
+
+### Motivation
+
+When a payment or group settle is recorded, affected members already receive email notifications (see [Payment Notification Emails](#payment-notification-emails)). However, when an admin reverses a payment or settle from the history detail screen, there is currently no notification. Affected members have no way of knowing that their balances have been restored unless they open the app.
+
+---
+
+### Relevant Existing Code
+
+| Layer | File | Key Symbol |
+|---|---|---|
+| Cloud Functions | `functions/src/index.ts` | `sendPaymentNotificationEmail` (`onCreate` trigger), `handleMemberPaymentEmail`, `handleSettleEmail` |
+| History service | `src/app/services/history.service.ts` | `unpayHistory()`, `unpaySingleSplitFromHistory()` |
+| History detail component | `src/app/components/history/history-detail/` | unpay button, group settle unpay button (future) |
+
+---
+
+### Trigger Mechanism
+
+**Recommended: `onCall` Cloud Functions called from Angular.** Angular has the full history object (member names, amounts, split count, `batchId`) at the moment the admin confirms unpay — before the Firestore write — so data does not need to be re-fetched inside the function.
+
+Alternative approaches considered:
+- `onDelete` trigger: fires after the record is deleted, making data reconstruction difficult and unable to distinguish deliberate unpays from other deletions.
+- Writing an `unpayNotification` Firestore document before unpaying: avoids Angular-side coupling but adds a separate collection to manage.
+
+The `onCall` approach is simplest and most reliable.
+
+---
+
+### Two Cases
+
+#### Case 1 — Member-to-Member Payment Unpay
+
+**Recipients:** both payer and payee.
+
+> **Note on language:** Do not assume the payer is the one who recorded the payment — the payee or any admin could have recorded it. Use neutral phrasing ("a payment from you" / "a payment to you") rather than "you recorded" or "recorded for you". This mirrors the style of the existing payment notification templates.
+
+**Email to the payer:**
+> Subject: A payment from you to [PayeeName] in PipSplit has been reversed
+>
+> Hi [PayerName],
+>
+> A payment of [amount] from you to [PayeeName] in the group "[GroupName]" has been reversed in PipSplit.
+>
+> The [N] shared expense(s) covered by this payment have been marked as unpaid and will appear in your outstanding balance again.
+
+**Email to the payee:**
+> Subject: A payment from [PayerName] to you in PipSplit has been reversed
+>
+> Hi [PayeeName],
+>
+> A payment of [amount] from [PayerName] to you in the group "[GroupName]" has been reversed in PipSplit.
+>
+> The [N] shared expense(s) covered by this payment have been marked as unpaid and will appear in the outstanding balance again.
+
+**Data needed (passed from Angular to `onCall`):**
+- `groupId`, `groupName`
+- `paidByMember` → `displayName`, `email`
+- `paidToMember` → `displayName`, `email`
+- `totalPaid`
+- `splitCount` (number of expenses reversed)
+- `date` (of the original payment)
+
+#### Case 2 — Group Settle Unpay
+
+**Recipients:** all members involved in the settled batch (all unique members referenced across the batch's history records).
+
+**Prerequisite:** Requires [Group Settle History — Show Splits and Allow Full Unpay](#group-settle-history--show-splits-and-allow-full-unpay) to be implemented first so that the full member list is available via the batch history records.
+
+**Email to each affected member:**
+> Subject: The group settle for "[GroupName]" has been reversed in PipSplit
+>
+> Hi [MemberName],
+>
+> A group admin has reversed the group settlement for "[GroupName]" that was recorded on [SettleDate].
+>
+> All outstanding balances have been restored. Please check your current balance in PipSplit.
+
+**Data needed (passed from Angular to `onCall`):**
+- `groupId`, `groupName`
+- `batchId` — to identify all history records in the batch
+- `settleDate` (of the original settle)
+- Array of all affected members: `{ displayName, email }[]`
+
+---
+
+### Implementation Steps (rough order)
+
+1. **Add `sendMemberPaymentUnpayNotification` `onCall` Cloud Function** — receives member/payment data, writes two `mail` documents (one to payer, one to payee).
+2. **Add `sendGroupSettleUnpayNotification` `onCall` Cloud Function** — receives member list and settle date, writes one `mail` document per affected member.
+3. **Call notification functions from history detail component** — invoke the appropriate function immediately before executing the unpay write (so all data is still in memory).
+4. **Honor notification opt-out** — if/when an `emailNotifications` flag is added to the `User` model, filter recipients accordingly before writing `mail` documents.
+
+---
+
+### Open Questions
+
+- Should the admin who initiated the unpay receive a confirmation email? Likely unnecessary since they took the action directly, but worth considering for audit trail purposes.
+- Should a category breakdown of the reversed expenses be included in the payer/payee emails, mirroring the original payment notification? This would require fetching split documents inside the `onCall` function.

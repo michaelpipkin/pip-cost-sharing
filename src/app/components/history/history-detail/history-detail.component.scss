@@ -1,3 +1,8 @@
+.payment-date {
+  display: flex;
+  justify-content: center;
+}
+
 .payment-summary {
   width: 100%;
   max-width: 600px;
@@ -14,5 +19,21 @@
   gap: 4px;
   span {
     font-size: 1.1em;
+  }
+}
+
+.settle-transfers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.1em;
+  th {
+    font-weight: 400;
+    padding: 2px 12px 4px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+  }
+  td {
+    padding: 3px 12px 3px 0;
+    white-space: nowrap;
   }
 }
