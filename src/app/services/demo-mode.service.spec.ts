@@ -125,7 +125,8 @@ describe('DemoModeService', () => {
 
     it('should populate memorized store with two templates', () => {
       expect(mockMemorizedStore.setMemorizedExpenses).toHaveBeenCalledOnce();
-      const memorized = mockMemorizedStore.setMemorizedExpenses.mock.calls[0]![0];
+      const memorized =
+        mockMemorizedStore.setMemorizedExpenses.mock.calls[0]![0];
       expect(memorized).toHaveLength(2);
     });
 

@@ -1,7 +1,11 @@
 @if (!splitStore.loaded()) {
   <div class="placeholder-content" data-testid="summary-loading-container">
-    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">compare_arrows</mat-icon>
-    <p class="placeholder-text" data-testid="loading-summary-message">Loading summary...</p>
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+      compare_arrows
+    </mat-icon>
+    <p class="placeholder-text" data-testid="loading-summary-message">
+      Loading summary...
+    </p>
   </div>
 } @else {
   <div class="container with-table pt-3" data-testid="summary-main-container">
@@ -16,16 +20,18 @@
             (click)="startTour()"
             aria-label="Start summary tour"
             class="mr-2"
-            >tour</mat-icon
           >
+            tour
+          </mat-icon>
         }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
           data-testid="summary-help-button"
           aria-label="Show help for summary"
-          >help</mat-icon
         >
+          help
+        </mat-icon>
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
@@ -44,9 +50,9 @@
           docRefCompare
         >
           @for (member of activeMembers(); track member.ref) {
-            <mat-option [value]="member.ref">{{
-              member.displayName
-            }}</mat-option>
+            <mat-option [value]="member.ref">
+              {{ member.displayName }}
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -256,8 +262,12 @@
       </div>
     } @else {
       <div class="placeholder-content">
-        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">check_circle</mat-icon>
-        <p class="placeholder-text">No outstanding expenses found for selected member.</p>
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+          check_circle
+        </mat-icon>
+        <p class="placeholder-text">
+          No outstanding expenses found for selected member.
+        </p>
       </div>
     }
     @if (summaryMemberCount() > 2) {
@@ -326,7 +336,12 @@
         </div>
       } @else {
         <div class="placeholder-content" data-testid="least-transfers-empty">
-          <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">check_circle</mat-icon>
+          <mat-icon
+            class="placeholder-icon"
+            fontSet="material-symbols-outlined"
+          >
+            check_circle
+          </mat-icon>
           <p class="placeholder-text">No outstanding expenses to settle.</p>
         </div>
       }

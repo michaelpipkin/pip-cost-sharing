@@ -7,7 +7,9 @@ describe('AdSenseService', () => {
   let appendChildSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => null as any);
+    appendChildSpy = vi
+      .spyOn(document.head, 'appendChild')
+      .mockImplementation(() => null as any);
   });
 
   afterEach(() => {
@@ -30,8 +32,10 @@ describe('AdSenseService', () => {
   it('should inject the AdSense script when running in browser', () => {
     createService(true);
     // Find the AdSense-specific call among all appendChild calls
-    const adsenseCalls = appendChildSpy.mock.calls.filter(
-      (call: any[]) => (call[0] as HTMLScriptElement).src?.includes?.('pagead2.googlesyndication.com'),
+    const adsenseCalls = appendChildSpy.mock.calls.filter((call: any[]) =>
+      (call[0] as HTMLScriptElement).src?.includes?.(
+        'pagead2.googlesyndication.com'
+      )
     );
     expect(adsenseCalls).toHaveLength(1);
     const script = adsenseCalls[0][0] as HTMLScriptElement;
@@ -41,8 +45,10 @@ describe('AdSenseService', () => {
 
   it('should not inject the AdSense script when running as native app', () => {
     createService(false);
-    const adsenseCalls = appendChildSpy.mock.calls.filter(
-      (call: any[]) => (call[0] as HTMLScriptElement).src?.includes?.('pagead2.googlesyndication.com'),
+    const adsenseCalls = appendChildSpy.mock.calls.filter((call: any[]) =>
+      (call[0] as HTMLScriptElement).src?.includes?.(
+        'pagead2.googlesyndication.com'
+      )
     );
     expect(adsenseCalls).toHaveLength(0);
   });

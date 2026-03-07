@@ -9,7 +9,7 @@
         data-testid="group-name-input"
       />
       @if (f.groupName.errors?.['required']) {
-        <mat-error> *Required </mat-error>
+        <mat-error>*Required</mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill">
@@ -20,7 +20,7 @@
         data-testid="display-name-input"
       />
       @if (f.displayName.errors?.['required']) {
-        <mat-error> *Required </mat-error>
+        <mat-error>*Required</mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill" class="mb-4">
@@ -39,19 +39,21 @@
         }
       </mat-select>
       @if (f.currencyCode.errors?.['required']) {
-        <mat-error> *Required </mat-error>
+        <mat-error>*Required</mat-error>
       }
-      <mat-hint
-        >Cannot be changed once expenses are added to the group</mat-hint
-      >
+      <mat-hint>
+        Cannot be changed once expenses are added to the group
+      </mat-hint>
     </mat-form-field>
     <div class="toggle">
       <mat-slide-toggle
         formControlName="autoAddMembers"
         data-testid="auto-add-members-toggle"
-        >Automatically add all group<br />
-        members to new expenses</mat-slide-toggle
       >
+        Automatically add all group
+        <br />
+        members to new expenses
+      </mat-slide-toggle>
     </div>
   </mat-dialog-content>
   <mat-dialog-actions>

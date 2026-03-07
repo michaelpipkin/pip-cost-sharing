@@ -199,9 +199,7 @@ export class MemberService implements IMemberService {
     );
 
     if (memberSplit) {
-      throw new Error(
-        'This member has existing splits and cannot be deleted.'
-      );
+      throw new Error('This member has existing splits and cannot be deleted.');
     }
 
     await deleteDoc(memberRef);
@@ -214,10 +212,7 @@ export class MemberService implements IMemberService {
     const c = collection(this.fs, `groups/${groupId}/members`);
     const q = query(c, where('groupAdmin', '==', true));
     const adminSnap = await getDocs(q);
-    if (
-      adminSnap.docs.length === 1 &&
-      adminSnap.docs[0]!.id === memberRef.id
-    ) {
+    if (adminSnap.docs.length === 1 && adminSnap.docs[0]!.id === memberRef.id) {
       throw new Error(
         'You are the only group admin. Please assign another member as admin before leaving the group.'
       );

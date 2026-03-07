@@ -13,7 +13,13 @@
   >
     {{ data.confirmButtonText }}
   </button>
-  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-testid="cancel-button" [aria-label]="data.cancelButtonText">
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-testid="cancel-button"
+    [aria-label]="data.cancelButtonText"
+  >
     {{ data.cancelButtonText }}
   </button>
 </mat-dialog-actions>

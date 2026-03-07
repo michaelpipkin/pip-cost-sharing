@@ -47,7 +47,9 @@ describe('DeleteDialogComponent', () => {
     });
 
     it('should display the confirm button with operation label', () => {
-      expect(query('delete-confirm-button')?.textContent?.trim()).toBe('Delete');
+      expect(query('delete-confirm-button')?.textContent?.trim()).toBe(
+        'Delete'
+      );
     });
 
     it('should display the cancel button', () => {
@@ -57,13 +59,17 @@ describe('DeleteDialogComponent', () => {
 
   describe('button dialog close values', () => {
     it('confirm button should have mat-dialog-close set to true', () => {
-      const confirmBtnDe = fixture.debugElement.query(By.css('[data-testid="delete-confirm-button"]'));
+      const confirmBtnDe = fixture.debugElement.query(
+        By.css('[data-testid="delete-confirm-button"]')
+      );
       const closeDir = confirmBtnDe.injector.get(MatDialogClose, null);
       expect(closeDir?.dialogResult).toBe(true);
     });
 
     it('cancel button should have mat-dialog-close set to false', () => {
-      const cancelBtnDe = fixture.debugElement.query(By.css('[data-testid="delete-cancel-button"]'));
+      const cancelBtnDe = fixture.debugElement.query(
+        By.css('[data-testid="delete-cancel-button"]')
+      );
       const closeDir = cancelBtnDe.injector.get(MatDialogClose, null);
       expect(closeDir?.dialogResult).toBe(false);
     });

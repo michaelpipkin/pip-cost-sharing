@@ -11,7 +11,11 @@ import { AnalyticsService } from '@services/analytics.service';
 
 const mockFs = {};
 const mockStorage = {};
-const mockDocRef = { id: 'expense-1', path: 'groups/g1/expenses/expense-1', fullPath: 'groups/g1/receipts/expense-1' };
+const mockDocRef = {
+  id: 'expense-1',
+  path: 'groups/g1/expenses/expense-1',
+  fullPath: 'groups/g1/receipts/expense-1',
+};
 
 function makeSnap(docs: any[] = []) {
   return {
@@ -30,7 +34,10 @@ describe('ExpenseService', () => {
   let service: ExpenseService;
   let mockBatch: any;
 
-  const mockExpenseStore = { setGroupExpenses: vi.fn(), groupExpenses: signal<any[]>([]) };
+  const mockExpenseStore = {
+    setGroupExpenses: vi.fn(),
+    groupExpenses: signal<any[]>([]),
+  };
   const mockMemberStore = {
     loaded: signal(true),
     getMemberByRef: vi.fn().mockReturnValue(undefined),
@@ -63,7 +70,9 @@ describe('ExpenseService', () => {
     vi.spyOn(storageModule, 'uploadBytes').mockResolvedValue(undefined as any);
     vi.spyOn(storageModule, 'deleteObject').mockResolvedValue(undefined as any);
     vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(mockBatch as any);
-    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({ exists: () => false } as any);
+    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
+      exists: () => false,
+    } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
 
     TestBed.configureTestingModule({
@@ -86,7 +95,9 @@ describe('ExpenseService', () => {
 
   describe('hasExpensesForGroup', () => {
     it('should return true when the group has expenses', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([makeExpenseDoc('exp-1', {})]) as any);
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([makeExpenseDoc('exp-1', {})]) as any
+      );
 
       const result = await service.hasExpensesForGroup('group-1');
 
@@ -94,7 +105,9 @@ describe('ExpenseService', () => {
     });
 
     it('should return false when the group has no expenses', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
 
       const result = await service.hasExpensesForGroup('group-1');
 
@@ -102,7 +115,9 @@ describe('ExpenseService', () => {
     });
 
     it('should return true on error (safe fallback)', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockRejectedValueOnce(new Error('Firestore error'));
+      vi.spyOn(firestoreModule, 'getDocs').mockRejectedValueOnce(
+        new Error('Firestore error')
+      );
 
       const result = await service.hasExpensesForGroup('group-1');
 
@@ -120,7 +135,11 @@ describe('ExpenseService', () => {
     });
 
     it('should return the expense document reference', async () => {
-      const result = await service.addExpense('group-1', { description: 'Test' }, []);
+      const result = await service.addExpense(
+        'group-1',
+        { description: 'Test' },
+        []
+      );
 
       expect(result).toBe(mockDocRef);
     });
@@ -152,7 +171,9 @@ describe('ExpenseService', () => {
       const receipt = new File(['data'], 'receipt.jpg', { type: 'image/jpeg' });
       mockBatch.commit.mockRejectedValueOnce(new Error('batch error'));
 
-      await expect(service.addExpense('group-1', {}, [], receipt)).rejects.toThrow('batch error');
+      await expect(
+        service.addExpense('group-1', {}, [], receipt)
+      ).rejects.toThrow('batch error');
       // deleteObject is called asynchronously in .catch(), so just verify no crash
     });
   });
@@ -168,7 +189,7 @@ describe('ExpenseService', () => {
         data: () => ({ receiptPath: null }),
       } as any);
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([{ ref: splitRef1 }, { ref: splitRef2 }]) as any,
+        makeSnap([{ ref: splitRef1 }, { ref: splitRef2 }]) as any
       );
 
       await service.deleteExpense('group-1', expenseRef);
@@ -183,7 +204,9 @@ describe('ExpenseService', () => {
         exists: () => true,
         data: () => ({ receiptPath: 'groups/g/receipts/exp-1' }),
       } as any);
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
 
       await service.deleteExpense('group-1', expenseRef);
 
@@ -195,7 +218,9 @@ describe('ExpenseService', () => {
         exists: () => true,
         data: () => ({ receiptPath: null }),
       } as any);
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
 
       await service.deleteExpense('group-1', expenseRef);
 
@@ -205,7 +230,9 @@ describe('ExpenseService', () => {
 
   describe('getGroupExpensesByDateRange - query building', () => {
     beforeEach(() => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(
+        makeSnap([]) as any
+      );
     });
 
     it('should apply start date filter when startDate is provided', async () => {
@@ -214,7 +241,11 @@ describe('ExpenseService', () => {
 
       await service.getGroupExpensesByDateRange('group-1', startDate);
 
-      expect(firestoreModule.where).toHaveBeenCalledWith('date', '>=', '2025-01-01');
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'date',
+        '>=',
+        '2025-01-01'
+      );
     });
 
     it('should apply end date filter when endDate is provided', async () => {
@@ -223,11 +254,20 @@ describe('ExpenseService', () => {
 
       await service.getGroupExpensesByDateRange('group-1', undefined, endDate);
 
-      expect(firestoreModule.where).toHaveBeenCalledWith('date', '<=', '2025-12-31');
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'date',
+        '<=',
+        '2025-12-31'
+      );
     });
 
     it('should apply unpaidOnly filter when specified', async () => {
-      await service.getGroupExpensesByDateRange('group-1', undefined, undefined, true);
+      await service.getGroupExpensesByDateRange(
+        'group-1',
+        undefined,
+        undefined,
+        true
+      );
 
       expect(firestoreModule.where).toHaveBeenCalledWith('paid', '==', false);
     });
@@ -235,17 +275,38 @@ describe('ExpenseService', () => {
     it('should apply member filter when memberRef is provided', async () => {
       const memberRef = { id: 'member-1' } as any;
 
-      await service.getGroupExpensesByDateRange('group-1', undefined, undefined, undefined, memberRef);
+      await service.getGroupExpensesByDateRange(
+        'group-1',
+        undefined,
+        undefined,
+        undefined,
+        memberRef
+      );
 
-      expect(firestoreModule.where).toHaveBeenCalledWith('paidByMemberRef', '==', memberRef);
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'paidByMemberRef',
+        '==',
+        memberRef
+      );
     });
 
     it('should apply category filter when categoryRef is provided', async () => {
       const categoryRef = { id: 'cat-1' } as any;
 
-      await service.getGroupExpensesByDateRange('group-1', undefined, undefined, undefined, null, categoryRef);
+      await service.getGroupExpensesByDateRange(
+        'group-1',
+        undefined,
+        undefined,
+        undefined,
+        null,
+        categoryRef
+      );
 
-      expect(firestoreModule.where).toHaveBeenCalledWith('categoryRef', '==', categoryRef);
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'categoryRef',
+        '==',
+        categoryRef
+      );
     });
 
     it('should always apply limit of 200', async () => {

@@ -17,11 +17,19 @@ import { GroupService } from './group.service';
 import { DemoModeService } from './demo-mode.service';
 
 const mockFs = {};
-const mockAuth = { onAuthStateChanged: vi.fn(), signOut: vi.fn().mockResolvedValue(undefined) };
+const mockAuth = {
+  onAuthStateChanged: vi.fn(),
+  signOut: vi.fn().mockResolvedValue(undefined),
+};
 const mockDocRef = { id: 'user-123' };
 
 function makeUserSnap(exists: boolean, data?: any) {
-  return { exists: () => exists, id: 'user-123', data: () => data ?? {}, ref: mockDocRef };
+  return {
+    exists: () => exists,
+    id: 'user-123',
+    data: () => data ?? {},
+    ref: mockDocRef,
+  };
 }
 
 function makeSnap(docs: any[]) {
@@ -46,13 +54,34 @@ describe('UserService', () => {
     currentGroup: signal<any>(null),
     allUserGroups: signal<any[]>([]),
   };
-  const mockMemberStore = { clearGroupMembers: vi.fn(), groupMembers: signal<any[]>([]) };
-  const mockCategoryStore = { clearGroupCategories: vi.fn(), groupCategories: signal<any[]>([]) };
-  const mockExpenseStore = { clearGroupExpenses: vi.fn(), groupExpenses: signal<any[]>([]) };
-  const mockMemorizedStore = { clearMemorizedExpenses: vi.fn(), memorizedExpenses: signal<any[]>([]) };
-  const mockHistoryStore = { clearHistory: vi.fn(), groupHistory: signal<any[]>([]) };
-  const mockSplitStore = { clearSplits: vi.fn(), unpaidSplits: signal<any[]>([]) };
-  const mockGroupService = { getUserGroups: vi.fn().mockResolvedValue(undefined), logout: vi.fn() };
+  const mockMemberStore = {
+    clearGroupMembers: vi.fn(),
+    groupMembers: signal<any[]>([]),
+  };
+  const mockCategoryStore = {
+    clearGroupCategories: vi.fn(),
+    groupCategories: signal<any[]>([]),
+  };
+  const mockExpenseStore = {
+    clearGroupExpenses: vi.fn(),
+    groupExpenses: signal<any[]>([]),
+  };
+  const mockMemorizedStore = {
+    clearMemorizedExpenses: vi.fn(),
+    memorizedExpenses: signal<any[]>([]),
+  };
+  const mockHistoryStore = {
+    clearHistory: vi.fn(),
+    groupHistory: signal<any[]>([]),
+  };
+  const mockSplitStore = {
+    clearSplits: vi.fn(),
+    unpaidSplits: signal<any[]>([]),
+  };
+  const mockGroupService = {
+    getUserGroups: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn(),
+  };
   const mockDemoModeService = { initializeDemoData: vi.fn() };
   const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
   const mockRouter = { navigate: vi.fn() };
@@ -88,7 +117,9 @@ describe('UserService', () => {
     vi.spyOn(firestoreModule, 'where').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'collectionGroup').mockReturnValue({} as any);
     vi.spyOn(authModule, 'setPersistence').mockResolvedValue(undefined);
-    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({ exists: () => false } as any);
+    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
+      exists: () => false,
+    } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
     vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined as any);
@@ -103,7 +134,9 @@ describe('UserService', () => {
 
   describe('getUserDetails', () => {
     it('should return a User when the document exists', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(true, { email: 'alice@test.com' }) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'alice@test.com' }) as any
+      );
 
       const user = await service.getUserDetails('user-123');
 
@@ -112,7 +145,9 @@ describe('UserService', () => {
     });
 
     it('should return null when the document does not exist', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(false) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(false) as any
+      );
 
       const user = await service.getUserDetails('user-123');
 
@@ -120,33 +155,52 @@ describe('UserService', () => {
     });
 
     it('should rethrow errors', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(new Error('Firestore error'));
+      vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+        new Error('Firestore error')
+      );
 
-      await expect(service.getUserDetails('user-123')).rejects.toThrow('Firestore error');
+      await expect(service.getUserDetails('user-123')).rejects.toThrow(
+        'Firestore error'
+      );
     });
   });
 
   describe('createUserIfNotExists', () => {
     it('should return existing user when one already exists', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(true, { email: 'alice@test.com' }) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'alice@test.com' }) as any
+      );
 
-      const user = await service.createUserIfNotExists('user-123', 'alice@test.com');
+      const user = await service.createUserIfNotExists(
+        'user-123',
+        'alice@test.com'
+      );
 
       expect(firestoreModule.setDoc).not.toHaveBeenCalled();
       expect(user.email).toBe('alice@test.com');
     });
 
     it('should update email if existing user has a different email', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(true, { email: 'old@test.com' }) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
 
       await service.createUserIfNotExists('user-123', 'new@test.com');
 
-      expect(firestoreModule.setDoc).toHaveBeenCalledWith(mockDocRef, { email: 'new@test.com' }, { merge: true });
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        { email: 'new@test.com' },
+        { merge: true }
+      );
     });
 
     it('should create a new user document with default data when user does not exist', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(false) as any);
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(false) as any
+      );
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
 
       await service.createUserIfNotExists('new-user', 'new@test.com');
 
@@ -160,31 +214,38 @@ describe('UserService', () => {
           paypalId: '',
           cashAppId: '',
           zelleId: '',
-        }),
+        })
       );
     });
 
     it('should link unlinked member records to the new user', async () => {
       const memberRef1 = { id: 'm1' };
       const memberRef2 = { id: 'm2' };
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(false) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(false) as any
+      );
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([
-          { ref: memberRef1 },
-          { ref: memberRef2 },
-        ]) as any,
+        makeSnap([{ ref: memberRef1 }, { ref: memberRef2 }]) as any
       );
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
       expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef1, { userRef: mockDocRef });
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef2, { userRef: mockDocRef });
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef1, {
+        userRef: mockDocRef,
+      });
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef2, {
+        userRef: mockDocRef,
+      });
     });
 
     it('should not link members when none exist with the email', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(makeUserSnap(false) as any);
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(makeSnap([]) as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(false) as any
+      );
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
@@ -196,7 +257,9 @@ describe('UserService', () => {
     const memberRef = { id: 'member-1' } as any;
 
     it('should return empty object when member document does not exist', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({ exists: () => false } as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        exists: () => false,
+      } as any);
 
       const result = await service.getPaymentMethods(memberRef);
 
@@ -217,13 +280,21 @@ describe('UserService', () => {
     it('should return payment methods from user document', async () => {
       const userRef = { id: 'user-1' };
       vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({ exists: () => true, data: () => ({ userRef }) } as any)
         .mockResolvedValueOnce({
           exists: () => true,
-          data: () => ({ venmoId: '@alice', paypalId: 'alice@pp.com', cashAppId: '', zelleId: '' }),
+          data: () => ({ userRef }),
+        } as any)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({
+            venmoId: '@alice',
+            paypalId: 'alice@pp.com',
+            cashAppId: '',
+            zelleId: '',
+          }),
         } as any);
 
-      const result = await service.getPaymentMethods(memberRef) as any;
+      const result = (await service.getPaymentMethods(memberRef)) as any;
 
       expect(result.venmoId).toBe('@alice');
       expect(result.paypalId).toBe('alice@pp.com');
@@ -232,7 +303,10 @@ describe('UserService', () => {
     it('should return empty object when user document does not exist', async () => {
       const userRef = { id: 'user-1' };
       vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({ exists: () => true, data: () => ({ userRef }) } as any)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ userRef }),
+        } as any)
         .mockResolvedValueOnce({ exists: () => false } as any);
 
       const result = await service.getPaymentMethods(memberRef);

@@ -1,18 +1,32 @@
 <h1 mat-dialog-title data-testid="add-member-title">Add Member</h1>
-<form [formGroup]="addMemberForm" data-testid="add-member-form" aria-label="Add member form">
+<form
+  [formGroup]="addMemberForm"
+  data-testid="add-member-form"
+  aria-label="Add member form"
+>
   <mat-dialog-content class="content" data-testid="add-member-content">
     <mat-form-field appearance="fill" data-testid="member-name-field">
       <mat-label>Name</mat-label>
-      <input matInput formControlName="displayName" data-testid="member-name-input" aria-label="Member name" />
+      <input
+        matInput
+        formControlName="displayName"
+        data-testid="member-name-input"
+        aria-label="Member name"
+      />
       @if (f.displayName.errors?.['required']) {
-        <mat-error data-testid="member-name-error"> *Required </mat-error>
+        <mat-error data-testid="member-name-error">*Required</mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill" data-testid="member-email-field">
       <mat-label>Email</mat-label>
-      <input matInput formControlName="email" data-testid="member-email-input" aria-label="Member email" />
+      <input
+        matInput
+        formControlName="email"
+        data-testid="member-email-input"
+        aria-label="Member email"
+      />
       @if (f.email.errors?.['required']) {
-        <mat-error data-testid="member-email-error"> *Required </mat-error>
+        <mat-error data-testid="member-email-error">*Required</mat-error>
       }
     </mat-form-field>
   </mat-dialog-content>

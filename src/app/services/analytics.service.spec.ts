@@ -31,7 +31,9 @@ describe('AnalyticsService', () => {
   });
 
   it('should silently swallow errors and not rethrow', async () => {
-    vi.spyOn(FirebaseAnalytics, 'logEvent').mockRejectedValueOnce(new Error('network error'));
+    vi.spyOn(FirebaseAnalytics, 'logEvent').mockRejectedValueOnce(
+      new Error('network error')
+    );
     await expect(service.logEvent('fail_event')).resolves.toBeUndefined();
   });
 });

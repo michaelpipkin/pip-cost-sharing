@@ -52,7 +52,12 @@ export const UserStore = signalStore(
       isGoogleUser: boolean,
       isEmailConfirmed: boolean
     ) => {
-      patchState(store, { user, isGoogleUser, isEmailConfirmed, isDemoMode: false });
+      patchState(store, {
+        user,
+        isGoogleUser,
+        isEmailConfirmed,
+        isDemoMode: false,
+      });
     },
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),

@@ -1,7 +1,11 @@
 @if (!groupStore.loaded()) {
   <div class="placeholder-content" data-testid="groups-loading-container">
-    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">groups</mat-icon>
-    <p class="placeholder-text" data-testid="loading-message">Loading groups...</p>
+    <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+      groups
+    </mat-icon>
+    <p class="placeholder-text" data-testid="loading-message">
+      Loading groups...
+    </p>
   </div>
 } @else {
   <div class="container pt-3" data-testid="groups-main-container">
@@ -16,16 +20,18 @@
             (click)="startTour()"
             aria-label="Start groups tour"
             class="mr-2"
-            >tour</mat-icon
           >
+            tour
+          </mat-icon>
         }
         <mat-icon
           data-testid="groups-help-button"
           matTooltip="Help"
           (click)="showHelp()"
           aria-label="Show help for groups"
-          >help</mat-icon
         >
+          help
+        </mat-icon>
       </div>
     </div>
     <div class="mb-4">
@@ -52,8 +58,9 @@
               <mat-option
                 [value]="group.ref"
                 [attr.data-testid]="'group-option-' + group.ref"
-                >{{ group.name }}</mat-option
               >
+                {{ group.name }}
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>

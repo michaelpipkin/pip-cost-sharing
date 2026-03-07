@@ -161,9 +161,7 @@ describe('PaymentDialogComponent', () => {
 
     it('should show no-payment-methods message', () => {
       expect(query('no-payment-methods-message')).toBeTruthy();
-      expect(query('no-payment-methods-message')?.textContent).toContain(
-        'Bob'
-      );
+      expect(query('no-payment-methods-message')?.textContent).toContain('Bob');
     });
 
     it('should not show payment methods list', () => {

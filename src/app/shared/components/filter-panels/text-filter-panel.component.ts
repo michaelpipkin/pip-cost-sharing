@@ -39,9 +39,7 @@ export interface TextFilterValue {
           />
         </mat-form-field>
 
-        <mat-checkbox [(ngModel)]="caseSensitive">
-          Case sensitive
-        </mat-checkbox>
+        <mat-checkbox [(ngModel)]="caseSensitive">Case sensitive</mat-checkbox>
       </div>
 
       <div class="filter-panel-actions">

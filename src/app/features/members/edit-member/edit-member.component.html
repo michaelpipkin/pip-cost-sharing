@@ -15,9 +15,7 @@
           aria-label="Member name"
         />
         @if (f['memberName']?.errors?.['required']) {
-          <mat-error data-testid="edit-member-name-error">
-            *Required
-          </mat-error>
+          <mat-error data-testid="edit-member-name-error">*Required</mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="fill" data-testid="edit-member-email-field">
@@ -45,8 +43,9 @@
         formControlName="active"
         data-testid="edit-member-active-toggle"
         aria-label="Member is active"
-        >Active</mat-slide-toggle
       >
+        Active
+      </mat-slide-toggle>
       <mat-slide-toggle
         formControlName="groupAdmin"
         [matTooltip]="groupAdminTooltip"

@@ -23,7 +23,10 @@ describe('FooterComponent', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: BreakpointObserver, useValue: mockBreakpointObserver },
-        { provide: PwaDetectionService, useValue: createMockPwaDetectionService() },
+        {
+          provide: PwaDetectionService,
+          useValue: createMockPwaDetectionService(),
+        },
       ],
     }).compileComponents();
 

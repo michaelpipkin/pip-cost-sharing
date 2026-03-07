@@ -9,9 +9,11 @@ describe('AdminStatisticsService', () => {
   const mockStats = { userCount: 10, groupCount: 5, expenseCount: 100 };
 
   beforeEach(() => {
-    vi.spyOn(functionsModule, 'getFunctions').mockReturnValue(mockFunctions as any);
+    vi.spyOn(functionsModule, 'getFunctions').mockReturnValue(
+      mockFunctions as any
+    );
     vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
-      vi.fn().mockResolvedValue({ data: mockStats }) as any,
+      vi.fn().mockResolvedValue({ data: mockStats }) as any
     );
 
     TestBed.configureTestingModule({
@@ -29,7 +31,10 @@ describe('AdminStatisticsService', () => {
 
   it('should call the getAdminStatistics cloud function', async () => {
     await service.getStatistics();
-    expect(functionsModule.httpsCallable).toHaveBeenCalledWith(mockFunctions, 'getAdminStatistics');
+    expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
+      mockFunctions,
+      'getAdminStatistics'
+    );
   });
 
   it('should return the data from the cloud function result', async () => {

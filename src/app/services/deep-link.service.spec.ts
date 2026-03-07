@@ -42,7 +42,10 @@ describe('DeepLinkService', () => {
     it('should register an appUrlOpen listener on native platforms', () => {
       vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
       service.initialize();
-      expect(App.addListener).toHaveBeenCalledWith('appUrlOpen', expect.any(Function));
+      expect(App.addListener).toHaveBeenCalledWith(
+        'appUrlOpen',
+        expect.any(Function)
+      );
     });
   });
 
@@ -51,37 +54,45 @@ describe('DeepLinkService', () => {
 
     beforeEach(() => {
       vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
-      vi.spyOn(App, 'addListener').mockImplementation((_event: any, handler: any) => {
-        urlOpenHandler = handler;
-        return Promise.resolve() as any;
-      });
+      vi.spyOn(App, 'addListener').mockImplementation(
+        (_event: any, handler: any) => {
+          urlOpenHandler = handler;
+          return Promise.resolve() as any;
+        }
+      );
       service.initialize();
     });
 
     it('should navigate to the parsed path', () => {
       urlOpenHandler({ url: 'https://pipsplit.app/expenses' });
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/expenses'], { queryParams: {} });
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/expenses'], {
+        queryParams: {},
+      });
     });
 
     it('should extract query parameters and pass them to navigate', () => {
-      urlOpenHandler({ url: 'https://pipsplit.app/reset-password?mode=resetPassword&oobCode=abc123' });
-      expect(mockRouter.navigate).toHaveBeenCalledWith(
-        ['/reset-password'],
-        { queryParams: { mode: 'resetPassword', oobCode: 'abc123' } },
-      );
+      urlOpenHandler({
+        url: 'https://pipsplit.app/reset-password?mode=resetPassword&oobCode=abc123',
+      });
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/reset-password'], {
+        queryParams: { mode: 'resetPassword', oobCode: 'abc123' },
+      });
     });
 
     it('should log a deep_link_received analytics event', () => {
       urlOpenHandler({ url: 'https://pipsplit.app/expenses' });
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'deep_link_received',
-        expect.objectContaining({ path: '/expenses' }),
+        expect.objectContaining({ path: '/expenses' })
       );
     });
 
     it('should log an error event for a malformed URL', () => {
       urlOpenHandler({ url: 'not-a-valid-url' });
-      expect(mockAnalytics.logEvent).toHaveBeenCalledWith('error', expect.objectContaining({ service: 'DeepLinkService' }));
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ service: 'DeepLinkService' })
+      );
     });
 
     it('should not navigate on a malformed URL', () => {
