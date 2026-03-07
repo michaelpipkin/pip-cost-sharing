@@ -1,7 +1,9 @@
 import { vi } from 'vitest';
 
 export const Camera = {
-  getPhoto: vi.fn().mockResolvedValue({ webPath: undefined, format: undefined }),
+  getPhoto: vi
+    .fn()
+    .mockResolvedValue({ webPath: undefined, format: undefined }),
   pickImages: vi.fn().mockResolvedValue({ photos: [] }),
 };
 

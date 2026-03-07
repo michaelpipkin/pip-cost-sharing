@@ -19,8 +19,9 @@
           (click)="showHelp()"
           data-testid="history-detail-help-button"
           aria-label="Show help for payment detail"
-          >help</mat-icon
         >
+          help
+        </mat-icon>
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
@@ -29,10 +30,10 @@
       <div class="payment-summary-info">
         @if (isGroupSettle()) {
           <div class="payment-date">
-            <span data-testid="payment-date"
-              ><strong>Date:</strong>
-              {{ history()!.date | date: 'M/d/yyyy' }}</span
-            >
+            <span data-testid="payment-date">
+              <strong>Date:</strong>
+              {{ history()!.date | date: 'M/d/yyyy' }}
+            </span>
           </div>
           <table
             class="settle-transfers-table mt-1"
@@ -58,22 +59,22 @@
             </tbody>
           </table>
         } @else {
-          <span data-testid="paid-by-name"
-            ><strong>Paid By:</strong>
-            {{ history()!.paidByMember?.displayName }}</span
-          >
-          <span data-testid="paid-to-name"
-            ><strong>Paid To:</strong>
-            {{ history()!.paidToMember?.displayName }}</span
-          >
-          <span data-testid="payment-date"
-            ><strong>Date:</strong>
-            {{ history()!.date | date: 'M/d/yyyy' }}</span
-          >
-          <span data-testid="payment-total"
-            ><strong>Amount:</strong>
-            {{ history()!.totalPaid | currency }}</span
-          >
+          <span data-testid="paid-by-name">
+            <strong>Paid By:</strong>
+            {{ history()!.paidByMember?.displayName }}
+          </span>
+          <span data-testid="paid-to-name">
+            <strong>Paid To:</strong>
+            {{ history()!.paidToMember?.displayName }}
+          </span>
+          <span data-testid="payment-date">
+            <strong>Date:</strong>
+            {{ history()!.date | date: 'M/d/yyyy' }}
+          </span>
+          <span data-testid="payment-total">
+            <strong>Amount:</strong>
+            {{ history()!.totalPaid | currency }}
+          </span>
         }
       </div>
       <div class="payment-summary-actions flex-wrap fw-end mt-2">

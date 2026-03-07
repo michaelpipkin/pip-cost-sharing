@@ -1,17 +1,34 @@
 <h1 mat-dialog-title data-testid="edit-category-title">Edit Category</h1>
-<form [formGroup]="editCategoryForm" data-testid="edit-category-form" aria-label="Edit category form">
+<form
+  [formGroup]="editCategoryForm"
+  data-testid="edit-category-form"
+  aria-label="Edit category form"
+>
   <mat-dialog-content data-testid="edit-category-content">
     <div class="content" data-testid="edit-category-fields">
       <mat-form-field appearance="fill" data-testid="edit-category-name-field">
         <mat-label>Category name</mat-label>
-        <input matInput formControlName="categoryName" data-testid="edit-category-name-input" aria-label="Category name" />
+        <input
+          matInput
+          formControlName="categoryName"
+          data-testid="edit-category-name-input"
+          aria-label="Category name"
+        />
         @if (f.categoryName.errors?.['required']) {
-          <mat-error data-testid="edit-category-name-error"> *Required </mat-error>
+          <mat-error data-testid="edit-category-name-error">
+            *Required
+          </mat-error>
         }
       </mat-form-field>
     </div>
     <div class="toggle" data-testid="edit-category-toggles">
-      <mat-slide-toggle formControlName="active" data-testid="edit-category-active-toggle" aria-label="Category is active">Active</mat-slide-toggle>
+      <mat-slide-toggle
+        formControlName="active"
+        data-testid="edit-category-active-toggle"
+        aria-label="Category is active"
+      >
+        Active
+      </mat-slide-toggle>
     </div>
   </mat-dialog-content>
   <mat-dialog-actions data-testid="edit-category-actions">

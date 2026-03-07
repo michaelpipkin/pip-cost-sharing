@@ -39,9 +39,9 @@
         [attr.aria-pressed]="hidePassword()"
         tabindex="-1"
       >
-        <mat-icon fontSet="material-symbols-outlined">{{
-          hidePassword() ? 'visibility_off' : 'visibility'
-        }}</mat-icon>
+        <mat-icon fontSet="material-symbols-outlined">
+          {{ hidePassword() ? 'visibility_off' : 'visibility' }}
+        </mat-icon>
       </button>
     </mat-form-field>
     <mat-form-field>
@@ -60,9 +60,9 @@
         [attr.aria-pressed]="hideConfirmPassword()"
         tabindex="-1"
       >
-        <mat-icon fontSet="material-symbols-outlined">{{
-          hideConfirmPassword() ? 'visibility_off' : 'visibility'
-        }}</mat-icon>
+        <mat-icon fontSet="material-symbols-outlined">
+          {{ hideConfirmPassword() ? 'visibility_off' : 'visibility' }}
+        </mat-icon>
       </button>
     </mat-form-field>
     @if (registerForm.errors?.passwordMismatch && r.confirmPassword.touched) {
@@ -84,8 +84,9 @@
         target="_blank"
         (click)="openPrivacyPolicy($event)"
         style="color: #4caf50; text-decoration: none"
-        >Privacy Policy</a
       >
+        Privacy Policy
+      </a>
     </p>
     <div class="buttons">
       <button

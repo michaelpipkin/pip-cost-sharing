@@ -3,7 +3,10 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { LoadingComponent } from './loading.component';
 import { LoadingService } from './loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { createMockLoadingService, createMockAnalyticsService } from '@testing/test-helpers';
+import {
+  createMockLoadingService,
+  createMockAnalyticsService,
+} from '@testing/test-helpers';
 
 describe('LoadingComponent', () => {
   let fixture: ComponentFixture<LoadingComponent>;

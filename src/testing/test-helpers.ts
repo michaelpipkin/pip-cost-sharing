@@ -165,8 +165,9 @@ export function createMockMemberStore() {
       currentMember.set(null);
       loaded.set(false);
     }),
-    getMemberByRef: vi.fn((ref: any) =>
-      groupMembers().find((m) => m.ref?.path === ref?.path) || null
+    getMemberByRef: vi.fn(
+      (ref: any) =>
+        groupMembers().find((m) => m.ref?.path === ref?.path) || null
     ),
   };
 }

@@ -8,7 +8,11 @@
       <br />
       (Clicking a link will also copy the user ID to your clipboard.)
     </p>
-    <ul style="list-style-type: none" class="grid-list" data-testid="payment-methods-list">
+    <ul
+      style="list-style-type: none"
+      class="grid-list"
+      data-testid="payment-methods-list"
+    >
       @if (data.venmoId !== '') {
         <li>
           <a
@@ -17,16 +21,19 @@
             (click)="copyPaymentIdToClipboard(data.venmoId)"
             data-testid="venmo-link"
             aria-label="Pay with Venmo and copy ID"
-            >Venmo</a
-          >:
+          >
+            Venmo
+          </a>
+          :
           {{ data.venmoId }}
           <mat-icon
             matTooltip="Copy Venmo ID"
             (click)="copyPaymentIdToClipboard(data.venmoId)"
             data-testid="copy-venmo-id-button"
             aria-label="Copy Venmo ID to clipboard"
-            >content_copy</mat-icon
           >
+            content_copy
+          </mat-icon>
         </li>
       }
       @if (data.paypalId !== '') {
@@ -37,16 +44,19 @@
             (click)="copyPaymentIdToClipboard(data.paypalId)"
             data-testid="paypal-link"
             aria-label="Pay with PayPal and copy ID"
-            >PayPal</a
-          >:
+          >
+            PayPal
+          </a>
+          :
           {{ data.paypalId }}
           <mat-icon
             matTooltip="Copy PayPal ID"
             (click)="copyPaymentIdToClipboard(data.paypalId)"
             data-testid="copy-paypal-id-button"
             aria-label="Copy PayPal ID to clipboard"
-            >content_copy</mat-icon
           >
+            content_copy
+          </mat-icon>
         </li>
       }
       @if (data.cashAppId !== '') {
@@ -57,16 +67,19 @@
             (click)="copyPaymentIdToClipboard(data.cashAppId)"
             data-testid="cashapp-link"
             aria-label="Pay with CashApp and copy ID"
-            >CashApp</a
-          >:
+          >
+            CashApp
+          </a>
+          :
           {{ data.cashAppId }}
           <mat-icon
             matTooltip="Copy CashApp ID"
             (click)="copyPaymentIdToClipboard(data.cashAppId)"
             data-testid="copy-cashapp-id-button"
             aria-label="Copy CashApp ID to clipboard"
-            >content_copy</mat-icon
           >
+            content_copy
+          </mat-icon>
         </li>
       }
       @if (data.zelleId !== '') {
@@ -77,16 +90,19 @@
             (click)="copyPaymentIdToClipboard(data.zelleId)"
             data-testid="zelle-link"
             aria-label="Pay with Zelle and copy ID"
-            >Zelle</a
-          >:
+          >
+            Zelle
+          </a>
+          :
           {{ data.zelleId }}
           <mat-icon
             matTooltip="Copy Zelle ID"
             (click)="copyPaymentIdToClipboard(data.zelleId)"
             data-testid="copy-zelle-id-button"
             aria-label="Copy Zelle ID to clipboard"
-            >content_copy</mat-icon
           >
+            content_copy
+          </mat-icon>
         </li>
       }
     </ul>
@@ -114,7 +130,13 @@
   >
     Submit
   </button>
-  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-testid="cancel-payment-button" aria-label="Cancel payment recording">
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-testid="cancel-payment-button"
+    aria-label="Cancel payment recording"
+  >
     Cancel
   </button>
 </mat-dialog-actions>

@@ -124,8 +124,9 @@ export abstract class BaseFilterDirective {
 
     // If mat-sort-header is present, append to its content wrapper
     // Otherwise append directly to header cell
-    const sortHeaderContent =
-      headerCell.querySelector('.mat-sort-header-content');
+    const sortHeaderContent = headerCell.querySelector(
+      '.mat-sort-header-content'
+    );
     const targetElement = sortHeaderContent || headerCell;
     this.renderer.appendChild(targetElement, this.filterIcon);
 

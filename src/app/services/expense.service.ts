@@ -62,9 +62,7 @@ export class ExpenseService implements IExpenseService {
     }
 
     // Build expense query
-    let expenseQuery = query(
-      collection(this.fs, `groups/${groupId}/expenses`)
-    );
+    let expenseQuery = query(collection(this.fs, `groups/${groupId}/expenses`));
     if (startDate) {
       expenseQuery = query(expenseQuery, where('date', '>=', isoStartDate));
     }

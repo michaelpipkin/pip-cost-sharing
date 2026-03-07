@@ -60,13 +60,17 @@ describe('ConfirmDialogComponent', () => {
 
   describe('button dialog close values', () => {
     it('confirm button should have mat-dialog-close set to true', () => {
-      const confirmBtnDe = fixture.debugElement.query(By.css('[data-testid="confirm-button"]'));
+      const confirmBtnDe = fixture.debugElement.query(
+        By.css('[data-testid="confirm-button"]')
+      );
       const closeDir = confirmBtnDe.injector.get(MatDialogClose, null);
       expect(closeDir?.dialogResult).toBe(true);
     });
 
     it('cancel button should have mat-dialog-close set to false', () => {
-      const cancelBtnDe = fixture.debugElement.query(By.css('[data-testid="cancel-button"]'));
+      const cancelBtnDe = fixture.debugElement.query(
+        By.css('[data-testid="cancel-button"]')
+      );
       const closeDir = cancelBtnDe.injector.get(MatDialogClose, null);
       expect(closeDir?.dialogResult).toBe(false);
     });

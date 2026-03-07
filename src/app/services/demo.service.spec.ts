@@ -111,7 +111,9 @@ describe('DemoService', () => {
   describe('demo data initialization', () => {
     it('should initialize demo data on first visit to a demo route', () => {
       createService('/');
-      navigationHandler(new NavigationEnd(1, '/demo/expenses', '/demo/expenses'));
+      navigationHandler(
+        new NavigationEnd(1, '/demo/expenses', '/demo/expenses')
+      );
       expect(mockDemoModeService.initializeDemoData).toHaveBeenCalledOnce();
     });
 

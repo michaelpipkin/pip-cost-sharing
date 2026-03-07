@@ -1,4 +1,6 @@
-<h1 mat-dialog-title data-testid="delete-dialog-title">Confirm {{ operation() }}</h1>
+<h1 mat-dialog-title data-testid="delete-dialog-title">
+  Confirm {{ operation() }}
+</h1>
 <mat-dialog-content data-testid="delete-dialog-content">
   <p data-testid="delete-warning-text">
     WARNING! This action cannot be undone. Are you sure you want to
@@ -16,7 +18,13 @@
   >
     {{ operation() }}
   </button>
-  <button mat-stroked-button type="button" [mat-dialog-close]="false" data-testid="delete-cancel-button" aria-label="Cancel delete operation">
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-testid="delete-cancel-button"
+    aria-label="Cancel delete operation"
+  >
     Cancel
   </button>
 </mat-dialog-actions>

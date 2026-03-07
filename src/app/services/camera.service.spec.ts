@@ -13,7 +13,10 @@ describe('CameraService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
-    vi.spyOn(Camera, 'getPhoto').mockResolvedValue({ webPath: 'test://photo.jpg', format: 'jpeg' } as any);
+    vi.spyOn(Camera, 'getPhoto').mockResolvedValue({
+      webPath: 'test://photo.jpg',
+      format: 'jpeg',
+    } as any);
     service = new CameraService();
   });
 
@@ -37,20 +40,30 @@ describe('CameraService', () => {
   describe('takePicture', () => {
     it('should call Camera.getPhoto with Camera source', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.jpg', format: 'jpeg' } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.jpg',
+        format: 'jpeg',
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       await service.takePicture();
 
       expect(Camera.getPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({ source: CameraSource.Camera }),
+        expect.objectContaining({ source: CameraSource.Camera })
       );
     });
 
     it('should return a File with the correct MIME type from the blob', async () => {
       const mockBlob = makeMockBlob('image/png');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.png', format: undefined } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.png',
+        format: undefined,
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       const result = await service.takePicture();
 
@@ -60,8 +73,13 @@ describe('CameraService', () => {
 
     it('should use photo.format for the filename when available', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.jpg', format: 'heic' } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.jpg',
+        format: 'heic',
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       const result = await service.takePicture();
 
@@ -70,8 +88,13 @@ describe('CameraService', () => {
 
     it('should fall back to MIME type extension when format is not available', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.jpg', format: undefined } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.jpg',
+        format: undefined,
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       const result = await service.takePicture();
 
@@ -79,7 +102,9 @@ describe('CameraService', () => {
     });
 
     it('should return null when Camera.getPhoto throws (user cancelled)', async () => {
-      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(new Error('User cancelled'));
+      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(
+        new Error('User cancelled')
+      );
 
       const result = await service.takePicture();
 
@@ -90,18 +115,25 @@ describe('CameraService', () => {
   describe('selectFromGallery', () => {
     it('should call Camera.getPhoto with Photos source', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.jpg', format: 'jpeg' } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.jpg',
+        format: 'jpeg',
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       await service.selectFromGallery();
 
       expect(Camera.getPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({ source: CameraSource.Photos }),
+        expect.objectContaining({ source: CameraSource.Photos })
       );
     });
 
     it('should return null when Camera.getPhoto throws (user cancelled)', async () => {
-      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(new Error('User cancelled'));
+      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(
+        new Error('User cancelled')
+      );
 
       const result = await service.selectFromGallery();
 
@@ -110,8 +142,13 @@ describe('CameraService', () => {
 
     it('should use gallery-photo as the base filename when format is not available', async () => {
       const mockBlob = makeMockBlob('image/png');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({ webPath: 'test://photo.png', format: undefined } as any);
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({ blob: async () => mockBlob } as any);
+      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+        webPath: 'test://photo.png',
+        format: undefined,
+      } as any);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        blob: async () => mockBlob,
+      } as any);
 
       const result = await service.selectFromGallery();
 

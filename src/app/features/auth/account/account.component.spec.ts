@@ -157,9 +157,7 @@ describe('AccountComponent', () => {
     it('should navigate to /auth/account', async () => {
       await createComponent();
       const router = TestBed.inject(Router);
-      const navigateSpy = vi
-        .spyOn(router, 'navigate')
-        .mockResolvedValue(true);
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.navigateToList();
       expect(navigateSpy).toHaveBeenCalledWith(['/auth/account']);
     });

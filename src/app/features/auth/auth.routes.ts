@@ -29,18 +29,18 @@ export const authRoutes: Routes = [
         path: 'forgot-password',
         title: 'Forgot Password',
         loadComponent: () =>
-          import(
-            '@features/auth/forgot-password/forgot-password.component'
-          ).then((m) => m.ForgotPasswordComponent),
+          import('@features/auth/forgot-password/forgot-password.component').then(
+            (m) => m.ForgotPasswordComponent
+          ),
         canActivate: [loggedInGuard],
       },
       {
         path: 'reset-password',
         title: 'Reset Password',
         loadComponent: () =>
-          import(
-            '@features/auth/reset-password/reset-password.component'
-          ).then((m) => m.ResetPasswordComponent),
+          import('@features/auth/reset-password/reset-password.component').then(
+            (m) => m.ResetPasswordComponent
+          ),
         canActivate: [loggedInGuard],
       },
       {
@@ -56,41 +56,41 @@ export const authRoutes: Routes = [
             path: 'profile',
             title: 'Profile',
             loadComponent: () =>
-              import(
-                '@features/auth/account/profile/account-profile.component'
-              ).then((m) => m.AccountProfileComponent),
+              import('@features/auth/account/profile/account-profile.component').then(
+                (m) => m.AccountProfileComponent
+              ),
           },
           {
             path: 'security',
             title: 'Security',
             loadComponent: () =>
-              import(
-                '@features/auth/account/security/account-security.component'
-              ).then((m) => m.AccountSecurityComponent),
+              import('@features/auth/account/security/account-security.component').then(
+                (m) => m.AccountSecurityComponent
+              ),
           },
           {
             path: 'payments',
             title: 'Payments',
             loadComponent: () =>
-              import(
-                '@features/auth/account/payments/account-payments.component'
-              ).then((m) => m.AccountPaymentsComponent),
+              import('@features/auth/account/payments/account-payments.component').then(
+                (m) => m.AccountPaymentsComponent
+              ),
           },
           {
             path: 'preferences',
             title: 'Preferences',
             loadComponent: () =>
-              import(
-                '@features/auth/account/preferences/account-preferences.component'
-              ).then((m) => m.AccountPreferencesComponent),
+              import('@features/auth/account/preferences/account-preferences.component').then(
+                (m) => m.AccountPreferencesComponent
+              ),
           },
           {
             path: 'legal',
             title: 'Legal',
             loadComponent: () =>
-              import(
-                '@features/auth/account/legal/account-legal.component'
-              ).then((m) => m.AccountLegalComponent),
+              import('@features/auth/account/legal/account-legal.component').then(
+                (m) => m.AccountLegalComponent
+              ),
           },
         ],
       },
@@ -98,17 +98,17 @@ export const authRoutes: Routes = [
         path: 'account-action',
         title: 'Account Action',
         loadComponent: () =>
-          import(
-            '@features/auth/account-action/account-action.component'
-          ).then((m) => m.AccountActionComponent),
+          import('@features/auth/account-action/account-action.component').then(
+            (m) => m.AccountActionComponent
+          ),
       },
       {
         path: 'delete-account',
         title: 'Delete Account',
         loadComponent: () =>
-          import(
-            '@features/auth/delete-account/delete-account.component'
-          ).then((m) => m.DeleteAccountComponent),
+          import('@features/auth/delete-account/delete-account.component').then(
+            (m) => m.DeleteAccountComponent
+          ),
       },
     ],
   },

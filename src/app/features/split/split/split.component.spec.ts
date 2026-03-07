@@ -104,12 +104,12 @@ describe('SplitComponent', () => {
   describe('currency handling', () => {
     it('should populate currency dropdown with supported currencies', () => {
       expect(component.supportedCurrencies.length).toBeGreaterThan(0);
-      expect(
-        component.supportedCurrencies.some((c) => c.code === 'USD')
-      ).toBe(true);
-      expect(
-        component.supportedCurrencies.some((c) => c.code === 'JPY')
-      ).toBe(true);
+      expect(component.supportedCurrencies.some((c) => c.code === 'USD')).toBe(
+        true
+      );
+      expect(component.supportedCurrencies.some((c) => c.code === 'JPY')).toBe(
+        true
+      );
     });
 
     it('should update local currency when currency changes', async () => {
