@@ -2,7 +2,6 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
-  AfterViewInit,
   Component,
   computed,
   effect,
@@ -93,7 +92,7 @@ import {
   ],
   providers: [TableFilterService],
 })
-export class ExpensesComponent implements AfterViewInit {
+export class ExpensesComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly userStore = inject(UserStore);
@@ -105,7 +104,6 @@ export class ExpensesComponent implements AfterViewInit {
   protected readonly demoService = inject(DemoService);
   protected readonly tourService = inject(TourService);
   protected readonly expenseService = inject(ExpenseService);
-  protected readonly loadingService = inject(LoadingService);
   protected readonly splitService = inject(SplitService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -142,15 +140,10 @@ export class ExpensesComponent implements AfterViewInit {
         ) {
           this.expenses.set(storeExpenses);
           this.isLoaded.set(true);
-          console.log(
-            'Auto-loaded demo expenses from store:',
-            storeExpenses.length
-          );
         }
       } else {
         // Clear demo expenses when switching to real user mode
         if (this.expenses().length > 0 && !this.currentGroup()) {
-          console.log('Clearing demo expenses - user logged in');
           this.expenses.set([]);
           this.isLoaded.set(false);
         }
@@ -200,12 +193,8 @@ export class ExpensesComponent implements AfterViewInit {
         }
       });
 
-    // If currentGroup is already set (e.g., coming from another page), load expenses immediately
-    // Otherwise, the effect above will load them when the group becomes available
     afterNextRender(() => {
-      if (this.currentGroup() && !this.userStore.isDemoMode()) {
-        this.loadExpenses();
-      }
+      this.tourService.checkForContinueTour('expenses');
     });
   }
 
@@ -255,11 +244,6 @@ export class ExpensesComponent implements AfterViewInit {
   columnsToDisplay = signal<string[]>([]);
   footerColumnsToDisplay = signal<string[]>([]);
   smallScreen = signal<boolean>(false);
-
-  ngAfterViewInit(): void {
-    // Check if we should auto-start the expenses tour
-    this.tourService.checkForContinueTour('expenses');
-  }
 
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
