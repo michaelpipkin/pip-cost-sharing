@@ -25,6 +25,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
@@ -100,6 +101,7 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
+    MatButtonToggleModule,
   ],
 })
 export class EditExpenseComponent {
@@ -151,7 +153,6 @@ export class EditExpenseComponent {
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
   receiptUrl = model<string>(null as unknown as string);
-  splitByPercentage = model<boolean>(false);
 
   datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
@@ -173,6 +174,7 @@ export class EditExpenseComponent {
     ],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
+    splitByPercentage: [false, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
@@ -201,7 +203,6 @@ export class EditExpenseComponent {
   }
 
   async loadExpense(expense: Expense): Promise<void> {
-    this.splitByPercentage.set(expense.splitByPercentage);
     this.editExpenseForm.patchValue({
       paidByMember: expense.paidByMemberRef,
       date: expense.date,
@@ -210,6 +211,7 @@ export class EditExpenseComponent {
       category: expense.categoryRef,
       sharedAmount: expense.sharedAmount,
       allocatedAmount: expense.allocatedAmount,
+      splitByPercentage: expense.splitByPercentage,
     });
     expense.splits.forEach((s: Split) => {
       this.splits.push(
@@ -328,7 +330,7 @@ export class EditExpenseComponent {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -349,7 +351,7 @@ export class EditExpenseComponent {
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -503,19 +505,17 @@ export class EditExpenseComponent {
   }
 
   onSplitByPercentageClick(): void {
-    this.splitByPercentage.set(true);
     this.editExpenseForm.markAsDirty();
     this.allocateByPercentage();
   }
 
   onSplitByAmountClick(): void {
-    this.splitByPercentage.set(false);
     this.editExpenseForm.markAsDirty();
     this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -672,24 +672,24 @@ export class EditExpenseComponent {
           const expenseDate = val.date!.toIsoFormat();
           const changes: Partial<ExpenseDto> = {
             date: expenseDate,
-            description: val.description ?? undefined,
-            categoryRef: val.category ?? undefined,
-            paidByMemberRef: val.paidByMember ?? undefined,
+            description: val.description!,
+            categoryRef: val.category!,
+            paidByMemberRef: val.paidByMember!,
             sharedAmount: +val.sharedAmount!,
             allocatedAmount: +val.allocatedAmount!,
             totalAmount: +val.amount!,
-            splitByPercentage: this.splitByPercentage(),
+            splitByPercentage: val.splitByPercentage!,
             paid: false,
           };
           let splits: Partial<SplitDto>[] = [];
           this.splitsFormArray.getRawValue().forEach((s) => {
             const split: Partial<SplitDto> = {
               date: expenseDate,
-              categoryRef: val.category ?? undefined,
+              categoryRef: val.category!,
               assignedAmount: +s.assignedAmount,
               percentage: +s.percentage,
               allocatedAmount: +s.allocatedAmount,
-              paidByMemberRef: val.paidByMember ?? undefined,
+              paidByMemberRef: val.paidByMember!,
               owedByMemberRef: s.owedByMemberRef,
               paid: s.owedByMemberRef.eq(val.paidByMember!),
             };
@@ -804,7 +804,7 @@ export class EditExpenseComponent {
           control.setValue(this.localeService.roundToCurrency(result), {
             emitEvent: true,
           });
-          if (this.splitByPercentage()) {
+          if (this.e.splitByPercentage.value) {
             this.allocateByPercentage();
           } else {
             this.allocateSharedAmounts();

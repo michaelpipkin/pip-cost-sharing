@@ -25,6 +25,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
@@ -100,6 +101,7 @@ import { getStorage } from 'firebase/storage';
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
+    MatButtonToggleModule,
   ],
 })
 export class AddExpenseComponent {
@@ -143,7 +145,6 @@ export class AddExpenseComponent {
 
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
-  splitByPercentage = model<boolean>(false);
 
   datePicker = viewChild<ElementRef>('datePicker');
   totalAmountField = viewChild<ElementRef>('totalAmount');
@@ -163,6 +164,7 @@ export class AddExpenseComponent {
     ],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
+    splitByPercentage: [false, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
@@ -232,7 +234,9 @@ export class AddExpenseComponent {
 
   loadMemorizedExpense(): void {
     const expense: SerializableMemorized = this.memorizedExpense()!;
-    this.splitByPercentage.set(expense.splitByPercentage);
+    this.addExpenseForm.patchValue({
+      splitByPercentage: expense.splitByPercentage,
+    });
 
     // Find the category and member by ID
     const category = this.#categories().find(
@@ -331,7 +335,7 @@ export class AddExpenseComponent {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    if (this.splitByPercentage()) {
+    if (this.addExpenseForm.value.splitByPercentage) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -369,7 +373,7 @@ export class AddExpenseComponent {
         input.nativeElement.dispatchEvent(event);
       });
     });
-    if (this.splitByPercentage()) {
+    if (this.addExpenseForm.value.splitByPercentage) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -389,7 +393,7 @@ export class AddExpenseComponent {
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    if (this.splitByPercentage()) {
+    if (this.addExpenseForm.value.splitByPercentage) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -541,19 +545,17 @@ export class AddExpenseComponent {
   }
 
   onSplitByPercentageClick(): void {
-    this.splitByPercentage.set(true);
     this.addExpenseForm.markAsDirty();
     this.allocateByPercentage();
   }
 
   onSplitByAmountClick(): void {
-    this.splitByPercentage.set(false);
     this.addExpenseForm.markAsDirty();
     this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {
-    if (this.splitByPercentage()) {
+    if (this.addExpenseForm.value.splitByPercentage) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -698,25 +700,25 @@ export class AddExpenseComponent {
       const expenseDate = val.date!.toIsoFormat();
       const expense: Partial<ExpenseDto> = {
         date: expenseDate,
-        description: val.description ?? undefined,
-        categoryRef: val.category ?? undefined,
-        paidByMemberRef: val.paidByMember ?? undefined,
+        description: val.description!,
+        categoryRef: val.category!,
+        paidByMemberRef: val.paidByMember!,
         paid: false,
-        sharedAmount: val.sharedAmount ?? undefined,
-        allocatedAmount: val.allocatedAmount ?? undefined,
-        totalAmount: val.amount ?? undefined,
-        splitByPercentage: this.splitByPercentage(),
+        sharedAmount: val.sharedAmount!,
+        allocatedAmount: val.allocatedAmount!,
+        totalAmount: val.amount!,
+        splitByPercentage: val.splitByPercentage!,
       };
       let splits: Partial<SplitDto>[] = [];
       this.splitsFormArray.getRawValue().forEach((s) => {
         if (s.allocatedAmount !== 0) {
           const split: Partial<SplitDto> = {
             date: expenseDate,
-            categoryRef: val.category ?? undefined,
+            categoryRef: val.category!,
             assignedAmount: s.assignedAmount,
             percentage: s.percentage,
             allocatedAmount: s.allocatedAmount,
-            paidByMemberRef: val.paidByMember ?? undefined,
+            paidByMemberRef: val.paidByMember!,
             owedByMemberRef: s.owedByMemberRef,
             paid: s.owedByMemberRef.eq(val.paidByMember!),
           };
@@ -811,7 +813,7 @@ export class AddExpenseComponent {
       }
 
       // Trigger allocation updates
-      if (this.splitByPercentage()) {
+      if (this.addExpenseForm.value.splitByPercentage) {
         this.allocateByPercentage();
       } else {
         this.allocateSharedAmounts();
