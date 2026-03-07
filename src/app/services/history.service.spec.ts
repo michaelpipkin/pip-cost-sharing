@@ -12,7 +12,10 @@ const mockFs = {};
 describe('HistoryService', () => {
   let service: HistoryService;
 
-  const mockHistoryStore = { setHistory: vi.fn(), groupHistory: signal<any[]>([]) };
+  const mockHistoryStore = {
+    setHistory: vi.fn(),
+    groupHistory: signal<any[]>([]),
+  };
   const mockMemberStore = {
     loaded: signal(true),
     groupMembers: signal<any[]>([]),
@@ -35,9 +38,13 @@ describe('HistoryService', () => {
     vi.spyOn(firestoreModule, 'orderBy').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'where').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'onSnapshot').mockReturnValue(vi.fn() as any);
-    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({ data: () => ({}) } as any);
+    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
+      data: () => ({}),
+    } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue({ docs: [] } as any);
-    vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(makeMockBatch() as any);
+    vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(
+      makeMockBatch() as any
+    );
 
     TestBed.configureTestingModule({
       providers: [
@@ -108,7 +115,7 @@ describe('HistoryService', () => {
 
       // expenseRef should only be updated once (de-duplicated by path)
       const expenseUpdateCalls = mockBatch.update.mock.calls.filter(
-        (call) => call[0] === expenseRef,
+        (call) => call[0] === expenseRef
       );
       expect(expenseUpdateCalls).toHaveLength(1);
     });
@@ -124,16 +131,24 @@ describe('HistoryService', () => {
         commit: vi.fn().mockResolvedValue(undefined),
       };
       vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(mockBatch as any);
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({ data: () => ({ expenseRef }) } as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        data: () => ({ expenseRef }),
+      } as any);
 
-      await service.unpayHistory({ splitsPaid: [{ id: 's1', path: 'x' }], ref: historyRef } as any);
+      await service.unpayHistory({
+        splitsPaid: [{ id: 's1', path: 'x' }],
+        ref: historyRef,
+      } as any);
 
       expect(mockBatch.delete).toHaveBeenCalledWith(historyRef);
     });
   });
 
   describe('unpaySingleSplitFromHistory', () => {
-    const splitRef = { id: 'split-1', eq: (other: any) => other.id === 'split-1' } as any;
+    const splitRef = {
+      id: 'split-1',
+      eq: (other: any) => other.id === 'split-1',
+    } as any;
     const expenseRef = { id: 'exp-1' } as any;
     const historyRef = { id: 'hist-1' } as any;
 
@@ -153,13 +168,19 @@ describe('HistoryService', () => {
       await service.unpaySingleSplitFromHistory(
         splitRef,
         expenseRef,
-        { splitsPaid: [splitRef, otherRef], totalPaid: 100, ref: historyRef } as any,
+        {
+          splitsPaid: [splitRef, otherRef],
+          totalPaid: 100,
+          ref: historyRef,
+        } as any,
         25,
-        true,
+        true
       );
 
       expect(mockBatch.update).toHaveBeenCalledWith(splitRef, { paid: false });
-      expect(mockBatch.update).toHaveBeenCalledWith(expenseRef, { paid: false });
+      expect(mockBatch.update).toHaveBeenCalledWith(expenseRef, {
+        paid: false,
+      });
     });
 
     it('should delete the history record when removing the last split', async () => {
@@ -168,11 +189,14 @@ describe('HistoryService', () => {
         expenseRef,
         { splitsPaid: [splitRef], totalPaid: 100, ref: historyRef } as any,
         100,
-        true,
+        true
       );
 
       expect(mockBatch.delete).toHaveBeenCalledWith(historyRef);
-      expect(mockBatch.update).not.toHaveBeenCalledWith(historyRef, expect.anything());
+      expect(mockBatch.update).not.toHaveBeenCalledWith(
+        historyRef,
+        expect.anything()
+      );
     });
 
     it('should subtract the split amount from totalPaid for positive direction', async () => {
@@ -180,13 +204,17 @@ describe('HistoryService', () => {
       await service.unpaySingleSplitFromHistory(
         splitRef,
         expenseRef,
-        { splitsPaid: [splitRef, otherRef], totalPaid: 100, ref: historyRef } as any,
+        {
+          splitsPaid: [splitRef, otherRef],
+          totalPaid: 100,
+          ref: historyRef,
+        } as any,
         25,
-        true,
+        true
       );
 
       const historyUpdateCall = mockBatch.update.mock.calls.find(
-        (call: any[]) => call[0] === historyRef,
+        (call: any[]) => call[0] === historyRef
       );
       expect(historyUpdateCall![1].totalPaid).toBe(75); // 100 - 25
     });
@@ -196,13 +224,17 @@ describe('HistoryService', () => {
       await service.unpaySingleSplitFromHistory(
         splitRef,
         expenseRef,
-        { splitsPaid: [splitRef, otherRef], totalPaid: -75, ref: historyRef } as any,
+        {
+          splitsPaid: [splitRef, otherRef],
+          totalPaid: -75,
+          ref: historyRef,
+        } as any,
         25,
-        false,
+        false
       );
 
       const historyUpdateCall = mockBatch.update.mock.calls.find(
-        (call: any[]) => call[0] === historyRef,
+        (call: any[]) => call[0] === historyRef
       );
       expect(historyUpdateCall![1].totalPaid).toBe(-50); // -75 + 25
     });
@@ -212,13 +244,17 @@ describe('HistoryService', () => {
       await service.unpaySingleSplitFromHistory(
         splitRef,
         expenseRef,
-        { splitsPaid: [splitRef, otherRef], totalPaid: 100, ref: historyRef } as any,
+        {
+          splitsPaid: [splitRef, otherRef],
+          totalPaid: 100,
+          ref: historyRef,
+        } as any,
         25,
-        true,
+        true
       );
 
       const historyUpdateCall = mockBatch.update.mock.calls.find(
-        (call: any[]) => call[0] === historyRef,
+        (call: any[]) => call[0] === historyRef
       );
       expect(historyUpdateCall![1].splitsPaid).toEqual([otherRef]);
     });
@@ -268,10 +304,12 @@ describe('HistoryService', () => {
       await service.unpayGroupSettle('group-1', 'batch-1');
 
       const splitUpdateCalls = mockBatch.update.mock.calls.filter(
-        (c: any[]) => c[0] === splitRef,
+        (c: any[]) => c[0] === splitRef
       );
       expect(splitUpdateCalls).toHaveLength(1); // de-duplicated
-      expect(mockBatch.update).toHaveBeenCalledWith(expenseRef, { paid: false });
+      expect(mockBatch.update).toHaveBeenCalledWith(expenseRef, {
+        paid: false,
+      });
     });
 
     it('should only delete history records for old-style records with empty splitsPaid', async () => {

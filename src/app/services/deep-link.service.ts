@@ -44,7 +44,8 @@ export class DeepLinkService {
       this.analytics.logEvent('error', {
         service: 'DeepLinkService',
         action: 'handleDeepLink',
-        message: error instanceof Error ? error.message : 'Failed to parse deep link',
+        message:
+          error instanceof Error ? error.message : 'Failed to parse deep link',
       });
     }
   }

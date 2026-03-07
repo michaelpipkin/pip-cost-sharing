@@ -29,7 +29,7 @@ describe('HelpService', () => {
 
       expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/michaelpipkin/pip-cost-sharing/issues',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ method: 'POST' })
       );
     });
 
@@ -82,7 +82,7 @@ describe('HelpService', () => {
       } as Response);
 
       await expect(service.createIssue('Test', 'Body')).rejects.toThrow(
-        'Failed to create issue: Unauthorized',
+        'Failed to create issue: Unauthorized'
       );
     });
   });

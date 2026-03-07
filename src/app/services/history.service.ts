@@ -62,9 +62,7 @@ export class HistoryService implements IHistoryService {
     const splitRefs = history.splitsPaid ?? [];
 
     // Fetch all splits to get their expenseRefs
-    const splitDocs = await Promise.all(
-      splitRefs.map((ref) => getDoc(ref))
-    );
+    const splitDocs = await Promise.all(splitRefs.map((ref) => getDoc(ref)));
 
     // Mark all splits as unpaid
     for (const splitRef of splitRefs) {
@@ -72,12 +70,11 @@ export class HistoryService implements IHistoryService {
     }
 
     // Mark all unique related expenses as unpaid
-    const uniqueExpenseRefs = new Map<
-      string,
-      DocumentReference<Expense>
-    >();
+    const uniqueExpenseRefs = new Map<string, DocumentReference<Expense>>();
     for (const splitDoc of splitDocs) {
-      const expenseRef = splitDoc.data()!['expenseRef'] as DocumentReference<Expense>;
+      const expenseRef = splitDoc.data()![
+        'expenseRef'
+      ] as DocumentReference<Expense>;
       if (!uniqueExpenseRefs.has(expenseRef.path)) {
         uniqueExpenseRefs.set(expenseRef.path, expenseRef);
       }
@@ -142,7 +139,9 @@ export class HistoryService implements IHistoryService {
     // 2. Collect de-duplicated split refs
     const splitRefMap = new Map<string, DocumentReference<Split>>();
     for (const histDoc of batchSnap.docs) {
-      for (const splitRef of (histDoc.data()['splitsPaid'] as DocumentReference<Split>[] ?? [])) {
+      for (const splitRef of (histDoc.data()[
+        'splitsPaid'
+      ] as DocumentReference<Split>[]) ?? []) {
         if (!splitRefMap.has(splitRef.path)) {
           splitRefMap.set(splitRef.path, splitRef);
         }
@@ -158,7 +157,9 @@ export class HistoryService implements IHistoryService {
     const expenseRefMap = new Map<string, DocumentReference<Expense>>();
     for (const splitDoc of splitDocs) {
       if (splitDoc.exists()) {
-        const expenseRef = splitDoc.data()!['expenseRef'] as DocumentReference<Expense>;
+        const expenseRef = splitDoc.data()![
+          'expenseRef'
+        ] as DocumentReference<Expense>;
         if (!expenseRefMap.has(expenseRef.path)) {
           expenseRefMap.set(expenseRef.path, expenseRef);
         }
@@ -168,7 +169,8 @@ export class HistoryService implements IHistoryService {
     // 5. Batch write: unmark splits/expenses, delete history records
     const batch = writeBatch(this.fs);
     for (const ref of splitRefMap.values()) batch.update(ref, { paid: false });
-    for (const ref of expenseRefMap.values()) batch.update(ref, { paid: false });
+    for (const ref of expenseRefMap.values())
+      batch.update(ref, { paid: false });
     for (const histDoc of batchSnap.docs) batch.delete(histDoc.ref);
     await batch.commit();
   }

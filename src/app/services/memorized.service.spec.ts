@@ -14,7 +14,10 @@ const mockDocRef = { id: 'mem-1' };
 describe('MemorizedService', () => {
   let service: MemorizedService;
 
-  const mockMemorizedStore = { setMemorizedExpenses: vi.fn(), memorizedExpenses: signal<any[]>([]) };
+  const mockMemorizedStore = {
+    setMemorizedExpenses: vi.fn(),
+    memorizedExpenses: signal<any[]>([]),
+  };
   const mockCategoryStore = {
     loaded: signal(true),
     getCategoryByRef: vi.fn().mockReturnValue(undefined),
@@ -31,8 +34,12 @@ describe('MemorizedService', () => {
     vi.spyOn(firestoreModule, 'collection').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'doc').mockReturnValue(mockDocRef as any);
     vi.spyOn(firestoreModule, 'onSnapshot').mockReturnValue(vi.fn() as any);
-    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({ exists: () => false } as any);
-    vi.spyOn(firestoreModule, 'addDoc').mockResolvedValue({ id: 'new-doc' } as any);
+    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
+      exists: () => false,
+    } as any);
+    vi.spyOn(firestoreModule, 'addDoc').mockResolvedValue({
+      id: 'new-doc',
+    } as any);
     vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
     vi.spyOn(firestoreModule, 'deleteDoc').mockResolvedValue(undefined);
 
@@ -70,11 +77,13 @@ describe('MemorizedService', () => {
     });
 
     it('should throw when document does not exist', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({ exists: () => false } as any);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        exists: () => false,
+      } as any);
 
-      await expect(service.getMemorized('group-1', 'nonexistent')).rejects.toThrow(
-        'Memorized expense not found',
-      );
+      await expect(
+        service.getMemorized('group-1', 'nonexistent')
+      ).rejects.toThrow('Memorized expense not found');
     });
 
     it('should enrich with category and member from stores', async () => {
@@ -86,7 +95,12 @@ describe('MemorizedService', () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
         exists: () => true,
         id: 'mem-1',
-        data: () => ({ description: 'Test', categoryRef: 'ref-1', paidByMemberRef: 'ref-2', splits: [] }),
+        data: () => ({
+          description: 'Test',
+          categoryRef: 'ref-1',
+          paidByMemberRef: 'ref-2',
+          splits: [],
+        }),
         ref: mockDocRef,
       } as any);
 
@@ -102,7 +116,9 @@ describe('MemorizedService', () => {
       const newRef = { id: 'new-mem' };
       vi.spyOn(firestoreModule, 'addDoc').mockResolvedValueOnce(newRef as any);
 
-      const result = await service.addMemorized('group-1', { description: 'New Template' });
+      const result = await service.addMemorized('group-1', {
+        description: 'New Template',
+      });
 
       expect(firestoreModule.addDoc).toHaveBeenCalledOnce();
       expect(result).toBe(newRef);
@@ -116,7 +132,9 @@ describe('MemorizedService', () => {
 
       await service.updateMemorized(memorizedRef, { description: 'Updated' });
 
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memorizedRef, { description: 'Updated' });
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memorizedRef, {
+        description: 'Updated',
+      });
     });
   });
 

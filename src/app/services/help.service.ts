@@ -16,7 +16,7 @@ export class HelpService implements IHelpService {
     const response = await fetch(this.apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `token ${this.token}`,
+        Authorization: `token ${this.token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(issueData),

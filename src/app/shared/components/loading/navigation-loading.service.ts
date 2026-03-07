@@ -7,6 +7,7 @@ import {
   NavigationStart,
   Router,
 } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
 import { LoadingService } from './loading.service';
 
 @Injectable({
@@ -15,17 +16,20 @@ import { LoadingService } from './loading.service';
 export class NavigationLoadingService {
   protected readonly router = inject(Router);
   protected readonly loadingService = inject(LoadingService);
+  protected readonly analytics = inject(AnalyticsService);
 
   constructor() {
     this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
       if (event instanceof NavigationStart) {
         this.loadingService.loadingOn('navigation');
-      } else if (
-        event instanceof NavigationEnd ||
-        event instanceof NavigationCancel ||
-        event instanceof NavigationError
-      ) {
+      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel) {
         this.loadingService.loadingOff('navigation');
+      } else if (event instanceof NavigationError) {
+        this.loadingService.loadingOff('navigation');
+        this.analytics.logEvent('navigation_error', {
+          url: event.url,
+          message: event.error instanceof Error ? event.error.message : String(event.error),
+        });
       }
     });
   }

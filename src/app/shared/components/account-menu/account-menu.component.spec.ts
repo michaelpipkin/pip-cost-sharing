@@ -106,7 +106,9 @@ describe('AccountMenuComponent', () => {
 
   describe('switchLanguage', () => {
     it('should call translate.use with langCode', async () => {
-      const useSpy = vi.spyOn(translateService, 'use').mockReturnValue({} as any);
+      const useSpy = vi
+        .spyOn(translateService, 'use')
+        .mockReturnValue({} as any);
       await component.switchLanguage('en');
       expect(useSpy).toHaveBeenCalledWith('en');
     });
@@ -114,7 +116,9 @@ describe('AccountMenuComponent', () => {
     it('should call userService.updateUser with language', async () => {
       vi.spyOn(translateService, 'use').mockReturnValue({} as any);
       await component.switchLanguage('en');
-      expect(mockUserService.updateUser).toHaveBeenCalledWith({ language: 'en' });
+      expect(mockUserService.updateUser).toHaveBeenCalledWith({
+        language: 'en',
+      });
     });
   });
 });

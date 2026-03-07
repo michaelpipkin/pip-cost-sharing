@@ -1,55 +1,61 @@
 <div class="container mt-3" data-testid="account-container">
   @defer (when isLoggedIn()) {
-  @if (!isGoogleUser() && !isEmailConfirmed()) {
-    <div
-      class="email-verification-banner"
-      data-testid="email-verification-banner"
-    >
-      <mat-icon>warning</mat-icon>
-      <span
-        >You must confirm your email address before you can access the app.
-        Check your email for a verification link, or click "Verify Email" in the
-        Profile section to resend it.</span
+    @if (!isGoogleUser() && !isEmailConfirmed()) {
+      <div
+        class="email-verification-banner"
+        data-testid="email-verification-banner"
       >
-    </div>
-  }
-  <div
-    class="account-layout"
-    [class.mobile]="isMobile()"
-    data-testid="account-layout"
-  >
-    @if ((!isMobile() || !isChildActive()) && (isGoogleUser() || isEmailConfirmed())) {
-      <nav class="account-sidebar" data-testid="account-sidebar">
-        <a
-          mat-flat-button
-          routerLink="profile"
-          routerLinkActive="active-link"
-          data-testid="nav-profile"
-          aria-label="Profile"
-          ><mat-icon fontSet="material-symbols-outlined">person</mat-icon>
-          Profile</a
-        >
-        @if (!isGoogleUser()) {
+        <mat-icon>warning</mat-icon>
+        <span>
+          You must confirm your email address before you can access the app.
+          Check your email for a verification link, or click "Verify Email" in
+          the Profile section to resend it.
+        </span>
+      </div>
+    }
+    <div
+      class="account-layout"
+      [class.mobile]="isMobile()"
+      data-testid="account-layout"
+    >
+      @if (
+        (!isMobile() || !isChildActive()) &&
+        (isGoogleUser() || isEmailConfirmed())
+      ) {
+        <nav class="account-sidebar" data-testid="account-sidebar">
           <a
             mat-flat-button
-            routerLink="security"
+            routerLink="profile"
             routerLinkActive="active-link"
-            data-testid="nav-security"
-            aria-label="Security"
-            ><mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
-            Password</a
+            data-testid="nav-profile"
+            aria-label="Profile"
           >
-        }
-        <a
-          mat-flat-button
-          routerLink="payments"
-          routerLinkActive="active-link"
-          data-testid="nav-payments"
-          aria-label="Payments"
-          ><mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
-          Payments</a
-        >
-        <!-- <a
+            <mat-icon fontSet="material-symbols-outlined">person</mat-icon>
+            Profile
+          </a>
+          @if (!isGoogleUser()) {
+            <a
+              mat-flat-button
+              routerLink="security"
+              routerLinkActive="active-link"
+              data-testid="nav-security"
+              aria-label="Security"
+            >
+              <mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
+              Password
+            </a>
+          }
+          <a
+            mat-flat-button
+            routerLink="payments"
+            routerLinkActive="active-link"
+            data-testid="nav-payments"
+            aria-label="Payments"
+          >
+            <mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
+            Payments
+          </a>
+          <!-- <a
           mat-flat-button
           routerLink="preferences"
           routerLinkActive="active-link"
@@ -58,46 +64,48 @@
           ><mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
           Preferences</a
         > -->
-        <a
-          mat-flat-button
-          routerLink="legal"
-          routerLinkActive="active-link"
-          data-testid="nav-legal"
-          aria-label="Legal"
-          ><mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
-          Legal</a
-        >
-        @if (isAdmin()) {
           <a
             mat-flat-button
-            routerLink="/admin"
+            routerLink="legal"
             routerLinkActive="active-link"
-            data-testid="nav-admin"
-            aria-label="Go to admin area"
-            ><mat-icon fontSet="material-symbols-outlined"
-              >admin_panel_settings</mat-icon
+            data-testid="nav-legal"
+            aria-label="Legal"
+          >
+            <mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
+            Legal
+          </a>
+          @if (isAdmin()) {
+            <a
+              mat-flat-button
+              routerLink="/admin"
+              routerLinkActive="active-link"
+              data-testid="nav-admin"
+              aria-label="Go to admin area"
             >
-            Admin</a
-          >
-        }
-      </nav>
-    }
-    @if (!isMobile() || isChildActive()) {
-      <div class="account-content" data-testid="account-content">
-        @if (isMobile()) {
-          <button
-            mat-icon-button
-            (click)="navigateToList()"
-            aria-label="Back to account settings"
-            data-testid="back-button"
-          >
-            <mat-icon>arrow_back</mat-icon>
-          </button>
-        }
-        <router-outlet />
-      </div>
-    }
-  </div>
+              <mat-icon fontSet="material-symbols-outlined">
+                admin_panel_settings
+              </mat-icon>
+              Admin
+            </a>
+          }
+        </nav>
+      }
+      @if (!isMobile() || isChildActive()) {
+        <div class="account-content" data-testid="account-content">
+          @if (isMobile()) {
+            <button
+              mat-icon-button
+              (click)="navigateToList()"
+              aria-label="Back to account settings"
+              data-testid="back-button"
+            >
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+          }
+          <router-outlet />
+        </div>
+      }
+    </div>
   } @placeholder {
     <div class="placeholder-content">
       <mat-icon class="placeholder-icon">hourglass_empty</mat-icon>

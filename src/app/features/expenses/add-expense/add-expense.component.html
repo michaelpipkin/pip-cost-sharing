@@ -10,16 +10,18 @@
           (click)="startTour()"
           aria-label="Start add expense tour"
           class="mr-2"
-          >tour</mat-icon
         >
+          tour
+        </mat-icon>
       }
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
         data-testid="help-button"
         aria-label="Show help for adding expenses"
-        >help</mat-icon
       >
+        help
+      </mat-icon>
     </div>
   </div>
   <div class="mb-2">
@@ -40,13 +42,13 @@
             aria-label="Select who paid for this expense"
           >
             @for (member of activeMembers(); track member.ref) {
-              <mat-option [value]="member.ref">{{
-                member.displayName
-              }}</mat-option>
+              <mat-option [value]="member.ref">
+                {{ member.displayName }}
+              </mat-option>
             }
           </mat-select>
           @if (e.paidByMember.errors?.['required']) {
-            <mat-error data-testid="payer-error"> *Required </mat-error>
+            <mat-error data-testid="payer-error">*Required</mat-error>
           }
         </mat-form-field>
         <mat-form-field
@@ -77,7 +79,7 @@
             data-testid="date-picker"
           ></mat-datepicker>
           @if (e.date.errors?.['required']) {
-            <mat-error data-testid="date-error"> *Required </mat-error>
+            <mat-error data-testid="date-error">*Required</mat-error>
           }
         </mat-form-field>
       </div>
@@ -95,7 +97,7 @@
             aria-label="Enter expense description"
           />
           @if (e.description.errors?.['required']) {
-            <mat-error> *Required </mat-error>
+            <mat-error>*Required</mat-error>
           }
         </mat-form-field>
         <mat-form-field
@@ -105,13 +107,13 @@
           <mat-label>Category</mat-label>
           <mat-select formControlName="category" name="category" docRefCompare>
             @for (category of activeCategories(); track category.ref) {
-              <mat-option [value]="category.ref">{{
-                category.name
-              }}</mat-option>
+              <mat-option [value]="category.ref">
+                {{ category.name }}
+              </mat-option>
             }
           </mat-select>
           @if (e.category.errors?.['required']) {
-            <mat-error> *Required </mat-error>
+            <mat-error>*Required</mat-error>
           }
         </mat-form-field>
       </div>
@@ -136,9 +138,9 @@
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
           }
           @if (localeService.currency().symbolPosition === 'suffix') {
-            <span matTextSuffix
-              >&nbsp;{{ localeService.currency().symbol }}</span
-            >
+            <span matTextSuffix>
+              &nbsp;{{ localeService.currency().symbol }}
+            </span>
           }
           <button
             matIconSuffix
@@ -154,10 +156,10 @@
             <mat-icon>calculate</mat-icon>
           </button>
           @if (e.amount.errors?.['required']) {
-            <mat-error> *Required </mat-error>
+            <mat-error>*Required</mat-error>
           }
           @if (e.amount.errors?.['zeroAmount']) {
-            <mat-error> Cannot be zero </mat-error>
+            <mat-error>Cannot be zero</mat-error>
           }
         </mat-form-field>
         <mat-form-field
@@ -181,9 +183,9 @@
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
           }
           @if (localeService.currency().symbolPosition === 'suffix') {
-            <span matTextSuffix
-              >&nbsp;{{ localeService.currency().symbol }}</span
-            >
+            <span matTextSuffix>
+              &nbsp;{{ localeService.currency().symbol }}
+            </span>
           }
           <button
             matIconSuffix
@@ -200,7 +202,7 @@
           </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
           @if (e.allocatedAmount.errors?.['required']) {
-            <mat-error> *Required - Enter 0 if none </mat-error>
+            <mat-error>*Required - Enter 0 if none</mat-error>
           }
         </mat-form-field>
         <div class="mock-input" [class.hidden]="e.splitByPercentage.value">
@@ -225,9 +227,9 @@
             >
               <mat-icon>delete</mat-icon>
             </button>
-            <span class="filename" data-testid="attached-filename">{{
-              fileName()
-            }}</span>
+            <span class="filename" data-testid="attached-filename">
+              {{ fileName() }}
+            </span>
           </div>
         } @else {
           <div
@@ -252,9 +254,9 @@
             >
               <mat-icon>attach_file</mat-icon>
             </button>
-            <span class="filename" data-testid="upload-prompt"
-              >Upload receipt</span
-            >
+            <span class="filename" data-testid="upload-prompt">
+              Upload receipt
+            </span>
           </div>
         }
       </div>
@@ -321,9 +323,9 @@
                     member of availableMembersForSplit(i);
                     track member.ref
                   ) {
-                    <mat-option [value]="member.ref">{{
-                      member.displayName
-                    }}</mat-option>
+                    <mat-option [value]="member.ref">
+                      {{ member.displayName }}
+                    </mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -384,14 +386,14 @@
                     inputmode="decimal"
                   />
                   @if (localeService.currency().symbolPosition === 'prefix') {
-                    <span matTextPrefix>{{
-                      localeService.currency().symbol
-                    }}</span>
+                    <span matTextPrefix>
+                      {{ localeService.currency().symbol }}
+                    </span>
                   }
                   @if (localeService.currency().symbolPosition === 'suffix') {
-                    <span matTextSuffix
-                      >&nbsp;{{ localeService.currency().symbol }}</span
-                    >
+                    <span matTextSuffix>
+                      &nbsp;{{ localeService.currency().symbol }}
+                    </span>
                   }
                   <button
                     matIconSuffix

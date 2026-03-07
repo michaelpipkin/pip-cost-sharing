@@ -49,9 +49,7 @@ export class AccountComponent {
   isAdmin = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);
 
   isMobile = signal(false);
-  isChildActive = signal(
-    !this.router.url.match(/^\/auth\/account\/?$/)
-  );
+  isChildActive = signal(!this.router.url.match(/^\/auth\/account\/?$/));
 
   constructor() {
     this.breakpointObserver

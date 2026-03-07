@@ -148,11 +148,13 @@ describe('TourService', () => {
     });
 
     it('should clear the continueTour query param when present', () => {
-      mockRouter.parseUrl.mockReturnValue({ queryParams: { continueTour: 'true' } });
+      mockRouter.parseUrl.mockReturnValue({
+        queryParams: { continueTour: 'true' },
+      });
       service.checkForContinueTour('groups');
       expect(mockRouter.navigate).toHaveBeenCalledWith(
         [],
-        expect.objectContaining({ queryParams: { continueTour: null } }),
+        expect.objectContaining({ queryParams: { continueTour: null } })
       );
     });
   });

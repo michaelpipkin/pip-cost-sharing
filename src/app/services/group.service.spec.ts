@@ -255,11 +255,9 @@ describe('GroupService', () => {
     });
 
     it('should throw when cloud function returns success: false', async () => {
-      const mockDeleteFn = vi
-        .fn()
-        .mockResolvedValue({
-          data: { success: false, message: 'Permission denied' },
-        });
+      const mockDeleteFn = vi.fn().mockResolvedValue({
+        data: { success: false, message: 'Permission denied' },
+      });
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
         mockDeleteFn as any
       );

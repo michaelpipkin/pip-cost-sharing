@@ -52,7 +52,11 @@ describe('SortingService', () => {
         { member: { name: 'Bob' } },
       ];
       const result = service.sort(data, 'member', true, 'name');
-      expect(result.map((d) => d.member.name)).toEqual(['alice', 'Bob', 'Charlie']);
+      expect(result.map((d) => d.member.name)).toEqual([
+        'alice',
+        'Bob',
+        'Charlie',
+      ]);
     });
 
     it('should sort by nested object property descending', () => {
@@ -62,11 +66,19 @@ describe('SortingService', () => {
         { member: { name: 'Bob' } },
       ];
       const result = service.sort(data, 'member', false, 'name');
-      expect(result.map((d) => d.member.name)).toEqual(['Charlie', 'Bob', 'alice']);
+      expect(result.map((d) => d.member.name)).toEqual([
+        'Charlie',
+        'Bob',
+        'alice',
+      ]);
     });
 
     it('should handle null nested property gracefully', () => {
-      const data = [{ member: { name: 'Bob' } }, { member: { name: null } }, { member: { name: 'Alice' } }];
+      const data = [
+        { member: { name: 'Bob' } },
+        { member: { name: null } },
+        { member: { name: 'Alice' } },
+      ];
       const result = service.sort(data, 'member', true, 'name');
       expect(result.length).toBe(3);
     });

@@ -47,24 +47,24 @@ export const ROUTE_PATHS = {
   AUTH_ACCOUNT: `/${ROUTES.AUTH}/${ROUTES.ACCOUNT}`,
   AUTH_FORGOT_PASSWORD: `/${ROUTES.AUTH}/${ROUTES.FORGOT_PASSWORD}`,
   AUTH_RESET_PASSWORD: `/${ROUTES.AUTH}/${ROUTES.RESET_PASSWORD}`,
-  
+
   // Administration routes
   ADMIN_GROUPS: `/${ROUTES.ADMINISTRATION}/${ROUTES.GROUPS}`,
   ADMIN_MEMBERS: `/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}`,
   ADMIN_CATEGORIES: `/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}`,
-  
+
   // Analysis routes
   ANALYSIS_SUMMARY: `/${ROUTES.ANALYSIS}/${ROUTES.SUMMARY}`,
   ANALYSIS_HISTORY: `/${ROUTES.ANALYSIS}/${ROUTES.HISTORY}`,
-  
+
   // Expenses routes
   EXPENSES_ROOT: `/${ROUTES.EXPENSES}`,
   EXPENSES_ADD: `/${ROUTES.EXPENSES}/${ROUTES.ADD}`,
-  
+
   // Memorized routes
   MEMORIZED_ROOT: `/${ROUTES.MEMORIZED}`,
   MEMORIZED_ADD: `/${ROUTES.MEMORIZED}/${ROUTES.ADD}`,
-  
+
   // Other routes
   SPLIT: `/${ROUTES.SPLIT}`,
   HELP: `/${ROUTES.HELP}`,
@@ -96,12 +96,19 @@ export const DEMO_ROUTE_PATHS = {
 
 // Helper functions for dynamic routes
 export const buildExpenseEditPath = (id: string) => `/${ROUTES.EXPENSES}/${id}`;
-export const buildMemorizedEditPath = (id: string) => `/${ROUTES.MEMORIZED}/${id}`;
-export const buildMemberEditPath = (id: string) => `/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
-export const buildCategoryEditPath = (id: string) => `/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;
+export const buildMemorizedEditPath = (id: string) =>
+  `/${ROUTES.MEMORIZED}/${id}`;
+export const buildMemberEditPath = (id: string) =>
+  `/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
+export const buildCategoryEditPath = (id: string) =>
+  `/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;
 
 // Helper functions for demo routes
-export const buildDemoExpenseEditPath = (id: string) => `/${ROUTES.DEMO}/${ROUTES.EXPENSES}/${id}`;
-export const buildDemoMemorizedEditPath = (id: string) => `/${ROUTES.DEMO}/${ROUTES.MEMORIZED}/${id}`;
-export const buildDemoMemberEditPath = (id: string) => `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
-export const buildDemoCategoryEditPath = (id: string) => `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;
+export const buildDemoExpenseEditPath = (id: string) =>
+  `/${ROUTES.DEMO}/${ROUTES.EXPENSES}/${id}`;
+export const buildDemoMemorizedEditPath = (id: string) =>
+  `/${ROUTES.DEMO}/${ROUTES.MEMORIZED}/${id}`;
+export const buildDemoMemberEditPath = (id: string) =>
+  `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
+export const buildDemoCategoryEditPath = (id: string) =>
+  `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;

@@ -148,9 +148,7 @@ export class SplitService implements ISplitService {
     }
 
     // Add history record
-    const newHistoryDoc = doc(
-      collection(this.fs, `groups/${groupId}/history`)
-    );
+    const newHistoryDoc = doc(collection(this.fs, `groups/${groupId}/history`));
     batch.set(newHistoryDoc, history);
 
     await batch.commit();

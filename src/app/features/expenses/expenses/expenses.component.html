@@ -11,16 +11,18 @@
             (click)="startTour()"
             aria-label="Start expenses tour"
             class="mr-2"
-            >tour</mat-icon
           >
+            tour
+          </mat-icon>
         }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
           data-testid="expenses-help-button"
           aria-label="Show help for expenses"
-          >help</mat-icon
         >
+          help
+        </mat-icon>
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
@@ -85,8 +87,9 @@
         class="unpaid-toggle"
         [checked]="true"
         [(ngModel)]="unpaidOnly"
-        >Unpaid only</mat-slide-toggle
       >
+        Unpaid only
+      </mat-slide-toggle>
     </div>
     <div class="filters placeholder-selects">
       <mat-form-field subscriptSizing="dynamic" class="payer-select">
@@ -146,8 +149,10 @@
     </div>
     @if (expenses().length >= 200) {
       <div class="alert alert-warning mt-3" role="alert">
-        <strong>Note:</strong> You have reached the maximum number of expenses
-        (200) that can be fetched at once.<br />
+        <strong>Note:</strong>
+        You have reached the maximum number of expenses (200) that can be
+        fetched at once.
+        <br />
         Please refine your search criteria and fetch again to see more specific
         results.
       </div>
@@ -184,7 +189,9 @@
                 [displayFn]="memberDisplayFn"
                 [enabled]="currentSearchPayer() === null"
               >
-                Date<br />Payer
+                Date
+                <br />
+                Payer
               </th>
               <td mat-cell *matCellDef="let expense" class="no-wrap">
                 {{ expense.date | date: 'M/d/yy' }}
@@ -241,7 +248,9 @@
                 [displayFn]="categoryDisplayFn"
                 [enabled]="currentSearchCategory() === null"
               >
-                Description<br />Category
+                Description
+                <br />
+                Category
               </th>
               <td mat-cell *matCellDef="let expense">
                 {{ expense.description }}
@@ -341,7 +350,9 @@
                 [columnHeader]="'Paid'"
                 [enabled]="!currentUnpaidOnly()"
               >
-                Rcpt<br />Paid
+                Rcpt
+                <br />
+                Paid
               </th>
               <td mat-cell *matCellDef="let expense" class="cell-center">
                 {{ expense.hasReceipt | yesNo }}
@@ -357,9 +368,9 @@
                 class="cell-center"
                 aria-label="row actions"
               >
-                <mat-icon fontSet="material-symbols-outlined"
-                  >arrow_split</mat-icon
-                >
+                <mat-icon fontSet="material-symbols-outlined">
+                  arrow_split
+                </mat-icon>
               </th>
               <td mat-cell *matCellDef="let expense" class="cell-center">
                 <button
@@ -552,9 +563,9 @@
       </div>
     } @else {
       <div class="placeholder-content">
-        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined"
-          >search_off</mat-icon
-        >
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+          search_off
+        </mat-icon>
         <p class="placeholder-text">No expenses found</p>
       </div>
     }

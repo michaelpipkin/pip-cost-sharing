@@ -10,8 +10,6 @@ export const analysisRoutes: Routes = [
   {
     path: 'history',
     loadChildren: () =>
-      import('@features/history/history.routes').then(
-        (m) => m.historyRoutes
-      ),
+      import('@features/history/history.routes').then((m) => m.historyRoutes),
   },
 ];
