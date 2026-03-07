@@ -1,10 +1,10 @@
-import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { BaseFilterDirective } from './base-filter.directive';
+import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
 import {
   TextFilterPanelComponent,
   TextFilterValue,
-} from '@shared/components/filter-panels/text-filter-panel.component';
+} from '@components/filter-panels/text-filter-panel.component';
+import { BaseFilterDirective } from './base-filter.directive';
 
 /**
  * Directive for adding text filter capability to table header cells
@@ -42,10 +42,11 @@ export class TextFilterDirective extends BaseFilterDirective {
     // This happens in openFilterPanel after attach() is called
     setTimeout(() => {
       if (this.overlayRef && this.overlayRef.hasAttached()) {
-        this.componentRef =
-          this.overlayRef.overlayElement.querySelector('app-text-filter-panel')
-            ? (this.overlayRef as any)._attachedPortal?.componentRef
-            : null;
+        this.componentRef = this.overlayRef.overlayElement.querySelector(
+          'app-text-filter-panel'
+        )
+          ? (this.overlayRef as any)._attachedPortal?.componentRef
+          : null;
 
         if (this.componentRef) {
           this.setupComponent();

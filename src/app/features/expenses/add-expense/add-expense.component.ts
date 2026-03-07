@@ -1,0 +1,834 @@
+import { DecimalPipe } from '@angular/common';
+import {
+  afterEveryRender,
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  model,
+  signal,
+  Signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatOptionModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogModule,
+} from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import {
+  FileSelectionDialogComponent,
+  FileSelectionOption,
+} from '@components/file-selection-dialog/file-selection-dialog.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { ReceiptDialogComponent } from '@components/receipt-dialog/receipt-dialog.component';
+import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
+import { Category } from '@models/category';
+import { ExpenseDto } from '@models/expense';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { SerializableMemorized } from '@models/memorized';
+import { Split, SplitDto } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { CameraService } from '@services/camera.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
+import { MemorizedService } from '@services/memorized.service';
+import { TourService } from '@services/tour.service';
+import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { DocumentReference } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+@Component({
+  selector: 'app-add-expense',
+  templateUrl: './add-expense.component.html',
+  styleUrl: './add-expense.component.scss',
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatTableModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatInputModule,
+    MatTooltipModule,
+    MatDatepickerModule,
+    MatIconModule,
+    CurrencyPipe,
+    FormatCurrencyInputDirective,
+    DateShortcutKeysDirective,
+    DocRefCompareDirective,
+  ],
+})
+export class AddExpenseComponent {
+  protected readonly storage = inject(getStorage);
+  protected readonly analytics = inject(AnalyticsService);
+  protected readonly fb = inject(FormBuilder);
+  protected readonly router = inject(Router);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly userStore = inject(UserStore);
+  protected readonly categoryService = inject(CategoryService);
+  protected readonly cameraService = inject(CameraService);
+  protected readonly demoService = inject(DemoService);
+  protected readonly expenseService = inject(ExpenseService);
+  protected readonly memorizedService = inject(MemorizedService);
+  protected readonly tourService = inject(TourService);
+  protected readonly loading = inject(LoadingService);
+  protected readonly snackbar = inject(MatSnackBar);
+  protected readonly decimalPipe = inject(DecimalPipe);
+  protected readonly stringUtils = inject(StringUtils);
+  protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly calculatorOverlay = inject(CalculatorOverlayService);
+  protected readonly localeService = inject(LocaleService);
+
+  currentMember: Signal<Member | null> = this.memberStore.currentMember;
+  currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
+  #categories: Signal<Category[]> = this.categoryStore.groupCategories;
+
+  memorizedExpense = signal<SerializableMemorized | null>(null);
+
+  activeCategories = computed<Category[]>(() =>
+    this.#categories().filter((c) => c.active)
+  );
+
+  autoAddMembers = computed<boolean>(
+    () => this.currentGroup()?.autoAddMembers ?? false
+  );
+
+  fileName = model<string>('');
+  receiptFile = model<File | null>(null);
+  splitByPercentage = model<boolean>(false);
+
+  datePicker = viewChild<ElementRef>('datePicker');
+  totalAmountField = viewChild<ElementRef>('totalAmount');
+  allocatedAmountField = viewChild<ElementRef>('propAmount');
+  inputElements = viewChildren<ElementRef>('inputElement');
+  memberAmounts = viewChildren<ElementRef>('memberAmount');
+  memberPercentages = viewChildren<ElementRef>('memberPercentage');
+
+  addExpenseForm = this.fb.group({
+    paidByMember: [this.currentMember()?.ref, Validators.required],
+    date: [new Date(), Validators.required],
+    amount: [0, [Validators.required, this.amountValidator()]],
+    description: ['', Validators.required],
+    category: [
+      null as unknown as DocumentReference<Category>,
+      Validators.required,
+    ],
+    sharedAmount: [0.0, Validators.required],
+    allocatedAmount: [0, Validators.required],
+    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
+  });
+
+  constructor() {
+    this.loading.loadingOn();
+    const navigation = this.router.currentNavigation();
+    if (navigation?.extras?.state?.expense) {
+      this.memorizedExpense.set(navigation!.extras!.state!.expense);
+    }
+    afterNextRender(() => {
+      this.tourService.checkForContinueTour('add-expense');
+      if (!!this.memorizedExpense()) {
+        const expense: SerializableMemorized = this.memorizedExpense()!;
+        this.totalAmountField()!.nativeElement.value =
+          this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
+        this.allocatedAmountField()!.nativeElement.value =
+          this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') ||
+          '0.00';
+        this.memberAmounts().forEach(
+          (elementRef: ElementRef, index: number) => {
+            elementRef.nativeElement.value =
+              this.decimalPipe.transform(
+                expense.splits[index]!.assignedAmount,
+                '1.2-2'
+              ) || '0.00';
+          }
+        );
+      } else {
+        const formattedZero = this.localeService.getFormattedZero();
+        this.totalAmountField()!.nativeElement.value = formattedZero;
+        this.allocatedAmountField()!.nativeElement.value = formattedZero;
+        this.memberAmounts().forEach((elementRef: ElementRef) => {
+          elementRef.nativeElement.value = formattedZero;
+        });
+      }
+    });
+    afterEveryRender(() => {
+      this.addSelectFocus();
+    });
+    effect(() => {
+      if (!!this.memorizedExpense()) {
+        this.loadMemorizedExpense();
+        this.loading.loadingOff();
+      } else {
+        // Set default payer to current member if not already set
+        const currentMemberRef = this.currentMember()?.ref;
+        if (currentMemberRef && !this.addExpenseForm.value.paidByMember) {
+          this.addExpenseForm.patchValue({
+            paidByMember: currentMemberRef,
+          });
+        }
+        if (this.autoAddMembers()) {
+          this.addAllActiveGroupMembers();
+        }
+        if (this.activeCategories().length === 1) {
+          this.addExpenseForm.patchValue({
+            category: this.activeCategories()[0]!.ref,
+          });
+        }
+        // Turn off loading once stores are populated
+        if (currentMemberRef) {
+          this.loading.loadingOff();
+        }
+      }
+    });
+  }
+
+  loadMemorizedExpense(): void {
+    const expense: SerializableMemorized = this.memorizedExpense()!;
+    this.splitByPercentage.set(expense.splitByPercentage);
+
+    // Find the category and member by ID
+    const category = this.#categories().find(
+      (c) => c.id === expense.categoryId
+    );
+    const paidByMember = this.activeMembers().find(
+      (m) => m.id === expense.paidByMemberId
+    );
+
+    this.addExpenseForm.patchValue({
+      paidByMember: paidByMember?.ref,
+      date: new Date(),
+      amount: expense.totalAmount,
+      description: expense.description,
+      category: category?.ref,
+      sharedAmount: expense.sharedAmount,
+      allocatedAmount: expense.allocatedAmount,
+    });
+
+    expense.splits.forEach((split) => {
+      // Find the member by ID
+      const owedByMember = this.activeMembers().find(
+        (m) => m.id === split.owedByMemberId
+      );
+
+      this.splitsFormArray.push(
+        this.fb.group({
+          owedByMemberRef: owedByMember?.ref,
+          assignedAmount: split.assignedAmount,
+          percentage: split.percentage,
+          allocatedAmount: split.allocatedAmount,
+        })
+      );
+    });
+  }
+
+  addSelectFocus(): void {
+    this.inputElements().forEach((elementRef: ElementRef<any>) => {
+      const input = elementRef.nativeElement as HTMLInputElement;
+      input.addEventListener('focus', function () {
+        if (this.value === '0.00') {
+          this.value = '';
+        } else {
+          this.select();
+        }
+      });
+    });
+  }
+
+  createSplitFormGroup(): FormGroup {
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMemberRef')!.value.id
+    );
+    const availableMembers = this.activeMembers().filter(
+      (member) => !existingMembers.includes(member.id)
+    );
+    return this.fb.group({
+      owedByMemberRef: [
+        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
+        Validators.required,
+      ],
+      assignedAmount: [
+        this.localeService.getFormattedZero(),
+        Validators.required,
+      ],
+      percentage: [0.0],
+      allocatedAmount: [0.0],
+    });
+  }
+
+  amountValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      return control.value === 0 ? { zeroAmount: true } : null;
+    };
+  }
+
+  get e() {
+    return this.addExpenseForm.controls;
+  }
+
+  get splitsFormArray(): FormArray {
+    return this.addExpenseForm.get('splits') as FormArray;
+  }
+
+  addSplit(): void {
+    this.splitsFormArray.push(this.createSplitFormGroup());
+    // Set the value of the newly created input element to '0.00'
+    setTimeout(() => {
+      const lastInput = this.memberAmounts().find(
+        (i) => i.nativeElement.value === ''
+      );
+      if (lastInput) {
+        lastInput.nativeElement.value = this.localeService.getFormattedZero();
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        lastInput.nativeElement.dispatchEvent(event);
+      }
+    });
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  addAllActiveGroupMembers(): void {
+    const existingMembers = this.splitsFormArray.controls.map(
+      (control) => control.get('owedByMemberRef')!.value.id
+    );
+
+    this.activeMembers().forEach((member: Member) => {
+      if (!existingMembers.includes(member.id)) {
+        this.splitsFormArray.push(
+          this.fb.group({
+            owedByMemberRef: [member.ref, Validators.required],
+            assignedAmount: [
+              this.localeService.getFormattedZero(),
+              Validators.required,
+            ],
+            percentage: [0.0],
+            allocatedAmount: [0.0],
+          })
+        );
+      }
+    });
+    setTimeout(() => {
+      const newInputs = this.memberAmounts().filter(
+        (i) => i.nativeElement.value === ''
+      );
+      newInputs.forEach((input) => {
+        input.nativeElement.value = this.localeService.getFormattedZero();
+        // Manually trigger the input event to update the mat-label
+        const event = new Event('input', { bubbles: true });
+        input.nativeElement.dispatchEvent(event);
+      });
+    });
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  availableMembersForSplit(index: number): Member[] {
+    const selectedMemberIds = this.splitsFormArray.controls
+      .filter((_, i) => i !== index)
+      .map((control) => control.get('owedByMemberRef')!.value)
+      .filter((memberRef) => memberRef !== null)
+      .map((memberRef) => memberRef.id);
+    return this.activeMembers().filter(
+      (member) => !selectedMemberIds.includes(member.id)
+    );
+  }
+
+  removeSplit(index: number): void {
+    this.splitsFormArray.removeAt(index);
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      if (file) {
+        this.processSelectedFile(file);
+      }
+    }
+  }
+
+  removeFile(): void {
+    this.receiptFile.set(null);
+    this.fileName.set('');
+  }
+
+  /**
+   * Opens file selection dialog
+   * First checks if user has accepted receipt policy
+   * On native platforms: shows dialog to choose camera, gallery, file browser, or clipboard
+   * On web/PWA: shows dialog to choose file browser or clipboard
+   */
+  async openFileSelectionDialog(): Promise<void> {
+    // Check if user has accepted receipt policy (checked at click time, not component load)
+    const currentUser = this.userStore.user();
+    if (!currentUser?.receiptPolicy) {
+      const policyDialogRef = this.dialog.open(ReceiptDialogComponent, {
+        disableClose: true,
+        maxWidth: '600px',
+      });
+
+      const accepted = await new Promise<boolean>((resolve) => {
+        policyDialogRef.afterClosed().subscribe((value) => resolve(value));
+      });
+
+      if (!accepted) {
+        // User cancelled or didn't accept policy
+        return;
+      }
+      // Policy now accepted, continue with file selection
+    }
+
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '400px',
+      data: {
+        isNativePlatform: this.cameraService.isAvailable(),
+      },
+    };
+
+    const dialogRef = this.dialog.open(
+      FileSelectionDialogComponent,
+      dialogConfig
+    );
+
+    const result: FileSelectionOption | null = await new Promise((resolve) => {
+      dialogRef.afterClosed().subscribe((value) => resolve(value));
+    });
+
+    if (!result) {
+      // User cancelled
+      return;
+    }
+
+    try {
+      let file: File | null = null;
+
+      if (result === 'camera') {
+        file = await this.cameraService.takePicture();
+      } else if (result === 'gallery') {
+        file = await this.cameraService.selectFromGallery();
+      } else if (result === 'file') {
+        // Trigger the hidden file input
+        const fileInput = document.querySelector(
+          'input[type="file"]'
+        ) as HTMLInputElement;
+        if (fileInput) {
+          fileInput.click();
+        }
+        return; // The onFileSelected handler will process the file
+      } else if (result === 'clipboard') {
+        await this.pasteFromClipboard();
+        return;
+      }
+
+      // Process the file from camera or gallery
+      if (file) {
+        this.processSelectedFile(file);
+      }
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Failed to select file. Please try again.' },
+      });
+    }
+  }
+
+  /**
+   * Reads an image from the clipboard and processes it as a receipt
+   * Uses the Clipboard API to read image data
+   */
+  private async pasteFromClipboard(): Promise<void> {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((type) => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const extension = imageType.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-receipt.${extension}`, {
+            type: imageType,
+          });
+          this.processSelectedFile(file);
+          return;
+        }
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'No image found in clipboard.' },
+      });
+    } catch (error) {
+      console.error('Error reading from clipboard:', error);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Unable to read from clipboard. Please check permissions.',
+        },
+      });
+    }
+  }
+
+  /**
+   * Process a file (from camera, gallery, or file browser)
+   * Validates size and sets the file in the component state
+   */
+  private processSelectedFile(file: File): void {
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'File is too large. File size limited to 5MB.' },
+      });
+    } else {
+      this.receiptFile.set(file);
+      this.fileName.set(file.name);
+      this.addExpenseForm.markAsDirty();
+    }
+  }
+
+  onSplitByPercentageClick(): void {
+    this.splitByPercentage.set(true);
+    this.addExpenseForm.markAsDirty();
+    this.allocateByPercentage();
+  }
+
+  onSplitByAmountClick(): void {
+    this.splitByPercentage.set(false);
+    this.addExpenseForm.markAsDirty();
+    this.allocateSharedAmounts();
+  }
+
+  updateTotalAmount(): void {
+    if (this.splitByPercentage()) {
+      this.allocateByPercentage();
+    } else {
+      this.allocateSharedAmounts();
+    }
+  }
+
+  allocateSharedAmounts(): void {
+    const val = this.addExpenseForm.value;
+    const input = {
+      totalAmount: val.amount!,
+      sharedAmount: val.sharedAmount!,
+      allocatedAmount: val.allocatedAmount!,
+      splits: this.splitsFormArray.value.map((split: Split) => ({
+        owedByMemberRef: split.owedByMemberRef,
+        assignedAmount: split.assignedAmount,
+        percentage: split.percentage,
+        allocatedAmount: split.allocatedAmount,
+      })),
+    };
+
+    const result = this.allocationUtils.allocateSharedAmounts(input);
+
+    // Update the form with the adjusted shared amount if it changed
+    if (result.adjustedSharedAmount !== val.sharedAmount) {
+      this.addExpenseForm.patchValue({
+        sharedAmount: result.adjustedSharedAmount,
+      });
+    }
+
+    // Apply the allocation results to the form array
+    this.allocationUtils.applyAllocationToFormArray(
+      this.splitsFormArray,
+      result
+    );
+  }
+
+  allocateByPercentage(): void {
+    var totalPercentage: number = 0;
+    if (this.splitsFormArray.length > 0) {
+      let splits: Split[] = [...this.splitsFormArray.getRawValue()];
+      for (let i = 0; i < splits.length; ) {
+        if (!splits[i]!.owedByMemberRef && splits[i]!.assignedAmount === 0) {
+          splits.splice(i, 1);
+        } else {
+          if (i < splits.length - 1) {
+            splits[i]!.percentage = +splits[i]!.percentage;
+            totalPercentage += splits[i]!.percentage;
+          } else {
+            const remainingPercentage: number =
+              this.localeService.roundToCurrency(+(100 - totalPercentage));
+            splits[i]!.percentage = remainingPercentage;
+            this.splitsFormArray.at(i)!.patchValue({
+              percentage: remainingPercentage,
+            });
+          }
+          i++;
+        }
+      }
+      const splitCount: number = splits.filter(
+        (s) => s.owedByMemberRef !== null
+      ).length;
+      const val = this.addExpenseForm.value;
+      const totalAmount: number = +val.amount!;
+      splits.forEach((split: Split) => {
+        split.allocatedAmount = this.localeService.roundToCurrency(
+          +((totalAmount * +split.percentage) / 100)
+        );
+      });
+      const allocatedTotal: number = this.localeService.roundToCurrency(
+        +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+      );
+      const percentageTotal: number = this.localeService.roundToCurrency(
+        +splits.reduce((total, s) => (total += s.percentage), 0)
+      );
+      if (
+        allocatedTotal !== totalAmount &&
+        percentageTotal === 100 &&
+        splitCount > 0
+      ) {
+        let diff = this.localeService.roundToCurrency(
+          +(totalAmount - allocatedTotal)
+        );
+        const increment = this.localeService.getSmallestIncrement();
+        for (let i = 0; diff != 0; ) {
+          if (diff > 0) {
+            splits[i]!.allocatedAmount += increment;
+            diff = this.localeService.roundToCurrency(+(diff - increment));
+          } else {
+            splits[i]!.allocatedAmount -= increment;
+            diff = this.localeService.roundToCurrency(+(diff + increment));
+          }
+          if (i < splits.length - 1) {
+            i++;
+          } else {
+            i = 0;
+          }
+        }
+      }
+      // Patch the allocatedAmount back into the form array
+      splits.forEach((split, index) => {
+        this.splitsFormArray.at(index)!.patchValue({
+          allocatedAmount: split.allocatedAmount,
+        });
+      });
+    }
+  }
+
+  getAssignedTotal = (): number =>
+    this.localeService.roundToCurrency(
+      +[...this.splitsFormArray.value].reduce(
+        (total, s) =>
+          (total += this.localeService.roundToCurrency(+s.assignedAmount)),
+        0
+      )
+    );
+
+  getAllocatedTotal = (): number =>
+    this.localeService.roundToCurrency(
+      +[...this.splitsFormArray.value].reduce(
+        (total, s) =>
+          (total += this.localeService.roundToCurrency(+s.allocatedAmount)),
+        0
+      )
+    );
+
+  expenseFullyAllocated = (): boolean =>
+    this.addExpenseForm.value.amount == this.getAllocatedTotal();
+
+  isLastSplit(index: number): boolean {
+    return index === this.splitsFormArray.length - 1;
+  }
+
+  async onSubmit(saveAndAdd: boolean = false): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      this.router.navigate(['/demo/expenses']);
+      return;
+    }
+    try {
+      this.loading.loadingOn();
+      const val = this.addExpenseForm.getRawValue();
+      const expenseDate = val.date!.toIsoFormat();
+      const expense: Partial<ExpenseDto> = {
+        date: expenseDate,
+        description: val.description ?? undefined,
+        categoryRef: val.category ?? undefined,
+        paidByMemberRef: val.paidByMember ?? undefined,
+        paid: false,
+        sharedAmount: val.sharedAmount ?? undefined,
+        allocatedAmount: val.allocatedAmount ?? undefined,
+        totalAmount: val.amount ?? undefined,
+        splitByPercentage: this.splitByPercentage(),
+      };
+      let splits: Partial<SplitDto>[] = [];
+      this.splitsFormArray.getRawValue().forEach((s) => {
+        if (s.allocatedAmount !== 0) {
+          const split: Partial<SplitDto> = {
+            date: expenseDate,
+            categoryRef: val.category ?? undefined,
+            assignedAmount: s.assignedAmount,
+            percentage: s.percentage,
+            allocatedAmount: s.allocatedAmount,
+            paidByMemberRef: val.paidByMember ?? undefined,
+            owedByMemberRef: s.owedByMemberRef,
+            paid: s.owedByMemberRef.eq(val.paidByMember!),
+          };
+          splits.push(split);
+        }
+      });
+      await this.expenseService.addExpense(
+        this.currentGroup()!.id,
+        expense,
+        splits,
+        this.receiptFile()
+      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Expense added.' },
+      });
+      if (saveAndAdd) {
+        this.addExpenseForm.reset();
+        this.splitsFormArray.clear();
+        this.addExpenseForm.patchValue({
+          paidByMember: this.currentMember()!.ref,
+          date: new Date(),
+          amount: 0,
+          allocatedAmount: 0,
+        });
+        const formattedZero = this.localeService.getFormattedZero();
+        this.totalAmountField()!.nativeElement.value = formattedZero;
+        this.allocatedAmountField()!.nativeElement.value = formattedZero;
+        this.memberAmounts().forEach((elementRef: ElementRef) => {
+          elementRef.nativeElement.value = formattedZero;
+        });
+        this.fileName.set('');
+        this.receiptFile.set(null);
+        this.addExpenseForm.enable();
+        if (this.currentGroup()?.autoAddMembers) {
+          this.addAllActiveGroupMembers();
+        }
+        this.addSelectFocus();
+      } else {
+        this.router.navigate(['/expenses']);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: error.message },
+        });
+        this.analytics.logEvent('error', {
+          component: this.constructor.name,
+          action: 'add_expense',
+          message: error.message,
+        });
+      } else {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong - could not save expense.' },
+        });
+      }
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
+  onCancel(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.router.navigate(['/demo/expenses']);
+    } else {
+      this.router.navigate(['/expenses']);
+    }
+  }
+
+  openCalculator(event: Event, controlName: string, index?: number): void {
+    const target = event.target as HTMLElement;
+    this.calculatorOverlay.openCalculator(target, (result: number) => {
+      if (index !== undefined) {
+        // Handle FormArray controls (splits)
+        const control = this.splitsFormArray.at(index).get(controlName);
+        if (control) {
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
+          control.markAsTouched();
+          control.markAsDirty();
+        }
+      } else {
+        // Handle regular form controls
+        const control = this.addExpenseForm.get(controlName);
+        if (control) {
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
+          control.markAsTouched();
+          control.markAsDirty();
+        }
+      }
+
+      // Trigger allocation updates
+      if (this.splitByPercentage()) {
+        this.allocateByPercentage();
+      } else {
+        this.allocateSharedAmounts();
+      }
+    });
+  }
+
+  showHelp(): void {
+    const dialogConfig: MatDialogConfig<HelpDialogData> = {
+      disableClose: false,
+      maxWidth: '80vw',
+      data: { sectionId: 'add-edit-expenses' },
+    };
+    this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  startTour(): void {
+    this.tourService.startAddExpenseTour(true);
+  }
+}

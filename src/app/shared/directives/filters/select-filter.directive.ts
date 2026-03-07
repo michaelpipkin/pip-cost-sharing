@@ -1,10 +1,16 @@
-import { ComponentRef, DestroyRef, Directive, inject, input } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { BaseFilterDirective } from './base-filter.directive';
+import {
+  ComponentRef,
+  DestroyRef,
+  Directive,
+  inject,
+  input,
+} from '@angular/core';
 import {
   SelectFilterPanelComponent,
   SelectFilterValue,
-} from '@shared/components/filter-panels/select-filter-panel.component';
+} from '@components/filter-panels/select-filter-panel.component';
+import { BaseFilterDirective } from './base-filter.directive';
 
 /**
  * Directive for adding select filter capability to table header cells
@@ -30,10 +36,12 @@ export class SelectFilterDirective extends BaseFilterDirective {
   filterOptions = input<any[]>([]);
   filterMultiple = input(false);
   filterLabel = input('Select value');
-  displayFn = input<(option: any) => string>((option) =>
-    option?.toString() || '');
-  trackByFn = input<(_index: number, option: any) => any>((_index, option) =>
-    option);
+  displayFn = input<(option: any) => string>(
+    (option) => option?.toString() || ''
+  );
+  trackByFn = input<(_index: number, option: any) => any>(
+    (_index, option) => option
+  );
 
   private componentRef: ComponentRef<SelectFilterPanelComponent> | null = null;
 
@@ -102,5 +110,4 @@ export class SelectFilterDirective extends BaseFilterDirective {
       this.clearFilter();
     });
   }
-
 }

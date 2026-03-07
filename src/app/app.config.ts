@@ -1,23 +1,4 @@
 import { DecimalPipe } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatIconModule } from '@angular/material/icon';
-import { BrowserModule } from '@angular/platform-browser';
-import { provideRouter, TitleStrategy } from '@angular/router';
-import { environment } from '@env/environment';
-import { provideTranslateService } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
-import { PageTitleStrategyService } from '@services/page-title-strategy.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
-import { connectStorageEmulator, getStorage } from 'firebase/storage';
-import { appRoutes } from './app.routes';
-import { firebaseConfig } from './firebase.config';
-import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 import {
   provideHttpClient,
   withInterceptorsFromDi,
@@ -27,14 +8,33 @@ import {
   importProvidersFrom,
   provideZonelessChangeDetection,
 } from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { DateAdapter, MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MAT_DIALOG_DEFAULT_OPTIONS,
   MatDialogConfig,
 } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
   MatSnackBarConfig,
 } from '@angular/material/snack-bar';
+import { BrowserModule } from '@angular/platform-browser';
+import { provideRouter, TitleStrategy } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { environment } from '@env/environment';
+import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
+import { PageTitleStrategyService } from '@services/page-title-strategy.service';
+import { initializeApp } from 'firebase/app';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
+import { connectStorageEmulator, getStorage } from 'firebase/storage';
+import { appRoutes } from './app.routes';
+import { firebaseConfig } from './firebase.config';
+import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 
 const useEmulators = environment.useEmulators;
 

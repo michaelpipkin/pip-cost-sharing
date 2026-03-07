@@ -849,12 +849,14 @@ async function handleMemberPaymentEmail(
 
   const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
 
+  const payerHasAccount = !!payerUserRef;
+  const payeeHasAccount = !!payeeUserRef;
   const payerOptedOut =
     payerUserDoc?.exists && payerUserDoc.data()!['emailOptOut'] === true;
   const payeeOptedOut =
     payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
 
-  if (payerEmail && !payerOptedOut) {
+  if (payerEmail && payerHasAccount && !payerOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: payerEmail,
@@ -878,7 +880,7 @@ async function handleMemberPaymentEmail(
     );
   }
 
-  if (payeeEmail && !payeeOptedOut) {
+  if (payeeEmail && payeeHasAccount && !payeeOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: payeeEmail,
@@ -961,6 +963,10 @@ export const sendMemberPaymentUnpayNotification = onCall<{
         })()
       : Promise.resolve(null),
   ]);
+  const paidByHasAccount =
+    !!paidByMemberDoc?.exists && !!paidByMemberDoc.data()!['userRef'];
+  const paidToHasAccount =
+    !!paidToMemberDoc?.exists && !!paidToMemberDoc.data()!['userRef'];
   const paidByOptedOut =
     paidByUserDoc?.exists && paidByUserDoc.data()!['emailOptOut'] === true;
   const paidToOptedOut =
@@ -969,7 +975,7 @@ export const sendMemberPaymentUnpayNotification = onCall<{
   const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
   const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
 
-  if (paidByEmail && !paidByOptedOut) {
+  if (paidByEmail && paidByHasAccount && !paidByOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: paidByEmail,
@@ -987,7 +993,7 @@ export const sendMemberPaymentUnpayNotification = onCall<{
     );
   }
 
-  if (paidToEmail && !paidToOptedOut) {
+  if (paidToEmail && paidToHasAccount && !paidToOptedOut) {
     mailWrites.push(
       db.collection('mail').add({
         to: paidToEmail,
@@ -1037,7 +1043,13 @@ export const sendGroupSettleUnpayNotification = onCall<{
       return userRef ? userRef.get() : Promise.resolve(null);
     })
   );
+  const hasAccountSet = new Set<string>();
   const optedOutSet = new Set<string>();
+  memberDocs.forEach((memberDoc, i) => {
+    if (memberDoc?.exists && !!memberDoc.data()!['userRef']) {
+      hasAccountSet.add(members[i].email);
+    }
+  });
   members.forEach((m, i) => {
     const userDoc = userDocs[i];
     if (userDoc?.exists && userDoc.data()!['emailOptOut'] === true) {
@@ -1046,7 +1058,7 @@ export const sendGroupSettleUnpayNotification = onCall<{
   });
 
   const mailWrites = members
-    .filter((m) => !!m.email && !optedOutSet.has(m.email))
+    .filter((m) => !!m.email && hasAccountSet.has(m.email) && !optedOutSet.has(m.email))
     .map((m) =>
       db.collection('mail').add({
         to: m.email,
@@ -1184,7 +1196,7 @@ async function handleSettleEmail(
     const memberUserData = memberUserRef
       ? userDataMap.get(memberUserRef.path)
       : undefined;
-    if (memberUserData?.['emailOptOut'] === true) continue;
+    if (!memberUserRef || memberUserData?.['emailOptOut'] === true) continue;
 
     // Find transfers this member is involved in
     const owesLines: string[] = [];
