@@ -19,7 +19,7 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import {
   TableFilterService,
   FilterValue,
-} from '@shared/services/table-filter.service';
+} from '@services/table-filter.service';
 
 /**
  * Base directive for all table filter directives

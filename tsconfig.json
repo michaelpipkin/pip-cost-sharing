@@ -25,9 +25,11 @@
     "paths": {
       "@env/*": ["./src/environments/*"],
       "@shared/*": ["./src/app/shared/*"],
+      "@components/*": ["./src/app/shared/components/*"],
+      "@directives/*": ["./src/app/shared/directives/*"],
       "@services/*": ["./src/app/services/*"],
       "@models/*": ["./src/app/models/*"],
-      "@components/*": ["./src/app/components/*"],
+      "@features/*": ["./src/app/features/*"],
       "@store/*": ["./src/app/store/*"],
       "@utils/*": ["./src/app/utilities/*"],
       "@constants/*": ["./src/app/constants/*"],

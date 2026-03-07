@@ -1,32 +1,32 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component } from '@angular/core';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { BreakpointObserver } from '@angular/cdk/layout';
-import { AppComponent } from './app.component';
-import { LoadingComponent } from './shared/loading/loading.component';
-import { UserStore } from '@store/user.store';
-import { GroupStore } from '@store/group.store';
-import { UserService } from '@services/user.service';
-import { DemoService } from '@services/demo.service';
-import { ThemeService } from '@services/theme.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { PwaDetectionService } from '@services/pwa-detection.service';
+import { LoadingComponent } from '@components/loading/loading.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { NavigationLoadingService } from '@components/loading/navigation-loading.service';
 import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { DeepLinkService } from '@services/deep-link.service';
-import { NavigationLoadingService } from './shared/loading/navigation-loading.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { PwaDetectionService } from '@services/pwa-detection.service';
+import { ThemeService } from '@services/theme.service';
+import { UserService } from '@services/user.service';
+import { GroupStore } from '@store/group.store';
+import { UserStore } from '@store/user.store';
 import {
-  createMockUserStore,
-  createMockGroupStore,
-  createMockDemoService,
   createMockAnalyticsService,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockLoadingService,
   createMockPwaDetectionService,
   createMockThemeService,
-  createMockLoadingService,
+  createMockUserStore,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppComponent } from './app.component';
 
 // Stub to prevent LoadingComponent's DomPortalOutlet from corrupting the DOM between tests
 @Component({ selector: 'loading', template: '' })
@@ -41,7 +41,9 @@ describe('AppComponent', () => {
   };
 
   const mockBreakpointObserver = {
-    observe: vi.fn(() => ({ subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })) })),
+    observe: vi.fn(() => ({
+      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    })),
   };
 
   const mockAdMobService = {
@@ -77,12 +79,18 @@ describe('AppComponent', () => {
         { provide: DemoService, useValue: createMockDemoService() },
         { provide: ThemeService, useValue: mockThemeService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
-        { provide: PwaDetectionService, useValue: createMockPwaDetectionService() },
+        {
+          provide: PwaDetectionService,
+          useValue: createMockPwaDetectionService(),
+        },
         { provide: BreakpointObserver, useValue: mockBreakpointObserver },
         { provide: AdMobService, useValue: mockAdMobService },
         { provide: AdSenseService, useValue: mockAdSenseService },
         { provide: DeepLinkService, useValue: mockDeepLinkService },
-        { provide: NavigationLoadingService, useValue: mockNavigationLoadingService },
+        {
+          provide: NavigationLoadingService,
+          useValue: mockNavigationLoadingService,
+        },
         { provide: LoadingService, useValue: createMockLoadingService() },
       ],
     })
@@ -105,8 +113,8 @@ describe('AppComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should have title "Cost Sharing"', () => {
-    expect(component.title).toBe('Cost Sharing');
+  it('should have title "PipSplit"', () => {
+    expect(component.title).toBe('PipSplit');
   });
 
   describe('toggleTheme', () => {

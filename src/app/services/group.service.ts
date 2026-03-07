@@ -1,14 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
-import { LoadingService } from '@shared/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { AnalyticsService } from '@services/analytics.service';
 import {
   collection,
   collectionGroup,
@@ -276,9 +276,7 @@ export class GroupService implements IGroupService {
 
     batch.set(groupRef, group);
 
-    const memberRef = doc(
-      collection(this.fs, `groups/${groupRef.id}/members`)
-    );
+    const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
     batch.set(memberRef, member);
 
     const categoryRef = doc(

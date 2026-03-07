@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
+import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
 
 export interface DateRangeFilterValue {
   start: Date | null;

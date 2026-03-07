@@ -1,7 +1,7 @@
 import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NavigationEnd, Router } from '@angular/router';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';

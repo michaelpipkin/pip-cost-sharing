@@ -47,7 +47,13 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,'':'',v\\) for k,v in d.items\\(\\) if k in [''module'',''main'',''browser'',''exports'',''type'']]\")",
       "Bash(ng test --no-watch --include=\"**/admin-statistics.service.spec.ts\")",
       "Bash(pnpm ng test --no-watch)",
-      "Bash(ng test --include=\"**/history-detail/**\")"
+      "Bash(ng test --include=\"**/history-detail/**\")",
+      "Bash(xargs -0 perl -pi -e 's|\\\\@components/|@features/|g')",
+      "Bash(xargs -0 perl -pi -e ':*)",
+      "Bash(grep -rn \"''\\\\./shared/\\\\|''\\\\.\\\\./shared/\" src --include=\"*.ts\")",
+      "Bash(xargs -0 perl -pi -e \":*)",
+      "Bash(xargs -0 perl -pi -e 's/\\\\@components\\\\//@features\\\\//g')",
+      "Bash(xargs -0 perl -pi -e 's/\\\\@components\\\\//\\\\@features\\\\//g')"
     ],
     "deny": [],
     "ask": [],
