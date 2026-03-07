@@ -112,7 +112,7 @@
           appearance="fill"
           floatLabel="always"
           class="proportional-amount-field"
-          [class.hidden]="splitByPercentage()"
+          [class.hidden]="e.splitByPercentage.value"
         >
           <mat-label>Proportional Amount</mat-label>
           <input
@@ -151,10 +151,10 @@
             <mat-error> *Required - Enter 0 if none </mat-error>
           }
         </mat-form-field>
-        <div class="mock-input" [class.hidden]="splitByPercentage()">
+        <div class="mock-input" [class.hidden]="e.splitByPercentage.value">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
-            {{ (e.sharedAmount.value ?? 0) | currency }}
+            {{ e.sharedAmount.value ?? 0 | currency }}
           </span>
         </div>
       </div>
@@ -168,34 +168,26 @@
         >
           Add New Split
         </button>
-        <div class="split-button-container">
-          <button
-            mat-raised-button
-            class="left-half-btn"
-            [class.btn-primary]="!splitByPercentage()"
-            [class.btn-unselected]="splitByPercentage()"
-            type="button"
+        <mat-button-toggle-group
+          formControlName="splitByPercentage"
+          aria-label="Split method toggle"
+          hideSingleSelectionIndicator="true"
+        >
+          <mat-button-toggle
+            [value]="false"
+            data-testid="split-by-amount-toggle"
             (click)="onSplitByAmountClick()"
-            data-testid="split-by-amount-button"
-            aria-label="Change to split by amount"
-            matTooltip="Split by Amount"
           >
             <mat-icon>attach_money</mat-icon>
-          </button>
-          <button
-            mat-raised-button
-            class="right-half-btn"
-            [class.btn-primary]="splitByPercentage()"
-            [class.btn-unselected]="!splitByPercentage()"
-            type="button"
+          </mat-button-toggle>
+          <mat-button-toggle
+            [value]="true"
+            data-testid="split-by-percentage-toggle"
             (click)="onSplitByPercentageClick()"
-            data-testid="split-by-percentage-button"
-            aria-label="Change to split by percentage"
-            matTooltip="Split by Percentage"
           >
             <mat-icon>percent</mat-icon>
-          </button>
-        </div>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
       </div>
       <div formArrayName="splits" class="mt-3">
         @for (
@@ -212,7 +204,10 @@
                   (selectionChange)="allocateSharedAmounts()"
                   docRefCompare
                 >
-                  @for (member of availableMembersForSplit(i); track member.ref) {
+                  @for (
+                    member of availableMembersForSplit(i);
+                    track member.ref
+                  ) {
                     <mat-option [value]="member.ref">{{
                       member.displayName
                     }}</mat-option>
@@ -224,7 +219,7 @@
               </button>
             </div>
             <div class="flex-wrap fw-start row-gap">
-              @if (splitByPercentage()) {
+              @if (e.splitByPercentage.value) {
                 <mat-form-field
                   appearance="fill"
                   class="number-field no-subscript"
@@ -297,7 +292,7 @@
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
                 <span class="mock-value-right">
-                  {{ (splitForm.get('allocatedAmount')?.value ?? 0) | currency }}
+                  {{ splitForm.get('allocatedAmount')?.value ?? 0 | currency }}
                 </span>
               </div>
             </div>

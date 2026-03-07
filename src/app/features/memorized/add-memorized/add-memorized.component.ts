@@ -7,7 +7,6 @@ import {
   effect,
   ElementRef,
   inject,
-  model,
   Signal,
   viewChild,
   viewChildren,
@@ -24,6 +23,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
@@ -87,6 +87,7 @@ import { getStorage } from 'firebase/storage';
     CurrencyPipe,
     FormatCurrencyInputDirective,
     DocRefCompareDirective,
+    MatButtonToggleModule,
   ],
 })
 export class AddMemorizedComponent {
@@ -118,8 +119,6 @@ export class AddMemorizedComponent {
     return this.#categories().filter((c) => c.active);
   });
 
-  splitByPercentage = model<boolean>(false);
-
   totalAmountField = viewChild<ElementRef>('totalAmount');
   allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
@@ -136,6 +135,7 @@ export class AddMemorizedComponent {
     ],
     sharedAmount: [0.0, Validators.required],
     allocatedAmount: [0, Validators.required],
+    splitByPercentage: [false, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
@@ -244,7 +244,7 @@ export class AddMemorizedComponent {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -282,7 +282,7 @@ export class AddMemorizedComponent {
         input.nativeElement.dispatchEvent(event);
       });
     });
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -302,7 +302,7 @@ export class AddMemorizedComponent {
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -310,19 +310,17 @@ export class AddMemorizedComponent {
   }
 
   onSplitByPercentageClick(): void {
-    this.splitByPercentage.set(true);
     this.addMemorizedForm.markAsDirty();
     this.allocateByPercentage();
   }
 
   onSplitByAmountClick(): void {
-    this.splitByPercentage.set(false);
     this.addMemorizedForm.markAsDirty();
     this.allocateSharedAmounts();
   }
 
   updateTotalAmount(): void {
-    if (this.splitByPercentage()) {
+    if (this.e.splitByPercentage.value) {
       this.allocateByPercentage();
     } else {
       this.allocateSharedAmounts();
@@ -462,13 +460,13 @@ export class AddMemorizedComponent {
     }
     const val = this.addMemorizedForm.getRawValue();
     const memorized: Partial<Memorized> = {
-      description: val.description ?? undefined,
-      categoryRef: val.category ?? undefined,
-      paidByMemberRef: val.paidByMember ?? undefined,
+      description: val.description!,
+      categoryRef: val.category!,
+      paidByMemberRef: val.paidByMember!,
       sharedAmount: +val.sharedAmount!,
       allocatedAmount: +val.allocatedAmount!,
       totalAmount: +val.amount!,
-      splitByPercentage: this.splitByPercentage(),
+      splitByPercentage: val.splitByPercentage!,
     };
     let splits: Partial<Split>[] = [];
     this.splitsFormArray.getRawValue().forEach((s) => {
@@ -527,7 +525,7 @@ export class AddMemorizedComponent {
           control.setValue(this.localeService.roundToCurrency(result), {
             emitEvent: true,
           });
-          if (this.splitByPercentage()) {
+          if (this.e.splitByPercentage.value) {
             this.allocateByPercentage();
           } else {
             this.allocateSharedAmounts();
