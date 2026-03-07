@@ -105,43 +105,6 @@ body.dark-theme {
   text-align: center !important;
 }
 
-.split-button-container {
-  display: grid;
-  grid-auto-flow: column;
-  align-items: center;
-  justify-content: start;
-
-  span {
-    font-size: 1.1em;
-    font-weight: 600;
-    text-align: end;
-    margin-right: 4px;
-  }
-}
-
-.left-half-btn {
-  border-top-right-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  padding-right: 0.5rem !important;
-  border-right: 1px solid tokens.color('on-surface') !important;
-  margin-right: -1px !important;
-  mat-icon {
-    font-size: 1.6rem !important;
-  }
-}
-
-.right-half-btn {
-  border-top-left-radius: 0 !important;
-  border-bottom-left-radius: 0 !important;
-  padding-right: 0.5rem !important;
-  border-left: 1px solid tokens.color('on-surface') !important;
-  margin-left: -1px !important;
-  mat-icon {
-    font-size: 1.6rem !important;
-    width: 110% !important;
-  }
-}
-
 /* ========================================
    NAVIGATION STYLES
 ======================================== */
