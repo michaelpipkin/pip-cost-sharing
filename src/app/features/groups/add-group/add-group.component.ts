@@ -13,6 +13,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
@@ -20,11 +22,9 @@ import {
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
 
 @Component({

@@ -1,16 +1,13 @@
 import { Component, effect, inject } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
 import { UserStore } from '@store/user.store';
 
 @Component({

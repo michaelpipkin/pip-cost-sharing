@@ -1,10 +1,10 @@
-import { Injectable, inject, ComponentRef, signal } from '@angular/core';
-import { Overlay, OverlayRef, OverlayConfig } from '@angular/cdk/overlay';
+import { Overlay, OverlayConfig, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { CalculatorComponent } from '../components/calculator/calculator.component';
+import { ComponentRef, inject, Injectable, signal } from '@angular/core';
+import { CalculatorComponent } from '@components/calculator/calculator.component';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CalculatorOverlayService {
   private readonly overlay = inject(Overlay);
@@ -35,10 +35,12 @@ export class CalculatorOverlayService {
     this.isOpen.set(true);
 
     // Handle calculator events using direct subscription
-    const resultSub = this.calculatorRef.instance.resultSelected.subscribe((result: number) => {
-      onResult(result);
-      this.closeCalculator(true); // Trigger blur to format the input
-    });
+    const resultSub = this.calculatorRef.instance.resultSelected.subscribe(
+      (result: number) => {
+        onResult(result);
+        this.closeCalculator(true); // Trigger blur to format the input
+      }
+    );
 
     const closedSub = this.calculatorRef.instance.closed.subscribe(() => {
       this.closeCalculator();
@@ -50,9 +52,11 @@ export class CalculatorOverlayService {
     });
 
     // Handle keyboard input for calculator
-    const keydownSub = this.overlayRef.keydownEvents().subscribe((event: KeyboardEvent) => {
-      this.handleKeyboardInput(event);
-    });
+    const keydownSub = this.overlayRef
+      .keydownEvents()
+      .subscribe((event: KeyboardEvent) => {
+        this.handleKeyboardInput(event);
+      });
 
     // Store subscriptions for cleanup
     if (this.calculatorRef.instance) {
@@ -60,7 +64,7 @@ export class CalculatorOverlayService {
         resultSub,
         closedSub,
         backdropSub,
-        keydownSub
+        keydownSub,
       ];
     }
   }
@@ -91,7 +95,9 @@ export class CalculatorOverlayService {
     }
   }
 
-  private findAssociatedInput(triggerElement: HTMLElement): HTMLInputElement | null {
+  private findAssociatedInput(
+    triggerElement: HTMLElement
+  ): HTMLInputElement | null {
     const matFormField = triggerElement.closest('mat-form-field');
     if (matFormField) {
       return matFormField.querySelector('input') as HTMLInputElement;
@@ -103,17 +109,19 @@ export class CalculatorOverlayService {
     // Find the input field associated with this calculator button
     const matFormField = triggerElement.closest('mat-form-field');
     if (matFormField) {
-      const inputElement = matFormField.querySelector('input') as HTMLInputElement;
+      const inputElement = matFormField.querySelector(
+        'input'
+      ) as HTMLInputElement;
       if (inputElement) {
         // Multiple aggressive approaches to dismiss virtual keyboard
         inputElement.blur();
         inputElement.readOnly = true;
-        
+
         // Force viewport reset to dismiss keyboard on iOS
         if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
           window.scrollTo(0, 0);
         }
-        
+
         // Create a temporary hidden input to steal focus
         const hiddenInput = document.createElement('input');
         hiddenInput.style.position = 'absolute';
@@ -122,11 +130,11 @@ export class CalculatorOverlayService {
         hiddenInput.style.opacity = '0';
         hiddenInput.style.pointerEvents = 'none';
         hiddenInput.setAttribute('readonly', 'true');
-        
+
         document.body.appendChild(hiddenInput);
         hiddenInput.focus();
         hiddenInput.blur();
-        
+
         setTimeout(() => {
           document.body.removeChild(hiddenInput);
           inputElement.readOnly = false;
@@ -135,7 +143,10 @@ export class CalculatorOverlayService {
     }
 
     // Also blur any currently active element as fallback
-    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+    if (
+      document.activeElement &&
+      document.activeElement instanceof HTMLElement
+    ) {
       document.activeElement.blur();
     }
   }
@@ -215,29 +226,29 @@ export class CalculatorOverlayService {
           originY: 'bottom',
           overlayX: 'end',
           overlayY: 'top',
-          offsetY: 8
+          offsetY: 8,
         },
         {
           originX: 'end',
           originY: 'top',
           overlayX: 'end',
           overlayY: 'bottom',
-          offsetY: -8
+          offsetY: -8,
         },
         {
           originX: 'start',
           originY: 'bottom',
           overlayX: 'start',
           overlayY: 'top',
-          offsetY: 8
+          offsetY: 8,
         },
         {
           originX: 'center',
           originY: 'bottom',
           overlayX: 'center',
           overlayY: 'top',
-          offsetY: 8
-        }
+          offsetY: 8,
+        },
       ])
       .withPush(true)
       .withViewportMargin(16);
@@ -248,7 +259,7 @@ export class CalculatorOverlayService {
       backdropClass: 'calculator-backdrop',
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
       width: 'auto',
-      height: 'auto'
+      height: 'auto',
     });
   }
 }

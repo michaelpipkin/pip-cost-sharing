@@ -5,14 +5,14 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
+import { Group } from '@models/group';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { Group } from '@models/group';
 
 @Component({
   selector: 'app-account-preferences',

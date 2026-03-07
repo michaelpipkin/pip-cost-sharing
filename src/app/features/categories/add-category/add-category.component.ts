@@ -10,12 +10,12 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { Category, CategoryForm } from '@models/category';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 
 @Component({
   selector: 'app-add-category',

@@ -1,30 +1,30 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ManageGroupsComponent } from './manage-groups.component';
-import { GroupService } from '@services/group.service';
-import { ExpenseService } from '@services/expense.service';
-import { DemoService } from '@services/demo.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { GroupService } from '@services/group.service';
 import { GroupStore } from '@store/group.store';
 import {
-  createMockLoadingService,
-  createMockDemoService,
-  createMockGroupService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockDemoService,
   createMockDialogRef,
-  createMockMatDialog,
+  createMockGroupService,
   createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockSnackBar,
   mockGroup,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ManageGroupsComponent } from './manage-groups.component';
 
 describe('ManageGroupsComponent', () => {
   let fixture: ComponentFixture<ManageGroupsComponent>;

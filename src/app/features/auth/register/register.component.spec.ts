@@ -1,20 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import { getFunctions } from 'firebase/functions';
-import { RegisterComponent } from './register.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { PwaDetectionService } from '@services/pwa-detection.service';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { PwaDetectionService } from '@services/pwa-detection.service';
 import {
+  createMockAnalyticsService,
   createMockLoadingService,
   createMockPwaDetectionService,
-  createMockAnalyticsService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RegisterComponent } from './register.component';
 
 // Mock hcaptcha global before tests run
 const mockHcaptcha = {

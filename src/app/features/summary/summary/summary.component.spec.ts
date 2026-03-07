@@ -1,45 +1,45 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SummaryComponent } from './summary.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { DemoService } from '@services/demo.service';
+import { HistoryService } from '@services/history.service';
+import { LocaleService } from '@services/locale.service';
+import { SplitService } from '@services/split.service';
+import { TourService } from '@services/tour.service';
+import { UserService } from '@services/user.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
-import { SplitService } from '@services/split.service';
-import { HistoryService } from '@services/history.service';
-import { UserService } from '@services/user.service';
-import { TourService } from '@services/tour.service';
-import { LocaleService } from '@services/locale.service';
-import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockSplitStore,
-  createMockUserStore,
-  createMockSplitService,
-  createMockHistoryService,
-  createMockTourService,
-  createMockDemoService,
   createMockAnalyticsService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockHistoryService,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
   createMockSnackBar,
+  createMockSplitService,
+  createMockSplitStore,
+  createMockTourService,
+  createMockUserStore,
+  mockCategory,
+  mockDocRef,
   mockGroup,
   mockMember,
-  mockCategory,
   mockSplit,
-  mockDocRef,
   mockUser,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SummaryComponent } from './summary.component';
 
 describe('SummaryComponent', () => {
   let fixture: ComponentFixture<SummaryComponent>;
@@ -138,7 +138,9 @@ describe('SummaryComponent', () => {
         decimalPlaces: 2,
       })),
       formatCurrency: vi.fn((amount: number) => `$${amount.toFixed(2)}`),
-      roundToCurrency: vi.fn((amount: number) => Math.round(amount * 100) / 100),
+      roundToCurrency: vi.fn(
+        (amount: number) => Math.round(amount * 100) / 100
+      ),
     };
 
     await TestBed.configureTestingModule({
@@ -208,7 +210,9 @@ describe('SummaryComponent', () => {
     });
 
     it('should get categories from CategoryStore', () => {
-      expect(component.categories()).toEqual(mockCategoryStore.groupCategories());
+      expect(component.categories()).toEqual(
+        mockCategoryStore.groupCategories()
+      );
     });
 
     it('should get current group from GroupStore', () => {
@@ -216,7 +220,9 @@ describe('SummaryComponent', () => {
     });
 
     it('should get current member for selection', () => {
-      expect(component.currentMember()).toEqual(mockMemberStore.currentMember());
+      expect(component.currentMember()).toEqual(
+        mockMemberStore.currentMember()
+      );
     });
   });
 

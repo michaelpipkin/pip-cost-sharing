@@ -1,31 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CategoriesComponent } from './categories.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { SortingService } from '@services/sorting.service';
-import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
   createMockCategoryStore,
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockSortingService,
-  createMockLoadingService,
   createMockDemoService,
-  createMockTourService,
+  createMockGroupStore,
+  createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
   createMockSnackBar,
+  createMockSortingService,
+  createMockTourService,
+  mockCategory,
   mockGroup,
   mockMember,
-  mockCategory,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { CategoriesComponent } from './categories.component';
 
 describe('CategoriesComponent', () => {
   let fixture: ComponentFixture<CategoriesComponent>;

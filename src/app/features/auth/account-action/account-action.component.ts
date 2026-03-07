@@ -1,11 +1,4 @@
-
 import { Component, computed, inject, model, signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,20 +6,27 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
-import { LoadingService } from '@shared/loading/loading.service';
-import { UserService } from '@services/user.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
+import { passwordMatchValidator } from '../auth-main/password-match-validator';
+
+import {
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   applyActionCode,
   confirmPasswordReset,
   getAuth,
   sendEmailVerification,
 } from 'firebase/auth';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
 
 type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
 
@@ -41,8 +41,8 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    RouterLink
-],
+    RouterLink,
+  ],
   templateUrl: './account-action.component.html',
   styleUrl: './account-action.component.scss',
 })
@@ -202,7 +202,9 @@ export class AccountActionComponent {
   async resendVerificationEmail(): Promise<void> {
     if (!this.auth.currentUser) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'You must be logged in to resend the verification email' },
+        data: {
+          message: 'You must be logged in to resend the verification email',
+        },
       });
       return;
     }
@@ -226,7 +228,9 @@ export class AccountActionComponent {
       });
     } catch (error: any) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: `Failed to send verification email: ${error.message}` },
+        data: {
+          message: `Failed to send verification email: ${error.message}`,
+        },
       });
 
       this.analytics.logEvent('error', {

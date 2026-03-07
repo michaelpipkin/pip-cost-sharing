@@ -1,3 +1,10 @@
+import {
+  afterNextRender,
+  Component,
+  effect,
+  inject,
+  Signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -7,32 +14,25 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { TourService } from '@services/tour.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
-import {
-  afterNextRender,
-  Component,
-  effect,
-  inject,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-groups',

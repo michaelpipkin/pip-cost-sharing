@@ -1,23 +1,23 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { By } from '@angular/platform-browser';
-import * as authModule from 'firebase/auth';
-import { getAuth } from 'firebase/auth';
-import { AccountProfileComponent } from './account-profile.component';
-import { UserStore } from '@store/user.store';
-import { UserService } from '@services/user.service';
-import { MemberService } from '@services/member.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MemberService } from '@services/member.service';
+import { UserService } from '@services/user.service';
+import { UserStore } from '@store/user.store';
 import {
-  createMockUserStore,
-  createMockLoadingService,
   createMockAnalyticsService,
+  createMockLoadingService,
+  createMockUserStore,
   mockUser,
 } from '@testing/test-helpers';
+import * as authModule from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountProfileComponent } from './account-profile.component';
 
 describe('AccountProfileComponent', () => {
   let fixture: ComponentFixture<AccountProfileComponent>;
@@ -83,7 +83,9 @@ describe('AccountProfileComponent', () => {
 
     it('should show google account note', () => {
       expect(
-        fixture.debugElement.query(By.css('[data-testid="google-account-note"]'))
+        fixture.debugElement.query(
+          By.css('[data-testid="google-account-note"]')
+        )
       ).toBeTruthy();
     });
 
@@ -95,7 +97,9 @@ describe('AccountProfileComponent', () => {
 
     it('should show delete account button', () => {
       expect(
-        fixture.debugElement.query(By.css('[data-testid="delete-account-button"]'))
+        fixture.debugElement.query(
+          By.css('[data-testid="delete-account-button"]')
+        )
       ).toBeTruthy();
     });
   });
@@ -110,7 +114,9 @@ describe('AccountProfileComponent', () => {
 
     it('should not show google account note', () => {
       expect(
-        fixture.debugElement.query(By.css('[data-testid="google-account-note"]'))
+        fixture.debugElement.query(
+          By.css('[data-testid="google-account-note"]')
+        )
       ).toBeNull();
     });
 
@@ -136,7 +142,9 @@ describe('AccountProfileComponent', () => {
 
     it('should not show delete account button', () => {
       expect(
-        fixture.debugElement.query(By.css('[data-testid="delete-account-button"]'))
+        fixture.debugElement.query(
+          By.css('[data-testid="delete-account-button"]')
+        )
       ).toBeNull();
     });
   });
@@ -157,14 +165,18 @@ describe('AccountProfileComponent', () => {
 
     it('should show delete account button', () => {
       expect(
-        fixture.debugElement.query(By.css('[data-testid="delete-account-button"]'))
+        fixture.debugElement.query(
+          By.css('[data-testid="delete-account-button"]')
+        )
       ).toBeTruthy();
     });
   });
 
   describe('verified email state', () => {
     it('should show disabled verify email button when email is already verified', async () => {
-      await createComponent({ currentUser: { email: 'test@example.com', emailVerified: true } });
+      await createComponent({
+        currentUser: { email: 'test@example.com', emailVerified: true },
+      });
       mockUserStore.isGoogleUser.set(false);
       mockUserStore.isEmailConfirmed.set(true);
       fixture.detectChanges();
@@ -182,7 +194,9 @@ describe('AccountProfileComponent', () => {
     });
 
     it('should call sendEmailVerification and show success snackbar', async () => {
-      const spy = vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue();
+      const spy = vi
+        .spyOn(authModule, 'sendEmailVerification')
+        .mockResolvedValue();
       await component.verifyEmail();
       await fixture.whenStable();
       expect(spy).toHaveBeenCalled();
@@ -241,7 +255,9 @@ describe('AccountProfileComponent', () => {
     });
 
     it('should show generic error message for other errors', async () => {
-      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(new Error('network error'));
+      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(
+        new Error('network error')
+      );
       component.emailForm.setValue({ email: 'new@example.com' });
       await component.onSubmitEmail();
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;

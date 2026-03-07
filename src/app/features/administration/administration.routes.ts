@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
-import { groupGuard } from '@components/auth/guards.guard';
-import { CategoriesComponent } from '@components/categories/categories/categories.component';
-import { GroupsComponent } from '@components/groups/groups/groups.component';
-import { MembersComponent } from '@components/members/members/members.component';
+import { groupGuard } from '@features/auth/guards.guard';
+import { CategoriesComponent } from '@features/categories/categories/categories.component';
+import { GroupsComponent } from '@features/groups/groups/groups.component';
+import { MembersComponent } from '@features/members/members/members.component';
 
 export const administrationRoutes: Routes = [
   {

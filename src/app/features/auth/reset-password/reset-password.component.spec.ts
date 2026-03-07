@@ -1,19 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import * as authModule from 'firebase/auth';
-import { ResetPasswordComponent } from './reset-password.component';
-import { LoadingService } from '@shared/loading/loading.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import {
-  createMockLoadingService,
   createMockAnalyticsService,
+  createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import * as authModule from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ResetPasswordComponent } from './reset-password.component';
 
 describe('ResetPasswordComponent', () => {
   let fixture: ComponentFixture<ResetPasswordComponent>;

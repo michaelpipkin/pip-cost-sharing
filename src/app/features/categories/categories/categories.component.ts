@@ -1,29 +1,3 @@
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Category } from '@models/category';
-import { Group } from '@models/group';
-import { Member } from '@models/member';
-import { DemoService } from '@services/demo.service';
-import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
-import { CategoryStore } from '@store/category.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AddCategoryComponent } from '../add-category/add-category.component';
-import { EditCategoryComponent } from '../edit-category/edit-category.component';
 import {
   AfterViewInit,
   Component,
@@ -34,10 +8,36 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSortModule } from '@angular/material/sort';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import {
   HelpDialogComponent,
   HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
+} from '@features/help/help-dialog/help-dialog.component';
+import { Category } from '@models/category';
+import { Group } from '@models/group';
+import { Member } from '@models/member';
+import { DemoService } from '@services/demo.service';
+import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
+import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { AddCategoryComponent } from '../add-category/add-category.component';
+import { EditCategoryComponent } from '../edit-category/edit-category.component';
 
 @Component({
   selector: 'app-categories',

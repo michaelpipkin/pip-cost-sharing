@@ -8,7 +8,7 @@ import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
 import { AccountComponent } from './account.component';
 import { UserStore } from '@store/user.store';
-import { APP_OWNER_EMAIL } from '@components/auth/guards.guard';
+import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
 import { createMockUserStore, mockUser } from '@testing/test-helpers';
 
 describe('AccountComponent', () => {

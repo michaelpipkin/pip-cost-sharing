@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import { LoginComponent } from './login.component';
-import { LoadingService } from '@shared/loading/loading.service';
+import { LoadingService } from '@components/loading/loading.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import {
   createMockLoadingService,
   createMockPwaDetectionService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { getAuth } from 'firebase/auth';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;

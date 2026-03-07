@@ -40,10 +40,20 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import {
+  FileSelectionDialogComponent,
+  FileSelectionOption,
+} from '@components/file-selection-dialog/file-selection-dialog.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { ReceiptDialogComponent } from '@components/receipt-dialog/receipt-dialog.component';
+import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
+import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
+} from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { ExpenseDto } from '@models/expense';
 import { Group } from '@models/group';
@@ -51,6 +61,7 @@ import { Member } from '@models/member';
 import { SerializableMemorized } from '@models/memorized';
 import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
@@ -58,18 +69,7 @@ import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { TourService } from '@services/tour.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
-import {
-  FileSelectionDialogComponent,
-  FileSelectionOption,
-} from '@shared/file-selection-dialog/file-selection-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
-import { ReceiptDialogComponent } from '@shared/receipt-dialog/receipt-dialog.component';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';

@@ -1,3 +1,13 @@
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -11,6 +21,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { AmountDue } from '@models/amount-due';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
@@ -23,10 +37,6 @@ import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { DateShortcutKeysDirective } from '@shared/directives/date-plus-minus.directive';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -34,22 +44,12 @@ import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
-import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
-import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
-import {
-  AfterViewInit,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 
 @Component({
   selector: 'app-summary',
@@ -453,7 +453,10 @@ export class SummaryComponent implements AfterViewInit {
     const transfers = this.leastTransfers();
     if (transfers.length === 0) return;
     const dialogConfig: MatDialogConfig = {
-      data: { transfers, settlementText: this.generateSettlementText(transfers) },
+      data: {
+        transfers,
+        settlementText: this.generateSettlementText(transfers),
+      },
     };
     const dialogRef = this.dialog.open(
       SettleGroupDialogComponent,

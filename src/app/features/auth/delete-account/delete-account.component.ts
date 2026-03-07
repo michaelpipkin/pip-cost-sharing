@@ -1,4 +1,3 @@
-
 import { Component, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,12 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { Router, RouterLink } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -29,8 +28,8 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    RouterLink
-],
+    RouterLink,
+  ],
   templateUrl: './delete-account.component.html',
   styleUrl: './delete-account.component.scss',
 })
@@ -53,7 +52,10 @@ export class DeleteAccountComponent {
   async deleteAccount(): Promise<void> {
     if (!this.confirmDeletion()) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Please confirm that you understand this action is irreversible' },
+        data: {
+          message:
+            'Please confirm that you understand this action is irreversible',
+        },
       });
       return;
     }

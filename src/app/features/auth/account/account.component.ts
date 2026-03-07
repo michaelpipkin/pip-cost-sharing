@@ -18,7 +18,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { APP_OWNER_EMAIL } from '@components/auth/guards.guard';
+import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
 import { UserStore } from '@store/user.store';
 import { User as FirebaseUser, getAuth } from 'firebase/auth';
 

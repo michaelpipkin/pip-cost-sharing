@@ -1,25 +1,25 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
 import { SUPPORTED_CURRENCIES } from '@models/currency-config.interface';
-import { AddGroupComponent } from './add-group.component';
-import { GroupService } from '@services/group.service';
-import { DemoService } from '@services/demo.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
 import {
-  createMockUserStore,
-  createMockLoadingService,
-  createMockDemoService,
-  createMockGroupService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockDemoService,
   createMockDialogRef,
+  createMockGroupService,
+  createMockLoadingService,
+  createMockSnackBar,
+  createMockUserStore,
   mockUser,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { AddGroupComponent } from './add-group.component';
 
 describe('AddGroupComponent', () => {
   let fixture: ComponentFixture<AddGroupComponent>;

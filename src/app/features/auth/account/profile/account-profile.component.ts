@@ -1,17 +1,3 @@
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { RouterLink } from '@angular/router';
-import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
-import { UserService } from '@services/user.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { UserStore } from '@store/user.store';
 import {
   Component,
   effect,
@@ -20,10 +6,24 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import {
   MatSlideToggleChange,
   MatSlideToggleModule,
 } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { RouterLink } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { MemberService } from '@services/member.service';
+import { UserService } from '@services/user.service';
+import { UserStore } from '@store/user.store';
 import {
   User as FirebaseUser,
   getAuth,

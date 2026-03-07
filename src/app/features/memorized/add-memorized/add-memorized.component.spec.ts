@@ -1,42 +1,42 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
 import { DecimalPipe } from '@angular/common';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getStorage } from 'firebase/storage';
-import { AddMemorizedComponent } from './add-memorized.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { LocaleService } from '@services/locale.service';
+import { MemorizedService } from '@services/memorized.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
-import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LocaleService } from '@services/locale.service';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockDemoService,
   createMockAnalyticsService,
-  createMockLoadingService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCalculatorOverlayService,
   createMockCategoryService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
   createMockMemorizedService,
-  mockGroup,
-  mockMember,
+  createMockSnackBar,
   mockCategory,
   mockDocRef,
+  mockGroup,
+  mockMember,
 } from '@testing/test-helpers';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getStorage } from 'firebase/storage';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AddMemorizedComponent } from './add-memorized.component';
 
 describe('AddMemorizedComponent', () => {
   let fixture: ComponentFixture<AddMemorizedComponent>;
@@ -156,7 +156,7 @@ describe('AddMemorizedComponent', () => {
     });
 
     it('should accept non-zero amount', () => {
-      component.e.amount.setValue(25.00);
+      component.e.amount.setValue(25.0);
       expect(component.e.amount.invalid).toBe(false);
     });
   });
@@ -201,7 +201,9 @@ describe('AddMemorizedComponent', () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
       component.e.description.setValue('Test Expense');
       component.e.amount.setValue(50);
-      component.e.category.setValue(mockDocRef('groups/group-1/categories/cat-1'));
+      component.e.category.setValue(
+        mockDocRef('groups/group-1/categories/cat-1')
+      );
       component.addSplit();
       await component.onSubmit();
       expect(mockMemorizedService.addMemorized).toHaveBeenCalled();

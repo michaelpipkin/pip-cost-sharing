@@ -1,41 +1,40 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { ActivatedRoute } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getFunctions } from 'firebase/functions';
-import { HistoryDetailComponent } from './history-detail.component';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { HistoryStore } from '@store/history.store';
-import { CategoryStore } from '@store/category.store';
-import { HistoryService } from '@services/history.service';
-import { SortingService } from '@services/sorting.service';
-import { LocaleService } from '@services/locale.service';
-import { DemoService } from '@services/demo.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { HistoryService } from '@services/history.service';
+import { LocaleService } from '@services/locale.service';
+import { SortingService } from '@services/sorting.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockHistoryStore,
-  createMockCategoryStore,
-  createMockHistoryService,
-  createMockSortingService,
-  createMockDemoService,
   createMockAnalyticsService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockHistoryService,
+  createMockHistoryStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
   createMockSnackBar,
-  mockGroup,
-  mockMember,
-  mockHistory,
-  mockSplit,
+  createMockSortingService,
   mockDocRef,
+  mockGroup,
+  mockHistory,
+  mockMember,
+  mockSplit,
 } from '@testing/test-helpers';
+import { getFunctions } from 'firebase/functions';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HistoryDetailComponent } from './history-detail.component';
 
 describe('HistoryDetailComponent', () => {
   let fixture: ComponentFixture<HistoryDetailComponent>;

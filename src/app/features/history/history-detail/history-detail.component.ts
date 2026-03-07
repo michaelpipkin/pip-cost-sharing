@@ -17,10 +17,13 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import {
   HelpDialogComponent,
   HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
+} from '@features/help/help-dialog/help-dialog.component';
 import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { History } from '@models/history';
@@ -31,9 +34,6 @@ import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
@@ -107,7 +107,11 @@ export class HistoryDetailComponent {
     return this.historyStore
       .groupHistory()
       .filter((h) => h.batchId === batchId)
-      .sort((a, b) => (a.paidByMember?.displayName ?? '').localeCompare(b.paidByMember?.displayName ?? ''));
+      .sort((a, b) =>
+        (a.paidByMember?.displayName ?? '').localeCompare(
+          b.paidByMember?.displayName ?? ''
+        )
+      );
   });
 
   categoryTotals = computed<{ category: string; amount: number }[]>(() => {

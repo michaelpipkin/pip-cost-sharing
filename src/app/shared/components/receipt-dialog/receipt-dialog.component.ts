@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { LoadingService } from '@components/loading/loading.service';
 import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 
 @Component({
   selector: 'app-receipt-dialog',

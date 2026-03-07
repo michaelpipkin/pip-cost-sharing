@@ -1,42 +1,41 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
 import { DecimalPipe } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { EditMemorizedComponent } from './edit-memorized.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { Memorized } from '@models/memorized';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { LocaleService } from '@services/locale.service';
+import { MemorizedService } from '@services/memorized.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
-import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LocaleService } from '@services/locale.service';
-import { CategoryService } from '@services/category.service';
-import { MemorizedService } from '@services/memorized.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { Memorized } from '@models/memorized';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockDemoService,
   createMockAnalyticsService,
-  createMockLoadingService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCalculatorOverlayService,
   createMockCategoryService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
   createMockMemorizedService,
-  mockMember,
+  createMockSnackBar,
   mockCategory,
   mockDocRef,
+  mockMember,
 } from '@testing/test-helpers';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EditMemorizedComponent } from './edit-memorized.component';
 
 describe('EditMemorizedComponent', () => {
   let fixture: ComponentFixture<EditMemorizedComponent>;

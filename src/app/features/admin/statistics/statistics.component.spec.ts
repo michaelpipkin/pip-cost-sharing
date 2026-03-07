@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getFunctions } from 'firebase/functions';
-import { AdminStatisticsComponent } from './statistics.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import {
-  createMockLoadingService,
   createMockAnalyticsService,
+  createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { getFunctions } from 'firebase/functions';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AdminStatisticsComponent } from './statistics.component';
 
 describe('AdminStatisticsComponent', () => {
   let fixture: ComponentFixture<AdminStatisticsComponent>;

@@ -1,47 +1,47 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
-import { BreakpointObserver } from '@angular/cdk/layout';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
-import { getStorage } from 'firebase/storage';
-import { ExpensesComponent } from './expenses.component';
-import { UserStore } from '@store/user.store';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
-import { ExpenseStore } from '@store/expense.store';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
 import { ExpenseService } from '@services/expense.service';
-import { SplitService } from '@services/split.service';
-import { SortingService } from '@services/sorting.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { LocaleService } from '@services/locale.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { TableFilterService } from '@shared/services/table-filter.service';
+import { SortingService } from '@services/sorting.service';
+import { SplitService } from '@services/split.service';
+import { TableFilterService } from '@services/table-filter.service';
+import { TourService } from '@services/tour.service';
+import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import {
-  createMockUserStore,
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockExpenseStore,
-  createMockDemoService,
-  createMockTourService,
   createMockAnalyticsService,
-  createMockLoadingService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCategoryService,
+  createMockCategoryStore,
+  createMockDemoService,
   createMockExpenseService,
-  createMockSplitService,
+  createMockExpenseStore,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
+  createMockSnackBar,
   createMockSortingService,
-  mockGroup,
+  createMockSplitService,
+  createMockTourService,
+  createMockUserStore,
   mockDocRef,
+  mockGroup,
 } from '@testing/test-helpers';
+import { getStorage } from 'firebase/storage';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExpensesComponent } from './expenses.component';
 
 describe('ExpensesComponent', () => {
   let fixture: ComponentFixture<ExpensesComponent>;
@@ -55,7 +55,9 @@ describe('ExpensesComponent', () => {
   let router: Router;
 
   const mockBreakpointObserver = {
-    observe: vi.fn(() => ({ subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })) })),
+    observe: vi.fn(() => ({
+      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+    })),
   };
 
   beforeEach(async () => {
@@ -128,7 +130,9 @@ describe('ExpensesComponent', () => {
 
       await component.loadExpenses();
       expect(component.expenses()).toContain(testExpense);
-      expect(mockExpenseService.getGroupExpensesByDateRange).not.toHaveBeenCalled();
+      expect(
+        mockExpenseService.getGroupExpensesByDateRange
+      ).not.toHaveBeenCalled();
     });
 
     it('should mark isLoaded as true after loading', async () => {
@@ -186,7 +190,10 @@ describe('ExpensesComponent', () => {
   describe('markSplitPaidUnpaid', () => {
     it('should show demo restriction in demo mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.markSplitPaidUnpaid({ id: 'exp-1' } as any, { paid: false } as any);
+      await component.markSplitPaidUnpaid(
+        { id: 'exp-1' } as any,
+        { paid: false } as any
+      );
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
       expect(mockSplitService.updateSplit).not.toHaveBeenCalled();
     });

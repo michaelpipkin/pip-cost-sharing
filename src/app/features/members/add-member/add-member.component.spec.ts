@@ -1,28 +1,25 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AddMemberComponent } from './add-member.component';
-import { MemberService } from '@services/member.service';
-import { GroupService } from '@services/group.service';
-import { DemoService } from '@services/demo.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import {
-  createMockLoadingService,
-  createMockDemoService,
-  createMockGroupService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockDemoService,
   createMockDialogRef,
+  createMockGroupService,
+  createMockLoadingService,
+  createMockSnackBar,
   createMockUserStore,
   mockDocRef,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AddMemberComponent } from './add-member.component';
 
 describe('AddMemberComponent', () => {
   let fixture: ComponentFixture<AddMemberComponent>;
@@ -43,7 +40,10 @@ describe('AddMemberComponent', () => {
       imports: [AddMemberComponent],
       providers: [
         provideNoopAnimations(),
-        { provide: MAT_DIALOG_DATA, useValue: { groupId: mockDocRef('groups/group-1') } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { groupId: mockDocRef('groups/group-1') },
+        },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },

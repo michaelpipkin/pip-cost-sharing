@@ -11,7 +11,7 @@ import { DemoService } from '@services/demo.service';
 import { TourService } from '@services/tour.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { LocaleService } from '@services/locale.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import {
   createMockGroupStore,
   createMockDemoService,

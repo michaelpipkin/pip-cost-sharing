@@ -1,33 +1,33 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MembersComponent } from './members.component';
-import { UserStore } from '@store/user.store';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { SortingService } from '@services/sorting.service';
-import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { UserStore } from '@store/user.store';
 import {
-  createMockUserStore,
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockSortingService,
-  createMockLoadingService,
   createMockDemoService,
-  createMockTourService,
+  createMockGroupStore,
+  createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
   createMockSnackBar,
+  createMockSortingService,
+  createMockTourService,
+  createMockUserStore,
+  mockDocRef,
   mockGroup,
   mockMember,
   mockUser,
-  mockDocRef,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MembersComponent } from './members.component';
 
 describe('MembersComponent', () => {
   let fixture: ComponentFixture<MembersComponent>;

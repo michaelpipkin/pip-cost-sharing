@@ -1,3 +1,5 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
   Component,
@@ -6,18 +8,16 @@ import {
   model,
   signal,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { MailDelivery, MailDocument } from '@models/mail';
 import { AdminMailService } from '@services/admin-mail.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
 
 type DeliveryStateFilter = 'ALL' | MailDelivery['state'];
 
@@ -57,21 +57,23 @@ export class AdminEmailLogComponent {
 
   columnsToDisplay = computed(() => {
     const base = ['dateTime', 'recipient', 'state', 'attempts', 'error'];
-    return this.isMobile() ? base : ['dateTime', 'recipient', 'subject', ...base.slice(2)];
+    return this.isMobile()
+      ? base
+      : ['dateTime', 'recipient', 'subject', ...base.slice(2)];
   });
 
   filteredDocuments = computed<MailDocument[]>(() => {
     const state = this.selectedState();
     if (state === 'ALL') return this.mailDocuments();
-    return this.mailDocuments().filter(
-      (doc) => doc.delivery?.state === state
-    );
+    return this.mailDocuments().filter((doc) => doc.delivery?.state === state);
   });
 
   constructor() {
-    this.breakpointObserver.observe('(max-width: 799px)').subscribe((result) => {
-      this.isMobile.set(result.matches);
-    });
+    this.breakpointObserver
+      .observe('(max-width: 799px)')
+      .subscribe((result) => {
+        this.isMobile.set(result.matches);
+      });
     afterNextRender(async () => {
       await this.loadMailDocuments();
     });
@@ -102,10 +104,14 @@ export class AdminEmailLogComponent {
 
   chipTextColor(filter: DeliveryStateFilter): string {
     switch (filter) {
-      case 'SUCCESS': return 'var(--on-primary)';
-      case 'ERROR':   return 'var(--on-error)';
-      case 'RETRY':   return 'var(--on-tertiary)';
-      default:        return 'var(--on-surface)';
+      case 'SUCCESS':
+        return 'var(--on-primary)';
+      case 'ERROR':
+        return 'var(--on-error)';
+      case 'RETRY':
+        return 'var(--on-tertiary)';
+      default:
+        return 'var(--on-surface)';
     }
   }
 

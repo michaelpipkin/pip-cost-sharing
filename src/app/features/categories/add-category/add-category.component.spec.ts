@@ -1,21 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AddCategoryComponent } from './add-category.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
-  createMockLoadingService,
-  createMockDemoService,
-  createMockCategoryService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockCategoryService,
+  createMockDemoService,
   createMockDialogRef,
+  createMockLoadingService,
+  createMockSnackBar,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { AddCategoryComponent } from './add-category.component';
 
 describe('AddCategoryComponent', () => {
   let fixture: ComponentFixture<AddCategoryComponent>;

@@ -1,4 +1,14 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -11,14 +21,18 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { GroupStore } from '@store/group.store';
@@ -26,20 +40,6 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-members',

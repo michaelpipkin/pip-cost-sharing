@@ -1,27 +1,30 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import { getFunctions } from 'firebase/functions';
-import * as functionsModule from 'firebase/functions';
-import { DeleteAccountComponent } from './delete-account.component';
-import { UserService } from '@services/user.service';
-import { GroupService } from '@services/group.service';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { GroupService } from '@services/group.service';
+import { UserService } from '@services/user.service';
 import {
-  createMockLoadingService,
-  createMockGroupService,
   createMockAnalyticsService,
+  createMockGroupService,
+  createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { getAuth } from 'firebase/auth';
+import * as functionsModule from 'firebase/functions';
+import { getFunctions } from 'firebase/functions';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DeleteAccountComponent } from './delete-account.component';
 
 describe('DeleteAccountComponent', () => {
   let fixture: ComponentFixture<DeleteAccountComponent>;
   let component: DeleteAccountComponent;
-  let mockUserService: { logout: ReturnType<typeof vi.fn>; updateUser: ReturnType<typeof vi.fn> };
+  let mockUserService: {
+    logout: ReturnType<typeof vi.fn>;
+    updateUser: ReturnType<typeof vi.fn>;
+  };
 
   const mockAuthWithUser = {
     currentUser: {
@@ -118,8 +121,12 @@ describe('DeleteAccountComponent', () => {
       });
 
       it('should call cloud function and transition to completed state on success', async () => {
-        const mockCallable = vi.fn().mockResolvedValue({ data: { success: true } });
-        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(mockCallable);
+        const mockCallable = vi
+          .fn()
+          .mockResolvedValue({ data: { success: true } });
+        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+          mockCallable
+        );
 
         component.confirmDeletion.set(true);
         await component.deleteAccount();
@@ -129,8 +136,12 @@ describe('DeleteAccountComponent', () => {
       });
 
       it('should remain in verified state when cloud function returns success: false', async () => {
-        const mockCallable = vi.fn().mockResolvedValue({ data: { success: false } });
-        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(mockCallable);
+        const mockCallable = vi
+          .fn()
+          .mockResolvedValue({ data: { success: false } });
+        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+          mockCallable
+        );
 
         component.confirmDeletion.set(true);
         await component.deleteAccount();

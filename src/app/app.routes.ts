@@ -1,13 +1,13 @@
 import { Routes } from '@angular/router';
-import { AboutComponent } from '@components/about/about.component';
+import { AboutComponent } from '@features/about/about.component';
 import {
   adminGuard,
   authGuard,
   groupGuard,
   loggedInGuard,
-} from '@components/auth/guards.guard';
-import { HelpComponent } from '@components/help/help.component';
-import { HomeComponent } from '@components/home/home.component';
+} from '@features/auth/guards.guard';
+import { HelpComponent } from '@features/help/help.component';
+import { HomeComponent } from '@features/home/home.component';
 
 export const appRoutes: Routes = [
   {
@@ -18,7 +18,7 @@ export const appRoutes: Routes = [
   {
     path: 'auth',
     loadChildren: () =>
-      import('@components/auth/auth.routes').then((m) => m.authRoutes),
+      import('@features/auth/auth.routes').then((m) => m.authRoutes),
   },
   // Backward compatibility redirects
   { path: 'groups', redirectTo: 'administration/groups' },
@@ -27,7 +27,7 @@ export const appRoutes: Routes = [
   {
     path: 'administration',
     loadChildren: () =>
-      import('@components/administration/administration.routes').then(
+      import('@features/administration/administration.routes').then(
         (m) => m.administrationRoutes
       ),
     canActivate: [authGuard],
@@ -35,7 +35,7 @@ export const appRoutes: Routes = [
   {
     path: 'expenses',
     loadChildren: () =>
-      import('@components/expenses/expenses.routes').then(
+      import('@features/expenses/expenses.routes').then(
         (m) => m.expensesRoutes
       ),
     canActivate: [authGuard, groupGuard],
@@ -43,7 +43,7 @@ export const appRoutes: Routes = [
   {
     path: 'memorized',
     loadChildren: () =>
-      import('@components/memorized/memorized.routes').then(
+      import('@features/memorized/memorized.routes').then(
         (m) => m.memorizedRoutes
       ),
     canActivate: [authGuard, groupGuard],
@@ -54,7 +54,7 @@ export const appRoutes: Routes = [
   {
     path: 'analysis',
     loadChildren: () =>
-      import('@components/analysis/analysis.routes').then(
+      import('@features/analysis/analysis.routes').then(
         (m) => m.analysisRoutes
       ),
     canActivate: [authGuard, groupGuard],
@@ -72,18 +72,18 @@ export const appRoutes: Routes = [
   {
     path: 'split',
     loadChildren: () =>
-      import('@components/split/split.routes').then((m) => m.splitRoutes),
+      import('@features/split/split.routes').then((m) => m.splitRoutes),
   },
   {
     path: 'demo',
     loadChildren: () =>
-      import('@components/demo/demo.routes').then((m) => m.demoRoutes),
+      import('@features/demo/demo.routes').then((m) => m.demoRoutes),
     canActivate: [loggedInGuard],
   },
   {
     path: 'admin',
     loadChildren: () =>
-      import('@components/admin/admin.routes').then((m) => m.adminRoutes),
+      import('@features/admin/admin.routes').then((m) => m.adminRoutes),
     canActivate: [authGuard, adminGuard],
   },
   { path: '**', redirectTo: '' },

@@ -4,8 +4,8 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { AnalyticsService } from '@services/analytics.service';
 
 @Component({

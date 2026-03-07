@@ -6,9 +6,11 @@
     "paths": {
       "@env/*": ["./src/environments/*"],
       "@shared/*": ["./src/app/shared/*"],
+      "@components/*": ["./src/app/shared/components/*"],
+      "@directives/*": ["./src/app/shared/directives/*"],
       "@services/*": ["./src/app/services/*"],
       "@models/*": ["./src/app/models/*"],
-      "@components/*": ["./src/app/components/*"],
+      "@features/*": ["./src/app/features/*"],
       "@store/*": ["./src/app/store/*"],
       "@utils/*": ["./src/app/utilities/*"],
       "@constants/*": ["./src/app/constants/*"],
@@ -21,10 +23,14 @@
       "firebase/auth": ["./src/testing/mocks/firebase-auth.mock.ts"],
       "firebase/storage": ["./src/testing/mocks/firebase-storage.mock.ts"],
       "firebase/functions": ["./src/testing/mocks/firebase-functions.mock.ts"],
-      "@capacitor-firebase/analytics": ["./src/testing/mocks/capacitor-firebase-analytics.mock.ts"],
+      "@capacitor-firebase/analytics": [
+        "./src/testing/mocks/capacitor-firebase-analytics.mock.ts"
+      ],
       "@capacitor/camera": ["./src/testing/mocks/capacitor-camera.mock.ts"],
       "@capacitor/app": ["./src/testing/mocks/capacitor-app.mock.ts"],
-      "@capacitor-community/admob": ["./src/testing/mocks/capacitor-admob.mock.ts"]
+      "@capacitor-community/admob": [
+        "./src/testing/mocks/capacitor-admob.mock.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"]

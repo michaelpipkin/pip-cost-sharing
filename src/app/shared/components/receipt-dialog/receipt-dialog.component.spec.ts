@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
-import { ReceiptDialogComponent } from './receipt-dialog.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
 import { UserService } from '@services/user.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
-  createMockLoadingService,
   createMockDialogRef,
+  createMockLoadingService,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ReceiptDialogComponent } from './receipt-dialog.component';
 
 describe('ReceiptDialogComponent', () => {
   let fixture: ComponentFixture<ReceiptDialogComponent>;

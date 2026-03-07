@@ -1,27 +1,27 @@
 import { Component, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { Member } from '@models/member';
-import { DemoService } from '@services/demo.service';
-import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { UserStore } from '@store/user.store';
 import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { Member } from '@models/member';
+import { AnalyticsService } from '@services/analytics.service';
+import { DemoService } from '@services/demo.service';
+import { GroupService } from '@services/group.service';
+import { MemberService } from '@services/member.service';
+import { UserStore } from '@store/user.store';
 
 @Component({
   selector: 'app-add-member',
@@ -72,10 +72,7 @@ export class AddMemberComponent {
         active: true,
         groupAdmin: false,
       };
-      await this.memberService.addMemberToGroup(
-        this.data.groupId,
-        newMember
-      );
+      await this.memberService.addMemberToGroup(this.data.groupId, newMember);
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {

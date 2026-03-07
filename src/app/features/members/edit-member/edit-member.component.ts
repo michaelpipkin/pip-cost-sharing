@@ -1,23 +1,4 @@
 import { Component, inject, Signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
-import { Member } from '@models/member';
-import { User } from '@models/user';
-import { DemoService } from '@services/demo.service';
-import { MemberService } from '@services/member.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { LoadingService } from '@shared/loading/loading.service';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { AnalyticsService } from '@services/analytics.service';
-import { UserStore } from '@store/user.store';
 import {
   FormBuilder,
   FormGroup,
@@ -25,6 +6,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -32,6 +14,24 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { Member } from '@models/member';
+import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
+import { DemoService } from '@services/demo.service';
+import { MemberService } from '@services/member.service';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 
 @Component({
   selector: 'app-edit-member',

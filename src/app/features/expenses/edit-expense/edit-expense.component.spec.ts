@@ -1,47 +1,46 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
 import { DecimalPipe } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getStorage } from 'firebase/storage';
-import { EditExpenseComponent } from './edit-expense.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { Expense } from '@models/expense';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { CameraService } from '@services/camera.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
 import { UserStore } from '@store/user.store';
-import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LocaleService } from '@services/locale.service';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { CameraService } from '@services/camera.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
-import { Expense } from '@models/expense';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockUserStore,
-  createMockDemoService,
   createMockAnalyticsService,
-  createMockLoadingService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCalculatorOverlayService,
-  createMockCategoryService,
-  createMockExpenseService,
   createMockCameraService,
-  mockMember,
+  createMockCategoryService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockExpenseService,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
+  createMockSnackBar,
+  createMockUserStore,
   mockCategory,
   mockDocRef,
+  mockMember,
 } from '@testing/test-helpers';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getStorage } from 'firebase/storage';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EditExpenseComponent } from './edit-expense.component';
 
 describe('EditExpenseComponent', () => {
   let fixture: ComponentFixture<EditExpenseComponent>;

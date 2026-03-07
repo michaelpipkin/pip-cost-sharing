@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
-import { noCrawlerGuard } from '@components/auth/guards.guard';
-import { HistoryComponent } from '@components/history/history/history.component';
-import { HistoryDetailComponent } from '@components/history/history-detail/history-detail.component';
+import { noCrawlerGuard } from '@features/auth/guards.guard';
+import { HistoryComponent } from '@features/history/history/history.component';
+import { HistoryDetailComponent } from '@features/history/history-detail/history-detail.component';
 
 export const historyRoutes: Routes = [
   {

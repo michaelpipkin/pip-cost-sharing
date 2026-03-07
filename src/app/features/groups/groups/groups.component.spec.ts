@@ -1,33 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
-import { GroupsComponent } from './groups.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { DemoService } from '@services/demo.service';
+import { GroupService } from '@services/group.service';
+import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { GroupService } from '@services/group.service';
-import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockUserStore,
-  createMockLoadingService,
   createMockAnalyticsService,
   createMockDemoService,
-  createMockTourService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockGroupService,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
+  createMockSnackBar,
+  createMockTourService,
+  createMockUserStore,
   mockDocRef,
   mockGroup,
   mockUser,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GroupsComponent } from './groups.component';
 
 describe('GroupsComponent', () => {
   let fixture: ComponentFixture<GroupsComponent>;

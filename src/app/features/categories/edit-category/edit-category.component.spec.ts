@@ -1,27 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { EditCategoryComponent } from './edit-category.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 import {
-  createMockLoadingService,
-  createMockDemoService,
-  createMockCategoryService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockCategoryService,
+  createMockDemoService,
   createMockDialogRef,
+  createMockLoadingService,
   createMockMatDialog,
+  createMockSnackBar,
   mockCategory,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EditCategoryComponent } from './edit-category.component';
 
 describe('EditCategoryComponent', () => {
   let fixture: ComponentFixture<EditCategoryComponent>;
@@ -40,8 +40,12 @@ describe('EditCategoryComponent', () => {
     mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
 
-    vi.mocked(mockCategoryService.updateCategory).mockResolvedValue(undefined as any);
-    vi.mocked(mockCategoryService.deleteCategory).mockResolvedValue(undefined as any);
+    vi.mocked(mockCategoryService.updateCategory).mockResolvedValue(
+      undefined as any
+    );
+    vi.mocked(mockCategoryService.deleteCategory).mockResolvedValue(
+      undefined as any
+    );
 
     await TestBed.configureTestingModule({
       imports: [EditCategoryComponent],

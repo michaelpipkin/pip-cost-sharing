@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { SummaryComponent } from '@components/summary/summary/summary.component';
+import { SummaryComponent } from '@features/summary/summary/summary.component';
 
 export const analysisRoutes: Routes = [
   {
@@ -10,7 +10,7 @@ export const analysisRoutes: Routes = [
   {
     path: 'history',
     loadChildren: () =>
-      import('@components/history/history.routes').then(
+      import('@features/history/history.routes').then(
         (m) => m.historyRoutes
       ),
   },

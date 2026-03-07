@@ -1,20 +1,20 @@
 import { Component, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { Router, RouterModule } from '@angular/router';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import {
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router, RouterModule } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 @Component({
   selector: 'app-forgot-password',
@@ -50,15 +50,17 @@ export class ForgotPasswordComponent {
     try {
       this.loading.loadingOn();
       const email = this.forgotPasswordForm.value.email;
-      
+
       const actionCodeSettings = {
         url: window.location.origin + '/auth/account-action',
         handleCodeInApp: true,
       };
-      
+
       await sendPasswordResetEmail(this.auth, email!, actionCodeSettings);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Password reset email sent. Please check your email.' },
+        data: {
+          message: 'Password reset email sent. Please check your email.',
+        },
       });
       this.router.navigate(['/login']);
     } catch (error) {
@@ -73,7 +75,9 @@ export class ForgotPasswordComponent {
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Error sending password reset email. Please try again.' },
+          data: {
+            message: 'Error sending password reset email. Please try again.',
+          },
         });
       }
     } finally {

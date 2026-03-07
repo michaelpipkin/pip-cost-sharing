@@ -12,6 +12,9 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { TextZoom } from '@capacitor/text-zoom';
+import { FooterComponent } from '@components/footer/footer.component';
+import { LoadingComponent } from '@components/loading/loading.component';
+import { NavigationLoadingService } from '@components/loading/navigation-loading.service';
 import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
@@ -25,9 +28,6 @@ import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
-import { FooterComponent } from './shared/footer/footer.component';
-import { LoadingComponent } from './shared/loading/loading.component';
-import { NavigationLoadingService } from './shared/loading/navigation-loading.service';
 
 @Component({
   selector: 'app-root',
@@ -47,7 +47,7 @@ import { NavigationLoadingService } from './shared/loading/navigation-loading.se
   ],
 })
 export class AppComponent {
-  title = 'Cost Sharing';
+  title = 'PipSplit';
 
   protected readonly themeService = inject(ThemeService);
   protected readonly userStore = inject(UserStore);

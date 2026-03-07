@@ -1,51 +1,51 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
 import { DecimalPipe } from '@angular/common';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getStorage } from 'firebase/storage';
-import { AddExpenseComponent } from './add-expense.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { CameraService } from '@services/camera.service';
+import { CategoryService } from '@services/category.service';
+import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
+import { LocaleService } from '@services/locale.service';
+import { MemorizedService } from '@services/memorized.service';
+import { TourService } from '@services/tour.service';
+import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
 import { UserStore } from '@store/user.store';
-import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { LocaleService } from '@services/locale.service';
-import { CategoryService } from '@services/category.service';
-import { ExpenseService } from '@services/expense.service';
-import { MemorizedService } from '@services/memorized.service';
-import { CameraService } from '@services/camera.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
-import { StringUtils } from '@utils/string-utils.service';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockCategoryStore,
-  createMockUserStore,
-  createMockDemoService,
-  createMockTourService,
   createMockAnalyticsService,
-  createMockLoadingService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCalculatorOverlayService,
-  createMockCategoryService,
-  createMockExpenseService,
-  createMockMemorizedService,
   createMockCameraService,
+  createMockCategoryService,
+  createMockCategoryStore,
+  createMockDemoService,
+  createMockExpenseService,
+  createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
+  createMockMemorizedService,
+  createMockSnackBar,
+  createMockTourService,
+  createMockUserStore,
+  mockCategory,
+  mockDocRef,
   mockGroup,
   mockMember,
-  mockCategory,
   mockUser,
-  mockDocRef,
 } from '@testing/test-helpers';
+import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { StringUtils } from '@utils/string-utils.service';
+import { getStorage } from 'firebase/storage';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AddExpenseComponent } from './add-expense.component';
 
 describe('AddExpenseComponent', () => {
   let fixture: ComponentFixture<AddExpenseComponent>;
@@ -297,8 +297,12 @@ describe('AddExpenseComponent', () => {
       const memberRef1 = mockDocRef('groups/group-1/members/member-1');
       const memberRef2 = mockDocRef('groups/group-1/members/member-2');
 
-      component.splitsFormArray.at(0).patchValue({ owedByMemberRef: memberRef1 });
-      component.splitsFormArray.at(1).patchValue({ owedByMemberRef: memberRef2 });
+      component.splitsFormArray
+        .at(0)
+        .patchValue({ owedByMemberRef: memberRef1 });
+      component.splitsFormArray
+        .at(1)
+        .patchValue({ owedByMemberRef: memberRef2 });
 
       component.addExpenseForm.patchValue({
         amount: 100,
@@ -389,7 +393,9 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should handle file selection', () => {
-      const mockFile = new File(['test'], 'receipt.jpg', { type: 'image/jpeg' });
+      const mockFile = new File(['test'], 'receipt.jpg', {
+        type: 'image/jpeg',
+      });
       const mockEvent = {
         target: { files: [mockFile] },
       } as any;
@@ -488,7 +494,10 @@ describe('AddExpenseComponent', () => {
       const calculatorService = TestBed.inject(CalculatorOverlayService);
       const spy = vi.spyOn(calculatorService, 'openCalculator');
 
-      const mockEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as any;
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as any;
       component.openCalculator(mockEvent, 'amount');
 
       expect(spy).toHaveBeenCalled();
@@ -498,7 +507,10 @@ describe('AddExpenseComponent', () => {
       const calculatorService = TestBed.inject(CalculatorOverlayService);
       const spy = vi.spyOn(calculatorService, 'openCalculator');
 
-      const mockEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as any;
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as any;
       component.openCalculator(mockEvent, 'sharedAmount');
 
       expect(spy).toHaveBeenCalled();
@@ -509,7 +521,10 @@ describe('AddExpenseComponent', () => {
       const calculatorService = TestBed.inject(CalculatorOverlayService);
       const spy = vi.spyOn(calculatorService, 'openCalculator');
 
-      const mockEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as any;
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as any;
       component.openCalculator(mockEvent, 'assignedAmount', 0);
 
       expect(spy).toHaveBeenCalled();

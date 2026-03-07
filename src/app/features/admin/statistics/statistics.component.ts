@@ -4,12 +4,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { environment } from '@env/environment';
 import { AdminStatistics } from '@models/admin-statistics';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@shared/loading/loading.service';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Component({

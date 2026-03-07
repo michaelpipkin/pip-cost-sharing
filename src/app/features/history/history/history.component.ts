@@ -13,21 +13,23 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -35,8 +37,6 @@ import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
@@ -143,7 +143,7 @@ export class HistoryComponent {
   onRowClick(history: History): void {
     if (!history.splitsPaid || history.splitsPaid.length === 0) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'This payment doesn\'t have a breakdown available' },
+        data: { message: "This payment doesn't have a breakdown available" },
       });
       return;
     }

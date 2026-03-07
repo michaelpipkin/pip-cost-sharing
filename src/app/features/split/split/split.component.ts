@@ -31,26 +31,26 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
-} from '@components/help/help-dialog/help-dialog.component';
+} from '@features/help/help-dialog/help-dialog.component';
 import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
 import { Split } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
+import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { TourService } from '@services/tour.service';
-import { FormatCurrencyInputDirective } from '@shared/directives/format-currency-input.directive';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
-import { CalculatorOverlayService } from '@shared/services/calculator-overlay.service';
-import { AnalyticsService } from '@services/analytics.service';
 import { GroupStore } from '@store/group.store';
 
 @Component({

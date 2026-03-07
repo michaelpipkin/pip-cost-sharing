@@ -1,35 +1,35 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { EditMemberComponent } from './edit-member.component';
-import { MemberService } from '@services/member.service';
-import { DemoService } from '@services/demo.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { UserStore } from '@store/user.store';
-import { MemberStore } from '@store/member.store';
+import { DemoService } from '@services/demo.service';
+import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { UserStore } from '@store/user.store';
 import {
-  createMockLoadingService,
-  createMockDemoService,
   createMockAnalyticsService,
-  createMockSnackBar,
+  createMockDemoService,
   createMockDialogRef,
-  createMockMatDialog,
-  createMockUserStore,
-  createMockMemberStore,
   createMockGroupStore,
+  createMockLoadingService,
+  createMockMatDialog,
+  createMockMemberStore,
+  createMockSnackBar,
+  createMockUserStore,
+  mockDocRef,
   mockMember,
   mockUser,
-  mockDocRef,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EditMemberComponent } from './edit-member.component';
 
 describe('EditMemberComponent', () => {
   let fixture: ComponentFixture<EditMemberComponent>;
@@ -199,7 +199,9 @@ describe('EditMemberComponent', () => {
       await component.onSubmit();
 
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockMemberService.updateMemberWithUserMatching).not.toHaveBeenCalled();
+      expect(
+        mockMemberService.updateMemberWithUserMatching
+      ).not.toHaveBeenCalled();
     });
 
     it('should open a delete confirmation dialog on removeMember', () => {

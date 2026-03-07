@@ -1,10 +1,16 @@
-import { ComponentRef, DestroyRef, Directive, inject, input } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { BaseFilterDirective } from './base-filter.directive';
+import {
+  ComponentRef,
+  DestroyRef,
+  Directive,
+  inject,
+  input,
+} from '@angular/core';
 import {
   ToggleFilterPanelComponent,
   ToggleFilterValue,
-} from '@shared/components/filter-panels/toggle-filter-panel.component';
+} from '@components/filter-panels/toggle-filter-panel.component';
+import { BaseFilterDirective } from './base-filter.directive';
 
 /**
  * Directive for adding toggle (boolean) filter capability to table header cells

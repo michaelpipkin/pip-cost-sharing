@@ -1,20 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { HelpComponent } from './help.component';
-import { HelpService } from '@services/help.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   HelpContentService,
   HelpSection,
 } from '@services/help-content.service';
-import { LoadingService } from '@shared/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
+import { HelpService } from '@services/help.service';
 import {
-  createMockLoadingService,
   createMockAnalyticsService,
+  createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HelpComponent } from './help.component';
 
 describe('HelpComponent', () => {
   let fixture: ComponentFixture<HelpComponent>;

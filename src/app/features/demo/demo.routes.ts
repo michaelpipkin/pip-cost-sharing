@@ -1,18 +1,18 @@
 import { Routes } from '@angular/router';
-import { CategoriesComponent } from '@components/categories/categories/categories.component';
-import { AddExpenseComponent } from '@components/expenses/add-expense/add-expense.component';
-import { editExpenseResolver } from '@components/expenses/edit-expense.resolver';
-import { EditExpenseComponent } from '@components/expenses/edit-expense/edit-expense.component';
-import { ExpensesComponent } from '@components/expenses/expenses/expenses.component';
-import { GroupsComponent } from '@components/groups/groups/groups.component';
-import { HelpComponent } from '@components/help/help.component';
-import { HistoryComponent } from '@components/history/history/history.component';
-import { MembersComponent } from '@components/members/members/members.component';
-import { AddMemorizedComponent } from '@components/memorized/add-memorized/add-memorized.component';
-import { editMemorizedResolver } from '@components/memorized/edit-memorized.resolver';
-import { EditMemorizedComponent } from '@components/memorized/edit-memorized/edit-memorized.component';
-import { MemorizedComponent } from '@components/memorized/memorized/memorized.component';
-import { SummaryComponent } from '@components/summary/summary/summary.component';
+import { CategoriesComponent } from '@features/categories/categories/categories.component';
+import { AddExpenseComponent } from '@features/expenses/add-expense/add-expense.component';
+import { editExpenseResolver } from '@features/expenses/edit-expense.resolver';
+import { EditExpenseComponent } from '@features/expenses/edit-expense/edit-expense.component';
+import { ExpensesComponent } from '@features/expenses/expenses/expenses.component';
+import { GroupsComponent } from '@features/groups/groups/groups.component';
+import { HelpComponent } from '@features/help/help.component';
+import { HistoryComponent } from '@features/history/history/history.component';
+import { MembersComponent } from '@features/members/members/members.component';
+import { AddMemorizedComponent } from '@features/memorized/add-memorized/add-memorized.component';
+import { editMemorizedResolver } from '@features/memorized/edit-memorized.resolver';
+import { EditMemorizedComponent } from '@features/memorized/edit-memorized/edit-memorized.component';
+import { MemorizedComponent } from '@features/memorized/memorized/memorized.component';
+import { SummaryComponent } from '@features/summary/summary/summary.component';
 
 /**
  * Demo routes that mirror the main application routes but without auth guards
@@ -100,7 +100,7 @@ export const demoRoutes: Routes = [
   {
     path: 'split',
     loadChildren: () =>
-      import('@components/split/split.routes').then((m) => m.splitRoutes),
+      import('@features/split/split.routes').then((m) => m.splitRoutes),
   },
   {
     path: 'help',

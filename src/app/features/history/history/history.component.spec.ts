@@ -1,36 +1,36 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HistoryComponent } from './history.component';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { HistoryStore } from '@store/history.store';
-import { TourService } from '@services/tour.service';
-import { SortingService } from '@services/sorting.service';
-import { LocaleService } from '@services/locale.service';
-import { DemoService } from '@services/demo.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { DemoService } from '@services/demo.service';
+import { LocaleService } from '@services/locale.service';
+import { SortingService } from '@services/sorting.service';
+import { TourService } from '@services/tour.service';
+import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
-  createMockHistoryStore,
-  createMockTourService,
-  createMockSortingService,
-  createMockDemoService,
   createMockAnalyticsService,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockHistoryStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
   createMockSnackBar,
-  mockGroup,
-  mockMember,
-  mockHistory,
+  createMockSortingService,
+  createMockTourService,
   mockDocRef,
+  mockGroup,
+  mockHistory,
+  mockMember,
 } from '@testing/test-helpers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HistoryComponent } from './history.component';
 
 describe('HistoryComponent', () => {
   let fixture: ComponentFixture<HistoryComponent>;
@@ -184,7 +184,9 @@ describe('HistoryComponent', () => {
     });
 
     it('should get current member for permissions', () => {
-      expect(component.currentMember()).toEqual(mockMemberStore.currentMember());
+      expect(component.currentMember()).toEqual(
+        mockMemberStore.currentMember()
+      );
       expect(component.currentMember()?.groupAdmin).toBe(true);
     });
   });

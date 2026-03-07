@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import { ForgotPasswordComponent } from './forgot-password.component';
-import { LoadingService } from '@shared/loading/loading.service';
+import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import {
-  createMockLoadingService,
   createMockAnalyticsService,
+  createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import { getAuth } from 'firebase/auth';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ForgotPasswordComponent } from './forgot-password.component';
 
 describe('ForgotPasswordComponent', () => {
   let fixture: ComponentFixture<ForgotPasswordComponent>;

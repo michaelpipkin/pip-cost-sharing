@@ -1,10 +1,10 @@
-import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { BaseFilterDirective } from './base-filter.directive';
+import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
 import {
   DateRangeFilterPanelComponent,
   DateRangeFilterValue,
-} from '@shared/components/filter-panels/date-range-filter-panel.component';
+} from '@components/filter-panels/date-range-filter-panel.component';
+import { BaseFilterDirective } from './base-filter.directive';
 
 /**
  * Directive for adding date range filter capability to table header cells

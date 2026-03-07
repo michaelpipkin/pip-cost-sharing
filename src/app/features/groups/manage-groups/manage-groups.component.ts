@@ -25,6 +25,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
@@ -34,10 +38,6 @@ import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
-import { ConfirmDialogComponent } from '@shared/confirm-dialog/confirm-dialog.component';
-import { DocRefCompareDirective } from '@shared/directives/doc-ref-compare.directive';
-import { LoadingService } from '@shared/loading/loading.service';
 import { GroupStore } from '@store/group.store';
 import { DocumentReference } from 'firebase/firestore';
 

@@ -1,22 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { getAuth } from 'firebase/auth';
-import * as authModule from 'firebase/auth';
-import { AccountActionComponent } from './account-action.component';
-import { LoadingService } from '@shared/loading/loading.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
-import { AnalyticsService } from '@services/analytics.service';
 import {
-  createMockLoadingService,
-  createMockUserStore,
   createMockAnalyticsService,
+  createMockLoadingService,
   createMockSnackBar,
+  createMockUserStore,
 } from '@testing/test-helpers';
+import * as authModule from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountActionComponent } from './account-action.component';
 
 describe('AccountActionComponent', () => {
   let fixture: ComponentFixture<AccountActionComponent>;
@@ -195,7 +194,9 @@ describe('AccountActionComponent', () => {
   describe('resendVerificationEmail', () => {
     beforeEach(async () => {
       vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
-      vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue(undefined);
+      vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue(
+        undefined
+      );
 
       await createComponent(mockAuthWithUser, {
         mode: 'verifyEmail',

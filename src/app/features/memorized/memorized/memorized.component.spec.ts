@@ -1,33 +1,32 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
-import { Router } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { MemorizedComponent } from './memorized.component';
-import { GroupStore } from '@store/group.store';
-import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
-import { MemorizedStore } from '@store/memorized.store';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter, Router } from '@angular/router';
+import { LoadingService } from '@components/loading/loading.service';
 import { DemoService } from '@services/demo.service';
 import { SplitService } from '@services/split.service';
 import { TourService } from '@services/tour.service';
-import { LoadingService } from '@shared/loading/loading.service';
+import { CategoryStore } from '@store/category.store';
+import { GroupStore } from '@store/group.store';
+import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
 import {
-  createMockGroupStore,
-  createMockMemberStore,
   createMockCategoryStore,
-  createMockMemorizedStore,
-  createMockLoadingService,
   createMockDemoService,
-  createMockTourService,
-  createMockSnackBar,
+  createMockGroupStore,
+  createMockLoadingService,
   createMockMatDialog,
+  createMockMemberStore,
+  createMockMemorizedStore,
+  createMockSnackBar,
   createMockSplitService,
+  createMockTourService,
   mockDocRef,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemorizedComponent } from './memorized.component';
 
 describe('MemorizedComponent', () => {
   let fixture: ComponentFixture<MemorizedComponent>;
@@ -107,8 +106,18 @@ describe('MemorizedComponent', () => {
     it('should filter by description', () => {
       const memberRef = mockDocRef('groups/group-1/members/member-1');
       const categoryRef = mockDocRef('groups/group-1/categories/cat-1');
-      const expense1 = { id: 'mem-1', description: 'Lunch', paidByMemberRef: memberRef, categoryRef } as any;
-      const expense2 = { id: 'mem-2', description: 'Dinner', paidByMemberRef: memberRef, categoryRef } as any;
+      const expense1 = {
+        id: 'mem-1',
+        description: 'Lunch',
+        paidByMemberRef: memberRef,
+        categoryRef,
+      } as any;
+      const expense2 = {
+        id: 'mem-2',
+        description: 'Dinner',
+        paidByMemberRef: memberRef,
+        categoryRef,
+      } as any;
       mockMemorizedStore.setMemorizedExpenses([expense1, expense2]);
       component.searchText.set('lunch');
 
@@ -171,7 +180,11 @@ describe('MemorizedComponent', () => {
       component.addExpense(expense);
       expect(navigateSpy).toHaveBeenCalledWith(
         ['/expenses/add'],
-        expect.objectContaining({ state: expect.objectContaining({ expense: expect.objectContaining({ id: 'mem-1' }) }) })
+        expect.objectContaining({
+          state: expect.objectContaining({
+            expense: expect.objectContaining({ id: 'mem-1' }),
+          }),
+        })
       );
     });
   });

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AuthMainComponent } from '@components/auth/auth-main/auth-main.component';
+import { AuthMainComponent } from '@features/auth/auth-main/auth-main.component';
 import { basicAuthGuard, loggedInGuard } from './guards.guard';
 
 export const authRoutes: Routes = [
@@ -11,7 +11,7 @@ export const authRoutes: Routes = [
         path: 'login',
         title: 'Login',
         loadComponent: () =>
-          import('@components/auth/login/login.component').then(
+          import('@features/auth/login/login.component').then(
             (m) => m.LoginComponent
           ),
         canActivate: [loggedInGuard],
@@ -20,7 +20,7 @@ export const authRoutes: Routes = [
         path: 'register',
         title: 'Register',
         loadComponent: () =>
-          import('@components/auth/register/register.component').then(
+          import('@features/auth/register/register.component').then(
             (m) => m.RegisterComponent
           ),
         canActivate: [loggedInGuard],
@@ -30,7 +30,7 @@ export const authRoutes: Routes = [
         title: 'Forgot Password',
         loadComponent: () =>
           import(
-            '@components/auth/forgot-password/forgot-password.component'
+            '@features/auth/forgot-password/forgot-password.component'
           ).then((m) => m.ForgotPasswordComponent),
         canActivate: [loggedInGuard],
       },
@@ -39,7 +39,7 @@ export const authRoutes: Routes = [
         title: 'Reset Password',
         loadComponent: () =>
           import(
-            '@components/auth/reset-password/reset-password.component'
+            '@features/auth/reset-password/reset-password.component'
           ).then((m) => m.ResetPasswordComponent),
         canActivate: [loggedInGuard],
       },
@@ -47,7 +47,7 @@ export const authRoutes: Routes = [
         path: 'account',
         title: 'Account',
         loadComponent: () =>
-          import('@components/auth/account/account.component').then(
+          import('@features/auth/account/account.component').then(
             (m) => m.AccountComponent
           ),
         canActivate: [basicAuthGuard],
@@ -57,7 +57,7 @@ export const authRoutes: Routes = [
             title: 'Profile',
             loadComponent: () =>
               import(
-                '@components/auth/account/profile/account-profile.component'
+                '@features/auth/account/profile/account-profile.component'
               ).then((m) => m.AccountProfileComponent),
           },
           {
@@ -65,7 +65,7 @@ export const authRoutes: Routes = [
             title: 'Security',
             loadComponent: () =>
               import(
-                '@components/auth/account/security/account-security.component'
+                '@features/auth/account/security/account-security.component'
               ).then((m) => m.AccountSecurityComponent),
           },
           {
@@ -73,7 +73,7 @@ export const authRoutes: Routes = [
             title: 'Payments',
             loadComponent: () =>
               import(
-                '@components/auth/account/payments/account-payments.component'
+                '@features/auth/account/payments/account-payments.component'
               ).then((m) => m.AccountPaymentsComponent),
           },
           {
@@ -81,7 +81,7 @@ export const authRoutes: Routes = [
             title: 'Preferences',
             loadComponent: () =>
               import(
-                '@components/auth/account/preferences/account-preferences.component'
+                '@features/auth/account/preferences/account-preferences.component'
               ).then((m) => m.AccountPreferencesComponent),
           },
           {
@@ -89,7 +89,7 @@ export const authRoutes: Routes = [
             title: 'Legal',
             loadComponent: () =>
               import(
-                '@components/auth/account/legal/account-legal.component'
+                '@features/auth/account/legal/account-legal.component'
               ).then((m) => m.AccountLegalComponent),
           },
         ],
@@ -99,7 +99,7 @@ export const authRoutes: Routes = [
         title: 'Account Action',
         loadComponent: () =>
           import(
-            '@components/auth/account-action/account-action.component'
+            '@features/auth/account-action/account-action.component'
           ).then((m) => m.AccountActionComponent),
       },
       {
@@ -107,7 +107,7 @@ export const authRoutes: Routes = [
         title: 'Delete Account',
         loadComponent: () =>
           import(
-            '@components/auth/delete-account/delete-account.component'
+            '@features/auth/delete-account/delete-account.component'
           ).then((m) => m.DeleteAccountComponent),
       },
     ],

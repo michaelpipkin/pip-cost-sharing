@@ -17,13 +17,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CustomSnackbarComponent } from '@shared/components/custom-snackbar/custom-snackbar.component';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { Category } from '@models/category';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
-import { DeleteDialogComponent } from '@shared/delete-dialog/delete-dialog.component';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from '@shared/loading/loading.service';
 
 @Component({
   selector: 'app-edit-category',
@@ -127,7 +127,9 @@ export class EditCategoryComponent {
             });
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not delete category' },
+              data: {
+                message: 'Something went wrong - could not delete category',
+              },
             });
           }
         } finally {

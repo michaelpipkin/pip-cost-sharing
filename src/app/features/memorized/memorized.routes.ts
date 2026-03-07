@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { noCrawlerGuard } from '@components/auth/guards.guard';
+import { noCrawlerGuard } from '@features/auth/guards.guard';
 import { AddMemorizedComponent } from './add-memorized/add-memorized.component';
 import { editMemorizedResolver } from './edit-memorized.resolver';
 import { EditMemorizedComponent } from './edit-memorized/edit-memorized.component';

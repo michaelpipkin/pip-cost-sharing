@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { noCrawlerGuard } from '@components/auth/guards.guard';
+import { noCrawlerGuard } from '@features/auth/guards.guard';
 import { AddExpenseComponent } from './add-expense/add-expense.component';
 import { editExpenseResolver } from './edit-expense.resolver';
 import { EditExpenseComponent } from './edit-expense/edit-expense.component';
