@@ -49,7 +49,7 @@
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.1",
     "@capacitor/camera": "^8.0.1",
-    "@capacitor/cli": "^8.1.0",
+    "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/text-zoom": "^8.0.1",
     "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.6",
