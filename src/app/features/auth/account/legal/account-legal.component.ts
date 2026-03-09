@@ -39,7 +39,7 @@ export class AccountLegalComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'accept_receipt_policy',
           message: error.message,

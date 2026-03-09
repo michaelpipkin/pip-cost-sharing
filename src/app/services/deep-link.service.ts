@@ -41,7 +41,7 @@ export class DeepLinkService {
       // Navigate to the path with query parameters
       this.router.navigate([path], { queryParams });
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'DeepLinkService',
         action: 'handleDeepLink',
         message:

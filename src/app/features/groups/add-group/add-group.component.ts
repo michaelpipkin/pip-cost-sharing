@@ -99,7 +99,7 @@ export class AddGroupComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'add_group',
           message: error.message,

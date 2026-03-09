@@ -182,7 +182,7 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'edit_group',
           message: error.message,
@@ -228,7 +228,7 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'archive_group',
               message: error.message,
@@ -266,7 +266,7 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'unarchive_group',
           message: error.message,
@@ -309,7 +309,7 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'delete_group',
               message: error.message,

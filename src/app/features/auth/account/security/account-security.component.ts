@@ -105,7 +105,7 @@ export class AccountSecurityComponent {
         });
       }
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'update_password',
         message: error instanceof Error ? error.message : 'Unknown error',

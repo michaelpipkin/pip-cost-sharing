@@ -46,7 +46,7 @@ export class CategoryService implements ICategoryService {
           );
           this.categoryStore.setGroupCategories(categories);
         } catch (error) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             service: 'CategoryService',
             method: 'getGroupCategories',
             message: 'Failed to process categories snapshot',
@@ -55,7 +55,7 @@ export class CategoryService implements ICategoryService {
         }
       },
       (error) => {
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           service: 'CategoryService',
           method: 'getGroupCategories',
           message: 'Failed to listen to categories',

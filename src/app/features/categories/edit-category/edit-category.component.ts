@@ -83,7 +83,7 @@ export class EditCategoryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'update_category',
           message: error.message,
@@ -120,7 +120,7 @@ export class EditCategoryComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'delete_category',
               message: error.message,
