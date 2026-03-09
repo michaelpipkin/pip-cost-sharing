@@ -37,7 +37,7 @@ export class PaymentDialogComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'copy_payment_id_to_clipboard',
           message: error.message,

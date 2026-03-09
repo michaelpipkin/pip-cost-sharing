@@ -158,7 +158,7 @@ export class RegisterComponent {
         };
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(
           (err: Error) => {
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'verify_email',
               message: err.message,

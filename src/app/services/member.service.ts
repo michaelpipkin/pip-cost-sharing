@@ -1,11 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { AnalyticsService } from '@services/analytics.service';
-import { IMemberService } from './member.service.interface';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -22,6 +20,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { IMemberService } from './member.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
@@ -58,7 +58,7 @@ export class MemberService implements IMemberService {
         this.memberStore.clearCurrentMember();
       }
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'MemberService',
         method: 'getMemberByUserRef',
         message: 'Failed to get member by user ref',
@@ -89,7 +89,7 @@ export class MemberService implements IMemberService {
           );
           this.memberStore.setGroupMembers(groupMembers);
         } catch (error) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             service: 'MemberService',
             method: 'getGroupMembers',
             message: 'Failed to process group members snapshot',
@@ -99,7 +99,7 @@ export class MemberService implements IMemberService {
         }
       },
       (error) => {
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           service: 'MemberService',
           method: 'getGroupMembers',
           message: 'Failed to listen to group members',
@@ -256,7 +256,7 @@ export class MemberService implements IMemberService {
 
       return membersSnapshot.size;
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'MemberService',
         method: 'updateAllMemberEmails',
         message: 'Failed to update member emails',

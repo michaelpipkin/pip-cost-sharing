@@ -3,10 +3,10 @@ import { Category } from '@models/category';
 import { Expense, ExpenseDto } from '@models/expense';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
-import { AnalyticsService } from '@services/analytics.service';
 import {
   collection,
   collectionGroup,
@@ -180,7 +180,7 @@ export class ExpenseService implements IExpenseService {
 
       return expense;
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'ExpenseService',
         method: 'getExpense',
         message: 'Failed to get expense',
@@ -240,7 +240,7 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'ExpenseService',
         method: 'addExpense',
         message: 'Failed to add expense',
@@ -314,7 +314,7 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'ExpenseService',
         method: 'updateExpense',
         message: 'Failed to update expense',
@@ -375,7 +375,7 @@ export class ExpenseService implements IExpenseService {
       const snapshot = await getDocs(q);
       return !snapshot.empty;
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'has_expenses_for_group',
         message: error instanceof Error ? error.message : 'Unknown error',

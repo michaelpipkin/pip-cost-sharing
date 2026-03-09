@@ -643,7 +643,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,

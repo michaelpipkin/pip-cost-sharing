@@ -91,7 +91,7 @@ export class DeleteAccountComponent {
         data: { message: `Failed to delete account: ${error.message}` },
       });
 
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'delete_account',
         message: error.message,
