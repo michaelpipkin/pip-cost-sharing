@@ -93,5 +93,9 @@ export class AdminStatisticsComponent {
       action: 'manual_test_trigger',
       message: 'Checking if Firebase is awake',
     });
+    console.log('Test error triggered');
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: 'Test error triggered - check console and analytics' },
+    });
   }
 }
