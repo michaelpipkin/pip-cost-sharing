@@ -53,7 +53,8 @@
       "Bash(grep -rn \"''\\\\./shared/\\\\|''\\\\.\\\\./shared/\" src --include=\"*.ts\")",
       "Bash(xargs -0 perl -pi -e \":*)",
       "Bash(xargs -0 perl -pi -e 's/\\\\@components\\\\//@features\\\\//g')",
-      "Bash(xargs -0 perl -pi -e 's/\\\\@components\\\\//\\\\@features\\\\//g')"
+      "Bash(xargs -0 perl -pi -e 's/\\\\@components\\\\//\\\\@features\\\\//g')",
+      "Read(//c/Users/mpipk/.claude/projects/c--Users-mpipk-source-repos-michaelpipkin-pip-cost-sharing/8780a2fc-8d63-4dfd-802e-1d28d00e4ae3/tool-results/**)"
     ],
     "deny": [],
     "ask": [],

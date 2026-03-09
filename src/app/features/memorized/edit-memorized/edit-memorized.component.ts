@@ -477,7 +477,7 @@ export class EditMemorizedComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'EditMemorizedComponent',
           action: 'edit_memorized_expense',
           message: error.message,
         });
@@ -521,7 +521,7 @@ export class EditMemorizedComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'EditMemorizedComponent',
               action: 'delete_memorized_expense',
               message: error.message,
             });

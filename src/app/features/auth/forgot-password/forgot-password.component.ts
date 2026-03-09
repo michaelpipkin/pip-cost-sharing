@@ -69,7 +69,7 @@ export class ForgotPasswordComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'ForgotPasswordComponent',
           action: 'add_category',
           message: error.message,
         });

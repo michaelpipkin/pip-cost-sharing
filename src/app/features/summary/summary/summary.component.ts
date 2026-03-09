@@ -415,7 +415,7 @@ export class SummaryComponent implements AfterViewInit {
           });
         } catch (err: any) {
           this.analytics.logEvent('app_error', {
-            component: this.constructor.name,
+            component: 'SummaryComponent',
             action: 'mark_expenses_paid',
             message: err.message,
           });
@@ -476,7 +476,7 @@ export class SummaryComponent implements AfterViewInit {
           });
         } catch (err: any) {
           this.analytics.logEvent('app_error', {
-            component: this.constructor.name,
+            component: 'SummaryComponent',
             action: 'settle_group',
             message: err.message,
           });
@@ -507,7 +507,7 @@ export class SummaryComponent implements AfterViewInit {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'SummaryComponent',
           action: 'copy_summary_to_clipboard',
           message: error.message,
         });
@@ -577,7 +577,7 @@ export class SummaryComponent implements AfterViewInit {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'SummaryComponent',
           action: 'copy_settlement_to_clipboard',
           message: error.message,
         });

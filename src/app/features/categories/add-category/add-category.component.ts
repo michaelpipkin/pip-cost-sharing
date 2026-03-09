@@ -69,7 +69,7 @@ export class AddCategoryComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AddCategoryComponent',
           action: 'add_category',
           message: error.message,
         });

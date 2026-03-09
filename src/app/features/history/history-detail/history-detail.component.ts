@@ -182,7 +182,7 @@ export class HistoryDetailComponent {
       this.paidSplits.set(splits);
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'HistoryDetailComponent',
         action: 'load_splits',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -260,7 +260,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'HistoryDetailComponent',
               action: 'unpay_history',
               message: error.message,
             });
@@ -317,7 +317,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'HistoryDetailComponent',
               action: 'unpay_group_settle',
               message: error.message,
             });
@@ -390,7 +390,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'HistoryDetailComponent',
               action: 'unpay_split',
               message: error.message,
             });
@@ -469,7 +469,7 @@ export class HistoryDetailComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'HistoryDetailComponent',
           action: 'copy_to_clipboard',
           message: error.message,
         });

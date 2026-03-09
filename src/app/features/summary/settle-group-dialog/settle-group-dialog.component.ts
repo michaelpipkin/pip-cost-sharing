@@ -32,7 +32,7 @@ export class SettleGroupDialogComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'SettleGroupDialogComponent',
           action: 'copy_settlement_to_clipboard',
           message: error.message,
         });

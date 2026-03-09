@@ -644,7 +644,7 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'SplitComponent',
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,
         });

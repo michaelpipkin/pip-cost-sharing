@@ -80,7 +80,7 @@ export class AddMemberComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AddMemberComponent',
           action: 'add_member',
           message: error.message,
         });

@@ -84,7 +84,7 @@ export class EditCategoryComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'EditCategoryComponent',
           action: 'update_category',
           message: error.message,
         });
@@ -121,7 +121,7 @@ export class EditCategoryComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'EditCategoryComponent',
               action: 'delete_category',
               message: error.message,
             });

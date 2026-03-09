@@ -38,7 +38,7 @@ export class PaymentDialogComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'PaymentDialogComponent',
           action: 'copy_payment_id_to_clipboard',
           message: error.message,
         });

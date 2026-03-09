@@ -68,7 +68,7 @@ export class AccountPreferencesComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AccountPreferencesComponent',
           action: 'update_default_group',
           message: error.message,
         });

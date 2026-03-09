@@ -93,7 +93,7 @@ export class AdminEmailLogComponent {
         data: { message },
       });
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdminEmailLogComponent',
         action: 'load_mail_documents',
         message,
       });

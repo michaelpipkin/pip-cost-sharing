@@ -183,7 +183,7 @@ export class ManageGroupsComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'ManageGroupsComponent',
           action: 'edit_group',
           message: error.message,
         });
@@ -229,7 +229,7 @@ export class ManageGroupsComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'ManageGroupsComponent',
               action: 'archive_group',
               message: error.message,
             });
@@ -267,7 +267,7 @@ export class ManageGroupsComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'ManageGroupsComponent',
           action: 'unarchive_group',
           message: error.message,
         });
@@ -310,7 +310,7 @@ export class ManageGroupsComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'ManageGroupsComponent',
               action: 'delete_group',
               message: error.message,
             });
