@@ -86,4 +86,12 @@ export class AdminStatisticsComponent {
       this.loading.loadingOff();
     }
   }
+
+  forceTestError() {
+    this.analytics.logEvent('error', {
+      component: this.constructor.name,
+      action: 'manual_test_trigger',
+      message: 'Checking if Firebase is awake',
+    });
+  }
 }
