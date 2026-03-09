@@ -496,7 +496,7 @@ export class AddMemorizedComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AddMemorizedComponent',
           action: 'memorize_expense',
           message: error.message,
         });

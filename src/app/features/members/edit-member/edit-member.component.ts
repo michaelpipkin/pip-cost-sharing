@@ -123,7 +123,7 @@ export class EditMemberComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'EditMemberComponent',
           action: 'edit_member',
           message: error.message,
         });
@@ -163,7 +163,7 @@ export class EditMemberComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'EditMemberComponent',
               action: 'remove_member',
               message: error.message,
             });
@@ -217,7 +217,7 @@ export class EditMemberComponent {
               data: { message: error.message },
             });
             this.analytics.logEvent('app_error', {
-              component: this.constructor.name,
+              component: 'EditMemberComponent',
               action: 'leave_group',
               message: error.message,
             });

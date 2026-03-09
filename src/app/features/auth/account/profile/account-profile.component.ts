@@ -90,7 +90,7 @@ export class AccountProfileComponent {
       })
       .catch((err: Error) => {
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AccountProfileComponent',
           action: 'verify_email',
           message: err.message,
         });
@@ -113,7 +113,7 @@ export class AccountProfileComponent {
         await this.verifyEmail();
       } catch (err: any) {
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AccountProfileComponent',
           action: 'update_email',
           message: err.message,
         });
@@ -149,7 +149,7 @@ export class AccountProfileComponent {
       });
     } catch (err: any) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AccountProfileComponent',
         action: 'toggle_email_opt_out',
         message: err.message,
       });
@@ -180,7 +180,7 @@ export class AccountProfileComponent {
       });
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AccountProfileComponent',
         action: 'sync_member_emails',
         message: error instanceof Error ? error.message : 'Unknown error',
       });

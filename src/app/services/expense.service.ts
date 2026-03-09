@@ -31,7 +31,7 @@ import { IExpenseService } from './expense.service.interface';
 export class ExpenseService implements IExpenseService {
   protected readonly fs = inject(getFirestore);
   protected readonly storage = inject(getStorage);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
@@ -376,7 +376,7 @@ export class ExpenseService implements IExpenseService {
       return !snapshot.empty;
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'ExpenseService',
         action: 'has_expenses_for_group',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
