@@ -52,7 +52,7 @@ export class AdminStatisticsComponent {
         data: { message },
       });
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdminStatisticsComponent',
         action: 'load_statistics',
         message,
       });
@@ -75,7 +75,7 @@ export class AdminStatisticsComponent {
       });
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdminStatisticsComponent',
         action: 'data_update',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -89,7 +89,7 @@ export class AdminStatisticsComponent {
 
   forceTestError() {
     this.analytics.logEvent('app_error', {
-      component: this.constructor.name,
+      component: 'AdminStatisticsComponent',
       action: 'manual_test_trigger',
       message: 'Checking if Firebase is awake',
     });

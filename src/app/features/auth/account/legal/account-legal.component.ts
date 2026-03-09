@@ -40,7 +40,7 @@ export class AccountLegalComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AccountLegalComponent',
           action: 'accept_receipt_policy',
           message: error.message,
         });

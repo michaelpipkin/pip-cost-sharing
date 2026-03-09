@@ -765,7 +765,7 @@ export class AddExpenseComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AddExpenseComponent',
           action: 'add_expense',
           message: error.message,
         });

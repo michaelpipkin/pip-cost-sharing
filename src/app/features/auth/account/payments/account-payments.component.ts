@@ -72,7 +72,7 @@ export class AccountPaymentsComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AccountPaymentsComponent',
           action: 'update_payments',
           message: error.message,
         });

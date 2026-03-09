@@ -366,7 +366,7 @@ export class ExpensesComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'ExpensesComponent',
           action: 'copy_expense_summary_to_clipboard',
           message: error.message,
         });

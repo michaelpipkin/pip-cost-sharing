@@ -89,7 +89,7 @@ export class AccountActionComponent {
       }
       this.errorMessage.set('Invalid link. No code provided.');
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
         action: 'process_action',
         message: 'No oobCode in URL',
       });
@@ -102,7 +102,7 @@ export class AccountActionComponent {
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
         action: 'process_action',
         message: `Invalid mode: ${mode}`,
       });
@@ -152,7 +152,7 @@ export class AccountActionComponent {
       this.success.set(true);
 
       this.analytics.logEvent('email_verified', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
       });
     } catch (error: any) {
       this.handleError('verify email', error);
@@ -169,7 +169,7 @@ export class AccountActionComponent {
       this.success.set(true);
 
       this.analytics.logEvent('email_recovered', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
       });
     } catch (error: any) {
       this.handleError('recover email', error);
@@ -190,7 +190,7 @@ export class AccountActionComponent {
       });
 
       this.analytics.logEvent('password_reset_success', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
       });
     } catch (error: any) {
       this.handleError('reset password', error);
@@ -224,7 +224,7 @@ export class AccountActionComponent {
       });
 
       this.analytics.logEvent('verification_email_resent', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
       });
     } catch (error: any) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -234,7 +234,7 @@ export class AccountActionComponent {
       });
 
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AccountActionComponent',
         action: 'resend_verification_email',
         message: error.message,
       });
@@ -263,7 +263,7 @@ export class AccountActionComponent {
     this.errorMessage.set(errorMsg);
 
     this.analytics.logEvent('app_error', {
-      component: this.constructor.name,
+      component: 'AccountActionComponent',
       action: action,
       message: error.message,
       code: error.code,

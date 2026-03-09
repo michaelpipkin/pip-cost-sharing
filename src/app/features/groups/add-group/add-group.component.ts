@@ -100,7 +100,7 @@ export class AddGroupComponent {
           data: { message: error.message },
         });
         this.analytics.logEvent('app_error', {
-          component: this.constructor.name,
+          component: 'AddGroupComponent',
           action: 'add_group',
           message: error.message,
         });

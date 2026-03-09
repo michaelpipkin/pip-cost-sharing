@@ -82,7 +82,7 @@ export class DeleteAccountComponent {
         this.state.set('completed');
 
         this.analytics.logEvent('account_deleted', {
-          component: this.constructor.name,
+          component: 'DeleteAccountComponent',
         });
       }
     } catch (error: any) {
@@ -92,7 +92,7 @@ export class DeleteAccountComponent {
       });
 
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'DeleteAccountComponent',
         action: 'delete_account',
         message: error.message,
       });

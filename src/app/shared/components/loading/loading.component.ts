@@ -49,7 +49,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
           }
         } catch (error) {
           this.analytics.logEvent('app_error', {
-            component: this.constructor.name,
+            component: 'LoadingComponent',
             action: 'show_hide_loading_popover',
             message: error instanceof Error ? error.message : 'Unknown error',
           });

@@ -48,7 +48,7 @@ export class AdMobService {
       this.loadInterstitial();
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdMobService',
         action: 'initialize_admob',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -93,7 +93,7 @@ export class AdMobService {
       this.isAdLoaded.set(true);
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdMobService',
         action: 'load_interstitial',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -116,7 +116,7 @@ export class AdMobService {
       // The 'Dismissed' listener in initializeAdMob() handles it safely.
     } catch (error: any) {
       this.analytics.logEvent('app_error', {
-        component: this.constructor.name,
+        component: 'AdMobService',
         action: 'show_interstitial',
         message: error?.message || 'Show failed',
       });
