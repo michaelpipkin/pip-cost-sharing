@@ -48,7 +48,7 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
             element.hidePopover();
           }
         } catch (error) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             component: this.constructor.name,
             action: 'show_hide_loading_popover',
             message: error instanceof Error ? error.message : 'Unknown error',

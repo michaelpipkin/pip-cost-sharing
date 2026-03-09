@@ -92,7 +92,7 @@ export class AdminEmailLogComponent {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'load_mail_documents',
         message,

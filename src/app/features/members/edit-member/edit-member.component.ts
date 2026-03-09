@@ -122,7 +122,7 @@ export class EditMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'edit_member',
           message: error.message,
@@ -162,7 +162,7 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'remove_member',
               message: error.message,
@@ -216,7 +216,7 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'leave_group',
               message: error.message,

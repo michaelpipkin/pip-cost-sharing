@@ -237,7 +237,7 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'firebase_receipt_retrieval',
               message: error.message,
@@ -247,7 +247,7 @@ export class EditExpenseComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: error.message },
           });
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             component: this.constructor.name,
             action: 'firebase_receipt_retrieval',
             message: error.message,
@@ -715,7 +715,7 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'edit_expense',
               message: error.message,
@@ -768,7 +768,7 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'delete_expense',
               message: error.message,

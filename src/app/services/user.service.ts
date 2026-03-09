@@ -88,7 +88,7 @@ export class UserService implements IUserService {
               );
               await this.groupService.getUserGroups(user);
             } catch (error) {
-              this.analytics.logEvent('error', {
+              this.analytics.logEvent('app_error', {
                 message: 'Failed to initialize user',
                 error: error instanceof Error ? error.message : 'Unknown error',
               });
@@ -97,7 +97,7 @@ export class UserService implements IUserService {
         }
       );
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         message: 'Failed to set auth persistence',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -117,7 +117,7 @@ export class UserService implements IUserService {
       }
       return null;
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         message: 'Failed to get user details',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -178,7 +178,7 @@ export class UserService implements IUserService {
         ref: userDocRef,
       });
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         message: 'Failed to create user',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -194,7 +194,7 @@ export class UserService implements IUserService {
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         message: 'Failed to update user',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -259,7 +259,7 @@ export class UserService implements IUserService {
         return {};
       }
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         message: 'Failed to get payment methods',
         error: error instanceof Error ? error.message : 'Unknown error',
       });

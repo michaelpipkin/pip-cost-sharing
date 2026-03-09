@@ -170,7 +170,7 @@ export class GroupService implements IGroupService {
                     }
                   }
                 } catch (error) {
-                  this.analytics.logEvent('error', {
+                  this.analytics.logEvent('app_error', {
                     service: 'GroupService',
                     method: 'getUserGroups',
                     message: 'Failed to process groups snapshot',
@@ -180,7 +180,7 @@ export class GroupService implements IGroupService {
                 }
               },
               (error) => {
-                this.analytics.logEvent('error', {
+                this.analytics.logEvent('app_error', {
                   service: 'GroupService',
                   method: 'getUserGroups',
                   message: 'Failed to listen to groups',
@@ -190,7 +190,7 @@ export class GroupService implements IGroupService {
               }
             );
           } catch (error) {
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               service: 'GroupService',
               method: 'getUserGroups',
               message: 'Failed to process members snapshot',
@@ -199,7 +199,7 @@ export class GroupService implements IGroupService {
           }
         },
         (error) => {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             service: 'GroupService',
             method: 'getUserGroups',
             message: 'Failed to listen to members',
@@ -208,7 +208,7 @@ export class GroupService implements IGroupService {
         }
       );
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'GroupService',
         method: 'getUserGroups',
         message: 'Failed to initialize user groups query',
@@ -256,7 +256,7 @@ export class GroupService implements IGroupService {
       this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
       this.historyService.getHistoryForGroup(groupRef.id);
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'GroupService',
         method: 'getGroup',
         message: 'Failed to get group',

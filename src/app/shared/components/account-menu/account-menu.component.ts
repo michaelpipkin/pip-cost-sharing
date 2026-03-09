@@ -61,7 +61,7 @@ export class AccountMenuComponent {
       await this.userService.updateUser({ language: langCode });
       this.analytics.logEvent('language_changed', { language: langCode });
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'switch_language',
         message: error instanceof Error ? error.message : 'Unknown error',

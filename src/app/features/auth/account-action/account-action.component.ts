@@ -88,7 +88,7 @@ export class AccountActionComponent {
         return;
       }
       this.errorMessage.set('Invalid link. No code provided.');
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'process_action',
         message: 'No oobCode in URL',
@@ -101,7 +101,7 @@ export class AccountActionComponent {
       !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'process_action',
         message: `Invalid mode: ${mode}`,
@@ -233,7 +233,7 @@ export class AccountActionComponent {
         },
       });
 
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'resend_verification_email',
         message: error.message,
@@ -262,7 +262,7 @@ export class AccountActionComponent {
 
     this.errorMessage.set(errorMsg);
 
-    this.analytics.logEvent('error', {
+    this.analytics.logEvent('app_error', {
       component: this.constructor.name,
       action: action,
       message: error.message,

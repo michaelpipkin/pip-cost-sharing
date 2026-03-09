@@ -1,9 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { Memorized } from '@models/memorized';
+import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
-import { AnalyticsService } from '@services/analytics.service';
 import {
   addDoc,
   collection,
@@ -64,7 +64,7 @@ export class MemorizedService implements IMemorizedService {
           });
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             service: 'MemorizedService',
             method: 'getMemorizedExpensesForGroup',
             message: 'Failed to process memorized expenses snapshot',
@@ -74,7 +74,7 @@ export class MemorizedService implements IMemorizedService {
         }
       },
       (error) => {
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           service: 'MemorizedService',
           method: 'getMemorizedExpensesForGroup',
           message: 'Failed to listen to memorized expenses',
@@ -107,7 +107,7 @@ export class MemorizedService implements IMemorizedService {
         ref: memorizedDoc.ref as DocumentReference<Memorized>,
       });
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'MemorizedService',
         method: 'getMemorized',
         message: 'Failed to get memorized expense',

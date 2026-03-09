@@ -29,7 +29,7 @@ export class AdminMailService {
         (d) => ({ id: d.id, ...d.data() }) as MailDocument
       );
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'AdminMailService',
         method: 'getMailDocuments',
         message: 'Failed to load mail documents',

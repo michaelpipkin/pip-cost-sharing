@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
+import { AmountDue } from '@models/amount-due';
 import { Expense } from '@models/expense';
 import { HistoryDto } from '@models/history';
 import { Split, SplitDto } from '@models/split';
-import { AmountDue } from '@models/amount-due';
-import { SplitStore } from '@store/split.store';
 import { AnalyticsService } from '@services/analytics.service';
+import { SplitStore } from '@store/split.store';
 import {
   collection,
   doc,
@@ -47,7 +47,7 @@ export class SplitService implements ISplitService {
           });
           this.splitStore.setSplits(splits);
         } catch (error) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             service: 'SplitService',
             method: 'getUnpaidSplitsForGroup',
             message: 'Failed to process unpaid splits snapshot',
@@ -57,7 +57,7 @@ export class SplitService implements ISplitService {
         }
       },
       (error) => {
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           service: 'SplitService',
           method: 'getUnpaidSplitsForGroup',
           message: 'Failed to listen to unpaid splits',
@@ -94,7 +94,7 @@ export class SplitService implements ISplitService {
 
       await batch.commit();
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         service: 'SplitService',
         method: 'updateSplit',
         message: 'Failed to update split',

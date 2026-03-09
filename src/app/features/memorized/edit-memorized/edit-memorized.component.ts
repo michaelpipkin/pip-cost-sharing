@@ -476,7 +476,7 @@ export class EditMemorizedComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'edit_memorized_expense',
           message: error.message,
@@ -520,7 +520,7 @@ export class EditMemorizedComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('error', {
+            this.analytics.logEvent('app_error', {
               component: this.constructor.name,
               action: 'delete_memorized_expense',
               message: error.message,

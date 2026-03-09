@@ -51,7 +51,7 @@ export class AdminStatisticsComponent {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'load_statistics',
         message,
@@ -74,7 +74,7 @@ export class AdminStatisticsComponent {
         data: { message: 'Data updated' },
       });
     } catch (error) {
-      this.analytics.logEvent('error', {
+      this.analytics.logEvent('app_error', {
         component: this.constructor.name,
         action: 'data_update',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -88,10 +88,14 @@ export class AdminStatisticsComponent {
   }
 
   forceTestError() {
-    this.analytics.logEvent('error', {
+    this.analytics.logEvent('app_error', {
       component: this.constructor.name,
       action: 'manual_test_trigger',
       message: 'Checking if Firebase is awake',
+    });
+    console.log('Test error triggered');
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: 'Test error triggered - check console and analytics' },
     });
   }
 }

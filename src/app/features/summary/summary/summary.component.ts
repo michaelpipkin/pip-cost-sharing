@@ -414,7 +414,7 @@ export class SummaryComponent implements AfterViewInit {
             data: { message: 'Expenses have been marked paid' },
           });
         } catch (err: any) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             component: this.constructor.name,
             action: 'mark_expenses_paid',
             message: err.message,
@@ -475,7 +475,7 @@ export class SummaryComponent implements AfterViewInit {
             data: { message: 'Group settlement completed successfully' },
           });
         } catch (err: any) {
-          this.analytics.logEvent('error', {
+          this.analytics.logEvent('app_error', {
             component: this.constructor.name,
             action: 'settle_group',
             message: err.message,
@@ -506,7 +506,7 @@ export class SummaryComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'copy_summary_to_clipboard',
           message: error.message,
@@ -576,7 +576,7 @@ export class SummaryComponent implements AfterViewInit {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('error', {
+        this.analytics.logEvent('app_error', {
           component: this.constructor.name,
           action: 'copy_settlement_to_clipboard',
           message: error.message,
