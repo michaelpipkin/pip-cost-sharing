@@ -20,6 +20,17 @@
   }
 }
 
+.welcome-section {
+  display: flex;
+  justify-content: center;
+}
+
+.app-title {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+}
+
 .app-details {
   grid-area: app-details;
 }
@@ -98,11 +109,6 @@
 
 .summary {
   font-size: larger;
-  font-weight: bold;
-}
-
-.app-title {
-  font-size: x-large;
   font-weight: bold;
 }
 

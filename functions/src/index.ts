@@ -46,6 +46,57 @@ function formatAmount(
 }
 
 /**
+ * Escape HTML special characters in a string for safe embedding in HTML.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Wrap email body content in the standard PipSplit HTML email shell.
+ */
+function buildEmailHtml(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+/**
+ * Convert a plain-text category breakdown string to an HTML table.
+ * Each line has the form "  Category: $X.XX".
+ */
+function buildCategoryBreakdownHtml(breakdown: string): string {
+  if (!breakdown.trim()) return '';
+  const rows = breakdown
+    .trim()
+    .split('\n')
+    .map((line) => {
+      const colonIdx = line.lastIndexOf(':');
+      if (colonIdx === -1) return '';
+      const category = line.slice(0, colonIdx).trim();
+      const amount = line.slice(colonIdx + 1).trim();
+      return `<tr><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;">${escapeHtml(category)}</td><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;text-align:right;">${escapeHtml(amount)}</td></tr>`;
+    })
+    .join('');
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;margin:0 0 20px 0;"><tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Category</th><th style="padding:10px 12px;text-align:right;color:#ffffff;">Amount</th></tr>${rows}</table>`;
+}
+
+/**
+ * Convert a plain-text payment methods string to HTML paragraphs.
+ */
+function buildPaymentMethodsHtml(methods: string): string {
+  if (methods === '(No payment methods on file)') {
+    return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
+  }
+  return methods
+    .split('\n')
+    .map((line) => `<p style="margin:2px 0;">${escapeHtml(line)}</p>`)
+    .join('');
+}
+
+/**
  * Build a newline-separated list of payment method lines for a user.
  * Returns a fallback string if no payment methods are configured.
  */
@@ -856,49 +907,67 @@ async function handleMemberPaymentEmail(
   const payeeOptedOut =
     payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
 
+  const categoryBreakdownHtml = buildCategoryBreakdownHtml(categoryBreakdown);
+  const paymentMethodsHtml = buildPaymentMethodsHtml(paymentMethodLines);
+
   if (payerEmail && payerHasAccount && !payerOptedOut) {
+    const payerSubject = `A payment from you to ${payeeName} in PipSplit has been marked as complete`;
+    const payerText = [
+      `Hi ${payerName},`,
+      '',
+      `A payment of ${formattedAmount} to ${payeeName} has been recorded in the group ${groupName}.`,
+      '',
+      `Category breakdown:`,
+      categoryBreakdown,
+      '',
+      `If you haven't already sent the money, ${payeeName} is set up on:`,
+      paymentMethodLines,
+      '',
+      `This payment covers ${splitCount} shared ${expenseWord}.`,
+    ].join('\n');
+    const payerHtml = buildEmailHtml(
+      `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Recorded</h2>` +
+      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payerName)}</strong>,</p>` +
+      `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong> has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+      (categoryBreakdownHtml ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}` : '') +
+      `<p style="margin:0 0 12px 0;">If you haven&rsquo;t already sent the money, <strong>${escapeHtml(payeeName)}</strong> is set up on:</p>` +
+      `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 20px 0;">${paymentMethodsHtml}</div>` +
+      `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
+    );
     mailWrites.push(
       db.collection('mail').add({
         to: payerEmail,
-        message: {
-          subject: `A payment from you to ${payeeName} in PipSplit has been marked as complete`,
-          text: [
-            `Hi ${payerName},`,
-            '',
-            `A payment of ${formattedAmount} to ${payeeName} has been recorded in the group ${groupName}.`,
-            '',
-            `Category breakdown:`,
-            categoryBreakdown,
-            '',
-            `If you haven't already sent the money, ${payeeName} is set up on:`,
-            paymentMethodLines,
-            '',
-            `This payment covers ${splitCount} shared ${expenseWord}.`,
-          ].join('\n'),
-        },
+        message: { subject: payerSubject, text: payerText, html: payerHtml },
       })
     );
   }
 
   if (payeeEmail && payeeHasAccount && !payeeOptedOut) {
+    const payeeSubject = `A payment from ${payerName} to you in PipSplit has been marked as complete`;
+    const payeeText = [
+      `Hi ${payeeName},`,
+      '',
+      `A payment of ${formattedAmount} from ${payerName} to you has been recorded in the group ${groupName}.`,
+      '',
+      `Category breakdown:`,
+      categoryBreakdown,
+      '',
+      `Please be on the lookout for ${formattedAmount} from ${payerName} via your P2P payment provider.`,
+      '',
+      `This payment covers ${splitCount} shared ${expenseWord}.`,
+    ].join('\n');
+    const payeeHtml = buildEmailHtml(
+      `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Recorded</h2>` +
+      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payeeName)}</strong>,</p>` +
+      `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> to you has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+      (categoryBreakdownHtml ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}` : '') +
+      `<p style="margin:0 0 16px 0;">Please be on the lookout for <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> via your P2P payment provider.</p>` +
+      `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
+    );
     mailWrites.push(
       db.collection('mail').add({
         to: payeeEmail,
-        message: {
-          subject: `A payment from ${payerName} to you in PipSplit has been marked as complete`,
-          text: [
-            `Hi ${payeeName},`,
-            '',
-            `A payment of ${formattedAmount} from ${payerName} to you has been recorded in the group ${groupName}.`,
-            '',
-            `Category breakdown:`,
-            categoryBreakdown,
-            '',
-            `Please be on the lookout for ${formattedAmount} from ${payerName} via your P2P payment provider.`,
-            '',
-            `This payment covers ${splitCount} shared ${expenseWord}.`,
-          ].join('\n'),
-        },
+        message: { subject: payeeSubject, text: payeeText, html: payeeHtml },
       })
     );
   }
@@ -910,175 +979,25 @@ async function handleMemberPaymentEmail(
 }
 
 // ---------------------------------------------------------------------------
-// Unpay notification email onCall functions
+// Generic email sender — all business logic runs client-side; this function
+// simply writes the pre-built mail document to the Firestore mail collection.
 // ---------------------------------------------------------------------------
 
-export const sendMemberPaymentUnpayNotification = onCall<{
-  groupName: string;
-  paidByName: string;
-  paidByEmail: string;
-  paidByMemberRefPath: string | null;
-  paidToName: string;
-  paidToEmail: string;
-  paidToMemberRefPath: string | null;
-  formattedAmount: string;
-  splitCount: number;
+export const sendEmail = onCall<{
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
 }>(async (request) => {
-  const {
-    groupName,
-    paidByName,
-    paidByEmail,
-    paidByMemberRefPath,
-    paidToName,
-    paidToEmail,
-    paidToMemberRefPath,
-    formattedAmount,
-    splitCount,
-  } = request.data;
-
-  // Look up opt-out status from user docs via member refs
-  const [paidByMemberDoc, paidToMemberDoc] = await Promise.all([
-    paidByMemberRefPath
-      ? db.doc(paidByMemberRefPath).get()
-      : Promise.resolve(null),
-    paidToMemberRefPath
-      ? db.doc(paidToMemberRefPath).get()
-      : Promise.resolve(null),
-  ]);
-  const [paidByUserDoc, paidToUserDoc] = await Promise.all([
-    paidByMemberDoc?.exists
-      ? (() => {
-          const ref = paidByMemberDoc.data()![
-            'userRef'
-          ] as admin.firestore.DocumentReference | null;
-          return ref ? ref.get() : Promise.resolve(null);
-        })()
-      : Promise.resolve(null),
-    paidToMemberDoc?.exists
-      ? (() => {
-          const ref = paidToMemberDoc.data()![
-            'userRef'
-          ] as admin.firestore.DocumentReference | null;
-          return ref ? ref.get() : Promise.resolve(null);
-        })()
-      : Promise.resolve(null),
-  ]);
-  const paidByHasAccount =
-    !!paidByMemberDoc?.exists && !!paidByMemberDoc.data()!['userRef'];
-  const paidToHasAccount =
-    !!paidToMemberDoc?.exists && !!paidToMemberDoc.data()!['userRef'];
-  const paidByOptedOut =
-    paidByUserDoc?.exists && paidByUserDoc.data()!['emailOptOut'] === true;
-  const paidToOptedOut =
-    paidToUserDoc?.exists && paidToUserDoc.data()!['emailOptOut'] === true;
-
-  const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
-  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
-
-  if (paidByEmail && paidByHasAccount && !paidByOptedOut) {
-    mailWrites.push(
-      db.collection('mail').add({
-        to: paidByEmail,
-        message: {
-          subject: `A payment from you to ${paidToName} in PipSplit has been reversed`,
-          text: [
-            `Hi ${paidByName},`,
-            '',
-            `A payment of ${formattedAmount} from you to ${paidToName} in the group ${groupName} has been reversed in PipSplit.`,
-            '',
-            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.`,
-          ].join('\n'),
-        },
-      })
-    );
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-
-  if (paidToEmail && paidToHasAccount && !paidToOptedOut) {
-    mailWrites.push(
-      db.collection('mail').add({
-        to: paidToEmail,
-        message: {
-          subject: `A payment from ${paidByName} to you in PipSplit has been reversed`,
-          text: [
-            `Hi ${paidToName},`,
-            '',
-            `A payment of ${formattedAmount} from ${paidByName} to you in the group "${groupName}" has been reversed in PipSplit.`,
-            '',
-            `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.`,
-          ].join('\n'),
-        },
-      })
-    );
+  const { to, subject, text, html } = request.data;
+  if (!to || !subject || !text) {
+    throw new HttpsError('invalid-argument', 'Missing required email fields');
   }
-
-  await Promise.all(mailWrites);
-  console.log(
-    `Member payment unpay emails sent: payer="${paidByEmail}", payee="${paidToEmail}"`
-  );
-});
-
-export const sendGroupSettleUnpayNotification = onCall<{
-  groupName: string;
-  settleDate: string;
-  members: {
-    displayName: string;
-    email: string;
-    memberRefPath: string | null;
-  }[];
-}>(async (request) => {
-  const { groupName, settleDate, members } = request.data;
-
-  // Look up user opt-out status for all members
-  const memberDocs = await Promise.all(
-    members.map((m) =>
-      m.memberRefPath ? db.doc(m.memberRefPath).get() : Promise.resolve(null)
-    )
-  );
-  const userDocs = await Promise.all(
-    memberDocs.map((memberDoc) => {
-      if (!memberDoc?.exists) return Promise.resolve(null);
-      const userRef = memberDoc.data()![
-        'userRef'
-      ] as admin.firestore.DocumentReference | null;
-      return userRef ? userRef.get() : Promise.resolve(null);
-    })
-  );
-  const hasAccountSet = new Set<string>();
-  const optedOutSet = new Set<string>();
-  memberDocs.forEach((memberDoc, i) => {
-    if (memberDoc?.exists && !!memberDoc.data()!['userRef']) {
-      hasAccountSet.add(members[i].email);
-    }
-  });
-  members.forEach((m, i) => {
-    const userDoc = userDocs[i];
-    if (userDoc?.exists && userDoc.data()!['emailOptOut'] === true) {
-      optedOutSet.add(m.email);
-    }
-  });
-
-  const mailWrites = members
-    .filter((m) => !!m.email && hasAccountSet.has(m.email) && !optedOutSet.has(m.email))
-    .map((m) =>
-      db.collection('mail').add({
-        to: m.email,
-        message: {
-          subject: `The group settle for "${groupName}" has been reversed in PipSplit`,
-          text: [
-            `Hi ${m.displayName},`,
-            '',
-            `A group admin has reversed the group settlement for "${groupName}" that was recorded on ${settleDate}.`,
-            '',
-            'All outstanding balances have been restored. Please check your current balance in PipSplit.',
-          ].join('\n'),
-        },
-      })
-    );
-
-  await Promise.all(mailWrites);
-  console.log(
-    `Group settle unpay emails sent for "${groupName}" (${settleDate}): ${mailWrites.length} email(s)`
-  );
+  await db.collection('mail').add({ to, message: { subject, text, html } });
+  return { success: true };
 });
 
 async function handleSettleEmail(
@@ -1201,6 +1120,8 @@ async function handleSettleEmail(
     // Find transfers this member is involved in
     const owesLines: string[] = [];
     const owedLines: string[] = [];
+    const owesHtmlBlocks: string[] = [];
+    const owedHtmlBlocks: string[] = [];
 
     for (const transfer of transfers) {
       const payerRef = transfer[
@@ -1235,6 +1156,13 @@ async function handleSettleEmail(
         owesLines.push(
           `- You owe ${formattedAmount} to ${payeeName}\n  ${payeeName}'s payment methods:\n  ${paymentMethods.split('\n').join('\n  ')}`
         );
+        owesHtmlBlocks.push(
+          `<div style="border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
+          `<p style="margin:0 0 8px 0;">You owe <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong></p>` +
+          `<p style="margin:0 0 6px 0;font-size:13px;color:#5b6058;"><strong>${escapeHtml(payeeName)}</strong>&rsquo;s payment methods:</p>` +
+          `<div style="background-color:#f7fbf0;border-radius:4px;padding:8px;">${buildPaymentMethodsHtml(paymentMethods)}</div>` +
+          `</div>`
+        );
       } else if (payeeRef.path === memberPath) {
         // This member is owed money
         const payerData = memberDataMap.get(payerRef.path);
@@ -1243,10 +1171,24 @@ async function handleSettleEmail(
         owedLines.push(
           `- ${payerName} owes you ${formattedAmount} — be on the lookout for this payment.`
         );
+        owedHtmlBlocks.push(
+          `<div style="border:1px solid #cdebbf;background-color:#f7fbf0;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
+          `<p style="margin:0;"><strong>${escapeHtml(payerName)}</strong> owes you <strong>${escapeHtml(formattedAmount)}</strong> &mdash; be on the lookout for this payment.</p>` +
+          `</div>`
+        );
       }
     }
 
     const transferLines = [...owesLines, ...owedLines].join('\n\n');
+    const transferHtmlBlocks = [...owesHtmlBlocks, ...owedHtmlBlocks].join('');
+    const settleHtml = buildEmailHtml(
+      `<h2 style="color:#105208;margin:0 0 20px 0;">Group Settlement</h2>` +
+      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(memberName)}</strong>,</p>` +
+      `<p style="margin:0 0 20px 0;">A group settlement has been recorded for <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+      `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Your Transfers:</h3>` +
+      transferHtmlBlocks +
+      `<p style="margin:20px 0 0 0;">All outstanding balances in the group have been marked as settled in PipSplit.</p>`
+    );
 
     mailWrites.push(
       db.collection('mail').add({
@@ -1263,6 +1205,7 @@ async function handleSettleEmail(
             '',
             'All outstanding balances in the group have been marked as settled in PipSplit.',
           ].join('\n'),
+          html: settleHtml,
         },
       })
     );
