@@ -599,6 +599,76 @@ export class SummaryComponent implements AfterViewInit {
     return text.trim();
   }
 
+  async requestPayment(amountDue: AmountDue): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const owedByMember = amountDue.owedByMember!;
+    try {
+      this.loading.loadingOn();
+      const result = await this.userService.sendPaymentRequestEmail(
+        owedByMember,
+        amountDue.owedToMember!,
+        this.currentGroup()!.name,
+        this.formatCurrency(amountDue.amount)
+      );
+      const message =
+        result === 'not_registered'
+          ? `${owedByMember.displayName} is not a registered user and cannot receive emails`
+          : result === 'opted_out'
+            ? `${owedByMember.displayName} has opted out of email notifications`
+            : 'Payment request email sent successfully';
+      this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message } });
+    } catch (err: any) {
+      this.analytics.logEvent('app_error', {
+        component: 'SummaryComponent',
+        action: 'request_payment',
+        message: err.message,
+      });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Something went wrong - could not send payment request' },
+      });
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
+  async requestAllPayments(): Promise<void> {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const transfers = this.leastTransfers().map((t) => ({
+      owedByMember: t.owedByMember!,
+      owedToMember: t.owedToMember!,
+      formattedAmount: this.formatCurrency(t.amount),
+    }));
+    try {
+      this.loading.loadingOn();
+      const { sent } = await this.userService.sendGroupPaymentRequestEmails(
+        transfers,
+        this.currentGroup()!.name
+      );
+      const message =
+        sent === 0
+          ? 'No eligible members to request payment from'
+          : `Payment request(s) sent to ${sent} member(s)`;
+      this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message } });
+    } catch (err: any) {
+      this.analytics.logEvent('app_error', {
+        component: 'SummaryComponent',
+        action: 'request_all_payments',
+        message: err.message,
+      });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Something went wrong - could not send payment requests' },
+      });
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
   // Helper method to format currency
   private formatCurrency(amount: number): string {
     return this.localeService.formatCurrency(amount);

@@ -861,6 +861,7 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
     - **Owed By**: Member who owes money
     - **Owed To**: Member who is owed money
     - **Amount**: Absolute value of amount (direction determined by column placement)
+    - **Request**: Button (envelope icon) to send a payment request email to the member in the "Owed By" column. Shows a snackbar if the member is not registered or has opted out of emails; shows a success snackbar if the email is sent.
   - Selected member appears in either "Owed To" or "Owed By" column depending on direction
   - Only shows members with outstanding balances (includes inactive members if they have splits)
 
@@ -899,6 +900,12 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
     - One history record created per transfer row (no category breakdown / empty `splitsPaid`)
   - Demo mode blocks this action
 
+- **Request All Payments Button** (beside the Settle Group button):
+  - Sends payment request emails to all members who owe money in the Least Transfers table
+  - Skips members who are not registered or have opted out of email notifications
+  - Shows a snackbar with the count of emails sent, or "No eligible members" if none qualify
+  - Demo mode blocks this action
+
 **Copy-to-Clipboard Feature**:
 - Available on expanded detail rows in Summary (Section 1) and Expenses pages
 - On the History Detail page, a Copy button copies the payment summary for easy sharing
@@ -921,6 +928,11 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] Dialog shows all applicable payment services (PayPal, Venmo, Zelle, CashApp)
 - [ ] Confirm button marks splits as paid (paid flag = true)
 - [ ] After marking as paid, balance updates (row may disappear if fully settled)
+- [ ] Request button is present on each row of the member-to-member table
+- [ ] Clicking Request for a non-registered member shows "[Name] is not a registered user and cannot receive emails" snackbar
+- [ ] Clicking Request for a member who has opted out shows "[Name] has opted out of email notifications" snackbar
+- [ ] Clicking Request for an eligible member shows "Payment request email sent successfully" snackbar
+- [ ] Demo mode blocks the Request button action
 - [ ] Row expansion shows category breakdown correctly
 - [ ] Category breakdown totals match row balance
 - [ ] Clicking expanded detail copies to clipboard
@@ -945,6 +957,12 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] After settlement, both tables show empty state
 - [ ] Demo mode blocks Settle Group action with appropriate message
 - [ ] Loading overlay is shown during settlement operation
+- [ ] Request All Payments button is visible when Least Transfers table has rows
+- [ ] Clicking Request All Payments sends emails to all eligible members
+- [ ] Members not registered or opted out are silently skipped
+- [ ] Snackbar shows count: "Payment request(s) sent to X member(s)"
+- [ ] Snackbar shows "No eligible members to request payment from" when none qualify
+- [ ] Demo mode blocks Request All Payments with appropriate message
 
 ### History Page (`/analysis/history`)
 **Route**: `/analysis/history`
