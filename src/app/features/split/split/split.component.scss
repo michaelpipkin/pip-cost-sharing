@@ -12,9 +12,10 @@
 .summary-container {
   margin-top: 16px;
   padding: 16px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background-color: #fafafa;
+  background-color: var(--surface-variant);
+  color: var(--on-surface);
 }
 
 .summary-header {
@@ -54,7 +55,7 @@
 
 .person-name {
   font-weight: 600;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 4px;
   margin-bottom: 4px;
 }
@@ -65,7 +66,7 @@
 
 .breakdown-line {
   font-size: 0.9em;
-  color: #666;
+  color: color-mix(in srgb, var(--on-surface) 70%, transparent);
   padding: 2px 0;
 
   .summary-label {
@@ -89,7 +90,7 @@
 .summary-divider {
   margin: 12px 0;
   border: none;
-  border-top: 2px solid #333;
+  border-top: 2px solid var(--on-surface);
 }
 
 .summary-buttons {
