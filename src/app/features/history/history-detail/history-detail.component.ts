@@ -34,12 +34,12 @@ import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
+import { UserService } from '@services/user.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Component({
   selector: 'app-history-detail',
@@ -72,7 +72,7 @@ export class HistoryDetailComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
-  protected readonly functions = inject(getFunctions);
+  protected readonly userService = inject(UserService);
 
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
@@ -407,53 +407,30 @@ export class HistoryDetailComponent {
   }
 
   private async notifyMemberPaymentUnpay(h: History): Promise<void> {
-    const fn = httpsCallable(
-      this.functions,
-      'sendMemberPaymentUnpayNotification'
+    await this.userService.sendMemberPaymentUnpayEmails(
+      h.paidByMember,
+      h.paidToMember,
+      this.currentGroup()!.name,
+      this.localeService.formatCurrency(h.totalPaid),
+      h.splitsPaid?.length ?? 0
     );
-    await fn({
-      groupName: this.currentGroup()!.name,
-      paidByName: h.paidByMember?.displayName ?? '',
-      paidByEmail: h.paidByMember?.email ?? '',
-      paidByMemberRefPath: h.paidByMemberRef?.path ?? null,
-      paidToName: h.paidToMember?.displayName ?? '',
-      paidToEmail: h.paidToMember?.email ?? '',
-      paidToMemberRefPath: h.paidToMemberRef?.path ?? null,
-      formattedAmount: this.localeService.formatCurrency(h.totalPaid),
-      splitCount: h.splitsPaid?.length ?? 0,
-    });
   }
 
   private async notifyGroupSettleUnpay(h: History): Promise<void> {
-    const fn = httpsCallable(
-      this.functions,
-      'sendGroupSettleUnpayNotification'
-    );
-    const memberMap = new Map<
-      string,
-      { displayName: string; email: string; memberRefPath: string | null }
-    >();
+    const memberMap = new Map<string, Member>();
     for (const transfer of this.batchTransfers()) {
       if (transfer.paidByMember) {
-        memberMap.set(transfer.paidByMemberRef.path, {
-          displayName: transfer.paidByMember.displayName,
-          email: transfer.paidByMember.email,
-          memberRefPath: transfer.paidByMemberRef?.path ?? null,
-        });
+        memberMap.set(transfer.paidByMemberRef.path, transfer.paidByMember);
       }
       if (transfer.paidToMember) {
-        memberMap.set(transfer.paidToMemberRef.path, {
-          displayName: transfer.paidToMember.displayName,
-          email: transfer.paidToMember.email,
-          memberRefPath: transfer.paidToMemberRef?.path ?? null,
-        });
+        memberMap.set(transfer.paidToMemberRef.path, transfer.paidToMember);
       }
     }
-    await fn({
-      groupName: this.currentGroup()!.name,
-      settleDate: h.date.toLocaleDateString(),
-      members: [...memberMap.values()],
-    });
+    await this.userService.sendGroupSettleUnpayEmails(
+      [...memberMap.values()],
+      this.currentGroup()!.name,
+      h.date.toLocaleDateString()
+    );
   }
 
   async copyToClipboard(): Promise<void> {

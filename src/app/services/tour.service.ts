@@ -817,7 +817,7 @@ export class TourService {
             on: 'top',
           },
           title: 'Member-to-Member View',
-          text: 'Select a group member from the dropdown to see who owes them and who they owe. Click any row to expand the category breakdown. Use the pay button to record a payment and mark those splits as paid — history records include a full category breakdown.',
+          text: 'Select a group member from the dropdown to see who owes them and who they owe. Click any row to expand the category breakdown. Use the request button (envelope icon) to send a payment request email to a member, or use the pay button to record a payment and mark those splits as paid — history records include a full category breakdown.',
           buttons: [
             this.getBackButton(),
             this.getNextButton(),
@@ -845,7 +845,7 @@ export class TourService {
             on: 'top',
           },
           title: 'Settle Group',
-          text: "Once all members have completed their transfers, click Settle Group to mark all outstanding expenses as paid in one action. A confirmation dialog lists the expected transfers first. History records are created for each transfer. Let's check out the payment history next!",
+          text: "Once all members have completed their transfers, click Settle Group to mark all outstanding expenses as paid in one action. You can also click Request All Payments to send payment request emails to all members with outstanding balances in one step. Let's check out the payment history next!",
           buttons: [
             this.getBackButton(),
             {
