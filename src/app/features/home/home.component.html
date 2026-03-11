@@ -13,10 +13,12 @@
         Split expenses with friends for your weekend getaway, track monthly
         costs with your roommates, or easily calculate shares of a dinner out.
       </p>
-      <p>
-        Sign up for a free account now, take a tour of the app, or try out
-        splitting a single expense!
-      </p>
+      @if (!isLoggedIn()) {
+        <p>
+          Sign up for a free account now, take a tour of the app, or try out
+          splitting a single expense!
+        </p>
+      }
     </div>
     <div class="buttons" data-testid="action-buttons">
       @if (!isLoggedIn()) {
@@ -87,7 +89,7 @@
       @if (isRunningAsApp()) {
         <div class="web-visit-section" data-testid="web-visit">
           <p data-testid="web-visit-message">
-            <strong>Visit PipSplit on the web at pipsplit.com</strong>
+            <strong>Try PipSplit in your web browser at pipsplit.com.</strong>
           </p>
         </div>
       }
