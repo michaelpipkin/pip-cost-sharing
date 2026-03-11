@@ -48,8 +48,8 @@ export class SplitService implements ISplitService {
           this.splitStore.setSplits(splits);
         } catch (error) {
           this.analytics.logEvent('app_error', {
-            service: 'SplitService',
-            method: 'getUnpaidSplitsForGroup',
+            component: 'SplitService',
+            action: 'getUnpaidSplitsForGroup',
             message: 'Failed to process unpaid splits snapshot',
             groupId,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -58,8 +58,8 @@ export class SplitService implements ISplitService {
       },
       (error) => {
         this.analytics.logEvent('app_error', {
-          service: 'SplitService',
-          method: 'getUnpaidSplitsForGroup',
+          component: 'SplitService',
+          action: 'getUnpaidSplitsForGroup',
           message: 'Failed to listen to unpaid splits',
           groupId,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -95,8 +95,8 @@ export class SplitService implements ISplitService {
       await batch.commit();
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'SplitService',
-        method: 'updateSplit',
+        component: 'SplitService',
+        action: 'updateSplit',
         message: 'Failed to update split',
         groupId,
         splitId: splitRef.id,

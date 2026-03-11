@@ -1,6 +1,6 @@
 import { DomPortalOutlet, TemplatePortal } from '@angular/cdk/portal';
 import {
-  AfterViewInit,
+  afterNextRender,
   ApplicationRef,
   Component,
   effect,
@@ -23,7 +23,7 @@ import { LoadingService } from './loading.service';
   imports: [MatProgressSpinner],
   encapsulation: ViewEncapsulation.None,
 })
-export class LoadingComponent implements AfterViewInit, OnDestroy {
+export class LoadingComponent implements OnDestroy {
   protected readonly loadingService = inject(LoadingService);
   protected readonly appRef = inject(ApplicationRef);
   protected readonly viewContainerRef = inject(ViewContainerRef);
@@ -41,43 +41,52 @@ export class LoadingComponent implements AfterViewInit, OnDestroy {
       const isLoading = this.loadingService.loading();
       const element = this.popoverElement();
       if (element) {
-        try {
-          if (isLoading) {
-            element.showPopover();
-          } else {
-            element.hidePopover();
+        if (typeof element.showPopover === 'function') {
+          try {
+            if (isLoading) {
+              element.showPopover();
+            } else {
+              element.hidePopover();
+            }
+          } catch (error) {
+            this.analytics.logEvent('app_error', {
+              component: 'LoadingComponent',
+              action: 'show_hide_loading_popover',
+              message: 'Failed to show/hide loading popover',
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
           }
-        } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'LoadingComponent',
-            action: 'show_hide_loading_popover',
-            message: error instanceof Error ? error.message : 'Unknown error',
-          });
+        } else {
+          // Fallback for browsers without Popover API support
+          element.style.display = isLoading ? 'flex' : 'none';
         }
       }
     });
-  }
+    afterNextRender(() => {
+      // Create a portal outlet attached to the document body
+      this.portalOutlet = new DomPortalOutlet(document.body, this.appRef);
 
-  ngAfterViewInit(): void {
-    // Create a portal outlet attached to the document body
-    this.portalOutlet = new DomPortalOutlet(document.body, this.appRef);
+      // Attach the template portal
+      const portal = new TemplatePortal(
+        this.loadingTemplate()!,
+        this.viewContainerRef
+      );
+      this.portalOutlet.attach(portal);
 
-    // Attach the template portal
-    const portal = new TemplatePortal(
-      this.loadingTemplate()!,
-      this.viewContainerRef
-    );
-    this.portalOutlet.attach(portal);
-
-    // Get reference to the popover element after it's attached to the DOM
-    setTimeout(() => {
-      const element = document.querySelector(
-        '[data-testid="loading-spinner-container"]'
-      ) as HTMLElement;
-      if (element) {
-        // Setting the signal will trigger the effect
-        this.popoverElement.set(element);
-      }
+      // Get reference to the popover element after it's attached to the DOM
+      setTimeout(() => {
+        const element = document.querySelector(
+          '[data-testid="loading-spinner-container"]'
+        ) as HTMLElement;
+        if (element) {
+          // Ensure element is hidden initially for browsers without Popover API
+          if (typeof element.showPopover !== 'function') {
+            element.style.display = 'none';
+          }
+          // Setting the signal will trigger the effect
+          this.popoverElement.set(element);
+        }
+      });
     });
   }
 

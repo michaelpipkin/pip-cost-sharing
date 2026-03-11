@@ -44,9 +44,9 @@ export class AdminStatisticsComponent {
     try {
       const stats = await this.statisticsService.getStatistics();
       this.statistics.set(stats);
-    } catch (err) {
+    } catch (error) {
       const message =
-        err instanceof Error ? err.message : 'Failed to load statistics';
+        error instanceof Error ? error.message : 'Failed to load statistics';
       this.error.set(message);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
@@ -54,7 +54,8 @@ export class AdminStatisticsComponent {
       this.analytics.logEvent('app_error', {
         component: 'AdminStatisticsComponent',
         action: 'load_statistics',
-        message,
+        message: 'Failed to load statistics',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       this.loading.loadingOff();
@@ -77,7 +78,8 @@ export class AdminStatisticsComponent {
       this.analytics.logEvent('app_error', {
         component: 'AdminStatisticsComponent',
         action: 'data_update',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to update data',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Something went wrong - could not update data' },
@@ -92,6 +94,7 @@ export class AdminStatisticsComponent {
       component: 'AdminStatisticsComponent',
       action: 'manual_test_trigger',
       message: 'Checking if Firebase is awake',
+      error: 'N/A',
     });
     console.log('Test error triggered');
     this.snackbar.openFromComponent(CustomSnackbarComponent, {

@@ -1,27 +1,27 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SplitComponent } from './split.component';
-import { GroupStore } from '@store/group.store';
-import { DemoService } from '@services/demo.service';
-import { TourService } from '@services/tour.service';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 import { AnalyticsService } from '@services/analytics.service';
-import { LocaleService } from '@services/locale.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
+import { DemoService } from '@services/demo.service';
+import { LocaleService } from '@services/locale.service';
+import { TourService } from '@services/tour.service';
+import { GroupStore } from '@store/group.store';
 import {
-  createMockGroupStore,
-  createMockDemoService,
-  createMockTourService,
   createMockAnalyticsService,
-  createMockSnackBar,
-  createMockMatDialog,
   createMockCalculatorOverlayService,
+  createMockDemoService,
+  createMockGroupStore,
+  createMockMatDialog,
+  createMockSnackBar,
+  createMockTourService,
   mockGroup,
 } from '@testing/test-helpers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SplitComponent } from './split.component';
 
 describe('SplitComponent', () => {
   let fixture: ComponentFixture<SplitComponent>;
@@ -557,7 +557,6 @@ describe('SplitComponent', () => {
     it('should populate demo data with Alice, Bob, Charlie', async () => {
       await fixture.whenStable();
 
-      // ngAfterViewInit populates demo data
       expect(component.splitsFormArray.length).toBe(3);
     });
 
@@ -569,8 +568,6 @@ describe('SplitComponent', () => {
 
     it('should start welcome tour in demo mode', async () => {
       await fixture.whenStable();
-
-      // Wait for ngAfterViewInit + setTimeout
       await new Promise((resolve) => setTimeout(resolve, 600));
 
       expect(mockTourService.startWelcomeTour).toHaveBeenCalled();

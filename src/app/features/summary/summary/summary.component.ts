@@ -1,5 +1,5 @@
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   computed,
   effect,
@@ -73,7 +73,7 @@ import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-
     DateShortcutKeysDirective,
   ],
 })
-export class SummaryComponent implements AfterViewInit {
+export class SummaryComponent {
   protected readonly router = inject(Router);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
@@ -334,11 +334,9 @@ export class SummaryComponent implements AfterViewInit {
         this.loading.loadingOff();
       }
     });
-  }
-
-  ngAfterViewInit(): void {
-    // Check if we should auto-start the summary tour
-    this.tourService.checkForContinueTour('summary');
+    afterNextRender(() => {
+      this.tourService.checkForContinueTour('summary');
+    });
   }
 
   onExpandClick(amountDue: AmountDue): void {
@@ -413,11 +411,12 @@ export class SummaryComponent implements AfterViewInit {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Expenses have been marked paid' },
           });
-        } catch (err: any) {
+        } catch (error) {
           this.analytics.logEvent('app_error', {
             component: 'SummaryComponent',
             action: 'mark_expenses_paid',
-            message: err.message,
+            message: 'Failed to mark expenses paid',
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: {
@@ -474,11 +473,12 @@ export class SummaryComponent implements AfterViewInit {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Group settlement completed successfully' },
           });
-        } catch (err: any) {
+        } catch (error) {
           this.analytics.logEvent('app_error', {
             component: 'SummaryComponent',
             action: 'settle_group',
-            message: err.message,
+            message: 'Failed to settle group',
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Something went wrong - could not settle group' },
@@ -509,7 +509,8 @@ export class SummaryComponent implements AfterViewInit {
         this.analytics.logEvent('app_error', {
           component: 'SummaryComponent',
           action: 'copy_summary_to_clipboard',
-          message: error.message,
+          message: 'Failed to copy summary to clipboard',
+          error: error.message,
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -579,7 +580,8 @@ export class SummaryComponent implements AfterViewInit {
         this.analytics.logEvent('app_error', {
           component: 'SummaryComponent',
           action: 'copy_settlement_to_clipboard',
-          message: error.message,
+          message: 'Failed to copy settlement to clipboard',
+          error: error.message,
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -619,15 +621,20 @@ export class SummaryComponent implements AfterViewInit {
           : result === 'opted_out'
             ? `${owedByMember.displayName} has opted out of email notifications`
             : 'Payment request email sent successfully';
-      this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message } });
-    } catch (err: any) {
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message },
+      });
+    } catch (error) {
       this.analytics.logEvent('app_error', {
         component: 'SummaryComponent',
         action: 'request_payment',
-        message: err.message,
+        message: 'Failed to send payment request',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Something went wrong - could not send payment request' },
+        data: {
+          message: 'Something went wrong - could not send payment request',
+        },
       });
     } finally {
       this.loading.loadingOff();
@@ -654,15 +661,20 @@ export class SummaryComponent implements AfterViewInit {
         sent === 0
           ? 'No eligible members to request payment from'
           : `Payment request(s) sent to ${sent} member(s)`;
-      this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message } });
-    } catch (err: any) {
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message },
+      });
+    } catch (error) {
       this.analytics.logEvent('app_error', {
         component: 'SummaryComponent',
         action: 'request_all_payments',
-        message: err.message,
+        message: 'Failed to send group payment requests',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Something went wrong - could not send payment requests' },
+        data: {
+          message: 'Something went wrong - could not send payment requests',
+        },
       });
     } finally {
       this.loading.loadingOff();

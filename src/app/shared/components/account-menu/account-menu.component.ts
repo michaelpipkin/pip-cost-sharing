@@ -64,7 +64,8 @@ export class AccountMenuComponent {
       this.analytics.logEvent('app_error', {
         component: 'AccountMenuComponent',
         action: 'switch_language',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to switch language',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

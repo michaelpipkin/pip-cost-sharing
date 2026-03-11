@@ -65,8 +65,8 @@ export class MemorizedService implements IMemorizedService {
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
           this.analytics.logEvent('app_error', {
-            service: 'MemorizedService',
-            method: 'getMemorizedExpensesForGroup',
+            component: 'MemorizedService',
+            action: 'getMemorizedExpensesForGroup',
             message: 'Failed to process memorized expenses snapshot',
             groupId,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -75,8 +75,8 @@ export class MemorizedService implements IMemorizedService {
       },
       (error) => {
         this.analytics.logEvent('app_error', {
-          service: 'MemorizedService',
-          method: 'getMemorizedExpensesForGroup',
+          component: 'MemorizedService',
+          action: 'getMemorizedExpensesForGroup',
           message: 'Failed to listen to memorized expenses',
           groupId,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -108,8 +108,8 @@ export class MemorizedService implements IMemorizedService {
       });
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'MemorizedService',
-        method: 'getMemorized',
+        component: 'MemorizedService',
+        action: 'getMemorized',
         message: 'Failed to get memorized expense',
         groupId,
         memorizedId,

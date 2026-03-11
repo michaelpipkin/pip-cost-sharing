@@ -78,14 +78,14 @@ export class HelpComponent {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Issue submitted. Thank you!' },
       });
-    } catch (err) {
+    } catch (error) {
       this.loading.loadingOff();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Error creating issue' },
       });
       this.analytics.logEvent('issue_created', {
         action: 'submit_issue',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

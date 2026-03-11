@@ -59,7 +59,8 @@
       "Read(//c/Users/mpipk/AppData/Local/pnpm/**)",
       "Read(//c/Users/mpipk/AppData/Roaming/npm/node_modules/**)",
       "Bash(pnpm store:*)",
-      "Bash(pnpm info:*)"
+      "Bash(pnpm info:*)",
+      "Bash(find src/app -name \"*.ts\" -type f -exec grep -n \"logEvent\\(''''app_error''''\" {} +)"
     ],
     "deny": [],
     "ask": [],
