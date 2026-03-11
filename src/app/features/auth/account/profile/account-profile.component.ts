@@ -24,6 +24,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
+import { FirebaseError } from 'firebase/app';
 import {
   User as FirebaseUser,
   getAuth,
@@ -89,12 +90,14 @@ export class AccountProfileComponent {
         });
       })
       .catch((err: Error) => {
-        this.analytics.logEvent('app_error', {
-          component: 'AccountProfileComponent',
-          action: 'verify_email',
-          message: 'Failed to send verification email',
-          error: err.message,
-        });
+        if (!(err instanceof FirebaseError)) {
+          this.analytics.logEvent('app_error', {
+            component: 'AccountProfileComponent',
+            action: 'verify_email',
+            message: 'Failed to send verification email',
+            error: err.message,
+          });
+        }
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
             message:
@@ -113,12 +116,14 @@ export class AccountProfileComponent {
         this.userStore.setIsEmailConfirmed(false);
         await this.verifyEmail();
       } catch (err: any) {
-        this.analytics.logEvent('app_error', {
-          component: 'AccountProfileComponent',
-          action: 'update_email',
-          message: 'Failed to update email address',
-          error: err instanceof Error ? err.message : 'Unknown error',
-        });
+        if (!(err instanceof FirebaseError)) {
+          this.analytics.logEvent('app_error', {
+            component: 'AccountProfileComponent',
+            action: 'update_email',
+            message: 'Failed to update email address',
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
         if (err.code === 'auth/email-already-in-use') {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: {
