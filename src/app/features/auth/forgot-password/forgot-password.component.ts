@@ -70,12 +70,12 @@ export class ForgotPasswordComponent {
           data: { message: error.message },
         });
         if (!(error instanceof FirebaseError)) {
-          this.analytics.logEvent('app_error', {
-            component: 'ForgotPasswordComponent',
-            action: 'send_reset_email',
-            message: 'Failed to send password reset email',
-            error: error.message,
-          });
+          this.analytics.logError(
+            'ForgotPasswordComponent',
+            'send_reset_email',
+            'Failed to send password reset email',
+            error.message
+          );
         }
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {

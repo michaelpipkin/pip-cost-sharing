@@ -105,11 +105,11 @@ export class AccountSecurityComponent {
         });
       }
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AccountSecurityComponent',
-        action: 'update_password',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AccountSecurityComponent',
+        'update_password',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     } finally {
       this.loading.loadingOff();
     }

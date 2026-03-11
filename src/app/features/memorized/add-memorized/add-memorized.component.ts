@@ -495,12 +495,12 @@ export class AddMemorizedComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AddMemorizedComponent',
-          action: 'memorize_expense',
-          message: 'Failed to memorize expense',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'AddMemorizedComponent',
+          'memorize_expense',
+          'Failed to memorize expense',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {

@@ -39,11 +39,11 @@ export class AccountLegalComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AccountLegalComponent',
-          action: 'accept_receipt_policy',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AccountLegalComponent',
+          'accept_receipt_policy',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {

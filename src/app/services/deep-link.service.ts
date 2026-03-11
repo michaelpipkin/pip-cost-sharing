@@ -41,12 +41,12 @@ export class DeepLinkService {
       // Navigate to the path with query parameters
       this.router.navigate([path], { queryParams });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'DeepLinkService',
-        action: 'handleDeepLink',
-        message: 'Failed to parse deep link',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'DeepLinkService',
+        'handleDeepLink',
+        'Failed to parse deep link',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 }

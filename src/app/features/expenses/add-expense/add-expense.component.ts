@@ -764,11 +764,11 @@ export class AddExpenseComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AddExpenseComponent',
-          action: 'add_expense',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AddExpenseComponent',
+          'add_expense',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not save expense.' },

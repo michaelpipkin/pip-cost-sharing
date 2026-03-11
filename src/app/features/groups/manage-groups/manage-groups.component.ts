@@ -182,11 +182,11 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'ManageGroupsComponent',
-          action: 'edit_group',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'ManageGroupsComponent',
+          'edit_group',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not edit group' },
@@ -228,11 +228,11 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'ManageGroupsComponent',
-              action: 'archive_group',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'ManageGroupsComponent',
+              'archive_group',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
@@ -266,11 +266,11 @@ export class ManageGroupsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'ManageGroupsComponent',
-          action: 'unarchive_group',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'ManageGroupsComponent',
+          'unarchive_group',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not unarchive group' },
@@ -309,11 +309,11 @@ export class ManageGroupsComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'ManageGroupsComponent',
-              action: 'delete_group',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'ManageGroupsComponent',
+              'delete_group',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

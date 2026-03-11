@@ -67,11 +67,11 @@ export class AccountPreferencesComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AccountPreferencesComponent',
-          action: 'update_default_group',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AccountPreferencesComponent',
+          'update_default_group',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {

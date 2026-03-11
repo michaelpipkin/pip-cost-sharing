@@ -71,11 +71,11 @@ export class AccountPaymentsComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AccountPaymentsComponent',
-          action: 'update_payments',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AccountPaymentsComponent',
+          'update_payments',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {

@@ -170,50 +170,48 @@ export class GroupService implements IGroupService {
                     }
                   }
                 } catch (error) {
-                  this.analytics.logEvent('app_error', {
-                    component: 'GroupService',
-                    action: 'getUserGroups',
-                    message: 'Failed to process groups snapshot',
-                    error:
-                      error instanceof Error ? error.message : 'Unknown error',
-                  });
+                  this.analytics.logError(
+                    'GroupService',
+                    'getUserGroups',
+                    'Failed to process groups snapshot',
+                    error instanceof Error ? error.message : 'Unknown error'
+                  );
                 }
               },
               (error) => {
-                this.analytics.logEvent('app_error', {
-                  component: 'GroupService',
-                  action: 'getUserGroups',
-                  message: 'Failed to listen to groups',
-                  error:
-                    error instanceof Error ? error.message : 'Unknown error',
-                });
+                this.analytics.logError(
+                  'GroupService',
+                  'getUserGroups',
+                  'Failed to listen to groups',
+                  error instanceof Error ? error.message : 'Unknown error'
+                );
               }
             );
           } catch (error) {
-            this.analytics.logEvent('app_error', {
-              component: 'GroupService',
-              action: 'getUserGroups',
-              message: 'Failed to process members snapshot',
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
+            this.analytics.logError(
+              'GroupService',
+              'getUserGroups',
+              'Failed to process members snapshot',
+              error instanceof Error ? error.message : 'Unknown error'
+            );
           }
         },
         (error) => {
-          this.analytics.logEvent('app_error', {
-            component: 'GroupService',
-            action: 'getUserGroups',
-            message: 'Failed to listen to members',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'GroupService',
+            'getUserGroups',
+            'Failed to listen to members',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
         }
       );
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'GroupService',
-        action: 'getUserGroups',
-        message: 'Failed to initialize user groups query',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'GroupService',
+        'getUserGroups',
+        'Failed to initialize user groups query',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -256,13 +254,12 @@ export class GroupService implements IGroupService {
       this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
       this.historyService.getHistoryForGroup(groupRef.id);
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'GroupService',
-        action: 'getGroup',
-        message: 'Failed to get group',
-        groupId: groupRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'GroupService',
+        'getGroup',
+        'Failed to get group',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }

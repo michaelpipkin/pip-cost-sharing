@@ -180,14 +180,12 @@ export class ExpenseService implements IExpenseService {
 
       return expense;
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'ExpenseService',
-        action: 'getExpense',
-        message: 'Failed to get expense',
-        groupId,
-        expenseId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'ExpenseService',
+        'getExpense',
+        'Failed to get expense',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -240,13 +238,12 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      this.analytics.logEvent('app_error', {
-        component: 'ExpenseService',
-        action: 'addExpense',
-        message: 'Failed to add expense',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'ExpenseService',
+        'addExpense',
+        'Failed to add expense',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -314,14 +311,12 @@ export class ExpenseService implements IExpenseService {
         });
       }
 
-      this.analytics.logEvent('app_error', {
-        component: 'ExpenseService',
-        action: 'updateExpense',
-        message: 'Failed to update expense',
-        groupId,
-        expenseId: expenseRef.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'ExpenseService',
+        'updateExpense',
+        'Failed to update expense',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -375,12 +370,12 @@ export class ExpenseService implements IExpenseService {
       const snapshot = await getDocs(q);
       return !snapshot.empty;
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'ExpenseService',
-        action: 'has_expenses_for_group',
-        message: 'Failed to check if group has expenses',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'ExpenseService',
+        'has_expenses_for_group',
+        'Failed to check if group has expenses',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       // If there's an error, assume expenses exist to be safe
       return true;
     }

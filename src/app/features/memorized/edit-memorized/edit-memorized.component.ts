@@ -476,12 +476,12 @@ export class EditMemorizedComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'EditMemorizedComponent',
-          action: 'edit_memorized_expense',
-          message: 'Failed to update memorized expense',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'EditMemorizedComponent',
+          'edit_memorized_expense',
+          'Failed to update memorized expense',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
@@ -521,12 +521,12 @@ export class EditMemorizedComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditMemorizedComponent',
-              action: 'delete_memorized_expense',
-              message: 'Failed to delete memorized expense',
-              error: error.message,
-            });
+            this.analytics.logError(
+              'EditMemorizedComponent',
+              'delete_memorized_expense',
+              'Failed to delete memorized expense',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

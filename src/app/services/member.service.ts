@@ -58,13 +58,12 @@ export class MemberService implements IMemberService {
         this.memberStore.clearCurrentMember();
       }
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'MemberService',
-        action: 'getMemberByUserRef',
-        message: 'Failed to get member by user ref',
-        groupId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'MemberService',
+        'getMemberByUserRef',
+        'Failed to get member by user ref',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -89,23 +88,21 @@ export class MemberService implements IMemberService {
           );
           this.memberStore.setGroupMembers(groupMembers);
         } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'MemberService',
-            action: 'getGroupMembers',
-            message: 'Failed to process group members snapshot',
-            groupId,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'MemberService',
+            'getGroupMembers',
+            'Failed to process group members snapshot',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
         }
       },
       (error) => {
-        this.analytics.logEvent('app_error', {
-          component: 'MemberService',
-          action: 'getGroupMembers',
-          message: 'Failed to listen to group members',
-          groupId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        this.analytics.logError(
+          'MemberService',
+          'getGroupMembers',
+          'Failed to listen to group members',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
       }
     );
   }
@@ -256,12 +253,12 @@ export class MemberService implements IMemberService {
 
       return membersSnapshot.size;
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'MemberService',
-        action: 'updateAllMemberEmails',
-        message: 'Failed to update member emails',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'MemberService',
+        'updateAllMemberEmails',
+        'Failed to update member emails',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }

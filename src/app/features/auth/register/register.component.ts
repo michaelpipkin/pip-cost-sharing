@@ -160,12 +160,12 @@ export class RegisterComponent {
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(
           (err: Error) => {
             if (!(err instanceof FirebaseError)) {
-              this.analytics.logEvent('app_error', {
-                component: 'RegisterComponent',
-                action: 'verify_email',
-                message: 'Failed to send verification email after registration',
-                error: err.message,
-              });
+              this.analytics.logError(
+                'RegisterComponent',
+                'verify_email',
+                'Failed to send verification email after registration',
+                err.message
+              );
             }
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

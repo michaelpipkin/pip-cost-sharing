@@ -99,11 +99,11 @@ export class AddGroupComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AddGroupComponent',
-          action: 'add_group',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AddGroupComponent',
+          'add_group',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not add group' },
