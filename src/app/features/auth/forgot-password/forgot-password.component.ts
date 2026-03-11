@@ -14,6 +14,7 @@ import { Router, RouterModule } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { FirebaseError } from 'firebase/app';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 @Component({
@@ -68,12 +69,14 @@ export class ForgotPasswordComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'ForgotPasswordComponent',
-          action: 'send_reset_email',
-          message: 'Failed to send password reset email',
-          error: error.message,
-        });
+        if (!(error instanceof FirebaseError)) {
+          this.analytics.logEvent('app_error', {
+            component: 'ForgotPasswordComponent',
+            action: 'send_reset_email',
+            message: 'Failed to send password reset email',
+            error: error.message,
+          });
+        }
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
