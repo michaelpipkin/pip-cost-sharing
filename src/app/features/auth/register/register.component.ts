@@ -24,6 +24,7 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
+import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -158,12 +159,14 @@ export class RegisterComponent {
         };
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(
           (err: Error) => {
-            this.analytics.logEvent('app_error', {
-              component: 'RegisterComponent',
-              action: 'verify_email',
-              message: 'Failed to send verification email after registration',
-              error: err.message,
-            });
+            if (!(err instanceof FirebaseError)) {
+              this.analytics.logEvent('app_error', {
+                component: 'RegisterComponent',
+                action: 'verify_email',
+                message: 'Failed to send verification email after registration',
+                error: err.message,
+              });
+            }
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
                 message:

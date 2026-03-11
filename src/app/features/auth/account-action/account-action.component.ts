@@ -21,6 +21,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { FirebaseError } from 'firebase/app';
 import {
   applyActionCode,
   confirmPasswordReset,
@@ -235,12 +236,14 @@ export class AccountActionComponent {
         },
       });
 
-      this.analytics.logEvent('app_error', {
-        component: 'AccountActionComponent',
-        action: 'resend_verification_email',
-        message: 'Failed to resend verification email',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      if (!(error instanceof FirebaseError)) {
+        this.analytics.logEvent('app_error', {
+          component: 'AccountActionComponent',
+          action: 'resend_verification_email',
+          message: 'Failed to resend verification email',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     } finally {
       this.resending.set(false);
     }
@@ -265,12 +268,14 @@ export class AccountActionComponent {
 
     this.errorMessage.set(errorMsg);
 
-    this.analytics.logEvent('app_error', {
-      component: 'AccountActionComponent',
-      action: action,
-      message: error.message,
-      code: error.code,
-    });
+    if (!(error instanceof FirebaseError)) {
+      this.analytics.logEvent('app_error', {
+        component: 'AccountActionComponent',
+        action: action,
+        message: error.message,
+        code: error.code,
+      });
+    }
 
     this.snackbar.openFromComponent(CustomSnackbarComponent, {
       data: { message: errorMsg },
