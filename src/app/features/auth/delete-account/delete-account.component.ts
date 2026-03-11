@@ -94,7 +94,8 @@ export class DeleteAccountComponent {
       this.analytics.logEvent('app_error', {
         component: 'DeleteAccountComponent',
         action: 'delete_account',
-        message: error.message,
+        message: 'Failed to delete account',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       this.loading.loadingOff();

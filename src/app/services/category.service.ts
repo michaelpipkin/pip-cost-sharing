@@ -26,7 +26,7 @@ export class CategoryService implements ICategoryService {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly fs = inject(getFirestore);
   protected readonly sorter = inject(SortingService);
-  private readonly analytics = inject(AnalyticsService);
+  protected readonly analytics = inject(AnalyticsService);
 
   getGroupCategories(groupId: string): void {
     const c = collection(this.fs, `groups/${groupId}/categories`);
@@ -47,8 +47,8 @@ export class CategoryService implements ICategoryService {
           this.categoryStore.setGroupCategories(categories);
         } catch (error) {
           this.analytics.logEvent('app_error', {
-            service: 'CategoryService',
-            method: 'getGroupCategories',
+            component: 'CategoryService',
+            action: 'getGroupCategories',
             message: 'Failed to process categories snapshot',
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -56,8 +56,8 @@ export class CategoryService implements ICategoryService {
       },
       (error) => {
         this.analytics.logEvent('app_error', {
-          service: 'CategoryService',
-          method: 'getGroupCategories',
+          component: 'CategoryService',
+          action: 'getGroupCategories',
           message: 'Failed to listen to categories',
           error: error instanceof Error ? error.message : 'Unknown error',
         });

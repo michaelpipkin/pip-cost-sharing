@@ -50,7 +50,8 @@ export class AdMobService {
       this.analytics.logEvent('app_error', {
         component: 'AdMobService',
         action: 'initialize_admob',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to initialize AdMob',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -95,7 +96,8 @@ export class AdMobService {
       this.analytics.logEvent('app_error', {
         component: 'AdMobService',
         action: 'load_interstitial',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to load interstitial ad',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.isAdLoaded.set(false);
     }
@@ -114,11 +116,12 @@ export class AdMobService {
 
       // Note: We do NOT call loadInterstitial() here.
       // The 'Dismissed' listener in initializeAdMob() handles it safely.
-    } catch (error: any) {
+    } catch (error) {
       this.analytics.logEvent('app_error', {
         component: 'AdMobService',
         action: 'show_interstitial',
-        message: error?.message || 'Show failed',
+        message: 'Failed to show interstitial ad',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

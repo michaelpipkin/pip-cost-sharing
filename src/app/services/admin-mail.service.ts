@@ -30,8 +30,8 @@ export class AdminMailService {
       );
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'AdminMailService',
-        method: 'getMailDocuments',
+        component: 'AdminMailService',
+        action: 'getMailDocuments',
         message: 'Failed to load mail documents',
         error: error instanceof Error ? error.message : 'Unknown error',
       });

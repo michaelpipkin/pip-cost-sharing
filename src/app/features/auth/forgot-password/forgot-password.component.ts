@@ -70,8 +70,9 @@ export class ForgotPasswordComponent {
         });
         this.analytics.logEvent('app_error', {
           component: 'ForgotPasswordComponent',
-          action: 'add_category',
-          message: error.message,
+          action: 'send_reset_email',
+          message: 'Failed to send password reset email',
+          error: error.message,
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {

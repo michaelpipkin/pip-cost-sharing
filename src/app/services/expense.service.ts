@@ -181,8 +181,8 @@ export class ExpenseService implements IExpenseService {
       return expense;
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'ExpenseService',
-        method: 'getExpense',
+        component: 'ExpenseService',
+        action: 'getExpense',
         message: 'Failed to get expense',
         groupId,
         expenseId,
@@ -241,8 +241,8 @@ export class ExpenseService implements IExpenseService {
       }
 
       this.analytics.logEvent('app_error', {
-        service: 'ExpenseService',
-        method: 'addExpense',
+        component: 'ExpenseService',
+        action: 'addExpense',
         message: 'Failed to add expense',
         groupId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -315,8 +315,8 @@ export class ExpenseService implements IExpenseService {
       }
 
       this.analytics.logEvent('app_error', {
-        service: 'ExpenseService',
-        method: 'updateExpense',
+        component: 'ExpenseService',
+        action: 'updateExpense',
         message: 'Failed to update expense',
         groupId,
         expenseId: expenseRef.id,
@@ -378,7 +378,8 @@ export class ExpenseService implements IExpenseService {
       this.analytics.logEvent('app_error', {
         component: 'ExpenseService',
         action: 'has_expenses_for_group',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to check if group has expenses',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       // If there's an error, assume expenses exist to be safe
       return true;
