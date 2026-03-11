@@ -365,11 +365,11 @@ export class ExpensesComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'ExpensesComponent',
-          action: 'copy_expense_summary_to_clipboard',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'ExpensesComponent',
+          'copy_expense_summary_to_clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy expense summary' },

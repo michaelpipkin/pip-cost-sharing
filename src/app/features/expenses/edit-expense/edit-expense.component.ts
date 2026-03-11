@@ -237,21 +237,21 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditExpenseComponent',
-              action: 'firebase_receipt_retrieval',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditExpenseComponent',
+              'firebase_receipt_retrieval',
+              error.message
+            );
           }
         } else if (error instanceof Error) {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: error.message },
           });
-          this.analytics.logEvent('app_error', {
-            component: 'EditExpenseComponent',
-            action: 'firebase_receipt_retrieval',
-            message: error.message,
-          });
+          this.analytics.logError(
+            'EditExpenseComponent',
+            'firebase_receipt_retrieval',
+            error.message
+          );
         } else {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: {
@@ -715,11 +715,11 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditExpenseComponent',
-              action: 'edit_expense',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditExpenseComponent',
+              'edit_expense',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
@@ -768,11 +768,11 @@ export class EditExpenseComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditExpenseComponent',
-              action: 'delete_expense',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditExpenseComponent',
+              'delete_expense',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

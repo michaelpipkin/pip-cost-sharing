@@ -51,12 +51,12 @@ export class AdminStatisticsComponent {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });
-      this.analytics.logEvent('app_error', {
-        component: 'AdminStatisticsComponent',
-        action: 'load_statistics',
-        message: 'Failed to load statistics',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AdminStatisticsComponent',
+        'load_statistics',
+        'Failed to load statistics',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     } finally {
       this.loading.loadingOff();
     }
@@ -75,12 +75,12 @@ export class AdminStatisticsComponent {
         data: { message: 'Data updated' },
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AdminStatisticsComponent',
-        action: 'data_update',
-        message: 'Failed to update data',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AdminStatisticsComponent',
+        'data_update',
+        'Failed to update data',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Something went wrong - could not update data' },
       });
@@ -90,12 +90,12 @@ export class AdminStatisticsComponent {
   }
 
   forceTestError() {
-    this.analytics.logEvent('app_error', {
-      component: 'AdminStatisticsComponent',
-      action: 'manual_test_trigger',
-      message: 'Checking if Firebase is awake',
-      error: 'N/A',
-    });
+    this.analytics.logError(
+      'AdminStatisticsComponent',
+      'manual_test_trigger',
+      'Checking if Firebase is awake',
+      'N/A'
+    );
     console.log('Test error triggered');
     this.snackbar.openFromComponent(CustomSnackbarComponent, {
       data: { message: 'Test error triggered - check console and analytics' },

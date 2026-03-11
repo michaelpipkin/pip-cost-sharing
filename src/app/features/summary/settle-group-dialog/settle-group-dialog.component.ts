@@ -31,12 +31,12 @@ export class SettleGroupDialogComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'SettleGroupDialogComponent',
-          action: 'copy_settlement_to_clipboard',
-          message: 'Failed to copy settlement to clipboard',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'SettleGroupDialogComponent',
+          'copy_settlement_to_clipboard',
+          'Failed to copy settlement to clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy settlement' },

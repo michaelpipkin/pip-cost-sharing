@@ -92,12 +92,12 @@ export class AdminEmailLogComponent {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });
-      this.analytics.logEvent('app_error', {
-        component: 'AdminEmailLogComponent',
-        action: 'load_mail_documents',
-        message: 'Failed to load mail documents',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AdminEmailLogComponent',
+        'load_mail_documents',
+        'Failed to load mail documents',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     } finally {
       this.loading.loadingOff();
     }

@@ -29,15 +29,14 @@ export class NavigationLoadingService {
         this.loadingService.loadingOff('navigation');
       } else if (event instanceof NavigationError) {
         this.loadingService.loadingOff('navigation');
-        this.analytics.logEvent('app_error', {
-          component: 'NavigationLoadingService',
-          action: 'navigation',
-          message: event.url,
-          error:
-            event.error instanceof Error
-              ? event.error.message
-              : String(event.error),
-        });
+        this.analytics.logError(
+          'NavigationLoadingService',
+          'navigation',
+          event.url,
+          event.error instanceof Error
+            ? event.error.message
+            : String(event.error)
+        );
       }
     });
   }

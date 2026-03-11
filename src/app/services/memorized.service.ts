@@ -64,23 +64,21 @@ export class MemorizedService implements IMemorizedService {
           });
           this.memorizedStore.setMemorizedExpenses(memorized);
         } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'MemorizedService',
-            action: 'getMemorizedExpensesForGroup',
-            message: 'Failed to process memorized expenses snapshot',
-            groupId,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'MemorizedService',
+            'getMemorizedExpensesForGroup',
+            'Failed to process memorized expenses snapshot',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
         }
       },
       (error) => {
-        this.analytics.logEvent('app_error', {
-          component: 'MemorizedService',
-          action: 'getMemorizedExpensesForGroup',
-          message: 'Failed to listen to memorized expenses',
-          groupId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        this.analytics.logError(
+          'MemorizedService',
+          'getMemorizedExpensesForGroup',
+          'Failed to listen to memorized expenses',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
       }
     );
   }
@@ -107,14 +105,12 @@ export class MemorizedService implements IMemorizedService {
         ref: memorizedDoc.ref as DocumentReference<Memorized>,
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'MemorizedService',
-        action: 'getMemorized',
-        message: 'Failed to get memorized expense',
-        groupId,
-        memorizedId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'MemorizedService',
+        'getMemorized',
+        'Failed to get memorized expense',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }

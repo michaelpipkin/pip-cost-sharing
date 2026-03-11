@@ -122,11 +122,11 @@ export class EditMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'EditMemberComponent',
-          action: 'edit_member',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'EditMemberComponent',
+          'edit_member',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not edit member' },
@@ -162,11 +162,11 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditMemberComponent',
-              action: 'remove_member',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditMemberComponent',
+              'remove_member',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
@@ -216,11 +216,11 @@ export class EditMemberComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditMemberComponent',
-              action: 'leave_group',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditMemberComponent',
+              'leave_group',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

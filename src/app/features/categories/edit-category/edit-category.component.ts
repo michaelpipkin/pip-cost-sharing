@@ -83,11 +83,11 @@ export class EditCategoryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'EditCategoryComponent',
-          action: 'update_category',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'EditCategoryComponent',
+          'update_category',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not update category' },
@@ -120,11 +120,11 @@ export class EditCategoryComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'EditCategoryComponent',
-              action: 'delete_category',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'EditCategoryComponent',
+              'delete_category',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

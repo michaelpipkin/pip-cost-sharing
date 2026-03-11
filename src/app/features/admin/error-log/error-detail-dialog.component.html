@@ -1,0 +1,29 @@
+<h1 mat-dialog-title>Error Detail</h1>
+<mat-dialog-content>
+  <dl class="detail-list">
+    <dt>Component</dt>
+    <dd>{{ data.component }}</dd>
+
+    <dt>Action</dt>
+    <dd>{{ data.action }}</dd>
+
+    <dt>Message</dt>
+    <dd>{{ data.message }}</dd>
+
+    @if (data.error) {
+      <dt>Error</dt>
+      <dd class="error-text">{{ data.error }}</dd>
+    }
+
+    @if (isGrouped()) {
+      <dt>Count</dt>
+      <dd>{{ asGrouped().count }}</dd>
+    } @else {
+      <dt>Date / Time</dt>
+      <dd>{{ data.timestamp.toDate() | date: 'MM/dd/yy h:mm a' }}</dd>
+    }
+  </dl>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-stroked-button type="button" mat-dialog-close>Close</button>
+</mat-dialog-actions>

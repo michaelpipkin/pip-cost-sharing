@@ -61,12 +61,12 @@ export class AccountMenuComponent {
       await this.userService.updateUser({ language: langCode });
       this.analytics.logEvent('language_changed', { language: langCode });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AccountMenuComponent',
-        action: 'switch_language',
-        message: 'Failed to switch language',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AccountMenuComponent',
+        'switch_language',
+        'Failed to switch language',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 

@@ -91,12 +91,12 @@ export class AccountProfileComponent {
       })
       .catch((err: Error) => {
         if (!(err instanceof FirebaseError)) {
-          this.analytics.logEvent('app_error', {
-            component: 'AccountProfileComponent',
-            action: 'verify_email',
-            message: 'Failed to send verification email',
-            error: err.message,
-          });
+          this.analytics.logError(
+            'AccountProfileComponent',
+            'verify_email',
+            'Failed to send verification email',
+            err.message
+          );
         }
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
@@ -117,12 +117,12 @@ export class AccountProfileComponent {
         await this.verifyEmail();
       } catch (err: any) {
         if (!(err instanceof FirebaseError)) {
-          this.analytics.logEvent('app_error', {
-            component: 'AccountProfileComponent',
-            action: 'update_email',
-            message: 'Failed to update email address',
-            error: err instanceof Error ? err.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'AccountProfileComponent',
+            'update_email',
+            'Failed to update email address',
+            err instanceof Error ? err.message : 'Unknown error'
+          );
         }
         if (err.code === 'auth/email-already-in-use') {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -155,12 +155,12 @@ export class AccountProfileComponent {
         },
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AccountProfileComponent',
-        action: 'toggle_email_opt_out',
-        message: 'Failed to save email preference',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AccountProfileComponent',
+        'toggle_email_opt_out',
+        'Failed to save email preference',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message: 'Something went wrong - preference could not be saved',
@@ -187,12 +187,12 @@ export class AccountProfileComponent {
         },
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AccountProfileComponent',
-        action: 'sync_member_emails',
-        message: 'Failed to sync member emails',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AccountProfileComponent',
+        'sync_member_emails',
+        'Failed to sync member emails',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message: 'Something went wrong - could not update member emails',

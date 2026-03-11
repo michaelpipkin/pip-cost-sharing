@@ -89,12 +89,12 @@ export class AccountActionComponent {
         return;
       }
       this.errorMessage.set('Invalid link. No code provided.');
-      this.analytics.logEvent('app_error', {
-        component: 'AccountActionComponent',
-        action: 'process_action',
-        message: 'No oobCode in URL',
-        error: 'N/A',
-      });
+      this.analytics.logError(
+        'AccountActionComponent',
+        'process_action',
+        'No oobCode in URL',
+        'N/A'
+      );
       return;
     }
 
@@ -103,12 +103,12 @@ export class AccountActionComponent {
       !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
-      this.analytics.logEvent('app_error', {
-        component: 'AccountActionComponent',
-        action: 'process_action',
-        message: `Invalid mode: ${mode}`,
-        error: 'N/A',
-      });
+      this.analytics.logError(
+        'AccountActionComponent',
+        'process_action',
+        `Invalid mode: ${mode}`,
+        'N/A'
+      );
       return;
     }
 
@@ -237,12 +237,12 @@ export class AccountActionComponent {
       });
 
       if (!(error instanceof FirebaseError)) {
-        this.analytics.logEvent('app_error', {
-          component: 'AccountActionComponent',
-          action: 'resend_verification_email',
-          message: 'Failed to resend verification email',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        this.analytics.logError(
+          'AccountActionComponent',
+          'resend_verification_email',
+          'Failed to resend verification email',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
       }
     } finally {
       this.resending.set(false);
@@ -269,12 +269,12 @@ export class AccountActionComponent {
     this.errorMessage.set(errorMsg);
 
     if (!(error instanceof FirebaseError)) {
-      this.analytics.logEvent('app_error', {
-        component: 'AccountActionComponent',
-        action: action,
-        message: error.message,
-        code: error.code,
-      });
+      this.analytics.logError(
+        'AccountActionComponent',
+        action,
+        error.message,
+        error.code
+      );
     }
 
     this.snackbar.openFromComponent(CustomSnackbarComponent, {

@@ -29,12 +29,12 @@ export class AdminMailService {
         (d) => ({ id: d.id, ...d.data() }) as MailDocument
       );
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'AdminMailService',
-        action: 'getMailDocuments',
-        message: 'Failed to load mail documents',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'AdminMailService',
+        'getMailDocuments',
+        'Failed to load mail documents',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
