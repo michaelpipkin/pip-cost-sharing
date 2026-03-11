@@ -1,5 +1,5 @@
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
   computed,
   effect,
@@ -56,7 +56,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
     ActiveInactivePipe,
   ],
 })
-export class CategoriesComponent implements AfterViewInit {
+export class CategoriesComponent {
   protected readonly router = inject(Router);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly groupStore = inject(GroupStore);
@@ -104,11 +104,9 @@ export class CategoriesComponent implements AfterViewInit {
         this.loading.loadingOff();
       }
     });
-  }
-
-  ngAfterViewInit(): void {
-    // Check if we should auto-start the categories tour
-    this.tourService.checkForContinueTour('categories');
+    afterNextRender(() => {
+      this.tourService.checkForContinueTour('categories');
+    });
   }
 
   sortCategories(e: { active: string; direction: string }): void {

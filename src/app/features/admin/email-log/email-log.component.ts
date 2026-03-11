@@ -85,9 +85,9 @@ export class AdminEmailLogComponent {
     try {
       const docs = await this.mailService.getMailDocuments();
       this.mailDocuments.set(docs);
-    } catch (err) {
+    } catch (error) {
       const message =
-        err instanceof Error ? err.message : 'Failed to load email log';
+        error instanceof Error ? error.message : 'Failed to load email log';
       this.error.set(message);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
@@ -95,7 +95,8 @@ export class AdminEmailLogComponent {
       this.analytics.logEvent('app_error', {
         component: 'AdminEmailLogComponent',
         action: 'load_mail_documents',
-        message,
+        message: 'Failed to load mail documents',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       this.loading.loadingOff();

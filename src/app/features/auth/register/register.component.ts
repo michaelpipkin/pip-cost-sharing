@@ -161,7 +161,8 @@ export class RegisterComponent {
             this.analytics.logEvent('app_error', {
               component: 'RegisterComponent',
               action: 'verify_email',
-              message: err.message,
+              message: 'Failed to send verification email after registration',
+              error: err.message,
             });
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {

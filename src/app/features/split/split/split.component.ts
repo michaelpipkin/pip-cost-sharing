@@ -1,7 +1,6 @@
 import {
   afterEveryRender,
   afterNextRender,
-  AfterViewInit,
   Component,
   computed,
   ElementRef,
@@ -73,7 +72,7 @@ import { GroupStore } from '@store/group.store';
   templateUrl: './split.component.html',
   styleUrl: './split.component.scss',
 })
-export class SplitComponent implements AfterViewInit, OnDestroy {
+export class SplitComponent implements OnDestroy {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -135,18 +134,14 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
     afterEveryRender(() => {
       this.addSelectFocus();
     });
-  }
-
-  ngAfterViewInit(): void {
-    // Pre-populate demo data if in demo mode
-    if (this.demoService.isInDemoMode()) {
-      this.populateDemoData();
-      // Start Welcome Tour after populating data
-      // Small delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        this.tourService.startWelcomeTour();
-      }, 500);
-    }
+    afterNextRender(() => {
+      if (this.demoService.isInDemoMode()) {
+        this.populateDemoData();
+        setTimeout(() => {
+          this.tourService.startWelcomeTour();
+        }, 500);
+      }
+    });
   }
 
   /**
@@ -646,7 +641,8 @@ export class SplitComponent implements AfterViewInit, OnDestroy {
         this.analytics.logEvent('app_error', {
           component: 'SplitComponent',
           action: 'copy_expense_summary_to_clipboard',
-          message: error.message,
+          message: 'Failed to copy expense summary to clipboard',
+          error: error.message,
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {

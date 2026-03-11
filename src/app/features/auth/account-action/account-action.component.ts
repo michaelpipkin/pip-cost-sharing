@@ -92,6 +92,7 @@ export class AccountActionComponent {
         component: 'AccountActionComponent',
         action: 'process_action',
         message: 'No oobCode in URL',
+        error: 'N/A',
       });
       return;
     }
@@ -105,6 +106,7 @@ export class AccountActionComponent {
         component: 'AccountActionComponent',
         action: 'process_action',
         message: `Invalid mode: ${mode}`,
+        error: 'N/A',
       });
       return;
     }
@@ -236,7 +238,8 @@ export class AccountActionComponent {
       this.analytics.logEvent('app_error', {
         component: 'AccountActionComponent',
         action: 'resend_verification_email',
-        message: error.message,
+        message: 'Failed to resend verification email',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       this.resending.set(false);

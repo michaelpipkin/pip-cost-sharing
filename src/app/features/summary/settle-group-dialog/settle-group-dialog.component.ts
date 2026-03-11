@@ -34,7 +34,8 @@ export class SettleGroupDialogComponent {
         this.analytics.logEvent('app_error', {
           component: 'SettleGroupDialogComponent',
           action: 'copy_settlement_to_clipboard',
-          message: error.message,
+          message: 'Failed to copy settlement to clipboard',
+          error: error.message,
         });
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {

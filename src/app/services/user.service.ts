@@ -91,6 +91,8 @@ export class UserService implements IUserService {
               await this.groupService.getUserGroups(user);
             } catch (error) {
               this.analytics.logEvent('app_error', {
+                component: 'UserService',
+                action: 'initializeAuth',
                 message: 'Failed to initialize user',
                 error: error instanceof Error ? error.message : 'Unknown error',
               });
@@ -100,6 +102,8 @@ export class UserService implements IUserService {
       );
     } catch (error) {
       this.analytics.logEvent('app_error', {
+        component: 'UserService',
+        action: 'initializeAuth',
         message: 'Failed to set auth persistence',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -120,6 +124,8 @@ export class UserService implements IUserService {
       return null;
     } catch (error) {
       this.analytics.logEvent('app_error', {
+        component: 'UserService',
+        action: 'getUserDetails',
         message: 'Failed to get user details',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -181,6 +187,8 @@ export class UserService implements IUserService {
       });
     } catch (error) {
       this.analytics.logEvent('app_error', {
+        component: 'UserService',
+        action: 'createUserIfNotExists',
         message: 'Failed to create user',
         userId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -197,6 +205,8 @@ export class UserService implements IUserService {
       this.userStore.updateUser(changes);
     } catch (error) {
       this.analytics.logEvent('app_error', {
+        component: 'UserService',
+        action: 'updateUser',
         message: 'Failed to update user',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -262,6 +272,8 @@ export class UserService implements IUserService {
       }
     } catch (error) {
       this.analytics.logEvent('app_error', {
+        component: 'UserService',
+        action: 'getPaymentMethods',
         message: 'Failed to get payment methods',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -288,11 +300,14 @@ export class UserService implements IUserService {
     zelleId?: string;
   }): string {
     const methods: string[] = [];
-    if (userData.venmoId) methods.push(`Venmo: @${userData.venmoId.replace(/^@/, '')}`);
+    if (userData.venmoId)
+      methods.push(`Venmo: @${userData.venmoId.replace(/^@/, '')}`);
     if (userData.paypalId) methods.push(`PayPal: ${userData.paypalId}`);
     if (userData.cashAppId) methods.push(`Cash App: $${userData.cashAppId}`);
     if (userData.zelleId) methods.push(`Zelle: ${userData.zelleId}`);
-    return methods.length > 0 ? methods.join('\n') : '(No payment methods on file)';
+    return methods.length > 0
+      ? methods.join('\n')
+      : '(No payment methods on file)';
   }
 
   private buildPaymentMethodsHtml(methods: string): string {
@@ -328,19 +343,24 @@ export class UserService implements IUserService {
       return 'not_registered';
     }
     const owedByUserDoc = await getDoc(owedByMember.userRef);
-    if (owedByUserDoc.exists() && owedByUserDoc.data()?.['emailOptOut'] === true) {
+    if (
+      owedByUserDoc.exists() &&
+      owedByUserDoc.data()?.['emailOptOut'] === true
+    ) {
       return 'opted_out';
     }
     let paymentMethodLines = '(No payment methods on file)';
     if (owedToMember.userRef) {
       const owedToUserDoc = await getDoc(owedToMember.userRef);
       if (owedToUserDoc.exists()) {
-        paymentMethodLines = this.buildPaymentMethodLines(owedToUserDoc.data() as {
-          venmoId?: string;
-          paypalId?: string;
-          cashAppId?: string;
-          zelleId?: string;
-        });
+        paymentMethodLines = this.buildPaymentMethodLines(
+          owedToUserDoc.data() as {
+            venmoId?: string;
+            paypalId?: string;
+            cashAppId?: string;
+            zelleId?: string;
+          }
+        );
       }
     }
     const subject = `Payment request from ${owedToMember.displayName} for group "${groupName}" in PipSplit`;
@@ -355,19 +375,23 @@ export class UserService implements IUserService {
     const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
     const html = this.buildEmailHtml(
       `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-      `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(owedByMember.displayName)}</strong>,</p>` +
-      `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-      `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(formattedAmount)}</span></div>` +
-      `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-      `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(owedToMember.displayName)}</strong> using one of the following:</p>` +
-      `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
+        `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(owedByMember.displayName)}</strong>,</p>` +
+        `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(owedToMember.displayName)}</strong> is requesting payment of:</p>` +
+        `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(formattedAmount)}</span></div>` +
+        `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
+        `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(owedToMember.displayName)}</strong> using one of the following:</p>` +
+        `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
     );
     await this.callSendEmail(owedByMember.email, subject, text, html);
     return 'sent';
   }
 
   async sendGroupPaymentRequestEmails(
-    transfers: { owedByMember: Member; owedToMember: Member; formattedAmount: string }[],
+    transfers: {
+      owedByMember: Member;
+      owedToMember: Member;
+      formattedAmount: string;
+    }[],
     groupName: string
   ): Promise<{ sent: number; skipped: number }> {
     const eligible = transfers.filter((t) => !!t.owedByMember.userRef);
@@ -385,22 +409,25 @@ export class UserService implements IUserService {
 
     const owedToUserDocs = await Promise.all(
       notOptedOut.map((t) =>
-        t.owedToMember.userRef ? getDoc(t.owedToMember.userRef) : Promise.resolve(null)
+        t.owedToMember.userRef
+          ? getDoc(t.owedToMember.userRef)
+          : Promise.resolve(null)
       )
     );
 
     await Promise.all(
       notOptedOut.map((t, i) => {
         const owedToDoc = owedToUserDocs[i];
-        const paymentMethodLines =
-          owedToDoc?.exists()
-            ? this.buildPaymentMethodLines(owedToDoc.data() as {
+        const paymentMethodLines = owedToDoc?.exists()
+          ? this.buildPaymentMethodLines(
+              owedToDoc.data() as {
                 venmoId?: string;
                 paypalId?: string;
                 cashAppId?: string;
                 zelleId?: string;
-              })
-            : '(No payment methods on file)';
+              }
+            )
+          : '(No payment methods on file)';
         const subject = `Payment request from ${t.owedToMember.displayName} for group "${groupName}" in PipSplit`;
         const text = [
           `Hi ${t.owedByMember.displayName},`,
@@ -413,12 +440,12 @@ export class UserService implements IUserService {
         const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
         const html = this.buildEmailHtml(
           `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-          `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(t.owedByMember.displayName)}</strong>,</p>` +
-          `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-          `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(t.formattedAmount)}</span></div>` +
-          `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-          `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> using one of the following:</p>` +
-          `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
+            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(t.owedByMember.displayName)}</strong>,</p>` +
+            `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> is requesting payment of:</p>` +
+            `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(t.formattedAmount)}</span></div>` +
+            `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
+            `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> using one of the following:</p>` +
+            `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
         );
         return this.callSendEmail(t.owedByMember.email, subject, text, html);
       })
@@ -454,9 +481,9 @@ export class UserService implements IUserService {
         ].join('\n');
         const html = this.buildEmailHtml(
           `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-          `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidByMember.displayName)}</strong>,</p>` +
-          `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from you to <strong>${this.escapeHtml(paidToName)}</strong> in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-          `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.</p>`
+            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidByMember.displayName)}</strong>,</p>` +
+            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from you to <strong>${this.escapeHtml(paidToName)}</strong> in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
+            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.</p>`
         );
         sends.push(this.callSendEmail(paidByMember.email, subject, text, html));
       }
@@ -476,9 +503,9 @@ export class UserService implements IUserService {
         ].join('\n');
         const html = this.buildEmailHtml(
           `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-          `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidToMember.displayName)}</strong>,</p>` +
-          `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from <strong>${this.escapeHtml(paidByName)}</strong> to you in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-          `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.</p>`
+            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidToMember.displayName)}</strong>,</p>` +
+            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from <strong>${this.escapeHtml(paidByName)}</strong> to you in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
+            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.</p>`
         );
         sends.push(this.callSendEmail(paidToMember.email, subject, text, html));
       }
@@ -493,9 +520,7 @@ export class UserService implements IUserService {
     settleDate: string
   ): Promise<void> {
     const eligible = members.filter((m) => !!m.userRef && !!m.email);
-    const userDocs = await Promise.all(
-      eligible.map((m) => getDoc(m.userRef!))
-    );
+    const userDocs = await Promise.all(eligible.map((m) => getDoc(m.userRef!)));
     await Promise.all(
       eligible
         .filter((_, i) => userDocs[i]?.data()?.['emailOptOut'] !== true)
@@ -510,9 +535,9 @@ export class UserService implements IUserService {
           ].join('\n');
           const html = this.buildEmailHtml(
             `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Group Settlement Reversed</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(m.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;">A group admin has reversed the group settlement for <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> that was recorded on <strong>${this.escapeHtml(settleDate)}</strong>.</p>` +
-            `<p style="margin:0;">All outstanding balances have been restored. Please check your current balance in PipSplit.</p>`
+              `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(m.displayName)}</strong>,</p>` +
+              `<p style="margin:0 0 16px 0;">A group admin has reversed the group settlement for <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> that was recorded on <strong>${this.escapeHtml(settleDate)}</strong>.</p>` +
+              `<p style="margin:0;">All outstanding balances have been restored. Please check your current balance in PipSplit.</p>`
           );
           return this.callSendEmail(m.email, subject, text, html);
         })

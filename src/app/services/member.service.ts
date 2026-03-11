@@ -59,8 +59,8 @@ export class MemberService implements IMemberService {
       }
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'MemberService',
-        method: 'getMemberByUserRef',
+        component: 'MemberService',
+        action: 'getMemberByUserRef',
         message: 'Failed to get member by user ref',
         groupId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -90,8 +90,8 @@ export class MemberService implements IMemberService {
           this.memberStore.setGroupMembers(groupMembers);
         } catch (error) {
           this.analytics.logEvent('app_error', {
-            service: 'MemberService',
-            method: 'getGroupMembers',
+            component: 'MemberService',
+            action: 'getGroupMembers',
             message: 'Failed to process group members snapshot',
             groupId,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -100,8 +100,8 @@ export class MemberService implements IMemberService {
       },
       (error) => {
         this.analytics.logEvent('app_error', {
-          service: 'MemberService',
-          method: 'getGroupMembers',
+          component: 'MemberService',
+          action: 'getGroupMembers',
           message: 'Failed to listen to group members',
           groupId,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -257,8 +257,8 @@ export class MemberService implements IMemberService {
       return membersSnapshot.size;
     } catch (error) {
       this.analytics.logEvent('app_error', {
-        service: 'MemberService',
-        method: 'updateAllMemberEmails',
+        component: 'MemberService',
+        action: 'updateAllMemberEmails',
         message: 'Failed to update member emails',
         error: error instanceof Error ? error.message : 'Unknown error',
       });

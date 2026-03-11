@@ -90,8 +90,8 @@ describe('DeepLinkService', () => {
     it('should log an error event for a malformed URL', () => {
       urlOpenHandler({ url: 'not-a-valid-url' });
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ service: 'DeepLinkService' })
+        'app_error',
+        expect.objectContaining({ component: 'DeepLinkService' })
       );
     });
 

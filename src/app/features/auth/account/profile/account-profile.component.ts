@@ -92,7 +92,8 @@ export class AccountProfileComponent {
         this.analytics.logEvent('app_error', {
           component: 'AccountProfileComponent',
           action: 'verify_email',
-          message: err.message,
+          message: 'Failed to send verification email',
+          error: err.message,
         });
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
@@ -115,7 +116,8 @@ export class AccountProfileComponent {
         this.analytics.logEvent('app_error', {
           component: 'AccountProfileComponent',
           action: 'update_email',
-          message: err.message,
+          message: 'Failed to update email address',
+          error: err instanceof Error ? err.message : 'Unknown error',
         });
         if (err.code === 'auth/email-already-in-use') {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -147,11 +149,12 @@ export class AccountProfileComponent {
             : 'Email notifications disabled',
         },
       });
-    } catch (err: any) {
+    } catch (error) {
       this.analytics.logEvent('app_error', {
         component: 'AccountProfileComponent',
         action: 'toggle_email_opt_out',
-        message: err.message,
+        message: 'Failed to save email preference',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
@@ -182,7 +185,8 @@ export class AccountProfileComponent {
       this.analytics.logEvent('app_error', {
         component: 'AccountProfileComponent',
         action: 'sync_member_emails',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to sync member emails',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
