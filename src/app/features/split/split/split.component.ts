@@ -638,12 +638,12 @@ export class SplitComponent implements OnDestroy {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'SplitComponent',
-          action: 'copy_expense_summary_to_clipboard',
-          message: 'Failed to copy expense summary to clipboard',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'SplitComponent',
+          'copy_expense_summary_to_clipboard',
+          'Failed to copy expense summary to clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy summary' },

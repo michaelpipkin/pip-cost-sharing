@@ -37,12 +37,12 @@ export class PaymentDialogComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'PaymentDialogComponent',
-          action: 'copy_payment_id_to_clipboard',
-          message: 'Failed to copy payment ID to clipboard',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'PaymentDialogComponent',
+          'copy_payment_id_to_clipboard',
+          'Failed to copy payment ID to clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy payment ID' },

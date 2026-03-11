@@ -181,11 +181,11 @@ export class HistoryDetailComponent {
         });
       this.paidSplits.set(splits);
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'HistoryDetailComponent',
-        action: 'load_splits',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'HistoryDetailComponent',
+        'load_splits',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Failed to load split details' },
       });
@@ -259,11 +259,11 @@ export class HistoryDetailComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'HistoryDetailComponent',
-              action: 'unpay_history',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'HistoryDetailComponent',
+              'unpay_history',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
@@ -316,11 +316,11 @@ export class HistoryDetailComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'HistoryDetailComponent',
-              action: 'unpay_group_settle',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'HistoryDetailComponent',
+              'unpay_group_settle',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: {
@@ -389,11 +389,11 @@ export class HistoryDetailComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: error.message },
             });
-            this.analytics.logEvent('app_error', {
-              component: 'HistoryDetailComponent',
-              action: 'unpay_split',
-              message: error.message,
-            });
+            this.analytics.logError(
+              'HistoryDetailComponent',
+              'unpay_split',
+              error.message
+            );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: 'Something went wrong - could not unpay split' },
@@ -445,11 +445,11 @@ export class HistoryDetailComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'HistoryDetailComponent',
-          action: 'copy_to_clipboard',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'HistoryDetailComponent',
+          'copy_to_clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy payment summary' },

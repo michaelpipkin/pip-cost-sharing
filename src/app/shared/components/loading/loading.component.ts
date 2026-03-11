@@ -49,12 +49,12 @@ export class LoadingComponent implements OnDestroy {
               element.hidePopover();
             }
           } catch (error) {
-            this.analytics.logEvent('app_error', {
-              component: 'LoadingComponent',
-              action: 'show_hide_loading_popover',
-              message: 'Failed to show/hide loading popover',
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
+            this.analytics.logError(
+              'LoadingComponent',
+              'show_hide_loading_popover',
+              'Failed to show/hide loading popover',
+              error instanceof Error ? error.message : 'Unknown error'
+            );
           }
         } else {
           // Fallback for browsers without Popover API support

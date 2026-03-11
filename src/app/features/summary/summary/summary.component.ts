@@ -412,12 +412,12 @@ export class SummaryComponent {
             data: { message: 'Expenses have been marked paid' },
           });
         } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'SummaryComponent',
-            action: 'mark_expenses_paid',
-            message: 'Failed to mark expenses paid',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'SummaryComponent',
+            'mark_expenses_paid',
+            'Failed to mark expenses paid',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: {
               message: 'Something went wrong - could not mark expenses paid',
@@ -474,12 +474,12 @@ export class SummaryComponent {
             data: { message: 'Group settlement completed successfully' },
           });
         } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'SummaryComponent',
-            action: 'settle_group',
-            message: 'Failed to settle group',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'SummaryComponent',
+            'settle_group',
+            'Failed to settle group',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Something went wrong - could not settle group' },
           });
@@ -506,12 +506,12 @@ export class SummaryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'SummaryComponent',
-          action: 'copy_summary_to_clipboard',
-          message: 'Failed to copy summary to clipboard',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'SummaryComponent',
+          'copy_summary_to_clipboard',
+          'Failed to copy summary to clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy summary' },
@@ -577,12 +577,12 @@ export class SummaryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'SummaryComponent',
-          action: 'copy_settlement_to_clipboard',
-          message: 'Failed to copy settlement to clipboard',
-          error: error.message,
-        });
+        this.analytics.logError(
+          'SummaryComponent',
+          'copy_settlement_to_clipboard',
+          'Failed to copy settlement to clipboard',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Failed to copy settlement' },
@@ -625,12 +625,12 @@ export class SummaryComponent {
         data: { message },
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'SummaryComponent',
-        action: 'request_payment',
-        message: 'Failed to send payment request',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'SummaryComponent',
+        'request_payment',
+        'Failed to send payment request',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message: 'Something went wrong - could not send payment request',
@@ -665,12 +665,12 @@ export class SummaryComponent {
         data: { message },
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'SummaryComponent',
-        action: 'request_all_payments',
-        message: 'Failed to send group payment requests',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'SummaryComponent',
+        'request_all_payments',
+        'Failed to send group payment requests',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message: 'Something went wrong - could not send payment requests',

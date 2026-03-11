@@ -1123,3 +1123,25 @@ a:hover {
 .close-button {
   color: tokens.color('on-primary') !important;
 }
+
+.detail-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  margin: 0;
+
+  dt {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    word-break: break-word;
+  }
+}
+
+.error-text {
+  color: tokens.color('error');
+  font-style: italic;
+}

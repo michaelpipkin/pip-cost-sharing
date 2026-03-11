@@ -46,21 +46,21 @@ export class CategoryService implements ICategoryService {
           );
           this.categoryStore.setGroupCategories(categories);
         } catch (error) {
-          this.analytics.logEvent('app_error', {
-            component: 'CategoryService',
-            action: 'getGroupCategories',
-            message: 'Failed to process categories snapshot',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          this.analytics.logError(
+            'CategoryService',
+            'getGroupCategories',
+            'Failed to process categories snapshot',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
         }
       },
       (error) => {
-        this.analytics.logEvent('app_error', {
-          component: 'CategoryService',
-          action: 'getGroupCategories',
-          message: 'Failed to listen to categories',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        this.analytics.logError(
+          'CategoryService',
+          'getGroupCategories',
+          'Failed to listen to categories',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
       }
     );
   }

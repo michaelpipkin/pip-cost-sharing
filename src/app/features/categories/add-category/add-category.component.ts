@@ -68,11 +68,11 @@ export class AddCategoryComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AddCategoryComponent',
-          action: 'add_category',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AddCategoryComponent',
+          'add_category',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not add category' },

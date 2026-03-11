@@ -90,23 +90,23 @@ export class UserService implements IUserService {
               );
               await this.groupService.getUserGroups(user);
             } catch (error) {
-              this.analytics.logEvent('app_error', {
-                component: 'UserService',
-                action: 'initializeAuth',
-                message: 'Failed to initialize user',
-                error: error instanceof Error ? error.message : 'Unknown error',
-              });
+              this.analytics.logError(
+                'UserService',
+                'initializeAuth',
+                'Failed to initialize user',
+                error instanceof Error ? error.message : 'Unknown error'
+              );
             }
           }
         }
       );
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'UserService',
-        action: 'initializeAuth',
-        message: 'Failed to set auth persistence',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'UserService',
+        'initializeAuth',
+        'Failed to set auth persistence',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 
@@ -123,13 +123,12 @@ export class UserService implements IUserService {
       }
       return null;
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'UserService',
-        action: 'getUserDetails',
-        message: 'Failed to get user details',
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'UserService',
+        'getUserDetails',
+        'Failed to get user details',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -186,13 +185,12 @@ export class UserService implements IUserService {
         ref: userDocRef,
       });
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'UserService',
-        action: 'createUserIfNotExists',
-        message: 'Failed to create user',
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'UserService',
+        'createUserIfNotExists',
+        'Failed to create user',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -204,12 +202,12 @@ export class UserService implements IUserService {
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'UserService',
-        action: 'updateUser',
-        message: 'Failed to update user',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'UserService',
+        'updateUser',
+        'Failed to update user',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }
@@ -271,12 +269,12 @@ export class UserService implements IUserService {
         return {};
       }
     } catch (error) {
-      this.analytics.logEvent('app_error', {
-        component: 'UserService',
-        action: 'getPaymentMethods',
-        message: 'Failed to get payment methods',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.analytics.logError(
+        'UserService',
+        'getPaymentMethods',
+        'Failed to get payment methods',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   }

@@ -79,11 +79,11 @@ export class AddMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logEvent('app_error', {
-          component: 'AddMemberComponent',
-          action: 'add_member',
-          message: error.message,
-        });
+        this.analytics.logError(
+          'AddMemberComponent',
+          'add_member',
+          error.message
+        );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not add member.' },

@@ -17,6 +17,15 @@
   >
     Email Log
   </a>
+  <a
+    mat-tab-link
+    routerLink="error-log"
+    routerLinkActive
+    #rla3="routerLinkActive"
+    [active]="rla3.isActive"
+  >
+    Error Log
+  </a>
 </nav>
 <mat-tab-nav-panel #tabPanel>
   <router-outlet />
