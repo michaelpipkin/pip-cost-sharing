@@ -477,7 +477,7 @@ export class EditMemorizedComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'EditMemorizedComponent',
+          'Edit Memorized Component',
           'edit_memorized_expense',
           'Failed to update memorized expense',
           error.message
@@ -522,7 +522,7 @@ export class EditMemorizedComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditMemorizedComponent',
+              'Edit Memorized Component',
               'delete_memorized_expense',
               'Failed to delete memorized expense',
               error.message

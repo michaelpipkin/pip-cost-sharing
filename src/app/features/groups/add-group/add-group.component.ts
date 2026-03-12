@@ -100,7 +100,7 @@ export class AddGroupComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AddGroupComponent',
+          'Add Group Component',
           'add_group',
           error.message
         );

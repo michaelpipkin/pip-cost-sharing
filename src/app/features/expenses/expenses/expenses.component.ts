@@ -366,7 +366,7 @@ export class ExpensesComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'ExpensesComponent',
+          'Expenses Component',
           'copy_expense_summary_to_clipboard',
           error.message
         );

@@ -238,7 +238,7 @@ export class EditExpenseComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditExpenseComponent',
+              'Edit Expense Component',
               'firebase_receipt_retrieval',
               error.message
             );
@@ -248,7 +248,7 @@ export class EditExpenseComponent {
             data: { message: error.message },
           });
           this.analytics.logError(
-            'EditExpenseComponent',
+            'Edit Expense Component',
             'firebase_receipt_retrieval',
             error.message
           );
@@ -716,7 +716,7 @@ export class EditExpenseComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditExpenseComponent',
+              'Edit Expense Component',
               'edit_expense',
               error.message
             );
@@ -769,7 +769,7 @@ export class EditExpenseComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditExpenseComponent',
+              'Edit Expense Component',
               'delete_expense',
               error.message
             );

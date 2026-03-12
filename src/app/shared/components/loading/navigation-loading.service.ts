@@ -1,7 +1,5 @@
 import { inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AnalyticsService } from '@services/analytics.service';
-import { LoadingService } from './loading.service';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -9,6 +7,8 @@ import {
   NavigationStart,
   Router,
 } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
+import { LoadingService } from './loading.service';
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +30,7 @@ export class NavigationLoadingService {
       } else if (event instanceof NavigationError) {
         this.loadingService.loadingOff('navigation');
         this.analytics.logError(
-          'NavigationLoadingService',
+          'Navigation Loading Service',
           'navigation',
           event.url,
           event.error instanceof Error

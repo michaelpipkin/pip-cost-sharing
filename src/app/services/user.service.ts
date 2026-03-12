@@ -91,7 +91,7 @@ export class UserService implements IUserService {
               await this.groupService.getUserGroups(user);
             } catch (error) {
               this.analytics.logError(
-                'UserService',
+                'User Service',
                 'initializeAuth',
                 'Failed to initialize user',
                 error instanceof Error ? error.message : 'Unknown error'
@@ -102,7 +102,7 @@ export class UserService implements IUserService {
       );
     } catch (error) {
       this.analytics.logError(
-        'UserService',
+        'User Service',
         'initializeAuth',
         'Failed to set auth persistence',
         error instanceof Error ? error.message : 'Unknown error'
@@ -124,7 +124,7 @@ export class UserService implements IUserService {
       return null;
     } catch (error) {
       this.analytics.logError(
-        'UserService',
+        'User Service',
         'getUserDetails',
         'Failed to get user details',
         error instanceof Error ? error.message : 'Unknown error'
@@ -186,7 +186,7 @@ export class UserService implements IUserService {
       });
     } catch (error) {
       this.analytics.logError(
-        'UserService',
+        'User Service',
         'createUserIfNotExists',
         'Failed to create user',
         error instanceof Error ? error.message : 'Unknown error'
@@ -203,7 +203,7 @@ export class UserService implements IUserService {
       this.userStore.updateUser(changes);
     } catch (error) {
       this.analytics.logError(
-        'UserService',
+        'User Service',
         'updateUser',
         'Failed to update user',
         error instanceof Error ? error.message : 'Unknown error'
@@ -270,7 +270,7 @@ export class UserService implements IUserService {
       }
     } catch (error) {
       this.analytics.logError(
-        'UserService',
+        'User Service',
         'getPaymentMethods',
         'Failed to get payment methods',
         error instanceof Error ? error.message : 'Unknown error'

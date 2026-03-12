@@ -52,7 +52,7 @@ export class AdminStatisticsComponent {
         data: { message },
       });
       this.analytics.logError(
-        'AdminStatisticsComponent',
+        'Admin Statistics Component',
         'load_statistics',
         'Failed to load statistics',
         error instanceof Error ? error.message : 'Unknown error'
@@ -76,7 +76,7 @@ export class AdminStatisticsComponent {
       });
     } catch (error) {
       this.analytics.logError(
-        'AdminStatisticsComponent',
+        'Admin Statistics Component',
         'data_update',
         'Failed to update data',
         error instanceof Error ? error.message : 'Unknown error'
@@ -91,7 +91,7 @@ export class AdminStatisticsComponent {
 
   forceTestError() {
     this.analytics.logError(
-      'AdminStatisticsComponent',
+      'Admin Statistics Component',
       'manual_test_trigger',
       'Checking if Firebase is awake',
       'N/A'

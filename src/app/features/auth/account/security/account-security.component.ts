@@ -106,7 +106,7 @@ export class AccountSecurityComponent {
       }
     } catch (error) {
       this.analytics.logError(
-        'AccountSecurityComponent',
+        'Account Security Component',
         'update_password',
         error instanceof Error ? error.message : 'Unknown error'
       );

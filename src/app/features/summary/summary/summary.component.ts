@@ -413,7 +413,7 @@ export class SummaryComponent {
           });
         } catch (error) {
           this.analytics.logError(
-            'SummaryComponent',
+            'Summary Component',
             'mark_expenses_paid',
             'Failed to mark expenses paid',
             error instanceof Error ? error.message : 'Unknown error'
@@ -475,7 +475,7 @@ export class SummaryComponent {
           });
         } catch (error) {
           this.analytics.logError(
-            'SummaryComponent',
+            'Summary Component',
             'settle_group',
             'Failed to settle group',
             error instanceof Error ? error.message : 'Unknown error'
@@ -507,7 +507,7 @@ export class SummaryComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'SummaryComponent',
+          'Summary Component',
           'copy_summary_to_clipboard',
           'Failed to copy summary to clipboard',
           error.message
@@ -578,7 +578,7 @@ export class SummaryComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'SummaryComponent',
+          'Summary Component',
           'copy_settlement_to_clipboard',
           'Failed to copy settlement to clipboard',
           error.message
@@ -626,7 +626,7 @@ export class SummaryComponent {
       });
     } catch (error) {
       this.analytics.logError(
-        'SummaryComponent',
+        'Summary Component',
         'request_payment',
         'Failed to send payment request',
         error instanceof Error ? error.message : 'Unknown error'
@@ -666,7 +666,7 @@ export class SummaryComponent {
       });
     } catch (error) {
       this.analytics.logError(
-        'SummaryComponent',
+        'Summary Component',
         'request_all_payments',
         'Failed to send group payment requests',
         error instanceof Error ? error.message : 'Unknown error'

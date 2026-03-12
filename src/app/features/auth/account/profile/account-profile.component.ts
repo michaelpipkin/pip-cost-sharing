@@ -92,7 +92,7 @@ export class AccountProfileComponent {
       .catch((err: Error) => {
         if (!(err instanceof FirebaseError)) {
           this.analytics.logError(
-            'AccountProfileComponent',
+            'Account Profile Component',
             'verify_email',
             'Failed to send verification email',
             err.message
@@ -118,7 +118,7 @@ export class AccountProfileComponent {
       } catch (err: any) {
         if (!(err instanceof FirebaseError)) {
           this.analytics.logError(
-            'AccountProfileComponent',
+            'Account Profile Component',
             'update_email',
             'Failed to update email address',
             err instanceof Error ? err.message : 'Unknown error'
@@ -156,7 +156,7 @@ export class AccountProfileComponent {
       });
     } catch (error) {
       this.analytics.logError(
-        'AccountProfileComponent',
+        'Account Profile Component',
         'toggle_email_opt_out',
         'Failed to save email preference',
         error instanceof Error ? error.message : 'Unknown error'
@@ -188,7 +188,7 @@ export class AccountProfileComponent {
       });
     } catch (error) {
       this.analytics.logError(
-        'AccountProfileComponent',
+        'Account Profile Component',
         'sync_member_emails',
         'Failed to sync member emails',
         error instanceof Error ? error.message : 'Unknown error'

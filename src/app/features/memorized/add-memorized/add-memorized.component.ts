@@ -496,7 +496,7 @@ export class AddMemorizedComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AddMemorizedComponent',
+          'Add Memorized Component',
           'memorize_expense',
           'Failed to memorize expense',
           error.message

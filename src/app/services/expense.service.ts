@@ -9,7 +9,6 @@ import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
 import {
   collection,
-  collectionGroup,
   doc,
   DocumentReference,
   getDoc,
@@ -18,7 +17,6 @@ import {
   limit,
   orderBy,
   query,
-  Timestamp,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -181,7 +179,7 @@ export class ExpenseService implements IExpenseService {
       return expense;
     } catch (error) {
       this.analytics.logError(
-        'ExpenseService',
+        'Expense Service',
         'getExpense',
         'Failed to get expense',
         error instanceof Error ? error.message : 'Unknown error'
@@ -239,7 +237,7 @@ export class ExpenseService implements IExpenseService {
       }
 
       this.analytics.logError(
-        'ExpenseService',
+        'Expense Service',
         'addExpense',
         'Failed to add expense',
         error instanceof Error ? error.message : 'Unknown error'
@@ -312,7 +310,7 @@ export class ExpenseService implements IExpenseService {
       }
 
       this.analytics.logError(
-        'ExpenseService',
+        'Expense Service',
         'updateExpense',
         'Failed to update expense',
         error instanceof Error ? error.message : 'Unknown error'
@@ -371,71 +369,13 @@ export class ExpenseService implements IExpenseService {
       return !snapshot.empty;
     } catch (error) {
       this.analytics.logError(
-        'ExpenseService',
+        'Expense Service',
         'has_expenses_for_group',
         'Failed to check if group has expenses',
         error instanceof Error ? error.message : 'Unknown error'
       );
       // If there's an error, assume expenses exist to be safe
       return true;
-    }
-  }
-
-  // Migration methods
-
-  /**
-   * Migrates expense date fields from Timestamp to ISO 8601 string format.
-   * Run this once when ready to switch to string-based date storage.
-   */
-  async migrateDateTimestampToString(): Promise<{
-    success: boolean;
-    count: number;
-    error?: string;
-  }> {
-    try {
-      const expensesCollection = collectionGroup(this.fs, 'expenses');
-      const expenseDocs = await getDocs(expensesCollection);
-
-      let migratedCount = 0;
-      const batchSize = 500; // Firestore batch limit
-      let batch = writeBatch(this.fs);
-      let batchCount = 0;
-
-      for (const expenseDoc of expenseDocs.docs) {
-        const data = expenseDoc.data();
-
-        // Check if date is a Timestamp (has toDate method)
-        if (data.date instanceof Timestamp) {
-          const isoDateString = data.date.toIsoDateString();
-          batch.update(expenseDoc.ref, { date: isoDateString });
-          migratedCount++;
-          batchCount++;
-
-          // Commit batch if we hit the limit
-          if (batchCount >= batchSize) {
-            await batch.commit();
-            batch = writeBatch(this.fs);
-            batchCount = 0;
-          }
-        }
-      }
-
-      // Commit any remaining updates
-      if (batchCount > 0) {
-        await batch.commit();
-      }
-
-      console.log(
-        `Successfully migrated ${migratedCount} expense date fields to ISO string format`
-      );
-      return { success: true, count: migratedCount };
-    } catch (error) {
-      console.error('Error migrating expense date fields:', error);
-      return {
-        success: false,
-        count: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
     }
   }
 }

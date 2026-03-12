@@ -59,7 +59,7 @@ export class MemberService implements IMemberService {
       }
     } catch (error) {
       this.analytics.logError(
-        'MemberService',
+        'Member Service',
         'getMemberByUserRef',
         'Failed to get member by user ref',
         error instanceof Error ? error.message : 'Unknown error'
@@ -89,7 +89,7 @@ export class MemberService implements IMemberService {
           this.memberStore.setGroupMembers(groupMembers);
         } catch (error) {
           this.analytics.logError(
-            'MemberService',
+            'Member Service',
             'getGroupMembers',
             'Failed to process group members snapshot',
             error instanceof Error ? error.message : 'Unknown error'
@@ -98,7 +98,7 @@ export class MemberService implements IMemberService {
       },
       (error) => {
         this.analytics.logError(
-          'MemberService',
+          'Member Service',
           'getGroupMembers',
           'Failed to listen to group members',
           error instanceof Error ? error.message : 'Unknown error'
@@ -254,7 +254,7 @@ export class MemberService implements IMemberService {
       return membersSnapshot.size;
     } catch (error) {
       this.analytics.logError(
-        'MemberService',
+        'Member Service',
         'updateAllMemberEmails',
         'Failed to update member emails',
         error instanceof Error ? error.message : 'Unknown error'

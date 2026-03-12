@@ -71,7 +71,7 @@ export class ForgotPasswordComponent {
         });
         if (!(error instanceof FirebaseError)) {
           this.analytics.logError(
-            'ForgotPasswordComponent',
+            'Forgot Password Component',
             'send_reset_email',
             'Failed to send password reset email',
             error.message

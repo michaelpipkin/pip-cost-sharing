@@ -182,7 +182,7 @@ export class HistoryDetailComponent {
       this.paidSplits.set(splits);
     } catch (error) {
       this.analytics.logError(
-        'HistoryDetailComponent',
+        'History Detail Component',
         'load_splits',
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -260,7 +260,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'HistoryDetailComponent',
+              'History Detail Component',
               'unpay_history',
               error.message
             );
@@ -317,7 +317,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'HistoryDetailComponent',
+              'History Detail Component',
               'unpay_group_settle',
               error.message
             );
@@ -390,7 +390,7 @@ export class HistoryDetailComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'HistoryDetailComponent',
+              'History Detail Component',
               'unpay_split',
               error.message
             );
@@ -446,7 +446,7 @@ export class HistoryDetailComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'HistoryDetailComponent',
+          'History Detail Component',
           'copy_to_clipboard',
           error.message
         );

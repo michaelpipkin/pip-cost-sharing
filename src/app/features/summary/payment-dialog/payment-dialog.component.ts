@@ -38,7 +38,7 @@ export class PaymentDialogComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'PaymentDialogComponent',
+          'Payment Dialog Component',
           'copy_payment_id_to_clipboard',
           'Failed to copy payment ID to clipboard',
           error.message
