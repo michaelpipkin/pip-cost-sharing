@@ -10,10 +10,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // app_errors: any authenticated user can write (errors logged by the app);
-    // only the admin can read (via the Error Log admin tab).
+    // app_errors: client writes are blocked — the logAppError Cloud Function
+    // (Admin SDK) handles all inserts, bypassing these rules. Only the admin
+    // can read (via the Error Log admin tab).
     match /app_errors/{document} {
-      allow write: if true;
+      allow write: if false;
       allow read: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
     }
 
