@@ -69,7 +69,7 @@ export class AddCategoryComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AddCategoryComponent',
+          'Add Category Component',
           'add_category',
           error.message
         );

@@ -30,7 +30,7 @@ export class AdminMailService {
       );
     } catch (error) {
       this.analytics.logError(
-        'AdminMailService',
+        'Admin Mail Service',
         'getMailDocuments',
         'Failed to load mail documents',
         error instanceof Error ? error.message : 'Unknown error'

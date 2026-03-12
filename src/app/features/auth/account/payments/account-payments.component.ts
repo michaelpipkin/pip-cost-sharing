@@ -72,7 +72,7 @@ export class AccountPaymentsComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AccountPaymentsComponent',
+          'Account Payments Component',
           'update_payments',
           error.message
         );

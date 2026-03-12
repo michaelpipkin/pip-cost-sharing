@@ -13,6 +13,7 @@ import { ROUTE_PATHS } from '@constants/routes.constants';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
+import { FirebaseError } from 'firebase/app';
 import { passwordMatchValidator } from '../auth-main/password-match-validator';
 
 import {
@@ -21,7 +22,6 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { FirebaseError } from 'firebase/app';
 import {
   applyActionCode,
   confirmPasswordReset,
@@ -90,7 +90,7 @@ export class AccountActionComponent {
       }
       this.errorMessage.set('Invalid link. No code provided.');
       this.analytics.logError(
-        'AccountActionComponent',
+        'Account Action Component',
         'process_action',
         'No oobCode in URL',
         'N/A'
@@ -104,7 +104,7 @@ export class AccountActionComponent {
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
       this.analytics.logError(
-        'AccountActionComponent',
+        'Account Action Component',
         'process_action',
         `Invalid mode: ${mode}`,
         'N/A'
@@ -155,7 +155,7 @@ export class AccountActionComponent {
       this.success.set(true);
 
       this.analytics.logEvent('email_verified', {
-        component: 'AccountActionComponent',
+        component: 'Account Action Component',
       });
     } catch (error: any) {
       this.handleError('verify email', error);
@@ -172,7 +172,7 @@ export class AccountActionComponent {
       this.success.set(true);
 
       this.analytics.logEvent('email_recovered', {
-        component: 'AccountActionComponent',
+        component: 'Account Action Component',
       });
     } catch (error: any) {
       this.handleError('recover email', error);
@@ -193,7 +193,7 @@ export class AccountActionComponent {
       });
 
       this.analytics.logEvent('password_reset_success', {
-        component: 'AccountActionComponent',
+        component: 'Account Action Component',
       });
     } catch (error: any) {
       this.handleError('reset password', error);
@@ -227,7 +227,7 @@ export class AccountActionComponent {
       });
 
       this.analytics.logEvent('verification_email_resent', {
-        component: 'AccountActionComponent',
+        component: 'Account Action Component',
       });
     } catch (error: any) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -238,7 +238,7 @@ export class AccountActionComponent {
 
       if (!(error instanceof FirebaseError)) {
         this.analytics.logError(
-          'AccountActionComponent',
+          'Account Action Component',
           'resend_verification_email',
           'Failed to resend verification email',
           error instanceof Error ? error.message : 'Unknown error'
@@ -270,7 +270,7 @@ export class AccountActionComponent {
 
     if (!(error instanceof FirebaseError)) {
       this.analytics.logError(
-        'AccountActionComponent',
+        'Account Action Component',
         action,
         error.message,
         error.code

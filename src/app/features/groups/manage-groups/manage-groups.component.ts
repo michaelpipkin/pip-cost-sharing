@@ -183,7 +183,7 @@ export class ManageGroupsComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'ManageGroupsComponent',
+          'Manage Groups Component',
           'edit_group',
           error.message
         );
@@ -229,7 +229,7 @@ export class ManageGroupsComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'ManageGroupsComponent',
+              'Manage Groups Component',
               'archive_group',
               error.message
             );
@@ -267,7 +267,7 @@ export class ManageGroupsComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'ManageGroupsComponent',
+          'Manage Groups Component',
           'unarchive_group',
           error.message
         );
@@ -310,7 +310,7 @@ export class ManageGroupsComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'ManageGroupsComponent',
+              'Manage Groups Component',
               'delete_group',
               error.message
             );

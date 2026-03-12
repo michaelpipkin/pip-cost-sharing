@@ -92,7 +92,7 @@ export class DeleteAccountComponent {
       });
 
       this.analytics.logError(
-        'DeleteAccountComponent',
+        'Delete Account Component',
         'delete_account',
         'Failed to delete account',
         error instanceof Error ? error.message : 'Unknown error'

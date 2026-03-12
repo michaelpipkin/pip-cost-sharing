@@ -40,7 +40,7 @@ export class AccountLegalComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AccountLegalComponent',
+          'Account Legal Component',
           'accept_receipt_policy',
           error.message
         );

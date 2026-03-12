@@ -47,7 +47,7 @@ export class CategoryService implements ICategoryService {
           this.categoryStore.setGroupCategories(categories);
         } catch (error) {
           this.analytics.logError(
-            'CategoryService',
+            'Category Service',
             'getGroupCategories',
             'Failed to process categories snapshot',
             error instanceof Error ? error.message : 'Unknown error'
@@ -56,7 +56,7 @@ export class CategoryService implements ICategoryService {
       },
       (error) => {
         this.analytics.logError(
-          'CategoryService',
+          'Category Service',
           'getGroupCategories',
           'Failed to listen to categories',
           error instanceof Error ? error.message : 'Unknown error'

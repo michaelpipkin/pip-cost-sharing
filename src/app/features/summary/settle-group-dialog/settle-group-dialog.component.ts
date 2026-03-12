@@ -32,8 +32,8 @@ export class SettleGroupDialogComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'SettleGroupDialogComponent',
-          'copy_settlement_to_clipboard',
+          'Settle Group Dialog Component',
+          'copy_to_clipboard',
           'Failed to copy settlement to clipboard',
           error.message
         );

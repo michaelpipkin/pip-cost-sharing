@@ -171,7 +171,7 @@ export class GroupService implements IGroupService {
                   }
                 } catch (error) {
                   this.analytics.logError(
-                    'GroupService',
+                    'Group Service',
                     'getUserGroups',
                     'Failed to process groups snapshot',
                     error instanceof Error ? error.message : 'Unknown error'
@@ -180,7 +180,7 @@ export class GroupService implements IGroupService {
               },
               (error) => {
                 this.analytics.logError(
-                  'GroupService',
+                  'Group Service',
                   'getUserGroups',
                   'Failed to listen to groups',
                   error instanceof Error ? error.message : 'Unknown error'
@@ -189,7 +189,7 @@ export class GroupService implements IGroupService {
             );
           } catch (error) {
             this.analytics.logError(
-              'GroupService',
+              'Group Service',
               'getUserGroups',
               'Failed to process members snapshot',
               error instanceof Error ? error.message : 'Unknown error'
@@ -198,7 +198,7 @@ export class GroupService implements IGroupService {
         },
         (error) => {
           this.analytics.logError(
-            'GroupService',
+            'Group Service',
             'getUserGroups',
             'Failed to listen to members',
             error instanceof Error ? error.message : 'Unknown error'
@@ -207,7 +207,7 @@ export class GroupService implements IGroupService {
       );
     } catch (error) {
       this.analytics.logError(
-        'GroupService',
+        'Group Service',
         'getUserGroups',
         'Failed to initialize user groups query',
         error instanceof Error ? error.message : 'Unknown error'
@@ -255,7 +255,7 @@ export class GroupService implements IGroupService {
       this.historyService.getHistoryForGroup(groupRef.id);
     } catch (error) {
       this.analytics.logError(
-        'GroupService',
+        'Group Service',
         'getGroup',
         'Failed to get group',
         error instanceof Error ? error.message : 'Unknown error'
