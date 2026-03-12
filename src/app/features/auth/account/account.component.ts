@@ -7,14 +7,13 @@ import {
   Signal,
   untracked,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
+import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import {
   ActivatedRoute,
   NavigationEnd,
   Router,
   RouterLink,
-  RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -27,10 +26,9 @@ import { User as FirebaseUser, getAuth } from 'firebase/auth';
   templateUrl: './account.component.html',
   styleUrls: ['./account.component.scss'],
   imports: [
-    MatButtonModule,
+    MatListModule,
     MatIconModule,
     RouterLink,
-    RouterLinkActive,
     RouterOutlet,
   ],
 })
@@ -50,6 +48,7 @@ export class AccountComponent {
 
   isMobile = signal(false);
   isChildActive = signal(!this.router.url.match(/^\/auth\/account\/?$/));
+  currentUrl = signal(this.router.url);
 
   constructor() {
     this.breakpointObserver
@@ -61,6 +60,7 @@ export class AccountComponent {
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.isChildActive.set(!event.url.match(/^\/auth\/account\/?$/));
+        this.currentUrl.set(event.url);
       }
     });
 
