@@ -22,73 +22,72 @@
         (!isMobile() || !isChildActive()) &&
         (isGoogleUser() || isEmailConfirmed())
       ) {
-        <nav class="account-sidebar" data-testid="account-sidebar">
+        <mat-nav-list class="account-sidebar" data-testid="account-sidebar">
           <a
-            mat-flat-button
+            mat-list-item
             routerLink="profile"
-            routerLinkActive="active-link"
+            [activated]="currentUrl().includes('/auth/account/profile')"
             data-testid="nav-profile"
             aria-label="Profile"
           >
-            <mat-icon fontSet="material-symbols-outlined">person</mat-icon>
-            Profile
+            <mat-icon matListItemIcon fontSet="material-symbols-outlined">
+              person
+            </mat-icon>
+            <span matListItemTitle>Profile</span>
           </a>
           @if (!isGoogleUser()) {
             <a
-              mat-flat-button
+              mat-list-item
               routerLink="security"
-              routerLinkActive="active-link"
+              [activated]="currentUrl().includes('/auth/account/security')"
               data-testid="nav-security"
               aria-label="Security"
             >
-              <mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
-              Password
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">
+                lock
+              </mat-icon>
+              <span matListItemTitle>Password</span>
             </a>
           }
           <a
-            mat-flat-button
+            mat-list-item
             routerLink="payments"
-            routerLinkActive="active-link"
+            [activated]="currentUrl().includes('/auth/account/payments')"
             data-testid="nav-payments"
             aria-label="Payments"
           >
-            <mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
-            Payments
+            <mat-icon matListItemIcon fontSet="material-symbols-outlined">
+              payments
+            </mat-icon>
+            <span matListItemTitle>Payments</span>
           </a>
-          <!-- <a
-          mat-flat-button
-          routerLink="preferences"
-          routerLinkActive="active-link"
-          data-testid="nav-preferences"
-          aria-label="Preferences"
-          ><mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
-          Preferences</a
-        > -->
           <a
-            mat-flat-button
+            mat-list-item
             routerLink="legal"
-            routerLinkActive="active-link"
+            [activated]="currentUrl().includes('/auth/account/legal')"
             data-testid="nav-legal"
             aria-label="Legal"
           >
-            <mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
-            Legal
+            <mat-icon matListItemIcon fontSet="material-symbols-outlined">
+              gavel
+            </mat-icon>
+            <span matListItemTitle>Legal</span>
           </a>
           @if (isAdmin()) {
             <a
-              mat-flat-button
+              mat-list-item
               routerLink="/admin"
-              routerLinkActive="active-link"
+              [activated]="currentUrl().startsWith('/admin')"
               data-testid="nav-admin"
               aria-label="Go to admin area"
             >
-              <mat-icon fontSet="material-symbols-outlined">
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">
                 admin_panel_settings
               </mat-icon>
-              Admin
+              <span matListItemTitle>Admin</span>
             </a>
           }
-        </nav>
+        </mat-nav-list>
       }
       @if (!isMobile() || isChildActive()) {
         <div class="account-content" data-testid="account-content">

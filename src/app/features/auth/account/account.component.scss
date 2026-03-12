@@ -44,23 +44,25 @@
   gap: 2px;
   padding: 8px 0;
 
-  a[mat-flat-button] {
+  a[mat-list-item] {
     width: 100%;
     justify-content: flex-start;
     border-radius: 0;
-    --mdc-filled-button-container-color: color-mix(
-      in srgb,
-      var(--mat-sys-secondary-container) 35%,
-      transparent
-    );
-    --mdc-filled-button-label-text-color: var(--mat-sys-on-surface-variant);
+    background-color: var(--primary);
 
-    &.active-link {
-      --mdc-filled-button-container-color: var(--mat-sys-secondary-container);
-      --mdc-filled-button-label-text-color: var(
-        --mat-sys-on-secondary-container
-      );
-      font-weight: 600;
+    mat-icon,
+    span {
+      color: var(--on-primary);
+    }
+
+    &.mdc-list-item--activated {
+      background-color: var(--secondary);
+
+      mat-icon,
+      span {
+        color: var(--on-secondary);
+        font-weight: 600;
+      }
     }
   }
 }
