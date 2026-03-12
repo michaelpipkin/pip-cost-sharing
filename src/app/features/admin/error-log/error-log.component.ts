@@ -1,22 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatDialog } from '@angular/material/dialog';
-import { ErrorDetailDialogComponent } from './error-detail-dialog.component';
-import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@components/loading/loading.service';
-import { AppError } from '@models/app-error';
-import { AdminErrorLogService } from '@services/admin-error-log.service';
-import { AnalyticsService } from '@services/analytics.service';
 import {
   afterNextRender,
   Component,
@@ -26,6 +9,23 @@ import {
   model,
   signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
+import { MatTableModule } from '@angular/material/table';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
+import { AppError } from '@models/app-error';
+import { AdminErrorLogService } from '@services/admin-error-log.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { ErrorDetailDialogComponent } from './error-detail-dialog.component';
 
 type GroupedError = AppError & { count: number };
 
@@ -137,7 +137,7 @@ export class AdminErrorLogComponent {
   columnsToDisplay = computed<string[]>(() => {
     const fifth = this.groupedView() ? 'count' : 'dateTime';
     return this.isMobile()
-      ? ['component', 'action', fifth]
+      ? ['component', 'action', 'message', fifth]
       : ['component', 'action', 'message', 'error', fifth];
   });
 
