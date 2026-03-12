@@ -123,7 +123,7 @@ export class EditMemberComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'EditMemberComponent',
+          'Edit Member Component',
           'edit_member',
           error.message
         );
@@ -163,7 +163,7 @@ export class EditMemberComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditMemberComponent',
+              'Edit Member Component',
               'remove_member',
               error.message
             );
@@ -217,7 +217,7 @@ export class EditMemberComponent {
               data: { message: error.message },
             });
             this.analytics.logError(
-              'EditMemberComponent',
+              'Edit Member Component',
               'leave_group',
               error.message
             );

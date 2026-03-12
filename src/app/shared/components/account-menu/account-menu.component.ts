@@ -62,7 +62,7 @@ export class AccountMenuComponent {
       this.analytics.logEvent('language_changed', { language: langCode });
     } catch (error) {
       this.analytics.logError(
-        'AccountMenuComponent',
+        'Account Menu Component',
         'switch_language',
         'Failed to switch language',
         error instanceof Error ? error.message : 'Unknown error'

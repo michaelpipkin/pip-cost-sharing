@@ -765,7 +765,7 @@ export class AddExpenseComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AddExpenseComponent',
+          'Add Expense Component',
           'add_expense',
           error.message
         );

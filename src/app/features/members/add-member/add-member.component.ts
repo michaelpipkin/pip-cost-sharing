@@ -80,7 +80,7 @@ export class AddMemberComponent {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'AddMemberComponent',
+          'Add Member Component',
           'add_member',
           error.message
         );

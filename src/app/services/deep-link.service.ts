@@ -42,7 +42,7 @@ export class DeepLinkService {
       this.router.navigate([path], { queryParams });
     } catch (error) {
       this.analytics.logError(
-        'DeepLinkService',
+        'Deep Link Service',
         'handleDeepLink',
         'Failed to parse deep link',
         error instanceof Error ? error.message : 'Unknown error'

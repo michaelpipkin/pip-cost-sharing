@@ -93,7 +93,7 @@ export class AdminEmailLogComponent {
         data: { message },
       });
       this.analytics.logError(
-        'AdminEmailLogComponent',
+        'Admin Email Log Component',
         'load_mail_documents',
         'Failed to load mail documents',
         error instanceof Error ? error.message : 'Unknown error'

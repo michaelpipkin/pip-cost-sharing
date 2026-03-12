@@ -48,7 +48,7 @@ export class AdMobService {
       this.loadInterstitial();
     } catch (error) {
       this.analytics.logError(
-        'AdMobService',
+        'AdMob Service',
         'initialize_admob',
         'Failed to initialize AdMob',
         error instanceof Error ? error.message : 'Unknown error'
@@ -94,7 +94,7 @@ export class AdMobService {
       this.isAdLoaded.set(true);
     } catch (error) {
       this.analytics.logError(
-        'AdMobService',
+        'AdMob Service',
         'load_interstitial',
         'Failed to load interstitial ad',
         error instanceof Error ? error.message : 'Unknown error'
@@ -118,7 +118,7 @@ export class AdMobService {
       // The 'Dismissed' listener in initializeAdMob() handles it safely.
     } catch (error) {
       this.analytics.logError(
-        'AdMobService',
+        'AdMob Service',
         'show_interstitial',
         'Failed to show interstitial ad',
         error instanceof Error ? error.message : 'Unknown error'

@@ -50,7 +50,7 @@ export class LoadingComponent implements OnDestroy {
             }
           } catch (error) {
             this.analytics.logError(
-              'LoadingComponent',
+              'Loading Component',
               'show_hide_loading_popover',
               'Failed to show/hide loading popover',
               error instanceof Error ? error.message : 'Unknown error'

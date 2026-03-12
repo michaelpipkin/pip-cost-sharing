@@ -161,7 +161,7 @@ export class RegisterComponent {
           (err: Error) => {
             if (!(err instanceof FirebaseError)) {
               this.analytics.logError(
-                'RegisterComponent',
+                'Register Component',
                 'verify_email',
                 'Failed to send verification email after registration',
                 err.message

@@ -639,9 +639,9 @@ export class SplitComponent implements OnDestroy {
           data: { message: error.message },
         });
         this.analytics.logError(
-          'SplitComponent',
-          'copy_expense_summary_to_clipboard',
-          'Failed to copy expense summary to clipboard',
+          'Split Component',
+          'copy_summary_to_clipboard',
+          'Failed to copy summary to clipboard',
           error.message
         );
       } else {

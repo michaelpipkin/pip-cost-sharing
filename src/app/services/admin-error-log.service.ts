@@ -31,12 +31,10 @@ export class AdminErrorLogService {
         limit(500)
       );
       const snapshot = await getDocs(errorsQuery);
-      return snapshot.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as AppError
-      );
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as AppError);
     } catch (error) {
       this.analytics.logError(
-        'AdminErrorLogService',
+        'Admin Error Log Service',
         'getAppErrors',
         'Failed to load app errors',
         error instanceof Error ? error.message : 'Unknown error'
