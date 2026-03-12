@@ -97,7 +97,9 @@
 
           <ng-container matColumnDef="dateTime">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Date / Time
+              Date /
+              <br />
+              Time
             </th>
             <td mat-cell *matCellDef="let row">
               {{ row.timestamp?.toDate() | date: 'MM/dd/yy,' }}
