@@ -1218,126 +1218,146 @@ async function handleSettleEmail(
 }
 
 // ---------------------------------------------------------------------------
-// Error alert trigger — emails admin when error burst threshold is exceeded
+// Log app error — writes to app_errors and emails admin when burst threshold
+// is exceeded. Using a callable function instead of a direct Firestore write
+// allows the app_errors collection write rule to be locked to `if false`.
 // ---------------------------------------------------------------------------
 
-export const onAppErrorCreated = onDocumentCreated(
-  'app_errors/{errorId}',
-  async (event) => {
-    // 1. Read alert configuration
-    const configRef = db.collection('admin_config').doc('error_alerts');
-    const configSnap = await configRef.get();
-    if (!configSnap.exists) return;
-
-    const config = configSnap.data()!;
-    if (!config['enabled']) return;
-
-    const threshold: number = config['threshold'] ?? 10;
-    const windowMinutes: number = config['windowMinutes'] ?? 5;
-    const cooldownMinutes: number = config['cooldownMinutes'] ?? 60;
-    const adminEmail: string = config['adminEmail'];
-    if (!adminEmail) return;
-
-    // 2. Count recent errors in the sliding window
-    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
-    const queryLimit = Math.max(threshold, 50);
-    const recentSnap = await db
-      .collection('app_errors')
-      .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
-      .orderBy('timestamp', 'desc')
-      .limit(queryLimit)
-      .get();
-
-    if (recentSnap.size < threshold) return;
-
-    // 3. Atomically claim the right to send an alert (throttle via transaction)
-    let shouldSend = false;
-    await db.runTransaction(async (tx) => {
-      const freshSnap = await tx.get(configRef);
-      const lastAlertSent: admin.firestore.Timestamp | null =
-        freshSnap.data()?.['lastAlertSent'] ?? null;
-      const cooldownMs = cooldownMinutes * 60 * 1000;
-
-      if (lastAlertSent && Date.now() - lastAlertSent.toMillis() < cooldownMs) {
-        return; // Still within cooldown period
-      }
-
-      tx.update(configRef, {
-        lastAlertSent: FieldValue.serverTimestamp(),
-      });
-      shouldSend = true;
-    });
-
-    if (!shouldSend) return;
-
-    // 4. Build email content
-    const errorCount = recentSnap.size;
-
-    // Summary table: group by "Component / Action", sort by count desc
-    const groupedMap = new Map<string, number>();
-    for (const doc of recentSnap.docs) {
-      const d = doc.data();
-      const key = `${d['component']} / ${d['action']}`;
-      groupedMap.set(key, (groupedMap.get(key) ?? 0) + 1);
-    }
-    const summaryRows = [...groupedMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(
-        ([key, count]) =>
-          `<tr><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;">${escapeHtml(key)}</td>` +
-          `<td style="padding:8px 12px;border-bottom:1px solid #e0e4da;text-align:center;">${count}</td></tr>`
-      )
-      .join('');
-    const summaryTable =
-      `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;margin:0 0 20px 0;">` +
-      `<tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Component / Action</th>` +
-      `<th style="padding:10px 12px;text-align:center;color:#ffffff;">Count</th></tr>${summaryRows}</table>`;
-
-    // Most recent error detail (the triggering document)
-    const triggeringDoc = event.data?.data();
-    let mostRecentHtml = '';
-    if (triggeringDoc) {
-      const fields: [string, string][] = [
-        ['Component', triggeringDoc['component']],
-        ['Action', triggeringDoc['action']],
-        ['Message', triggeringDoc['message']],
-        ['Error', triggeringDoc['error']],
-      ].filter((pair): pair is [string, string] => Boolean(pair[1]));
-      const detailRows = fields
-        .map(
-          ([k, v]) =>
-            `<tr><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;font-weight:500;">${escapeHtml(k)}</td>` +
-            `<td style="padding:8px 12px;border-bottom:1px solid #e0e4da;">${escapeHtml(v)}</td></tr>`
-        )
-        .join('');
-      mostRecentHtml =
-        `<h3 style="color:#191d17;margin:0 0 12px 0;">Most Recent Error</h3>` +
-        `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;">` +
-        `<tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Field</th>` +
-        `<th style="padding:10px 12px;text-align:left;color:#ffffff;">Value</th></tr>${detailRows}</table>`;
-    }
-
-    const plural = (n: number, unit: string) =>
-      `${n} ${unit}${n !== 1 ? 's' : ''}`;
-    const subject = `PipSplit Error Alert: ${plural(errorCount, 'error')} in the last ${plural(windowMinutes, 'minute')}`;
-    const bodyText =
-      `${errorCount} error(s) were logged in PipSplit in the last ${windowMinutes} minute(s). ` +
-      `Please check the Error Log in the admin panel.`;
-    const bodyHtml = buildEmailHtml(
-      `<p style="color:#c00000;font-size:18px;font-weight:bold;margin:0 0 16px 0;">&#9888; Error Alert</p>` +
-        `<p style="margin:0 0 20px 0;"><strong>${errorCount}</strong> error${errorCount !== 1 ? 's' : ''} were logged in the last ` +
-        `<strong>${windowMinutes}</strong> minute${windowMinutes !== 1 ? 's' : ''}. Please check the <strong>Error Log</strong> in the admin panel.</p>` +
-        `<h3 style="color:#191d17;margin:0 0 12px 0;">Error Summary (Last ${plural(windowMinutes, 'minute')})</h3>` +
-        `${summaryTable}${mostRecentHtml}`
-    );
-
-    await db.collection('mail').add({
-      to: adminEmail,
-      message: { subject, text: bodyText, html: bodyHtml },
-    });
-
-    console.log(
-      `Error alert sent to ${adminEmail}: ${errorCount} errors in ${windowMinutes} minutes`
+export const logAppError = onCall<{
+  component: string;
+  action: string;
+  message: string;
+  error?: string;
+}>(async (request) => {
+  const { component, action, message, error } = request.data;
+  if (!component || !action || !message) {
+    throw new HttpsError(
+      'invalid-argument',
+      'component, action, and message are required'
     );
   }
-);
+
+  const params: Record<string, unknown> = { component, action, message };
+  if (error !== undefined) params['error'] = error;
+
+  // 1. Write the document via Admin SDK (bypasses Firestore rules)
+  await db.collection('app_errors').add({
+    ...params,
+    timestamp: FieldValue.serverTimestamp(),
+  });
+
+  // 2. Read alert configuration
+  const configRef = db.collection('admin_config').doc('error_alerts');
+  const configSnap = await configRef.get();
+  if (!configSnap.exists) return;
+
+  const config = configSnap.data()!;
+  if (!config['enabled']) return;
+
+  const threshold: number = config['threshold'] ?? 10;
+  const windowMinutes: number = config['windowMinutes'] ?? 5;
+  const cooldownMinutes: number = config['cooldownMinutes'] ?? 60;
+  const adminEmail: string = config['adminEmail'];
+  if (!adminEmail) return;
+
+  // 3. Count recent errors in the sliding window
+  const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
+  const queryLimit = Math.max(threshold, 50);
+  const recentSnap = await db
+    .collection('app_errors')
+    .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
+    .orderBy('timestamp', 'desc')
+    .limit(queryLimit)
+    .get();
+
+  if (recentSnap.size < threshold) return;
+
+  // 4. Atomically claim the right to send an alert (throttle via transaction)
+  let shouldSend = false;
+  await db.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(configRef);
+    const lastAlertSent: admin.firestore.Timestamp | null =
+      freshSnap.data()?.['lastAlertSent'] ?? null;
+    const cooldownMs = cooldownMinutes * 60 * 1000;
+
+    if (lastAlertSent && Date.now() - lastAlertSent.toMillis() < cooldownMs) {
+      return; // Still within cooldown period
+    }
+
+    tx.update(configRef, {
+      lastAlertSent: FieldValue.serverTimestamp(),
+    });
+    shouldSend = true;
+  });
+
+  if (!shouldSend) return;
+
+  // 5. Build email content
+  const errorCount = recentSnap.size;
+
+  // Summary table: group by "Component / Action", sort by count desc
+  const groupedMap = new Map<string, number>();
+  for (const doc of recentSnap.docs) {
+    const d = doc.data();
+    const key = `${d['component']} / ${d['action']}`;
+    groupedMap.set(key, (groupedMap.get(key) ?? 0) + 1);
+  }
+  const summaryRows = [...groupedMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(
+      ([key, count]) =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;">${escapeHtml(key)}</td>` +
+        `<td style="padding:8px 12px;border-bottom:1px solid #e0e4da;text-align:center;">${count}</td></tr>`
+    )
+    .join('');
+  const summaryTable =
+    `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;margin:0 0 20px 0;">` +
+    `<tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Component / Action</th>` +
+    `<th style="padding:10px 12px;text-align:center;color:#ffffff;">Count</th></tr>${summaryRows}</table>`;
+
+  // Most recent error detail (the triggering call's data)
+  let mostRecentHtml = '';
+  const fields: [string, string][] = [
+    ['Component', component],
+    ['Action', action],
+    ['Message', message],
+    ['Error', error ?? ''],
+  ].filter((pair): pair is [string, string] => Boolean(pair[1]));
+  if (fields.length > 0) {
+    const detailRows = fields
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:8px 12px;border-bottom:1px solid #e0e4da;font-weight:500;">${escapeHtml(k)}</td>` +
+          `<td style="padding:8px 12px;border-bottom:1px solid #e0e4da;">${escapeHtml(v)}</td></tr>`
+      )
+      .join('');
+    mostRecentHtml =
+      `<h3 style="color:#191d17;margin:0 0 12px 0;">Most Recent Error</h3>` +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;">` +
+      `<tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Field</th>` +
+      `<th style="padding:10px 12px;text-align:left;color:#ffffff;">Value</th></tr>${detailRows}</table>`;
+  }
+
+  const plural = (n: number, unit: string) =>
+    `${n} ${unit}${n !== 1 ? 's' : ''}`;
+  const subject = `PipSplit Error Alert: ${plural(errorCount, 'error')} in the last ${plural(windowMinutes, 'minute')}`;
+  const bodyText =
+    `${errorCount} error(s) were logged in PipSplit in the last ${windowMinutes} minute(s). ` +
+    `Please check the Error Log in the admin panel.`;
+  const bodyHtml = buildEmailHtml(
+    `<p style="color:#c00000;font-size:18px;font-weight:bold;margin:0 0 16px 0;">&#9888; Error Alert</p>` +
+      `<p style="margin:0 0 20px 0;"><strong>${errorCount}</strong> error${errorCount !== 1 ? 's' : ''} were logged in the last ` +
+      `<strong>${windowMinutes}</strong> minute${windowMinutes !== 1 ? 's' : ''}. Please check the <strong>Error Log</strong> in the admin panel.</p>` +
+      `<h3 style="color:#191d17;margin:0 0 12px 0;">Error Summary (Last ${plural(windowMinutes, 'minute')})</h3>` +
+      `${summaryTable}${mostRecentHtml}`
+  );
+
+  await db.collection('mail').add({
+    to: adminEmail,
+    message: { subject, text: bodyText, html: bodyHtml },
+  });
+
+  console.log(
+    `Error alert sent to ${adminEmail}: ${errorCount} errors in ${windowMinutes} minutes`
+  );
+});

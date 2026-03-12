@@ -1,17 +1,12 @@
 import { inject, Injectable } from '@angular/core';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
-import {
-  addDoc,
-  collection,
-  getFirestore,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnalyticsService {
-  protected readonly fs = inject(getFirestore);
+  protected readonly fns = inject(getFunctions);
 
   async logEvent(
     name: string,
@@ -37,9 +32,8 @@ export class AnalyticsService {
       console.error('Analytics logError (GA) failed:', e)
     );
 
-    addDoc(collection(this.fs, 'app_errors'), {
-      ...params,
-      timestamp: serverTimestamp(),
-    }).catch((e) => console.error('Analytics logError (Firestore) failed:', e));
+    httpsCallable(this.fns, 'logAppError')(params).catch((e) =>
+      console.error('Analytics logError (Firestore) failed:', e)
+    );
   }
 }
