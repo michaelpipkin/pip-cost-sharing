@@ -35,45 +35,47 @@
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
-    <div class="filters" data-testid="member-filters">
-      <mat-form-field
-        class="clearable"
-        subscriptSizing="dynamic"
-        data-testid="member-search-field"
-        data-tour="member-search"
-      >
-        <mat-label>Search by name or email</mat-label>
-        <input
-          matInput
-          [(ngModel)]="nameFilter"
-          data-testid="member-search-input"
-          aria-label="Search members by name or email"
-        />
-        @if (nameFilter() !== '') {
-          <button
-            matSuffix
-            matIconButton
-            tabindex="-1"
-            aria-label="Clear"
-            (click)="nameFilter.set('')"
-            [matTooltip]="'Clear'"
-            data-testid="clear-member-search-button"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </mat-form-field>
-      <mat-slide-toggle
-        #activeToggle
-        [checked]="true"
-        [(ngModel)]="activeOnly"
-        data-testid="active-members-only-toggle"
-        data-tour="member-filter"
-        aria-label="Show active members only"
-      >
-        Active only
-      </mat-slide-toggle>
-    </div>
+    @if (groupMembers.length > 1) {
+      <div class="filters" data-testid="member-filters">
+        <mat-form-field
+          class="clearable"
+          subscriptSizing="dynamic"
+          data-testid="member-search-field"
+          data-tour="member-search"
+        >
+          <mat-label>Search by name or email</mat-label>
+          <input
+            matInput
+            [(ngModel)]="nameFilter"
+            data-testid="member-search-input"
+            aria-label="Search members by name or email"
+          />
+          @if (nameFilter() !== '') {
+            <button
+              matSuffix
+              matIconButton
+              tabindex="-1"
+              aria-label="Clear"
+              (click)="nameFilter.set('')"
+              [matTooltip]="'Clear'"
+              data-testid="clear-member-search-button"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+        <mat-slide-toggle
+          #activeToggle
+          [checked]="true"
+          [(ngModel)]="activeOnly"
+          data-testid="active-members-only-toggle"
+          data-tour="member-filter"
+          aria-label="Show active members only"
+        >
+          Active only
+        </mat-slide-toggle>
+      </div>
+    }
     @if (currentMember()?.groupAdmin) {
       <div>
         <button
@@ -172,6 +174,23 @@
           No members found
         </p>
       </div>
+    }
+    @if (groupMembers().length === 1) {
+      <mat-card
+        class="mt-4 placeholder-content"
+        data-testid="only-one-member-placeholder"
+      >
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+          face
+        </mat-icon>
+        <p
+          class="placeholder-text"
+          data-testid="only-one-member-placeholder-text"
+        >
+          Add group members to start sharing costs! Once you have added more
+          members, you'll be able to start splitting expenses.
+        </p>
+      </mat-card>
     }
   </div>
 }

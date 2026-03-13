@@ -35,346 +35,374 @@
       </div>
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
-    <div>
-      <mat-form-field
-        id="member-select"
-        subscriptSizing="dynamic"
-        class="mb-3"
-        data-testid="summary-member-field"
+    @if (splits().length === 0) {
+      <mat-card
+        class="mt-4 placeholder-content"
+        data-testid="no-unpaid-splits-placeholder"
       >
-        <mat-label>Select Member</mat-label>
-        <mat-select
-          name="member"
-          [(ngModel)]="selectedMember"
-          (selectionChange)="resetDetail()"
-          docRefCompare
-        >
-          @for (member of activeMembers(); track member.ref) {
-            <mat-option [value]="member.ref">
-              {{ member.displayName }}
-            </mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
-    <div class="filters mb-2">
-      <mat-form-field
-        appearance="fill"
-        class="datepicker"
-        subscriptSizing="dynamic"
-      >
-        <mat-label>Start date</mat-label>
-        <input
-          matInput
-          [(ngModel)]="startDate"
-          [matDatepicker]="startDatepicker"
-          appDateShortcutKeys
-        />
-        @if (!startDate()) {
-          <mat-datepicker-toggle
-            matIconSuffix
-            [for]="startDatepicker"
-          ></mat-datepicker-toggle>
-        } @else {
-          <button
-            matIconSuffix
-            tabindex="-1"
-            mat-icon-button
-            aria-label="Clear"
-            (click)="startDate.set(null)"
-            [matTooltip]="'Clear'"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-        <mat-datepicker #startDatepicker></mat-datepicker>
-      </mat-form-field>
-      <mat-form-field
-        appearance="fill"
-        class="datepicker"
-        subscriptSizing="dynamic"
-      >
-        <mat-label>End date</mat-label>
-        <input
-          matInput
-          [(ngModel)]="endDate"
-          [matDatepicker]="endDatePicker"
-          appDateShortcutKeys
-        />
-        @if (!endDate()) {
-          <mat-datepicker-toggle
-            matIconSuffix
-            [for]="endDatePicker"
-          ></mat-datepicker-toggle>
-        } @else {
-          <button
-            matIconSuffix
-            tabindex="-1"
-            mat-icon-button
-            aria-label="Clear"
-            (click)="endDate.set(null)"
-            [matTooltip]="'Clear'"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-        <mat-datepicker #endDatePicker></mat-datepicker>
-      </mat-form-field>
-    </div>
-    @if (summaryData().length > 0) {
-      <div class="table-container mat-elevation-z8" data-tour="payment-flow">
-        <div class="scrollable-table">
-          <table
-            mat-table
-            [dataSource]="summaryData()"
-            multiTemplateDataRows
-            class="expandable-table"
-          >
-            @let summaryColumnsToDisplay =
-              ['owedBy', 'owedTo', 'amount', 'request', 'markPaid'];
-            <ng-container matColumnDef="owedBy">
-              <th mat-header-cell *matHeaderCellDef>Owed By</th>
-              <td mat-cell *matCellDef="let amountDue">
-                {{ amountDue.owedByMember.displayName }}
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="owedTo">
-              <th mat-header-cell *matHeaderCellDef>Owed To</th>
-              <td mat-cell *matCellDef="let amountDue">
-                {{ amountDue.owedToMember.displayName }}
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="amount">
-              <th mat-header-cell *matHeaderCellDef class="cell-right">
-                Amount
-              </th>
-              <td mat-cell *matCellDef="let amountDue" class="cell-right">
-                {{ amountDue.amount | currency }}
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="request">
-              <th mat-header-cell *matHeaderCellDef class="cell-center">Request</th>
-              <td mat-cell *matCellDef="let amountDue" class="cell-center">
-                <button
-                  class="btn btn-tertiary"
-                  mat-mini-fab
-                  (click)="
-                    requestPayment(amountDue);
-                    $event.stopPropagation()
-                  "
-                  [title]="
-                    'Send payment request email to ' +
-                    amountDue.owedByMember.displayName
-                  "
-                  aria-label="Send payment request email"
-                >
-                  <mat-icon>forward_to_inbox</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="markPaid">
-              <th mat-header-cell *matHeaderCellDef class="cell-center">Pay</th>
-              <td mat-cell *matCellDef="let amountDue" class="cell-center">
-                <button
-                  class="btn btn-success"
-                  mat-mini-fab
-                  (click)="
-                    payExpenses(
-                      amountDue.owedToMemberRef,
-                      amountDue.owedByMemberRef
-                    );
-                    $event.stopPropagation()
-                  "
-                  title="
-                Pay expenses owed to {{
-                    amountDue.owedToMember.displayName
-                  }} from {{ amountDue.owedByMember.displayName }}.
-              "
-                >
-                  <mat-icon>attach_money</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="expandedDetail">
-              <td
-                mat-cell
-                *matCellDef="let amountDue"
-                [colSpan]="summaryColumnsToDisplay.length + 1"
-              >
-                @if (amountDue == expandedDetail()) {
-                  <div
-                    class="detail-table-container"
-                    animate.enter="detail-expand"
-                    animate.leave="detail-collapse"
-                  >
-                    <table
-                      mat-table
-                      [dataSource]="detailData()"
-                      (click)="
-                        copySummaryToClipboard(amountDue);
-                        $event.stopPropagation()
-                      "
-                      class="static-table info-detail-table"
-                      matTooltip="Click to copy summary to clipboard"
-                    >
-                      @let detailColumnsToDisplay = ['category', 'amount'];
-                      <ng-container matColumnDef="category">
-                        <th mat-header-cell *matHeaderCellDef>Category</th>
-                        <td mat-cell *matCellDef="let lineItem">
-                          {{ lineItem.category.name }}
-                        </td>
-                      </ng-container>
-                      <ng-container matColumnDef="amount">
-                        <th
-                          mat-header-cell
-                          *matHeaderCellDef
-                          class="cell-right"
-                        >
-                          Amount
-                        </th>
-                        <td
-                          mat-cell
-                          *matCellDef="let lineItem"
-                          class="cell-right amount-cell"
-                        >
-                          {{ lineItem.amount | currency }}
-                        </td>
-                      </ng-container>
-                      <tr
-                        mat-header-row
-                        *matHeaderRowDef="detailColumnsToDisplay"
-                      ></tr>
-                      <tr
-                        mat-row
-                        *matRowDef="
-                          let lineItem;
-                          columns: detailColumnsToDisplay
-                        "
-                      ></tr>
-                    </table>
-                  </div>
-                }
-              </td>
-            </ng-container>
-            <tr
-              mat-header-row
-              *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
-            ></tr>
-            <tr
-              mat-row
-              *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
-              class="summary-row clickable-row expandable-row"
-              [class.clickable-row]="categories().length > 1"
-              (click)="onExpandClick(amountDue)"
-            ></tr>
-            <tr
-              mat-row
-              *matRowDef="let lineItem; columns: ['expandedDetail']"
-              class="detail-row"
-            ></tr>
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
-                No outstanding expenses found for selected member.
-              </td>
-            </tr>
-          </table>
-        </div>
-      </div>
-    } @else {
-      <div class="placeholder-content">
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
-          check_circle
+          compare_arrows
         </mat-icon>
-        <p class="placeholder-text">
-          No outstanding expenses found for selected member.
-        </p>
-      </div>
-    }
-    @if (summaryMemberCount() > 2) {
-      <h4 class="mt-4" data-testid="least-transfers-heading">
-        Least Transfers Settlement
-      </h4>
-      @if (leastTransfers().length > 0) {
-        <div
-          class="table-container mat-elevation-z8"
-          data-testid="least-transfers-table-container"
-          data-tour="least-transfers-table"
+        <p
+          class="placeholder-text"
+          data-testid="no-unpaid-splits-placeholder-text"
         >
+          Once you have unpaid expenses in a group, you'll see a summary of who
+          owes what here. You can request payments and mark expenses paid from
+          this page as well.
+        </p>
+      </mat-card>
+    } @else {
+      <div>
+        <mat-form-field
+          id="member-select"
+          subscriptSizing="dynamic"
+          class="mb-3"
+          data-testid="summary-member-field"
+        >
+          <mat-label>Select Member</mat-label>
+          <mat-select
+            name="member"
+            [(ngModel)]="selectedMember"
+            (selectionChange)="resetDetail()"
+            docRefCompare
+          >
+            @for (member of activeMembers(); track member.ref) {
+              <mat-option [value]="member.ref">
+                {{ member.displayName }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="filters mb-2">
+        <mat-form-field
+          appearance="fill"
+          class="datepicker"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>Start date</mat-label>
+          <input
+            matInput
+            [(ngModel)]="startDate"
+            [matDatepicker]="startDatepicker"
+            appDateShortcutKeys
+          />
+          @if (!startDate()) {
+            <mat-datepicker-toggle
+              matIconSuffix
+              [for]="startDatepicker"
+            ></mat-datepicker-toggle>
+          } @else {
+            <button
+              matIconSuffix
+              tabindex="-1"
+              mat-icon-button
+              aria-label="Clear"
+              (click)="startDate.set(null)"
+              [matTooltip]="'Clear'"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+          <mat-datepicker #startDatepicker></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field
+          appearance="fill"
+          class="datepicker"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>End date</mat-label>
+          <input
+            matInput
+            [(ngModel)]="endDate"
+            [matDatepicker]="endDatePicker"
+            appDateShortcutKeys
+          />
+          @if (!endDate()) {
+            <mat-datepicker-toggle
+              matIconSuffix
+              [for]="endDatePicker"
+            ></mat-datepicker-toggle>
+          } @else {
+            <button
+              matIconSuffix
+              tabindex="-1"
+              mat-icon-button
+              aria-label="Clear"
+              (click)="endDate.set(null)"
+              [matTooltip]="'Clear'"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+          <mat-datepicker #endDatePicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+      @if (summaryData().length > 0) {
+        <div class="table-container mat-elevation-z8" data-tour="payment-flow">
           <div class="scrollable-table">
             <table
               mat-table
-              [dataSource]="leastTransfers()"
-              data-testid="least-transfers-table"
-              class="static-table"
-              (click)="copySettlementToClipboard(); $event.stopPropagation()"
-              matTooltip="Click to copy settlement to clipboard"
+              [dataSource]="summaryData()"
+              multiTemplateDataRows
+              class="expandable-table"
             >
-              @let leastTransfersColumns = ['from', 'to', 'amount'];
-              <ng-container matColumnDef="from">
-                <th mat-header-cell *matHeaderCellDef>Pays From</th>
-                <td mat-cell *matCellDef="let transfer">
-                  {{ transfer.owedByMember?.displayName }}
+              @let summaryColumnsToDisplay =
+                ['owedBy', 'owedTo', 'amount', 'request', 'markPaid'];
+              <ng-container matColumnDef="owedBy">
+                <th mat-header-cell *matHeaderCellDef>Owed By</th>
+                <td mat-cell *matCellDef="let amountDue">
+                  {{ amountDue.owedByMember.displayName }}
                 </td>
               </ng-container>
-              <ng-container matColumnDef="to">
-                <th mat-header-cell *matHeaderCellDef>Pays To</th>
-                <td mat-cell *matCellDef="let transfer">
-                  {{ transfer.owedToMember?.displayName }}
+              <ng-container matColumnDef="owedTo">
+                <th mat-header-cell *matHeaderCellDef>Owed To</th>
+                <td mat-cell *matCellDef="let amountDue">
+                  {{ amountDue.owedToMember.displayName }}
                 </td>
               </ng-container>
               <ng-container matColumnDef="amount">
                 <th mat-header-cell *matHeaderCellDef class="cell-right">
                   Amount
                 </th>
-                <td mat-cell *matCellDef="let transfer" class="cell-right">
-                  {{ transfer.amount | currency }}
+                <td mat-cell *matCellDef="let amountDue" class="cell-right">
+                  {{ amountDue.amount | currency }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="request">
+                <th mat-header-cell *matHeaderCellDef class="cell-center">
+                  Request
+                </th>
+                <td mat-cell *matCellDef="let amountDue" class="cell-center">
+                  <button
+                    class="btn btn-tertiary"
+                    mat-mini-fab
+                    (click)="
+                      requestPayment(amountDue); $event.stopPropagation()
+                    "
+                    [title]="
+                      'Send payment request email to ' +
+                      amountDue.owedByMember.displayName
+                    "
+                    aria-label="Send payment request email"
+                  >
+                    <mat-icon>forward_to_inbox</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="markPaid">
+                <th mat-header-cell *matHeaderCellDef class="cell-center">
+                  Pay
+                </th>
+                <td mat-cell *matCellDef="let amountDue" class="cell-center">
+                  <button
+                    class="btn btn-success"
+                    mat-mini-fab
+                    (click)="
+                      payExpenses(
+                        amountDue.owedToMemberRef,
+                        amountDue.owedByMemberRef
+                      );
+                      $event.stopPropagation()
+                    "
+                    title="
+                Pay expenses owed to {{
+                      amountDue.owedToMember.displayName
+                    }} from {{ amountDue.owedByMember.displayName }}.
+              "
+                  >
+                    <mat-icon>attach_money</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="expandedDetail">
+                <td
+                  mat-cell
+                  *matCellDef="let amountDue"
+                  [colSpan]="summaryColumnsToDisplay.length + 1"
+                >
+                  @if (amountDue == expandedDetail()) {
+                    <div
+                      class="detail-table-container"
+                      animate.enter="detail-expand"
+                      animate.leave="detail-collapse"
+                    >
+                      <table
+                        mat-table
+                        [dataSource]="detailData()"
+                        (click)="
+                          copySummaryToClipboard(amountDue);
+                          $event.stopPropagation()
+                        "
+                        class="static-table info-detail-table"
+                        matTooltip="Click to copy summary to clipboard"
+                      >
+                        @let detailColumnsToDisplay = ['category', 'amount'];
+                        <ng-container matColumnDef="category">
+                          <th mat-header-cell *matHeaderCellDef>Category</th>
+                          <td mat-cell *matCellDef="let lineItem">
+                            {{ lineItem.category.name }}
+                          </td>
+                        </ng-container>
+                        <ng-container matColumnDef="amount">
+                          <th
+                            mat-header-cell
+                            *matHeaderCellDef
+                            class="cell-right"
+                          >
+                            Amount
+                          </th>
+                          <td
+                            mat-cell
+                            *matCellDef="let lineItem"
+                            class="cell-right amount-cell"
+                          >
+                            {{ lineItem.amount | currency }}
+                          </td>
+                        </ng-container>
+                        <tr
+                          mat-header-row
+                          *matHeaderRowDef="detailColumnsToDisplay"
+                        ></tr>
+                        <tr
+                          mat-row
+                          *matRowDef="
+                            let lineItem;
+                            columns: detailColumnsToDisplay
+                          "
+                        ></tr>
+                      </table>
+                    </div>
+                  }
                 </td>
               </ng-container>
               <tr
                 mat-header-row
-                *matHeaderRowDef="leastTransfersColumns; sticky: true"
+                *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
               ></tr>
               <tr
                 mat-row
-                *matRowDef="let transfer; columns: leastTransfersColumns"
+                *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
+                class="summary-row clickable-row expandable-row"
+                [class.clickable-row]="categories().length > 1"
+                (click)="onExpandClick(amountDue)"
               ></tr>
+              <tr
+                mat-row
+                *matRowDef="let lineItem; columns: ['expandedDetail']"
+                class="detail-row"
+              ></tr>
+              <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
+                  No outstanding expenses found for selected member.
+                </td>
+              </tr>
             </table>
           </div>
         </div>
-        <div class="mt-3 mb-2 flex-wrap" data-testid="settle-group-button-container">
-          <button
-            mat-raised-button
-            class="btn-primary"
-            type="button"
-            (click)="settleGroupAction()"
-            data-testid="settle-group-button"
-            data-tour="settle-group-button"
-            aria-label="Settle group by marking all outstanding expenses as paid"
-          >
-            Settle Group
-          </button>
-          <button
-            mat-raised-button
-            class="btn-secondary"
-            type="button"
-            (click)="requestAllPayments()"
-            data-testid="request-all-payments-button"
-            aria-label="Send payment request emails to all members with outstanding balances"
-          >
-            <mat-icon>forward_to_inbox</mat-icon>
-            Request All Payments
-          </button>
-        </div>
       } @else {
-        <div class="placeholder-content" data-testid="least-transfers-empty">
+        <div class="placeholder-content">
           <mat-icon
             class="placeholder-icon"
             fontSet="material-symbols-outlined"
           >
             check_circle
           </mat-icon>
-          <p class="placeholder-text">No outstanding expenses to settle.</p>
+          <p class="placeholder-text">
+            No outstanding expenses found for selected member.
+          </p>
         </div>
+      }
+      @if (summaryMemberCount() > 2) {
+        <h4 class="mt-4" data-testid="least-transfers-heading">
+          Least Transfers Settlement
+        </h4>
+        @if (leastTransfers().length > 0) {
+          <div
+            class="table-container mat-elevation-z8"
+            data-testid="least-transfers-table-container"
+            data-tour="least-transfers-table"
+          >
+            <div class="scrollable-table">
+              <table
+                mat-table
+                [dataSource]="leastTransfers()"
+                data-testid="least-transfers-table"
+                class="static-table"
+                (click)="copySettlementToClipboard(); $event.stopPropagation()"
+                matTooltip="Click to copy settlement to clipboard"
+              >
+                @let leastTransfersColumns = ['from', 'to', 'amount'];
+                <ng-container matColumnDef="from">
+                  <th mat-header-cell *matHeaderCellDef>Pays From</th>
+                  <td mat-cell *matCellDef="let transfer">
+                    {{ transfer.owedByMember?.displayName }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="to">
+                  <th mat-header-cell *matHeaderCellDef>Pays To</th>
+                  <td mat-cell *matCellDef="let transfer">
+                    {{ transfer.owedToMember?.displayName }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="amount">
+                  <th mat-header-cell *matHeaderCellDef class="cell-right">
+                    Amount
+                  </th>
+                  <td mat-cell *matCellDef="let transfer" class="cell-right">
+                    {{ transfer.amount | currency }}
+                  </td>
+                </ng-container>
+                <tr
+                  mat-header-row
+                  *matHeaderRowDef="leastTransfersColumns; sticky: true"
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let transfer; columns: leastTransfersColumns"
+                ></tr>
+              </table>
+            </div>
+          </div>
+          <div
+            class="mt-3 mb-2 flex-wrap"
+            data-testid="settle-group-button-container"
+          >
+            <button
+              mat-raised-button
+              class="btn-primary"
+              type="button"
+              (click)="settleGroupAction()"
+              data-testid="settle-group-button"
+              data-tour="settle-group-button"
+              aria-label="Settle group by marking all outstanding expenses as paid"
+            >
+              Settle Group
+            </button>
+            <button
+              mat-raised-button
+              class="btn-secondary"
+              type="button"
+              (click)="requestAllPayments()"
+              data-testid="request-all-payments-button"
+              aria-label="Send payment request emails to all members with outstanding balances"
+            >
+              <mat-icon>forward_to_inbox</mat-icon>
+              Request All Payments
+            </button>
+          </div>
+        } @else {
+          <div class="placeholder-content" data-testid="least-transfers-empty">
+            <mat-icon
+              class="placeholder-icon"
+              fontSet="material-symbols-outlined"
+            >
+              check_circle
+            </mat-icon>
+            <p class="placeholder-text">No outstanding expenses to settle.</p>
+          </div>
+        }
       }
     }
   </div>
