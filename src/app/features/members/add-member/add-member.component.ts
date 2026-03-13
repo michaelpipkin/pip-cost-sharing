@@ -73,6 +73,7 @@ export class AddMemberComponent {
         groupAdmin: false,
       };
       await this.memberService.addMemberToGroup(this.data.groupId, newMember);
+      this.analytics.logEvent('member_added_to_group');
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {

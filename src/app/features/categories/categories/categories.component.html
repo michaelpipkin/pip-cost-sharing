@@ -144,5 +144,23 @@
         </p>
       </div>
     }
+    @if (categories().length === 1 && categories()[0]!.name === 'Default') {
+      <mat-card
+        class="mt-4 placeholder-content"
+        data-testid="no-categories-placeholder"
+      >
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+          category
+        </mat-icon>
+        <p
+          class="placeholder-text"
+          data-testid="no-categories-placeholder-text"
+        >
+          A group must always have at least one active category. The Default
+          category can be renamed or it can be deleted once you add new
+          categories to better organize your expenses.
+        </p>
+      </mat-card>
+    }
   </div>
 }

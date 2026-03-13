@@ -62,6 +62,7 @@ export class AddCategoryComponent {
         active: true,
       };
       await this.categoryService.addCategory(this.groupId, newCategory);
+      this.analytics.logEvent('category_added');
       this.dialogRef.close(true);
     } catch (error) {
       if (error instanceof Error) {

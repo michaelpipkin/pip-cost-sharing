@@ -1,15 +1,6 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,10 +13,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -38,6 +25,20 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-categories',
@@ -53,6 +54,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
     MatSlideToggleModule,
     MatTableModule,
     MatSortModule,
+    MatCardModule,
     ActiveInactivePipe,
   ],
 })
@@ -70,7 +72,7 @@ export class CategoriesComponent {
 
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
-  #categories: Signal<Category[]> = this.categoryStore.groupCategories;
+  categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
   sortField = signal<string>('name');
   sortAsc = signal<boolean>(true);
@@ -80,7 +82,7 @@ export class CategoriesComponent {
   nameFilter = model<string>('');
 
   filteredCategories = computed(() => {
-    var categories = this.#categories().filter((c: Category) => {
+    var categories = this.categories().filter((c: Category) => {
       return (
         (c.active || c.active == this.activeOnly()) &&
         c.name.toLowerCase().includes(this.nameFilter().toLowerCase())

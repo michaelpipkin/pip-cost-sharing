@@ -40,30 +40,32 @@
         aria-label="Select group form"
         data-testid="select-group-form"
       >
-        <mat-form-field
-          id="group-select"
-          data-testid="group-select-field"
-          data-tour="groups-table"
-          subscriptSizing="dynamic"
-        >
-          <mat-label>Select Group</mat-label>
-          <mat-select
-            data-testid="group-select"
-            formControlName="selectedGroupRef"
-            name="group"
-            (selectionChange)="onSelectGroup($event)"
-            docRefCompare
+        @if (activeUserGroups().length > 0) {
+          <mat-form-field
+            id="group-select"
+            data-testid="group-select-field"
+            data-tour="groups-table"
+            subscriptSizing="dynamic"
           >
-            @for (group of activeUserGroups(); track group.ref) {
-              <mat-option
-                [value]="group.ref"
-                [attr.data-testid]="'group-option-' + group.ref"
-              >
-                {{ group.name }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+            <mat-label>Select Group</mat-label>
+            <mat-select
+              data-testid="group-select"
+              formControlName="selectedGroupRef"
+              name="group"
+              (selectionChange)="onSelectGroup($event)"
+              docRefCompare
+            >
+              @for (group of activeUserGroups(); track group.ref) {
+                <mat-option
+                  [value]="group.ref"
+                  [attr.data-testid]="'group-option-' + group.ref"
+                >
+                  {{ group.name }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
       </form>
     </div>
     <div class="flex-wrap fw-center row-gap">
@@ -89,5 +91,20 @@
         </button>
       }
     </div>
+    @if (activeUserGroups().length === 0) {
+      <mat-card
+        class="mt-4 placeholder-content"
+        data-testid="no-groups-placeholder"
+      >
+        <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+          groups
+        </mat-icon>
+        <p class="placeholder-text" data-testid="no-groups-placeholder-text">
+          You must be a member of at least one active group to use this app.
+          Either create a new group, reactivate an inactive group, or ask a
+          group admin to add you to an existing group.
+        </p>
+      </mat-card>
+    }
   </div>
 }

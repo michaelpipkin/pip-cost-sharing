@@ -58,8 +58,7 @@ export const GroupStore = signalStore(
   withComputed(({ allUserGroups }) => ({
     activeUserGroups: computed(() =>
       allUserGroups().filter(
-        (g) =>
-          ((g.active && g.userActiveInGroup) || g.userIsAdmin) && !g.archived
+        (g) => g.active && g.userActiveInGroup && !g.archived
       )
     ),
     userAdminGroups: computed(() =>

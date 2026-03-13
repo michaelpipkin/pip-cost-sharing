@@ -19,6 +19,17 @@ export class AnalyticsService {
     }
   }
 
+  async logScreenView(screenName: string): Promise<void> {
+    try {
+      await FirebaseAnalytics.logEvent({
+        name: 'screen_view',
+        params: { firebase_screen: screenName, firebase_screen_class: screenName },
+      });
+    } catch (error) {
+      console.error('Analytics screen_view error:', error);
+    }
+  }
+
   async logError(
     component: string,
     action: string,
