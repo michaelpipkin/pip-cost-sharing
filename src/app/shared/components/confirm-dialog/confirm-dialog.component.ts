@@ -15,6 +15,6 @@ export class ConfirmDialogComponent {
 type confirmData = {
   dialogTitle: string;
   confirmationText: string;
-  cancelButtonText: string;
+  cancelButtonText?: string;
   confirmButtonText: string;
 };
