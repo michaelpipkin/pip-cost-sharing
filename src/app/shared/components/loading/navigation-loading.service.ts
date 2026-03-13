@@ -29,14 +29,18 @@ export class NavigationLoadingService {
         this.loadingService.loadingOff('navigation');
       } else if (event instanceof NavigationError) {
         this.loadingService.loadingOff('navigation');
-        this.analytics.logError(
-          'Navigation Loading Service',
-          'navigation',
-          event.url,
+        const msg =
           event.error instanceof Error
             ? event.error.message
-            : String(event.error)
-        );
+            : String(event.error);
+        if (!msg.startsWith('Failed to fetch dynamically imported module')) {
+          this.analytics.logError(
+            'Navigation Loading Service',
+            'navigation',
+            event.url,
+            msg
+          );
+        }
       }
     });
   }

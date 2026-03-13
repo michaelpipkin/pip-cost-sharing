@@ -93,12 +93,15 @@ export class AdMobService {
       await AdMob.prepareInterstitial(options);
       this.isAdLoaded.set(true);
     } catch (error) {
-      this.analytics.logError(
-        'AdMob Service',
-        'load_interstitial',
-        'Failed to load interstitial ad',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      if (!msg.startsWith('Error while connecting to ad server')) {
+        this.analytics.logError(
+          'AdMob Service',
+          'load_interstitial',
+          'Failed to load interstitial ad',
+          msg
+        );
+      }
       this.isAdLoaded.set(false);
     }
   }
