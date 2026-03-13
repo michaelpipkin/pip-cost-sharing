@@ -49,7 +49,7 @@ export class AdMobService {
     } catch (error) {
       this.analytics.logError(
         'AdMob Service',
-        'initialize_admob',
+        'initializeAdMob',
         'Failed to initialize AdMob',
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -75,8 +75,9 @@ export class AdMobService {
       if (this.isAdLoaded()) {
         this.showInterstitial();
       } else {
-        // If ad wasn't ready, try loading one for next time
-        // but reset count so we don't spam the user on the very next click
+        // If ad wasn't ready, reset count and try loading for next cycle
+        // to avoid hammering the AdMob server on every subsequent navigation
+        this.navigationCount = 0;
         this.loadInterstitial();
       }
     }
@@ -94,10 +95,16 @@ export class AdMobService {
       this.isAdLoaded.set(true);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (!msg.startsWith('Error while connecting to ad server')) {
+      if (
+        !(
+          msg.startsWith('Error while connecting to ad server') ||
+          msg.startsWith('No fill') ||
+          msg.startsWith('Internal error')
+        )
+      ) {
         this.analytics.logError(
           'AdMob Service',
-          'load_interstitial',
+          'loadInterstitial',
           'Failed to load interstitial ad',
           msg
         );
@@ -122,7 +129,7 @@ export class AdMobService {
     } catch (error) {
       this.analytics.logError(
         'AdMob Service',
-        'show_interstitial',
+        'showInterstitial',
         'Failed to show interstitial ad',
         error instanceof Error ? error.message : 'Unknown error'
       );

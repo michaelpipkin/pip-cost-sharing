@@ -43,15 +43,16 @@ export class LoadingComponent implements OnDestroy {
       if (element) {
         if (typeof element.showPopover === 'function') {
           try {
-            if (isLoading) {
+            const isShowing = element.matches(':popover-open');
+            if (isLoading && !isShowing) {
               element.showPopover();
-            } else {
+            } else if (!isLoading && isShowing) {
               element.hidePopover();
             }
           } catch (error) {
             this.analytics.logError(
               'Loading Component',
-              'show_hide_loading_popover',
+              'showHideLoadingPopover',
               'Failed to show/hide loading popover',
               error instanceof Error ? error.message : 'Unknown error'
             );
