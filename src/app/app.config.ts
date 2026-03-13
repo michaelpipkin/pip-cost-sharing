@@ -21,11 +21,7 @@ import {
   MatSnackBarConfig,
 } from '@angular/material/snack-bar';
 import { BrowserModule } from '@angular/platform-browser';
-import {
-  provideRouter,
-  TitleStrategy,
-  withNavigationErrorHandler,
-} from '@angular/router';
+import { provideRouter, TitleStrategy } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { environment } from '@env/environment';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -75,18 +71,7 @@ export const appConfig: ApplicationConfig = {
       MatDatepickerModule,
       MatIconModule
     ),
-    provideRouter(
-      appRoutes,
-      withNavigationErrorHandler((err) => {
-        if (
-          err instanceof Error &&
-          err.message.toLowerCase().includes('dynamically imported module')
-        ) {
-          console.log('Your app is out of date. Reloading to update...');
-          window.location.reload();
-        }
-      })
-    ),
+    provideRouter(appRoutes),
     provideTranslateService({
       fallbackLang: 'en',
     }),

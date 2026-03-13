@@ -33,7 +33,9 @@ export class NavigationLoadingService {
           event.error instanceof Error
             ? event.error.message
             : String(event.error);
-        if (!msg.startsWith('Failed to fetch dynamically imported module')) {
+        if (msg.startsWith('Failed to fetch dynamically imported module')) {
+          window.location.reload();
+        } else {
           this.analytics.logError(
             'Navigation Loading Service',
             'navigation',
