@@ -79,9 +79,10 @@ export const appConfig: ApplicationConfig = {
       appRoutes,
       withNavigationErrorHandler((err) => {
         if (
-          err instanceof TypeError &&
+          err instanceof Error &&
           err.message.toLowerCase().includes('dynamically imported module')
         ) {
+          console.log('Your app is out of date. Reloading to update...');
           window.location.reload();
         }
       })
