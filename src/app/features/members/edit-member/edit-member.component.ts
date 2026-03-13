@@ -69,14 +69,21 @@ export class EditMemberComponent {
 
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   user: Signal<User | null> = this.userStore.user;
+  activeMemberCount: number = this.memberStore.activeGroupMembers().length;
 
+  activeTooltip: string = '';
   groupAdminTooltip: string = '';
 
   constructor() {
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
       email: [this.member.email, Validators.email],
-      active: [this.member.active],
+      active: [
+        {
+          value: this.member.active,
+          disabled: this.activeMemberCount === 1 && this.member.active,
+        },
+      ],
       groupAdmin: [
         {
           value: this.member.groupAdmin,
@@ -86,6 +93,10 @@ export class EditMemberComponent {
     });
     if (this.member.userRef?.eq(this.user()!.ref!)) {
       this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
+    }
+    if (this.activeMemberCount === 1 && this.member.active) {
+      this.activeTooltip =
+        'There must be at least one active member in the group';
     }
   }
 

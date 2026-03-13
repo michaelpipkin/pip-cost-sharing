@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -55,6 +56,7 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
     MatSlideToggleModule,
     MatTableModule,
     MatSortModule,
+    MatCardModule,
     YesNoPipe,
     ActiveInactivePipe,
   ],
@@ -74,7 +76,7 @@ export class MembersComponent {
 
   user: Signal<User | null> = this.userStore.user;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
-  #groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
+  groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   sortField = signal<string>('name');
@@ -85,7 +87,7 @@ export class MembersComponent {
   nameFilter = model<string>('');
 
   filteredMembers = computed(() => {
-    var members = this.#groupMembers().filter((m: Member) => {
+    var members = this.groupMembers().filter((m: Member) => {
       return (
         (m.active || m.active == this.activeOnly()) &&
         (m.displayName
