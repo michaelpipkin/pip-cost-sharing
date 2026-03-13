@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -8,6 +9,7 @@ import {
   Router,
 } from '@angular/router';
 import { AnalyticsService } from '@services/analytics.service';
+import { CustomSnackbarComponent } from '../custom-snackbar/custom-snackbar.component';
 import { LoadingService } from './loading.service';
 
 @Injectable({
@@ -17,6 +19,7 @@ export class NavigationLoadingService {
   protected readonly router = inject(Router);
   protected readonly loadingService = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly snackbar = inject(MatSnackBar);
 
   constructor() {
     this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
@@ -35,6 +38,11 @@ export class NavigationLoadingService {
             : String(event.error);
         if (msg.startsWith('Failed to fetch dynamically imported module')) {
           window.location.reload();
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: {
+              message: 'Your app has been updated to the latest version.',
+            },
+          });
         } else {
           this.analytics.logError(
             'Navigation Loading Service',
