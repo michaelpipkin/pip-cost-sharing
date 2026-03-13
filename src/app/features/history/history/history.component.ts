@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -59,6 +60,7 @@ import { DocumentReference } from 'firebase/firestore';
     MatIconModule,
     MatInputModule,
     MatDatepickerModule,
+    MatCardModule,
     CurrencyPipe,
     DatePipe,
     DocRefCompareDirective,
