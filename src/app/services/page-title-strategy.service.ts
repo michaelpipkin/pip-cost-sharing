@@ -1,12 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
+import { AnalyticsService } from './analytics.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PageTitleStrategyService extends TitleStrategy {
   protected readonly title = inject(Title);
+  protected readonly analytics = inject(AnalyticsService);
 
   constructor() {
     super();
@@ -16,6 +18,7 @@ export class PageTitleStrategyService extends TitleStrategy {
     const title = this.buildTitle(routerState);
     if (title !== undefined) {
       this.title.setTitle(`PipSplit | ${title}`);
+      this.analytics.logScreenView(title);
     }
   }
 }

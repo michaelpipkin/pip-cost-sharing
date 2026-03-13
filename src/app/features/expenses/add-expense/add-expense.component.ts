@@ -731,6 +731,7 @@ export class AddExpenseComponent {
         splits,
         this.receiptFile()
       );
+      this.analytics.logEvent('expense_created');
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Expense added.' },
       });

@@ -93,6 +93,7 @@ export class AddGroupComponent {
         groupAdmin: true,
       };
       const groupRef = await this.groupService.addGroup(newGroup, newMember);
+      this.analytics.logEvent('group_created');
       this.dialogRef.close(groupRef);
     } catch (error) {
       if (error instanceof Error) {

@@ -1,12 +1,6 @@
-import {
-  afterNextRender,
-  Component,
-  effect,
-  inject,
-  Signal,
-} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,10 +11,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
@@ -33,6 +23,17 @@ import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
+import {
+  afterNextRender,
+  Component,
+  effect,
+  inject,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-groups',
@@ -46,6 +47,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatTooltipModule,
     MatIconModule,
     MatButtonModule,
+    MatCardModule,
     DocRefCompareDirective,
   ],
 })
