@@ -7,17 +7,23 @@
 
   <div class="log-controls">
     <mat-chip-set aria-label="Filter by delivery state" class="center-chips">
-      @for (filter of stateFilters; track filter) {
-        <mat-chip
-          [class]="'state-chip state-chip--' + filter.toLowerCase()"
-          [class.state-chip--selected]="selectedState() === filter"
-          [style.--mat-chip-label-text-color]="chipTextColor(filter)"
-          (click)="selectedState.set(filter)"
-          [attr.aria-pressed]="selectedState() === filter"
-        >
-          {{ filter }}
-        </mat-chip>
-      }
+      <div class="chip-row">
+        @for (group of chipGroups; track $index) {
+          <div class="chip-group">
+            @for (filter of group; track $index) {
+              <mat-chip
+                [class]="'state-chip state-chip--' + filter.toLowerCase()"
+                [class.state-chip--selected]="selectedState() === filter"
+                [style.--mat-chip-label-text-color]="chipTextColor(filter)"
+                (click)="selectedState.set(filter)"
+                [attr.aria-pressed]="selectedState() === filter"
+              >
+                {{ filter }}
+              </mat-chip>
+            }
+          </div>
+        }
+      </div>
     </mat-chip-set>
     <button
       mat-raised-button
