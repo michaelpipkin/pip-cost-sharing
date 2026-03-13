@@ -55,6 +55,15 @@ export class AdminEmailLogComponent {
     'RETRY',
   ];
 
+  get chipGroups(): DeliveryStateFilter[][] {
+    const groupSize = Math.ceil(this.stateFilters.length / 2);
+    const groups: DeliveryStateFilter[][] = [];
+    for (let i = 0; i < this.stateFilters.length; i += groupSize) {
+      groups.push(this.stateFilters.slice(i, i + groupSize));
+    }
+    return groups;
+  }
+
   columnsToDisplay = computed(() => {
     const base = ['dateTime', 'recipient', 'state', 'attempts', 'error'];
     return this.isMobile()
