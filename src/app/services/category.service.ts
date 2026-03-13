@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
+import { ICategoryService } from './category.service.interface';
+import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -16,8 +18,6 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { ICategoryService } from './category.service.interface';
-import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
@@ -83,16 +83,25 @@ export class CategoryService implements ICategoryService {
     categoryRef: DocumentReference<Category>,
     changes: Partial<Category>
   ): Promise<void> {
-    const q = query(
+    const q1 = query(
       categoryRef.parent,
       where('name', '==', changes.name),
       where(documentId(), '!=', categoryRef.id)
     );
-    const snap = await getDocs(q);
+    const snap1 = await getDocs(q1);
 
-    if (snap.size > 0) {
+    if (snap1.size > 0) {
       throw new Error('This category already exists.');
     }
+
+    if (changes.active === false) {
+      const q2 = query(categoryRef.parent, where('active', '==', true));
+      const snap2 = await getDocs(q2);
+      if (snap2.size === 1) {
+        throw new Error('Each group must have at least one active category.');
+      }
+    }
+
     await updateDoc(categoryRef, changes);
   }
 
@@ -106,11 +115,23 @@ export class CategoryService implements ICategoryService {
       );
     }
 
-    const c = collection(this.fs, `groups/${groupId}/expenses`);
-    const q = query(c, where('categoryRef', '==', categoryRef));
-    const snap = await getDocs(q);
+    const categoryCollection = collection(
+      this.fs,
+      `groups/${groupId}/categories`
+    );
+    const categorySnap = await getDocs(categoryCollection);
+    if (categorySnap.size === 1) {
+      throw new Error('Each group must have at least one category.');
+    }
 
-    if (snap.size > 0) {
+    const expenseCollection = collection(this.fs, `groups/${groupId}/expenses`);
+    const expenseQuery = query(
+      expenseCollection,
+      where('categoryRef', '==', categoryRef)
+    );
+    const expenseSnap = await getDocs(expenseQuery);
+
+    if (expenseSnap.size > 0) {
       throw new Error(
         'This category is assigned to expenses and cannot be deleted.'
       );
