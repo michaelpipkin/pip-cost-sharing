@@ -13,7 +13,7 @@ export class AdMobService {
   protected readonly analytics = inject(AnalyticsService);
 
   // Configuration
-  private readonly ADS_FREQUENCY = 4; // Show ad every 4 page navigations
+  private readonly ADS_FREQUENCY = 5; // Show ad every 5 page navigations
   private readonly ANDROID_INTERSTITIAL_ID =
     'ca-app-pub-9151218051877311/2705618600';
   // State
@@ -63,6 +63,9 @@ export class AdMobService {
       // Skip specific routes where we don't want ads
       if (event.urlAfterRedirects.includes('login')) return;
       if (event.urlAfterRedirects.includes('home')) return;
+      if (event.urlAfterRedirects.includes('expenses/')) return;
+      if (event.urlAfterRedirects.includes('memorized/')) return;
+      if (event.urlAfterRedirects.includes('admin/')) return;
 
       this.navigationCount++;
       this.checkForAutoAd();
