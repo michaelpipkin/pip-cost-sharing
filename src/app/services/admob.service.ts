@@ -60,14 +60,22 @@ export class AdMobService {
     this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd)) return;
 
-      // Skip specific routes where we don't want ads
-      if (event.urlAfterRedirects.includes('login')) return;
-      if (event.urlAfterRedirects.includes('home')) return;
-      if (event.urlAfterRedirects.includes('expenses/')) return;
-      if (event.urlAfterRedirects.includes('memorized/')) return;
-      if (event.urlAfterRedirects.includes('admin/')) return;
-
       this.navigationCount++;
+
+      // Skip specific routes where we don't want ads
+      const excludedRoutes = [
+        'home',
+        'demo/',
+        'auth/',
+        'expenses/',
+        'memorized/',
+        'admin/',
+      ];
+      if (
+        excludedRoutes.some((route) => event.urlAfterRedirects.includes(route))
+      )
+        return;
+
       this.checkForAutoAd();
     });
   }
