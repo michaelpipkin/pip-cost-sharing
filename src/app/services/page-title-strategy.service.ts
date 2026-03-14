@@ -18,7 +18,10 @@ export class PageTitleStrategyService extends TitleStrategy {
     const title = this.buildTitle(routerState);
     if (title !== undefined) {
       this.title.setTitle(`PipSplit | ${title}`);
-      this.analytics.logScreenView(title);
+      const excludedScreens = ['Admin Statistics', 'App Error Log', 'Email Delivery Log'];
+      if (!excludedScreens.includes(title)) {
+        this.analytics.logScreenView(title);
+      }
     }
   }
 }
