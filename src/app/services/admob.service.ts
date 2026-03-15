@@ -106,13 +106,13 @@ export class AdMobService {
       this.isAdLoaded.set(true);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (
-        !(
-          msg.startsWith('Error while connecting to ad server') ||
-          msg.startsWith('No fill') ||
-          msg.startsWith('Internal error')
-        )
-      ) {
+      const ignoredErrors = [
+        'Error while connecting to ad server',
+        'No fill',
+        'Internal error',
+        'Network Error',
+      ];
+      if (!ignoredErrors.some((err) => msg.startsWith(err))) {
         this.analytics.logError(
           'AdMob Service',
           'loadInterstitial',
