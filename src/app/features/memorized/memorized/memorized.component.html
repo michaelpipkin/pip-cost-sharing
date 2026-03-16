@@ -86,13 +86,16 @@
     </div>
     @if (memorizeds().length === 0) {
       <mat-card
-        class="mt-4 placeholder-content"
+        class="mt-4 placeholder-content placeholder-card"
         data-testid="no-memorized-placeholder"
       >
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
           currency_exchange
         </mat-icon>
-        <p class="placeholder-text" data-testid="no-memorized-placeholder-text">
+        <p
+          class="placeholder-text placeholder-card-text"
+          data-testid="no-memorized-placeholder-text"
+        >
           If your group has expenses that recur regularly, you can save them as
           memorized expenses to quickly add them in the future. Click the
           "Memorize New Expense" button to get started.

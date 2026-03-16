@@ -37,13 +37,16 @@
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     @if (history().length === 0) {
       <mat-card
-        class="mt-4 placeholder-content"
+        class="mt-4 placeholder-content placeholder-card"
         data-testid="no-history-placeholder"
       >
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
           receipt
         </mat-icon>
-        <p class="placeholder-text" data-testid="no-history-placeholder-text">
+        <p
+          class="placeholder-text placeholder-card-text"
+          data-testid="no-history-placeholder-text"
+        >
           Once payments are recorded in your group, you'll see a history of
           payments here. This includes both member payments and group
           settlements.

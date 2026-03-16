@@ -93,13 +93,16 @@
     </div>
     @if (activeUserGroups().length === 0) {
       <mat-card
-        class="mt-4 placeholder-content"
+        class="mt-4 placeholder-content placeholder-card"
         data-testid="no-groups-placeholder"
       >
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
           groups
         </mat-icon>
-        <p class="placeholder-text" data-testid="no-groups-placeholder-text">
+        <p
+          class="placeholder-text placeholder-card-text"
+          data-testid="no-groups-placeholder-text"
+        >
           This is where you manage your groups. Click "New Group" to create your
           first group! You can add expenses and invite friends to join once your
           group is created.
