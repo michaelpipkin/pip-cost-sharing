@@ -34,6 +34,24 @@ export class ExpenseService implements IExpenseService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
 
+  async doesGroupHaveExpenses(groupId: string): Promise<void> {
+    try {
+      const q = query(
+        collection(this.fs, `groups/${groupId}/expenses`),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      this.expenseStore.setGroupHasExpenses(!snapshot.empty);
+    } catch (error) {
+      this.analytics.logError(
+        'Expense Service',
+        'doesGroupHaveExpenses',
+        'Failed to check if group has expenses',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  }
+
   async getGroupExpensesByDateRange(
     groupId: string,
     startDate?: Date,
@@ -218,6 +236,7 @@ export class ExpenseService implements IExpenseService {
       });
 
       await batch.commit();
+      await this.doesGroupHaveExpenses(groupId);
       return expenseRef as DocumentReference<Expense>;
     } catch (error) {
       // Clean up uploaded receipt if batch commit fails
@@ -343,7 +362,7 @@ export class ExpenseService implements IExpenseService {
     batch.delete(expenseRef);
 
     await batch.commit();
-
+    await this.doesGroupHaveExpenses(groupId);
     // Delete receipt from storage if it exists
     if (receiptPath) {
       const receiptRef = ref(this.storage, receiptPath);
@@ -352,30 +371,6 @@ export class ExpenseService implements IExpenseService {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       });
-    }
-  }
-
-  /**
-   * Check if a group has any expenses
-   * Used to determine if currency can be changed
-   */
-  async hasExpensesForGroup(groupId: string): Promise<boolean> {
-    try {
-      const q = query(
-        collection(this.fs, `groups/${groupId}/expenses`),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-      return !snapshot.empty;
-    } catch (error) {
-      this.analytics.logError(
-        'Expense Service',
-        'has_expenses_for_group',
-        'Failed to check if group has expenses',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      // If there's an error, assume expenses exist to be safe
-      return true;
     }
   }
 }

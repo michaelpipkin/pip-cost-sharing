@@ -10,11 +10,13 @@ import {
 
 type ExpenseState = {
   groupExpenses: Expense[];
+  groupHasExpenses: boolean;
   loaded: boolean;
 };
 
 const initialState: ExpenseState = {
   groupExpenses: [],
+  groupHasExpenses: false,
   loaded: false,
 };
 
@@ -22,6 +24,9 @@ export const ExpenseStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store) => ({
+    setGroupHasExpenses: (hasExpenses: boolean) => {
+      patchState(store, { groupHasExpenses: hasExpenses });
+    },
     setGroupExpenses: (expenses: Expense[]) => {
       patchState(store, { groupExpenses: expenses, loaded: true });
     },

@@ -1,11 +1,4 @@
-import {
-  Component,
-  computed,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
+import { Component, computed, inject, model, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -38,6 +31,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -61,6 +55,7 @@ import { DocumentReference } from 'firebase/firestore';
 export class ManageGroupsComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
+  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
@@ -72,7 +67,6 @@ export class ManageGroupsComponent {
   protected readonly data = inject(MAT_DIALOG_DATA);
 
   selectedGroup = model<Group | null>(this.data.group as Group);
-  groupHasExpenses = signal<boolean>(false);
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
   userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
@@ -99,12 +93,6 @@ export class ManageGroupsComponent {
     ) {
       const group = this.selectedGroup()!;
 
-      // Check if group has expenses
-      const hasExpenses = await this.expenseService.hasExpensesForGroup(
-        group.id
-      );
-      this.groupHasExpenses.set(hasExpenses);
-
       this.editGroupForm.patchValue({
         groupRef: group.ref ?? null,
         groupName: group.name,
@@ -113,7 +101,7 @@ export class ManageGroupsComponent {
         currencyCode: group.currencyCode ?? 'USD',
       });
 
-      if (hasExpenses) {
+      if (this.expenseStore.groupHasExpenses()) {
         this.editGroupForm.controls.currencyCode.disable();
       }
     } else {
@@ -132,14 +120,8 @@ export class ManageGroupsComponent {
     );
     this.selectedGroup.set(group ?? null);
 
-    // Check if group has expenses
-    const hasExpenses = await this.expenseService.hasExpensesForGroup(
-      group!.id
-    );
-    this.groupHasExpenses.set(hasExpenses);
-
     // Enable/disable currency field based on expenses
-    if (hasExpenses) {
+    if (this.expenseStore.groupHasExpenses()) {
       this.editGroupForm.controls.currencyCode.disable();
     } else {
       this.editGroupForm.controls.currencyCode.enable();
