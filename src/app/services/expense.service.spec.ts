@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import * as firestoreModule from 'firebase/firestore';
-import * as storageModule from 'firebase/storage';
-import { ExpenseService } from './expense.service';
+import { TestBed } from '@angular/core/testing';
+import { AnalyticsService } from '@services/analytics.service';
+import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
-import { CategoryStore } from '@store/category.store';
-import { AnalyticsService } from '@services/analytics.service';
+import * as firestoreModule from 'firebase/firestore';
+import * as storageModule from 'firebase/storage';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExpenseService } from './expense.service';
 
 const mockFs = {};
 const mockStorage = {};
@@ -93,13 +93,13 @@ describe('ExpenseService', () => {
     vi.restoreAllMocks();
   });
 
-  describe('hasExpensesForGroup', () => {
+  describe('doesGroupHaveExpenses', () => {
     it('should return true when the group has expenses', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
         makeSnap([makeExpenseDoc('exp-1', {})]) as any
       );
 
-      const result = await service.hasExpensesForGroup('group-1');
+      const result = await service.doesGroupHaveExpenses('group-1');
 
       expect(result).toBe(true);
     });
@@ -109,7 +109,7 @@ describe('ExpenseService', () => {
         makeSnap([]) as any
       );
 
-      const result = await service.hasExpensesForGroup('group-1');
+      const result = await service.doesGroupHaveExpenses('group-1');
 
       expect(result).toBe(false);
     });
@@ -119,7 +119,7 @@ describe('ExpenseService', () => {
         new Error('Firestore error')
       );
 
-      const result = await service.hasExpensesForGroup('group-1');
+      const result = await service.doesGroupHaveExpenses('group-1');
 
       expect(result).toBe(true);
     });

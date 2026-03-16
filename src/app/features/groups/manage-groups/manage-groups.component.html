@@ -62,7 +62,7 @@
             @if (f.currencyCode.errors?.['required']) {
               <mat-error>*Required</mat-error>
             }
-            @if (groupHasExpenses()) {
+            @if (expenseStore.groupHasExpenses()) {
               <mat-hint>
                 Cannot be changed once expenses are added to the group
               </mat-hint>

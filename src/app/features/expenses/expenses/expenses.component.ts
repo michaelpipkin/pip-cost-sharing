@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -79,6 +80,7 @@ import {
     MatSlideToggleModule,
     MatInputModule,
     MatDatepickerModule,
+    MatCardModule,
     CurrencyPipe,
     DatePipe,
     YesNoPipe,
@@ -120,6 +122,7 @@ export class ExpensesComponent {
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  groupHasExpenses: Signal<boolean> = this.expenseStore.groupHasExpenses;
 
   expenses = signal<Expense[]>([]);
   isLoaded = signal<boolean>(false);
