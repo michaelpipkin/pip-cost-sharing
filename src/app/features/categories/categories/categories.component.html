@@ -148,14 +148,14 @@
     }
     @if (categories().length === 1 && categories()[0]!.name === 'Default') {
       <mat-card
-        class="mt-4 placeholder-content"
+        class="mt-4 placeholder-content placeholder-card"
         data-testid="no-categories-placeholder"
       >
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
           category
         </mat-icon>
         <p
-          class="placeholder-text"
+          class="placeholder-text placeholder-card-text"
           data-testid="no-categories-placeholder-text"
         >
           A group must always have at least one active category. The Default
