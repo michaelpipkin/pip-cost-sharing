@@ -26,6 +26,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
 import { IGroupService } from './group.service.interface';
 import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
@@ -42,6 +43,7 @@ export class GroupService implements IGroupService {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
   protected readonly categoryService = inject(CategoryService);
+  protected readonly expenseService = inject(ExpenseService);
   protected readonly splitsService = inject(SplitService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly historyService = inject(HistoryService);
@@ -250,6 +252,7 @@ export class GroupService implements IGroupService {
       this.categoryService.getGroupCategories(groupRef.id);
       this.memberService.getGroupMembers(groupRef.id);
       this.memberService.getMemberByUserRef(groupRef.id, userRef);
+      this.expenseService.doesGroupHaveExpenses(groupRef.id);
       this.memorizedService.getMemorizedExpensesForGroup(groupRef.id);
       this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
       this.historyService.getHistoryForGroup(groupRef.id);
@@ -286,6 +289,15 @@ export class GroupService implements IGroupService {
     batch.set(categoryRef, category);
 
     await batch.commit();
+    if (this.groupStore.currentGroup() === null) {
+      this.groupStore.setCurrentGroup(
+        new Group({
+          ...group,
+          id: groupRef.id,
+          ref: groupRef as DocumentReference<Group>,
+        })
+      );
+    }
     return groupRef as DocumentReference<Group>;
   }
 
