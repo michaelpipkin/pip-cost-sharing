@@ -37,14 +37,14 @@
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     @if (splits().length === 0) {
       <mat-card
-        class="mt-4 placeholder-content"
+        class="mt-4 placeholder-content placeholder-card"
         data-testid="no-unpaid-splits-placeholder"
       >
         <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
           compare_arrows
         </mat-icon>
         <p
-          class="placeholder-text"
+          class="placeholder-text placeholder-card-text"
           data-testid="no-unpaid-splits-placeholder-text"
         >
           Once you have unpaid expenses in a group, you'll see a summary of who
