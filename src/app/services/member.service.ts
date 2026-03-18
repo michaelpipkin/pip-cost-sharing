@@ -97,7 +97,7 @@ export class MemberService implements IMemberService {
         }
       },
       (error) => {
-        this.analytics.logError(
+        this.analytics.logSnapshotError(
           'Member Service',
           'getGroupMembers',
           'Failed to listen to group members',

@@ -181,7 +181,7 @@ export class GroupService implements IGroupService {
                 }
               },
               (error) => {
-                this.analytics.logError(
+                this.analytics.logSnapshotError(
                   'Group Service',
                   'getUserGroups',
                   'Failed to listen to groups',
@@ -199,7 +199,7 @@ export class GroupService implements IGroupService {
           }
         },
         (error) => {
-          this.analytics.logError(
+          this.analytics.logSnapshotError(
             'Group Service',
             'getUserGroups',
             'Failed to listen to members',
