@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { AppError } from '@models/app-error';
 
 type GroupedError = AppError & { count: number };
@@ -9,7 +10,7 @@ type GroupedError = AppError & { count: number };
 @Component({
   selector: 'app-error-detail-dialog',
   templateUrl: './error-detail-dialog.component.html',
-  imports: [DatePipe, MatDialogModule, MatButtonModule],
+  imports: [DatePipe, MatDialogModule, MatButtonModule, MatIconModule],
 })
 export class ErrorDetailDialogComponent {
   protected readonly data: AppError | GroupedError = inject(MAT_DIALOG_DATA);
