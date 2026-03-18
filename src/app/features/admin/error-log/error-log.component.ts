@@ -22,12 +22,13 @@ import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
 import { AppError } from '@models/app-error';
 import { AdminErrorLogService } from '@services/admin-error-log.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { ErrorDetailDialogComponent } from './error-detail-dialog.component';
 
-type GroupedError = AppError & { count: number };
+type GroupedError = AppError & { count: number; ids: string[] };
 
 @Component({
   selector: 'app-admin-error-log',
@@ -73,8 +74,9 @@ export class AdminErrorLogComponent {
       const existing = map.get(key);
       if (existing) {
         existing.count++;
+        existing.ids.push(e.id);
       } else {
-        map.set(key, { ...e, count: 1 });
+        map.set(key, { ...e, count: 1, ids: [e.id] });
       }
     }
     return [...map.values()];
@@ -181,7 +183,48 @@ export class AdminErrorLogComponent {
   }
 
   onRowClick(row: AppError | GroupedError): void {
-    this.dialog.open(ErrorDetailDialogComponent, { data: row });
+    const detailRef = this.dialog.open(ErrorDetailDialogComponent, {
+      data: row,
+    });
+    detailRef.afterClosed().subscribe((deleteRequested) => {
+      if (!deleteRequested) return;
+      const isGrouped = 'ids' in row;
+      const confirmRef = this.dialog.open(DeleteDialogComponent, {
+        data: {
+          operation: 'Delete',
+          target: isGrouped ? 'these errors' : 'this error',
+        },
+      });
+      confirmRef.afterClosed().subscribe(async (confirmed) => {
+        if (!confirmed) return;
+        await this.deleteError(row);
+      });
+    });
+  }
+
+  async deleteError(row: AppError | GroupedError): Promise<void> {
+    this.loading.loadingOn();
+    try {
+      if ('ids' in row) {
+        await this.errorLogService.deleteAppErrors(row.ids);
+        const idsToDelete = new Set(row.ids);
+        this.errors.update((errors) => errors.filter((e) => !idsToDelete.has(e.id)));
+      } else {
+        await this.errorLogService.deleteAppError(row.id);
+        this.errors.update((errors) => errors.filter((e) => e.id !== row.id));
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Error(s) deleted successfully' },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to delete error(s)';
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message },
+      });
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   onSortChange(sort: Sort): void {
