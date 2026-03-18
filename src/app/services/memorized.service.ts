@@ -73,7 +73,7 @@ export class MemorizedService implements IMemorizedService {
         }
       },
       (error) => {
-        this.analytics.logError(
+        this.analytics.logSnapshotError(
           'Memorized Service',
           'getMemorizedExpensesForGroup',
           'Failed to listen to memorized expenses',
