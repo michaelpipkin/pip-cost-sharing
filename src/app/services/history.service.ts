@@ -33,27 +33,51 @@ export class HistoryService implements IHistoryService {
       collection(this.fs, `groups/${groupId}/history`),
       orderBy('date', 'desc')
     );
-    onSnapshot(historyQuery, (historyQuerySnap) => {
-      // Skip processing if stores are not loaded yet
-      if (!this.memberStore.loaded()) {
-        return;
-      }
+    onSnapshot(
+      historyQuery,
+      (historyQuerySnap) => {
+        try {
+          // Skip processing if stores are not loaded yet
+          if (!this.memberStore.loaded()) {
+            return;
+          }
 
-      const history = [
-        ...historyQuerySnap.docs.map((doc) => {
-          const data = doc.data();
-          return new History({
-            id: doc.id,
-            ...data,
-            date: data.date.parseDate(),
-            paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
-            paidToMember: this.memberStore.getMemberByRef(data.paidToMemberRef),
-            ref: doc.ref as DocumentReference<History>,
-          });
-        }),
-      ];
-      this.historyStore.setHistory(history);
-    });
+          const history = [
+            ...historyQuerySnap.docs.map((doc) => {
+              const data = doc.data();
+              return new History({
+                id: doc.id,
+                ...data,
+                date: data.date.parseDate(),
+                paidByMember: this.memberStore.getMemberByRef(
+                  data.paidByMemberRef
+                ),
+                paidToMember: this.memberStore.getMemberByRef(
+                  data.paidToMemberRef
+                ),
+                ref: doc.ref as DocumentReference<History>,
+              });
+            }),
+          ];
+          this.historyStore.setHistory(history);
+        } catch (error) {
+          this.analytics.logError(
+            'History Service',
+            'getHistoryForGroup',
+            'Failed to process history snapshot',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+        }
+      },
+      (error) => {
+        this.analytics.logSnapshotError(
+          'History Service',
+          'getHistoryForGroup',
+          'Failed to listen to history',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
+    );
   }
 
   async unpayHistory(history: History): Promise<void> {

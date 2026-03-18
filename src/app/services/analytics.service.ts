@@ -8,6 +8,11 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 export class AnalyticsService {
   protected readonly fns = inject(getFunctions);
 
+  private readonly pendingSnapshotErrors = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
+
   async logEvent(
     name: string,
     params?: Record<string, unknown>
@@ -28,6 +33,31 @@ export class AnalyticsService {
     } catch (error) {
       console.error('Analytics screen_view error:', error);
     }
+  }
+
+  logSnapshotError(
+    component: string,
+    action: string,
+    message: string,
+    error?: string
+  ): void {
+    const isTransient =
+      error?.includes('Missing or insufficient permissions') ?? false;
+
+    if (!isTransient) {
+      this.logError(component, action, message, error);
+      return;
+    }
+
+    const key = `${component}|${action}`;
+    if (this.pendingSnapshotErrors.has(key)) return;
+
+    const timer = setTimeout(() => {
+      this.pendingSnapshotErrors.delete(key);
+      this.logError(component, action, message, error);
+    }, 5000);
+
+    this.pendingSnapshotErrors.set(key, timer);
   }
 
   async logError(

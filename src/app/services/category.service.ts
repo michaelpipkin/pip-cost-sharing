@@ -55,7 +55,7 @@ export class CategoryService implements ICategoryService {
         }
       },
       (error) => {
-        this.analytics.logError(
+        this.analytics.logSnapshotError(
           'Category Service',
           'getGroupCategories',
           'Failed to listen to categories',

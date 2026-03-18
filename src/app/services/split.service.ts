@@ -56,7 +56,7 @@ export class SplitService implements ISplitService {
         }
       },
       (error) => {
-        this.analytics.logError(
+        this.analytics.logSnapshotError(
           'Split Service',
           'getUnpaidSplitsForGroup',
           'Failed to listen to unpaid splits',
