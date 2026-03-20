@@ -7,10 +7,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { environment } from '@env/environment';
-import { AdminStatistics } from '@models/admin-statistics';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { StatisticsStore } from '@store/statistics.store';
+import { getFunctions } from 'firebase/functions';
 
 @Component({
   selector: 'app-admin-statistics',
@@ -20,6 +20,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 })
 export class AdminStatisticsComponent {
   protected readonly statisticsService = inject(AdminStatisticsService);
+  protected readonly statisticsStore = inject(StatisticsStore);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -27,8 +28,9 @@ export class AdminStatisticsComponent {
 
   isLocalEnvironment = signal<boolean>(!environment.production);
   isLiveData = signal<boolean>(!environment.useEmulators);
+  showTestErrorButton: boolean = false;
+  showUpdateDataButton: boolean = false;
 
-  statistics = signal<AdminStatistics | null>(null);
   error = signal<string | null>(null);
 
   constructor() {
@@ -38,12 +40,13 @@ export class AdminStatisticsComponent {
   }
 
   async loadStatistics(): Promise<void> {
+    if (this.statisticsStore.loaded()) return;
     this.loading.loadingOn();
     this.error.set(null);
 
     try {
       const stats = await this.statisticsService.getStatistics();
-      this.statistics.set(stats);
+      this.statisticsStore.setStatistics(stats);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to load statistics';
@@ -63,14 +66,14 @@ export class AdminStatisticsComponent {
   }
 
   async refreshStatistics(): Promise<void> {
+    this.statisticsStore.clearStatistics();
     await this.loadStatistics();
   }
 
   async updateData(): Promise<void> {
     this.loading.loadingOn();
     try {
-      const syncEmails = httpsCallable(this.functions, 'syncAuthEmailsToUsers');
-      await Promise.all([syncEmails()]);
+      await Promise.all([]);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Data updated' },
       });
