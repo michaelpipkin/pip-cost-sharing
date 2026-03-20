@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { afterNextRender, Component, inject, signal } from '@angular/core';
+import { Component, inject, Signal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,17 +30,12 @@ export class AdminStatisticsComponent {
   isLiveData = signal<boolean>(!environment.useEmulators);
   showTestErrorButton: boolean = false;
   showUpdateDataButton: boolean = false;
+  statsLoaded: Signal<boolean> = this.statisticsStore.loaded;
 
   error = signal<string | null>(null);
 
-  constructor() {
-    afterNextRender(async () => {
-      await this.loadStatistics();
-    });
-  }
-
   async loadStatistics(): Promise<void> {
-    if (this.statisticsStore.loaded()) return;
+    if (this.statsLoaded()) return;
     this.loading.loadingOn();
     this.error.set(null);
 
