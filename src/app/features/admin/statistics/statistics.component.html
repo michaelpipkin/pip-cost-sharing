@@ -5,7 +5,7 @@
     <div></div>
   </div>
 
-  @if (statistics(); as stats) {
+  @if (statisticsStore.statistics(); as stats) {
     <div class="stats-grid">
       <mat-card class="stat-card">
         <mat-card-header>
@@ -86,32 +86,7 @@
         <mat-icon>refresh</mat-icon>
         Refresh
       </button>
-      <!-- <button
-        mat-raised-button
-        class="btn-secondary"
-        (click)="forceTestError()"
-      >
-        <mat-icon>error</mat-icon>
-        Test Error
-      </button> -->
     </div>
-  }
-
-  @if (isLocalEnvironment()) {
-    <button
-      mat-raised-button
-      class="btn-danger mt-3"
-      type="button"
-      (click)="updateData()"
-      data-testid="update-data-button"
-      aria-label="Update live data"
-    >
-      @if (isLiveData()) {
-        Update Live Data
-      } @else {
-        Update Emulator Data
-      }
-    </button>
   }
 
   @if (error(); as errorMessage) {
@@ -125,5 +100,31 @@
         Retry
       </button>
     </div>
+  }
+
+  @if (showTestErrorButton) {
+    <button mat-raised-button class="btn-secondary" (click)="forceTestError()">
+      <mat-icon>error</mat-icon>
+      Test Error
+    </button>
+  }
+
+  @if (isLocalEnvironment() && showUpdateDataButton) {
+    <button
+      mat-raised-button
+      class="btn-danger mt-3"
+      type="button"
+      (click)="updateData()"
+      data-testid="update-data-button"
+      [attr.aria-label]="
+        isLiveData() ? 'Update live data' : 'Update emulator data'
+      "
+    >
+      @if (isLiveData()) {
+        Update Live Data
+      } @else {
+        Update Emulator Data
+      }
+    </button>
   }
 </div>

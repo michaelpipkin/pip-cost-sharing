@@ -27,7 +27,7 @@ export class CustomSnackbarComponent {
   protected readonly data = inject<{ message: string }>(MAT_SNACK_BAR_DATA);
 
   progress = signal(100);
-  private intervalId: number | null = null;
+  private intervalId: ReturnType<typeof globalThis.setInterval> | null = null;
 
   constructor() {
     afterNextRender(() => {
@@ -35,7 +35,7 @@ export class CustomSnackbarComponent {
       const steps = SNACKBAR_DURATION / intervalMs;
       const decrement = 100 / steps;
 
-      this.intervalId = window.setInterval(() => {
+      this.intervalId = globalThis.setInterval(() => {
         this.progress.update((p) => p - decrement);
         if (this.progress() <= 0) {
           this.clearInterval();
@@ -54,7 +54,7 @@ export class CustomSnackbarComponent {
 
   private clearInterval() {
     if (this.intervalId) {
-      window.clearInterval(this.intervalId);
+      globalThis.clearInterval(this.intervalId);
       this.intervalId = null;
     }
   }
