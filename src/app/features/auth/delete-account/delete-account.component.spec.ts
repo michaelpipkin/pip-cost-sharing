@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -47,7 +46,6 @@ describe('DeleteAccountComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DeleteAccountComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: getAuth, useValue: authValue },
         { provide: getFunctions, useValue: {} },

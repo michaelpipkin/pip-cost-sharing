@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import {
   SelectFilterPanelComponent,
   SelectFilterValue,
@@ -16,7 +15,6 @@ describe('SelectFilterPanelComponent', () => {
     beforeEach(async () => {
       await TestBed.configureTestingModule({
         imports: [SelectFilterPanelComponent],
-        providers: [provideNoopAnimations()],
       }).compileComponents();
 
       fixture = TestBed.createComponent(SelectFilterPanelComponent);
@@ -128,7 +126,6 @@ describe('SelectFilterPanelComponent', () => {
     beforeEach(async () => {
       await TestBed.configureTestingModule({
         imports: [SelectFilterPanelComponent],
-        providers: [provideNoopAnimations()],
       }).compileComponents();
 
       fixture = TestBed.createComponent(SelectFilterPanelComponent);

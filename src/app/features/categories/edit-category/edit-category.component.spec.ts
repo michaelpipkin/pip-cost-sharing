@@ -5,7 +5,6 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
@@ -50,7 +49,6 @@ describe('EditCategoryComponent', () => {
     await TestBed.configureTestingModule({
       imports: [EditCategoryComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { category: testCategory } },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: createMockSnackBar() },

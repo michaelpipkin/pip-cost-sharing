@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
@@ -39,7 +38,6 @@ describe('AddMemberComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AddMemberComponent],
       providers: [
-        provideNoopAnimations(),
         {
           provide: MAT_DIALOG_DATA,
           useValue: { groupId: mockDocRef('groups/group-1') },

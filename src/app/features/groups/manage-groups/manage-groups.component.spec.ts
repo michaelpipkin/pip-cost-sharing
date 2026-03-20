@@ -5,7 +5,6 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
@@ -57,7 +56,6 @@ describe('ManageGroupsComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ManageGroupsComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: { group: testGroup } },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
@@ -120,7 +118,6 @@ describe('ManageGroupsComponent', () => {
       await TestBed.configureTestingModule({
         imports: [ManageGroupsComponent],
         providers: [
-          provideNoopAnimations(),
           { provide: MAT_DIALOG_DATA, useValue: { group: testGroup } },
           { provide: MatDialogRef, useValue: mockDialogRef },
           { provide: MatSnackBar, useValue: createMockSnackBar() },

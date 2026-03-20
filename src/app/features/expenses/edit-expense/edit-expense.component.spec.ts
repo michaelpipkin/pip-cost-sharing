@@ -3,7 +3,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { Expense } from '@models/expense';
@@ -114,7 +113,6 @@ describe('EditExpenseComponent', () => {
     await TestBed.configureTestingModule({
       imports: [EditExpenseComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: getStorage, useValue: {} },

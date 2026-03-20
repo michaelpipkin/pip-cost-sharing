@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -111,7 +110,6 @@ describe('HistoryDetailComponent', () => {
     await TestBed.configureTestingModule({
       imports: [HistoryDetailComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: ActivatedRoute, useValue: mockActivatedRoute },

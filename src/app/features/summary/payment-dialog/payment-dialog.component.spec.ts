@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialogClose } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
@@ -47,7 +46,6 @@ describe('PaymentDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [PaymentDialogComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },

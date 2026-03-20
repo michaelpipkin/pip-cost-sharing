@@ -3,7 +3,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { Memorized } from '@models/memorized';
@@ -103,7 +102,6 @@ describe('EditMemorizedComponent', () => {
     await TestBed.configureTestingModule({
       imports: [EditMemorizedComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: ActivatedRoute, useValue: mockRoute },

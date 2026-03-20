@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -54,7 +53,6 @@ describe('GroupsComponent', () => {
     await TestBed.configureTestingModule({
       imports: [GroupsComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: createMockMemberStore() },
