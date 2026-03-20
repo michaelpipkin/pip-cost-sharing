@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { FooterComponent } from './footer.component';
 import { PwaDetectionService } from '@services/pwa-detection.service';
@@ -20,7 +19,6 @@ describe('FooterComponent', () => {
     await TestBed.configureTestingModule({
       imports: [FooterComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: BreakpointObserver, useValue: mockBreakpointObserver },
         {

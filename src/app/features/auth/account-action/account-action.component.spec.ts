@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -57,7 +56,6 @@ describe('AccountActionComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AccountActionComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: getAuth, useValue: authValue },
         { provide: ActivatedRoute, useValue: mockRoute },

@@ -5,7 +5,6 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -92,7 +91,6 @@ describe('EditMemberComponent', () => {
     await TestBed.configureTestingModule({
       imports: [EditMemberComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         {
           provide: MAT_DIALOG_DATA,

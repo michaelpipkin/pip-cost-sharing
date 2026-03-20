@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { Router } from '@angular/router';
 import { HomeComponent } from './home.component';
@@ -29,7 +28,6 @@ describe('HomeComponent', () => {
     await TestBed.configureTestingModule({
       imports: [HomeComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: UserStore, useValue: mockUserStore },
         { provide: PwaDetectionService, useValue: mockPwaDetection },

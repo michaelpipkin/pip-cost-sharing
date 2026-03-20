@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialogClose } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { DeleteDialogComponent } from './delete-dialog.component';
@@ -15,7 +14,6 @@ describe('DeleteDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DeleteDialogComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: dialogData },
       ],
     }).compileComponents();

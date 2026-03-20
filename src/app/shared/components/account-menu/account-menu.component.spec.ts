@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AccountMenuComponent } from './account-menu.component';
 import { UserStore } from '@store/user.store';
@@ -37,7 +36,6 @@ describe('AccountMenuComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AccountMenuComponent, TranslateModule.forRoot()],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: UserStore, useValue: mockUserStore },
         { provide: UserService, useValue: mockUserService },

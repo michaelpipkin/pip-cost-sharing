@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { By } from '@angular/platform-browser';
@@ -43,7 +42,6 @@ describe('AccountComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AccountComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: getAuth, useValue: authValue },
         { provide: getFunctions, useValue: {} },

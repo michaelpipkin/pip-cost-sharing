@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
@@ -25,7 +24,6 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: getAuth, useValue: {} },
         { provide: LoadingService, useValue: createMockLoadingService() },

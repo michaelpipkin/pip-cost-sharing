@@ -2,7 +2,6 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { DemoService } from '@services/demo.service';
@@ -54,7 +53,6 @@ describe('MemorizedComponent', () => {
     await TestBed.configureTestingModule({
       imports: [MemorizedComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: GroupStore, useValue: createMockGroupStore() },
         { provide: MemberStore, useValue: mockMemberStore },

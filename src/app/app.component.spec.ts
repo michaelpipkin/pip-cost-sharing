@@ -1,7 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingComponent } from '@components/loading/loading.component';
 import { LoadingService } from '@components/loading/loading.service';
@@ -71,7 +70,6 @@ describe('AppComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: UserStore, useValue: createMockUserStore() },
         { provide: GroupStore, useValue: createMockGroupStore() },
