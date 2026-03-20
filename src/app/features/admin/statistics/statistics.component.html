@@ -87,6 +87,15 @@
         Refresh
       </button>
     </div>
+  } @else {
+    <button
+      mat-raised-button
+      class="btn-primary mt-2"
+      (click)="loadStatistics()"
+    >
+      <mat-icon>download</mat-icon>
+      Get Statistics
+    </button>
   }
 
   @if (error(); as errorMessage) {
