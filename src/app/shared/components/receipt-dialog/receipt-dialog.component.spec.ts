@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { UserService } from '@services/user.service';
 import {
@@ -24,7 +23,6 @@ describe('ReceiptDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ReceiptDialogComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: UserService, useValue: mockUserService },
         { provide: LoadingService, useValue: createMockLoadingService() },

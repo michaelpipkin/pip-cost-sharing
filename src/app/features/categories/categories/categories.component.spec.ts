@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { DemoService } from '@services/demo.service';
@@ -57,7 +56,6 @@ describe('CategoriesComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CategoriesComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: CategoryStore, useValue: mockCategoryStore },
         { provide: GroupStore, useValue: mockGroupStore },

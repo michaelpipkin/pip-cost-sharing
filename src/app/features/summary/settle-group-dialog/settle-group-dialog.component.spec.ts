@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialogClose } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -61,7 +60,6 @@ describe('SettleGroupDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [SettleGroupDialogComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_DIALOG_DATA, useValue: dialogData },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },

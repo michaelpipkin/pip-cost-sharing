@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { CalculatorComponent } from './calculator.component';
 import { GroupStore } from '@store/group.store';
 import { createMockGroupStore } from '@testing/test-helpers';
@@ -16,7 +15,6 @@ describe('CalculatorComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CalculatorComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: GroupStore, useValue: mockGroupStore },
       ],
     }).compileComponents();

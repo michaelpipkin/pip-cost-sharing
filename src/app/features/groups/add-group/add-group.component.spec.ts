@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { SUPPORTED_CURRENCIES } from '@models/currency-config.interface';
 import { AnalyticsService } from '@services/analytics.service';
@@ -33,7 +32,6 @@ describe('AddGroupComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AddGroupComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MatDialogRef, useValue: createMockDialogRef() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: UserStore, useValue: mockUserStore },

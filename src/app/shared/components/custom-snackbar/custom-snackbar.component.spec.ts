@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import {
   MAT_SNACK_BAR_DATA,
   MatSnackBarRef,
@@ -19,7 +18,6 @@ describe('CustomSnackbarComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CustomSnackbarComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: MAT_SNACK_BAR_DATA, useValue: { message: 'Test message' } },
         { provide: MatSnackBarRef, useValue: mockSnackBarRef },
       ],

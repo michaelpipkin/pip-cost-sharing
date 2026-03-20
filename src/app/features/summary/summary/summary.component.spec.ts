@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -146,7 +145,6 @@ describe('SummaryComponent', () => {
     await TestBed.configureTestingModule({
       imports: [SummaryComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: GroupStore, useValue: mockGroupStore },

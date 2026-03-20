@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { AdminStatistics } from '@models/admin-statistics';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
@@ -12,7 +11,6 @@ import {
   createMockSnackBar,
 } from '@testing/test-helpers';
 import { getFunctions } from 'firebase/functions';
-import { signal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminStatisticsComponent } from './statistics.component';
 
@@ -59,7 +57,6 @@ describe('AdminStatisticsComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminStatisticsComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: getFunctions, useValue: {} },
         { provide: AdminStatisticsService, useValue: mockStatisticsService },
         { provide: StatisticsStore, useValue: mockStatisticsStore },

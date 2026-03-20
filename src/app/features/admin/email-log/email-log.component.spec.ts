@@ -1,7 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { LoadingService } from '@components/loading/loading.service';
 import { MailDocument } from '@models/mail';
 import { AdminMailService } from '@services/admin-mail.service';
@@ -50,7 +49,6 @@ describe('AdminEmailLogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminEmailLogComponent],
       providers: [
-        provideNoopAnimations(),
         { provide: AdminMailService, useValue: mockMailService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatSnackBar, useValue: mockSnackBar },

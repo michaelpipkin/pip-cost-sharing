@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import {
   DateRangeFilterPanelComponent,
@@ -14,7 +13,6 @@ describe('DateRangeFilterPanelComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DateRangeFilterPanelComponent],
-      providers: [provideNoopAnimations(), provideNativeDateAdapter()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DateRangeFilterPanelComponent);
