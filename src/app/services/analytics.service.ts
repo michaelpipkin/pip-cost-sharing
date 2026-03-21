@@ -1,11 +1,13 @@
 import { inject, Injectable } from '@angular/core';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AnalyticsService {
+  protected readonly auth = inject(getAuth);
   protected readonly fns = inject(getFunctions);
 
   private readonly pendingSnapshotErrors = new Map<
@@ -54,8 +56,9 @@ export class AnalyticsService {
 
     const timer = setTimeout(() => {
       this.pendingSnapshotErrors.delete(key);
+      if (this.auth.currentUser !== null) return;
       this.logError(component, action, message, error);
-    }, 5000);
+    }, 10000);
 
     this.pendingSnapshotErrors.set(key, timer);
   }
