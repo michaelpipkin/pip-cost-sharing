@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { afterNextRender, inject, Injectable, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AdMob, InterstitialAdPluginEvents } from '@capacitor-community/admob';
 import { AnalyticsService } from '@services/analytics.service';
@@ -18,15 +18,17 @@ export class AdMobService {
     'ca-app-pub-9151218051877311/2705618600';
   // State
   private navigationCount = 0;
-  private isAdLoaded = signal<boolean>(false);
+  private readonly isAdLoaded = signal<boolean>(false);
   private isInitialized = false;
 
   constructor() {
     // Only initialize if we are in an App environment (TWA or Standalone)
     // and not just a regular browser, to comply with policy.
     if (this.pwaService.isRunningAsApp()) {
-      this.initializeAdMob();
-      this.setupAutoAdLogic();
+      afterNextRender(() => {
+        this.initializeAdMob();
+        this.setupAutoAdLogic();
+      });
     }
   }
 
@@ -37,7 +39,7 @@ export class AdMobService {
 
       // Set video ads to be muted by default (both methods for maximum compatibility)
       await AdMob.setApplicationMuted({ muted: true });
-      await AdMob.setApplicationVolume({ volume: 0.0 });
+      await AdMob.setApplicationVolume({ volume: 0 });
 
       AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => {
         this.isAdLoaded.set(false);
@@ -111,6 +113,7 @@ export class AdMobService {
         'No fill',
         'Internal error',
         'Network Error',
+        'Unable to obtain a JavascriptEngine',
       ];
       if (!ignoredErrors.some((err) => msg.startsWith(err))) {
         this.analytics.logError(
@@ -128,7 +131,7 @@ export class AdMobService {
     try {
       // Ensure muted state right before showing ad
       await AdMob.setApplicationMuted({ muted: true });
-      await AdMob.setApplicationVolume({ volume: 0.0 });
+      await AdMob.setApplicationVolume({ volume: 0 });
 
       await AdMob.showInterstitial();
 
