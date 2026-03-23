@@ -101,6 +101,11 @@
   word-break: break-word;
 }
 
+// Override global grid layout — no copy button in this component
+.detail-table-container {
+  display: flex;
+}
+
 // Expanded detail panel
 .detail-content {
   padding: 0.75rem 1rem;
