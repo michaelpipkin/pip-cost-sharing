@@ -1,3 +1,8 @@
 #search-field {
   flex: 0 0 230px;
 }
+
+// Override global grid layout — no copy button in this component
+.detail-table-container {
+  display: flex;
+}
