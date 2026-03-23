@@ -96,7 +96,7 @@ body.dark-theme {
 
 .mdc-button {
   min-height: 36px !important;
-  line-height: 1.15em !important;
+  line-height: 1.15em;
   height: auto !important;
   padding: 0.5em 1.5em !important;
 }
@@ -137,12 +137,12 @@ body.dark-theme {
     padding-left: 0.375rem !important;
     padding-right: 0.375rem !important;
     color: tokens.color('on-primary') !important;
-    line-height: 1.25rem !important;
+    line-height: 1.25rem;
   }
 
   a span,
   .links a span {
-    line-height: 1.25rem !important;
+    line-height: 1.25rem;
     font-size: 1.125rem !important; // This is already relative to root
   }
 
@@ -415,7 +415,9 @@ body.dark-theme {
 
 .detail-table-container {
   display: grid;
-  justify-content: stretch;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  justify-items: center;
   padding: 0 1rem;
   overflow: hidden;
   transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);

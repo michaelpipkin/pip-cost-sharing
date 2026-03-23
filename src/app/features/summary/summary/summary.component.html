@@ -18,8 +18,12 @@
             data-testid="summary-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
+            (keydown.enter)="startTour()"
+            (keydown.space)="startTour(); $event.preventDefault()"
             aria-label="Start summary tour"
             class="mr-2"
+            tabindex="0"
+            role="button"
           >
             tour
           </mat-icon>
@@ -27,8 +31,12 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp()"
+          (keydown.space)="showHelp(); $event.preventDefault()"
           data-testid="summary-help-button"
           aria-label="Show help for summary"
+          tabindex="0"
+          role="button"
         >
           help
         </mat-icon>
@@ -228,15 +236,22 @@
                       animate.enter="detail-expand"
                       animate.leave="detail-collapse"
                     >
-                      <table
-                        mat-table
-                        [dataSource]="detailData()"
+                      <button
+                        mat-icon-button
+                        class="copy-btn"
                         (click)="
                           copySummaryToClipboard(amountDue);
                           $event.stopPropagation()
                         "
+                        matTooltip="Copy summary to clipboard"
+                        aria-label="Copy summary to clipboard"
+                      >
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                      <table
+                        mat-table
+                        [dataSource]="detailData()"
                         class="static-table info-detail-table"
-                        matTooltip="Click to copy summary to clipboard"
                       >
                         @let detailColumnsToDisplay = ['category', 'amount'];
                         <ng-container matColumnDef="category">
@@ -286,7 +301,10 @@
                 *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
                 class="summary-row clickable-row expandable-row"
                 [class.clickable-row]="categories().length > 1"
+                tabindex="0"
                 (click)="onExpandClick(amountDue)"
+                (keydown.enter)="onExpandClick(amountDue)"
+                (keydown.space)="onExpandClick(amountDue); $event.preventDefault()"
               ></tr>
               <tr
                 mat-row
@@ -330,8 +348,6 @@
                 [dataSource]="leastTransfers()"
                 data-testid="least-transfers-table"
                 class="static-table"
-                (click)="copySettlementToClipboard(); $event.stopPropagation()"
-                matTooltip="Click to copy settlement to clipboard"
               >
                 @let leastTransfersColumns = ['from', 'to', 'amount'];
                 <ng-container matColumnDef="from">
@@ -386,10 +402,21 @@
               type="button"
               (click)="requestAllPayments()"
               data-testid="request-all-payments-button"
-              aria-label="Send payment request emails to all members with outstanding balances"
+              aria-label="Request All Payments"
             >
               <mat-icon>forward_to_inbox</mat-icon>
               Request All Payments
+            </button>
+            <button
+              mat-raised-button
+              class="btn-secondary"
+              type="button"
+              (click)="copySettlementToClipboard()"
+              data-testid="copy-settlement-button"
+              aria-label="Copy settlement to clipboard"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy Settlement
             </button>
           </div>
         } @else {

@@ -24,4 +24,15 @@
       {{ data.cancelButtonText }}
     </button>
   }
+  @if (data.navButtonText) {
+    <button
+      mat-stroked-button
+      type="button"
+      [mat-dialog-close]="'navigate'"
+      data-testid="nav-button"
+      [aria-label]="data.navButtonText"
+    >
+      {{ data.navButtonText }}
+    </button>
+  }
 </mat-dialog-actions>

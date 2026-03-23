@@ -1,15 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -58,6 +48,17 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -120,6 +121,10 @@ export class ExpensesComponent {
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
+  protected readonly isAdmin = computed(() => this.currentMember()?.groupAdmin ?? false);
+  protected readonly splitColumnsToDisplay = computed(() =>
+    this.isAdmin() ? ['owedBy', 'amount', 'paid', 'mark'] : ['owedBy', 'amount', 'paid']
+  );
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   groupHasExpenses: Signal<boolean> = this.expenseStore.groupHasExpenses;
@@ -144,12 +149,11 @@ export class ExpensesComponent {
           this.expenses.set(storeExpenses);
           this.isLoaded.set(true);
         }
-      } else {
-        // Clear demo expenses when switching to real user mode
-        if (this.expenses().length > 0 && !this.currentGroup()) {
-          this.expenses.set([]);
-          this.isLoaded.set(false);
-        }
+      }
+      // Clear demo expenses when switching to real user mode
+      else if (this.expenses().length > 0 && !this.currentGroup()) {
+        this.expenses.set([]);
+        this.isLoaded.set(false);
       }
     });
 
@@ -215,7 +219,7 @@ export class ExpensesComponent {
 
   filteredExpenses = computed(() => {
     // Create a copy to avoid mutating the original signal array
-    var filteredExpenses = [...this.expenses()];
+    let filteredExpenses = [...this.expenses()];
 
     // Apply table filter directives
     const tableFilters = this.expenseFilterService.filters();
@@ -239,7 +243,7 @@ export class ExpensesComponent {
   });
 
   expenseTotal = computed(() =>
-    this.filteredExpenses().reduce((total, e) => (total += +e.totalAmount), 0)
+    this.filteredExpenses().reduce((total, e) => total + +e.totalAmount, 0)
   );
 
   expandedExpense = model<Expense | null>(null);
@@ -295,7 +299,6 @@ export class ExpensesComponent {
   }
 
   sortExpenses(e: { active: string; direction: string }): void {
-    // this.sortField.set(e.active);
     this.sortAsc.set(e.direction == 'asc');
   }
 
@@ -315,31 +318,55 @@ export class ExpensesComponent {
     this.router.navigate(['/expenses', expense.id]);
   }
 
-  async markSplitPaidUnpaid(expense: Expense, split: Split): Promise<void> {
+  markSplitPaidUnpaid(expense: Expense, split: Split): void {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    const changes = {
-      paid: !split.paid,
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Admin Correction',
+        confirmationText:
+          'This does not create a payment history record or send payment ' +
+          'notifications. It is intended for corrections only. To record a ' +
+          'payment between members with full history and notifications, use ' +
+          'the Summary page.',
+        confirmButtonText: 'Proceed',
+        cancelButtonText: 'Cancel',
+        navButtonText: 'Go to Summary',
+      },
     };
-    this.loading.loadingOn();
-    try {
-      await this.splitService.updateSplit(
-        this.currentGroup()!.id,
-        expense.ref!,
-        split.ref!,
-        changes
-      );
-      this.loadExpenses();
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: `Split ${!split.paid ? 'marked as paid' : 'marked as unpaid'}`,
-        },
-      });
-    } finally {
-      this.loading.loadingOff();
-    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result === 'navigate') {
+        this.router.navigate(['/analysis/summary']);
+        return;
+      }
+      if (!result) return;
+      if (!expense.ref || !split.ref) return;
+      const changes = { paid: !split.paid };
+      this.loading.loadingOn();
+      try {
+        await this.splitService.updateSplit(
+          this.currentGroup()!.id,
+          expense.ref,
+          split.ref,
+          changes
+        );
+        this.loadExpenses();
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: {
+            message: `Split ${split.paid ? 'marked as unpaid' : 'marked as paid'}`,
+          },
+        });
+      } catch {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Something went wrong. Please try again.' },
+        });
+      } finally {
+        this.loading.loadingOff();
+      }
+    });
   }
 
   showHelp(): void {
@@ -408,11 +435,10 @@ export class ExpensesComponent {
       const owedBy = split.owedByMember?.displayName;
       // Only show paid status if the person who owes is different from the person who paid
       const showPaidStatus = !expense.paidByMemberRef.eq(split.owedByMemberRef);
-      const paidStatus = showPaidStatus
-        ? split.paid
-          ? ' (Paid)'
-          : ' (Unpaid)'
-        : '';
+      let paidStatus = '';
+      if (showPaidStatus) {
+        paidStatus = split.paid ? ' (Paid)' : ' (Unpaid)';
+      }
 
       if (expense.splitByPercentage) {
         // Show percentage and total for percentage splits

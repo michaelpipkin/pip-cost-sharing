@@ -16,6 +16,8 @@
                 [class.state-chip--selected]="selectedState() === filter"
                 [style.--mat-chip-label-text-color]="chipTextColor(filter)"
                 (click)="selectedState.set(filter)"
+                (keydown.enter)="selectedState.set(filter)"
+                (keydown.space)="selectedState.set(filter); $event.preventDefault()"
                 [attr.aria-pressed]="selectedState() === filter"
               >
                 {{ filter }}
@@ -183,7 +185,10 @@
             *matRowDef="let row; columns: columnsToDisplay()"
             class="summary-row clickable-row expandable-row"
             [class.expanded-row]="row === expandedRow()"
+            tabindex="0"
             (click)="onRowClick(row)"
+            (keydown.enter)="onRowClick(row)"
+            (keydown.space)="onRowClick(row); $event.preventDefault()"
           ></tr>
           <tr
             mat-row

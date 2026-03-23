@@ -18,8 +18,12 @@
             data-testid="history-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
+            (keydown.enter)="startTour()"
+            (keydown.space)="startTour(); $event.preventDefault()"
             aria-label="Start history tour"
             class="mr-2"
+            tabindex="0"
+            role="button"
           >
             tour
           </mat-icon>
@@ -27,8 +31,12 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp()"
+          (keydown.space)="showHelp(); $event.preventDefault()"
           data-testid="history-help-button"
           aria-label="Show help for history"
+          tabindex="0"
+          role="button"
         >
           help
         </mat-icon>
@@ -61,12 +69,7 @@
           data-testid="history-member-field"
         >
           <mat-label>Select Member</mat-label>
-          <mat-select
-            name="member"
-            [(ngModel)]="selectedMember"
-            (selectionChange)="resetHistoryTable()"
-            docRefCompare
-          >
+          <mat-select name="member" [(ngModel)]="selectedMember" docRefCompare>
             @for (member of members(); track member.ref) {
               <mat-option [value]="member.ref">
                 {{ member.displayName }}
@@ -86,7 +89,6 @@
             matInput
             [matDatepicker]="startDatepicker"
             [(ngModel)]="startDate"
-            (dateChange)="resetHistoryTable()"
           />
           @if (!startDate()) {
             <mat-datepicker-toggle
@@ -99,7 +101,7 @@
               tabindex="-1"
               mat-icon-button
               aria-label="Clear"
-              (click)="startDate.set(null); resetHistoryTable()"
+              (click)="startDate.set(null)"
               [matTooltip]="'Clear'"
             >
               <mat-icon>close</mat-icon>
@@ -117,7 +119,6 @@
             matInput
             [matDatepicker]="endDatePicker"
             [(ngModel)]="endDate"
-            (dateChange)="resetHistoryTable()"
           />
           @if (!endDate()) {
             <mat-datepicker-toggle
@@ -130,7 +131,7 @@
               tabindex="-1"
               mat-icon-button
               aria-label="Clear"
-              (click)="endDate.set(null); resetHistoryTable()"
+              (click)="endDate.set(null)"
               [matTooltip]="'Clear'"
             >
               <mat-icon>close</mat-icon>
@@ -208,7 +209,10 @@
                 mat-row
                 *matRowDef="let history; columns: columnsToDisplay"
                 class="summary-row clickable-row"
+                tabindex="0"
                 (click)="onRowClick(history)"
+                (keydown.enter)="onRowClick(history)"
+                (keydown.space)="onRowClick(history); $event.preventDefault()"
               ></tr>
               <tr class="mat-row" *matNoDataRow>
                 <td class="mat-cell" [colSpan]="columnsToDisplay.length">

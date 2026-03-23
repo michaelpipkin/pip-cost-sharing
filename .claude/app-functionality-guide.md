@@ -539,17 +539,19 @@ The application has three distinct user states that affect navigation:
   - **Owed By**: Member name
   - **Amount**: How much this member owes
   - **Paid**: Payment status for this split
-  - **Mark Paid/Unpaid**: Button to toggle split payment status
+  - **Mark Paid/Unpaid**: Button to toggle split payment status (**admin only**)
 
-**Individual Split Payment Management**:
+**Individual Split Payment Management (admin only)**:
+- The Mark Paid/Unpaid column is only visible to group admins; non-admins do not see it
+- Clicking the button opens a confirmation dialog warning the admin this is for corrections only
+  - Dialog offers "Proceed", "Cancel", and "Go to Summary" (navigates to `/analysis/summary`)
 - Each split (except the payer's) has a Mark Paid/Unpaid button
 - Payer's row shows "N/A" (they paid the expense, so don't owe anything)
-- **Green button** (with $ icon): Split is unpaid
-  - Click to mark this single split as paid
-- **Red button**: Split is paid
-  - Click to mark this single split as unpaid
+- **Green button** (with $ icon): Split is unpaid → click to mark this single split as paid
+- **Red button**: Split is paid → click to mark this single split as unpaid
 - This marks only ONE split at a time (not all splits between two members)
 - Does NOT create a history record (unlike Summary page Pay button)
+- Members should use the Summary page to record payments with history and notifications
 
 **Business Rules**:
 
