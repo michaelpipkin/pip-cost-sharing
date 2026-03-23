@@ -1,12 +1,4 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  inject,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -20,15 +12,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
-import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
-import { Split } from '@models/split';
+import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
@@ -40,6 +27,18 @@ import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference, getDoc } from 'firebase/firestore';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  inject,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-history-detail',
@@ -121,9 +120,8 @@ export class HistoryDetailComponent {
     for (const split of this.paidSplits()) {
       const category = this.categoryStore.getCategoryByRef(split.categoryRef);
       const categoryName = category?.name ?? 'Unknown';
-      const contribution = this.isGroupSettle()
-        ? split.allocatedAmount
-        : split.owedByMemberRef.eq(h.paidByMemberRef)
+      const contribution =
+        this.isGroupSettle() || split.owedByMemberRef.eq(h.paidByMemberRef)
           ? split.allocatedAmount
           : -split.allocatedAmount;
       totalsMap.set(
@@ -170,13 +168,13 @@ export class HistoryDetailComponent {
       const splits = splitDocs
         .filter((doc) => doc.exists())
         .map((doc) => {
-          const data = doc.data() as any;
+          const data = doc.data() as unknown as SplitDto;
           return new Split({
             ...data,
             id: doc.id,
-            date: data.date.parseDate(),
+            date: data.date.parseDate() ?? undefined,
             category: this.categoryStore.getCategoryByRef(data.categoryRef),
-            ref: doc.ref as DocumentReference<Split>,
+            ref: doc.ref,
           });
         });
       this.paidSplits.set(splits);
@@ -234,7 +232,7 @@ export class HistoryDetailComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Unpay',
-        confirmationText: `This will mark all ${splitCount} split${splitCount !== 1 ? 's' : ''} in this payment as unpaid and delete this history record. All associated expenses will also be marked as unpaid. This cannot be undone.`,
+        confirmationText: `This will mark all ${splitCount} split${splitCount === 1 ? '' : 's'} in this payment as unpaid and delete this history record. All associated expenses will also be marked as unpaid. This cannot be undone.`,
         confirmButtonText: 'Unpay',
         cancelButtonText: 'Cancel',
       },
@@ -288,7 +286,7 @@ export class HistoryDetailComponent {
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Unpay Group Settle',
-        confirmationText: `This will mark all splits in this group settle as unpaid and delete all ${batchSize} associated history record${batchSize !== 1 ? 's' : ''}. All associated expenses will also be marked as unpaid. This cannot be undone.`,
+        confirmationText: `This will mark all splits in this group settle as unpaid and delete all ${batchSize} associated history record${batchSize === 1 ? '' : 's'}. All associated expenses will also be marked as unpaid. This cannot be undone.`,
         confirmButtonText: 'Unpay',
         cancelButtonText: 'Cancel',
       },
@@ -354,54 +352,52 @@ export class HistoryDetailComponent {
     };
     const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
-      if (confirm) {
-        this.loading.loadingOn();
-        try {
-          const isPositiveDirection = split.owedByMemberRef.eq(
-            h.paidByMemberRef
-          );
-          await this.historyService.unpaySingleSplitFromHistory(
-            split.ref!,
-            split.expenseRef as DocumentReference<Expense>,
-            h,
-            split.allocatedAmount,
-            isPositiveDirection
-          );
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Split marked as unpaid' },
-          });
-          if (isLastSplit) {
+      if (!confirm) return;
+      this.loading.loadingOn();
+      try {
+        if (!split.ref) return;
+        const isPositiveDirection = split.owedByMemberRef.eq(h.paidByMemberRef);
+        await this.historyService.unpaySingleSplitFromHistory(
+          split.ref,
+          split.expenseRef,
+          h,
+          split.allocatedAmount,
+          isPositiveDirection
+        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Split marked as unpaid' },
+        });
+        if (isLastSplit) {
+          this.goBack();
+        } else {
+          // Refresh the splits list and history record
+          const updatedHistory = this.historyStore
+            .groupHistory()
+            .find((rec) => rec.id === h.id);
+          if (updatedHistory) {
+            this.history.set(updatedHistory);
+            await this.loadSplits(updatedHistory.splitsPaid ?? []);
+          } else {
             this.goBack();
-          } else {
-            // Refresh the splits list and history record
-            const updatedHistory = this.historyStore
-              .groupHistory()
-              .find((rec) => rec.id === h.id);
-            if (updatedHistory) {
-              this.history.set(updatedHistory);
-              await this.loadSplits(updatedHistory.splitsPaid ?? []);
-            } else {
-              this.goBack();
-            }
           }
-        } catch (error) {
-          if (error instanceof Error) {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: error.message },
-            });
-            this.analytics.logError(
-              'History Detail Component',
-              'unpay_split',
-              error.message
-            );
-          } else {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not unpay split' },
-            });
-          }
-        } finally {
-          this.loading.loadingOff();
         }
+      } catch (error) {
+        if (error instanceof Error) {
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: error.message },
+          });
+          this.analytics.logError(
+            'History Detail Component',
+            'unpay_split',
+            error.message
+          );
+        } else {
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: 'Something went wrong - could not unpay split' },
+          });
+        }
+      } finally {
+        this.loading.loadingOff();
       }
     });
   }

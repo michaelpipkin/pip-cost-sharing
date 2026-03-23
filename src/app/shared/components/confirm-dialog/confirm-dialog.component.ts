@@ -17,4 +17,5 @@ type confirmData = {
   confirmationText: string;
   cancelButtonText?: string;
   confirmButtonText: string;
+  navButtonText?: string;
 };

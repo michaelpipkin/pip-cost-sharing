@@ -1,14 +1,4 @@
 import { DatePipe } from '@angular/common';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -27,10 +17,6 @@ import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
@@ -43,6 +29,20 @@ import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference } from 'firebase/firestore';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-history',
@@ -97,10 +97,11 @@ export class HistoryComponent {
 
   filteredHistory = computed<History[]>(
     (selectedMember = this.selectedMember()) => {
-      var filteredHistory = this.history().filter((history: History) => {
+      if (!selectedMember) return [];
+      let filteredHistory = this.history().filter((history: History) => {
         return (
-          history.paidByMemberRef.eq(selectedMember!) ||
-          history.paidToMemberRef.eq(selectedMember!)
+          history.paidByMemberRef.eq(selectedMember) ||
+          history.paidToMemberRef.eq(selectedMember)
         );
       });
       if (this.startDate() !== undefined && this.startDate() !== null) {
@@ -134,10 +135,10 @@ export class HistoryComponent {
       this.tourService.checkForContinueTour('history');
     });
     effect(() => {
-      if (!this.historyStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.historyStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
   }
@@ -156,8 +157,6 @@ export class HistoryComponent {
     this.sortField.set(h.active);
     this.sortAsc.set(h.direction === 'asc');
   }
-
-  resetHistoryTable(): void {}
 
   showHelp(): void {
     const dialogConfig: MatDialogConfig<HelpDialogData> = {

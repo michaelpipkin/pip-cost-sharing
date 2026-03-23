@@ -17,8 +17,12 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp()"
+          (keydown.space)="showHelp(); $event.preventDefault()"
           data-testid="history-detail-help-button"
           aria-label="Show help for payment detail"
+          tabindex="0"
+          role="button"
         >
           help
         </mat-icon>
@@ -94,7 +98,6 @@
             class="btn btn-danger"
             (click)="onUnpayAll()"
             matTooltip="Mark all splits as unpaid and delete this record"
-            aria-label="Unpay all splits"
             data-testid="unpay-all-button"
           >
             <mat-icon>money_off</mat-icon>
@@ -206,7 +209,10 @@
                 mat-row
                 *matRowDef="let split; columns: splitsColumnsToDisplay()"
                 class="clickable-row"
+                tabindex="0"
                 (click)="onRowClick(split)"
+                (keydown.enter)="onRowClick(split)"
+                (keydown.space)="onRowClick(split); $event.preventDefault()"
               ></tr>
               <tr class="mat-row" *matNoDataRow>
                 <td

@@ -10,7 +10,7 @@ export interface HelpSection {
   providedIn: 'root',
 })
 export class HelpContentService {
-  private helpSections: HelpSection[] = [
+  private readonly helpSections: HelpSection[] = [
     {
       id: 'groups',
       title: 'Groups',
@@ -49,7 +49,7 @@ export class HelpContentService {
         'By default, the expenses page loads unpaid expenses from the last 90 days. You can use the search form at the top of the page to fetch expenses by date range, payer, description, or category. You can also choose to show all expenses, or only unpaid expenses. Be aware that you can only load a maximum of 200 expenses at a time.',
         'You can filter certain columns in the expenses table by clicking the filter icon in the column header. This will open a popup where you can enter filter criteria for that column. Multiple column filters can be applied at the same time.',
         'Clicking the Date header will toggle sorting the table in ascending or descending date order.',
-        'Click the Splits arrow on any row to expand the split detail for that expense. You can click the paid icon on a split row to mark that specific split paid or unpaid. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing.',
+        'Click the Splits arrow on any row to expand the split detail for that expense. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing. Group admins can use the Mark Paid/Unpaid button on a split row to make corrections to individual splits. Note that this does not create a payment history record — to record a payment between members with history and notifications, use the Summary page.',
         'Click the Add New Expense button to create a new expense for the group.',
         'Click on an expense row to edit the expense details. Please note that editing an expense will mark all splits unpaid. When viewing an existing expense, you can view the receipt, if one exists.',
       ],

@@ -9,8 +9,12 @@
             data-testid="expenses-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
+            (keydown.enter)="startTour()"
+            (keydown.space)="startTour(); $event.preventDefault()"
             aria-label="Start expenses tour"
             class="mr-2"
+            tabindex="0"
+            role="button"
           >
             tour
           </mat-icon>
@@ -18,8 +22,12 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp()"
+          (keydown.space)="showHelp(); $event.preventDefault()"
           data-testid="expenses-help-button"
           aria-label="Show help for expenses"
+          tabindex="0"
+          role="button"
         >
           help
         </mat-icon>
@@ -378,15 +386,15 @@
                   </mat-icon>
                 </th>
                 <td mat-cell *matCellDef="let expense" class="cell-center">
-                  <button
-                    mat-icon-button
-                    aria-label="expand row"
-                    (click)="onExpandClick(expense); $event.stopPropagation()"
-                  >
+                  <!-- S7927 false positive: icon-only button, no visible text label — prettier-ignore keeps NOSONAR on the correct line -->
+                  <!-- prettier-ignore -->
+                  <button mat-icon-button aria-label="expand row" (click)="onExpandClick(expense); $event.stopPropagation()"> <!-- //NOSONAR -->
                     @if (expandedExpense() === expense) {
-                      <mat-icon>keyboard_arrow_up</mat-icon>
+                      <mat-icon aria-hidden="true">keyboard_arrow_up</mat-icon>
                     } @else {
-                      <mat-icon>keyboard_arrow_down</mat-icon>
+                      <mat-icon aria-hidden="true">
+                        keyboard_arrow_down
+                      </mat-icon>
                     }
                   </button>
                 </td>
@@ -404,20 +412,23 @@
                       animate.enter="detail-expand"
                       animate.leave="detail-collapse"
                     >
-                      <table
-                        mat-table
-                        [dataSource]="expense.splits"
-                        class="static-table"
+                      <button
+                        mat-icon-button
+                        class="copy-btn"
                         (click)="
                           copyExpenseSummaryToClipboard(expense);
                           $event.stopPropagation()
                         "
-                        matTooltip="Click to copy expense summary"
-                        [matTooltipDisabled]="false"
-                        #tableTooltip="matTooltip"
+                        matTooltip="Copy expense summary to clipboard"
+                        aria-label="Copy expense summary to clipboard"
                       >
-                        @let splitColumnsToDisplay =
-                          ['owedBy', 'amount', 'paid', 'mark'];
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                      <table
+                        mat-table
+                        [dataSource]="expense.splits"
+                        class="static-table"
+                      >
                         <ng-container matColumnDef="id">
                           <th mat-header-cell *matHeaderCellDef>Id</th>
                           <td mat-cell *matCellDef="let split">
@@ -493,11 +504,6 @@
                                     markSplitPaidUnpaid(expense, split);
                                     $event.stopPropagation()
                                   "
-                                  (mouseenter)="tableTooltip.disabled = true"
-                                  (mouseleave)="
-                                    tableTooltip.disabled = false;
-                                    tableTooltip.show()
-                                  "
                                   title="Mark split unpaid"
                                 >
                                   <mat-icon>money_off</mat-icon>
@@ -510,11 +516,6 @@
                                     markSplitPaidUnpaid(expense, split);
                                     $event.stopPropagation()
                                   "
-                                  (mouseenter)="tableTooltip.disabled = true"
-                                  (mouseleave)="
-                                    tableTooltip.disabled = false;
-                                    tableTooltip.show()
-                                  "
                                   title="Mark split paid"
                                 >
                                   <mat-icon>attach_money</mat-icon>
@@ -525,11 +526,14 @@
                         </ng-container>
                         <tr
                           mat-header-row
-                          *matHeaderRowDef="splitColumnsToDisplay"
+                          *matHeaderRowDef="splitColumnsToDisplay()"
                         ></tr>
                         <tr
                           mat-row
-                          *matRowDef="let split; columns: splitColumnsToDisplay"
+                          *matRowDef="
+                            let split;
+                            columns: splitColumnsToDisplay()
+                          "
                         ></tr>
                       </table>
                     </div>
@@ -550,7 +554,10 @@
                 class="summary-row clickable-row expandable-row"
                 [class.expanded-row]="expandedExpense() === expense"
                 [attr.data-tour]="isFirst ? 'expense-row' : null"
+                tabindex="0"
                 (click)="onRowClick(expense)"
+                (keydown.enter)="onRowClick(expense)"
+                (keydown.space)="onRowClick(expense); $event.preventDefault()"
               ></tr>
               <tr
                 mat-footer-row
