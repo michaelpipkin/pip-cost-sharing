@@ -25,13 +25,13 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1",
-    "eslint": "^10.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "eslint": "^10.1.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.32.0",
     "firebase-functions-test": "^3.4.1",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "private": true,
   "pnpm": {
@@ -40,8 +40,6 @@
       "protobufjs",
       "unrs-resolver"
     ],
-    "overrides": {
-      "fast-xml-parser": "5.4.2"
-    }
+    "overrides": {}
   }
 }
