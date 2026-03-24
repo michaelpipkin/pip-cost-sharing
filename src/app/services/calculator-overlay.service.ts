@@ -10,7 +10,7 @@ export class CalculatorOverlayService {
   private readonly overlay = inject(Overlay);
   private overlayRef: OverlayRef | null = null;
   private calculatorRef: ComponentRef<CalculatorComponent> | null = null;
-  private isOpen = signal(false);
+  private readonly isOpen = signal(false);
   private associatedInputElement: HTMLInputElement | null = null;
 
   openCalculator(
@@ -136,7 +136,7 @@ export class CalculatorOverlayService {
         hiddenInput.blur();
 
         setTimeout(() => {
-          document.body.removeChild(hiddenInput);
+          hiddenInput.remove();
           inputElement.readOnly = false;
         }, 300);
       }

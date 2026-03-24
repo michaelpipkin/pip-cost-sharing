@@ -236,8 +236,7 @@ describe('ExpenseService', () => {
     });
 
     it('should apply start date filter when startDate is provided', async () => {
-      const startDate = new Date('2025-01-01');
-      (startDate as any).toIsoFormat = () => '2025-01-01';
+      const startDate = new Date(2025, 0, 1);
 
       await service.getGroupExpensesByDateRange('group-1', startDate);
 
@@ -249,8 +248,7 @@ describe('ExpenseService', () => {
     });
 
     it('should apply end date filter when endDate is provided', async () => {
-      const endDate = new Date('2025-12-31');
-      (endDate as any).toIsoFormat = () => '2025-12-31';
+      const endDate = new Date(2025, 11, 31);
 
       await service.getGroupExpensesByDateRange('group-1', undefined, endDate);
 

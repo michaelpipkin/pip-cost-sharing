@@ -2,8 +2,6 @@ import { inject, Injectable } from '@angular/core';
 import { Category } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
-import { ICategoryService } from './category.service.interface';
-import { SortingService } from './sorting.service';
 import {
   addDoc,
   collection,
@@ -18,6 +16,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { ICategoryService } from './category.service.interface';
+import { SortingService } from './sorting.service';
 
 @Injectable({
   providedIn: 'root',
@@ -76,7 +76,7 @@ export class CategoryService implements ICategoryService {
     if (snap.size > 0) {
       throw new Error('This category already exists.');
     }
-    return (await addDoc(c, category)) as DocumentReference<Category>;
+    return (await addDoc(c, category)) as DocumentReference<Category>; // NOSONAR
   }
 
   async updateCategory(

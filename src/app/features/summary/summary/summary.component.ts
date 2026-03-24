@@ -49,6 +49,7 @@ import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
+import { toIsoFormat } from '@utils/date-utils';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 
@@ -393,7 +394,7 @@ export class SummaryComponent {
           let history = {
             paidByMemberRef: owedByMemberRef,
             paidToMemberRef: owedToMemberRef,
-            date: new Date().toIsoFormat(),
+            date: toIsoFormat(new Date()),
             totalPaid: this.localeService.roundToCurrency(
               +splitsToPay.reduce(
                 (total, s) =>

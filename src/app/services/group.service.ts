@@ -20,6 +20,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  QuerySnapshot,
   setDoc,
   where,
   writeBatch,
@@ -55,7 +56,8 @@ export class GroupService implements IGroupService {
     const currentGroup = localStorage.getItem('currentGroup');
     if (currentGroup !== null) {
       const group = new Group({ ...JSON.parse(currentGroup) });
-      group.ref = doc(
+      // prettier-ignore
+      group.ref = doc( // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         this.fs,
         `groups/${group.id}`
       ) as DocumentReference<Group>;
@@ -110,67 +112,7 @@ export class GroupService implements IGroupService {
               groupQuery,
               async (groupQuerySnap) => {
                 try {
-                  const userGroupIds = userGroups.map((m) => m.groupId);
-
-                  const groups: Group[] = groupQuerySnap.docs
-                    .map((doc) => {
-                      const userGroup = userGroups.find(
-                        (g) => g.groupId === doc.id
-                      );
-                      return new Group({
-                        id: doc.id,
-                        ...doc.data(),
-                        userActiveInGroup: userGroup?.active,
-                        userIsAdmin: userGroup?.groupAdmin,
-                        ref: doc.ref as DocumentReference<Group>,
-                      });
-                    })
-                    .filter((g) => userGroupIds.includes(g.id));
-
-                  this.groupStore.setAllUserGroups(groups);
-                  user = this.userStore.user()!;
-                  const activeGroups = groups.filter((g) => g.active);
-
-                  // Skip auto-selection if flag is set (user intentionally cleared group)
-                  if (this.groupStore.skipAutoSelect()) {
-                    // Flag remains set until user manually selects a group
-                  } else if (
-                    !!this.groupStore.currentGroup() &&
-                    groups.some(
-                      (g) => g.id === this.groupStore.currentGroup()?.id
-                    )
-                  ) {
-                    await this.getGroup(
-                      this.groupStore.currentGroup()!.ref!,
-                      user.ref!
-                    );
-                  } else {
-                    if (!!user.defaultGroupRef) {
-                      await this.getGroup(user.defaultGroupRef!, user.ref!);
-                    } else if (activeGroups.length === 1) {
-                      await this.getGroup(activeGroups[0]!.ref!, user.ref!);
-                    } else {
-                      this.groupStore.clearCurrentGroup();
-                      localStorage.removeItem('currentGroup');
-                    }
-                  }
-                  // Handle auto-navigation for bookmarked/direct home page visits
-                  // Login/register pages are handled by loggedInGuard
-                  const currentUrl = this.router.url;
-                  const isRedirectPage =
-                    currentUrl === '/home' ||
-                    currentUrl === '/' ||
-                    currentUrl === '/auth/login' ||
-                    currentUrl === '/auth/account';
-
-                  if (isRedirectPage) {
-                    // Validated users go to expenses, unvalidated users go to account
-                    if (this.userStore.isValidUser()) {
-                      this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
-                    } else {
-                      this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
-                    }
-                  }
+                  await this.handleGroupsSnapshot(groupQuerySnap, userGroups);
                 } catch (error) {
                   this.analytics.logError(
                     'Group Service',
@@ -218,6 +160,66 @@ export class GroupService implements IGroupService {
     }
   }
 
+  private async handleGroupsSnapshot(
+    groupQuerySnap: QuerySnapshot,
+    userGroups: { groupId: string; active: boolean; groupAdmin: boolean }[]
+  ): Promise<void> {
+    const userGroupIds = new Set(userGroups.map((m) => m.groupId));
+
+    const groups: Group[] = groupQuerySnap.docs
+      .map((doc) => {
+        const userGroup = userGroups.find((g) => g.groupId === doc.id);
+        return new Group({
+          id: doc.id,
+          ...doc.data(),
+          userActiveInGroup: userGroup?.active,
+          userIsAdmin: userGroup?.groupAdmin,
+          ref: doc.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
+        });
+      })
+      .filter((g) => userGroupIds.has(g.id));
+
+    this.groupStore.setAllUserGroups(groups);
+
+    const user = this.userStore.user();
+    const userRef = user?.ref;
+    if (!userRef) return;
+
+    const activeGroups = groups.filter((g) => g.active);
+    const currentGroup = this.groupStore.currentGroup();
+
+    if (!this.groupStore.skipAutoSelect()) {
+      if (currentGroup?.ref && groups.some((g) => g.id === currentGroup.id)) {
+        await this.getGroup(currentGroup.ref, userRef);
+      } else if (user?.defaultGroupRef) {
+        await this.getGroup(user.defaultGroupRef, userRef);
+      } else if (activeGroups.length === 1 && activeGroups[0]?.ref) {
+        await this.getGroup(activeGroups[0].ref, userRef);
+      } else {
+        this.groupStore.clearCurrentGroup();
+        localStorage.removeItem('currentGroup');
+      }
+    }
+
+    // Handle auto-navigation for bookmarked/direct home page visits
+    // Login/register pages are handled by loggedInGuard
+    const currentUrl = this.router.url;
+    const isRedirectPage =
+      currentUrl === '/home' ||
+      currentUrl === '/' ||
+      currentUrl === '/auth/login' ||
+      currentUrl === '/auth/account';
+
+    if (isRedirectPage) {
+      // Validated users go to expenses, unvalidated users go to account
+      if (this.userStore.isValidUser()) {
+        this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+      } else {
+        this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
+      }
+    }
+  }
+
   async getGroup(
     groupRef: DocumentReference<Group>,
     userRef: DocumentReference<User>
@@ -232,7 +234,7 @@ export class GroupService implements IGroupService {
       const group = new Group({
         ...docSnap.data(),
         id: docSnap.id,
-        ref: docSnap.ref as DocumentReference<Group>,
+        ref: docSnap.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
       });
 
       this.groupStore.setCurrentGroup(group);
@@ -294,11 +296,11 @@ export class GroupService implements IGroupService {
         new Group({
           ...group,
           id: groupRef.id,
-          ref: groupRef as DocumentReference<Group>,
+          ref: groupRef as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         })
       );
     }
-    return groupRef as DocumentReference<Group>;
+    return groupRef as DocumentReference<Group>; // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
   }
 
   async updateGroup(

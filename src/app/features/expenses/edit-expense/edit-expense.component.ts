@@ -75,6 +75,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { toIsoFormat } from '@utils/date-utils';
 import { StringUtils } from '@utils/string-utils.service';
 import { FirebaseError } from 'firebase/app';
 import { DocumentReference } from 'firebase/firestore';
@@ -669,7 +670,7 @@ export class EditExpenseComponent {
         try {
           this.loading.loadingOn();
           const val = this.editExpenseForm.getRawValue();
-          const expenseDate = val.date!.toIsoFormat();
+          const expenseDate = toIsoFormat(val.date!);
           const changes: Partial<ExpenseDto> = {
             date: expenseDate,
             description: val.description!,
