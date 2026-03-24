@@ -16,6 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { parseDate, toIsoFormat } from '@utils/date-utils';
 import { ISplitService } from './split.service.interface';
 
 @Injectable({
@@ -41,7 +42,7 @@ export class SplitService implements ISplitService {
             return new Split({
               id: d.id,
               ...data,
-              date: data.date.parseDate(),
+              date: parseDate(data.date),
               ref: d.ref as DocumentReference<Split>,
             });
           });
@@ -214,7 +215,7 @@ export class SplitService implements ISplitService {
       batch.set(newHistoryDoc, {
         paidByMemberRef: transfer.owedByMemberRef,
         paidToMemberRef: transfer.owedToMemberRef,
-        date: new Date().toIsoFormat(),
+        date: toIsoFormat(new Date()),
         totalPaid: transfer.amount,
         splitsPaid: splitRefs,
         batchId,

@@ -7,6 +7,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
+import { parseDate, toIsoFormat } from '@utils/date-utils';
 import {
   collection,
   doc,
@@ -65,8 +66,8 @@ export class ExpenseService implements IExpenseService {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
-    const isoStartDate = startDate ? startDate.toIsoFormat() : null;
-    const isoEndDate = endDate ? endDate.toIsoFormat() : null;
+    const isoStartDate = startDate ? toIsoFormat(startDate) : null;
+    const isoEndDate = endDate ? toIsoFormat(endDate) : null;
 
     // Build split query
     let splitQuery = query(collection(this.fs, `groups/${groupId}/splits`));
@@ -115,7 +116,7 @@ export class ExpenseService implements IExpenseService {
       return new Split({
         id: doc.id,
         ...data,
-        date: data.date.parseDate(),
+        date: parseDate(data.date),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -129,7 +130,7 @@ export class ExpenseService implements IExpenseService {
       return new Expense({
         id: doc.id,
         ...data,
-        date: data.date.parseDate(),
+        date: parseDate(data.date),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: doc.ref as DocumentReference<Expense>,
@@ -158,7 +159,7 @@ export class ExpenseService implements IExpenseService {
         where(
           'expenseRef',
           '==',
-          expenseReference as DocumentReference<Expense>
+          expenseReference as DocumentReference<Expense> // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         )
       );
 
@@ -175,10 +176,10 @@ export class ExpenseService implements IExpenseService {
       const expense = new Expense({
         id: expenseDoc.id,
         ...data,
-        date: data.date.parseDate(),
+        date: parseDate(data.date),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
-        ref: expenseDoc.ref as DocumentReference<Expense>,
+        ref: expenseDoc.ref as DocumentReference<Expense>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
       });
 
       expense.splits = splitDocs.docs.map((doc) => {
@@ -186,7 +187,7 @@ export class ExpenseService implements IExpenseService {
         return new Split({
           id: doc.id,
           ...data,
-          date: data.date.parseDate(),
+          date: parseDate(data.date),
           category: this.categoryStore.getCategoryByRef(data.categoryRef),
           paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
           owedByMember: this.memberStore.getMemberByRef(data.owedByMemberRef),
@@ -230,14 +231,14 @@ export class ExpenseService implements IExpenseService {
       // Set expense and splits in batch
       batch.set(expenseRef, expense);
       splits.forEach((split) => {
-        split.expenseRef = expenseRef as DocumentReference<Expense>;
+        split.expenseRef = expenseRef as DocumentReference<Expense>; // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
         batch.set(splitRef, split);
       });
 
       await batch.commit();
       await this.doesGroupHaveExpenses(groupId);
-      return expenseRef as DocumentReference<Expense>;
+      return expenseRef as DocumentReference<Expense>; // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
     } catch (error) {
       // Clean up uploaded receipt if batch commit fails
       if (receipt) {
@@ -305,7 +306,7 @@ export class ExpenseService implements IExpenseService {
       });
 
       splits.forEach((split) => {
-        split.expenseRef = expenseRef as DocumentReference<Expense>;
+        split.expenseRef = expenseRef as DocumentReference<Expense>; // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         const splitRef = doc(collection(this.fs, `/groups/${groupId}/splits`));
         batch.set(splitRef, split);
       });

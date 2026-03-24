@@ -26,6 +26,7 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { parseDate } from '@utils/date-utils';
 import { DocumentReference, getDoc } from 'firebase/firestore';
 import {
   afterNextRender,
@@ -172,7 +173,7 @@ export class HistoryDetailComponent {
           return new Split({
             ...data,
             id: doc.id,
-            date: data.date.parseDate() ?? undefined,
+            date: parseDate(data.date),
             category: this.categoryStore.getCategoryByRef(data.categoryRef),
             ref: doc.ref,
           });
