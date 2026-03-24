@@ -13,7 +13,11 @@ export interface IUserService {
     formattedAmount: string
   ): Promise<'sent' | 'not_registered' | 'opted_out'>;
   sendGroupPaymentRequestEmails(
-    transfers: { owedByMember: Member; owedToMember: Member; formattedAmount: string }[],
+    transfers: {
+      owedByMember: Member;
+      owedToMember: Member;
+      formattedAmount: string;
+    }[],
     groupName: string
   ): Promise<{ sent: number; skipped: number }>;
   sendMemberPaymentUnpayEmails(
@@ -28,5 +32,5 @@ export interface IUserService {
     groupName: string,
     settleDate: string
   ): Promise<void>;
-  logout(): void;
+  logout(): Promise<void>;
 }

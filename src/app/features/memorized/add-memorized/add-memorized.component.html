@@ -6,6 +6,7 @@
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
+        (keydown.enter)="showHelp(); $event.preventDefault()"
         data-testid="add-memorized-help-button"
         aria-label="Show help for memorizing expenses"
       >
@@ -187,6 +188,7 @@
             [value]="false"
             data-testid="split-by-amount-toggle"
             (click)="onSplitByAmountClick()"
+            (keydown.enter)="onSplitByAmountClick(); $event.preventDefault()"
           >
             <mat-icon>attach_money</mat-icon>
           </mat-button-toggle>
@@ -194,6 +196,9 @@
             [value]="true"
             data-testid="split-by-percentage-toggle"
             (click)="onSplitByPercentageClick()"
+            (keydown.enter)="
+              onSplitByPercentageClick(); $event.preventDefault()
+            "
           >
             <mat-icon>percent</mat-icon>
           </mat-button-toggle>

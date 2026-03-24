@@ -6,6 +6,7 @@
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
+        (keydown.enter)="showHelp()"
         data-testid="edit-expense-help-button"
         aria-label="Show help for editing expenses"
       >
@@ -182,14 +183,14 @@
       </div>
       <div class="mb-3">
         @if (!!fileName()) {
-          <div (click)="removeFile()" class="attachment">
-            <button mat-mini-fab class="btn btn-danger">
+          <div class="attachment">
+            <button mat-mini-fab class="btn btn-danger" (click)="removeFile()">
               <mat-icon>delete</mat-icon>
             </button>
             <span class="filename">{{ fileName() }}</span>
           </div>
         } @else {
-          <div (click)="openFileSelectionDialog()" class="attachment">
+          <div class="attachment">
             <input
               type="file"
               accept=".pdf,image/*"
@@ -197,7 +198,7 @@
               #attachFile
               (change)="onFileSelected($event)"
             />
-            <button mat-mini-fab class="btn btn-success">
+            <button mat-mini-fab class="btn btn-success" (click)="openFileSelectionDialog()">
               <mat-icon>attach_file</mat-icon>
             </button>
             @if (hasReceipt) {
@@ -237,6 +238,7 @@
             [value]="false"
             data-testid="split-by-amount-toggle"
             (click)="onSplitByAmountClick()"
+            (keydown.enter)="onSplitByAmountClick()"
           >
             <mat-icon>attach_money</mat-icon>
           </mat-button-toggle>
@@ -244,6 +246,7 @@
             [value]="true"
             data-testid="split-by-percentage-toggle"
             (click)="onSplitByPercentageClick()"
+            (keydown.enter)="onSplitByPercentageClick()"
           >
             <mat-icon>percent</mat-icon>
           </mat-button-toggle>

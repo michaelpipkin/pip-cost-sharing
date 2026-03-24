@@ -7,10 +7,12 @@ export class LocaleService {
   private readonly groupStore = inject(GroupStore);
 
   // Browser locale detection
-  private browserLocale = signal<string>(navigator.language || 'en-US');
+  private readonly browserLocale = signal<string>(
+    navigator.language || 'en-US'
+  );
 
   // Current group's currency (set automatically from GroupStore)
-  private currentCurrencyCode = signal<string>('USD');
+  private readonly currentCurrencyCode = signal<string>('USD');
 
   // Computed currency configuration
   currency = computed(() => {
@@ -53,7 +55,7 @@ export class LocaleService {
     const decimalPart = parts[1]!;
 
     // Add thousands separators
-    const formattedInteger = integerPart.replace(
+    const formattedInteger = integerPart.replaceAll(
       /\B(?=(\d{3})+(?!\d))/g,
       curr.thousandsSeparator
     );
@@ -64,21 +66,26 @@ export class LocaleService {
         ? `${formattedInteger}${curr.decimalSeparator}${decimalPart}`
         : formattedInteger;
 
-    const symbol =
-      curr.symbolPosition === 'none'
-        ? formatted
-        : curr.symbolPosition === 'prefix'
-          ? `${curr.symbol} ${formatted}`
-          : `${formatted} ${curr.symbol}`;
+    const formattedWithSymbol = this.formatCurrencyWithSymbol(formatted);
 
-    return value < 0 ? `-${symbol}` : symbol;
+    return value < 0 ? `-${formattedWithSymbol}` : formattedWithSymbol;
+  }
+
+  formatCurrencyWithSymbol(value: string): string {
+    const curr = this.currency();
+    if (curr.symbolPosition === 'none') {
+      return value;
+    }
+    return curr.symbolPosition === 'prefix'
+      ? `${curr.symbol} ${value}`
+      : `${value} ${curr.symbol}`;
   }
 
   /**
    * Round to currency's decimal places
    */
   roundToCurrency(value: number): number {
-    if (isNaN(value)) {
+    if (Number.isNaN(value)) {
       return 0;
     }
     const places = this.currency().decimalPlaces;

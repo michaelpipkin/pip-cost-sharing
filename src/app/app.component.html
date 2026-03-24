@@ -13,7 +13,7 @@
         </button>
       }
       <a [routerLink]="routes.HOME">
-        <span id="title" data-testid="app-title-mobile">PipSplit</span>
+        <span class="app-title" data-testid="app-title-mobile">PipSplit</span>
       </a>
       <a
         matButton
@@ -92,10 +92,9 @@
           </a>
         }
       </div>
-    }
-    @if (!isSmallScreen()) {
+    } @else {
       <a [routerLink]="routes.HOME">
-        <span id="title" data-testid="app-title-desktop">PipSplit</span>
+        <span class="app-title" data-testid="app-title-desktop">PipSplit</span>
       </a>
       <div
         class="links"

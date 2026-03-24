@@ -29,6 +29,9 @@
           <mat-icon
             matTooltip="Copy Venmo ID"
             (click)="copyPaymentIdToClipboard(data.venmoId)"
+            (keydown.enter)="
+              copyPaymentIdToClipboard(data.venmoId); $event.preventDefault()
+            "
             data-testid="copy-venmo-id-button"
             aria-label="Copy Venmo ID to clipboard"
           >
@@ -52,6 +55,9 @@
           <mat-icon
             matTooltip="Copy PayPal ID"
             (click)="copyPaymentIdToClipboard(data.paypalId)"
+            (keydown.enter)="
+              copyPaymentIdToClipboard(data.paypalId); $event.preventDefault()
+            "
             data-testid="copy-paypal-id-button"
             aria-label="Copy PayPal ID to clipboard"
           >
@@ -75,6 +81,9 @@
           <mat-icon
             matTooltip="Copy CashApp ID"
             (click)="copyPaymentIdToClipboard(data.cashAppId)"
+            (keydown.enter)="
+              copyPaymentIdToClipboard(data.cashAppId); $event.preventDefault()
+            "
             data-testid="copy-cashapp-id-button"
             aria-label="Copy CashApp ID to clipboard"
           >
@@ -98,6 +107,9 @@
           <mat-icon
             matTooltip="Copy Zelle ID"
             (click)="copyPaymentIdToClipboard(data.zelleId)"
+            (keydown.enter)="
+              copyPaymentIdToClipboard(data.zelleId); $event.preventDefault()
+            "
             data-testid="copy-zelle-id-button"
             aria-label="Copy Zelle ID to clipboard"
           >

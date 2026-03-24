@@ -45,17 +45,17 @@ export class MemberService implements IMemberService {
       );
       const docSnap = await getDocs(q);
 
-      if (!docSnap.empty) {
+      if (docSnap.empty) {
+        this.memberStore.clearCurrentMember();
+      } else {
         const memberDoc = docSnap.docs[0]!;
         this.memberStore.setCurrentMember(
           new Member({
             id: memberDoc.id,
             ...memberDoc.data(),
-            ref: memberDoc.ref as DocumentReference<Member>,
+            ref: memberDoc.ref as DocumentReference<Member>, // NOSONAR
           })
         );
-      } else {
-        this.memberStore.clearCurrentMember();
       }
     } catch (error) {
       this.analytics.logError(
@@ -129,10 +129,11 @@ export class MemberService implements IMemberService {
     );
     const userSnapshot = await getDocs(userQuery);
     if (!userSnapshot.empty) {
-      member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
+      member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
     }
 
-    return (await addDoc(
+    // prettier-ignore
+    return (await addDoc(// NOSONAR
       collection(this.fs, `groups/${groupId}/members`),
       member
     )) as DocumentReference<Member>;
@@ -175,7 +176,7 @@ export class MemberService implements IMemberService {
       );
       const userSnapshot = await getDocs(userQuery);
       if (!userSnapshot.empty) {
-        changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>;
+        changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
       }
     }
 
@@ -206,6 +207,7 @@ export class MemberService implements IMemberService {
     groupId: string,
     memberRef: DocumentReference<Member>
   ): Promise<void> {
+    const userRef = this.userStore.user()!.ref!;
     const c = collection(this.fs, `groups/${groupId}/members`);
     const q = query(c, where('groupAdmin', '==', true));
     const adminSnap = await getDocs(q);
@@ -229,7 +231,7 @@ export class MemberService implements IMemberService {
     } else {
       await deleteDoc(memberRef);
     }
-    await updateDoc(this.userStore.user()!.ref!, { defaultGroupRef: null });
+    await updateDoc(userRef, { defaultGroupRef: null });
   }
 
   async updateAllMemberEmails(

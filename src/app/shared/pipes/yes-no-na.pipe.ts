@@ -16,11 +16,10 @@ export class YesNoNaPipe implements PipeTransform {
       if (args[0].path === args[1].path) {
         return 'N/A';
       }
-    } else {
-      // Compare values directly for non-document references
-      if (args[0] === args[1]) {
-        return 'N/A';
-      }
+    }
+    // Compare values directly for non-document references
+    else if (args[0] === args[1]) {
+      return 'N/A';
     }
 
     return value ? 'Yes' : 'No';

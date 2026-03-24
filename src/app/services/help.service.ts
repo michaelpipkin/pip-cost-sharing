@@ -6,9 +6,9 @@ import { IHelpService } from './help.service.interface';
   providedIn: 'root',
 })
 export class HelpService implements IHelpService {
-  private apiUrl =
+  private readonly apiUrl =
     'https://api.github.com/repos/michaelpipkin/pip-cost-sharing/issues';
-  private token: string = githubConfig.personalAccessToken;
+  private readonly token: string = githubConfig.personalAccessToken;
 
   async createIssue(title: string, body: string): Promise<object> {
     const issueData = { title, body, assignees: ['michaelpipkin'] };

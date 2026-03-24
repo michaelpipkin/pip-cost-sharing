@@ -21,7 +21,8 @@
             data-testid="categories-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
-            aria-label="Start categories tour"
+            (keydown.enter)="startTour()"
+            aria-label="tour"
             class="mr-2"
           >
             tour
@@ -30,8 +31,9 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp()"
           data-testid="categories-help-button"
-          aria-label="Show help for categories"
+          aria-label="help"
         >
           help
         </mat-icon>
@@ -88,7 +90,7 @@
         (click)="addCategory()"
         data-testid="add-category-button"
         data-tour="add-category-button"
-        aria-label="Add new category"
+        aria-label="Add category"
       >
         Add Category
       </button>
@@ -129,6 +131,7 @@
               mat-row
               *matRowDef="let myRowData; columns: displayedColumns()"
               (click)="onRowClick(myRowData)"
+              (keydown.enter)="onRowClick(myRowData)"
               [class.clickable-row]="currentMember()?.groupAdmin"
               [attr.data-testid]="'category-row-' + myRowData.id"
               [attr.aria-label]="'Category: ' + myRowData.name"

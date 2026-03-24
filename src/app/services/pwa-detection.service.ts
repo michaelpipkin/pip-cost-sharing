@@ -7,7 +7,7 @@ export type DisplayMode = 'browser' | 'standalone' | 'twa';
   providedIn: 'root',
 })
 export class PwaDetectionService {
-  private displayMode = signal<DisplayMode>('browser');
+  private readonly displayMode = signal<DisplayMode>('browser');
 
   constructor() {
     this.detectDisplayMode();
@@ -25,8 +25,8 @@ export class PwaDetectionService {
 
     // 2. Check for Standard PWA (Installed to Home Screen from Browser)
     const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone; // iOS Safari
+      globalThis.matchMedia('(display-mode: standalone)').matches ||
+      (globalThis.navigator as any).standalone; // iOS Safari
 
     if (isStandalone) {
       this.displayMode.set('standalone');

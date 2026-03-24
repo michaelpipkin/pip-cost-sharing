@@ -26,7 +26,7 @@ export class StringUtils {
 
       // Simple math expression evaluator using Function constructor
       // Sanitize input to only allow numbers, basic operators, parentheses, and decimals
-      const sanitized = normalized.replace(/[^0-9+\-*/().\s]/g, '');
+      const sanitized = normalized.replaceAll(/[^0-9+\-*/().\s]/g, '');
 
       if (sanitized !== normalized) {
         // If sanitization changed the string, it contained invalid characters

@@ -43,19 +43,9 @@ export class AllocationUtilsService {
     let splits = [...input.splits];
 
     // Remove empty splits (no member selected and no assigned amount)
-    for (let i = 0; i < splits.length; ) {
-      const memberRef = splits[i]!.owedByMemberRef;
-      if (!memberRef && splits[i]!.assignedAmount === 0) {
-        splits.splice(i, 1);
-      } else {
-        i++;
-      }
-    }
+    splits = splits.filter(s => s.owedByMemberRef || s.assignedAmount !== 0);
 
-    const splitCount: number = splits.filter((s) => {
-      const memberRef = s.owedByMemberRef;
-      return memberRef !== null && memberRef !== undefined;
-    }).length;
+    const splitCount = splits.filter(s => s.owedByMemberRef != null).length;
 
     const splitTotal: number = splits.reduce(
       (total, s) => total + (+s.assignedAmount || 0),
@@ -71,7 +61,7 @@ export class AllocationUtilsService {
     );
 
     // Adjust evenly shared amount if totals don't match
-    if (totalAmount != totalSharedSplits) {
+    if (totalAmount !== totalSharedSplits) {
       evenlySharedAmount = this.localeService.roundToCurrency(
         +(totalAmount - splitTotal - proportionalAmount)
       );
@@ -100,7 +90,7 @@ export class AllocationUtilsService {
 
     // Final adjustment to handle rounding differences
     const allocatedTotal = this.localeService.roundToCurrency(
-      +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+      +splits.reduce((total, s) => total + s.allocatedAmount, 0)
     );
 
     if (allocatedTotal !== totalAmount && splitCount > 0) {
@@ -144,7 +134,7 @@ export class AllocationUtilsService {
     // Create a map of existing form controls by member reference for faster lookup
     const formControlMap = new Map();
     for (let i = 0; i < formArray.length; i++) {
-      const control = formArray.at(i)!;
+      const control = formArray.at(i);
       const memberRef = control.get(memberRefFieldName)?.value;
       if (memberRef) {
         // Use a string identifier that works for both DocumentReference objects and simple values
@@ -160,7 +150,7 @@ export class AllocationUtilsService {
         const key = memberRef.id || memberRef.toString() || memberRef;
         if (formControlMap.has(key)) {
           const formIndex = formControlMap.get(key)!;
-          formArray.at(formIndex)!.patchValue({
+          formArray.at(formIndex).patchValue({
             allocatedAmount: split.allocatedAmount,
           });
         }

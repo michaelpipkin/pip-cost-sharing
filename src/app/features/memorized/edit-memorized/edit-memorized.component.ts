@@ -126,7 +126,7 @@ export class EditMemorizedComponent {
       [];
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || splitMembers.includes(m.ref!));
+      .filter((m) => m.active || splitMembers.includes(m.ref!)); // NOSONAR
   });
 
   totalAmountField = viewChild<ElementRef>('totalAmount');
@@ -213,11 +213,11 @@ export class EditMemorizedComponent {
   }
 
   createSplitFormGroup(): FormGroup {
-    const existingMembers = this.splitsFormArray.controls.map(
-      (control) => control.get('owedByMemberRef')!.value.id
+    const existingMembers = new Set(
+      this.splitsFormArray.controls.map((c) => c.get('owedByMemberRef')!.value.id)
     );
     const availableMembers = this.memorizedMembers().filter(
-      (m) => !existingMembers.includes(m.id)
+      (m) => !existingMembers.has(m.id)
     );
     return this.fb.group({
       owedByMemberRef: [
@@ -228,8 +228,8 @@ export class EditMemorizedComponent {
         this.localeService.getFormattedZero(),
         Validators.required,
       ],
-      percentage: [0.0],
-      allocatedAmount: [0.0],
+      percentage: [0],
+      allocatedAmount: [0],
     });
   }
 
@@ -270,13 +270,15 @@ export class EditMemorizedComponent {
   }
 
   availableMembersForSplit(index: number): Member[] {
-    const selectedMemberIds = this.splitsFormArray.controls
-      .filter((_, i) => i !== index)
-      .map((control) => control.get('owedByMemberRef')!.value)
-      .filter((memberRef) => memberRef !== null)
-      .map((memberRef) => memberRef.id);
+    const selectedMemberIds = new Set(
+      this.splitsFormArray.controls
+        .filter((_, i) => i !== index)
+        .map((c) => c.get('owedByMemberRef')!.value)
+        .filter((ref) => ref !== null)
+        .map((ref) => ref.id)
+    );
     return this.splitMembers().filter(
-      (member) => !selectedMemberIds.includes(member.id)
+      (member) => !selectedMemberIds.has(member.id)
     );
   }
 
@@ -339,73 +341,69 @@ export class EditMemorizedComponent {
   }
 
   allocateByPercentage(): void {
-    var totalPercentage: number = 0;
-    if (this.splitsFormArray.length > 0) {
-      let splits = [...this.splitsFormArray.getRawValue()];
-      for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedByMemberRef && splits[i].assignedAmount === 0) {
-          splits.splice(i, 1);
-        } else {
-          if (i < splits.length - 1) {
-            splits[i].percentage = +splits[i].percentage;
-            totalPercentage += splits[i].percentage;
-          } else {
-            const remainingPercentage: number =
-              this.localeService.roundToCurrency(+(100 - totalPercentage));
-            splits[i].percentage = remainingPercentage;
-            this.splitsFormArray.at(i).patchValue({
-              percentage: remainingPercentage,
-            });
-          }
-          i++;
-        }
-      }
-      const splitCount: number = splits.filter(
-        (s) => s.owedByMemberRef !== null
-      ).length;
-      const val = this.editMemorizedForm.value;
-      const totalAmount: number = +val.amount!;
-      splits.forEach((split: Split) => {
-        split.allocatedAmount = this.localeService.roundToCurrency(
-          +((totalAmount * +split.percentage) / 100)
-        );
-      });
-      const allocatedTotal: number = this.localeService.roundToCurrency(
-        +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+    if (this.splitsFormArray.length === 0) return;
+
+    let splits = [...this.splitsFormArray.getRawValue()];
+    splits = this.filterSplitsAndSetLastPercentage(splits);
+
+    const totalAmount = +this.editMemorizedForm.value.amount!;
+    splits.forEach((split: Split) => {
+      split.allocatedAmount = this.localeService.roundToCurrency(
+        +((totalAmount * +split.percentage) / 100)
       );
-      const percentageTotal: number = this.localeService.roundToCurrency(
-        +splits.reduce((total, s) => (total += s.percentage), 0)
-      );
-      if (
-        allocatedTotal !== totalAmount &&
-        percentageTotal === 100 &&
-        splitCount > 0
-      ) {
-        let diff = this.localeService.roundToCurrency(
-          +(totalAmount - allocatedTotal)
-        );
-        const increment = this.localeService.getSmallestIncrement();
-        for (let i = 0; diff != 0; ) {
-          if (diff > 0) {
-            splits[i].allocatedAmount += increment;
-            diff = this.localeService.roundToCurrency(+(diff - increment));
-          } else {
-            splits[i].allocatedAmount -= increment;
-            diff = this.localeService.roundToCurrency(+(diff + increment));
-          }
-          if (i < splits.length - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-        }
+    });
+
+    const allocatedTotal = this.localeService.roundToCurrency(
+      +splits.reduce((total, s) => total + s.allocatedAmount, 0)
+    );
+    const percentageTotal = this.localeService.roundToCurrency(
+      +splits.reduce((total, s) => total + s.percentage, 0)
+    );
+    const splitCount = splits.filter((s) => s.owedByMemberRef !== null).length;
+
+    if (allocatedTotal !== totalAmount && percentageTotal === 100 && splitCount > 0) {
+      this.adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
+    }
+
+    // Patch the allocatedAmount back into the form array
+    splits.forEach((split, index) => {
+      this.splitsFormArray.at(index).patchValue({ allocatedAmount: split.allocatedAmount });
+    });
+  }
+
+  private filterSplitsAndSetLastPercentage(splits: any[]): any[] {
+    let totalPercentage = 0;
+    const result = splits.filter((s) => s.owedByMemberRef || s.assignedAmount !== 0);
+    for (let i = 0; i < result.length - 1; i++) {
+      result[i].percentage = +result[i].percentage;
+      totalPercentage += result[i].percentage;
+    }
+    if (result.length > 0) {
+      const lastIndex = result.length - 1;
+      const remainingPercentage = this.localeService.roundToCurrency(+(100 - totalPercentage));
+      result[lastIndex].percentage = remainingPercentage;
+      this.splitsFormArray.at(lastIndex).patchValue({ percentage: remainingPercentage });
+    }
+    return result;
+  }
+
+  private adjustAllocationForRounding(
+    splits: any[],
+    totalAmount: number,
+    allocatedTotal: number
+  ): void {
+    let diff = this.localeService.roundToCurrency(+(totalAmount - allocatedTotal));
+    const increment = this.localeService.getSmallestIncrement();
+    let i = 0;
+    while (diff != 0) {
+      if (diff > 0) {
+        splits[i].allocatedAmount += increment;
+        diff = this.localeService.roundToCurrency(+(diff - increment));
+      } else {
+        splits[i].allocatedAmount -= increment;
+        diff = this.localeService.roundToCurrency(+(diff + increment));
       }
-      // Patch the allocatedAmount back into the form array
-      splits.forEach((split, index) => {
-        this.splitsFormArray.at(index).patchValue({
-          allocatedAmount: split.allocatedAmount,
-        });
-      });
+      i = (i + 1) % splits.length;
     }
   }
 
@@ -413,7 +411,7 @@ export class EditMemorizedComponent {
     this.localeService.roundToCurrency(
       +[...this.splitsFormArray.value].reduce(
         (total, s) =>
-          (total += this.localeService.roundToCurrency(+s.assignedAmount)),
+          total + this.localeService.roundToCurrency(+s.assignedAmount),
         0
       )
     );
@@ -422,7 +420,7 @@ export class EditMemorizedComponent {
     this.localeService.roundToCurrency(
       +[...this.splitsFormArray.value].reduce(
         (total, s) =>
-          (total += this.localeService.roundToCurrency(+s.allocatedAmount)),
+          total + this.localeService.roundToCurrency(+s.allocatedAmount),
         0
       )
     );
@@ -464,7 +462,7 @@ export class EditMemorizedComponent {
       });
       changes.splits = splits;
       await this.memorizedService.updateMemorized(
-        this.memorized().ref!,
+        this.memorized().ref!, // NOSONAR
         changes
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -511,7 +509,7 @@ export class EditMemorizedComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.memorizedService.deleteMemorized(this.memorized().ref!);
+          await this.memorizedService.deleteMemorized(this.memorized().ref!); // NOSONAR
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Memorized expense deleted' },
           });
@@ -549,7 +547,15 @@ export class EditMemorizedComponent {
   openCalculator(event: Event, controlName: string, index?: number): void {
     const target = event.target as HTMLElement;
     this.calculatorOverlay.openCalculator(target, (result: number) => {
-      if (index !== undefined) {
+      if (index === undefined) {
+        const control = this.editMemorizedForm.get(controlName);
+        if (control) {
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
+          this.updateTotalAmount();
+        }
+      } else {
         const control = this.splitsFormArray.at(index).get(controlName);
         if (control) {
           control.setValue(this.localeService.roundToCurrency(result), {
@@ -560,14 +566,6 @@ export class EditMemorizedComponent {
           } else {
             this.allocateSharedAmounts();
           }
-        }
-      } else {
-        const control = this.editMemorizedForm.get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.updateTotalAmount();
         }
       }
     });

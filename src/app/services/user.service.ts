@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { afterNextRender, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
@@ -56,7 +56,9 @@ export class UserService implements IUserService {
   protected readonly functions = inject(getFunctions);
 
   constructor() {
-    this.initializeAuth();
+    afterNextRender(async () => {
+      await this.initializeAuth();
+    });
   }
 
   private async initializeAuth(): Promise<void> {
@@ -64,7 +66,8 @@ export class UserService implements IUserService {
       await setPersistence(this.auth, browserLocalPersistence);
       this.auth.onAuthStateChanged(
         async (firebaseUser: FirebaseUser | null) => {
-          if (!!firebaseUser) {
+          if (firebaseUser) {
+            const email = firebaseUser.email!;
             try {
               // Clear all demo data from stores when a real user logs in
               this.groupStore.clearAllUserGroups();
@@ -77,7 +80,7 @@ export class UserService implements IUserService {
 
               const userData = await this.createUserIfNotExists(
                 firebaseUser.uid,
-                firebaseUser.email!
+                email
               );
               const user = new User({
                 ...userData,
@@ -118,7 +121,7 @@ export class UserService implements IUserService {
         return new User({
           id: docSnap.id,
           ...docSnap.data(),
-          ref: docRef as DocumentReference<User>,
+          ref: docRef as DocumentReference<User>, // NOSONAR
         });
       }
       return null;
@@ -158,7 +161,7 @@ export class UserService implements IUserService {
       };
 
       await setDoc(docRef, defaultUserData);
-      const userDocRef = docRef as DocumentReference<User>;
+      const userDocRef = docRef as DocumentReference<User>; // NOSONAR
 
       // Link any unlinked member records with this email to the new user
       const membersQuery = query(
@@ -214,7 +217,8 @@ export class UserService implements IUserService {
 
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     const userId = this.userStore.user()!.id;
-    const userDocRef = doc(
+    // prettier-ignore
+    const userDocRef = doc( // NOSONAR
       this.fs,
       `users/${userId}`
     ) as DocumentReference<User>;
@@ -281,10 +285,10 @@ export class UserService implements IUserService {
 
   private escapeHtml(str: string): string {
     return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
   }
 
   private buildEmailHtml(content: string): string {
@@ -396,7 +400,10 @@ export class UserService implements IUserService {
     const skippedNoAccount = transfers.length - eligible.length;
 
     const owedByUserDocs = await Promise.all(
-      eligible.map((t) => getDoc(t.owedByMember.userRef!))
+      eligible.map((t) => {
+        const userRef = t.owedByMember.userRef!;
+        return getDoc(userRef);
+      })
     );
 
     const notOptedOut = eligible.filter((_, i) => {
@@ -518,7 +525,12 @@ export class UserService implements IUserService {
     settleDate: string
   ): Promise<void> {
     const eligible = members.filter((m) => !!m.userRef && !!m.email);
-    const userDocs = await Promise.all(eligible.map((m) => getDoc(m.userRef!)));
+    const userDocs = await Promise.all(
+      eligible.map((m) => {
+        const userRef = m.userRef!;
+        return getDoc(userRef);
+      })
+    );
     await Promise.all(
       eligible
         .filter((_, i) => userDocs[i]?.data()?.['emailOptOut'] !== true)

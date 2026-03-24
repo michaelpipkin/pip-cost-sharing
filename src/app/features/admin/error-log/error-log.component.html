@@ -131,6 +131,7 @@
             *matRowDef="let row; columns: columnsToDisplay()"
             class="clickable-row"
             (click)="onRowClick(row)"
+            (keydown.enter)="onRowClick(row)"
           ></tr>
           <tr class="mat-row" *matNoDataRow>
             <td class="mat-cell" [colSpan]="columnsToDisplay().length">

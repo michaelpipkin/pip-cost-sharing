@@ -85,7 +85,7 @@ export class MemorizedComponent {
 
   filteredMemorizeds = computed<Memorized[]>(
     (searchText: string = this.searchText()) => {
-      var filteredMemorized = this.memorizeds().filter(
+      let filteredMemorized = this.memorizeds().filter(
         (memorized: Memorized) => {
           return (
             !searchText ||
@@ -112,10 +112,10 @@ export class MemorizedComponent {
 
   constructor() {
     effect(() => {
-      if (!this.memorizedStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.memorizedStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
 

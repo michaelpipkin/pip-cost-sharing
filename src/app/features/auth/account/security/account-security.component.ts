@@ -81,10 +81,15 @@ export class AccountSecurityComponent {
 
   onSubmitPassword(): void {
     const changes = this.passwordForm.value;
+    const user = this.firebaseUser()!;
     this.loading.loadingOn();
     try {
-      if (changes.password !== '') {
-        updatePassword(this.firebaseUser()!, changes.password!)
+      if (changes.password === '') {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Password cannot be empty' },
+        });
+      } else {
+        updatePassword(user, changes.password!)
           .then(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: 'Your password has been updated' },
@@ -99,10 +104,6 @@ export class AccountSecurityComponent {
               },
             });
           });
-      } else {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Password cannot be empty' },
-        });
       }
     } catch (error) {
       this.analytics.logError(

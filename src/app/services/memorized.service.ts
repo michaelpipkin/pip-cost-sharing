@@ -102,7 +102,7 @@ export class MemorizedService implements IMemorizedService {
         ...data,
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
-        ref: memorizedDoc.ref as DocumentReference<Memorized>,
+        ref: memorizedDoc.ref as DocumentReference<Memorized>, // NOSONAR
       });
     } catch (error) {
       this.analytics.logError(
@@ -120,7 +120,7 @@ export class MemorizedService implements IMemorizedService {
     memorized: Partial<Memorized>
   ): Promise<DocumentReference<Memorized>> {
     const c = collection(this.fs, `groups/${groupId}/memorized`);
-    return (await addDoc(c, memorized)) as DocumentReference<Memorized>;
+    return (await addDoc(c, memorized)) as DocumentReference<Memorized>; // NOSONAR
   }
 
   async updateMemorized(

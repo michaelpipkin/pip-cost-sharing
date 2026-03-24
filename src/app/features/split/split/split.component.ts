@@ -89,7 +89,7 @@ export class SplitComponent implements OnDestroy {
   splitByPercentage = model<boolean>(false);
 
   // Local currency state for split component (not tied to group)
-  private localCurrencyCode = signal<string>('USD');
+  private readonly localCurrencyCode = signal<string>('USD');
 
   // Computed local currency config
   localCurrency = computed(() => {
@@ -168,7 +168,7 @@ export class SplitComponent implements OnDestroy {
     // Wait for the DOM to update, then populate the split values
     setTimeout(() => {
       demoSplits.forEach((split, index) => {
-        this.splitsFormArray.at(index)!.patchValue({
+        this.splitsFormArray.at(index).patchValue({
           owedBy: split.name,
           assignedAmount: this.localeService.roundToCurrency(split.amount),
         });
@@ -215,8 +215,8 @@ export class SplitComponent implements OnDestroy {
         this.localeService.getFormattedZero(),
         Validators.required,
       ],
-      percentage: [0.0],
-      allocatedAmount: [0.0],
+      percentage: [0],
+      allocatedAmount: [0],
     });
   }
 
@@ -299,16 +299,7 @@ export class SplitComponent implements OnDestroy {
     const proportionalAmount: number = +val.allocatedAmount!;
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.value];
-      for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedBy && +splits[i].assignedAmount === 0) {
-          splits.splice(i, 1);
-          this.splitsFormArray.at(i).patchValue({
-            allocatedAmount: 0,
-          });
-        } else {
-          i++;
-        }
-      }
+      splits = this.filterEmptySplits(splits);
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
       const splitTotal: number = this.getAssignedTotal();
       let evenlySharedAmount: number = +val.sharedAmount!;
@@ -323,54 +314,18 @@ export class SplitComponent implements OnDestroy {
           sharedAmount: evenlySharedAmount,
         });
       }
-      splits
-        .filter((s) => s.owedBy !== '')
-        .forEach((split: Split) => {
-          split.allocatedAmount =
-            splitCount === 0
-              ? 0
-              : this.localeService.roundToCurrency(
-                  +(evenlySharedAmount / splitCount)
-                );
-        });
-      splits
-        .filter((s) => s.owedBy !== '')
-        .forEach((split: Split) => {
-          if (totalAmount === proportionalAmount) {
-            return;
-          }
-          const baseSplit: number =
-            +split.assignedAmount + +split.allocatedAmount;
-          split.allocatedAmount = this.localeService.roundToCurrency(
-            +(
-              baseSplit +
-              (baseSplit / (totalAmount - proportionalAmount)) *
-                proportionalAmount
-            )
-          );
-        });
+      this.distributeAllocations(
+        splits,
+        totalAmount,
+        proportionalAmount,
+        evenlySharedAmount,
+        splitCount
+      );
       const allocatedTotal = this.localeService.roundToCurrency(
-        +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+        +splits.reduce((total, s) => total + s.allocatedAmount, 0)
       );
       if (allocatedTotal !== totalAmount && splitCount > 0) {
-        let diff = this.localeService.roundToCurrency(
-          +(totalAmount - allocatedTotal)
-        );
-        const increment = this.localeService.getSmallestIncrement();
-        for (let i = 0; diff != 0; ) {
-          if (diff > 0) {
-            splits[i].allocatedAmount += increment;
-            diff = this.localeService.roundToCurrency(+(diff - increment));
-          } else {
-            splits[i].allocatedAmount -= increment;
-            diff = this.localeService.roundToCurrency(+(diff + increment));
-          }
-          if (i < splits.length - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-        }
+        this.adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
       }
       // Patch the allocatedAmount back into the form array
       splits
@@ -387,65 +342,62 @@ export class SplitComponent implements OnDestroy {
     }
   }
 
+  private filterEmptySplits(splits: any[]): any[] {
+    return splits.filter((split, i) => {
+      if (!split.owedBy && +split.assignedAmount === 0) {
+        this.splitsFormArray.at(i).patchValue({ allocatedAmount: 0 });
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private distributeAllocations(
+    splits: any[],
+    totalAmount: number,
+    proportionalAmount: number,
+    evenlySharedAmount: number,
+    splitCount: number
+  ): void {
+    const active = splits.filter((s) => s.owedBy !== '');
+    active.forEach((split) => {
+      split.allocatedAmount =
+        splitCount === 0
+          ? 0
+          : this.localeService.roundToCurrency(+(evenlySharedAmount / splitCount));
+    });
+    if (totalAmount === proportionalAmount) return;
+    active.forEach((split) => {
+      const base = +split.assignedAmount + +split.allocatedAmount;
+      split.allocatedAmount = this.localeService.roundToCurrency(
+        +(base + (base / (totalAmount - proportionalAmount)) * proportionalAmount)
+      );
+    });
+  }
+
   allocateByPercentage(): void {
-    var totalPercentage: number = 0;
     if (this.splitsFormArray.length > 0) {
       let splits = [...this.splitsFormArray.getRawValue()];
-      for (let i = 0; i < splits.length; ) {
-        if (!splits[i].owedBy && splits[i].assignedAmount === 0) {
-          splits.splice(i, 1);
-        } else {
-          if (i < splits.length - 1) {
-            splits[i].percentage = +splits[i].percentage;
-            totalPercentage += splits[i].percentage;
-          } else {
-            const remainingPercentage: number =
-              this.localeService.roundToCurrency(+(100 - totalPercentage));
-            splits[i].percentage = remainingPercentage;
-            this.splitsFormArray.at(i).patchValue({
-              percentage: remainingPercentage,
-            });
-          }
-          i++;
-        }
-      }
+      splits = this.filterSplitsAndSetLastPercentage(splits);
       const splitCount: number = splits.filter((s) => s.owedBy !== '').length;
-      const val = this.expenseForm.value;
-      const totalAmount: number = +val.amount!;
+      const totalAmount: number = +this.expenseForm.value.amount!;
       splits.forEach((split: Split) => {
         split.allocatedAmount = this.localeService.roundToCurrency(
           +((totalAmount * +split.percentage) / 100)
         );
       });
       const allocatedTotal: number = this.localeService.roundToCurrency(
-        +splits.reduce((total, s) => (total += s.allocatedAmount), 0)
+        +splits.reduce((total, s) => total + s.allocatedAmount, 0)
       );
       const percentageTotal: number = this.localeService.roundToCurrency(
-        +splits.reduce((total, s) => (total += s.percentage), 0)
+        +splits.reduce((total, s) => total + s.percentage, 0)
       );
       if (
         allocatedTotal !== totalAmount &&
         percentageTotal === 100 &&
         splitCount > 0
       ) {
-        let diff = this.localeService.roundToCurrency(
-          +(totalAmount - allocatedTotal)
-        );
-        const increment = this.localeService.getSmallestIncrement();
-        for (let i = 0; diff != 0; ) {
-          if (diff > 0) {
-            splits[i].allocatedAmount += increment;
-            diff = this.localeService.roundToCurrency(+(diff - increment));
-          } else {
-            splits[i].allocatedAmount -= increment;
-            diff = this.localeService.roundToCurrency(+(diff + increment));
-          }
-          if (i < splits.length - 1) {
-            i++;
-          } else {
-            i = 0;
-          }
-        }
+        this.adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
       }
       // Patch the allocatedAmount back into the form array
       splits.forEach((split, index) => {
@@ -456,11 +408,48 @@ export class SplitComponent implements OnDestroy {
     }
   }
 
+  private filterSplitsAndSetLastPercentage(splits: any[]): any[] {
+    let totalPercentage = 0;
+    const filtered = splits.filter((s) => s.owedBy || +s.assignedAmount !== 0);
+    filtered.forEach((split, i) => {
+      if (i < filtered.length - 1) {
+        split.percentage = +split.percentage;
+        totalPercentage += split.percentage;
+      } else {
+        const remainingPercentage = this.localeService.roundToCurrency(
+          +(100 - totalPercentage)
+        );
+        split.percentage = remainingPercentage;
+        this.splitsFormArray.at(i).patchValue({ percentage: remainingPercentage });
+      }
+    });
+    return filtered;
+  }
+
+  private adjustAllocationForRounding(
+    splits: any[],
+    totalAmount: number,
+    allocatedTotal: number
+  ): void {
+    let diff = this.localeService.roundToCurrency(+(totalAmount - allocatedTotal));
+    const increment = this.localeService.getSmallestIncrement();
+    for (let i = 0; diff !== 0; ) {
+      if (diff > 0) {
+        splits[i].allocatedAmount += increment;
+        diff = this.localeService.roundToCurrency(+(diff - increment));
+      } else {
+        splits[i].allocatedAmount -= increment;
+        diff = this.localeService.roundToCurrency(+(diff + increment));
+      }
+      i = (i + 1) % splits.length;
+    }
+  }
+
   getAssignedTotal = (): number =>
     this.localeService.roundToCurrency(
       +[...this.splitsFormArray.value].reduce(
         (total, s) =>
-          (total += this.localeService.roundToCurrency(+s.assignedAmount)),
+          total + this.localeService.roundToCurrency(+s.assignedAmount),
         0
       )
     );
@@ -469,13 +458,13 @@ export class SplitComponent implements OnDestroy {
     this.localeService.roundToCurrency(
       +[...this.splitsFormArray.value].reduce(
         (total, s) =>
-          (total += this.localeService.roundToCurrency(+s.allocatedAmount)),
+          total + this.localeService.roundToCurrency(+s.allocatedAmount),
         0
       )
     );
 
   expenseFullyAllocated = (): boolean =>
-    this.expenseForm.value.amount! == this.getAllocatedTotal();
+    (this.expenseForm.value.amount ?? 0) === this.getAllocatedTotal();
 
   isLastSplit(index: number): boolean {
     return index === this.splitsFormArray.length - 1;
@@ -507,7 +496,7 @@ export class SplitComponent implements OnDestroy {
     // First pass: collect all lines and calculate max lengths
     this.splitsFormArray.controls.forEach((splitControl) => {
       const split = splitControl.value;
-      if (split.owedBy && split.owedBy.trim()) {
+      if (split.owedBy?.trim()) {
         if (this.splitByPercentage()) {
           // Show percentage and total for percentage splits
           const lineText = `${split.owedBy} (${split.percentage}%)`;
@@ -601,7 +590,7 @@ export class SplitComponent implements OnDestroy {
     const formValue = this.expenseForm.value;
     const sharedAmount = formValue.sharedAmount! || 0;
     const splitCount = this.splitsFormArray.controls.filter(
-      (control) => control.value.owedBy && control.value.owedBy.trim()
+      (control) => control.value.owedBy?.trim()
     ).length;
 
     if (splitCount === 0) return 0;
@@ -669,7 +658,15 @@ export class SplitComponent implements OnDestroy {
   openCalculator(event: Event, controlName: string, index?: number): void {
     const target = event.target as HTMLElement;
     this.calculatorOverlay.openCalculator(target, (result: number) => {
-      if (index !== undefined) {
+      if (index === undefined) {
+        const control = this.expenseForm.get(controlName);
+        if (control) {
+          control.setValue(this.localeService.roundToCurrency(result), {
+            emitEvent: true,
+          });
+          this.updateTotalAmount();
+        }
+      } else {
         const control = this.splitsFormArray.at(index).get(controlName);
         if (control) {
           control.setValue(this.localeService.roundToCurrency(result), {
@@ -680,14 +677,6 @@ export class SplitComponent implements OnDestroy {
           } else {
             this.allocateSharedAmounts();
           }
-        }
-      } else {
-        const control = this.expenseForm.get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.updateTotalAmount();
         }
       }
     });

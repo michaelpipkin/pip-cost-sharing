@@ -59,9 +59,7 @@ export class SelectFilterDirective extends BaseFilterDirective {
   }
 
   protected override openFilterPanel(): void {
-    if (!this.overlayRef) {
-      this.overlayRef = this.createOverlay();
-    }
+    this.overlayRef ??= this.createOverlay();
 
     const portal = this.createFilterPanel();
     this.componentRef = this.overlayRef.attach(portal);
@@ -90,7 +88,7 @@ export class SelectFilterDirective extends BaseFilterDirective {
     }
 
     const currentFilter = this.getCurrentFilter();
-    if (currentFilter && currentFilter.type === 'select') {
+    if (currentFilter?.type === 'select') {
       this.componentRef.setInput('initialValue', {
         value: currentFilter.value,
         multiple: currentFilter.multiple || false,
