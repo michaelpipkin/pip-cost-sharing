@@ -67,7 +67,7 @@ export class HelpComponent {
   async onSubmit(): Promise<void> {
     this.loading.loadingOn();
     const issue = this.issueForm.value;
-    const body = !!issue.email
+    const body = issue.email
       ? `${issue.body}\n\nSubmitted by: ${issue.email}`
       : issue.body;
 

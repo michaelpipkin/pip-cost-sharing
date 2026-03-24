@@ -53,7 +53,7 @@ export class ForgotPasswordComponent {
       const email = this.forgotPasswordForm.value.email;
 
       const actionCodeSettings = {
-        url: window.location.origin + '/auth/account-action',
+        url: globalThis.location.origin + '/auth/account-action',
         handleCodeInApp: true,
       };
 

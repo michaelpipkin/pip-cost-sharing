@@ -1,4 +1,4 @@
-import { Component, computed, inject, model, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, model, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -78,6 +78,12 @@ export class AccountActionComponent {
   );
 
   constructor() {
+    afterNextRender(async () => {
+      await this.handleRouteParams();
+    });
+  }
+
+  private async handleRouteParams(): Promise<void> {
     const params = this.route.snapshot.queryParams;
     const oobCode = params['oobCode'];
     const mode = params['mode'] as ActionMode;
@@ -85,11 +91,11 @@ export class AccountActionComponent {
     if (!oobCode) {
       // If user is logged in and verified, redirect to expenses page
       if (this.auth.currentUser?.emailVerified) {
-        this.router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
+        await this.router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
         return;
       }
       this.errorMessage.set('Invalid link. No code provided.');
-      this.analytics.logError(
+      await this.analytics.logError(
         'Account Action Component',
         'process_action',
         'No oobCode in URL',
@@ -103,7 +109,7 @@ export class AccountActionComponent {
       !['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode)
     ) {
       this.errorMessage.set('Invalid link. Unknown action.');
-      this.analytics.logError(
+      await this.analytics.logError(
         'Account Action Component',
         'process_action',
         `Invalid mode: ${mode}`,
@@ -116,9 +122,9 @@ export class AccountActionComponent {
     this.oobCode.set(oobCode);
 
     if (mode === 'verifyEmail') {
-      this.processEmailVerification();
+      await this.processEmailVerification();
     } else if (mode === 'recoverEmail') {
-      this.processEmailRecovery();
+      await this.processEmailRecovery();
     }
     // For resetPassword, we just show the form
   }
@@ -146,7 +152,7 @@ export class AccountActionComponent {
         await this.auth.currentUser.reload();
         // Sync the email in Firestore and link any unlinked member records
         await this.userService.updateUserEmailAndLinkMembers(
-          this.auth.currentUser.email!
+          this.auth.currentUser.email
         );
         // Update UserStore with new email verification status
         this.userStore.setIsEmailConfirmed(this.auth.currentUser.emailVerified);
@@ -216,7 +222,7 @@ export class AccountActionComponent {
       this.resending.set(true);
 
       const actionCodeSettings = {
-        url: window.location.origin + '/auth/account-action',
+        url: globalThis.location.origin + '/auth/account-action',
         handleCodeInApp: true,
       };
 

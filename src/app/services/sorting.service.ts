@@ -17,21 +17,9 @@ export class SortingService {
           return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         });
       } else {
-        return copy.sort((a, b) => {
-          const aVal = a[col][property];
-          const bVal = b[col][property];
-          return asc
-            ? aVal > bVal
-              ? 1
-              : aVal < bVal
-                ? -1
-                : 0
-            : bVal > aVal
-              ? 1
-              : bVal < aVal
-                ? -1
-                : 0;
-        });
+        return copy.sort((a, b) =>
+          this.compare(a[col][property], b[col][property], asc)
+        );
       }
     } else if (typeof copy[0][col] === 'string') {
       return copy.sort((a, b) => {
@@ -40,19 +28,13 @@ export class SortingService {
         return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       });
     } else {
-      return copy.sort((a, b) =>
-        asc
-          ? a[col] > b[col]
-            ? 1
-            : a[col] < b[col]
-              ? -1
-              : 0
-          : b[col] > a[col]
-            ? 1
-            : b[col] < a[col]
-              ? -1
-              : 0
-      );
+      return copy.sort((a, b) => this.compare(a[col], b[col], asc));
     }
+  }
+
+  private compare(a: any, b: any, asc: boolean): number {
+    if (a > b) return asc ? 1 : -1;
+    if (a < b) return asc ? -1 : 1;
+    return 0;
   }
 }

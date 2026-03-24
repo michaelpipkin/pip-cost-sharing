@@ -18,6 +18,7 @@
             data-testid="memorized-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
+            (keydown.enter)="startTour(); $event.preventDefault()"
             aria-label="Start memorized expenses tour"
             class="mr-2"
           >
@@ -27,6 +28,7 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp(); $event.preventDefault()"
           data-testid="memorized-help-button"
           aria-label="Show help for memorized expenses"
         >
@@ -262,6 +264,7 @@
                 class="summary-row clickable-row expandable-row"
                 [class.expanded-row]="expandedExpense === expense"
                 (click)="onRowClick(expense)"
+                (keydown.enter)="onRowClick(expense)"
               ></tr>
               <tr
                 mat-row

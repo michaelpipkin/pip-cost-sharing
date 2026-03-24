@@ -15,14 +15,13 @@ export class FormatCurrencyInputDirective {
     optional: true,
   });
   protected readonly stringUtils = inject(StringUtils);
-
-  constructor(private el: ElementRef) {}
+  protected readonly el = inject(ElementRef);
 
   @HostListener('blur', ['$event']) onBlur(event: FocusEvent) {
     const target = event.target as HTMLInputElement;
-    if (!target || !target.value) return;
+    if (!target?.value) return;
 
-    let value = target.value.trim().replace(/\.([^\d]|$)/g, '$1');
+    let value = target.value.trim().replaceAll(/\.([^\d]|$)/g, '$1');
     const calc = this.stringUtils.toNumber(value);
 
     if (this.formGroupDirective) {
@@ -32,7 +31,7 @@ export class FormatCurrencyInputDirective {
         const parentControl = this.formGroupDirective.form.get(
           parentControlName
         ) as FormArray;
-        const index = this.el.nativeElement.getAttribute('data-index');
+        const index = this.el.nativeElement.dataset.index;
         const controlName =
           this.el.nativeElement.getAttribute('formControlName');
         const control = parentControl.at(+index).get(controlName);

@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, signal, Signal } from '@angular/core';
+import { afterNextRender, Component, inject, signal, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -76,9 +76,11 @@ export class AppComponent {
   readonly demoRoutes = DEMO_ROUTE_PATHS;
 
   constructor() {
-    this.analytics.logEvent('app_initalized');
-    this.lockTextZoom();
-    this.deepLinkService.initialize();
+    afterNextRender(async () => {
+      await this.analytics.logEvent('app_initalized');
+      await this.lockTextZoom();
+      this.deepLinkService.initialize();
+    });
 
     // Observe breakpoint changes for responsive layout
     this.breakpointObserver
@@ -90,8 +92,8 @@ export class AppComponent {
 
   private async lockTextZoom() {
     if (this.pwaDetection.isRunningAsApp()) {
-      // Set zoom to 100% (1.0) regardless of system setting
-      await TextZoom.set({ value: 1.0 });
+      // Set zoom to 100% (1) regardless of system setting
+      await TextZoom.set({ value: 1 });
     }
   }
 

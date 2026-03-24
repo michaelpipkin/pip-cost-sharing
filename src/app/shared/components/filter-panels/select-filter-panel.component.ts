@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 export interface SelectFilterValue {
-  value: any | any[];
+  value: any;
   multiple: boolean;
 }
 
@@ -103,7 +103,7 @@ export class SelectFilterPanelComponent {
   apply = output<SelectFilterValue>();
   clear = output<void>();
 
-  selectedValue: any | any[] = this.multiple() ? [] : null;
+  selectedValue: any = this.multiple() ? [] : null;
 
   constructor() {
     effect(() => {

@@ -22,7 +22,9 @@ export class DateShortcutKeysDirective {
     if (['-', '+', 't', 'm', 'y'].includes(event.key)) {
       const inputDate = new Date(this.#el.nativeElement.value);
       const today = new Date();
-      if (inputDate.toString() !== 'Invalid Date') {
+      if (inputDate.toString() === 'Invalid Date') {
+        this.#ngControl.control?.patchValue(today);
+      } else {
         let newDate: Date;
         switch (event.key) {
           case '-':
@@ -46,8 +48,6 @@ export class DateShortcutKeysDirective {
             newDate = today;
         }
         this.#ngControl.control?.patchValue(newDate);
-      } else {
-        this.#ngControl.control?.patchValue(today);
       }
       event.preventDefault();
     }

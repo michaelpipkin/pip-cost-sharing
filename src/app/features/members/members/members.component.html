@@ -18,6 +18,7 @@
             data-testid="members-tour-button"
             matTooltip="Show Tour"
             (click)="startTour()"
+            (keydown.enter)="startTour(); $event.preventDefault()"
             aria-label="Start members tour"
             class="mr-2"
           >
@@ -27,6 +28,7 @@
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
+          (keydown.enter)="showHelp(); $event.preventDefault()"
           data-testid="members-help-button"
           aria-label="Show help for members"
         >
@@ -84,7 +86,7 @@
           (click)="addMember()"
           data-testid="add-member-button"
           data-tour="add-member-button"
-          aria-label="Add new member to group"
+          aria-label="Add member to group"
         >
           Add Member
         </button>
@@ -156,6 +158,7 @@
               mat-row
               *matRowDef="let member; columns: columnsToDisplay()"
               (click)="onRowClick(member)"
+              (keydown.enter)="onRowClick(member)"
               [class.clickable-row]="
                 currentMember()?.groupAdmin || user()?.ref?.eq(member.userRef)
               "

@@ -22,8 +22,8 @@ export const ROUTES = {
   // Auth sub-routes
   LOGIN: 'login',
   REGISTER: 'register',
-  FORGOT_PASSWORD: 'forgot-password',
-  RESET_PASSWORD: 'reset-password',
+  FORGOT_PASSWORD: 'forgot-password', // NOSONAR
+  RESET_PASSWORD: 'reset-password', // NOSONAR
   ACCOUNT: 'account',
 
   // Administration sub-routes

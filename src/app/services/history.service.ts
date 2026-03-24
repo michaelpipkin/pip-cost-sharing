@@ -5,6 +5,7 @@ import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { parseDate } from '@utils/date-utils';
 import {
   collection,
   DocumentReference,
@@ -17,7 +18,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { parseDate } from '@utils/date-utils';
 import { IHistoryService } from './history.service.interface';
 
 @Injectable({
@@ -82,6 +82,9 @@ export class HistoryService implements IHistoryService {
   }
 
   async unpayHistory(history: History): Promise<void> {
+    const historyRef = history.ref;
+    if (!historyRef) return;
+
     const batch = writeBatch(this.fs);
 
     const splitRefs = history.splitsPaid ?? [];
@@ -97,7 +100,8 @@ export class HistoryService implements IHistoryService {
     // Mark all unique related expenses as unpaid
     const uniqueExpenseRefs = new Map<string, DocumentReference<Expense>>();
     for (const splitDoc of splitDocs) {
-      const expenseRef = splitDoc.data()![
+      if (!splitDoc.exists()) continue;
+      const expenseRef = splitDoc.data()[ // NOSONAR
         'expenseRef'
       ] as DocumentReference<Expense>;
       if (!uniqueExpenseRefs.has(expenseRef.path)) {
@@ -109,7 +113,7 @@ export class HistoryService implements IHistoryService {
     }
 
     // Delete the history record
-    batch.delete(history.ref!);
+    batch.delete(historyRef);
 
     await batch.commit();
   }
@@ -121,6 +125,9 @@ export class HistoryService implements IHistoryService {
     splitAllocatedAmount: number,
     isPositiveDirection: boolean
   ): Promise<void> {
+    const historyRef = history.ref;
+    if (!historyRef) return;
+
     const batch = writeBatch(this.fs);
 
     // Mark split as unpaid
@@ -136,14 +143,14 @@ export class HistoryService implements IHistoryService {
 
     if (newSplitsPaid.length === 0) {
       // Last split — delete the history record
-      batch.delete(history.ref!);
+      batch.delete(historyRef);
     } else {
       // Recalculate totalPaid
       const newTotalPaid = isPositiveDirection
         ? history.totalPaid - splitAllocatedAmount
         : history.totalPaid + splitAllocatedAmount;
 
-      batch.update(history.ref!, {
+      batch.update(historyRef, {
         splitsPaid: newSplitsPaid,
         totalPaid: newTotalPaid,
       });
@@ -182,7 +189,7 @@ export class HistoryService implements IHistoryService {
     const expenseRefMap = new Map<string, DocumentReference<Expense>>();
     for (const splitDoc of splitDocs) {
       if (splitDoc.exists()) {
-        const expenseRef = splitDoc.data()![
+        const expenseRef = splitDoc.data()[ // NOSONAR
           'expenseRef'
         ] as DocumentReference<Expense>;
         if (!expenseRefMap.has(expenseRef.path)) {

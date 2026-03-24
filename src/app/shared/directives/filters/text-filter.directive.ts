@@ -41,7 +41,7 @@ export class TextFilterDirective extends BaseFilterDirective {
     // We need to attach the portal and configure the component after attachment
     // This happens in openFilterPanel after attach() is called
     setTimeout(() => {
-      if (this.overlayRef && this.overlayRef.hasAttached()) {
+      if (this.overlayRef?.hasAttached()) {
         this.componentRef = this.overlayRef.overlayElement.querySelector(
           'app-text-filter-panel'
         )
@@ -58,9 +58,7 @@ export class TextFilterDirective extends BaseFilterDirective {
   }
 
   protected override openFilterPanel(): void {
-    if (!this.overlayRef) {
-      this.overlayRef = this.createOverlay();
-    }
+    this.overlayRef ??= this.createOverlay();
 
     const portal = this.createFilterPanel();
     this.componentRef = this.overlayRef.attach(portal);
@@ -83,7 +81,7 @@ export class TextFilterDirective extends BaseFilterDirective {
     }
 
     const currentFilter = this.getCurrentFilter();
-    if (currentFilter && currentFilter.type === 'text') {
+    if (currentFilter?.type === 'text') {
       this.componentRef.setInput('initialValue', {
         value: currentFilter.value,
         caseSensitive: currentFilter.caseSensitive || false,

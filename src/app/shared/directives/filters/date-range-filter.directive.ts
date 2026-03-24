@@ -41,9 +41,7 @@ export class DateRangeFilterDirective extends BaseFilterDirective {
   }
 
   protected override openFilterPanel(): void {
-    if (!this.overlayRef) {
-      this.overlayRef = this.createOverlay();
-    }
+    this.overlayRef ??= this.createOverlay();
 
     const portal = this.createFilterPanel();
     this.componentRef = this.overlayRef.attach(portal);
@@ -66,7 +64,7 @@ export class DateRangeFilterDirective extends BaseFilterDirective {
     }
 
     const currentFilter = this.getCurrentFilter();
-    if (currentFilter && currentFilter.type === 'dateRange') {
+    if (currentFilter?.type === 'dateRange') {
       this.componentRef.setInput('initialValue', {
         start: currentFilter.start,
         end: currentFilter.end,

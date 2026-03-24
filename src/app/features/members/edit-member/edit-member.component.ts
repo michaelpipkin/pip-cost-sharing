@@ -75,6 +75,7 @@ export class EditMemberComponent {
   groupAdminTooltip: string = '';
 
   constructor() {
+    const userRef = this.user()!.ref!;
     this.editMemberForm = this.fb.group({
       memberName: [this.member.displayName, Validators.required],
       email: [this.member.email, Validators.email],
@@ -87,11 +88,11 @@ export class EditMemberComponent {
       groupAdmin: [
         {
           value: this.member.groupAdmin,
-          disabled: this.member.userRef?.eq(this.user()!.ref!),
+          disabled: this.member.userRef?.eq(userRef),
         },
       ],
     });
-    if (this.member.userRef?.eq(this.user()!.ref!)) {
+    if (this.member.userRef?.eq(userRef)) {
       this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
     }
     if (this.activeMemberCount === 1 && this.member.active) {
@@ -118,8 +119,9 @@ export class EditMemberComponent {
         active: form.active,
         groupAdmin: form.groupAdmin,
       };
+      const memberRef = this.member.ref!;
       await this.memberService.updateMemberWithUserMatching(
-        this.member.ref!,
+        memberRef,
         changes,
         this.member.userRef,
         this.member.email
@@ -160,9 +162,10 @@ export class EditMemberComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
+          const memberRef = this.member.ref!;
           await this.memberService.removeMemberFromGroup(
             this.data.groupId,
-            this.member.ref!
+            memberRef
           );
           this.dialogRef.close({
             success: true,
@@ -207,10 +210,8 @@ export class EditMemberComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.memberService.leaveGroup(
-            this.data.groupId,
-            this.member.ref!
-          );
+          const memberRef = this.member.ref!;
+          await this.memberService.leaveGroup(this.data.groupId, memberRef);
           this.groupStore.clearCurrentGroup();
           this.groupStore.removeGroup(this.data.groupId);
           this.userStore.updateUser({ defaultGroupRef: null });

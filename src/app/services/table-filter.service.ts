@@ -5,7 +5,7 @@ import { Injectable, signal, Signal } from '@angular/core';
  */
 export type FilterValue =
   | { type: 'text'; value: string; caseSensitive?: boolean }
-  | { type: 'select'; value: any | any[]; multiple?: boolean }
+  | { type: 'select'; value: any; multiple?: boolean }
   | { type: 'dateRange'; start: Date | null; end: Date | null }
   | { type: 'toggle'; value: boolean | null };
 
@@ -38,7 +38,7 @@ export class TableFilterService<T> {
    * Key: property name from type T
    * Value: FilterValue with the filter configuration
    */
-  private _filters = signal<Map<string, FilterValue>>(new Map());
+  private readonly _filters = signal<Map<string, FilterValue>>(new Map());
 
   /**
    * Public read-only signal of active filters
