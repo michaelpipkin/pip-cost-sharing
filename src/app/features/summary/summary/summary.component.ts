@@ -64,11 +64,9 @@ import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-
     MatOptionModule,
     MatInputModule,
     MatDatepickerModule,
-    MatDatepickerModule,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
-    MatDatepickerModule,
     MatTableModule,
     MatCardModule,
     CurrencyPipe,
@@ -115,8 +113,8 @@ export class SummaryComponent {
   endDate = model<Date | null>(null);
 
   filteredSplits = computed(() => {
-    var startDate: Date;
-    var endDate: Date;
+    let startDate: Date;
+    let endDate: Date;
     if (this.startDate() == null) {
       startDate = new Date('1/1/1900');
     } else {
@@ -136,29 +134,29 @@ export class SummaryComponent {
 
   summaryData = computed(
     (
-      selectedMember: DocumentReference<Member> = this.selectedMember()!,
+      selectedMember: DocumentReference<Member> = this.selectedMember()!, // NOSONAR
       splits: Split[] = this.filteredSplits()
     ) => {
-      var summaryData: AmountDue[] = [];
+      let summaryData: AmountDue[] = [];
       if (splits.length > 0) {
-        var memberSplits = splits.filter((s) => {
+        const memberSplits = splits.filter((s) => {
           return (
             s.owedByMemberRef.eq(selectedMember) ||
             s.paidByMemberRef.eq(selectedMember)
           );
         });
         this.members()
-          .filter((m) => !m.ref!.eq(selectedMember))
+          .filter((m) => !m.ref!.eq(selectedMember)) // NOSONAR
           .forEach((member) => {
             const owedToSelected = this.localeService.roundToCurrency(
               +memberSplits
-                .filter((m) => m.owedByMemberRef.eq(member.ref!))
-                .reduce((total, split) => (total += split.allocatedAmount), 0)
+                .filter((m) => m.owedByMemberRef.eq(member.ref!)) // NOSONAR
+                .reduce((total, split) => total + split.allocatedAmount, 0)
             );
             const owedBySelected = this.localeService.roundToCurrency(
               +memberSplits
-                .filter((m) => m.paidByMemberRef.eq(member.ref!))
-                .reduce((total, split) => (total += split.allocatedAmount), 0)
+                .filter((m) => m.paidByMemberRef.eq(member.ref!)) // NOSONAR
+                .reduce((total, split) => total + split.allocatedAmount, 0)
             );
             if (owedToSelected > owedBySelected) {
               summaryData.push(
@@ -203,7 +201,7 @@ export class SummaryComponent {
       splits: Split[] = this.filteredSplits(),
       categories: Category[] = this.categories()
     ) => {
-      var detailData: AmountDue[] = [];
+      let detailData: AmountDue[] = [];
       const memberSplits = splits.filter(
         (s) =>
           (s.owedByMemberRef.eq(owedToMemberRef) ||
@@ -213,24 +211,24 @@ export class SummaryComponent {
       );
       categories.forEach((category) => {
         if (
-          memberSplits.filter((split: Split) =>
-            split.categoryRef.eq(category.ref!)
-          ).length > 0
+          memberSplits.some((split: Split) =>
+            split.categoryRef.eq(category.ref!) // NOSONAR
+          )
         ) {
           const owedToMember1 = memberSplits
             .filter(
               (s: Split) =>
                 s.paidByMemberRef.eq(owedToMemberRef) &&
-                s.categoryRef.eq(category.ref!)
+                s.categoryRef.eq(category.ref!) // NOSONAR
             )
-            .reduce((total, split) => (total += split.allocatedAmount), 0);
+            .reduce((total, split) => total + split.allocatedAmount, 0);
           const owedToMember2 = memberSplits
             .filter(
               (s: Split) =>
                 s.paidByMemberRef.eq(owedByMemberRef) &&
-                s.categoryRef.eq(category.ref!)
+                s.categoryRef.eq(category.ref!) // NOSONAR
             )
-            .reduce((total, split) => (total += split.allocatedAmount), 0);
+            .reduce((total, split) => total + split.allocatedAmount, 0);
           detailData.push(
             new AmountDue({
               categoryRef: category.ref!,
@@ -331,10 +329,10 @@ export class SummaryComponent {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
     effect(() => {
-      if (!this.splitStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.splitStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
     afterNextRender(() => {
@@ -362,15 +360,13 @@ export class SummaryComponent {
     }
     this.owedToMemberRef.set(owedToMemberRef);
     this.owedByMemberRef.set(owedByMemberRef);
-    var splitsToPay: Split[] = [];
-    const memberSplits = this.filteredSplits().filter(
+    const splitsToPay = this.filteredSplits().filter(
       (s) =>
         (s.owedByMemberRef.eq(owedByMemberRef) &&
           s.paidByMemberRef.eq(owedToMemberRef)) ||
         (s.owedByMemberRef.eq(owedToMemberRef) &&
           s.paidByMemberRef.eq(owedByMemberRef))
     );
-    splitsToPay = memberSplits;
     let paymentMethods = {};
     this.loading.loadingOn();
     try {
@@ -399,8 +395,8 @@ export class SummaryComponent {
               +splitsToPay.reduce(
                 (total, s) =>
                   s.paidByMemberRef.eq(owedToMemberRef)
-                    ? (total += +s.allocatedAmount)
-                    : (total -= +s.allocatedAmount),
+                    ? total + +s.allocatedAmount
+                    : total - +s.allocatedAmount,
                 0
               )
             ),
@@ -618,12 +614,14 @@ export class SummaryComponent {
         this.currentGroup()!.name,
         this.formatCurrency(amountDue.amount)
       );
-      const message =
-        result === 'not_registered'
-          ? `${owedByMember.displayName} is not a registered user and cannot receive emails`
-          : result === 'opted_out'
-            ? `${owedByMember.displayName} has opted out of email notifications`
-            : 'Payment request email sent successfully';
+      let message: string;
+      if (result === 'not_registered') {
+        message = `${owedByMember.displayName} is not a registered user and cannot receive emails`;
+      } else if (result === 'opted_out') {
+        message = `${owedByMember.displayName} has opted out of email notifications`;
+      } else {
+        message = 'Payment request email sent successfully';
+      }
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });

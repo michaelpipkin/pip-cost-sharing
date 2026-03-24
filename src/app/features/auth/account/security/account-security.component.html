@@ -13,6 +13,7 @@
     >
       <mat-form-field data-testid="new-password-field">
         <mat-label>New Password</mat-label>
+        <!-- // NOSONAR -->
         <input
           matInput
           [type]="hidePassword() ? 'password' : 'text'"
@@ -36,6 +37,7 @@
       </mat-form-field>
       <mat-form-field>
         <mat-label>Confirm Password</mat-label>
+        <!-- // NOSONAR -->
         <input
           matInput
           [type]="hideConfirm() ? 'password' : 'text'"

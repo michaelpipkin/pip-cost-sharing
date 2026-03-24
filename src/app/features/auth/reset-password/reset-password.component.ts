@@ -1,4 +1,4 @@
-import { Component, inject, model, signal } from '@angular/core';
+import { afterNextRender, Component, inject, model, signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -54,9 +54,11 @@ export class ResetPasswordComponent {
   );
 
   constructor() {
-    if (!this.oobCode()) {
-      this.router.navigate(['/login']);
-    }
+    afterNextRender(async () => {
+      if (!this.oobCode()) {
+        await this.router.navigate(['/login']);
+      }
+    });
   }
 
   toggleHidePassword() {

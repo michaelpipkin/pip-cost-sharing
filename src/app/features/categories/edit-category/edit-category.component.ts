@@ -50,7 +50,7 @@ export class EditCategoryComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly data: { category: Category } = inject(MAT_DIALOG_DATA);
 
-  #category = signal<Category>(this.data.category);
+  readonly #category = signal<Category>(this.data.category);
 
   editCategoryForm = this.fb.group({
     categoryName: [this.data.category.name, Validators.required],
@@ -73,7 +73,8 @@ export class EditCategoryComponent {
         name: form.categoryName ?? undefined,
         active: form.active ?? undefined,
       };
-      await this.categoryService.updateCategory(this.#category().ref!, changes);
+      const categoryRef = this.#category().ref!;
+      await this.categoryService.updateCategory(categoryRef, changes);
       this.dialogRef.close({
         success: true,
         operation: 'saved',
@@ -110,7 +111,8 @@ export class EditCategoryComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.categoryService.deleteCategory(this.#category().ref!);
+          const categoryRef = this.#category().ref!;
+          await this.categoryService.deleteCategory(categoryRef);
           this.dialogRef.close({
             success: true,
             operation: 'deleted',

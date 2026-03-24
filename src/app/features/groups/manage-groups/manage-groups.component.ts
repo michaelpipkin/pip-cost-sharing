@@ -1,4 +1,4 @@
-import { Component, computed, inject, model, Signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, model, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -83,7 +83,9 @@ export class ManageGroupsComponent {
 
   constructor() {
     this.loading.loadingOn();
-    this.initializeForm();
+    afterNextRender(async () => {
+      await this.initializeForm();
+    });
   }
 
   private async initializeForm(): Promise<void> {
@@ -115,8 +117,9 @@ export class ManageGroupsComponent {
   }
 
   async onSelectGroup(): Promise<void> {
+    const selectedGroupRef = this.f.groupRef.value!;
     const group = this.userAdminGroups().find((g) =>
-      g.ref!.eq(this.f.groupRef.value!)
+      g.ref!.eq(selectedGroupRef)
     );
     this.selectedGroup.set(group ?? null);
 
@@ -154,7 +157,8 @@ export class ManageGroupsComponent {
     };
     this.loading.loadingOn();
     try {
-      await this.groupService.updateGroup(this.selectedGroup()!.ref!, changes);
+      const selectedGroupRef = this.selectedGroup()!.ref!;
+      await this.groupService.updateGroup(selectedGroupRef, changes);
       this.dialogRef.close({
         success: true,
         operation: 'saved',
@@ -197,7 +201,8 @@ export class ManageGroupsComponent {
       if (result) {
         this.loading.loadingOn();
         try {
-          await this.groupService.updateGroup(this.selectedGroup()!.ref!, {
+          const selectedGroupRef = this.selectedGroup()!.ref!;
+          await this.groupService.updateGroup(selectedGroupRef, {
             archived: true,
             active: false,
           });
@@ -236,7 +241,8 @@ export class ManageGroupsComponent {
     }
     this.loading.loadingOn();
     try {
-      await this.groupService.updateGroup(this.selectedGroup()!.ref!, {
+      const selectedGroupRef = this.selectedGroup()!.ref!;
+      await this.groupService.updateGroup(selectedGroupRef, {
         archived: false,
       });
       this.dialogRef.close({

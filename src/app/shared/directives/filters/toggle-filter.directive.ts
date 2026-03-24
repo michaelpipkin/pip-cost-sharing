@@ -51,9 +51,7 @@ export class ToggleFilterDirective extends BaseFilterDirective {
   }
 
   protected override openFilterPanel(): void {
-    if (!this.overlayRef) {
-      this.overlayRef = this.createOverlay();
-    }
+    this.overlayRef ??= this.createOverlay();
 
     const portal = this.createFilterPanel();
     this.componentRef = this.overlayRef.attach(portal);
@@ -80,7 +78,7 @@ export class ToggleFilterDirective extends BaseFilterDirective {
     this.componentRef.setInput('allLabel', this.filterAllLabel());
 
     const currentFilter = this.getCurrentFilter();
-    if (currentFilter && currentFilter.type === 'toggle') {
+    if (currentFilter?.type === 'toggle') {
       this.componentRef.setInput('initialValue', {
         value: currentFilter.value,
       });

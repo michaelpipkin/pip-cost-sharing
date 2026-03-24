@@ -1,24 +1,24 @@
 import {
-  afterNextRender,
-  DestroyRef,
-  Directive,
-  ElementRef,
-  input,
-  untracked,
-  ViewContainerRef,
-  inject,
-  Renderer2,
-  effect,
-} from '@angular/core';
-import {
+  FlexibleConnectedPositionStrategy,
   Overlay,
   OverlayRef,
-  FlexibleConnectedPositionStrategy,
 } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
-  TableFilterService,
+  afterNextRender,
+  DestroyRef,
+  Directive,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  Renderer2,
+  untracked,
+  ViewContainerRef,
+} from '@angular/core';
+import {
   FilterValue,
+  TableFilterService,
 } from '@services/table-filter.service';
 
 /**
@@ -159,7 +159,7 @@ export abstract class BaseFilterDirective {
    * Toggles the filter panel overlay
    */
   protected toggleFilterPanel(): void {
-    if (this.overlayRef && this.overlayRef.hasAttached()) {
+    if (this.overlayRef?.hasAttached()) {
       this.closeFilterPanel();
     } else {
       this.openFilterPanel();
@@ -170,9 +170,7 @@ export abstract class BaseFilterDirective {
    * Opens the filter panel overlay
    */
   protected openFilterPanel(): void {
-    if (!this.overlayRef) {
-      this.overlayRef = this.createOverlay();
-    }
+    this.overlayRef ??= this.createOverlay();
 
     const portal = this.createFilterPanel();
     this.overlayRef.attach(portal);
@@ -187,7 +185,7 @@ export abstract class BaseFilterDirective {
    * Closes the filter panel overlay
    */
   protected closeFilterPanel(): void {
-    if (this.overlayRef && this.overlayRef.hasAttached()) {
+    if (this.overlayRef?.hasAttached()) {
       this.overlayRef.detach();
     }
   }

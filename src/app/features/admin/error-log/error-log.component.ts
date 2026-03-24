@@ -21,8 +21,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
-import { LoadingService } from '@components/loading/loading.service';
 import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { AppError } from '@models/app-error';
 import { AdminErrorLogService } from '@services/admin-error-log.service';
 import { AnalyticsService } from '@services/analytics.service';
@@ -130,8 +130,8 @@ export class AdminErrorLogComponent {
         return dir === 'asc' ? cmp : -cmp;
       } else {
         return dir === 'asc'
-          ? (valA as number) - (valB as number)
-          : (valB as number) - (valA as number);
+          ? valA - (valB as number)
+          : (valB as number) - valA;
       }
     });
   });
@@ -208,7 +208,9 @@ export class AdminErrorLogComponent {
       if ('ids' in row) {
         await this.errorLogService.deleteAppErrors(row.ids);
         const idsToDelete = new Set(row.ids);
-        this.errors.update((errors) => errors.filter((e) => !idsToDelete.has(e.id)));
+        this.errors.update((errors) =>
+          errors.filter((e) => !idsToDelete.has(e.id))
+        );
       } else {
         await this.errorLogService.deleteAppError(row.id);
         this.errors.update((errors) => errors.filter((e) => e.id !== row.id));

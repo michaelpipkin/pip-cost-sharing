@@ -129,7 +129,7 @@ export const adminGuard: CanActivateFn = async () => {
 
   const user = await waitForAuthInit(auth);
 
-  if (user && user.email === APP_OWNER_EMAIL) {
+  if (user?.email === APP_OWNER_EMAIL) {
     return true;
   } else {
     router.navigate([ROUTE_PATHS.HOME]);

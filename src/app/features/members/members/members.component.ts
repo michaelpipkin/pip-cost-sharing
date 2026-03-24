@@ -87,7 +87,7 @@ export class MembersComponent {
   nameFilter = model<string>('');
 
   filteredMembers = computed(() => {
-    var members = this.groupMembers().filter((m: Member) => {
+    let members = this.groupMembers().filter((m: Member) => {
       return (
         (m.active || m.active == this.activeOnly()) &&
         (m.displayName
@@ -104,10 +104,10 @@ export class MembersComponent {
 
   constructor() {
     effect(() => {
-      if (!this.memberStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.memberStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
 

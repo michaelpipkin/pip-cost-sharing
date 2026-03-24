@@ -80,10 +80,11 @@ export class AccountProfileComponent {
 
   async verifyEmail(): Promise<void> {
     const actionCodeSettings = {
-      url: window.location.origin + '/auth/account-action',
+      url: globalThis.location.origin + '/auth/account-action',
       handleCodeInApp: true,
     };
-    sendEmailVerification(this.firebaseUser()!, actionCodeSettings)
+    const user = this.firebaseUser()!;
+    sendEmailVerification(user, actionCodeSettings)
       .then(() => {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Check your email to verify your email address' },
@@ -110,9 +111,10 @@ export class AccountProfileComponent {
   async onSubmitEmail(): Promise<void> {
     this.emailForm.disable();
     const newEmail = this.emailForm.value.email;
-    if (newEmail !== this.firebaseUser()?.email) {
+    const user = this.firebaseUser()!;
+    if (newEmail !== user.email) {
       try {
-        await updateEmail(this.firebaseUser()!, newEmail!);
+        await updateEmail(user, newEmail!);
         this.userStore.setIsEmailConfirmed(false);
         await this.verifyEmail();
       } catch (err: any) {
@@ -178,11 +180,12 @@ export class AccountProfileComponent {
         userRef,
         currentEmail
       );
+      const recordText = count === 1 ? 'record' : 'records';
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message:
             count > 0
-              ? `Updated email on ${count} member record${count > 1 ? 's' : ''}`
+              ? `Updated email on ${count} member ${recordText}`
               : 'No member records needed updating',
         },
       });

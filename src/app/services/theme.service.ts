@@ -1,4 +1,3 @@
-import { IThemeService } from './theme.service.interface';
 import {
   computed,
   effect,
@@ -11,6 +10,7 @@ import {
 import { Capacitor } from '@capacitor/core';
 import { EdgeToEdge } from '@capawesome/capacitor-android-edge-to-edge-support';
 import { SystemBars } from '../plugins/system-bars.plugin';
+import { IThemeService } from './theme.service.interface';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -25,11 +25,14 @@ const THEME_PRIMARY_COLORS: Record<ThemeMode, string> = {
 })
 export class ThemeService implements IThemeService {
   protected readonly rendererFactory = inject(RendererFactory2);
-  private renderer: Renderer2 = this.rendererFactory.createRenderer(null, null);
-  private themeKey = 'app-theme-preference';
+  private readonly renderer: Renderer2 = this.rendererFactory.createRenderer(
+    null,
+    null
+  );
+  private readonly themeKey = 'app-theme-preference';
 
   // Create a signal for the current theme
-  private _currentTheme = signal<ThemeMode>(this.getSavedTheme());
+  private readonly _currentTheme = signal<ThemeMode>(this.getSavedTheme());
 
   // Create a readable computed for external components
   readonly currentTheme = computed(() => this._currentTheme());
@@ -41,8 +44,8 @@ export class ThemeService implements IThemeService {
     });
 
     // Listen for system theme preference changes
-    if (window.matchMedia) {
-      const colorSchemeQuery = window.matchMedia(
+    if (globalThis.matchMedia) {
+      const colorSchemeQuery = globalThis.matchMedia(
         '(prefers-color-scheme: dark)'
       );
 

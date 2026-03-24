@@ -1,3 +1,13 @@
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -13,6 +23,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
@@ -25,20 +39,6 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AddCategoryComponent } from '../add-category/add-category.component';
 import { EditCategoryComponent } from '../edit-category/edit-category.component';
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-categories',
@@ -82,7 +82,7 @@ export class CategoriesComponent {
   nameFilter = model<string>('');
 
   filteredCategories = computed(() => {
-    var categories = this.categories().filter((c: Category) => {
+    let categories = this.categories().filter((c: Category) => {
       return (
         (c.active || c.active == this.activeOnly()) &&
         c.name.toLowerCase().includes(this.nameFilter().toLowerCase())
@@ -100,10 +100,10 @@ export class CategoriesComponent {
 
   constructor() {
     effect(() => {
-      if (!this.categoryStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.categoryStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
     afterNextRender(() => {

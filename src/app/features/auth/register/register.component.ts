@@ -154,7 +154,7 @@ export class RegisterComponent {
           password!
         );
         const actionCodeSettings = {
-          url: window.location.origin + '/auth/account-action',
+          url: globalThis.location.origin + '/auth/account-action',
           handleCodeInApp: true,
         };
         sendEmailVerification(userCredential.user, actionCodeSettings).catch(

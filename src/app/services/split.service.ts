@@ -5,6 +5,7 @@ import { HistoryDto } from '@models/history';
 import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { SplitStore } from '@store/split.store';
+import { parseDate, toIsoFormat } from '@utils/date-utils';
 import {
   collection,
   doc,
@@ -16,7 +17,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { parseDate, toIsoFormat } from '@utils/date-utils';
 import { ISplitService } from './split.service.interface';
 
 @Injectable({
@@ -207,7 +207,7 @@ export class SplitService implements ISplitService {
     const batchSize = transfers.length;
     const splitRefs = splits
       .filter((s) => s.ref != null)
-      .map((s) => s.ref as DocumentReference<Split>);
+      .map((s) => s.ref as DocumentReference<Split>); // NOSONAR
     for (const transfer of transfers) {
       const newHistoryDoc = doc(
         collection(this.fs, `groups/${groupId}/history`)

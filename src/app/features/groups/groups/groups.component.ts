@@ -1,3 +1,10 @@
+import {
+  afterNextRender,
+  Component,
+  effect,
+  inject,
+  Signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,6 +18,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
+import {
+  HelpDialogComponent,
+  HelpDialogData,
+} from '@features/help/help-dialog/help-dialog.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
@@ -23,17 +34,6 @@ import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
-import {
-  afterNextRender,
-  Component,
-  effect,
-  inject,
-  Signal,
-} from '@angular/core';
-import {
-  HelpDialogComponent,
-  HelpDialogData,
-} from '@features/help/help-dialog/help-dialog.component';
 
 @Component({
   selector: 'app-groups',
@@ -64,10 +64,10 @@ export class GroupsComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly analytics = inject(AnalyticsService);
 
-  #user: Signal<User | null> = this.userStore.user;
-  #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
-  allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
-  activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
+  readonly #user: Signal<User | null> = this.userStore.user;
+  readonly #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
+  readonly allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
+  readonly activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
   groupForm = this.fb.group({
     selectedGroupRef: [this.groupStore.currentGroup()?.ref ?? null],
@@ -75,10 +75,10 @@ export class GroupsComponent {
 
   constructor() {
     effect(() => {
-      if (!this.groupStore.loaded()) {
-        this.loading.loadingOn();
-      } else {
+      if (this.groupStore.loaded()) {
         this.loading.loadingOff();
+      } else {
+        this.loading.loadingOn();
       }
     });
 
@@ -131,7 +131,8 @@ export class GroupsComponent {
       return;
     }
     this.loading.loadingOn();
-    await this.groupService.getGroup(e.value, this.#user()!.ref!);
+    const userRef = this.#user()!.ref!;
+    await this.groupService.getGroup(e.value, userRef);
     this.loading.loadingOff();
   }
 
@@ -151,7 +152,6 @@ export class GroupsComponent {
           let message = 'Group updated';
           switch (result.operation) {
             case 'saved':
-              message = 'Group updated';
               break;
             case 'archived':
               message = 'Group archived';
