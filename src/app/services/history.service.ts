@@ -17,6 +17,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { parseDate } from '@utils/date-utils';
 import { IHistoryService } from './history.service.interface';
 
 @Injectable({
@@ -48,7 +49,7 @@ export class HistoryService implements IHistoryService {
               return new History({
                 id: doc.id,
                 ...data,
-                date: data.date.parseDate(),
+                date: parseDate(data.date),
                 paidByMember: this.memberStore.getMemberByRef(
                   data.paidByMemberRef
                 ),

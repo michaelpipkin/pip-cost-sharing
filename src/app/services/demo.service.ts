@@ -25,7 +25,7 @@ export class DemoService implements OnDestroy {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
-  private routerSubscription?: { unsubscribe: () => void };
+  private readonly routerSubscription?: { unsubscribe: () => void };
 
   // Signal to track if user is currently in demo mode
   isInDemoMode = signal<boolean>(false);

@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import { toIsoFormat } from '@utils/date-utils';
 
 declare module 'firebase/firestore' {
   interface Timestamp {
@@ -13,5 +14,5 @@ Timestamp.prototype.toIsoDateString = function (): string {
     baseDate.getUTCMonth(),
     baseDate.getUTCDate()
   );
-  return date.toIsoFormat();
+  return toIsoFormat(date);
 };

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import * as firestoreModule from 'firebase/firestore';
-import '@app/extensions/date-extensions';
 import { SplitService } from './split.service';
 import { SplitStore } from '@store/split.store';
 import { AnalyticsService } from '@services/analytics.service';

@@ -76,6 +76,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { toIsoFormat } from '@utils/date-utils';
 import { StringUtils } from '@utils/string-utils.service';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -697,7 +698,7 @@ export class AddExpenseComponent {
     try {
       this.loading.loadingOn();
       const val = this.addExpenseForm.getRawValue();
-      const expenseDate = val.date!.toIsoFormat();
+      const expenseDate = toIsoFormat(val.date!);
       const expense: Partial<ExpenseDto> = {
         date: expenseDate,
         description: val.description!,
