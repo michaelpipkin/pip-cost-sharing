@@ -86,7 +86,7 @@
     "wait-on": "^9.0.4"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.60.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.60.1",
     "@rollup/rollup-win32-x64-msvc": "^4.60.0"
   },
   "pnpm": {
