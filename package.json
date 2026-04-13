@@ -52,7 +52,7 @@
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/text-zoom": "^8.0.1",
-    "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.6",
+    "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.7",
     "@ngrx/signals": "^21.1.0",
     "@ngx-translate/core": "^17.0.0",
     "@ngx-translate/http-loader": "^17.0.0",
