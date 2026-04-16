@@ -13,7 +13,7 @@ export class AdMobService {
   protected readonly analytics = inject(AnalyticsService);
 
   // Configuration
-  private readonly ADS_FREQUENCY = 5; // Show ad every 5 page navigations
+  private readonly ADS_FREQUENCY = 10; // Show ad every 10 page navigations
   private readonly ANDROID_INTERSTITIAL_ID =
     'ca-app-pub-9151218051877311/2705618600';
   // State
@@ -132,6 +132,11 @@ export class AdMobService {
       // Ensure muted state right before showing ad
       await AdMob.setApplicationMuted({ muted: true });
       await AdMob.setApplicationVolume({ volume: 0 });
+
+      this.analytics.logEvent('admob_interstitial_shown', {
+        page: this.router.url,
+        navigationCount: this.navigationCount,
+      });
 
       await AdMob.showInterstitial();
 
