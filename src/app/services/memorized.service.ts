@@ -27,13 +27,16 @@ export class MemorizedService implements IMemorizedService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribe?: () => void;
+
   getMemorizedExpensesForGroup(groupId: string): void {
+    this.#unsubscribe?.();
     const memorizedCollection = collection(
       this.fs,
       `groups/${groupId}/memorized`
     );
 
-    onSnapshot(
+    this.#unsubscribe = onSnapshot(
       memorizedCollection,
       (snapshot) => {
         try {
@@ -81,6 +84,11 @@ export class MemorizedService implements IMemorizedService {
         );
       }
     );
+  }
+
+  stopListening(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
   }
 
   async getMemorized(groupId: string, memorizedId: string): Promise<Memorized> {

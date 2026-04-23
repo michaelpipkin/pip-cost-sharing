@@ -56,7 +56,7 @@ export class AnalyticsService {
 
     const timer = setTimeout(() => {
       this.pendingSnapshotErrors.delete(key);
-      if (this.auth.currentUser !== null) return;
+      if (this.auth.currentUser === null) return;
       this.logError(component, action, message, error);
     }, 10000);
 

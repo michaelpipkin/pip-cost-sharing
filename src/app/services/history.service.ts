@@ -29,12 +29,15 @@ export class HistoryService implements IHistoryService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribe?: () => void;
+
   getHistoryForGroup(groupId: string): void {
+    this.#unsubscribe?.();
     const historyQuery = query(
       collection(this.fs, `groups/${groupId}/history`),
       orderBy('date', 'desc')
     );
-    onSnapshot(
+    this.#unsubscribe = onSnapshot(
       historyQuery,
       (historyQuerySnap) => {
         try {
@@ -79,6 +82,11 @@ export class HistoryService implements IHistoryService {
         );
       }
     );
+  }
+
+  stopListening(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
   }
 
   async unpayHistory(history: History): Promise<void> {

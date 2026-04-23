@@ -28,11 +28,14 @@ export class CategoryService implements ICategoryService {
   protected readonly sorter = inject(SortingService);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribe?: () => void;
+
   getGroupCategories(groupId: string): void {
+    this.#unsubscribe?.();
     const c = collection(this.fs, `groups/${groupId}/categories`);
     const q = query(c, orderBy('name'));
 
-    onSnapshot(
+    this.#unsubscribe = onSnapshot(
       q,
       (querySnap) => {
         try {
@@ -63,6 +66,11 @@ export class CategoryService implements ICategoryService {
         );
       }
     );
+  }
+
+  stopListening(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
   }
 
   async addCategory(

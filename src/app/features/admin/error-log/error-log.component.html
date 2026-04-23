@@ -49,6 +49,17 @@
       <mat-icon>refresh</mat-icon>
       Refresh
     </button>
+
+    <button
+      mat-raised-button
+      class="btn-danger"
+      (click)="clearErrors()"
+      aria-label="Clear log"
+      [disabled]="displayedErrors().length === 0"
+    >
+      <mat-icon>delete</mat-icon>
+      Clear Log
+    </button>
   </div>
 
   @if (loadError(); as errorMessage) {

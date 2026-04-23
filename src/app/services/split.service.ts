@@ -27,13 +27,16 @@ export class SplitService implements ISplitService {
   protected readonly splitStore = inject(SplitStore);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribe?: () => void;
+
   getUnpaidSplitsForGroup(groupId: string): void {
+    this.#unsubscribe?.();
     const splitsQuery = query(
       collection(this.fs, `groups/${groupId}/splits`),
       where('paid', '==', false)
     );
 
-    onSnapshot(
+    this.#unsubscribe = onSnapshot(
       splitsQuery,
       (splitsQuerySnap) => {
         try {
@@ -65,6 +68,11 @@ export class SplitService implements ISplitService {
         );
       }
     );
+  }
+
+  stopListening(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
   }
 
   async updateSplit(
