@@ -229,6 +229,37 @@ export class AdminErrorLogComponent {
     }
   }
 
+  async clearErrors(): Promise<void> {
+    const confirmRef = this.dialog.open(DeleteDialogComponent, {
+      data: {
+        operation: 'Delete',
+        target: 'all errors in the current view',
+      },
+    });
+    confirmRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      this.loading.loadingOn();
+      try {
+        const idsToDelete = this.groupedView()
+          ? this.groupedErrors().flatMap((e) => e.ids)
+          : this.errors().map((e) => e.id);
+        await this.errorLogService.deleteAppErrors(idsToDelete);
+        this.errors.set([]);
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Errors deleted successfully' },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to delete errors';
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message },
+        });
+      } finally {
+        this.loading.loadingOff();
+      }
+    });
+  }
+
   onSortChange(sort: Sort): void {
     this.sortActive.set(sort.active);
     this.sortDirection.set(sort.direction);

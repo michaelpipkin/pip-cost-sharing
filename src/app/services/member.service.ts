@@ -33,6 +33,8 @@ export class MemberService implements IMemberService {
   protected readonly sorter = inject(SortingService);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribe?: () => void;
+
   async getMemberByUserRef(
     groupId: string,
     userRef: DocumentReference<User>
@@ -69,12 +71,13 @@ export class MemberService implements IMemberService {
   }
 
   getGroupMembers(groupId: string): void {
+    this.#unsubscribe?.();
     const q = query(
       collection(this.fs, `groups/${groupId}/members`),
       orderBy('displayName')
     );
 
-    onSnapshot(
+    this.#unsubscribe = onSnapshot(
       q,
       (querySnap) => {
         try {
@@ -105,6 +108,11 @@ export class MemberService implements IMemberService {
         );
       }
     );
+  }
+
+  stopListening(): void {
+    this.#unsubscribe?.();
+    this.#unsubscribe = undefined;
   }
 
   async addMemberToGroup(

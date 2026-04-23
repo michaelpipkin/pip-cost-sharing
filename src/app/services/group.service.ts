@@ -52,6 +52,9 @@ export class GroupService implements IGroupService {
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
 
+  #unsubscribeMembers?: () => void;
+  #unsubscribeGroups?: () => void;
+
   constructor() {
     const currentGroup = localStorage.getItem('currentGroup');
     if (currentGroup !== null) {
@@ -84,7 +87,8 @@ export class GroupService implements IGroupService {
         where('userRef', '==', user.ref)
       );
 
-      onSnapshot(
+      this.#unsubscribeMembers?.();
+      this.#unsubscribeMembers = onSnapshot(
         memberQuery,
         (memberQuerySnap) => {
           try {
@@ -108,7 +112,8 @@ export class GroupService implements IGroupService {
               collection(this.fs, 'groups'),
               orderBy('name')
             );
-            onSnapshot(
+            this.#unsubscribeGroups?.();
+            this.#unsubscribeGroups = onSnapshot(
               groupQuery,
               async (groupQuerySnap) => {
                 try {
@@ -356,7 +361,20 @@ export class GroupService implements IGroupService {
     this.groupStore.removeGroup(groupId);
   }
 
+  stopListening(): void {
+    this.#unsubscribeGroups?.();
+    this.#unsubscribeGroups = undefined;
+    this.#unsubscribeMembers?.();
+    this.#unsubscribeMembers = undefined;
+  }
+
   logout(): void {
+    this.stopListening();
+    this.memberService.stopListening();
+    this.categoryService.stopListening();
+    this.memorizedService.stopListening();
+    this.splitsService.stopListening();
+    this.historyService.stopListening();
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
     this.groupStore.setLoadedState(false);

@@ -555,8 +555,8 @@ export class UserService implements IUserService {
   }
 
   async logout(redirect: boolean = true): Promise<void> {
-    await this.auth.signOut();
     this.groupService.logout();
+    await this.auth.signOut();
     this.userStore.clearUser();
     if (redirect) {
       this.router.navigate([ROUTE_PATHS.HOME]);
