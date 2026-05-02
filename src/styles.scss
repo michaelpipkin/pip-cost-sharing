@@ -288,7 +288,7 @@ body.dark-theme {
 #outlet {
   flex: 1;
   min-height: 0;
-  overflow-y: hidden;
+  overflow-y: auto;
   width: 98vw;
   margin-left: 1vw;
   margin-right: 1vw;
