@@ -225,16 +225,49 @@ describe('AddMemorizedComponent', () => {
     });
   });
 
-  describe('split by percentage', () => {
-    it('should set splitByPercentage to true when onSplitByPercentageClick is called', () => {
-      component.onSplitByPercentageClick();
-      expect(component.splitByPercentage()).toBe(true);
+  describe('split method', () => {
+    it('should default splitMethod to amount', () => {
+      expect(component.splitMethod()).toBe('amount');
     });
 
-    it('should set splitByPercentage to false when onSplitByAmountClick is called', () => {
-      component.onSplitByPercentageClick();
-      component.onSplitByAmountClick();
-      expect(component.splitByPercentage()).toBe(false);
+    it('should allow setting splitMethod to percentage', () => {
+      component.splitMethod.set('percentage');
+      expect(component.splitMethod()).toBe('percentage');
+    });
+
+    it('should allow setting splitMethod back to amount', () => {
+      component.splitMethod.set('percentage');
+      component.splitMethod.set('amount');
+      expect(component.splitMethod()).toBe('amount');
+    });
+
+    it('should allocate by shares correctly', async () => {
+      component.splitMethod.set('shares');
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+
+      component.splitsFormArray.at(0).patchValue({
+        owedByMemberRef: mockDocRef('groups/group-1/members/member-1'),
+        shares: 1,
+      });
+      component.splitsFormArray.at(1).patchValue({
+        owedByMemberRef: mockDocRef('groups/group-1/members/member-2'),
+        shares: 1,
+      });
+      component.splitsFormArray.at(2).patchValue({
+        owedByMemberRef: mockDocRef('groups/group-1/members/member-3'),
+        shares: 2,
+      });
+
+      component.e.amount.setValue(100);
+
+      component.allocateByShares();
+      await fixture.whenStable();
+
+      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(50);
     });
   });
 });

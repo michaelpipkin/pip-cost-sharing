@@ -2,6 +2,7 @@ import { DocumentReference } from 'firebase/firestore';
 import { Category } from './category';
 import { Member } from './member';
 import { Split } from './split';
+import { SplitMethod } from '@utils/split-method';
 
 export class Memorized {
   constructor(init?: Partial<Memorized>) {
@@ -16,7 +17,7 @@ export class Memorized {
   sharedAmount!: number;
   allocatedAmount!: number;
   totalAmount!: number;
-  splitByPercentage: boolean = false;
+  splitMethod: SplitMethod = 'amount';
   splits!: Partial<Split>[];
   ref?: DocumentReference<Memorized>;
 }
@@ -30,10 +31,11 @@ export interface SerializableMemorized {
   sharedAmount: number;
   allocatedAmount: number;
   totalAmount: number;
-  splitByPercentage: boolean;
+  splitMethod: SplitMethod;
   splits: {
     assignedAmount: number;
     percentage: number;
+    shares: number;
     allocatedAmount: number;
     owedByMemberId?: string;
   }[];

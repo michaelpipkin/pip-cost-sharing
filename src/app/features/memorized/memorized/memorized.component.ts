@@ -186,10 +186,11 @@ export class MemorizedComponent {
       sharedAmount: expense.sharedAmount,
       allocatedAmount: expense.allocatedAmount,
       totalAmount: expense.totalAmount,
-      splitByPercentage: expense.splitByPercentage,
+      splitMethod: expense.splitMethod,
       splits: expense.splits.map((split) => ({
         assignedAmount: split.assignedAmount ?? 0,
         percentage: split.percentage ?? 0,
+        shares: split.shares ?? 0,
         allocatedAmount: split.allocatedAmount ?? 0,
         owedByMemberId: split.owedByMemberRef?.id,
       })),

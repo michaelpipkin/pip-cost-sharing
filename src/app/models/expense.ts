@@ -3,6 +3,7 @@ import { getStorage, ref, StorageReference } from 'firebase/storage';
 import { Category } from './category';
 import { Member } from './member';
 import { Split } from './split';
+import { SplitMethod } from '@utils/split-method';
 
 export class Expense {
   constructor(init?: Partial<Expense>) {
@@ -18,7 +19,7 @@ export class Expense {
   sharedAmount!: number;
   allocatedAmount!: number;
   totalAmount!: number;
-  splitByPercentage: boolean = false;
+  splitMethod: SplitMethod = 'amount';
   splits!: Split[];
   receiptPath?: string | null; // Store the storage path as a string
   paid: boolean = false;

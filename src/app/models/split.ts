@@ -14,6 +14,7 @@ export class Split {
   category?: Category;
   assignedAmount: number = 0;
   percentage: number = 0;
+  shares: number = 0;
   allocatedAmount!: number;
   paidByMemberRef!: DocumentReference<Member>;
   paidByMember?: Member;
