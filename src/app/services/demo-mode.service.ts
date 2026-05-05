@@ -152,7 +152,7 @@ export class DemoModeService {
       sharedAmount: 127.45,
       allocatedAmount: 127.45,
       totalAmount: 127.45,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: createEvenSplits(
         127.45,
         [alice, bob, charlie],
@@ -177,7 +177,7 @@ export class DemoModeService {
       sharedAmount: 54.8,
       allocatedAmount: 54.8,
       totalAmount: 54.8,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: createEvenSplits(
         54.8,
         [alice, bob, charlie],
@@ -202,7 +202,7 @@ export class DemoModeService {
       sharedAmount: 89.32,
       allocatedAmount: 89.32,
       totalAmount: 89.32,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: createEvenSplits(
         89.32,
         [alice, bob, charlie],
@@ -227,7 +227,7 @@ export class DemoModeService {
       sharedAmount: 36,
       allocatedAmount: 36,
       totalAmount: 36,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: createEvenSplits(
         36,
         [alice, bob],
@@ -251,7 +251,7 @@ export class DemoModeService {
       sharedAmount: 120,
       allocatedAmount: 120,
       totalAmount: 120,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: [
         {
           assignedAmount: 40,
@@ -285,7 +285,7 @@ export class DemoModeService {
       sharedAmount: 150,
       allocatedAmount: 150,
       totalAmount: 150,
-      splitByPercentage: false,
+      splitMethod: 'amount',
       splits: [
         {
           assignedAmount: 50,

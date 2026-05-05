@@ -15,6 +15,7 @@ import {
   onSnapshot,
   updateDoc,
 } from 'firebase/firestore';
+import { normalizeSplitMethod } from '@utils/split-method';
 import { IMemorizedService } from './memorized.service.interface';
 
 @Injectable({
@@ -45,6 +46,7 @@ export class MemorizedService implements IMemorizedService {
             const memorized = new Memorized({
               id: doc.id,
               ...data,
+              splitMethod: normalizeSplitMethod(data),
               category: this.categoryStore.getCategoryByRef(data.categoryRef),
               paidByMember: this.memberStore.getMemberByRef(
                 data.paidByMemberRef
@@ -108,6 +110,7 @@ export class MemorizedService implements IMemorizedService {
       return new Memorized({
         id: memorizedDoc.id,
         ...data,
+        splitMethod: normalizeSplitMethod(data),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: memorizedDoc.ref as DocumentReference<Memorized>, // NOSONAR

@@ -172,7 +172,7 @@ describe('MemorizedComponent', () => {
         sharedAmount: 10,
         allocatedAmount: 10,
         totalAmount: 10,
-        splitByPercentage: false,
+        splitMethod: 'amount',
         splits: [],
       } as any;
       component.addExpense(expense);

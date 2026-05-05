@@ -645,6 +645,19 @@ tr.detail-row:hover {
   height: 52px;
 }
 
+.shares-field-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.shares-pct-hint {
+  font-size: 0.8rem;
+  color: var(--mdc-filled-text-field-supporting-text-color);
+  line-height: 1.125;
+  padding: 4px 16px 0;
+}
+
 .clearable {
   flex: 0 0 212px;
 }

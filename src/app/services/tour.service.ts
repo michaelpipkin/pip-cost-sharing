@@ -713,7 +713,7 @@ export class TourService {
             on: 'top',
           },
           title: 'Split the Expense',
-          text: 'Add splits for each person. You can split by amount or percentage, and allocate custom amounts per person.',
+          text: 'Add splits for each person. You can split by amount, percentage, or shares, and allocate custom amounts per person.',
           buttons: [
             this.getBackButton(),
             this.getNextButton(),
