@@ -619,7 +619,7 @@ The application has three distinct user states that affect navigation:
 - Amount input (Total Amount)
 - Category selector
 - Paid by member selector
-- Split method toggle button (switches between "By Amount" and "By Percentage")
+- Split method toggle (Amount / % / Shares)
 - Member allocation interface (varies by split method - see below)
 - Save button
 - Cancel button
@@ -652,7 +652,7 @@ The application has three distinct user states that affect navigation:
 
 #### Split Allocation Logic
 
-The app supports two split methods with a toggle button to switch between them:
+The app supports three split methods with a toggle (Amount / % / Shares) to switch between them:
 
 **1. By Percentage**
 - Simpler interface for percentage-based splits
@@ -662,7 +662,15 @@ The app supports two split methods with a toggle button to switch between them:
 - User enters percentages for all members except the last one
 - Allocated amounts are calculated by applying percentages to Total Amount
 
-**2. By Amount** (more complex, handles mixed individual/shared expenses)
+**2. By Shares**
+- Lets users express ratios (e.g., 2:1) without manually computing percentages
+- Each member has a Shares field; decimal values are allowed (e.g., 1.5)
+- Effective percentage is shown inline next to each shares input and updates as shares are entered
+- The last row is **not** auto-filled — shares values are independent
+- Proportional Amount and Evenly Shared Remainder fields are **hidden** (not applicable)
+- Allocated amounts are calculated by converting shares to effective percentages, then applying them to Total Amount
+
+**3. By Amount** (more complex, handles mixed individual/shared expenses)
 - Default behavior: Total Amount is split evenly among all members
 - Three allocation components work together:
 
@@ -708,7 +716,7 @@ The app supports two split methods with a toggle button to switch between them:
 - [ ] Category dropdown shows active categories
 - [ ] Paid by dropdown shows active members
 - [ ] Inactive members are not shown in dropdowns
-- [ ] Split method toggle button switches between "By Amount" and "By Percentage"
+- [ ] Split method toggle switches between Amount, %, and Shares
 - [ ] Toggle changes the allocation interface appropriately
 
 **By Percentage Split**:
@@ -719,6 +727,16 @@ The app supports two split methods with a toggle button to switch between them:
 - [ ] Evenly Shared Remainder field is hidden
 - [ ] Allocated amounts are calculated correctly from percentages
 - [ ] Validation prevents percentages that don't total 100% (except last which is auto-calculated)
+
+**By Shares Split**:
+- [ ] Each member has a Shares input field (accepts decimals)
+- [ ] Effective percentage hint shown next to each shares input
+- [ ] Effective percentage updates as shares are entered
+- [ ] Last row is NOT auto-filled or locked
+- [ ] Proportional Amount field is hidden
+- [ ] Evenly Shared Remainder field is hidden
+- [ ] Allocated amounts are calculated correctly from share ratios
+- [ ] When all shares are zero, save is disabled
 
 **By Amount Split**:
 - [ ] Default even split when no fields are filled
@@ -753,10 +771,10 @@ The app supports two split methods with a toggle button to switch between them:
 
 **Testable Behaviors**:
 - [ ] Expense data loads correctly into all form fields
-- [ ] Split method loads correctly (By Amount or By Percentage)
+- [ ] Split method loads correctly (Amount, %, or Shares)
 - [ ] Member allocations load correctly based on split method
 - [ ] All fields are editable
-- [ ] Split method can be changed (toggles between By Amount/By Percentage)
+- [ ] Split method can be changed (toggles between Amount / % / Shares)
 - [ ] All split allocation logic works same as Add Expense
 - [ ] Update saves changes correctly
 - [ ] Delete removes expense (with confirmation)
@@ -798,7 +816,7 @@ The app supports two split methods with a toggle button to switch between them:
 - Default amount (optional - can be left blank for variable amounts)
 - Category selector
 - Default paid by member (optional)
-- Split method toggle (By Amount / By Percentage)
+- Split method toggle (Amount / % / Shares)
 - Member allocation interface with same logic as Add Expense (see split allocation section)
 - Save button
 - Cancel button
@@ -806,7 +824,7 @@ The app supports two split methods with a toggle button to switch between them:
 **Testable Behaviors**:
 - [ ] Form validation (description required)
 - [ ] Default amount can be empty or filled
-- [ ] Split method toggle works (By Amount / By Percentage)
+- [ ] Split method toggle works (Amount / % / Shares)
 - [ ] All split allocation logic works same as Add Expense
 - [ ] Member allocations can be configured and saved
 - [ ] Save creates memorized expense template with all allocation details
@@ -826,7 +844,7 @@ The app supports two split methods with a toggle button to switch between them:
 
 **Testable Behaviors**:
 - [ ] Template data loads correctly into all fields
-- [ ] Split method loads correctly (By Amount or By Percentage)
+- [ ] Split method loads correctly (Amount, %, or Shares)
 - [ ] Member allocations load correctly
 - [ ] All fields are editable
 - [ ] Split method can be changed
@@ -1150,17 +1168,19 @@ A standalone quick expense calculator for splitting bills without requiring logi
 - Currency selector dropdown
 - Amount input (Total Amount)
 - Paid by text input (manual name entry)
-- Split method toggle button (By Amount / By Percentage)
+- Split method toggle (Amount / % / Shares)
 - Member allocation interface:
   - Text input for each person's name (not dropdown)
   - Same allocation logic as Add Expense (see Add Expense section for details)
-  - Member Amount, Proportional Amount, Evenly Shared Remainder (for By Amount)
-  - Percentage inputs (for By Percentage)
+  - Member Amount, Proportional Amount, Evenly Shared Remainder (for Amount)
+  - Percentage inputs (for %)
+  - Shares inputs with effective % hint (for Shares)
 
 **Split Allocation:**
 - Uses same allocation logic as Add Expense page
-- By Amount method: Member Amount + Proportional Amount + Evenly Shared Remainder
-- By Percentage method: Percentage per person
+- Amount method: Member Amount + Proportional Amount + Evenly Shared Remainder
+- Percentage method: Percentage per person
+- Shares method: Share values → effective percentages → allocated amounts
 - Same rounding adjustment logic
 - See Add Expense section for complete calculation details
 
@@ -1186,12 +1206,13 @@ A standalone quick expense calculator for splitting bills without requiring logi
 - [ ] Selecting currency updates amount input formatting
 - [ ] Amount input accepts decimal values appropriate for selected currency
 - [ ] Paid by text input accepts name
-- [ ] Split method toggle switches between By Amount and By Percentage
+- [ ] Split method toggle switches between Amount, %, and Shares
 - [ ] Can add/remove people (split lines)
 - [ ] Name text inputs accept any text
 - [ ] All split allocation logic works same as Add Expense
-- [ ] By Amount split: Member Amount, Proportional Amount, Evenly Shared Remainder
-- [ ] By Percentage split: Percentages auto-calculate for last person
+- [ ] Amount split: Member Amount, Proportional Amount, Evenly Shared Remainder
+- [ ] Percentage split: Percentages auto-calculate for last person
+- [ ] Shares split: Shares inputs with effective % hint; last row not locked
 - [ ] Reset button clears all fields
 - [ ] Reset button prompts for confirmation if data entered
 - [ ] Generate Summary button validates input before proceeding

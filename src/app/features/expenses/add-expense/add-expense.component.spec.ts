@@ -282,6 +282,7 @@ describe('AddExpenseComponent', () => {
       expect(split.get('owedByMemberRef')).toBeTruthy();
       expect(split.get('assignedAmount')).toBeTruthy();
       expect(split.get('percentage')).toBeTruthy();
+      expect(split.get('shares')).toBeTruthy();
       expect(split.get('allocatedAmount')).toBeTruthy();
     });
   });
@@ -315,14 +316,14 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should handle percentage mode toggle', async () => {
-      component.splitByPercentage.set(true);
+      component.splitMethod.set('percentage');
       await fixture.whenStable();
 
-      expect(component.splitByPercentage()).toBe(true);
+      expect(component.splitMethod()).toBe('percentage');
     });
 
     it('should allocate by percentage correctly', async () => {
-      component.splitByPercentage.set(true);
+      component.splitMethod.set('percentage');
       component.addSplit();
       component.addSplit();
 
@@ -358,7 +359,7 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should auto-calculate last percentage to 100%', async () => {
-      component.splitByPercentage.set(true);
+      component.splitMethod.set('percentage');
       component.addSplit();
       component.addSplit();
       component.addSplit();
@@ -371,6 +372,30 @@ describe('AddExpenseComponent', () => {
 
       // Last split should be 25 (100 - 75)
       expect(component.splitsFormArray.at(2).value.percentage).toBe(25);
+    });
+
+    it('should allocate by shares correctly', async () => {
+      component.splitMethod.set('shares');
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+
+      const memberRef1 = mockDocRef('groups/group-1/members/member-1');
+      const memberRef2 = mockDocRef('groups/group-1/members/member-2');
+      const memberRef3 = mockDocRef('groups/group-1/members/member-3');
+
+      component.splitsFormArray.at(0).patchValue({ owedByMemberRef: memberRef1, shares: 1 });
+      component.splitsFormArray.at(1).patchValue({ owedByMemberRef: memberRef2, shares: 1 });
+      component.splitsFormArray.at(2).patchValue({ owedByMemberRef: memberRef3, shares: 2 });
+
+      component.addExpenseForm.patchValue({ amount: 100 });
+
+      component.allocateByShares();
+      await fixture.whenStable();
+
+      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(50);
     });
 
     it('should update form when allocation changes', () => {

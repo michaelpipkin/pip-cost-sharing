@@ -25,7 +25,6 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
@@ -74,8 +73,10 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
+import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { toIsoFormat } from '@utils/date-utils';
+import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
 import { FirebaseError } from 'firebase/app';
 import { DocumentReference } from 'firebase/firestore';
@@ -99,10 +100,11 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     MatIconModule,
     MatTableModule,
     CurrencyPipe,
+    DecimalPipe,
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
-    MatButtonToggleModule,
+    SplitMethodToggleComponent,
   ],
 })
 export class EditExpenseComponent {
@@ -152,6 +154,8 @@ export class EditExpenseComponent {
     });
   });
 
+  splitMethod = signal<SplitMethod>('amount');
+
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
   receiptUrl = model<string>(null as unknown as string);
@@ -176,7 +180,6 @@ export class EditExpenseComponent {
     ],
     sharedAmount: [0, Validators.required],
     allocatedAmount: [0, Validators.required],
-    splitByPercentage: [false, Validators.required],
     splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
   });
 
@@ -205,6 +208,7 @@ export class EditExpenseComponent {
   }
 
   async loadExpense(expense: Expense): Promise<void> {
+    this.splitMethod.set(expense.splitMethod);
     this.editExpenseForm.patchValue({
       paidByMember: expense.paidByMemberRef,
       date: expense.date,
@@ -213,7 +217,6 @@ export class EditExpenseComponent {
       category: expense.categoryRef,
       sharedAmount: expense.sharedAmount,
       allocatedAmount: expense.allocatedAmount,
-      splitByPercentage: expense.splitByPercentage,
     });
     expense.splits.forEach((s: Split) => {
       this.splits.push(
@@ -221,6 +224,7 @@ export class EditExpenseComponent {
           owedByMemberRef: s.owedByMemberRef,
           assignedAmount: s.assignedAmount,
           percentage: s.percentage,
+          shares: s.shares ?? 0,
           allocatedAmount: s.allocatedAmount,
         })
       );
@@ -303,6 +307,7 @@ export class EditExpenseComponent {
         Validators.required,
       ],
       percentage: [0],
+      shares: [0],
       allocatedAmount: [0],
     });
   }
@@ -335,11 +340,7 @@ export class EditExpenseComponent {
         lastInput.nativeElement.dispatchEvent(event);
       }
     });
-    if (this.e.splitByPercentage.value) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.recalculateAllocation();
     this.editExpenseForm.markAsDirty();
   }
 
@@ -358,11 +359,7 @@ export class EditExpenseComponent {
 
   removeSplit(index: number): void {
     this.splitsFormArray.removeAt(index);
-    if (this.e.splitByPercentage.value) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
-    }
+    this.recalculateAllocation();
     this.editExpenseForm.markAsDirty();
   }
 
@@ -511,21 +508,20 @@ export class EditExpenseComponent {
     }
   }
 
-  onSplitByPercentageClick(): void {
+  onSplitMethodChange(): void {
     this.editExpenseForm.markAsDirty();
-    this.allocateByPercentage();
-  }
-
-  onSplitByAmountClick(): void {
-    this.editExpenseForm.markAsDirty();
-    this.allocateSharedAmounts();
+    this.recalculateAllocation();
   }
 
   updateTotalAmount(): void {
-    if (this.e.splitByPercentage.value) {
-      this.allocateByPercentage();
-    } else {
-      this.allocateSharedAmounts();
+    this.recalculateAllocation();
+  }
+
+  private recalculateAllocation(): void {
+    switch (this.splitMethod()) {
+      case 'percentage': this.allocateByPercentage(); break;
+      case 'shares': this.allocateByShares(); break;
+      default: this.allocateSharedAmounts();
     }
   }
 
@@ -539,6 +535,7 @@ export class EditExpenseComponent {
         owedByMemberRef: split.owedByMemberRef,
         assignedAmount: split.assignedAmount,
         percentage: split.percentage,
+        shares: split.shares ?? 0,
         allocatedAmount: split.allocatedAmount,
       })),
     };
@@ -561,69 +558,39 @@ export class EditExpenseComponent {
 
   allocateByPercentage(): void {
     if (this.splitsFormArray.length === 0) return;
-
-    let splits = [...this.splitsFormArray.getRawValue()];
-    splits = this.filterSplitsAndSetLastPercentage(splits);
-
-    const totalAmount = +this.editExpenseForm.value.amount!;
-    splits.forEach((split) => {
-      split.allocatedAmount = this.localeService.roundToCurrency(
-        +((totalAmount * +split.percentage) / 100)
-      );
+    const result = this.allocationUtils.allocateByPercentage({
+      totalAmount: +this.editExpenseForm.value.amount!,
+      splits: this.splitsFormArray.getRawValue().map((s: Split) => ({
+        owedByMemberRef: s.owedByMemberRef,
+        assignedAmount: s.assignedAmount,
+        percentage: s.percentage,
+        shares: s.shares ?? 0,
+        allocatedAmount: s.allocatedAmount,
+      })),
     });
-
-    const allocatedTotal = this.localeService.roundToCurrency(
-      +splits.reduce((total, s) => total + s.allocatedAmount, 0)
-    );
-    const percentageTotal = this.localeService.roundToCurrency(
-      +splits.reduce((total, s) => total + s.percentage, 0)
-    );
-    const splitCount = splits.filter((s) => s.owedByMemberRef !== null).length;
-
-    if (allocatedTotal !== totalAmount && percentageTotal === 100 && splitCount > 0) {
-      this.adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
-    }
-
-    // Patch the allocatedAmount back into the form array
-    splits.forEach((split, index) => {
-      this.splitsFormArray.at(index).patchValue({ allocatedAmount: split.allocatedAmount });
-    });
+    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
   }
 
-  private filterSplitsAndSetLastPercentage(splits: any[]): any[] {
-    let totalPercentage = 0;
-    const result = splits.filter((s) => s.owedByMemberRef || s.assignedAmount !== 0);
-    for (let i = 0; i < result.length - 1; i++) {
-      result[i].percentage = +result[i].percentage;
-      totalPercentage += result[i].percentage;
-    }
-    if (result.length > 0) {
-      const lastIndex = result.length - 1;
-      const remainingPercentage = this.localeService.roundToCurrency(+(100 - totalPercentage));
-      result[lastIndex].percentage = remainingPercentage;
-      this.splitsFormArray.at(lastIndex).patchValue({ percentage: remainingPercentage });
-    }
-    return result;
+  allocateByShares(): void {
+    if (this.splitsFormArray.length === 0) return;
+    const result = this.allocationUtils.allocateByShares({
+      totalAmount: +this.editExpenseForm.value.amount!,
+      splits: this.splitsFormArray.getRawValue().map((s: Split) => ({
+        owedByMemberRef: s.owedByMemberRef,
+        assignedAmount: s.assignedAmount,
+        percentage: s.percentage,
+        shares: s.shares ?? 0,
+        allocatedAmount: s.allocatedAmount,
+      })),
+    });
+    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
   }
 
-  private adjustAllocationForRounding(
-    splits: any[],
-    totalAmount: number,
-    allocatedTotal: number
-  ): void {
-    let diff = this.localeService.roundToCurrency(+(totalAmount - allocatedTotal));
-    const increment = this.localeService.getSmallestIncrement();
-    let i = 0;
-    while (diff != 0) {
-      if (diff > 0) {
-        splits[i].allocatedAmount += increment;
-        diff = this.localeService.roundToCurrency(+(diff - increment));
-      } else {
-        splits[i].allocatedAmount -= increment;
-        diff = this.localeService.roundToCurrency(+(diff + increment));
-      }
-      i = (i + 1) % splits.length;
-    }
+  protected effectivePercentage(index: number): number {
+    const splits = this.splitsFormArray.getRawValue();
+    const totalShares = splits.reduce((t: number, s: Split) => t + (+s.shares || 0), 0);
+    if (totalShares === 0) return 0;
+    return ((+splits[index].shares || 0) / totalShares) * 100;
   }
 
   getAssignedTotal = (): number =>
@@ -648,7 +615,7 @@ export class EditExpenseComponent {
     this.editExpenseForm.value.amount == this.getAllocatedTotal();
 
   isLastSplit(index: number): boolean {
-    return index === this.splitsFormArray.length - 1;
+    return this.splitMethod() === 'percentage' && index === this.splitsFormArray.length - 1;
   }
 
   async onSubmit(): Promise<void> {
@@ -681,7 +648,7 @@ export class EditExpenseComponent {
             sharedAmount: +val.sharedAmount!,
             allocatedAmount: +val.allocatedAmount!,
             totalAmount: +val.amount!,
-            splitByPercentage: val.splitByPercentage!,
+            splitMethod: this.splitMethod(),
             paid: false,
           };
           let splits: Partial<SplitDto>[] = [];
@@ -691,6 +658,7 @@ export class EditExpenseComponent {
               categoryRef: val.category!,
               assignedAmount: +s.assignedAmount,
               percentage: +s.percentage,
+              shares: +s.shares,
               allocatedAmount: +s.allocatedAmount,
               paidByMemberRef: val.paidByMember!,
               owedByMemberRef: s.owedByMemberRef,
@@ -817,11 +785,7 @@ export class EditExpenseComponent {
           control.setValue(this.localeService.roundToCurrency(result), {
             emitEvent: true,
           });
-          if (this.e.splitByPercentage.value) {
-            this.allocateByPercentage();
-          } else {
-            this.allocateSharedAmounts();
-          }
+          this.recalculateAllocation();
         }
       }
     });

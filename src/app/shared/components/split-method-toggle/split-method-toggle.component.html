@@ -1,0 +1,16 @@
+<mat-button-toggle-group
+  [value]="splitMethod()"
+  (change)="onChange($event.value)"
+  aria-label="Split method"
+  hideSingleSelectionIndicator="true"
+>
+  <mat-button-toggle value="amount" data-testid="split-by-amount-toggle"
+    >Amount</mat-button-toggle
+  >
+  <mat-button-toggle value="percentage" data-testid="split-by-percentage-toggle"
+    >%</mat-button-toggle
+  >
+  <mat-button-toggle value="shares" data-testid="split-by-shares-toggle"
+    >Shares</mat-button-toggle
+  >
+</mat-button-toggle-group>

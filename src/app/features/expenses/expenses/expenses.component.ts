@@ -418,11 +418,11 @@ export class ExpensesComponent {
     summaryText += `Total: ${this.formatCurrency(expense.totalAmount)}\n`;
 
     // Add breakdown information similar to split component
-    if (!expense.splitByPercentage && expense.sharedAmount > 0) {
+    if (expense.splitMethod === 'amount' && expense.sharedAmount > 0) {
       summaryText += `Evenly shared amount: ${this.formatCurrency(expense.sharedAmount)}\n`;
     }
 
-    if (!expense.splitByPercentage && expense.allocatedAmount > 0) {
+    if (expense.splitMethod === 'amount' && expense.allocatedAmount > 0) {
       summaryText += `Proportional amount (tax, tip, etc.): ${this.formatCurrency(expense.allocatedAmount)}\n`;
     }
 
@@ -440,9 +440,14 @@ export class ExpensesComponent {
         paidStatus = split.paid ? ' (Paid)' : ' (Unpaid)';
       }
 
-      if (expense.splitByPercentage) {
+      if (expense.splitMethod === 'percentage') {
         // Show percentage and total for percentage splits
         const lineText = `${owedBy}${paidStatus} (${split.percentage}%)`;
+        const amount = this.formatCurrency(split.allocatedAmount);
+        splitLines.push({ text: lineText, amount, isIndented: false });
+      } else if (expense.splitMethod === 'shares') {
+        const pct = split.percentage > 0 ? ` (${split.shares} shares, ${split.percentage}%)` : '';
+        const lineText = `${owedBy}${paidStatus}${pct}`;
         const amount = this.formatCurrency(split.allocatedAmount);
         splitLines.push({ text: lineText, amount, isIndented: false });
       } else {

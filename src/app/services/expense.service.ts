@@ -8,6 +8,7 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { MemberStore } from '@store/member.store';
 import { parseDate, toIsoFormat } from '@utils/date-utils';
+import { normalizeSplitMethod } from '@utils/split-method';
 import {
   collection,
   doc,
@@ -131,6 +132,7 @@ export class ExpenseService implements IExpenseService {
         id: doc.id,
         ...data,
         date: parseDate(data.date),
+        splitMethod: normalizeSplitMethod(data),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: doc.ref as DocumentReference<Expense>,
@@ -177,6 +179,7 @@ export class ExpenseService implements IExpenseService {
         id: expenseDoc.id,
         ...data,
         date: parseDate(data.date),
+        splitMethod: normalizeSplitMethod(data),
         category: this.categoryStore.getCategoryByRef(data.categoryRef),
         paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
         ref: expenseDoc.ref as DocumentReference<Expense>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints

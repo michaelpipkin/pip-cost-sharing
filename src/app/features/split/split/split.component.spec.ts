@@ -171,6 +171,7 @@ describe('SplitComponent', () => {
       expect(split.get('owedBy')).toBeTruthy();
       expect(split.get('assignedAmount')).toBeTruthy();
       expect(split.get('percentage')).toBeTruthy();
+      expect(split.get('shares')).toBeTruthy();
       expect(split.get('allocatedAmount')).toBeTruthy();
     });
 
@@ -359,12 +360,12 @@ describe('SplitComponent', () => {
 
   describe('percentage mode', () => {
     beforeEach(async () => {
-      component.splitByPercentage.set(true);
+      component.splitMethod.set('percentage');
       await fixture.whenStable();
     });
 
     it('should show percentage inputs when in percentage mode', () => {
-      expect(component.splitByPercentage()).toBe(true);
+      expect(component.splitMethod()).toBe('percentage');
     });
 
     // Note: Auto-calculation of last split percentage to total 100% causes
@@ -407,10 +408,10 @@ describe('SplitComponent', () => {
     });
 
     it('should toggle back to amount mode', async () => {
-      component.splitByPercentage.set(false);
+      component.splitMethod.set('amount');
       await fixture.whenStable();
 
-      expect(component.splitByPercentage()).toBe(false);
+      expect(component.splitMethod()).toBe('amount');
     });
 
     it('should preserve calculated allocations when toggling modes', async () => {
@@ -424,11 +425,62 @@ describe('SplitComponent', () => {
       expect(allocated).toBe(100);
 
       // Toggle to amount mode
-      component.splitByPercentage.set(false);
+      component.splitMethod.set('amount');
       await fixture.whenStable();
 
       // Allocation should be preserved
       expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(100);
+    });
+  });
+
+  describe('shares mode', () => {
+    beforeEach(async () => {
+      component.splitMethod.set('shares');
+      await fixture.whenStable();
+    });
+
+    it('should be in shares mode', () => {
+      expect(component.splitMethod()).toBe('shares');
+    });
+
+    it('should allocate by share ratio [1, 1, 2] on $100', async () => {
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+
+      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice', shares: 1 });
+      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob', shares: 1 });
+      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie', shares: 2 });
+
+      component.expenseForm.patchValue({ amount: 100 });
+
+      component.allocateByShares();
+      await fixture.whenStable();
+
+      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(25);
+      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(50);
+    });
+
+    it('should total correctly with share ratio [1, 1, 2]', async () => {
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+
+      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice', shares: 1 });
+      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob', shares: 1 });
+      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie', shares: 2 });
+
+      component.expenseForm.patchValue({ amount: 100 });
+
+      component.allocateByShares();
+      await fixture.whenStable();
+
+      const total =
+        component.splitsFormArray.at(0).value.allocatedAmount +
+        component.splitsFormArray.at(1).value.allocatedAmount +
+        component.splitsFormArray.at(2).value.allocatedAmount;
+      expect(total).toBe(100);
     });
   });
 
