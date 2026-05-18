@@ -50,7 +50,7 @@
     "@capacitor/browser": "^8.0.3",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^8.3.3",
-    "@capacitor/core": "^8.3.3",
+    "@capacitor/core": "^8.3.4",
     "@capacitor/text-zoom": "^8.0.1",
     "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.8",
     "@ngrx/signals": "^21.1.0",
