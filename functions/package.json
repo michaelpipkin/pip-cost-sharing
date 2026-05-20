@@ -33,13 +33,5 @@
     "firebase-functions-test": "^3.5.0",
     "typescript": "^6.0.3"
   },
-  "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@firebase/util",
-      "protobufjs",
-      "unrs-resolver"
-    ],
-    "overrides": {}
-  }
+  "private": true
 }
