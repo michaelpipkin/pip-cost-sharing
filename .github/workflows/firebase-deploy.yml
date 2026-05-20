@@ -132,7 +132,7 @@ jobs:
 
       - name: Install functions dependencies
         if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
-        run: cd functions && pnpm install
+        run: cd functions && npm install --legacy-peer-deps
 
       - name: Build Angular App
         if: steps.check-skip.outputs.skip_deploy != 'true'
