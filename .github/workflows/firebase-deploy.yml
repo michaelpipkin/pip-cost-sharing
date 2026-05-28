@@ -76,7 +76,7 @@ jobs:
         if: steps.check-skip.outputs.skip_deploy != 'true'
         uses: pnpm/action-setup@v4
         with:
-          version: 10.2.0
+          version: 11
 
       - name: Install dependencies
         if: steps.check-skip.outputs.skip_deploy != 'true'
@@ -129,10 +129,6 @@ jobs:
             personalAccessToken: '${{ secrets.PERSONAL_ACCESS_TOKEN }}',
           };
           EOF
-
-      - name: Install functions dependencies
-        if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
-        run: cd functions && npm install --legacy-peer-deps
 
       - name: Build Angular App
         if: steps.check-skip.outputs.skip_deploy != 'true'
