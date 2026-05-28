@@ -10,7 +10,6 @@ admin.initializeApp();
 const db = admin.firestore();
 const storage = admin.storage();
 
-// TODO: Replace with your actual Firebase Auth UIDs
 const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 
@@ -686,14 +685,74 @@ export const getAdminStatistics = onCall(async (request) => {
   }
 
   try {
+    // Build "YYYY-MM-DD" cutoff string for the last-30-days filter.
+    // Expense dates are stored as "YYYY-MM-DD" strings, so lexicographic
+    // comparison with a same-format cutoff is correct.
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoIso = `${thirtyDaysAgo.getFullYear()}-${String(
+      thirtyDaysAgo.getMonth() + 1
+    ).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
 
-    // Get all groups
+    // Find every group the admin is an active member of so they can be
+    // excluded from statistics (they skew the picture of other users' usage).
+    const adminUserRef = db.collection('users').doc(uid);
+    const adminMembershipsSnapshot = await db
+      .collectionGroup('members')
+      .where('userRef', '==', adminUserRef)
+      .where('active', '==', true)
+      .get();
+    const excludedGroupIds = new Set<string>(
+      adminMembershipsSnapshot.docs
+        .map((m) => m.ref.parent.parent?.id)
+        .filter((id): id is string => !!id)
+    );
+
+    // Fetch all group docs (needed to filter on active/archived fields).
     const groupsSnapshot = await db.collection('groups').get();
-    const totalGroups = groupsSnapshot.size;
 
+    let totalGroups = 0;
     let activeGroups = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const activeGroupRefs: any[] = [];
+
+    for (const groupDoc of groupsSnapshot.docs) {
+      // Skip groups the admin belongs to.
+      if (excludedGroupIds.has(groupDoc.id)) continue;
+      totalGroups++;
+
+      const groupData = groupDoc.data();
+      if (groupData.active && !groupData.archived) {
+        activeGroups++;
+        activeGroupRefs.push(groupDoc.ref);
+      }
+    }
+
+    // For each active (non-excluded) group, fire four count() aggregations
+    // concurrently — no document downloads required.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async function getGroupStats(groupRef: any) {
+      const members = groupRef.collection('members');
+      const expenses = groupRef.collection('expenses');
+      const [
+        totalMembersSnap,
+        activeMembersSnap,
+        expenseCountSnap,
+        recentExpenseSnap,
+      ] = await Promise.all([
+        members.count().get(),
+        members.where('active', '==', true).count().get(),
+        expenses.count().get(),
+        expenses.where('date', '>=', thirtyDaysAgoIso).count().get(),
+      ]);
+      return {
+        totalMembers: totalMembersSnap.data().count,
+        activeMembers: activeMembersSnap.data().count,
+        hasExpenses: expenseCountSnap.data().count > 0,
+        recentExpenses: recentExpenseSnap.data().count,
+      };
+    }
+
     let activeGroupsWithMultipleMembers = 0;
     let activeGroupsWithExpenses = 0;
     let totalMembers = 0;
@@ -701,60 +760,19 @@ export const getAdminStatistics = onCall(async (request) => {
     let groupsWithRecentActivity = 0;
     let expensesCreatedLast30Days = 0;
 
-    for (const groupDoc of groupsSnapshot.docs) {
-      const groupData = groupDoc.data();
-
-      // Count active groups (not archived and active)
-      if (groupData.active && !groupData.archived) {
-        activeGroups++;
-
-        // Get members for this group
-        const membersSnapshot = await groupDoc.ref.collection('members').get();
-        const activeMembers = membersSnapshot.docs.filter(
-          (m) => m.data().active
-        );
-        totalMembers += membersSnapshot.size;
-        totalActiveMembers += activeMembers.length;
-
-        if (activeMembers.length > 1) {
-          activeGroupsWithMultipleMembers++;
-        }
-
-        // Get expenses for this group
-        const expensesSnapshot = await groupDoc.ref
-          .collection('expenses')
-          .get();
-        const expenseCount = expensesSnapshot.size;
-
-        if (expenseCount > 0) {
-          activeGroupsWithExpenses++;
-
-          // Check for recent activity
-          let hasRecentExpense = false;
-          let recentExpenseCount = 0;
-
-          for (const expenseDoc of expensesSnapshot.docs) {
-            const expenseData = expenseDoc.data();
-            const expenseDate = expenseData.date
-              ? new Date(expenseData.date)
-              : null;
-            if (expenseDate && expenseDate >= thirtyDaysAgo) {
-              hasRecentExpense = true;
-              recentExpenseCount++;
-            }
-          }
-
-          if (hasRecentExpense) {
-            groupsWithRecentActivity++;
-          }
-          expensesCreatedLast30Days += recentExpenseCount;
-        }
-      }
+    const perGroupStats = await Promise.all(activeGroupRefs.map(getGroupStats));
+    for (const g of perGroupStats) {
+      totalMembers += g.totalMembers;
+      totalActiveMembers += g.activeMembers;
+      if (g.activeMembers > 1) activeGroupsWithMultipleMembers++;
+      if (g.hasExpenses) activeGroupsWithExpenses++;
+      if (g.recentExpenses > 0) groupsWithRecentActivity++;
+      expensesCreatedLast30Days += g.recentExpenses;
     }
 
-    // Get total users
-    const usersSnapshot = await db.collection('users').get();
-    const totalUsers = usersSnapshot.size;
+    // Count users via aggregation and exclude the admin's own account.
+    const usersCountSnap = await db.collection('users').count().get();
+    const totalUsers = Math.max(0, usersCountSnap.data().count - 1);
 
     // Calculate averages
     const avgMembersPerActiveGroup =
@@ -927,12 +945,14 @@ async function handleMemberPaymentEmail(
     ].join('\n');
     const payerHtml = buildEmailHtml(
       `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Recorded</h2>` +
-      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payerName)}</strong>,</p>` +
-      `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong> has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
-      (categoryBreakdownHtml ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}` : '') +
-      `<p style="margin:0 0 12px 0;">If you haven&rsquo;t already sent the money, <strong>${escapeHtml(payeeName)}</strong> is set up on:</p>` +
-      `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 20px 0;">${paymentMethodsHtml}</div>` +
-      `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
+        `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payerName)}</strong>,</p>` +
+        `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong> has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+        (categoryBreakdownHtml
+          ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}`
+          : '') +
+        `<p style="margin:0 0 12px 0;">If you haven&rsquo;t already sent the money, <strong>${escapeHtml(payeeName)}</strong> is set up on:</p>` +
+        `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 20px 0;">${paymentMethodsHtml}</div>` +
+        `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
     );
     mailWrites.push(
       db.collection('mail').add({
@@ -958,11 +978,13 @@ async function handleMemberPaymentEmail(
     ].join('\n');
     const payeeHtml = buildEmailHtml(
       `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Recorded</h2>` +
-      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payeeName)}</strong>,</p>` +
-      `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> to you has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
-      (categoryBreakdownHtml ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}` : '') +
-      `<p style="margin:0 0 16px 0;">Please be on the lookout for <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> via your P2P payment provider.</p>` +
-      `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
+        `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(payeeName)}</strong>,</p>` +
+        `<p style="margin:0 0 16px 0;">A payment of <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> to you has been recorded in the group <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+        (categoryBreakdownHtml
+          ? `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Category Breakdown</h3>${categoryBreakdownHtml}`
+          : '') +
+        `<p style="margin:0 0 16px 0;">Please be on the lookout for <strong>${escapeHtml(formattedAmount)}</strong> from <strong>${escapeHtml(payerName)}</strong> via your P2P payment provider.</p>` +
+        `<p style="margin:0;color:#5b6058;font-size:14px;">This payment covers ${splitCount} shared ${escapeHtml(expenseWord)}.</p>`
     );
     mailWrites.push(
       db.collection('mail').add({
@@ -1158,10 +1180,10 @@ async function handleSettleEmail(
         );
         owesHtmlBlocks.push(
           `<div style="border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
-          `<p style="margin:0 0 8px 0;">You owe <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong></p>` +
-          `<p style="margin:0 0 6px 0;font-size:13px;color:#5b6058;"><strong>${escapeHtml(payeeName)}</strong>&rsquo;s payment methods:</p>` +
-          `<div style="background-color:#f7fbf0;border-radius:4px;padding:8px;">${buildPaymentMethodsHtml(paymentMethods)}</div>` +
-          `</div>`
+            `<p style="margin:0 0 8px 0;">You owe <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong></p>` +
+            `<p style="margin:0 0 6px 0;font-size:13px;color:#5b6058;"><strong>${escapeHtml(payeeName)}</strong>&rsquo;s payment methods:</p>` +
+            `<div style="background-color:#f7fbf0;border-radius:4px;padding:8px;">${buildPaymentMethodsHtml(paymentMethods)}</div>` +
+            `</div>`
         );
       } else if (payeeRef.path === memberPath) {
         // This member is owed money
@@ -1173,8 +1195,8 @@ async function handleSettleEmail(
         );
         owedHtmlBlocks.push(
           `<div style="border:1px solid #cdebbf;background-color:#f7fbf0;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
-          `<p style="margin:0;"><strong>${escapeHtml(payerName)}</strong> owes you <strong>${escapeHtml(formattedAmount)}</strong> &mdash; be on the lookout for this payment.</p>` +
-          `</div>`
+            `<p style="margin:0;"><strong>${escapeHtml(payerName)}</strong> owes you <strong>${escapeHtml(formattedAmount)}</strong> &mdash; be on the lookout for this payment.</p>` +
+            `</div>`
         );
       }
     }
@@ -1183,11 +1205,11 @@ async function handleSettleEmail(
     const transferHtmlBlocks = [...owesHtmlBlocks, ...owedHtmlBlocks].join('');
     const settleHtml = buildEmailHtml(
       `<h2 style="color:#105208;margin:0 0 20px 0;">Group Settlement</h2>` +
-      `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(memberName)}</strong>,</p>` +
-      `<p style="margin:0 0 20px 0;">A group settlement has been recorded for <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
-      `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Your Transfers:</h3>` +
-      transferHtmlBlocks +
-      `<p style="margin:20px 0 0 0;">All outstanding balances in the group have been marked as settled in PipSplit.</p>`
+        `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(memberName)}</strong>,</p>` +
+        `<p style="margin:0 0 20px 0;">A group settlement has been recorded for <strong>&ldquo;${escapeHtml(groupName)}&rdquo;</strong>.</p>` +
+        `<h3 style="color:#2c6b21;margin:0 0 12px 0;">Your Transfers:</h3>` +
+        transferHtmlBlocks +
+        `<p style="margin:20px 0 0 0;">All outstanding balances in the group have been marked as settled in PipSplit.</p>`
     );
 
     mailWrites.push(
