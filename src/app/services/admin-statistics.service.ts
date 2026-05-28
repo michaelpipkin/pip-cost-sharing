@@ -14,6 +14,8 @@ export class AdminStatisticsService {
       'getAdminStatistics'
     );
     const result = await getStatsFn();
+    // Temporary: log full response to browser console for prod troubleshooting
+    console.log('[AdminStatistics]', result.data);
     return result.data;
   }
 }
