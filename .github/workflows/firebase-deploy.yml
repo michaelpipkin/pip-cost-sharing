@@ -136,7 +136,7 @@ jobs:
 
       - name: Update Firebase CLI
         if: steps.check-skip.outputs.skip_deploy != 'true'
-        run: pnpm add -g firebase-tools
+        run: npm install -g firebase-tools
 
       - name: Deploy Firebase Functions
         if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
