@@ -11,5 +11,8 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "prettier.bracketSameLine": true,
-  "prettier.printWidth": 120 // set as "true" to run 'prettier' last not first
+  "prettier.printWidth": 120,
+  "yaml.schemas": {
+    "": ["**/pnpm-workspace.yaml"]
+  }
 }
