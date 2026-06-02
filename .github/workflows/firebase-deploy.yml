@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Check for skip deployment keywords
         id: check-skip
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Find the most recent merged PR to release branch
@@ -61,20 +61,20 @@ jobs:
           echo "The merge to main will still occur to keep branches in sync."
 
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
         if: steps.check-skip.outputs.skip_deploy != 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
       - name: Install pnpm
         if: steps.check-skip.outputs.skip_deploy != 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11
 
@@ -253,7 +253,7 @@ jobs:
 
       - name: Create deployment success comment
         if: steps.deploy.outcome == 'success' && steps.merge-to-main.outputs.merge_success == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Find the most recent merged PR to release branch
@@ -279,7 +279,7 @@ jobs:
 
       - name: Create skip deployment comment
         if: steps.check-skip.outputs.skip_deploy == 'true' && steps.merge-to-main.outputs.merge_success == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Find the most recent merged PR to release branch
@@ -305,7 +305,7 @@ jobs:
 
       - name: Handle deployment failure
         if: steps.deploy.outcome == 'failure'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Find the most recent merged PR to release branch
@@ -334,7 +334,7 @@ jobs:
 
       - name: Handle merge failure
         if: (steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true') && steps.merge-to-main.outputs.merge_success == 'false'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Find the most recent merged PR to release branch
