@@ -138,6 +138,10 @@ jobs:
         if: steps.check-skip.outputs.skip_deploy != 'true'
         run: npm install -g firebase-tools
 
+      - name: Install Functions dependencies
+        if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
+        run: cd functions && pnpm install --frozen-lockfile --ignore-workspace
+
       - name: Deploy Firebase Functions
         if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
         env:
