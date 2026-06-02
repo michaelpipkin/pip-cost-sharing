@@ -707,9 +707,6 @@ export const getAdminStatistics = onCall(async (request) => {
         .map((m) => m.ref.parent.parent?.id)
         .filter((id): id is string => !!id)
     );
-    console.log(
-      `[getAdminStatistics] uid=${uid} memberships found=${adminMembershipsSnapshot.size} excludedGroups=${JSON.stringify([...excludedGroupIds])}`
-    );
 
     // Fetch all group docs (needed to filter on active/archived fields).
     const groupsSnapshot = await db.collection('groups').get();
@@ -795,9 +792,6 @@ export const getAdminStatistics = onCall(async (request) => {
       expensesCreatedLast30Days,
       avgMembersPerActiveGroup,
       generatedAt: new Date().toISOString(),
-      // Temporary diagnostic fields — remove after confirming exclusion works in prod
-      _excludedGroupCount: excludedGroupIds.size,
-      _excludedGroupIds: [...excludedGroupIds],
     };
   } catch (error: unknown) {
     console.error('Error getting admin statistics:', error);
