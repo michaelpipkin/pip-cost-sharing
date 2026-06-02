@@ -140,7 +140,7 @@ jobs:
 
       - name: Install Functions dependencies
         if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
-        run: cd functions && pnpm install --frozen-lockfile --ignore-workspace
+        run: cd functions && pnpm install --frozen-lockfile
 
       - name: Deploy Firebase Functions
         if: steps.check-skip.outputs.skip_deploy != 'true' && steps.functions-changes.outputs.functions_changed == 'true'
