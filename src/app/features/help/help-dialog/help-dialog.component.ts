@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -16,6 +16,7 @@ export interface HelpDialogData {
   imports: [MatIconModule, MatDialogModule],
   templateUrl: './help-dialog.component.html',
   styleUrl: './help-dialog.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HelpDialogComponent {
   protected readonly helpContentService = inject(HelpContentService);

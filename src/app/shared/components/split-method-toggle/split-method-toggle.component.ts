@@ -1,12 +1,12 @@
-import { Component, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, model, output } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { SplitMethod } from '@utils/split-method';
 
 @Component({
   selector: 'app-split-method-toggle',
-  standalone: true,
   imports: [MatButtonToggleModule],
   templateUrl: './split-method-toggle.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SplitMethodToggleComponent {
   splitMethod = model<SplitMethod>('amount');

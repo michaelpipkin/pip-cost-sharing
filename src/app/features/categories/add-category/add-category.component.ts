@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +30,7 @@ import { DemoService } from '@services/demo.service';
     MatInputModule,
     FormField,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddCategoryComponent {
   protected readonly loading = inject(LoadingService);

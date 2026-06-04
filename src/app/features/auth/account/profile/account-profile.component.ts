@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -46,6 +47,7 @@ import {
     RouterLink,
     MatDividerModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountProfileComponent {
   protected readonly auth = inject(getAuth);

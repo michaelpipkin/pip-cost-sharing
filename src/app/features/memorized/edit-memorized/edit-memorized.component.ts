@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -89,6 +90,7 @@ import { DocumentReference } from 'firebase/firestore';
   ],
   templateUrl: './edit-memorized.component.html',
   styleUrl: './edit-memorized.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditMemorizedComponent {
   protected readonly fb = inject(FormBuilder);

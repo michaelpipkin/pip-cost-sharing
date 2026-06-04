@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -106,6 +107,7 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     DocRefCompareDirective,
     SplitMethodToggleComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditExpenseComponent {
   protected readonly storage = inject(getStorage);

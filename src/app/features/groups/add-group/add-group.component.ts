@@ -1,4 +1,4 @@
-import { Component, inject, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -42,6 +42,7 @@ import { UserStore } from '@store/user.store';
     MatSelectModule,
     MatOptionModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddGroupComponent {
   protected readonly loading = inject(LoadingService);

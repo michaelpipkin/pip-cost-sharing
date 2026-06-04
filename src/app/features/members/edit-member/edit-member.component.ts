@@ -1,4 +1,4 @@
-import { Component, inject, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -47,6 +47,7 @@ import { UserStore } from '@store/user.store';
     MatSlideToggleModule,
     MatTooltipModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditMemberComponent {
   protected readonly dialogRef = inject(MatDialogRef<EditMemberComponent>);

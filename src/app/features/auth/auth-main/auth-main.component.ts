@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
@@ -8,5 +8,6 @@ import { RouterModule } from '@angular/router';
   templateUrl: './auth-main.component.html',
   styleUrls: ['./auth-main.component.scss'],
   imports: [RouterModule, MatIconModule, MatDividerModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AuthMainComponent {}

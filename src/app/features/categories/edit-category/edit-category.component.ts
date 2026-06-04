@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -38,6 +38,7 @@ import { DemoService } from '@services/demo.service';
     MatSlideToggleModule,
     MatButtonModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditCategoryComponent {
   protected readonly loading = inject(LoadingService);

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -30,6 +30,7 @@ import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
   ],
   templateUrl: './forgot-password.component.html',
   styleUrl: './forgot-password.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ForgotPasswordComponent {
   protected readonly auth = inject(getAuth);

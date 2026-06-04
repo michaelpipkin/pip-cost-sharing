@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -35,6 +35,7 @@ import { UserStore } from '@store/user.store';
   ],
   templateUrl: './add-member.component.html',
   styleUrl: './add-member.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddMemberComponent {
   protected readonly loading = inject(LoadingService);

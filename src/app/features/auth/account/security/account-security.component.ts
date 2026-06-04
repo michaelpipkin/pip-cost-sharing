@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -33,6 +34,7 @@ import { User as FirebaseUser, getAuth, updatePassword } from 'firebase/auth';
     MatButtonModule,
     MatIconModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountSecurityComponent {
   protected readonly auth = inject(getAuth);

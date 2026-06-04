@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -92,6 +93,7 @@ import { getStorage } from 'firebase/storage';
     DocRefCompareDirective,
     SplitMethodToggleComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddMemorizedComponent {
   protected readonly storage = inject(getStorage);

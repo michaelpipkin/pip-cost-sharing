@@ -2,6 +2,7 @@ import { DomPortalOutlet, TemplatePortal } from '@angular/cdk/portal';
 import {
   afterNextRender,
   ApplicationRef,
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -22,6 +23,7 @@ import { LoadingService } from './loading.service';
   styleUrls: ['./loading.component.scss'],
   imports: [MatProgressSpinner],
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoadingComponent implements OnDestroy {
   protected readonly loadingService = inject(LoadingService);

@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -75,6 +76,7 @@ import { SplitMethod } from '@utils/split-method';
   ],
   templateUrl: './split.component.html',
   styleUrl: './split.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SplitComponent implements OnDestroy {
   protected readonly fb = inject(FormBuilder);

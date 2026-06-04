@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, inject, model, Signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, model, Signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -51,6 +51,7 @@ import { DocumentReference } from 'firebase/firestore';
     MatSlideToggleModule,
     DocRefCompareDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ManageGroupsComponent {
   protected readonly groupStore = inject(GroupStore);

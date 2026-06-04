@@ -1,4 +1,4 @@
-import { Component, effect, inject, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, Signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -25,6 +25,7 @@ import { UserStore } from '@store/user.store';
     MatButtonModule,
     DocRefCompareDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountPreferencesComponent {
   protected readonly analytics = inject(AnalyticsService);

@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -50,6 +51,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatCardModule,
     DocRefCompareDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GroupsComponent {
   protected readonly userStore = inject(UserStore);

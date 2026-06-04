@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, inject, model, signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, model, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -46,6 +46,7 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
   ],
   templateUrl: './account-action.component.html',
   styleUrl: './account-action.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountActionComponent {
   protected readonly auth = inject(getAuth);

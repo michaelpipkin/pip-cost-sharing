@@ -1,6 +1,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -60,6 +61,7 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
     YesNoPipe,
     ActiveInactivePipe,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MembersComponent {
   protected readonly router = inject(Router);

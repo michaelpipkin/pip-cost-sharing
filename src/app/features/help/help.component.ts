@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -33,6 +33,7 @@ import { HelpService } from '@services/help.service';
     MatButtonModule,
     MatInputModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HelpComponent {
   protected readonly helpService = inject(HelpService);

@@ -1,15 +1,15 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { StringUtils } from '@utils/string-utils.service';
 
 @Component({
   selector: 'app-calculator',
-  standalone: true,
   imports: [MatButtonModule, MatIconModule, DecimalPipe],
   templateUrl: './calculator.component.html',
   styleUrls: ['./calculator.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalculatorComponent {
   protected readonly stringUtils = inject(StringUtils);

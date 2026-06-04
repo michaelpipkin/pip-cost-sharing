@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
@@ -13,6 +13,7 @@ import packageJson from 'package.json';
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.scss',
   imports: [MatButtonModule, RouterLink, MatTooltipModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FooterComponent {
   protected readonly breakpointObserver = inject(BreakpointObserver);

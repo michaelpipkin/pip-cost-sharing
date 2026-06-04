@@ -1,4 +1,4 @@
-import { Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
@@ -12,7 +12,6 @@ export interface SelectFilterValue {
 
 @Component({
   selector: 'app-select-filter-panel',
-  standalone: true,
   imports: [
     FormsModule,
     MatFormFieldModule,
@@ -88,6 +87,7 @@ export interface SelectFilterValue {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectFilterPanelComponent {
   options = input<any[]>([]);

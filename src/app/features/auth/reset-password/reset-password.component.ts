@@ -1,4 +1,4 @@
-import { afterNextRender, Component, inject, model, signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, inject, model, signal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -30,6 +30,7 @@ import { passwordMatchValidator } from '../auth-main/password-match-validator';
   ],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ResetPasswordComponent {
   protected readonly auth = inject(getAuth);
