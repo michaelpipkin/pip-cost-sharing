@@ -188,6 +188,7 @@ describe('EditExpenseComponent', () => {
   describe('onSubmit', () => {
     it('should show demo restriction in demo mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(true);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       await component.onSubmit();
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
       expect(mockExpenseService.updateExpense).not.toHaveBeenCalled();
@@ -214,6 +215,7 @@ describe('EditExpenseComponent', () => {
   describe('onDelete', () => {
     it('should show demo restriction in demo mode', () => {
       mockDemoService.isInDemoMode.mockReturnValue(true);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.onDelete();
       expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
     });

@@ -187,6 +187,7 @@ describe('EditMemorizedComponent', () => {
 
     it('should call memorizedService.updateMemorized when not in demo mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       await component.onSubmit();
       expect(mockMemorizedService.updateMemorized).toHaveBeenCalledWith(
         memorizedRef,

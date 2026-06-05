@@ -61,6 +61,7 @@ describe('HomeComponent', () => {
 
   describe('startDemoWalkthrough', () => {
     it('should call tourService.resetAllTours', () => {
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.startDemoWalkthrough();
       expect(mockTourService.resetAllTours).toHaveBeenCalled();
     });

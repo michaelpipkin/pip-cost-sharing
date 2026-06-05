@@ -197,6 +197,7 @@ describe('AddMemorizedComponent', () => {
 
     it('should call memorizedService.addMemorized when not in demo mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.e.description.setValue('Test Expense');
       component.e.amount.setValue(50);
       component.e.category.setValue(
