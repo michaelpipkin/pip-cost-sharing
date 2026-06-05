@@ -21,7 +21,11 @@ describe('HistoryService', () => {
     groupMembers: signal<any[]>([]),
     getMemberByRef: vi.fn(),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   function makeMockBatch() {
     return {
@@ -78,8 +82,8 @@ describe('HistoryService', () => {
       vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(mockBatch as any);
 
       vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({ data: () => ({ expenseRef }) } as any)
-        .mockResolvedValueOnce({ data: () => ({ expenseRef }) } as any);
+        .mockResolvedValueOnce({ exists: () => true, data: () => ({ expenseRef }) } as any)
+        .mockResolvedValueOnce({ exists: () => true, data: () => ({ expenseRef }) } as any);
 
       await service.unpayHistory({
         splitsPaid: [splitRef1, splitRef2],
@@ -105,8 +109,8 @@ describe('HistoryService', () => {
 
       // Both splits belong to the same expense
       vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({ data: () => ({ expenseRef }) } as any)
-        .mockResolvedValueOnce({ data: () => ({ expenseRef }) } as any);
+        .mockResolvedValueOnce({ exists: () => true, data: () => ({ expenseRef }) } as any)
+        .mockResolvedValueOnce({ exists: () => true, data: () => ({ expenseRef }) } as any);
 
       await service.unpayHistory({
         splitsPaid: [splitRef1, splitRef2],
@@ -132,6 +136,7 @@ describe('HistoryService', () => {
       };
       vi.spyOn(firestoreModule, 'writeBatch').mockReturnValue(mockBatch as any);
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        exists: () => true,
         data: () => ({ expenseRef }),
       } as any);
 

@@ -10,11 +10,13 @@ import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import {
   createMockAnalyticsService,
   createMockDemoService,
   createMockDialogRef,
+  createMockExpenseStore,
   createMockGroupService,
   createMockGroupStore,
   createMockLoadingService,
@@ -34,6 +36,7 @@ describe('ManageGroupsComponent', () => {
   let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
+  let mockExpenseStore: ReturnType<typeof createMockExpenseStore>;
   let mockExpenseService: { hasExpensesForGroup: ReturnType<typeof vi.fn> };
 
   const testGroup = mockGroup({ id: 'group-1', name: 'Test Group' });
@@ -44,6 +47,7 @@ describe('ManageGroupsComponent', () => {
     mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
     mockGroupStore = createMockGroupStore();
+    mockExpenseStore = createMockExpenseStore();
     mockExpenseService = {
       hasExpensesForGroup: vi.fn().mockResolvedValue(false),
     };
@@ -62,6 +66,7 @@ describe('ManageGroupsComponent', () => {
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: GroupService, useValue: mockGroupService },
+        { provide: ExpenseStore, useValue: mockExpenseStore },
         { provide: ExpenseService, useValue: mockExpenseService },
         { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
@@ -106,13 +111,15 @@ describe('ManageGroupsComponent', () => {
       expect(component.f['groupName'].value).toBe('Test Group');
     });
 
-    it('should initialize groupHasExpenses to false when group has no expenses', async () => {
+    it('should initialize with currency field enabled when group has no expenses', async () => {
       await fixture.whenStable();
-      expect(component.groupHasExpenses()).toBe(false);
+      expect(component['expenseStore'].groupHasExpenses()).toBe(false);
+      expect(component.f['currencyCode'].disabled).toBe(false);
     });
 
     it('should disable currency field when group has expenses', async () => {
-      mockExpenseService.hasExpensesForGroup.mockResolvedValue(true);
+      const mockExpenseStoreWithExpenses = createMockExpenseStore();
+      mockExpenseStoreWithExpenses.setGroupHasExpenses(true);
 
       await TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
@@ -124,6 +131,7 @@ describe('ManageGroupsComponent', () => {
           { provide: LoadingService, useValue: createMockLoadingService() },
           { provide: GroupStore, useValue: mockGroupStore },
           { provide: GroupService, useValue: mockGroupService },
+          { provide: ExpenseStore, useValue: mockExpenseStoreWithExpenses },
           { provide: ExpenseService, useValue: mockExpenseService },
           { provide: DemoService, useValue: mockDemoService },
           { provide: MatDialog, useValue: mockDialog },
@@ -132,10 +140,9 @@ describe('ManageGroupsComponent', () => {
       }).compileComponents();
 
       const newFixture = TestBed.createComponent(ManageGroupsComponent);
-      const newComponent = newFixture.componentInstance;
       await newFixture.whenStable();
 
-      expect(newComponent.f['currencyCode'].disabled).toBe(true);
+      expect(newFixture.componentInstance.f['currencyCode'].disabled).toBe(true);
     });
   });
 

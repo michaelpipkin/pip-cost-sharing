@@ -19,7 +19,11 @@ describe('AdMobService', () => {
   };
 
   const mockPwaService = { isRunningAsApp: vi.fn(() => true) };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   function createService(isApp = true): AdMobService {
     mockPwaService.isRunningAsApp.mockReturnValue(isApp);
@@ -57,7 +61,7 @@ describe('AdMobService', () => {
 
     it('should not increment count for login route', () => {
       const service = createService();
-      navigationHandler(new NavigationEnd(1, '/login', '/login'));
+      navigationHandler(new NavigationEnd(1, '/auth/login', '/auth/login'));
       expect((service as any).navigationCount).toBe(0);
     });
 
@@ -79,7 +83,7 @@ describe('AdMobService', () => {
       const service = createService();
       (service as any).isAdLoaded.set(true);
 
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 10; i++) {
         navigationHandler(new NavigationEnd(i, '/expenses', '/expenses'));
       }
       await new Promise((r) => setTimeout(r, 0));
@@ -91,7 +95,7 @@ describe('AdMobService', () => {
       const service = createService();
       (service as any).isAdLoaded.set(true);
 
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 10; i++) {
         navigationHandler(new NavigationEnd(i, '/expenses', '/expenses'));
       }
       await new Promise((r) => setTimeout(r, 0));
@@ -105,7 +109,7 @@ describe('AdMobService', () => {
       // Bypass the async initialization guard so loadInterstitial() will run
       (service as any).isInitialized = true;
 
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 10; i++) {
         navigationHandler(new NavigationEnd(i, '/expenses', '/expenses'));
       }
       await new Promise((r) => setTimeout(r, 0));

@@ -8,6 +8,7 @@ import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CategoryService } from './category.service';
+import { ExpenseService } from './expense.service';
 import { GroupService } from './group.service';
 import { HistoryService } from './history.service';
 import { MemberService } from './member.service';
@@ -53,21 +54,27 @@ describe('GroupService', () => {
     isValidUser: isValidUserComputed,
     updateUser: vi.fn(),
   };
-  const mockCategoryService = { getGroupCategories: vi.fn() };
+  const mockCategoryService = { getGroupCategories: vi.fn(), stopListening: vi.fn() };
   const mockMemberService = {
     getGroupMembers: vi.fn(),
     getMemberByUserRef: vi.fn().mockResolvedValue(undefined),
+    stopListening: vi.fn(),
   };
-  const mockSplitService = { getUnpaidSplitsForGroup: vi.fn() };
-  const mockMemorizedService = { getMemorizedExpensesForGroup: vi.fn() };
-  const mockHistoryService = { getHistoryForGroup: vi.fn() };
+  const mockSplitService = { getUnpaidSplitsForGroup: vi.fn(), stopListening: vi.fn() };
+  const mockMemorizedService = { getMemorizedExpensesForGroup: vi.fn(), stopListening: vi.fn() };
+  const mockHistoryService = { getHistoryForGroup: vi.fn(), stopListening: vi.fn() };
   const mockLoading = { loadingOff: vi.fn() };
   const mockRouter = {
     url: '/',
     navigate: vi.fn(),
     navigateByUrl: vi.fn(),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
+  const mockExpenseService = { doesGroupHaveExpenses: vi.fn().mockResolvedValue(false) };
 
   function createService(): GroupService {
     TestBed.configureTestingModule({
@@ -79,6 +86,7 @@ describe('GroupService', () => {
         { provide: UserStore, useValue: mockUserStore },
         { provide: CategoryService, useValue: mockCategoryService },
         { provide: MemberService, useValue: mockMemberService },
+        { provide: ExpenseService, useValue: mockExpenseService },
         { provide: SplitService, useValue: mockSplitService },
         { provide: MemorizedService, useValue: mockMemorizedService },
         { provide: HistoryService, useValue: mockHistoryService },

@@ -25,13 +25,14 @@ import {
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
+  createMockUserService,
   mockDocRef,
   mockGroup,
   mockHistory,
   mockMember,
   mockSplit,
 } from '@testing/test-helpers';
-import { getFunctions } from 'firebase/functions';
+import { UserService } from '@services/user.service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryDetailComponent } from './history-detail.component';
 
@@ -52,6 +53,7 @@ describe('HistoryDetailComponent', () => {
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockLocaleService: any;
+  let mockUserService: ReturnType<typeof createMockUserService>;
 
   const testHistoryId = 'h-1';
   const adminMember = mockMember({
@@ -89,6 +91,7 @@ describe('HistoryDetailComponent', () => {
     mockLoadingService = createMockLoadingService();
     mockDialog = createMockMatDialog();
     mockSnackBar = createMockSnackBar();
+    mockUserService = createMockUserService();
 
     mockGroupStore.currentGroup.set(mockGroup());
     mockMemberStore.currentMember.set(adminMember);
@@ -125,7 +128,7 @@ describe('HistoryDetailComponent', () => {
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: getFunctions, useValue: {} },
+        { provide: UserService, useValue: mockUserService },
       ],
     }).compileComponents();
 

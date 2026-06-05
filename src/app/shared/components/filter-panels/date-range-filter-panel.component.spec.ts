@@ -13,6 +13,7 @@ describe('DateRangeFilterPanelComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DateRangeFilterPanelComponent],
+      providers: [provideNativeDateAdapter()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DateRangeFilterPanelComponent);

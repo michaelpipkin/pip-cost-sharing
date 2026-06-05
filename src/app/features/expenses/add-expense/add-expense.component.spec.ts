@@ -364,6 +364,10 @@ describe('AddExpenseComponent', () => {
       component.addSplit();
       component.addSplit();
 
+      // The 3rd split has no member auto-assigned (only 2 active members); patch it manually
+      component.splitsFormArray
+        .at(2)
+        .patchValue({ owedByMemberRef: mockDocRef('groups/group-1/members/member-3') });
       component.splitsFormArray.at(0).patchValue({ percentage: 40 });
       component.splitsFormArray.at(1).patchValue({ percentage: 35 });
 

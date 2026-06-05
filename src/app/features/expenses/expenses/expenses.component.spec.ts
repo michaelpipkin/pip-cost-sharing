@@ -198,6 +198,10 @@ describe('ExpensesComponent', () => {
 
     it('should call splitService.updateSplit in normal mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),
+      } as any);
       const expense = {
         id: 'exp-1',
         ref: mockDocRef('groups/group-1/expenses/exp-1'),
@@ -206,7 +210,8 @@ describe('ExpensesComponent', () => {
         paid: false,
         ref: mockDocRef('groups/group-1/expenses/exp-1/splits/split-1'),
       } as any;
-      await component.markSplitPaidUnpaid(expense, split);
+      component.markSplitPaidUnpaid(expense, split);
+      await fixture.whenStable();
       expect(mockSplitService.updateSplit).toHaveBeenCalled();
     });
   });

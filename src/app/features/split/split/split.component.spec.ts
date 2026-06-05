@@ -376,6 +376,8 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
+      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
+      component.splitsFormArray.at(1).patchValue({ owedBy: 'member-2' });
       component.expenseForm.patchValue({ amount: 100 });
       component.splitsFormArray.at(0).patchValue({ percentage: 60 });
       component.splitsFormArray.at(1).patchValue({ percentage: 40 });
@@ -391,6 +393,8 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
+      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
+      component.splitsFormArray.at(1).patchValue({ owedBy: 'member-2' });
       component.expenseForm.patchValue({
         amount: 100,
         allocatedAmount: 10,
@@ -416,6 +420,7 @@ describe('SplitComponent', () => {
 
     it('should preserve calculated allocations when toggling modes', async () => {
       component.addSplit();
+      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
       component.expenseForm.patchValue({ amount: 100 });
       component.splitsFormArray.at(0).patchValue({ percentage: 100 });
       component.allocateByPercentage();

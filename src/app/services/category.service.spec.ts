@@ -28,7 +28,11 @@ describe('CategoryService', () => {
     setGroupCategories: vi.fn(),
     groupCategories: signal<any[]>([]),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -168,9 +172,9 @@ describe('CategoryService', () => {
     });
 
     it('should throw when category is assigned to expenses', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap(1) as any
-      );
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockResolvedValueOnce(makeSnap(2) as any) // 2 categories exist (passes count check)
+        .mockResolvedValueOnce(makeSnap(1) as any); // 1 expense uses this category
 
       await expect(service.deleteCategory(mockCategoryRef)).rejects.toThrow(
         'This category is assigned to expenses and cannot be deleted.'

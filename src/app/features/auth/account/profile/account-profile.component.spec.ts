@@ -209,9 +209,11 @@ describe('AccountProfileComponent', () => {
       );
       await component.verifyEmail();
       await fixture.whenStable();
-      expect(mockAnalyticsService.logEvent).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ action: 'verify_email' })
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Account Profile Component',
+        'verify_email',
+        'Failed to send verification email',
+        expect.any(String)
       );
       expect(mockSnackbar.openFromComponent).toHaveBeenCalled();
     });
@@ -244,9 +246,11 @@ describe('AccountProfileComponent', () => {
       vi.spyOn(authModule, 'updateEmail').mockRejectedValue(error);
       component.emailForm.setValue({ email: 'taken@example.com' });
       await component.onSubmitEmail();
-      expect(mockAnalyticsService.logEvent).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ action: 'update_email' })
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Account Profile Component',
+        'update_email',
+        'Failed to update email address',
+        expect.any(String)
       );
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
       expect(data?.message).toContain('already in use');
@@ -308,9 +312,11 @@ describe('AccountProfileComponent', () => {
         new Error('sync failed')
       );
       await component.syncMemberEmails();
-      expect(mockAnalyticsService.logEvent).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ action: 'sync_member_emails' })
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Account Profile Component',
+        'sync_member_emails',
+        'Failed to sync member emails',
+        expect.any(String)
       );
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
       expect(data?.message).toContain('could not update member emails');

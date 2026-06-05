@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
+import { createMockAnalyticsService } from '@testing/test-helpers';
 import { PageTitleStrategyService } from './page-title-strategy.service';
 
 describe('PageTitleStrategyService', () => {
@@ -10,7 +12,12 @@ describe('PageTitleStrategyService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [PageTitleStrategyService, Title, provideRouter([])],
+      providers: [
+        PageTitleStrategyService,
+        Title,
+        provideRouter([]),
+        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+      ],
     });
     service = TestBed.inject(PageTitleStrategyService);
     titleService = TestBed.inject(Title);

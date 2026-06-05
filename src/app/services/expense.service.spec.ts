@@ -36,6 +36,7 @@ describe('ExpenseService', () => {
 
   const mockExpenseStore = {
     setGroupExpenses: vi.fn(),
+    setGroupHasExpenses: vi.fn(),
     groupExpenses: signal<any[]>([]),
   };
   const mockMemberStore = {
@@ -48,7 +49,11 @@ describe('ExpenseService', () => {
     getCategoryByRef: vi.fn().mockReturnValue(undefined),
     groupCategories: signal<any[]>([]),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,34 +99,32 @@ describe('ExpenseService', () => {
   });
 
   describe('doesGroupHaveExpenses', () => {
-    it('should return true when the group has expenses', async () => {
+    it('should set groupHasExpenses to true when the group has expenses', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
         makeSnap([makeExpenseDoc('exp-1', {})]) as any
       );
 
-      const result = await service.doesGroupHaveExpenses('group-1');
+      await service.doesGroupHaveExpenses('group-1');
 
-      expect(result).toBe(true);
+      expect(mockExpenseStore.setGroupHasExpenses).toHaveBeenCalledWith(true);
     });
 
-    it('should return false when the group has no expenses', async () => {
+    it('should set groupHasExpenses to false when the group has no expenses', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
         makeSnap([]) as any
       );
 
-      const result = await service.doesGroupHaveExpenses('group-1');
+      await service.doesGroupHaveExpenses('group-1');
 
-      expect(result).toBe(false);
+      expect(mockExpenseStore.setGroupHasExpenses).toHaveBeenCalledWith(false);
     });
 
-    it('should return true on error (safe fallback)', async () => {
+    it('should not throw on error (safe fallback)', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockRejectedValueOnce(
         new Error('Firestore error')
       );
 
-      const result = await service.doesGroupHaveExpenses('group-1');
-
-      expect(result).toBe(true);
+      await expect(service.doesGroupHaveExpenses('group-1')).resolves.toBeUndefined();
     });
   });
 
