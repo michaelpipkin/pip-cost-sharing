@@ -4,9 +4,9 @@ import {
   ApplicationRef,
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   inject,
-  OnDestroy,
   signal,
   TemplateRef,
   viewChild,
@@ -25,7 +25,7 @@ import { LoadingService } from './loading.service';
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LoadingComponent implements OnDestroy {
+export class LoadingComponent {
   protected readonly loadingService = inject(LoadingService);
   protected readonly appRef = inject(ApplicationRef);
   protected readonly viewContainerRef = inject(ViewContainerRef);
@@ -38,6 +38,9 @@ export class LoadingComponent implements OnDestroy {
   private popoverElement = signal<HTMLElement | null>(null);
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.portalOutlet?.dispose();
+    });
     // Effect to show/hide popover based on loading state
     effect(() => {
       const isLoading = this.loadingService.loading();
@@ -93,7 +96,4 @@ export class LoadingComponent implements OnDestroy {
     });
   }
 
-  ngOnDestroy(): void {
-    this.portalOutlet?.dispose();
-  }
 }

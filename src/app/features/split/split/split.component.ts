@@ -5,9 +5,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
-  OnDestroy,
   signal,
   viewChild,
   viewChildren,
@@ -78,7 +78,7 @@ import { SplitMethod } from '@utils/split-method';
   styleUrl: './split.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SplitComponent implements OnDestroy {
+export class SplitComponent {
   protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -119,6 +119,15 @@ export class SplitComponent implements OnDestroy {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      const currentGroup = this.groupStore.currentGroup();
+      if (currentGroup?.currencyCode) {
+        this.localeService.setGroupCurrency(currentGroup.currencyCode);
+      } else {
+        this.localeService.setGroupCurrency('USD');
+      }
+    });
+
     // Initialize LocaleService with USD for split component
     this.localeService.setGroupCurrency('USD');
     this.localCurrencyCode.set('USD');
@@ -680,14 +689,4 @@ export class SplitComponent implements OnDestroy {
     this.tourService.startWelcomeTour(true);
   }
 
-  ngOnDestroy(): void {
-    // Restore the LocaleService to use the current group's currency
-    const currentGroup = this.groupStore.currentGroup();
-    if (currentGroup?.currencyCode) {
-      this.localeService.setGroupCurrency(currentGroup.currencyCode);
-    } else {
-      // If no group, reset to USD
-      this.localeService.setGroupCurrency('USD');
-    }
-  }
 }
