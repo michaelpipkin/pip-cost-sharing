@@ -1,6 +1,6 @@
-import { inject, Injectable, OnDestroy, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NavigationEnd, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -9,14 +9,10 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DemoModeService } from './demo-mode.service';
 
-/**
- * Service to manage demo mode state based on current route
- * Detects when user is viewing demo pages and provides demo-specific functionality
- */
 @Injectable({
   providedIn: 'root',
 })
-export class DemoService implements OnDestroy {
+export class DemoService {
   protected readonly router = inject(Router);
   protected readonly demoModeService = inject(DemoModeService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -25,51 +21,27 @@ export class DemoService implements OnDestroy {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
-  private readonly routerSubscription?: { unsubscribe: () => void };
 
-  // Signal to track if user is currently in demo mode
   isInDemoMode = signal<boolean>(false);
   private demoDataInitialized = false;
 
-  constructor() {
-    // Check initial route
-    this.updateDemoMode(this.router.url);
-
-    // Watch for route changes
-    this.routerSubscription = this.router.events.subscribe((event) => {
-      if (event instanceof NavigationEnd) {
-        this.updateDemoMode(event.url);
+  enterDemoMode(): void {
+    if (!this.isInDemoMode()) {
+      this.isInDemoMode.set(true);
+      if (!this.demoDataInitialized) {
+        this.demoModeService.initializeDemoData();
+        this.demoDataInitialized = true;
       }
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.routerSubscription?.unsubscribe();
-  }
-
-  /**
-   * Check if the current URL is a demo route
-   */
-  private updateDemoMode(url: string): void {
-    const isDemoRoute = url === '/demo' || url.startsWith('/demo/');
-    const wasInDemoMode = this.isInDemoMode();
-    this.isInDemoMode.set(isDemoRoute);
-
-    // Initialize demo data only when entering demo mode for the first time
-    if (isDemoRoute && !this.demoDataInitialized) {
-      this.demoModeService.initializeDemoData();
-      this.demoDataInitialized = true;
     }
+  }
 
-    // Clear demo data when exiting demo mode
-    if (!isDemoRoute && wasInDemoMode && this.demoDataInitialized) {
+  exitDemoMode(): void {
+    if (this.isInDemoMode()) {
+      this.isInDemoMode.set(false);
       this.clearDemoData();
     }
   }
 
-  /**
-   * Clear demo data from all stores when exiting demo mode
-   */
   private clearDemoData(): void {
     this.userStore.clearUser();
     this.userStore.setIsDemoMode(false);
@@ -82,26 +54,16 @@ export class DemoService implements OnDestroy {
     this.demoDataInitialized = false;
   }
 
-  /**
-   * Show a snackbar message indicating data modification is disabled in demo mode
-   * This should be called whenever a user tries to save/delete/modify data in demo components
-   */
   showDemoModeRestrictionMessage(): void {
     this.snackbar.openFromComponent(CustomSnackbarComponent, {
       data: { message: 'Data modification is disabled in demo mode' },
     });
   }
 
-  /**
-   * Navigate to the demo version of a specific page
-   */
   navigateToDemo(path: string): void {
     this.router.navigate(['/demo', path]);
   }
 
-  /**
-   * Navigate to a demo route
-   */
   navigateToDemoRoute(route: string): void {
     this.router.navigateByUrl(route);
   }

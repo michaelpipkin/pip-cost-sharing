@@ -6,6 +6,7 @@ import {
   groupGuard,
   loggedInGuard,
 } from '@features/auth/guards.guard';
+import { DemoShellComponent } from '@features/demo/demo-shell.component';
 import { HelpComponent } from '@features/help/help.component';
 import { HomeComponent } from '@features/home/home.component';
 
@@ -76,6 +77,7 @@ export const appRoutes: Routes = [
   },
   {
     path: 'demo',
+    component: DemoShellComponent,
     loadChildren: () =>
       import('@features/demo/demo.routes').then((m) => m.demoRoutes),
     canActivate: [loggedInGuard],
