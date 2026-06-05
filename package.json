@@ -36,7 +36,7 @@
     "@angular/cdk": "^21.2.13",
     "@angular/common": "^21.2.15",
     "@angular/compiler": "^21.2.15",
-    "@angular/core": "^21.2.15",
+    "@angular/core": "^22.0.0",
     "@angular/forms": "^21.2.15",
     "@angular/material": "^21.2.13",
     "@angular/platform-browser": "^21.2.15",
@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@angular/build": "^21.2.13",
-    "@angular/cli": "^21.2.13",
+    "@angular/cli": "^22.0.0",
     "@angular/compiler-cli": "^21.2.15",
     "@capacitor/assets": "^3.0.5",
     "@hcaptcha/types": "^1.2.0",
