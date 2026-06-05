@@ -173,6 +173,12 @@ importers:
         specifier: 22.0.0
         version: 22.0.0
 
+  .angular/cache/angular-cli-tmp-packages-RInsx7:
+    dependencies:
+      '@angular/cli':
+        specifier: 22.0.0
+        version: 22.0.0
+
   .angular/cache/angular-cli-tmp-packages-shgVIh:
     dependencies:
       '@angular/cli':
