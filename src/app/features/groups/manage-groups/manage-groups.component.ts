@@ -1,10 +1,14 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, model, Signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  model,
+  Signal,
+  signal,
+} from '@angular/core';
+import { disabled, form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import {
@@ -26,22 +30,20 @@ import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
-import { Group } from '@models/group';
+import { Group, ManageGroupForm } from '@models/group';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
-import { DocumentReference } from 'firebase/firestore';
 
 @Component({
   selector: 'app-manage-groups',
   templateUrl: './manage-groups.component.html',
   styleUrl: './manage-groups.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -56,11 +58,10 @@ import { DocumentReference } from 'firebase/firestore';
 export class ManageGroupsComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly groupService = inject(GroupService);
-  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly expenseService = inject(ExpenseService);
+  protected readonly expenseStore = inject(ExpenseStore);
   protected readonly dialog = inject(MatDialog);
   protected readonly dialogRef = inject(MatDialogRef<ManageGroupsComponent>);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
@@ -70,16 +71,50 @@ export class ManageGroupsComponent {
   selectedGroup = model<Group | null>(this.data.group as Group);
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
-  userAdminGroups: Signal<Group[]> = this.groupStore.userAdminGroups;
+  protected readonly userAdminGroups: Signal<Group[]> =
+    this.groupStore.userAdminGroups;
+  protected readonly adminGroupIds = computed(() =>
+    this.userAdminGroups().map((g) => g.id)
+  );
 
-  adminGroupIds = computed(() => this.userAdminGroups().map((g) => g.id));
+  protected readonly groupRef = signal<ManageGroupForm['groupRef']>(null);
+  protected readonly groupRefValid = computed(() => this.groupRef() !== null);
+  protected readonly selectedGroupHasExpenses = signal(false);
 
-  editGroupForm = this.fb.group({
-    groupRef: [null as DocumentReference<Group> | null, Validators.required],
-    groupName: ['', Validators.required],
-    active: [false],
-    autoAddMembers: [false],
-    currencyCode: ['USD', Validators.required],
+  protected readonly editGroupModel = signal<Omit<ManageGroupForm, 'groupRef'>>({
+    groupName: '',
+    active: false,
+    autoAddMembers: false,
+    currencyCode: 'USD',
+  });
+
+  private readonly lastLoadedValues = signal<Omit<ManageGroupForm, 'groupRef'>>(
+    {
+      groupName: '',
+      active: false,
+      autoAddMembers: false,
+      currencyCode: 'USD',
+    }
+  );
+
+  protected readonly hasChanges = computed(() => {
+    if (!this.selectedGroup()) return false;
+    const current = this.editGroupForm().value();
+    const loaded = this.lastLoadedValues();
+    return (
+      current.groupName !== loaded.groupName ||
+      current.active !== loaded.active ||
+      current.autoAddMembers !== loaded.autoAddMembers ||
+      current.currencyCode !== loaded.currencyCode
+    );
+  });
+
+  protected readonly editGroupForm = form(this.editGroupModel, (p) => {
+    required(p.groupName, { message: '*Required' });
+    required(p.currencyCode, { message: '*Required' });
+    disabled(p.currencyCode, {
+      when: () => this.selectedGroupHasExpenses(),
+    });
   });
 
   constructor() {
@@ -95,50 +130,42 @@ export class ManageGroupsComponent {
       this.adminGroupIds().includes(this.selectedGroup()!.id)
     ) {
       const group = this.selectedGroup()!;
-
-      this.editGroupForm.patchValue({
-        groupRef: group.ref ?? null,
+      const values = {
         groupName: group.name,
         active: group.active ?? false,
         autoAddMembers: group.autoAddMembers ?? false,
         currencyCode: group.currencyCode ?? 'USD',
-      });
-
-      if (this.expenseStore.groupHasExpenses()) {
-        this.editGroupForm.controls.currencyCode.disable();
-      }
+      };
+      this.groupRef.set(group.ref ?? null);
+      this.editGroupModel.set(values);
+      this.lastLoadedValues.set(values);
+      this.selectedGroupHasExpenses.set(
+        await this.expenseService.checkGroupHasExpenses(group.id)
+      );
     } else {
       this.selectedGroup.set(null);
     }
     this.loading.loadingOff();
   }
 
-  public get f() {
-    return this.editGroupForm.controls;
-  }
-
-  async onSelectGroup(): Promise<void> {
-    const selectedGroupRef = this.f.groupRef.value!;
+  async onSelectGroup(selectedGroupRef: ManageGroupForm['groupRef']): Promise<void> {
+    this.groupRef.set(selectedGroupRef);
     const group = this.userAdminGroups().find((g) =>
-      g.ref!.eq(selectedGroupRef)
+      g.ref!.eq(selectedGroupRef!)
     );
     this.selectedGroup.set(group ?? null);
 
-    // Enable/disable currency field based on expenses
-    if (this.expenseStore.groupHasExpenses()) {
-      this.editGroupForm.controls.currencyCode.disable();
-    } else {
-      this.editGroupForm.controls.currencyCode.enable();
-    }
-
-    this.editGroupForm.patchValue({
+    const values = {
       groupName: this.selectedGroup()!.name,
       active: this.selectedGroup()!.active ?? false,
       autoAddMembers: this.selectedGroup()!.autoAddMembers ?? false,
       currencyCode: this.selectedGroup()!.currencyCode ?? 'USD',
-    });
-    this.editGroupForm.markAsPristine();
-    this.editGroupForm.markAsUntouched();
+    };
+    this.editGroupModel.set(values);
+    this.lastLoadedValues.set(values);
+    this.selectedGroupHasExpenses.set(
+      await this.expenseService.checkGroupHasExpenses(this.selectedGroup()!.id)
+    );
   }
 
   async onSubmit(): Promise<void> {
@@ -146,13 +173,13 @@ export class ManageGroupsComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    const form = this.editGroupForm.getRawValue();
-    const currencyConfig = getCurrencyConfig(form.currencyCode!)!;
+    const val = this.editGroupForm().value();
+    const currencyConfig = getCurrencyConfig(val.currencyCode)!;
     const changes: Partial<Group> = {
-      name: form.groupName ?? undefined,
-      active: form.active ?? undefined,
-      autoAddMembers: form.autoAddMembers ?? undefined,
-      currencyCode: form.currencyCode ?? undefined,
+      name: val.groupName,
+      active: val.active,
+      autoAddMembers: val.autoAddMembers,
+      currencyCode: val.currencyCode,
       currencySymbol: currencyConfig.symbol,
       decimalPlaces: currencyConfig.decimalPlaces,
     };
@@ -160,10 +187,7 @@ export class ManageGroupsComponent {
     try {
       const selectedGroupRef = this.selectedGroup()!.ref!;
       await this.groupService.updateGroup(selectedGroupRef, changes);
-      this.dialogRef.close({
-        success: true,
-        operation: 'saved',
-      });
+      this.dialogRef.close({ success: true, operation: 'saved' });
     } catch (error) {
       if (error instanceof Error) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -207,10 +231,7 @@ export class ManageGroupsComponent {
             archived: true,
             active: false,
           });
-          this.dialogRef.close({
-            success: true,
-            operation: 'archived',
-          });
+          this.dialogRef.close({ success: true, operation: 'archived' });
         } catch (error) {
           if (error instanceof Error) {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -246,10 +267,7 @@ export class ManageGroupsComponent {
       await this.groupService.updateGroup(selectedGroupRef, {
         archived: false,
       });
-      this.dialogRef.close({
-        success: true,
-        operation: 'unarchived',
-      });
+      this.dialogRef.close({ success: true, operation: 'unarchived' });
     } catch (error) {
       if (error instanceof Error) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -262,7 +280,9 @@ export class ManageGroupsComponent {
         );
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not unarchive group' },
+          data: {
+            message: 'Something went wrong - could not unarchive group',
+          },
         });
       }
     } finally {
@@ -289,10 +309,7 @@ export class ManageGroupsComponent {
         this.loading.loadingOn();
         try {
           await this.groupService.deleteGroup(this.selectedGroup()!.id);
-          this.dialogRef.close({
-            success: true,
-            operation: 'deleted',
-          });
+          this.dialogRef.close({ success: true, operation: 'deleted' });
         } catch (error) {
           if (error instanceof Error) {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {

@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  email as emailValidator,
+  form,
+  FormField,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterModule } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { ForgotPasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { FirebaseError } from 'firebase/app';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
@@ -21,8 +22,7 @@ import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
   selector: 'app-forgot-password',
   imports: [
     RouterModule,
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
@@ -36,29 +36,28 @@ export class ForgotPasswordComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
 
-  forgotPasswordForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+  protected readonly forgotPasswordModel = signal<ForgotPasswordForm>({
+    email: '',
   });
-
-  get f() {
-    return this.forgotPasswordForm.controls;
-  }
+  protected readonly forgotPasswordForm = form(this.forgotPasswordModel, (p) => {
+    required(p.email, { message: '*Required' });
+    emailValidator(p.email, { message: 'Invalid email address' });
+  });
 
   async forgotPassword() {
     try {
       this.loading.loadingOn();
-      const email = this.forgotPasswordForm.value.email;
+      const email = this.forgotPasswordForm().value().email;
 
       const actionCodeSettings = {
         url: globalThis.location.origin + '/auth/account-action',
         handleCodeInApp: true,
       };
 
-      await sendPasswordResetEmail(this.auth, email!, actionCodeSettings);
+      await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message: 'Password reset email sent. Please check your email.',

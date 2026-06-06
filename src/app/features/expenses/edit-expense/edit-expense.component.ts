@@ -1,30 +1,17 @@
 import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   ElementRef,
   inject,
   model,
   Signal,
   signal,
-  viewChild,
   viewChildren,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -38,7 +25,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
@@ -50,6 +36,7 @@ import {
 } from '@components/file-selection-dialog/file-selection-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { ReceiptDialogComponent } from '@components/receipt-dialog/receipt-dialog.component';
+import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
@@ -58,7 +45,7 @@ import {
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Expense, ExpenseDto } from '@models/expense';
+import { Expense, ExpenseDto, ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
@@ -74,13 +61,11 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils/allocation-utils.service';
 import { toIsoFormat } from '@utils/date-utils';
 import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
 import { FirebaseError } from 'firebase/app';
-import { DocumentReference } from 'firebase/firestore';
 import { getDownloadURL, getStorage } from 'firebase/storage';
 
 @Component({
@@ -88,8 +73,6 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
   templateUrl: './edit-expense.component.html',
   styleUrl: './edit-expense.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -99,20 +82,19 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     MatTooltipModule,
     MatDatepickerModule,
     MatIconModule,
-    MatTableModule,
-    CurrencyPipe,
     DecimalPipe,
+    CurrencyPipe,
     FormatCurrencyInputDirective,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
     SplitMethodToggleComponent,
+    FormField,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditExpenseComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute);
   protected readonly groupStore = inject(GroupStore);
@@ -126,7 +108,6 @@ export class EditExpenseComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
@@ -136,109 +117,91 @@ export class EditExpenseComponent {
 
   expense = signal<Expense>(this.route.snapshot.data.expense);
 
-  categories = computed<Category[]>(() => {
-    return this.categoryStore
+  categories = computed<Category[]>(() =>
+    this.categoryStore
       .groupCategories()
-      .filter((c) => c.active || c.ref!.eq(this.expense().categoryRef));
-  });
-  expenseMembers = computed<Member[]>(() => {
+      .filter((c) => c.active || c.ref!.eq(this.expense().categoryRef))
+  );
+  expenseMembers = computed<Member[]>(() =>
+    this.memberStore
+      .groupMembers()
+      .filter((m) => m.active || m.ref!.eq(this.expense().paidByMemberRef))
+  );
+  splitMembers = computed<Member[]>(() => {
+    const splitMemberIds = new Set(
+      this.expense().splits.map((s: Split) => s.owedByMemberRef.id)
+    );
     return this.memberStore
       .groupMembers()
-      .filter((m) => m.active || m.ref!.eq(this.expense().paidByMemberRef));
-  });
-  splitMembers = computed<Member[]>(() => {
-    const splitMembers: Set<DocumentReference<Member>> = new Set(
-      this.expense().splits.map((s: Split) => s.owedByMemberRef)
-    );
-    return this.memberStore.groupMembers().filter((m) => {
-      const memberRef = m.ref!;
-      return m.active || splitMembers.has(memberRef);
-    });
+      .filter((m) => m.active || splitMemberIds.has(m.id));
   });
 
-  splitMethod = signal<SplitMethod>('amount');
+  splitMethod = signal<SplitMethod>(this.expense().splitMethod);
 
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
   receiptUrl = model<string>(null as unknown as string);
 
-  datePicker = viewChild<ElementRef>('datePicker');
-  totalAmountField = viewChild<ElementRef>('totalAmount');
-  allocatedAmountField = viewChild<ElementRef>('propAmount');
   inputElements = viewChildren<ElementRef>('inputElement');
-  memberAmounts = viewChildren<ElementRef>('memberAmount');
 
-  editExpenseForm = this.fb.group({
-    paidByMember: [
-      null as unknown as DocumentReference<Member>,
-      Validators.required,
-    ],
-    date: [new Date(), Validators.required],
-    amount: [0, [Validators.required, this.amountValidator()]],
-    description: ['', Validators.required],
-    category: [
-      null as unknown as DocumentReference<Category>,
-      Validators.required,
-    ],
-    sharedAmount: [0, Validators.required],
-    allocatedAmount: [0, Validators.required],
-    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
+  protected readonly expenseModel = signal<Pick<ExpenseForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>({
+    paidByMember: this.expense().paidByMemberRef ?? null,
+    category: this.expense().categoryRef ?? null,
+    sharedAmount: this.expense().sharedAmount,
+    splits: this.expense().splits.map((s: Split) => ({
+      owedByMemberRef: s.owedByMemberRef,
+      assignedAmount: this.#formatForInput(s.assignedAmount),
+      percentage: s.percentage,
+      shares: s.shares ?? 0,
+      allocatedAmount: s.allocatedAmount,
+    })),
   });
 
+  protected readonly expenseFormData = signal<Pick<ExpenseForm, 'date' | 'amount' | 'description' | 'allocatedAmount'>>({
+    date: this.expense().date,
+    amount: this.#formatForInput(this.expense().totalAmount),
+    description: this.expense().description,
+    allocatedAmount: this.#formatForInput(this.expense().allocatedAmount),
+  });
+
+  protected readonly expenseForm = form(this.expenseFormData, (p) => {
+    required(p.date, { message: '*Required' });
+    required(p.amount, { message: '*Required' });
+    validate(p.amount, ({ value }) =>
+      this.stringUtils.toNumber(value()) === 0
+        ? { kind: 'zeroAmount', message: 'Cannot be zero' }
+        : null
+    );
+    required(p.description, { message: '*Required' });
+  });
+
+  protected readonly paidByMemberValid = computed(() => this.expenseModel().paidByMember !== null);
+  protected readonly categoryValid = computed(() => this.expenseModel().category !== null);
+  protected readonly modelDirty = signal(false);
+  protected readonly isFormDirty = computed(() => this.expenseForm().dirty() || this.modelDirty());
+
+  protected readonly splitsValid = computed(() =>
+    this.expenseModel().splits.length >= 1 &&
+    this.expenseModel().splits.every(s => s.owedByMemberRef !== null)
+  );
+
+  protected updateSplit(index: number, field: keyof ExpenseSplitItemForm, value: unknown): void {
+    this.modelDirty.set(true);
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: m.splits.map((s, i) => i === index ? { ...s, [field]: value } : s),
+    }));
+  }
+
   constructor() {
-    afterNextRender(() => {
-      const expense = this.expense();
-      this.totalAmountField()!.nativeElement.value =
-        this.decimalPipe.transform(expense.totalAmount, '1.2-2') || '0.00';
-      this.allocatedAmountField()!.nativeElement.value =
-        this.decimalPipe.transform(expense.allocatedAmount, '1.2-2') || '0.00';
-      this.memberAmounts().forEach((elementRef: ElementRef, index: number) => {
-        elementRef.nativeElement.value =
-          this.decimalPipe.transform(
-            expense.splits[index]!.assignedAmount,
-            '1.2-2'
-          ) || '0.00';
-      });
-    });
     afterEveryRender(() => {
       this.addSelectFocus();
     });
-    effect(() => {
-      const expense = this.expense();
-      this.loadExpense(expense);
-    });
-  }
-
-  async loadExpense(expense: Expense): Promise<void> {
-    this.splitMethod.set(expense.splitMethod);
-    this.editExpenseForm.patchValue({
-      paidByMember: expense.paidByMemberRef,
-      date: expense.date,
-      amount: expense.totalAmount,
-      description: expense.description,
-      category: expense.categoryRef,
-      sharedAmount: expense.sharedAmount,
-      allocatedAmount: expense.allocatedAmount,
-    });
-    expense.splits.forEach((s: Split) => {
-      this.splits.push(
-        this.fb.group({
-          owedByMemberRef: s.owedByMemberRef,
-          assignedAmount: s.assignedAmount,
-          percentage: s.percentage,
-          shares: s.shares ?? 0,
-          allocatedAmount: s.allocatedAmount,
-        })
-      );
-    });
+    const expense = this.expense();
     if (expense.hasReceipt) {
-      try {
-        const receiptRef = expense.receiptRef!;
-        const url = await getDownloadURL(receiptRef);
-        if (url) {
-          this.receiptUrl.set(<string>url);
-        }
-      } catch (error) {
+      getDownloadURL(expense.receiptRef!).then((url: string) => {
+        if (url) this.receiptUrl.set(url);
+      }).catch((error: unknown) => {
         if (error instanceof FirebaseError) {
           if (error.code === 'storage/object-not-found') {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -263,18 +226,12 @@ export class EditExpenseComponent {
           );
         } else {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: {
-              message: 'Something went wrong - could not retrieve receipt',
-            },
+            data: { message: 'Something went wrong - could not retrieve receipt' },
           });
         }
-      }
+      });
     }
     this.loading.loadingOff();
-  }
-
-  get splits(): FormArray {
-    return this.editExpenseForm.get('splits') as FormArray;
   }
 
   addSelectFocus(): void {
@@ -290,233 +247,31 @@ export class EditExpenseComponent {
     });
   }
 
-  createSplitFormGroup(): FormGroup {
-    const existingMembers = new Set(
-      this.splitsFormArray.controls.map(
-        (control) => control.get('owedByMemberRef')!.value.id
-      )
-    );
-    const availableMembers = this.expenseMembers().filter(
-      (m) => !existingMembers.has(m.id)
-    );
-    return this.fb.group({
-      owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
-        Validators.required,
-      ],
-      assignedAmount: [
-        this.localeService.getFormattedZero(),
-        Validators.required,
-      ],
-      percentage: [0],
-      shares: [0],
-      allocatedAmount: [0],
+  #formatForInput(value: number): string {
+    const rounded = this.localeService.roundToCurrency(value);
+    const currency = this.localeService.currency();
+    return rounded.toFixed(currency.decimalPlaces).replace('.', currency.decimalSeparator);
+  }
+
+  #mergeAllocationResults(
+    modelSplits: ExpenseSplitItemForm[],
+    resultSplits: AllocationSplit[],
+    updatePercentage: boolean
+  ): ExpenseSplitItemForm[] {
+    const updated = modelSplits.map(s => ({ ...s }));
+    resultSplits.forEach(split => {
+      const ref = split.owedByMemberRef;
+      if (!ref) return;
+      const key = ref.id || ref.toString();
+      const idx = updated.findIndex(s => {
+        const r = s.owedByMemberRef;
+        return r && (r.id || r.toString()) === key;
+      });
+      if (idx === -1) return;
+      if (updatePercentage) updated[idx]!.percentage = split.percentage;
+      updated[idx]!.allocatedAmount = split.allocatedAmount;
     });
-  }
-
-  amountValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      return control.value === 0 ? { zeroAmount: true } : null;
-    };
-  }
-
-  get e() {
-    return this.editExpenseForm.controls;
-  }
-
-  get splitsFormArray(): FormArray {
-    return this.editExpenseForm.get('splits') as FormArray;
-  }
-
-  addSplit(): void {
-    this.splitsFormArray.push(this.createSplitFormGroup());
-    // Set the value of the newly created input element to '0.00'
-    setTimeout(() => {
-      const lastInput = this.memberAmounts().find(
-        (i) => i.nativeElement.value === ''
-      );
-      if (lastInput) {
-        lastInput.nativeElement.value = this.localeService.getFormattedZero();
-        // Manually trigger the input event to update the mat-label
-        const event = new Event('input', { bubbles: true });
-        lastInput.nativeElement.dispatchEvent(event);
-      }
-    });
-    this.recalculateAllocation();
-    this.editExpenseForm.markAsDirty();
-  }
-
-  availableMembersForSplit(index: number): Member[] {
-    const selectedMemberIds = new Set(
-      this.splitsFormArray.controls
-        .filter((_, i) => i !== index)
-        .map((control) => control.get('owedByMemberRef')!.value)
-        .filter((memberRef) => memberRef !== null)
-        .map((memberRef) => memberRef.id)
-    );
-    return this.splitMembers().filter(
-      (member) => !selectedMemberIds.has(member.id)
-    );
-  }
-
-  removeSplit(index: number): void {
-    this.splitsFormArray.removeAt(index);
-    this.recalculateAllocation();
-    this.editExpenseForm.markAsDirty();
-  }
-
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      if (file) {
-        this.processSelectedFile(file);
-      }
-    }
-  }
-
-  removeFile(): void {
-    this.receiptFile.set(null);
-    this.fileName.set('');
-    this.editExpenseForm.markAsDirty();
-  }
-
-  /**
-   * Opens file selection dialog
-   * First checks if user has accepted receipt policy
-   * On native platforms: shows dialog to choose camera, gallery, file browser, or clipboard
-   * On web/PWA: shows dialog to choose file browser or clipboard
-   */
-  async openFileSelectionDialog(): Promise<void> {
-    // Check if user has accepted receipt policy (checked at click time, not component load)
-    const currentUser = this.userStore.user();
-    if (!currentUser?.receiptPolicy) {
-      const policyDialogRef = this.dialog.open(ReceiptDialogComponent, {
-        disableClose: true,
-        maxWidth: '600px',
-      });
-
-      const accepted = await new Promise<boolean>((resolve) => {
-        policyDialogRef.afterClosed().subscribe((value) => resolve(value));
-      });
-
-      if (!accepted) {
-        // User cancelled or didn't accept policy
-        return;
-      }
-      // Policy now accepted, continue with file selection
-    }
-
-    const dialogConfig: MatDialogConfig = {
-      disableClose: false,
-      maxWidth: '400px',
-      data: {
-        isNativePlatform: this.cameraService.isAvailable(),
-      },
-    };
-
-    const dialogRef = this.dialog.open(
-      FileSelectionDialogComponent,
-      dialogConfig
-    );
-
-    const result: FileSelectionOption | null = await new Promise((resolve) => {
-      dialogRef.afterClosed().subscribe((value) => resolve(value));
-    });
-
-    if (!result) {
-      // User cancelled
-      return;
-    }
-
-    try {
-      let file: File | null = null;
-
-      if (result === 'camera') {
-        file = await this.cameraService.takePicture();
-      } else if (result === 'gallery') {
-        file = await this.cameraService.selectFromGallery();
-      } else if (result === 'file') {
-        // Trigger the hidden file input
-        const fileInput = document.querySelector(
-          'input[type="file"]'
-        ) as HTMLInputElement;
-        if (fileInput) {
-          fileInput.click();
-        }
-        return; // The onFileSelected handler will process the file
-      } else if (result === 'clipboard') {
-        await this.pasteFromClipboard();
-        return;
-      }
-
-      // Process the file from camera or gallery
-      if (file) {
-        this.processSelectedFile(file);
-      }
-    } catch (error) {
-      console.error('Error selecting file:', error);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Failed to select file. Please try again' },
-      });
-    }
-  }
-
-  /**
-   * Reads an image from the clipboard and processes it as a receipt
-   * Uses the Clipboard API to read image data
-   */
-  private async pasteFromClipboard(): Promise<void> {
-    try {
-      const clipboardItems = await navigator.clipboard.read();
-      for (const item of clipboardItems) {
-        const imageType = item.types.find((type) => type.startsWith('image/'));
-        if (imageType) {
-          const blob = await item.getType(imageType);
-          const extension = imageType.split('/')[1] || 'png';
-          const file = new File([blob], `pasted-receipt.${extension}`, {
-            type: imageType,
-          });
-          this.processSelectedFile(file);
-          return;
-        }
-      }
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'No image found in clipboard.' },
-      });
-    } catch (error) {
-      console.error('Error reading from clipboard:', error);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Unable to read from clipboard. Please check permissions.',
-        },
-      });
-    }
-  }
-
-  /**
-   * Process a file (from camera, gallery, or file browser)
-   * Validates size and sets the file in the component state
-   */
-  private processSelectedFile(file: File): void {
-    if (file.size > 5 * 1024 * 1024) {
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'File is too large. File size limited to 5MB' },
-      });
-    } else {
-      this.receiptFile.set(file);
-      this.fileName.set(file.name);
-      this.editExpenseForm.markAsDirty();
-    }
-  }
-
-  onSplitMethodChange(): void {
-    this.editExpenseForm.markAsDirty();
-    this.recalculateAllocation();
-  }
-
-  updateTotalAmount(): void {
-    this.recalculateAllocation();
+    return updated;
   }
 
   private recalculateAllocation(): void {
@@ -528,96 +283,233 @@ export class EditExpenseComponent {
   }
 
   allocateSharedAmounts(): void {
-    const val = this.editExpenseForm.value;
-    const input = {
-      totalAmount: val.amount!,
-      sharedAmount: val.sharedAmount!,
-      allocatedAmount: val.allocatedAmount!,
-      splits: this.splitsFormArray.value.map((split: Split) => ({
-        owedByMemberRef: split.owedByMemberRef,
-        assignedAmount: split.assignedAmount,
-        percentage: split.percentage,
-        shares: split.shares ?? 0,
-        allocatedAmount: split.allocatedAmount,
+    const model = this.expenseModel();
+    const fd = this.expenseFormData();
+    const input: AllocationInput = {
+      totalAmount: this.stringUtils.toNumber(fd.amount),
+      sharedAmount: model.sharedAmount,
+      allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
+      splits: model.splits.map(s => ({
+        owedByMemberRef: s.owedByMemberRef,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
+        shares: s.shares ?? 0,
+        allocatedAmount: s.allocatedAmount,
       })),
     };
-
     const result = this.allocationUtils.allocateSharedAmounts(input);
-
-    // Update the form with the adjusted shared amount if it changed
-    if (result.adjustedSharedAmount !== val.sharedAmount) {
-      this.editExpenseForm.patchValue({
-        sharedAmount: result.adjustedSharedAmount,
-      });
-    }
-
-    // Apply the allocation results to the form array
-    this.allocationUtils.applyAllocationToFormArray(
-      this.splitsFormArray,
-      result
-    );
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, false);
+    this.expenseModel.update(m => ({
+      ...m,
+      sharedAmount: result.adjustedSharedAmount,
+      splits: updatedSplits,
+    }));
   }
 
   allocateByPercentage(): void {
-    if (this.splitsFormArray.length === 0) return;
+    const model = this.expenseModel();
+    if (model.splits.length === 0) return;
     const result = this.allocationUtils.allocateByPercentage({
-      totalAmount: +this.editExpenseForm.value.amount!,
-      splits: this.splitsFormArray.getRawValue().map((s: Split) => ({
+      totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),
+      splits: model.splits.map(s => ({
         owedByMemberRef: s.owedByMemberRef,
-        assignedAmount: s.assignedAmount,
-        percentage: s.percentage,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
         shares: s.shares ?? 0,
         allocatedAmount: s.allocatedAmount,
       })),
     });
-    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, true);
+    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
   }
 
   allocateByShares(): void {
-    if (this.splitsFormArray.length === 0) return;
+    const model = this.expenseModel();
+    if (model.splits.length === 0) return;
     const result = this.allocationUtils.allocateByShares({
-      totalAmount: +this.editExpenseForm.value.amount!,
-      splits: this.splitsFormArray.getRawValue().map((s: Split) => ({
+      totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),
+      splits: model.splits.map(s => ({
         owedByMemberRef: s.owedByMemberRef,
-        assignedAmount: s.assignedAmount,
-        percentage: s.percentage,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
         shares: s.shares ?? 0,
         allocatedAmount: s.allocatedAmount,
       })),
     });
-    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, true);
+    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
+  }
+
+  addSplit(): void {
+    this.modelDirty.set(true);
+    const existingIds = new Set(
+      this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
+    );
+    const available = this.splitMembers().filter(m => !existingIds.has(m.id));
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: [
+        ...m.splits,
+        {
+          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          assignedAmount: this.localeService.getFormattedZero(),
+          percentage: 0,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+      ],
+    }));
+    this.recalculateAllocation();
+  }
+
+  availableMembersForSplit(index: number): Member[] {
+    const selectedIds = new Set(
+      this.expenseModel().splits
+        .filter((_, i) => i !== index)
+        .map(s => s.owedByMemberRef?.id)
+        .filter(Boolean)
+    );
+    return this.splitMembers().filter(m => !selectedIds.has(m.id));
+  }
+
+  removeSplit(index: number): void {
+    this.modelDirty.set(true);
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: m.splits.filter((_, i) => i !== index),
+    }));
+    this.recalculateAllocation();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      if (file) this.processSelectedFile(file);
+    }
+  }
+
+  removeFile(): void {
+    this.receiptFile.set(null);
+    this.fileName.set('');
+  }
+
+  async openFileSelectionDialog(): Promise<void> {
+    const currentUser = this.userStore.user();
+    if (!currentUser?.receiptPolicy) {
+      const policyDialogRef = this.dialog.open(ReceiptDialogComponent, {
+        disableClose: true,
+        maxWidth: '600px',
+      });
+      const accepted = await new Promise<boolean>((resolve) => {
+        policyDialogRef.afterClosed().subscribe((value) => resolve(value));
+      });
+      if (!accepted) return;
+    }
+    const dialogConfig: MatDialogConfig = {
+      disableClose: false,
+      maxWidth: '400px',
+      data: { isNativePlatform: this.cameraService.isAvailable() },
+    };
+    const dialogRef = this.dialog.open(FileSelectionDialogComponent, dialogConfig);
+    const result: FileSelectionOption | null = await new Promise((resolve) => {
+      dialogRef.afterClosed().subscribe((value) => resolve(value));
+    });
+    if (!result) return;
+    try {
+      let file: File | null = null;
+      if (result === 'camera') {
+        file = await this.cameraService.takePicture();
+      } else if (result === 'gallery') {
+        file = await this.cameraService.selectFromGallery();
+      } else if (result === 'file') {
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) fileInput.click();
+        return;
+      } else if (result === 'clipboard') {
+        await this.pasteFromClipboard();
+        return;
+      }
+      if (file) this.processSelectedFile(file);
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Failed to select file. Please try again' },
+      });
+    }
+  }
+
+  private async pasteFromClipboard(): Promise<void> {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((type) => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const extension = imageType.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-receipt.${extension}`, { type: imageType });
+          this.processSelectedFile(file);
+          return;
+        }
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'No image found in clipboard.' },
+      });
+    } catch (error) {
+      console.error('Error reading from clipboard:', error);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Unable to read from clipboard. Please check permissions.' },
+      });
+    }
+  }
+
+  private processSelectedFile(file: File): void {
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'File is too large. File size limited to 5MB' },
+      });
+    } else {
+      this.receiptFile.set(file);
+      this.fileName.set(file.name);
+    }
+  }
+
+  onSplitMethodChange(): void {
+    this.recalculateAllocation();
+  }
+
+  updateTotalAmount(): void {
+    this.recalculateAllocation();
   }
 
   protected effectivePercentage(index: number): number {
-    const splits = this.splitsFormArray.getRawValue();
-    const totalShares = splits.reduce((t: number, s: Split) => t + (+s.shares || 0), 0);
+    const splits = this.expenseModel().splits;
+    const totalShares = splits.reduce((t, s) => t + (s.shares ?? 0), 0);
     if (totalShares === 0) return 0;
-    return ((+splits[index].shares || 0) / totalShares) * 100;
+    return ((splits[index]!.shares ?? 0) / totalShares) * 100;
   }
 
   getAssignedTotal = (): number =>
     this.localeService.roundToCurrency(
-      +[...this.splitsFormArray.value].reduce(
-        (total, s) =>
-          total + this.localeService.roundToCurrency(+s.assignedAmount),
+      this.expenseModel().splits.reduce(
+        (total, s) => total + this.localeService.roundToCurrency(this.stringUtils.toNumber(s.assignedAmount)),
         0
       )
     );
 
   getAllocatedTotal = (): number =>
     this.localeService.roundToCurrency(
-      +[...this.splitsFormArray.value].reduce(
-        (total, s) =>
-          total + this.localeService.roundToCurrency(+s.allocatedAmount),
+      this.expenseModel().splits.reduce(
+        (total, s) => total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
     );
 
   expenseFullyAllocated = (): boolean =>
-    this.editExpenseForm.value.amount == this.getAllocatedTotal();
+    this.stringUtils.toNumber(this.expenseFormData().amount) === this.getAllocatedTotal();
 
   isLastSplit(index: number): boolean {
-    return this.splitMethod() === 'percentage' && index === this.splitsFormArray.length - 1;
+    return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
   }
 
   async onSubmit(): Promise<void> {
@@ -640,34 +532,31 @@ export class EditExpenseComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          const val = this.editExpenseForm.getRawValue();
-          const expenseDate = toIsoFormat(val.date!);
+          const model = this.expenseModel();
+          const fd = this.expenseFormData();
+          const expenseDate = toIsoFormat(fd.date!);
           const changes: Partial<ExpenseDto> = {
             date: expenseDate,
-            description: val.description!,
-            categoryRef: val.category!,
-            paidByMemberRef: val.paidByMember!,
-            sharedAmount: +val.sharedAmount!,
-            allocatedAmount: +val.allocatedAmount!,
-            totalAmount: +val.amount!,
+            description: fd.description,
+            categoryRef: model.category!,
+            paidByMemberRef: model.paidByMember!,
+            sharedAmount: model.sharedAmount,
+            allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
+            totalAmount: this.stringUtils.toNumber(fd.amount),
             splitMethod: this.splitMethod(),
             paid: false,
           };
-          let splits: Partial<SplitDto>[] = [];
-          this.splitsFormArray.getRawValue().forEach((s) => {
-            const split: Partial<SplitDto> = {
-              date: expenseDate,
-              categoryRef: val.category!,
-              assignedAmount: +s.assignedAmount,
-              percentage: +s.percentage,
-              shares: +s.shares,
-              allocatedAmount: +s.allocatedAmount,
-              paidByMemberRef: val.paidByMember!,
-              owedByMemberRef: s.owedByMemberRef,
-              paid: s.owedByMemberRef.eq(val.paidByMember),
-            };
-            splits.push(split);
-          });
+          const splits: Partial<SplitDto>[] = model.splits.map(s => ({
+            date: expenseDate,
+            categoryRef: model.category!,
+            assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+            percentage: s.percentage ?? 0,
+            shares: s.shares ?? 0,
+            allocatedAmount: s.allocatedAmount,
+            paidByMemberRef: model.paidByMember!,
+            owedByMemberRef: s.owedByMemberRef!,
+            paid: s.owedByMemberRef!.eq(model.paidByMember!),
+          }));
           const expenseRef = this.expense().ref!;
           await this.expenseService.updateExpense(
             this.#currentGroup()!.id,
@@ -696,9 +585,7 @@ export class EditExpenseComponent {
             );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: {
-                message: 'Something went wrong - could not edit expense',
-              },
+              data: { message: 'Something went wrong - could not edit expense' },
             });
           }
         } finally {
@@ -715,10 +602,7 @@ export class EditExpenseComponent {
       return;
     }
     const dialogConfig: MatDialogConfig = {
-      data: {
-        operation: 'Delete',
-        target: `this expense`,
-      },
+      data: { operation: 'Delete', target: 'this expense' },
     };
     const dialogRef = this.dialog.open(DeleteDialogComponent, dialogConfig);
     dialogRef.afterClosed().subscribe(async (confirm) => {
@@ -726,10 +610,7 @@ export class EditExpenseComponent {
         try {
           this.loading.loadingOn();
           const expenseRef = this.expense().ref!;
-          await this.expenseService.deleteExpense(
-            this.#currentGroup()!.id,
-            expenseRef
-          );
+          await this.expenseService.deleteExpense(this.#currentGroup()!.id, expenseRef);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Expense deleted' },
           });
@@ -750,9 +631,7 @@ export class EditExpenseComponent {
             );
           } else {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: {
-                message: 'Something went wrong - could not delete expense',
-              },
+              data: { message: 'Something went wrong - could not delete expense' },
             });
           }
         } finally {
@@ -770,26 +649,21 @@ export class EditExpenseComponent {
     }
   }
 
-  openCalculator(event: Event, controlName: string, index?: number): void {
+  openCalculator(event: Event, field: 'amount' | 'allocatedAmount', index?: number): void {
     const target = event.target as HTMLElement;
     this.calculatorOverlay.openCalculator(target, (result: number) => {
+      const formatted = this.#formatForInput(result);
       if (index === undefined) {
-        const control = this.editExpenseForm.get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.updateTotalAmount();
-        }
+        this.expenseFormData.update(fd => ({ ...fd, [field]: formatted }));
       } else {
-        const control = this.splitsFormArray.at(index).get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.recalculateAllocation();
-        }
+        this.expenseModel.update(m => ({
+          ...m,
+          splits: m.splits.map((s, i) =>
+            i === index ? { ...s, assignedAmount: formatted } : s
+          ),
+        }));
       }
+      this.recalculateAllocation();
     });
   }
 

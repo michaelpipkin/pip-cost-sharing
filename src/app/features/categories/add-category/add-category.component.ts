@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
@@ -22,8 +21,6 @@ import { DemoService } from '@services/demo.service';
   templateUrl: './add-category.component.html',
   styleUrl: './add-category.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatButtonModule,
@@ -35,7 +32,6 @@ import { DemoService } from '@services/demo.service';
 export class AddCategoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddCategoryComponent>);
-  protected readonly fb = inject(FormBuilder);
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);

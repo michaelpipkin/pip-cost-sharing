@@ -21,8 +21,7 @@ test.describe('Authentication - Unauthenticated User Tests', () => {
     // Note: Register page uses component-prefixed testids and some elements lack testids
     await expect(page.getByTestId('register-form')).toBeVisible();
     await expect(page.getByTestId('register-email-input')).toBeVisible();
-    // Password field and submit button don't have testids, use formControlName/text selectors
-    await expect(page.locator('input[formControlName="password"]')).toBeVisible();
+    await expect(page.getByTestId('register-password-input')).toBeVisible();
     await expect(page.locator('button:has-text("Register")')).toBeVisible();
   });
 

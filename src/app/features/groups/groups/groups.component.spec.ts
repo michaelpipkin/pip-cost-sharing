@@ -80,6 +80,17 @@ describe('GroupsComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  describe('group select', () => {
+    it('should render the group select when active groups are available', async () => {
+      mockGroupStore.loaded.set(true);
+      mockGroupStore.allUserGroups.set([testGroup]);
+      fixture.detectChanges();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="group-select"]')
+      ).toBeTruthy();
+    });
+  });
+
   describe('addGroup', () => {
     it('should show demo restriction when in demo mode', () => {
       mockDemoService.isInDemoMode.mockReturnValue(true);
@@ -133,12 +144,6 @@ describe('GroupsComponent', () => {
     it('should call tourService.startWelcomeTour with force=true', () => {
       component.startTour();
       expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
-    });
-  });
-
-  describe('groupForm', () => {
-    it('should initialize with selectedGroupRef control', () => {
-      expect(component.groupForm.get('selectedGroupRef')).toBeTruthy();
     });
   });
 });

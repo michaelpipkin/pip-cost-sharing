@@ -14,3 +14,8 @@ export interface CategoryForm {
   categoryName: string;
   active?: boolean;
 }
+
+export interface EditCategoryForm {
+  categoryName: string;
+  active: boolean;
+}

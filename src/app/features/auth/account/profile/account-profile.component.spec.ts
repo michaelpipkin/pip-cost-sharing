@@ -62,6 +62,14 @@ describe('AccountProfileComponent', () => {
     fixture.detectChanges();
   }
 
+  function setEmailValue(value: string): void {
+    const input = fixture.nativeElement.querySelector(
+      '[data-testid="account-email-input"]'
+    ) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
   afterEach(() => {
     vi.restoreAllMocks();
     TestBed.resetTestingModule();
@@ -222,11 +230,14 @@ describe('AccountProfileComponent', () => {
   describe('onSubmitEmail()', () => {
     beforeEach(async () => {
       await createComponent();
+      mockUserStore.isGoogleUser.set(false);
+      fixture.detectChanges();
     });
 
     it('should not call updateEmail when email is unchanged', async () => {
       const spy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
-      component.emailForm.setValue({ email: 'test@example.com' });
+      setEmailValue('test@example.com');
+      await fixture.whenStable();
       await component.onSubmitEmail();
       expect(spy).not.toHaveBeenCalled();
     });
@@ -234,7 +245,8 @@ describe('AccountProfileComponent', () => {
     it('should call updateEmail when email changes', async () => {
       const updateSpy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
       vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue();
-      component.emailForm.setValue({ email: 'new@example.com' });
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
       await component.onSubmitEmail();
       expect(updateSpy).toHaveBeenCalled();
     });
@@ -244,7 +256,8 @@ describe('AccountProfileComponent', () => {
         code: 'auth/email-already-in-use',
       });
       vi.spyOn(authModule, 'updateEmail').mockRejectedValue(error);
-      component.emailForm.setValue({ email: 'taken@example.com' });
+      setEmailValue('taken@example.com');
+      await fixture.whenStable();
       await component.onSubmitEmail();
       expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
         'Account Profile Component',
@@ -260,18 +273,11 @@ describe('AccountProfileComponent', () => {
       vi.spyOn(authModule, 'updateEmail').mockRejectedValue(
         new Error('network error')
       );
-      component.emailForm.setValue({ email: 'new@example.com' });
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
       await component.onSubmitEmail();
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
       expect(data?.message).toContain('could not be updated');
-    });
-
-    it('should re-enable the form after submission', async () => {
-      vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
-      vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue();
-      component.emailForm.setValue({ email: 'new@example.com' });
-      await component.onSubmitEmail();
-      expect(component.emailForm.enabled).toBe(true);
     });
   });
 

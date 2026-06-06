@@ -1,31 +1,38 @@
 <h1 mat-dialog-title data-testid="add-group-title">Add New Group</h1>
-<form [formGroup]="newGroupForm">
+<form (submit)="$event.preventDefault()">
   <mat-dialog-content class="content">
     <mat-form-field appearance="fill">
       <mat-label>Group name</mat-label>
       <input
         matInput
-        formControlName="groupName"
+        [formField]="newGroupForm.groupName"
         data-testid="group-name-input"
       />
-      @if (f.groupName.errors?.['required']) {
-        <mat-error>*Required</mat-error>
+      @for (error of newGroupForm.groupName().errors(); track error; let i = $index) {
+        <mat-error [attr.data-testid]="'group-name-error-' + i">
+          {{ error.message }}
+        </mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill">
       <mat-label>Your name in the group</mat-label>
       <input
         matInput
-        formControlName="displayName"
+        [formField]="newGroupForm.displayName"
         data-testid="display-name-input"
       />
-      @if (f.displayName.errors?.['required']) {
-        <mat-error>*Required</mat-error>
+      @for (error of newGroupForm.displayName().errors(); track error; let i = $index) {
+        <mat-error [attr.data-testid]="'display-name-error-' + i">
+          {{ error.message }}
+        </mat-error>
       }
     </mat-form-field>
     <mat-form-field appearance="fill" class="mb-4">
       <mat-label>Currency</mat-label>
-      <mat-select formControlName="currencyCode" data-testid="currency-select">
+      <mat-select
+        [formField]="newGroupForm.currencyCode"
+        data-testid="currency-select"
+      >
         @for (currency of supportedCurrencies; track currency.code) {
           @if (currency.symbolPosition === 'none') {
             <mat-option [value]="currency.code">
@@ -38,8 +45,10 @@
           }
         }
       </mat-select>
-      @if (f.currencyCode.errors?.['required']) {
-        <mat-error>*Required</mat-error>
+      @for (error of newGroupForm.currencyCode().errors(); track error; let i = $index) {
+        <mat-error [attr.data-testid]="'currency-error-' + i">
+          {{ error.message }}
+        </mat-error>
       }
       <mat-hint>
         Cannot be changed once expenses are added to the group
@@ -47,7 +56,7 @@
     </mat-form-field>
     <div class="toggle">
       <mat-slide-toggle
-        formControlName="autoAddMembers"
+        [formField]="newGroupForm.autoAddMembers"
         data-testid="auto-add-members-toggle"
       >
         Automatically add all group
@@ -63,7 +72,7 @@
       class="btn-secondary"
       type="submit"
       defaultButton
-      [disabled]="!newGroupForm.valid || newGroupForm.disabled"
+      [disabled]="!newGroupForm().valid()"
       (click)="onSubmit()"
     >
       Save
@@ -72,7 +81,6 @@
       data-testid="add-group-cancel-button"
       mat-stroked-button
       type="button"
-      [disabled]="newGroupForm.disabled"
       [mat-dialog-close]="false"
     >
       Cancel

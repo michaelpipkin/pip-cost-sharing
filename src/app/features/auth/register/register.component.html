@@ -1,9 +1,8 @@
 <div class="container" data-testid="register-container">
   <h2 data-testid="register-title">Create Account</h2>
   <form
-    [formGroup]="registerForm"
     class="register"
-    (submit)="register()"
+    (submit)="$event.preventDefault(); register()"
     data-testid="register-form"
     aria-label="Create account form"
   >
@@ -12,15 +11,14 @@
       <input
         matInput
         type="email"
-        formControlName="email"
+        [formField]="registerForm.email"
         data-testid="register-email-input"
         aria-label="Email address"
       />
-      @if (r.email.errors?.required) {
-        <mat-error>Email is required.</mat-error>
-      }
-      @if (r.email.errors?.email) {
-        <mat-error>Invalid email address.</mat-error>
+      @for (error of registerForm.email().errors(); track error; let i = $index) {
+        <mat-error [attr.data-testid]="'register-email-error-' + i">
+          {{ error.message }}
+        </mat-error>
       }
     </mat-form-field>
     <mat-form-field>
@@ -28,7 +26,8 @@
       <input
         matInput
         [type]="hidePassword() ? 'password' : 'text'"
-        formControlName="password"
+        [formField]="registerForm.password"
+        data-testid="register-password-input"
       />
       <button
         mat-icon-button
@@ -49,7 +48,8 @@
       <input
         matInput
         [type]="hideConfirmPassword() ? 'password' : 'text'"
-        formControlName="confirmPassword"
+        [formField]="registerForm.confirmPassword"
+        data-testid="register-confirm-password-input"
       />
       <button
         mat-icon-button
@@ -65,8 +65,13 @@
         </mat-icon>
       </button>
     </mat-form-field>
-    @if (registerForm.errors?.passwordMismatch && r.confirmPassword.touched) {
-      <div class="form-error">Passwords do not match.</div>
+    @if (
+      registerForm().errors().some(e => e.message === 'Passwords do not match.') &&
+      registerForm.confirmPassword().touched()
+    ) {
+      <div class="form-error" data-testid="register-password-mismatch-error">
+        Passwords do not match.
+      </div>
     }
     <div id="hcaptcha-container"></div>
     <p
@@ -93,9 +98,7 @@
         mat-raised-button
         class="btn-primary"
         type="submit"
-        [disabled]="
-          registerForm.invalid || registerForm.pristine || !passedCaptcha()
-        "
+        [disabled]="!registerForm().valid() || !registerForm().dirty() || !passedCaptcha()"
       >
         <span class="register-button">Register</span>
       </button>

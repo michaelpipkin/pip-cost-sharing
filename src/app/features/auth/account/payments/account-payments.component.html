@@ -1,16 +1,16 @@
 <div class="container" data-testid="payments-container">
   <h4 data-testid="payments-title">Payment Service IDs</h4>
   <form
-    [formGroup]="paymentsForm"
     class="container payments"
     data-testid="payments-form"
     aria-label="Payment service IDs form"
+    (submit)="$event.preventDefault()"
   >
     <mat-form-field data-testid="venmo-field">
       <mat-label>Venmo</mat-label>
       <input
         matInput
-        formControlName="venmoId"
+        [formField]="paymentsForm.venmoId"
         data-testid="venmo-input"
         aria-label="Venmo ID"
       />
@@ -19,7 +19,7 @@
       <mat-label>PayPal</mat-label>
       <input
         matInput
-        formControlName="paypalId"
+        [formField]="paymentsForm.paypalId"
         data-testid="paypal-input"
         aria-label="PayPal ID"
       />
@@ -28,7 +28,7 @@
       <mat-label>CashApp</mat-label>
       <input
         matInput
-        formControlName="cashAppId"
+        [formField]="paymentsForm.cashAppId"
         data-testid="cashapp-input"
         aria-label="CashApp ID"
       />
@@ -37,7 +37,7 @@
       <mat-label>Zelle</mat-label>
       <input
         matInput
-        formControlName="zelleId"
+        [formField]="paymentsForm.zelleId"
         data-testid="zelle-input"
         aria-label="Zelle ID"
       />
@@ -46,7 +46,7 @@
       mat-raised-button
       class="btn-primary"
       type="submit"
-      [disabled]="paymentsForm.pristine"
+      [disabled]="!paymentsForm().dirty()"
       (click)="onSubmitPayments()"
       data-testid="save-payments-button"
       aria-label="Save payment service IDs"

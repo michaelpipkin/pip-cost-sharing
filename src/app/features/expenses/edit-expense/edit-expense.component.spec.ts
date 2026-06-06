@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
-import { Expense } from '@models/expense';
+import { Expense, ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
@@ -83,6 +83,23 @@ describe('EditExpenseComponent', () => {
     ref: expenseRef,
   });
 
+  function getModel(): ExpenseForm {
+    return (component as any).expenseModel();
+  }
+
+  function patchModel(patch: Partial<ExpenseForm>): void {
+    (component as any).expenseModel.update((m: ExpenseForm) => ({ ...m, ...patch }));
+  }
+
+  function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
+    (component as any).expenseModel.update((m: ExpenseForm) => ({
+      ...m,
+      splits: m.splits.map((s: ExpenseSplitItemForm, i: number) =>
+        i === index ? { ...s, ...patch } : s
+      ),
+    }));
+  }
+
   beforeEach(async () => {
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
@@ -157,11 +174,11 @@ describe('EditExpenseComponent', () => {
 
   describe('form pre-population', () => {
     it('should pre-populate description from expense data', () => {
-      expect(component.e.description.value).toBe('Team Lunch');
+      expect(getModel().description).toBe('Team Lunch');
     });
 
     it('should pre-populate amount from expense data', () => {
-      expect(component.e.amount.value).toBe(100);
+      expect(getModel().amount).toBe('100.00');
     });
 
     it('should load expense from route data', () => {
@@ -169,19 +186,19 @@ describe('EditExpenseComponent', () => {
     });
 
     it('should pre-populate splits from expense data', () => {
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
     });
   });
 
-  describe('addSplit / removeSplit', () => {
+  describe('model split operations', () => {
     it('should add a split row', () => {
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(2);
+      expect(getModel().splits.length).toBe(2);
     });
 
     it('should remove a split row', () => {
       component.removeSplit(0);
-      expect(component.splitsFormArray.length).toBe(0);
+      expect(getModel().splits.length).toBe(0);
     });
   });
 
@@ -197,8 +214,6 @@ describe('EditExpenseComponent', () => {
     it('should open confirmation dialog when not in demo mode', async () => {
       // EditExpenseComponent imports MatDialogModule which overrides the test-level mock,
       // so we spy directly on the component's injected dialog instance.
-      // Full form-submission flow (updateExpense + navigation after confirm) is better
-      // covered by integration/e2e tests since it requires date extensions, group context, etc.
       mockDemoService.isInDemoMode.mockReturnValue(false);
       const dialogSpy = vi
         .spyOn((component as any)['dialog'], 'open')
@@ -245,7 +260,7 @@ describe('EditExpenseComponent', () => {
   });
 
   describe('split method', () => {
-    it('should default splitMethod to amount', () => {
+    it('should initialize splitMethod from expense data', () => {
       expect(component.splitMethod()).toBe('amount');
     });
 
@@ -261,20 +276,18 @@ describe('EditExpenseComponent', () => {
     });
 
     it('should allocate by shares correctly', async () => {
-      // The form starts with 1 pre-loaded split; add a second
       component.splitMethod.set('shares');
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedByMemberRef: splitMemberRef, shares: 1 });
-      component.splitsFormArray.at(1).patchValue({ owedByMemberRef: memberRef, shares: 3 });
-
-      component.editExpenseForm.patchValue({ amount: 100 });
+      patchSplit(0, { owedByMemberRef: splitMemberRef, shares: 1 });
+      patchSplit(1, { owedByMemberRef: memberRef, shares: 3 });
+      patchModel({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(75);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(75);
     });
   });
 });

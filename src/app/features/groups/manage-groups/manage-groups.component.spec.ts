@@ -8,7 +8,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
-import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -37,7 +36,6 @@ describe('ManageGroupsComponent', () => {
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockExpenseStore: ReturnType<typeof createMockExpenseStore>;
-  let mockExpenseService: { hasExpensesForGroup: ReturnType<typeof vi.fn> };
 
   const testGroup = mockGroup({ id: 'group-1', name: 'Test Group' });
 
@@ -48,9 +46,6 @@ describe('ManageGroupsComponent', () => {
     mockDialog = createMockMatDialog();
     mockGroupStore = createMockGroupStore();
     mockExpenseStore = createMockExpenseStore();
-    mockExpenseService = {
-      hasExpensesForGroup: vi.fn().mockResolvedValue(false),
-    };
 
     vi.mocked(mockGroupService.updateGroup).mockResolvedValue(undefined as any);
     vi.mocked(mockGroupService.deleteGroup).mockResolvedValue(undefined as any);
@@ -67,7 +62,6 @@ describe('ManageGroupsComponent', () => {
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: GroupService, useValue: mockGroupService },
         { provide: ExpenseStore, useValue: mockExpenseStore },
-        { provide: ExpenseService, useValue: mockExpenseService },
         { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
@@ -78,6 +72,7 @@ describe('ManageGroupsComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -106,15 +101,18 @@ describe('ManageGroupsComponent', () => {
   });
 
   describe('form initialization', () => {
-    it('should initialize form with the selected group data', async () => {
-      await fixture.whenStable();
-      expect(component.f['groupName'].value).toBe('Test Group');
+    it('should initialize form with the selected group data', () => {
+      const input = el.querySelector(
+        '[data-testid="manage-group-name-input"]'
+      ) as HTMLInputElement;
+      expect(input?.value).toBe('Test Group');
     });
 
-    it('should initialize with currency field enabled when group has no expenses', async () => {
-      await fixture.whenStable();
-      expect(component['expenseStore'].groupHasExpenses()).toBe(false);
-      expect(component.f['currencyCode'].disabled).toBe(false);
+    it('should initialize with currency field enabled when group has no expenses', () => {
+      expect(mockExpenseStore.groupHasExpenses()).toBe(false);
+      expect(
+        (component as any).editGroupForm.currencyCode().disabled()
+      ).toBe(false);
     });
 
     it('should disable currency field when group has expenses', async () => {
@@ -131,26 +129,34 @@ describe('ManageGroupsComponent', () => {
           { provide: LoadingService, useValue: createMockLoadingService() },
           { provide: GroupStore, useValue: mockGroupStore },
           { provide: GroupService, useValue: mockGroupService },
-          { provide: ExpenseStore, useValue: mockExpenseStoreWithExpenses },
-          { provide: ExpenseService, useValue: mockExpenseService },
+          {
+            provide: ExpenseStore,
+            useValue: mockExpenseStoreWithExpenses,
+          },
           { provide: DemoService, useValue: mockDemoService },
           { provide: MatDialog, useValue: mockDialog },
-          { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+          {
+            provide: AnalyticsService,
+            useValue: createMockAnalyticsService(),
+          },
         ],
       }).compileComponents();
 
       const newFixture = TestBed.createComponent(ManageGroupsComponent);
       await newFixture.whenStable();
+      newFixture.detectChanges();
 
-      expect(newFixture.componentInstance.f['currencyCode'].disabled).toBe(true);
+      expect(
+        (newFixture.componentInstance as any).editGroupForm
+          .currencyCode()
+          .disabled()
+      ).toBe(true);
     });
   });
 
   describe('onSubmit', () => {
-    beforeEach(async () => {
-      component.f['groupName'].setValue('Updated Group Name');
-      component.f['groupName'].markAsDirty();
-      await fixture.whenStable();
+    beforeEach(() => {
+      fixture.detectChanges();
     });
 
     it('should call groupService.updateGroup on submit', async () => {

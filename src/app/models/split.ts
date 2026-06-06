@@ -3,6 +3,22 @@ import { Category } from './category';
 import { Expense } from './expense';
 import { Member } from './member';
 
+export interface SplitItemForm {
+  owedBy: string;
+  assignedAmount: string;
+  percentage: number | null;
+  shares: number | null;
+  allocatedAmount: number;
+}
+
+export interface SplitExpenseForm {
+  currencyCode: string;
+  amount: string;
+  sharedAmount: number;
+  allocatedAmount: string;
+  splits: SplitItemForm[];
+}
+
 export class Split {
   constructor(init?: Partial<Split>) {
     Object.assign(this, init);

@@ -1,5 +1,11 @@
-import { ChangeDetectionStrategy, Component, effect, inject, Signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  Signal,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +15,7 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { Group } from '@models/group';
+import { PreferencesForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
 import { GroupStore } from '@store/group.store';
@@ -18,7 +25,6 @@ import { UserStore } from '@store/user.store';
   selector: 'app-account-preferences',
   templateUrl: './account-preferences.component.html',
   imports: [
-    ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
@@ -29,7 +35,6 @@ import { UserStore } from '@store/user.store';
 })
 export class AccountPreferencesComponent {
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly userService = inject(UserService);
@@ -39,24 +44,20 @@ export class AccountPreferencesComponent {
   currentUser = this.userStore.user;
   activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
-  groupForm = this.fb.group({
-    groupRef: [this.currentUser()?.defaultGroupRef ?? null],
-  });
+  protected readonly groupRef = signal<PreferencesForm['groupRef']>(
+    this.currentUser()?.defaultGroupRef ?? null
+  );
+  protected readonly isDirty = signal(false);
 
   constructor() {
     effect(() => {
-      this.groupForm.patchValue({
-        groupRef: this.currentUser()?.defaultGroupRef ?? null,
-      });
+      this.groupRef.set(this.currentUser()?.defaultGroupRef ?? null);
+      this.isDirty.set(false);
     });
   }
 
-  get g() {
-    return this.groupForm.controls;
-  }
-
   async onSubmitGroup(): Promise<void> {
-    const groupRef = this.groupForm.value.groupRef ?? null;
+    const groupRef = this.groupRef();
     this.loading.loadingOn();
     try {
       await this.userService.updateUser({ defaultGroupRef: groupRef });

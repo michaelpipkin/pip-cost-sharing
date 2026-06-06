@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
+import { SplitExpenseForm, SplitItemForm } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { DemoService } from '@services/demo.service';
@@ -30,6 +31,26 @@ describe('SplitComponent', () => {
   let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
+
+  function getModel(): SplitExpenseForm {
+    return (component as any).expenseModel();
+  }
+
+  function patchModel(patch: Partial<SplitExpenseForm>): void {
+    (component as any).expenseModel.update((m: SplitExpenseForm) => ({
+      ...m,
+      ...patch,
+    }));
+  }
+
+  function patchSplit(index: number, patch: Partial<SplitItemForm>): void {
+    (component as any).expenseModel.update((m: SplitExpenseForm) => ({
+      ...m,
+      splits: m.splits.map((s: SplitItemForm, i: number) =>
+        i === index ? { ...s, ...patch } : s
+      ),
+    }));
+  }
 
   beforeEach(async () => {
     mockGroupStore = createMockGroupStore();
@@ -65,7 +86,6 @@ describe('SplitComponent', () => {
   });
 
   afterEach(() => {
-    // Component ngOnDestroy should restore group currency
     fixture.destroy();
   });
 
@@ -83,7 +103,7 @@ describe('SplitComponent', () => {
     it('should render currency selector defaulted to USD', () => {
       const currencySelect = query('split-currency-select');
       expect(currencySelect).toBeTruthy();
-      expect(component.expenseForm.value.currencyCode).toBe('USD');
+      expect(getModel().currencyCode).toBe('USD');
     });
 
     it('should render help button', () => {
@@ -95,7 +115,7 @@ describe('SplitComponent', () => {
     });
 
     it('should have empty splits array initially', () => {
-      expect(component.splitsFormArray.length).toBe(0);
+      expect(getModel().splits.length).toBe(0);
     });
   });
 
@@ -111,7 +131,7 @@ describe('SplitComponent', () => {
     });
 
     it('should update local currency when currency changes', async () => {
-      component.expenseForm.patchValue({ currencyCode: 'EUR' });
+      patchModel({ currencyCode: 'EUR' });
       component.onCurrencyChange();
       await fixture.whenStable();
 
@@ -119,20 +139,17 @@ describe('SplitComponent', () => {
     });
 
     it('should reset form when currency changes', async () => {
-      // Add some data
       component.addSplit();
-      component.expenseForm.patchValue({ amount: 100 });
+      patchModel({ amount: '100.00' });
       await fixture.whenStable();
 
-      // Change currency
-      component.expenseForm.patchValue({ currencyCode: 'JPY' });
+      patchModel({ currencyCode: 'JPY' });
       component.onCurrencyChange();
       await fixture.whenStable();
 
-      // Form should be reset except currency
-      expect(component.expenseForm.value.amount).toBe(0);
-      expect(component.splitsFormArray.length).toBe(0);
-      expect(component.expenseForm.value.currencyCode).toBe('JPY');
+      expect(parseFloat(getModel().amount)).toBe(0);
+      expect(getModel().splits.length).toBe(0);
+      expect(getModel().currencyCode).toBe('JPY');
     });
 
     it('should restore group currency on destroy', () => {
@@ -145,34 +162,31 @@ describe('SplitComponent', () => {
     });
   });
 
-  describe('FormArray operations', () => {
-    it('should add split to FormArray', () => {
-      expect(component.splitsFormArray.length).toBe(0);
+  describe('model split operations', () => {
+    it('should add split to model', () => {
+      expect(getModel().splits.length).toBe(0);
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
     });
 
-    it('should remove split from FormArray', () => {
+    it('should remove split from model', () => {
       component.addSplit();
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(2);
+      expect(getModel().splits.length).toBe(2);
 
       component.removeSplit(0);
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
     });
-
-    // Note: FormArray validation timing issues in test environment.
-    // Form validation is indirectly tested through button states and e2e tests.
 
     it('should create split with all required fields', () => {
       component.addSplit();
-      const split = component.splitsFormArray.at(0);
+      const split = getModel().splits[0];
 
-      expect(split.get('owedBy')).toBeTruthy();
-      expect(split.get('assignedAmount')).toBeTruthy();
-      expect(split.get('percentage')).toBeTruthy();
-      expect(split.get('shares')).toBeTruthy();
-      expect(split.get('allocatedAmount')).toBeTruthy();
+      expect(split).toHaveProperty('owedBy');
+      expect(split).toHaveProperty('assignedAmount');
+      expect(split).toHaveProperty('percentage');
+      expect(split).toHaveProperty('shares');
+      expect(split).toHaveProperty('allocatedAmount');
     });
 
     it('should trigger recalculation when adding split', () => {
@@ -197,22 +211,22 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice' });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob' });
-      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie' });
+      patchSplit(0, { owedBy: 'Alice' });
+      patchSplit(1, { owedBy: 'Bob' });
+      patchSplit(2, { owedBy: 'Charlie' });
 
-      component.expenseForm.patchValue({
-        amount: 60,
+      patchModel({
+        amount: '60.00',
         sharedAmount: 60,
-        allocatedAmount: 0,
+        allocatedAmount: '0.00',
       });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(20);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(20);
-      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(20);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(20);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(20);
+      expect(getModel().splits[2]!.allocatedAmount).toBe(20);
     });
 
     it('should handle uneven split with rounding', async () => {
@@ -220,30 +234,29 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice' });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob' });
-      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie' });
+      patchSplit(0, { owedBy: 'Alice' });
+      patchSplit(1, { owedBy: 'Bob' });
+      patchSplit(2, { owedBy: 'Charlie' });
 
-      component.expenseForm.patchValue({
-        amount: 10,
+      patchModel({
+        amount: '10.00',
         sharedAmount: 10,
-        allocatedAmount: 0,
+        allocatedAmount: '0.00',
       });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
       const total =
-        component.splitsFormArray.at(0).value.allocatedAmount +
-        component.splitsFormArray.at(1).value.allocatedAmount +
-        component.splitsFormArray.at(2).value.allocatedAmount;
+        getModel().splits[0]!.allocatedAmount +
+        getModel().splits[1]!.allocatedAmount +
+        getModel().splits[2]!.allocatedAmount;
 
       expect(total).toBe(10);
-      // At least one should have rounding adjustment
       const amounts = [
-        component.splitsFormArray.at(0).value.allocatedAmount,
-        component.splitsFormArray.at(1).value.allocatedAmount,
-        component.splitsFormArray.at(2).value.allocatedAmount,
+        getModel().splits[0]!.allocatedAmount,
+        getModel().splits[1]!.allocatedAmount,
+        getModel().splits[2]!.allocatedAmount,
       ];
       expect(amounts.some((a) => a === 3.34)).toBe(true);
     });
@@ -253,81 +266,59 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({
-        owedBy: 'Alice',
-        assignedAmount: 30,
-      });
-      component.splitsFormArray.at(1).patchValue({
-        owedBy: 'Bob',
-        assignedAmount: 30,
-      });
-      component.splitsFormArray.at(2).patchValue({
-        owedBy: 'Charlie',
-        assignedAmount: 20,
-      });
+      patchSplit(0, { owedBy: 'Alice', assignedAmount: '30.00' });
+      patchSplit(1, { owedBy: 'Bob', assignedAmount: '30.00' });
+      patchSplit(2, { owedBy: 'Charlie', assignedAmount: '20.00' });
 
-      component.expenseForm.patchValue({
-        amount: 100,
+      patchModel({
+        amount: '100.00',
         sharedAmount: 0,
-        allocatedAmount: 20,
+        allocatedAmount: '20.00',
       });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
-      // Alice and Bob should each get 30 + proportional share (7.5)
-      // Charlie should get 20 + proportional share (5)
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBeCloseTo(
-        37.5,
-        1
-      );
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBeCloseTo(
-        37.5,
-        1
-      );
-      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBeCloseTo(
-        25,
-        1
-      );
+      expect(getModel().splits[0]!.allocatedAmount).toBeCloseTo(37.5, 1);
+      expect(getModel().splits[1]!.allocatedAmount).toBeCloseTo(37.5, 1);
+      expect(getModel().splits[2]!.allocatedAmount).toBeCloseTo(25, 1);
     });
 
     it('should respect currency decimal places (USD = 2)', async () => {
       component.addSplit();
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice' });
+      patchSplit(0, { owedBy: 'Alice' });
 
-      component.expenseForm.patchValue({
-        amount: 10.55,
+      patchModel({
+        amount: '10.55',
         sharedAmount: 10.55,
-        allocatedAmount: 0,
+        allocatedAmount: '0.00',
       });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
-      const allocated = component.splitsFormArray.at(0).value.allocatedAmount;
-      // Should be rounded to 2 decimal places
+      const allocated = getModel().splits[0]!.allocatedAmount;
       expect(allocated.toFixed(2)).toBe('10.55');
     });
 
     it('should respect currency decimal places (JPY = 0)', async () => {
-      component.expenseForm.patchValue({ currencyCode: 'JPY' });
+      patchModel({ currencyCode: 'JPY' });
       component.onCurrencyChange();
       await fixture.whenStable();
 
       component.addSplit();
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice' });
+      patchSplit(0, { owedBy: 'Alice' });
 
-      component.expenseForm.patchValue({
-        amount: 1000,
+      patchModel({
+        amount: '1000',
         sharedAmount: 1000,
-        allocatedAmount: 0,
+        allocatedAmount: '0',
       });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
-      const allocated = component.splitsFormArray.at(0).value.allocatedAmount;
-      // Should be integer (no decimals)
+      const allocated = getModel().splits[0]!.allocatedAmount;
       expect(allocated % 1).toBe(0);
     });
 
@@ -341,8 +332,8 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ assignedAmount: 25 });
-      component.splitsFormArray.at(1).patchValue({ assignedAmount: 35 });
+      patchSplit(0, { assignedAmount: '25.00' });
+      patchSplit(1, { assignedAmount: '35.00' });
 
       expect(component.getAssignedTotal()).toBe(60);
     });
@@ -351,8 +342,8 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ allocatedAmount: 40 });
-      component.splitsFormArray.at(1).patchValue({ allocatedAmount: 60 });
+      patchSplit(0, { allocatedAmount: 40 });
+      patchSplit(1, { allocatedAmount: 60 });
 
       expect(component.getAllocatedTotal()).toBe(100);
     });
@@ -368,47 +359,39 @@ describe('SplitComponent', () => {
       expect(component.splitMethod()).toBe('percentage');
     });
 
-    // Note: Auto-calculation of last split percentage to total 100% causes
-    // NG0100 change detection errors in test environment. The allocation logic
-    // itself is tested in "should allocate by percentage correctly" below.
-
     it('should allocate by percentage correctly', async () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'member-2' });
-      component.expenseForm.patchValue({ amount: 100 });
-      component.splitsFormArray.at(0).patchValue({ percentage: 60 });
-      component.splitsFormArray.at(1).patchValue({ percentage: 40 });
+      patchSplit(0, { owedBy: 'member-1' });
+      patchSplit(1, { owedBy: 'member-2' });
+      patchModel({ amount: '100.00' });
+      patchSplit(0, { percentage: 60 });
+      patchSplit(1, { percentage: 40 });
 
       component.allocateByPercentage();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(60);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(40);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(60);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(40);
     });
 
     it('should handle proportional amounts in percentage mode', async () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'member-2' });
-      component.expenseForm.patchValue({
-        amount: 100,
-        allocatedAmount: 10,
-      });
+      patchSplit(0, { owedBy: 'member-1' });
+      patchSplit(1, { owedBy: 'member-2' });
+      patchModel({ amount: '100.00', allocatedAmount: '10.00' });
 
-      component.splitsFormArray.at(0).patchValue({ percentage: 50 });
-      component.splitsFormArray.at(1).patchValue({ percentage: 50 });
+      patchSplit(0, { percentage: 50 });
+      patchSplit(1, { percentage: 50 });
 
       component.allocateByPercentage();
       await fixture.whenStable();
 
-      // Each should get 50% of remaining (90) + 50% of proportional (5) = 50
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(50);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(50);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(50);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(50);
     });
 
     it('should toggle back to amount mode', async () => {
@@ -420,21 +403,18 @@ describe('SplitComponent', () => {
 
     it('should preserve calculated allocations when toggling modes', async () => {
       component.addSplit();
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'member-1' });
-      component.expenseForm.patchValue({ amount: 100 });
-      component.splitsFormArray.at(0).patchValue({ percentage: 100 });
+      patchSplit(0, { owedBy: 'member-1' });
+      patchModel({ amount: '100.00' });
+      patchSplit(0, { percentage: 100 });
       component.allocateByPercentage();
       await fixture.whenStable();
 
-      const allocated = component.splitsFormArray.at(0).value.allocatedAmount;
-      expect(allocated).toBe(100);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(100);
 
-      // Toggle to amount mode
       component.splitMethod.set('amount');
       await fixture.whenStable();
 
-      // Allocation should be preserved
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(100);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(100);
     });
   });
 
@@ -453,18 +433,18 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice', shares: 1 });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob', shares: 1 });
-      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie', shares: 2 });
+      patchSplit(0, { owedBy: 'Alice', shares: 1 });
+      patchSplit(1, { owedBy: 'Bob', shares: 1 });
+      patchSplit(2, { owedBy: 'Charlie', shares: 2 });
 
-      component.expenseForm.patchValue({ amount: 100 });
+      patchModel({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(50);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[2]!.allocatedAmount).toBe(50);
     });
 
     it('should total correctly with share ratio [1, 1, 2]', async () => {
@@ -472,50 +452,53 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedBy: 'Alice', shares: 1 });
-      component.splitsFormArray.at(1).patchValue({ owedBy: 'Bob', shares: 1 });
-      component.splitsFormArray.at(2).patchValue({ owedBy: 'Charlie', shares: 2 });
+      patchSplit(0, { owedBy: 'Alice', shares: 1 });
+      patchSplit(1, { owedBy: 'Bob', shares: 1 });
+      patchSplit(2, { owedBy: 'Charlie', shares: 2 });
 
-      component.expenseForm.patchValue({ amount: 100 });
+      patchModel({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
 
       const total =
-        component.splitsFormArray.at(0).value.allocatedAmount +
-        component.splitsFormArray.at(1).value.allocatedAmount +
-        component.splitsFormArray.at(2).value.allocatedAmount;
+        getModel().splits[0]!.allocatedAmount +
+        getModel().splits[1]!.allocatedAmount +
+        getModel().splits[2]!.allocatedAmount;
       expect(total).toBe(100);
     });
   });
 
   describe('form validation', () => {
     it('should require amount to be non-zero', () => {
-      component.expenseForm.patchValue({ amount: 0 });
-      expect(component.expenseForm.get('amount')?.hasError('zeroAmount')).toBe(
-        true
-      );
+      patchModel({ amount: '0.00' });
+      const errors = (component as any).expenseForm.amount().errors() as {
+        kind: string;
+      }[];
+      expect(errors.some((e) => e.kind === 'zeroAmount')).toBe(true);
     });
 
     it('should require amount field', () => {
-      component.expenseForm.patchValue({ amount: null });
-      expect(component.expenseForm.get('amount')?.hasError('required')).toBe(
-        true
-      );
+      patchModel({ amount: '' });
+      const errors = (component as any).expenseForm.amount().errors() as {
+        kind: string;
+      }[];
+      expect(errors.some((e) => e.kind === 'required')).toBe(true);
     });
 
     it('should require owedBy for each split', () => {
       component.addSplit();
-      const split = component.splitsFormArray.at(0);
-      split.patchValue({ owedBy: '' });
-
-      expect(split.get('owedBy')?.hasError('required')).toBe(true);
+      patchSplit(0, { owedBy: '' });
+      const errors = (component as any).expenseForm.splits[0].owedBy().errors() as {
+        kind: string;
+      }[];
+      expect(errors.some((e) => e.kind === 'required')).toBe(true);
     });
 
     it('should check if expense is fully allocated', () => {
       component.addSplit();
-      component.expenseForm.patchValue({ amount: 100 });
-      component.splitsFormArray.at(0).patchValue({ allocatedAmount: 100 });
+      patchModel({ amount: '100.00' });
+      patchSplit(0, { allocatedAmount: 100 });
 
       expect(component.expenseFullyAllocated()).toBe(true);
     });
@@ -526,21 +509,21 @@ describe('SplitComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({
+      patchSplit(0, {
         owedBy: 'Alice',
-        assignedAmount: 30,
+        assignedAmount: '30.00',
         allocatedAmount: 50,
       });
-      component.splitsFormArray.at(1).patchValue({
+      patchSplit(1, {
         owedBy: 'Bob',
-        assignedAmount: 30,
+        assignedAmount: '30.00',
         allocatedAmount: 50,
       });
 
-      component.expenseForm.patchValue({
-        amount: 100,
+      patchModel({
+        amount: '100.00',
         sharedAmount: 20,
-        allocatedAmount: 20,
+        allocatedAmount: '20.00',
       });
     });
 
@@ -611,7 +594,7 @@ describe('SplitComponent', () => {
     it('should populate demo data with Alice, Bob, Charlie', async () => {
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.length).toBe(3);
+      expect(getModel().splits.length).toBe(3);
     });
 
     it('should show tour button in demo mode', async () => {
@@ -641,16 +624,13 @@ describe('SplitComponent', () => {
 
     it('should reset form while preserving currency', () => {
       component.addSplit();
-      component.expenseForm.patchValue({
-        currencyCode: 'EUR',
-        amount: 100,
-      });
+      patchModel({ currencyCode: 'EUR', amount: '100.00' });
 
       component.resetForm();
 
-      expect(component.expenseForm.value.amount).toBe(0);
-      expect(component.splitsFormArray.length).toBe(0);
-      expect(component.expenseForm.value.currencyCode).toBe('EUR');
+      expect(parseFloat(getModel().amount)).toBe(0);
+      expect(getModel().splits.length).toBe(0);
+      expect(getModel().currencyCode).toBe('EUR');
       expect(component.submitted()).toBe(false);
     });
   });

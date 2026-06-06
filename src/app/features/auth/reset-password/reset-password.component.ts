@@ -1,10 +1,12 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, inject, model, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  model,
+  signal,
+} from '@angular/core';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,16 +15,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { PasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { confirmPasswordReset, getAuth } from 'firebase/auth';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
+import { applyPasswordMatch } from '../auth-main/password-match-schema';
 
 @Component({
   selector: 'app-reset-password',
   imports: [
     RouterModule,
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
@@ -37,7 +39,6 @@ export class ResetPasswordComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly route = inject(ActivatedRoute);
   protected readonly router = inject(Router);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
 
@@ -46,13 +47,15 @@ export class ResetPasswordComponent {
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
 
-  resetPasswordForm = this.fb.group(
-    {
-      password: ['', Validators.required],
-      confirmPassword: ['', Validators.required],
-    },
-    { validators: passwordMatchValidator() }
-  );
+  protected readonly resetPasswordModel = signal<PasswordForm>({
+    password: '',
+    confirmPassword: '',
+  });
+  protected readonly resetPasswordForm = form(this.resetPasswordModel, (p) => {
+    required(p.password, { message: '*Required' });
+    required(p.confirmPassword, { message: '*Required' });
+    applyPasswordMatch(p);
+  });
 
   constructor() {
     afterNextRender(async () => {
@@ -70,14 +73,10 @@ export class ResetPasswordComponent {
     this.hideConfirmPassword.update((h) => !h);
   }
 
-  get r() {
-    return this.resetPasswordForm.controls;
-  }
-
   async resetPassword() {
-    const password = this.resetPasswordForm.value.password;
+    const password = this.resetPasswordForm().value().password;
     this.loading.loadingOn();
-    await confirmPasswordReset(this.auth, this.oobCode(), password!)
+    await confirmPasswordReset(this.auth, this.oobCode(), password)
       .then(() => {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Password reset successfully' },

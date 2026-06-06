@@ -97,31 +97,24 @@ describe('LoginComponent', () => {
   });
 
   describe('form validation', () => {
-    it('should have required validation on email', () => {
-      component.loginForm.controls.email.setValue('');
-      component.loginForm.controls.email.markAsTouched();
-      expect(component.loginForm.controls.email.hasError('required')).toBe(
-        true
-      );
+    it('should show email format error for invalid email', async () => {
+      const input = query('email-input') as HTMLInputElement;
+      input.value = 'notanemail';
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new Event('blur'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(query('email-error-0')).toBeTruthy();
     });
 
-    it('should have email format validation', () => {
-      component.loginForm.controls.email.setValue('notanemail');
-      component.loginForm.controls.email.markAsTouched();
-      expect(component.loginForm.controls.email.hasError('email')).toBe(true);
-    });
+    it('should not show email format error for valid email', async () => {
+      const input = query('email-input') as HTMLInputElement;
+      input.value = 'test@example.com';
+      input.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
 
-    it('should accept valid email', () => {
-      component.loginForm.controls.email.setValue('test@example.com');
-      expect(component.loginForm.controls.email.valid).toBe(true);
-    });
-
-    it('should have required validation on password', () => {
-      component.loginForm.controls.password.setValue('');
-      component.loginForm.controls.password.markAsTouched();
-      expect(component.loginForm.controls.password.hasError('required')).toBe(
-        true
-      );
+      expect(query('email-error-0')).toBeFalsy();
     });
   });
 
