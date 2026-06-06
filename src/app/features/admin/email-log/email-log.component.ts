@@ -2,6 +2,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   inject,
@@ -32,6 +33,7 @@ type DeliveryStateFilter = 'ALL' | MailDelivery['state'];
     MatIconModule,
     MatTableModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminEmailLogComponent {
   protected readonly mailService = inject(AdminMailService);

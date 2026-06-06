@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { Memorized } from '@models/memorized';
+import { ExpenseSplitItemForm, MemorizedForm } from '@models/expense';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
@@ -71,6 +72,23 @@ describe('EditMemorizedComponent', () => {
     ],
     ref: memorizedRef,
   });
+
+  function getModel(): MemorizedForm {
+    return (component as any).expenseModel();
+  }
+
+  function patchModel(patch: Partial<MemorizedForm>): void {
+    (component as any).expenseModel.update((m: MemorizedForm) => ({ ...m, ...patch }));
+  }
+
+  function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
+    (component as any).expenseModel.update((m: MemorizedForm) => ({
+      ...m,
+      splits: m.splits.map((s: ExpenseSplitItemForm, i: number) =>
+        i === index ? { ...s, ...patch } : s
+      ),
+    }));
+  }
 
   beforeEach(async () => {
     mockMemberStore = createMockMemberStore();
@@ -143,15 +161,15 @@ describe('EditMemorizedComponent', () => {
 
   describe('form pre-population', () => {
     it('should pre-populate description from memorized data', () => {
-      expect(component.e.description.value).toBe('Monthly Dinner');
+      expect(getModel().description).toBe('Monthly Dinner');
     });
 
     it('should pre-populate amount from memorized data', () => {
-      expect(component.e.amount.value).toBe(100);
+      expect(getModel().amount).toBe('100.00');
     });
 
     it('should pre-populate splits from memorized data', () => {
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
     });
 
     it('should load memorized from route data', () => {
@@ -159,15 +177,15 @@ describe('EditMemorizedComponent', () => {
     });
   });
 
-  describe('addSplit / removeSplit', () => {
+  describe('model split operations', () => {
     it('should add a split row', () => {
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(2);
+      expect(getModel().splits.length).toBe(2);
     });
 
     it('should remove a split row', () => {
       component.removeSplit(0);
-      expect(component.splitsFormArray.length).toBe(0);
+      expect(getModel().splits.length).toBe(0);
     });
   });
 
@@ -187,6 +205,7 @@ describe('EditMemorizedComponent', () => {
 
     it('should call memorizedService.updateMemorized when not in demo mode', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
       await component.onSubmit();
       expect(mockMemorizedService.updateMemorized).toHaveBeenCalledWith(
         memorizedRef,
@@ -234,7 +253,7 @@ describe('EditMemorizedComponent', () => {
   });
 
   describe('split method', () => {
-    it('should default splitMethod to amount', () => {
+    it('should initialize splitMethod from memorized data', () => {
       expect(component.splitMethod()).toBe('amount');
     });
 
@@ -250,20 +269,18 @@ describe('EditMemorizedComponent', () => {
     });
 
     it('should allocate by shares correctly', async () => {
-      // The form starts with 1 pre-loaded split; add a second
       component.splitMethod.set('shares');
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ owedByMemberRef: splitMemberRef, shares: 1 });
-      component.splitsFormArray.at(1).patchValue({ owedByMemberRef: memberRef, shares: 3 });
-
-      component.editMemorizedForm.patchValue({ amount: 100 });
+      patchSplit(0, { owedByMemberRef: splitMemberRef, shares: 1 });
+      patchSplit(1, { owedByMemberRef: memberRef, shares: 3 });
+      patchModel({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(75);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(75);
     });
   });
 });

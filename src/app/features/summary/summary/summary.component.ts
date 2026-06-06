@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -73,6 +74,7 @@ import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-
     DocRefCompareDirective,
     DateShortcutKeysDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SummaryComponent {
   protected readonly router = inject(Router);

@@ -16,17 +16,17 @@
   </div>
   <div class="sub-container mb-2">
     <form
-      [formGroup]="addMemorizedForm"
       id="expense-form"
       data-testid="add-memorized-form"
       aria-label="Memorize expense form"
+      (submit)="$event.preventDefault()"
     >
       <div>
         <mat-form-field id="paid-by-select">
           <mat-label>Payer</mat-label>
           <mat-select
-            formControlName="paidByMember"
-            name="paidByMember"
+            [value]="expenseModel().paidByMember"
+            (selectionChange)="expenseModel.update(m => ({...m, paidByMember: $event.value}))"
             docRefCompare
           >
             @for (member of activeMembers(); track member.ref) {
@@ -35,7 +35,7 @@
               </mat-option>
             }
           </mat-select>
-          @if (e.paidByMember.errors?.['required']) {
+          @if (!expenseModel().paidByMember) {
             <mat-error>*Required</mat-error>
           }
         </mat-form-field>
@@ -43,9 +43,9 @@
       <div class="flex-wrap fw-start">
         <mat-form-field appearance="fill" id="description">
           <mat-label>Description</mat-label>
-          <input matInput formControlName="description" />
-          @if (e.description.errors?.['required']) {
-            <mat-error>*Required</mat-error>
+          <input matInput [formField]="expenseForm.description" />
+          @for (error of expenseForm.description().errors(); track error) {
+            <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
         <mat-form-field
@@ -53,14 +53,18 @@
           [class.hidden]="activeCategories().length === 1"
         >
           <mat-label>Category</mat-label>
-          <mat-select formControlName="category" name="category" docRefCompare>
+          <mat-select
+            [value]="expenseModel().category"
+            (selectionChange)="expenseModel.update(m => ({...m, category: $event.value}))"
+            docRefCompare
+          >
             @for (category of activeCategories(); track category.ref) {
               <mat-option [value]="category.ref">
                 {{ category.name }}
               </mat-option>
             }
           </mat-select>
-          @if (e.category.errors?.['required']) {
+          @if (!expenseModel().category) {
             <mat-error>*Required</mat-error>
           }
         </mat-form-field>
@@ -75,11 +79,10 @@
           <input
             matInput
             #inputElement
-            #totalAmount
-            formControlName="amount"
+            [formField]="expenseForm.amount"
             class="number-right"
             appFormatCurrencyInput
-            (blur)="updateTotalAmount()"
+            (blur)="allocateSharedAmounts()"
             inputmode="decimal"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
@@ -103,11 +106,8 @@
           >
             <mat-icon>calculate</mat-icon>
           </button>
-          @if (e.amount.errors?.['required']) {
-            <mat-error>*Required</mat-error>
-          }
-          @if (e.amount.errors?.['zeroAmount']) {
-            <mat-error>Cannot be zero</mat-error>
+          @for (error of expenseForm.amount().errors(); track error) {
+            <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
         <mat-form-field
@@ -120,8 +120,7 @@
           <input
             matInput
             #inputElement
-            #propAmount
-            formControlName="allocatedAmount"
+            [formField]="expenseForm.allocatedAmount"
             class="number-right"
             appFormatCurrencyInput
             (blur)="allocateSharedAmounts()"
@@ -149,14 +148,11 @@
             <mat-icon>calculate</mat-icon>
           </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
-          @if (e.allocatedAmount.errors?.['required']) {
-            <mat-error>*Required - Enter 0 if none</mat-error>
-          }
         </mat-form-field>
         <div class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
-            {{ e.sharedAmount.value ?? 0 | currency }}
+            {{ expenseModel().sharedAmount | currency }}
           </span>
         </div>
       </div>
@@ -166,7 +162,7 @@
           class="btn-primary"
           type="button"
           (click)="addSplit()"
-          [disabled]="activeMembers().length === splitsFormArray.length"
+          [disabled]="activeMembers().length === expenseModel().splits.length"
         >
           Add New Split
         </button>
@@ -175,7 +171,7 @@
           class="btn-primary"
           type="button"
           (click)="addAllActiveGroupMembers()"
-          [disabled]="activeMembers().length === splitsFormArray.length"
+          [disabled]="activeMembers().length === expenseModel().splits.length"
         >
           Add All Members
         </button>
@@ -184,19 +180,15 @@
           (methodChanged)="onSplitMethodChange()"
         />
       </div>
-      <div formArrayName="splits" class="mt-3">
-        @for (
-          splitForm of splitsFormArray.controls;
-          track splitForm;
-          let i = $index
-        ) {
-          <div [formGroupName]="i" class="flex-wrap fw-start row-gap">
+      <div class="mt-3">
+        @for (split of expenseModel().splits; track $index; let i = $index) {
+          <div class="flex-wrap fw-start row-gap">
             <div class="splits-1">
               <mat-form-field id="split-member" subscriptSizing="dynamic">
                 <mat-label>Member</mat-label>
                 <mat-select
-                  formControlName="owedByMemberRef"
-                  (selectionChange)="allocateSharedAmounts()"
+                  [value]="split.owedByMemberRef"
+                  (selectionChange)="updateSplit(i, 'owedByMemberRef', $event.value); allocateSharedAmounts()"
                   docRefCompare
                 >
                   @for (
@@ -228,17 +220,14 @@
                     "
                   >
                     <mat-label>Percentage</mat-label>
-                    <input
-                      matInput
-                      #inputElement
-                      #memberPercentage
-                      class="number-right"
-                      parentControlName="splits"
-                      [attr.data-index]="i"
-                      formControlName="percentage"
-                      [readonly]="isLastSplit(i)"
-                      (blur)="allocateByPercentage()"
-                    />
+                    @if (isLastSplit(i)) {
+                      <input matInput #inputElement class="number-right"
+                             [value]="split.percentage ?? 0" readonly />
+                    } @else {
+                      <input matInput #inputElement class="number-right"
+                             [value]="split.percentage ?? 0"
+                             (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()" />
+                    }
                     <span matTextSuffix>%</span>
                   </mat-form-field>
                 }
@@ -254,9 +243,9 @@
                         matInput
                         #inputElement
                         class="number-right"
-                        formControlName="shares"
+                        [value]="split.shares ?? 0"
                         inputmode="decimal"
-                        (blur)="allocateByShares()"
+                        (blur)="updateSplit(i, 'shares', +$any($event.target).value || 0); allocateByShares()"
                       />
                       <span matTextSuffix class="no-wrap">
                         &nbsp;&nbsp;({{
@@ -276,13 +265,10 @@
                     <input
                       matInput
                       #inputElement
-                      #memberAmount
                       class="number-right"
-                      parentControlName="splits"
-                      [attr.data-index]="i"
-                      formControlName="assignedAmount"
+                      [value]="split.assignedAmount"
                       appFormatCurrencyInput
-                      (blur)="allocateSharedAmounts()"
+                      (blur)="updateSplit(i, 'assignedAmount', $any($event.target).value); allocateSharedAmounts()"
                       inputmode="decimal"
                     />
                     @if (localeService.currency().symbolPosition === 'prefix') {
@@ -299,7 +285,7 @@
                       matIconSuffix
                       mat-icon-button
                       (click)="
-                        openCalculator($event, 'assignedAmount', i);
+                        openCalculator($event, 'amount', i);
                         $event.preventDefault();
                         $event.stopPropagation()
                       "
@@ -318,12 +304,12 @@
                   aria-label="Allocated amount"
                   data-testid="allocated-amount"
                 >
-                  {{ splitForm.get('allocatedAmount')?.value ?? 0 | currency }}
+                  {{ split.allocatedAmount | currency }}
                 </span>
               </div>
             </div>
           </div>
-          @if (i < splitsFormArray.length - 1) {
+          @if (i < expenseModel().splits.length - 1) {
             <hr />
           }
         }
@@ -335,11 +321,7 @@
         class="btn-secondary"
         type="submit"
         defaultButton
-        [disabled]="
-          !addMemorizedForm.valid ||
-          addMemorizedForm.disabled ||
-          !memorizedFullyAllocated()
-        "
+        [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !memorizedFullyAllocated()"
         (click)="onSubmit()"
       >
         Save
@@ -347,7 +329,6 @@
       <button
         mat-stroked-button
         type="button"
-        [disabled]="addMemorizedForm.disabled"
         (click)="onCancel()"
       >
         Cancel

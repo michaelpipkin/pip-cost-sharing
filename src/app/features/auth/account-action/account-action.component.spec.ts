@@ -70,6 +70,8 @@ describe('AccountActionComponent', () => {
     fixture = TestBed.createComponent(AccountActionComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
   }
 
   afterEach(() => {
@@ -149,8 +151,18 @@ describe('AccountActionComponent', () => {
     });
 
     it('should call confirmPasswordReset when resetPassword() is called', async () => {
-      component.r.password.setValue('newpassword123');
-      component.r.confirmPassword.setValue('newpassword123');
+      const passwordInput = fixture.nativeElement.querySelector(
+        '[data-testid="account-action-password-input"]'
+      ) as HTMLInputElement;
+      const confirmInput = fixture.nativeElement.querySelector(
+        '[data-testid="account-action-confirm-password-input"]'
+      ) as HTMLInputElement;
+
+      passwordInput.value = 'newpassword123';
+      passwordInput.dispatchEvent(new Event('input'));
+      confirmInput.value = 'newpassword123';
+      confirmInput.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
 
       await component.resetPassword();
 
@@ -162,8 +174,19 @@ describe('AccountActionComponent', () => {
     });
 
     it('should set success to true on successful reset', async () => {
-      component.r.password.setValue('newpassword123');
-      component.r.confirmPassword.setValue('newpassword123');
+      const passwordInput = fixture.nativeElement.querySelector(
+        '[data-testid="account-action-password-input"]'
+      ) as HTMLInputElement;
+      const confirmInput = fixture.nativeElement.querySelector(
+        '[data-testid="account-action-confirm-password-input"]'
+      ) as HTMLInputElement;
+
+      passwordInput.value = 'newpassword123';
+      passwordInput.dispatchEvent(new Event('input'));
+      confirmInput.value = 'newpassword123';
+      confirmInput.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+
       await component.resetPassword();
 
       expect(component.success()).toBe(true);

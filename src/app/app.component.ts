@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { afterNextRender, Component, inject, signal, Signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, inject, signal, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -45,6 +45,7 @@ import { UserStore } from '@store/user.store';
     FooterComponent,
     MatTooltipModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {
   title = 'PipSplit';

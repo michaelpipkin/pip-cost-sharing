@@ -1,5 +1,4 @@
 import { inject, Injectable } from '@angular/core';
-import { FormArray } from '@angular/forms';
 import { LocaleService } from '@services/locale.service';
 
 export interface AllocationInput {
@@ -174,66 +173,6 @@ export class AllocationUtilsService {
     }
 
     return this.allocateByPercentage({ totalAmount: input.totalAmount, splits });
-  }
-
-  /** Patches both `percentage` and `allocatedAmount` back into the form after percentage or shares allocation. */
-  applyPercentageAllocationToFormArray(
-    formArray: FormArray,
-    result: { splits: AllocationSplit[] },
-    memberRefFieldName: string = 'owedByMemberRef'
-  ): void {
-    const formControlMap = new Map<string, number>();
-    for (let i = 0; i < formArray.length; i++) {
-      const memberRef = formArray.at(i).get(memberRefFieldName)?.value;
-      if (memberRef) {
-        const key = memberRef.id || memberRef.toString() || memberRef;
-        formControlMap.set(key, i);
-      }
-    }
-    result.splits.forEach(split => {
-      const memberRef = split.owedByMemberRef;
-      if (memberRef) {
-        const key = memberRef.id || memberRef.toString() || memberRef;
-        const idx = formControlMap.get(key);
-        if (idx !== undefined) {
-          formArray.at(idx).patchValue(
-            { percentage: split.percentage, allocatedAmount: split.allocatedAmount },
-            { emitEvent: false }
-          );
-        }
-      }
-    });
-  }
-
-  applyAllocationToFormArray(
-    formArray: FormArray,
-    allocationResult: AllocationResult,
-    memberRefFieldName: 'owedByMemberRef' = 'owedByMemberRef'
-  ): void {
-    // Create a map of existing form controls by member reference for faster lookup
-    const formControlMap = new Map();
-    for (let i = 0; i < formArray.length; i++) {
-      const control = formArray.at(i);
-      const memberRef = control.get(memberRefFieldName)?.value;
-      if (memberRef) {
-        const key = memberRef.id || memberRef.toString() || memberRef;
-        formControlMap.set(key, i);
-      }
-    }
-
-    // Apply the allocated amounts to the corresponding form controls
-    allocationResult.splits.forEach((split) => {
-      const memberRef = split.owedByMemberRef;
-      if (memberRef) {
-        const key = memberRef.id || memberRef.toString() || memberRef;
-        if (formControlMap.has(key)) {
-          const formIndex = formControlMap.get(key)!;
-          formArray.at(formIndex).patchValue({
-            allocatedAmount: split.allocatedAmount,
-          });
-        }
-      }
-    });
   }
 
   #filterSplitsAndSetLastPercentage(splits: AllocationSplit[]): AllocationSplit[] {

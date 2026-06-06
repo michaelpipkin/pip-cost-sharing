@@ -2,6 +2,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
+  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   afterNextRender,
@@ -20,6 +21,7 @@ const SNACKBAR_DURATION = 4000;
   imports: [MatProgressSpinnerModule, MatIconModule, MatButtonModule],
   templateUrl: './custom-snackbar.component.html',
   styleUrl: './custom-snackbar.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomSnackbarComponent {
   protected readonly snackbarRef = inject(MatSnackBarRef);

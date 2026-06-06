@@ -30,41 +30,55 @@
   <div class="issue-container" data-testid="report-issue-container">
     <h3 data-testid="report-issue-title">Report an Issue</h3>
     <form
-      [formGroup]="issueForm"
       class="issue-form"
       data-testid="report-issue-form"
       aria-label="Report an issue form"
+      (submit)="$event.preventDefault()"
     >
       <mat-form-field appearance="fill" subscriptSizing="dynamic">
         <mat-label>Title</mat-label>
-        <input matInput formControlName="title" />
-        @if (f.title.errors?.required) {
-          <mat-error>*Required</mat-error>
+        <input
+          matInput
+          [formField]="issueForm.title"
+          data-testid="issue-title-input"
+        />
+        @for (error of issueForm.title().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'issue-title-error-' + i">
+            {{ error.message }}
+          </mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="fill" subscriptSizing="dynamic">
         <mat-label>Your email address</mat-label>
-        <input matInput formControlName="email" />
+        <input
+          matInput
+          [formField]="issueForm.email"
+          data-testid="issue-email-input"
+        />
         <mat-hint>
           Optional - provide your email address if you would like the developer
           to contact you regarding the issue
         </mat-hint>
-        @if (f.email.errors?.email) {
-          <mat-error>*Invalid email address</mat-error>
+        @for (error of issueForm.email().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'issue-email-error-' + i">
+            {{ error.message }}
+          </mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="fill">
         <mat-label>Description</mat-label>
         <textarea
           matInput
-          formControlName="body"
-          maxlength="2000"
+          [formField]="issueForm.body"
           rows="5"
+          data-testid="issue-body-input"
         ></textarea>
-        @if (f.body.errors?.required) {
-          <mat-error>*Required</mat-error>
+        @for (error of issueForm.body().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'issue-body-error-' + i">
+            {{ error.message }}
+          </mat-error>
         }
-        <mat-hint align="end">{{ f.body.value?.length || 0 }}/2000</mat-hint>
+        <mat-hint align="end">{{ issueForm.body().value().length }}/2000</mat-hint>
       </mat-form-field>
       <div class="buttons">
         <button
@@ -72,16 +86,18 @@
           class="btn-secondary"
           type="submit"
           defaultButton
-          [disabled]="!issueForm.valid || issueForm.disabled"
+          [disabled]="!issueForm().valid()"
           (click)="onSubmit()"
+          data-testid="submit-issue-button"
         >
           Submit
         </button>
         <button
           mat-stroked-button
           type="button"
-          [disabled]="issueForm.pristine"
+          [disabled]="!hasFormContent()"
           (click)="clearForm()"
+          data-testid="clear-issue-button"
         >
           Clear
         </button>

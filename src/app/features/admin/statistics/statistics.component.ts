@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, Signal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,6 +17,7 @@ import { getFunctions } from 'firebase/functions';
   templateUrl: './statistics.component.html',
   styleUrl: './statistics.component.scss',
   imports: [MatCardModule, MatButtonModule, MatIconModule, DatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminStatisticsComponent {
   protected readonly statisticsService = inject(AdminStatisticsService);

@@ -28,7 +28,11 @@ describe('MemorizedService', () => {
     getMemberByRef: vi.fn().mockReturnValue(undefined),
     groupMembers: signal<any[]>([]),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.spyOn(firestoreModule, 'collection').mockReturnValue({} as any);

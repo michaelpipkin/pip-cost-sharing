@@ -1,4 +1,13 @@
-import { afterNextRender, Component, computed, inject, model, signal } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  model,
+  signal,
+} from '@angular/core';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,32 +19,25 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
+import { PasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
 import { FirebaseError } from 'firebase/app';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
-
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
 import {
   applyActionCode,
   confirmPasswordReset,
   getAuth,
   sendEmailVerification,
 } from 'firebase/auth';
+import { applyPasswordMatch } from '../auth-main/password-match-schema';
 
 type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
 
 @Component({
   selector: 'app-account-action',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatProgressSpinnerModule,
     MatButtonModule,
     MatCardModule,
@@ -46,6 +48,7 @@ type ActionMode = 'verifyEmail' | 'resetPassword' | 'recoverEmail';
   ],
   templateUrl: './account-action.component.html',
   styleUrl: './account-action.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountActionComponent {
   protected readonly auth = inject(getAuth);
@@ -54,7 +57,6 @@ export class AccountActionComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly userService = inject(UserService);
   protected readonly userStore = inject(UserStore);
 
@@ -69,13 +71,15 @@ export class AccountActionComponent {
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
 
-  resetPasswordForm = this.fb.group(
-    {
-      password: ['', Validators.required],
-      confirmPassword: ['', Validators.required],
-    },
-    { validators: passwordMatchValidator() }
-  );
+  protected readonly resetPasswordModel = signal<PasswordForm>({
+    password: '',
+    confirmPassword: '',
+  });
+  protected readonly resetPasswordForm = form(this.resetPasswordModel, (p) => {
+    required(p.password, { message: '*Required' });
+    required(p.confirmPassword, { message: '*Required' });
+    applyPasswordMatch(p);
+  });
 
   constructor() {
     afterNextRender(async () => {
@@ -127,10 +131,6 @@ export class AccountActionComponent {
       await this.processEmailRecovery();
     }
     // For resetPassword, we just show the form
-  }
-
-  get r() {
-    return this.resetPasswordForm.controls;
   }
 
   toggleHidePassword() {
@@ -188,11 +188,11 @@ export class AccountActionComponent {
   }
 
   async resetPassword(): Promise<void> {
-    const password = this.resetPasswordForm.value.password;
+    const password = this.resetPasswordForm().value().password;
     this.loading.loadingOn();
 
     try {
-      await confirmPasswordReset(this.auth, this.oobCode(), password!);
+      await confirmPasswordReset(this.auth, this.oobCode(), password);
       this.success.set(true);
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Password reset successfully' },

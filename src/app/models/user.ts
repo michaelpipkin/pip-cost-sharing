@@ -17,3 +17,38 @@ export class User {
   emailOptOut?: boolean = false;
   ref?: DocumentReference<User>;
 }
+
+export interface LoginForm {
+  email: string;
+  password: string;
+}
+
+export interface ForgotPasswordForm {
+  email: string;
+}
+
+export interface PasswordForm {
+  password: string;
+  confirmPassword: string;
+}
+
+export interface RegisterForm {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ProfileForm {
+  email: string;
+}
+
+export interface PaymentsForm {
+  venmoId: string;
+  paypalId: string;
+  cashAppId: string;
+  zelleId: string;
+}
+
+export interface PreferencesForm {
+  groupRef: DocumentReference<Group> | null;
+}

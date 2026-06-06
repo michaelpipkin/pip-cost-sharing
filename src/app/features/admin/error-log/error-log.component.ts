@@ -2,6 +2,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -46,6 +47,7 @@ type GroupedError = AppError & { count: number; ids: string[] };
     MatSortModule,
     MatTableModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminErrorLogComponent {
   protected readonly errorLogService = inject(AdminErrorLogService);

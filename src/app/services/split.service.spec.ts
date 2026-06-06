@@ -28,7 +28,11 @@ describe('SplitService', () => {
     setSplits: vi.fn(),
     unpaidSplits: signal<any[]>([]),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   function makeMockBatch() {
     return {

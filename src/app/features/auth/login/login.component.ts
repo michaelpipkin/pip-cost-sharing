@@ -1,10 +1,15 @@
-import { Component, inject, model } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  model,
+  signal,
+} from '@angular/core';
+import {
+  email as emailValidator,
+  form,
+  FormField,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -16,6 +21,7 @@ import { RouterModule } from '@angular/router';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { LoginForm } from '@models/user';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import {
   fetchSignInMethodsForEmail,
@@ -30,8 +36,7 @@ import {
   selector: 'app-login',
   imports: [
     RouterModule,
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -41,24 +46,20 @@ import {
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly pwaDetection = inject(PwaDetectionService);
 
   hidePassword = model<boolean>(true);
 
-  loginForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required],
+  protected readonly loginModel = signal<LoginForm>({ email: '', password: '' });
+  protected readonly loginForm = form(this.loginModel, (p) => {
+    emailValidator(p.email, { message: 'Invalid email address' });
   });
-
-  get l() {
-    return this.loginForm.controls;
-  }
 
   isRunningInBrowser(): boolean {
     return this.pwaDetection.isRunningInBrowser();
@@ -75,9 +76,8 @@ export class LoginComponent {
   async emailLogin() {
     try {
       this.loading.loadingOn();
-      const email = this.loginForm.value.email;
-      const password = this.loginForm.value.password;
-      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email!);
+      const { email, password } = this.loginForm().value();
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Please sign in with Google' },
@@ -85,7 +85,7 @@ export class LoginComponent {
         this.loading.loadingOff();
         return;
       } else {
-        await signInWithEmailAndPassword(this.auth, email!, password!);
+        await signInWithEmailAndPassword(this.auth, email, password);
         // Navigation handled automatically by UserService.onAuthStateChanged
       }
     } catch {

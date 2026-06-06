@@ -46,10 +46,20 @@ describe('AddGroupComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   function query(testId: string): HTMLElement | null {
     return el.querySelector(`[data-testid="${testId}"]`);
+  }
+
+  function setInputValue(testId: string, value: string): void {
+    const input = el.querySelector(
+      `[data-testid="${testId}"]`
+    ) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
   }
 
   describe('initial render', () => {
@@ -82,42 +92,41 @@ describe('AddGroupComponent', () => {
   });
 
   describe('form defaults', () => {
-    it('should default currency to USD', () => {
-      expect(component.newGroupForm.value.currencyCode).toBe('USD');
-    });
-
     it('should populate supportedCurrencies from model', () => {
       expect(component.supportedCurrencies).toBe(SUPPORTED_CURRENCIES);
       expect(component.supportedCurrencies.length).toBe(20);
+    });
+
+    it('should enable Save with default currency when name fields are provided', async () => {
+      setInputValue('group-name-input', 'My Group');
+      setInputValue('display-name-input', 'Alice');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(false);
     });
   });
 
   describe('form validation', () => {
     it('should disable Save when group name is empty', async () => {
-      component.newGroupForm.controls.groupName.setValue('');
-      component.newGroupForm.controls.displayName.setValue('Alice');
+      setInputValue('display-name-input', 'Alice');
       await fixture.whenStable();
-
-      const saveBtn = query('add-group-save-button') as HTMLButtonElement;
-      expect(saveBtn.disabled).toBe(true);
+      fixture.detectChanges();
+      expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('should disable Save when display name is empty', async () => {
-      component.newGroupForm.controls.groupName.setValue('My Group');
-      component.newGroupForm.controls.displayName.setValue('');
+      setInputValue('group-name-input', 'My Group');
       await fixture.whenStable();
-
-      const saveBtn = query('add-group-save-button') as HTMLButtonElement;
-      expect(saveBtn.disabled).toBe(true);
+      fixture.detectChanges();
+      expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('should enable Save when all required fields are filled', async () => {
-      component.newGroupForm.controls.groupName.setValue('My Group');
-      component.newGroupForm.controls.displayName.setValue('Alice');
+      setInputValue('group-name-input', 'My Group');
+      setInputValue('display-name-input', 'Alice');
       await fixture.whenStable();
-
-      const saveBtn = query('add-group-save-button') as HTMLButtonElement;
-      expect(saveBtn.disabled).toBe(false);
+      fixture.detectChanges();
+      expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(false);
     });
   });
 });

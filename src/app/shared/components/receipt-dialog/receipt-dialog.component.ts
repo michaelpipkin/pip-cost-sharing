@@ -1,4 +1,4 @@
-import { Component, inject, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -11,6 +11,7 @@ import { UserService } from '@services/user.service';
   imports: [MatDialogModule, MatButtonModule, MatCheckboxModule, FormsModule],
   templateUrl: './receipt-dialog.component.html',
   styleUrl: './receipt-dialog.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReceiptDialogComponent {
   protected readonly userService = inject(UserService);

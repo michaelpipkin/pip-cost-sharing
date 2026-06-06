@@ -72,11 +72,11 @@ export class AnalyticsService {
     const params: Record<string, unknown> = { component, action, message };
     if (error !== undefined) params['error'] = error;
 
-    FirebaseAnalytics.logEvent({ name: 'app_error', params }).catch((e) =>
+    FirebaseAnalytics.logEvent({ name: 'app_error', params }).catch((e: unknown) =>
       console.error('Analytics logError (GA) failed:', e)
     );
 
-    httpsCallable(this.fns, 'logAppError')(params).catch((e) =>
+    httpsCallable(this.fns, 'logAppError')(params).catch((e: unknown) =>
       console.error('Analytics logError (Firestore) failed:', e)
     );
   }

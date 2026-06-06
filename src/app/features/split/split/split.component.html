@@ -29,16 +29,16 @@
   @if (!submitted()) {
     <div class="mb-2">
       <form
-        [formGroup]="expenseForm"
         id="split-form"
         data-testid="split-expense-form"
         aria-label="Split expense form"
+        (submit)="$event.preventDefault()"
       >
         <div class="flex-wrap">
           <mat-form-field appearance="fill" class="currency-field mb-4">
             <mat-label>Currency</mat-label>
             <mat-select
-              formControlName="currencyCode"
+              [formField]="expenseForm.currencyCode"
               data-testid="split-currency-select"
               (selectionChange)="onCurrencyChange()"
             >
@@ -70,7 +70,7 @@
               matInput
               #inputElement
               #totalAmount
-              formControlName="amount"
+              [formField]="expenseForm.amount"
               class="number-right"
               appFormatCurrencyInput
               (blur)="updateTotalAmount()"
@@ -95,11 +95,10 @@
             >
               <mat-icon>calculate</mat-icon>
             </button>
-            @if (e.amount.errors?.['required']) {
-              <mat-error>*Required</mat-error>
-            }
-            @if (e.amount.errors?.['zeroAmount']) {
-              <mat-error>Cannot be zero</mat-error>
+            @for (error of expenseForm.amount().errors(); track error; let i = $index) {
+              <mat-error [attr.data-testid]="'amount-error-' + i">
+                {{ error.message }}
+              </mat-error>
             }
           </mat-form-field>
           <mat-form-field
@@ -113,7 +112,7 @@
               matInput
               #inputElement
               #propAmount
-              formControlName="allocatedAmount"
+              [formField]="expenseForm.allocatedAmount"
               class="number-right"
               appFormatCurrencyInput
               (blur)="allocateSharedAmounts()"
@@ -139,14 +138,11 @@
               <mat-icon>calculate</mat-icon>
             </button>
             <mat-hint>Tax, tip, etc.</mat-hint>
-            @if (e.allocatedAmount.errors?.['required']) {
-              <mat-error>*Required - Enter 0 if none</mat-error>
-            }
           </mat-form-field>
           <div class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
             <span class="mock-label">Evenly Shared Remainder</span>
             <span class="mock-value-right">
-              {{ e.sharedAmount.value ?? 0 | currency }}
+              {{ expenseModel().sharedAmount | currency }}
             </span>
           </div>
         </div>
@@ -164,19 +160,19 @@
             (methodChanged)="onSplitMethodChange()"
           />
         </div>
-        <div formArrayName="splits" class="mt-3">
+        <div class="mt-3">
           @for (
-            splitForm of splitsFormArray.controls;
-            track splitForm;
+            item of expenseModel().splits;
+            track $index;
             let i = $index
           ) {
-            <div [formGroupName]="i" class="flex-wrap fw-start row-gap">
+            <div class="flex-wrap fw-start row-gap">
               <div class="splits-1">
                 <mat-form-field id="split-member" subscriptSizing="dynamic">
                   <mat-label>Name</mat-label>
                   <input
                     matInput
-                    formControlName="owedBy"
+                    [formField]="splitField(i).owedBy"
                     (blur)="updateTotalAmount()"
                   />
                 </mat-form-field>
@@ -203,17 +199,24 @@
                       "
                     >
                       <mat-label>Percentage</mat-label>
-                      <input
-                        matInput
-                        #inputElement
-                        #memberPercentage
-                        class="number-right"
-                        parentControlName="splits"
-                        [attr.data-index]="i"
-                        formControlName="percentage"
-                        [readonly]="isLastSplit(i)"
-                        (blur)="allocateByPercentage()"
-                      />
+                      @if (isLastSplit(i)) {
+                        <input
+                          matInput
+                          #inputElement
+                          class="number-right"
+                          [value]="item.percentage ?? 0"
+                          readonly
+                        />
+                      } @else {
+                        <input
+                          matInput
+                          #inputElement
+                          #memberPercentage
+                          class="number-right"
+                          [formField]="splitField(i).percentage"
+                          (blur)="allocateByPercentage()"
+                        />
+                      }
                       <span matTextSuffix>%</span>
                     </mat-form-field>
                   }
@@ -229,7 +232,7 @@
                           matInput
                           #inputElement
                           class="number-right"
-                          formControlName="shares"
+                          [formField]="splitField(i).shares"
                           inputmode="decimal"
                           (blur)="allocateByShares()"
                         />
@@ -253,9 +256,7 @@
                         #inputElement
                         #memberAmount
                         class="number-right"
-                        parentControlName="splits"
-                        [attr.data-index]="i"
-                        formControlName="assignedAmount"
+                        [formField]="splitField(i).assignedAmount"
                         appFormatCurrencyInput
                         (blur)="allocateSharedAmounts()"
                         inputmode="decimal"
@@ -272,7 +273,7 @@
                         matIconSuffix
                         mat-icon-button
                         (click)="
-                          openCalculator($event, 'assignedAmount', i);
+                          openCalculator($event, 'allocatedAmount', i);
                           $event.preventDefault();
                           $event.stopPropagation()
                         "
@@ -287,14 +288,12 @@
                 <div class="mock-input">
                   <span class="mock-label">Allocated Amount</span>
                   <span class="mock-value-right">
-                    {{
-                      splitForm.get('allocatedAmount')?.value ?? 0 | currency
-                    }}
+                    {{ item.allocatedAmount | currency }}
                   </span>
                 </div>
               </div>
             </div>
-            @if (i < splitsFormArray.length - 1) {
+            @if (i < expenseModel().splits.length - 1) {
               <hr />
             }
           }
@@ -307,11 +306,7 @@
           type="submit"
           defaultButton
           data-tour="generate-summary-button"
-          [disabled]="
-            !expenseForm.valid ||
-            expenseForm.disabled ||
-            !expenseFullyAllocated()
-          "
+          [disabled]="!expenseForm().valid() || !expenseFullyAllocated()"
           (click)="onSubmit()"
         >
           Generate Summary
@@ -319,7 +314,6 @@
         <button
           mat-stroked-button
           type="button"
-          [disabled]="expenseForm.disabled"
           [routerLink]="['/']"
         >
           Cancel
@@ -344,104 +338,86 @@
         <div class="summary-line">
           <span class="summary-label">Total:</span>
           <span class="summary-value">
-            {{ e.amount.value ?? 0 | currency }}
+            {{ stringUtils.toNumber(expenseModel().amount) | currency }}
           </span>
         </div>
-        @if (splitMethod() === 'amount' && (e.sharedAmount.value ?? 0) > 0) {
+        @if (splitMethod() === 'amount' && (expenseModel().sharedAmount) > 0) {
           <div class="summary-line">
             <span class="summary-label">Evenly shared amount:</span>
             <span class="summary-value">
-              {{ e.sharedAmount.value ?? 0 | currency }}
+              {{ expenseModel().sharedAmount | currency }}
             </span>
           </div>
         }
-        @if (splitMethod() === 'amount' && (e.allocatedAmount.value ?? 0) > 0) {
+        @if (splitMethod() === 'amount' && stringUtils.toNumber(expenseModel().allocatedAmount) > 0) {
           <div class="summary-line">
             <span class="summary-label">Proportional amount:</span>
             <span class="summary-value">
-              {{ e.allocatedAmount.value ?? 0 | currency }}
+              {{ stringUtils.toNumber(expenseModel().allocatedAmount) | currency }}
             </span>
           </div>
         }
         <hr class="summary-divider" />
         @for (
-          splitForm of splitsFormArray.controls;
-          track splitForm;
+          item of expenseModel().splits;
+          track $index;
           let i = $index
         ) {
-          @if (splitForm.get('owedBy')?.value?.trim()) {
+          @if (item.owedBy.trim()) {
             @switch (splitMethod()) {
               @case ('percentage') {
                 <div class="summary-line">
                   <span class="summary-label">
-                    {{ splitForm.get('owedBy')?.value }} ({{
-                      splitForm.get('percentage')?.value
-                    }}%):
+                    {{ item.owedBy }} ({{ item.percentage ?? 0 }}%):
                   </span>
                   <span class="summary-value">
-                    {{
-                      splitForm.get('allocatedAmount')?.value ?? 0 | currency
-                    }}
+                    {{ item.allocatedAmount | currency }}
                   </span>
                 </div>
               }
               @case ('shares') {
                 <div class="summary-line">
                   <span class="summary-label">
-                    {{ splitForm.get('owedBy')?.value }} ({{
-                      splitForm.get('shares')?.value
-                    }}
-                    shares, {{ effectivePercentage(i) | number: '1.2-2' }}%):
+                    {{ item.owedBy }} ({{ item.shares ?? 0 }} shares,
+                    {{ effectivePercentage(i) | number: '1.2-2' }}%):
                   </span>
                   <span class="summary-value">
-                    {{
-                      splitForm.get('allocatedAmount')?.value ?? 0 | currency
-                    }}
+                    {{ item.allocatedAmount | currency }}
                   </span>
                 </div>
               }
               @default {
                 <div class="summary-person">
                   <div class="summary-line person-name">
-                    <span class="summary-label">
-                      {{ splitForm.get('owedBy')?.value }}:
-                    </span>
+                    <span class="summary-label">{{ item.owedBy }}:</span>
                     <span class="summary-value">
-                      {{
-                        splitForm.get('allocatedAmount')?.value ?? 0 | currency
-                      }}
+                      {{ item.allocatedAmount | currency }}
                     </span>
                   </div>
                   <div class="summary-breakdown">
-                    @if ((splitForm.get('assignedAmount')?.value ?? 0) > 0) {
+                    @if (stringUtils.toNumber(item.assignedAmount) > 0) {
                       <div class="summary-line breakdown-line">
                         <span class="summary-label">Personal:</span>
                         <span class="summary-value">
-                          {{
-                            splitForm.get('assignedAmount')?.value ?? 0
-                              | currency
-                          }}
+                          {{ stringUtils.toNumber(item.assignedAmount) | currency }}
                         </span>
                       </div>
                     }
-                    @if (calculateSharedPortion() > 0) {
+                    @if (calculateSharedPortion(item) > 0) {
                       <div class="summary-line breakdown-line">
                         <span class="summary-label">Shared:</span>
                         <span class="summary-value">
-                          {{ calculateSharedPortion() | currency }}
+                          {{ calculateSharedPortion(item) | currency }}
                         </span>
                       </div>
                     }
-                    @if (calculateProportionalAmount(splitForm.value) > 0) {
+                    @if (calculateProportionalAmount(item) > 0) {
                       <div class="summary-line breakdown-line">
                         <span class="summary-label">
                           Proportional (tax, tip, etc.):
                         </span>
                         <span class="summary-value">
-                          {{
-                            calculateProportionalAmount(splitForm.value)
-                              | currency
-                          }}
+                          {{ calculateProportionalAmount(item) | currency }}
                         </span>
                       </div>
                     }

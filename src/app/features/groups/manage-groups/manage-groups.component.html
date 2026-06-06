@@ -3,15 +3,14 @@
   @if (userAdminGroups().length === 0) {
     <p>You are not an admin of any groups.</p>
   } @else {
-    <form [formGroup]="editGroupForm">
+    <form (submit)="$event.preventDefault()">
       <div class="content pt-3">
         <mat-form-field id="group-select">
           <mat-label>Select Group</mat-label>
           <mat-select
             data-testid="manage-group-select"
-            formControlName="groupRef"
-            name="group"
-            (selectionChange)="onSelectGroup()"
+            [value]="groupRef()"
+            (selectionChange)="onSelectGroup($event.value)"
             docRefCompare
           >
             @for (group of userAdminGroups(); track group.ref) {
@@ -32,17 +31,19 @@
             <mat-label>Update group name</mat-label>
             <input
               matInput
-              formControlName="groupName"
+              [formField]="editGroupForm.groupName"
               data-testid="manage-group-name-input"
             />
-            @if (f.groupName.errors?.['required']) {
-              <mat-error>*Required</mat-error>
+            @for (error of editGroupForm.groupName().errors(); track error; let i = $index) {
+              <mat-error [attr.data-testid]="'manage-group-name-error-' + i">
+                {{ error.message }}
+              </mat-error>
             }
           </mat-form-field>
           <mat-form-field appearance="fill" class="mb-4">
             <mat-label>Currency</mat-label>
             <mat-select
-              formControlName="currencyCode"
+              [formField]="editGroupForm.currencyCode"
               data-testid="manage-currency-select"
             >
               @for (currency of supportedCurrencies; track currency.code) {
@@ -59,10 +60,12 @@
                 }
               }
             </mat-select>
-            @if (f.currencyCode.errors?.['required']) {
-              <mat-error>*Required</mat-error>
+            @for (error of editGroupForm.currencyCode().errors(); track error; let i = $index) {
+              <mat-error [attr.data-testid]="'manage-currency-error-' + i">
+                {{ error.message }}
+              </mat-error>
             }
-            @if (expenseStore.groupHasExpenses()) {
+            @if (selectedGroupHasExpenses()) {
               <mat-hint>
                 Cannot be changed once expenses are added to the group
               </mat-hint>
@@ -72,7 +75,7 @@
           </mat-form-field>
           <div class="toggle">
             <mat-slide-toggle
-              formControlName="active"
+              [formField]="editGroupForm.active"
               data-testid="manage-active-toggle"
             >
               Active
@@ -80,7 +83,7 @@
           </div>
           <div class="toggle">
             <mat-slide-toggle
-              formControlName="autoAddMembers"
+              [formField]="editGroupForm.autoAddMembers"
               data-testid="manage-auto-add-toggle"
             >
               Automatically add all group
@@ -103,7 +106,6 @@
           class="btn-tertiary full-width-btn"
           type="button"
           (click)="unarchiveGroup()"
-          [disabled]="editGroupForm.disabled"
         >
           Unarchive Group
         </button>
@@ -114,7 +116,6 @@
           class="btn-danger full-width-btn"
           type="button"
           (click)="archiveGroup()"
-          [disabled]="editGroupForm.disabled"
         >
           Archive Group
         </button>
@@ -127,7 +128,6 @@
         class="btn-danger full-width-btn"
         type="button"
         (click)="deleteGroup()"
-        [disabled]="editGroupForm.disabled"
       >
         Delete Group
       </button>
@@ -140,7 +140,6 @@
         mat-stroked-button
         type="button"
         [mat-dialog-close]="false"
-        [disabled]="editGroupForm.disabled"
       >
         Close
       </button>
@@ -151,11 +150,7 @@
         class="btn-secondary"
         type="submit"
         defaultButton
-        [disabled]="
-          !editGroupForm.valid ||
-          editGroupForm.pristine ||
-          editGroupForm.disabled
-        "
+        [disabled]="!groupRefValid() || !editGroupForm().valid() || !hasChanges()"
         (click)="onSubmit()"
       >
         Save
@@ -165,7 +160,6 @@
         mat-stroked-button
         type="button"
         [mat-dialog-close]="false"
-        [disabled]="editGroupForm.disabled"
       >
         Cancel
       </button>

@@ -3,6 +3,25 @@ import { Category } from './category';
 import { Expense } from './expense';
 import { Member } from './member';
 
+export interface GroupSelectorForm {
+  selectedGroupRef: DocumentReference<Group> | null;
+}
+
+export interface AddGroupForm {
+  groupName: string;
+  displayName: string;
+  autoAddMembers: boolean;
+  currencyCode: string;
+}
+
+export interface ManageGroupForm {
+  groupRef: DocumentReference<Group> | null;
+  groupName: string;
+  active: boolean;
+  autoAddMembers: boolean;
+  currencyCode: string;
+}
+
 export class Group {
   constructor(init?: Partial<Group>) {
     Object.assign(this, init);

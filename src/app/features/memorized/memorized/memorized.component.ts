@@ -1,6 +1,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -58,6 +59,7 @@ import { MemorizedStore } from '@store/memorized.store';
     CurrencyPipe,
     RouterLink,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MemorizedComponent {
   protected readonly router = inject(Router);

@@ -53,6 +53,12 @@ describe('ResetPasswordComponent', () => {
     return el.querySelector(`[data-testid="${testId}"]`);
   }
 
+  function setInputValue(testId: string, value: string): void {
+    const input = query(testId) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
@@ -110,9 +116,8 @@ describe('ResetPasswordComponent', () => {
     });
 
     it('should disable submit when passwords do not match', async () => {
-      component.r.password.setValue('password123');
-      component.r.confirmPassword.setValue('differentPassword');
-      component.r.confirmPassword.markAsTouched();
+      setInputValue('new-password-input', 'password123');
+      setInputValue('confirm-password-input', 'differentPassword');
       await fixture.whenStable();
 
       const submitBtn = query('reset-password-submit') as HTMLButtonElement;
@@ -120,10 +125,8 @@ describe('ResetPasswordComponent', () => {
     });
 
     it('should enable submit when passwords match and form is dirty', async () => {
-      component.r.password.setValue('password123');
-      component.r.password.markAsDirty();
-      component.r.confirmPassword.setValue('password123');
-      component.r.confirmPassword.markAsDirty();
+      setInputValue('new-password-input', 'password123');
+      setInputValue('confirm-password-input', 'password123');
       await fixture.whenStable();
 
       const submitBtn = query('reset-password-submit') as HTMLButtonElement;
@@ -131,9 +134,11 @@ describe('ResetPasswordComponent', () => {
     });
 
     it('should show mismatch error when passwords do not match and confirmPassword is touched', async () => {
-      component.r.password.setValue('password123');
-      component.r.confirmPassword.setValue('different');
-      component.r.confirmPassword.markAsTouched();
+      setInputValue('new-password-input', 'password123');
+      const confirmInput = query('confirm-password-input') as HTMLInputElement;
+      confirmInput.value = 'different';
+      confirmInput.dispatchEvent(new Event('input'));
+      confirmInput.dispatchEvent(new Event('blur'));
       await fixture.whenStable();
 
       expect(query('password-mismatch-error')).toBeTruthy();
@@ -145,8 +150,9 @@ describe('ResetPasswordComponent', () => {
       const router = TestBed.inject(Router);
       vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-      component.r.password.setValue('newpassword');
-      component.r.confirmPassword.setValue('newpassword');
+      setInputValue('new-password-input', 'newpassword');
+      setInputValue('confirm-password-input', 'newpassword');
+      await fixture.whenStable();
 
       await component.resetPassword();
 

@@ -5,6 +5,35 @@ import { Member } from './member';
 import { Split } from './split';
 import { SplitMethod } from '@utils/split-method';
 
+export interface ExpenseSplitItemForm {
+  owedByMemberRef: DocumentReference<Member> | null;
+  assignedAmount: string;
+  percentage: number | null;
+  shares: number | null;
+  allocatedAmount: number;
+}
+
+export interface ExpenseForm {
+  paidByMember: DocumentReference<Member> | null;
+  date: Date | null;
+  amount: string;
+  description: string;
+  category: DocumentReference<Category> | null;
+  sharedAmount: number;
+  allocatedAmount: string;
+  splits: ExpenseSplitItemForm[];
+}
+
+export interface MemorizedForm {
+  paidByMember: DocumentReference<Member> | null;
+  amount: string;
+  description: string;
+  category: DocumentReference<Category> | null;
+  sharedAmount: number;
+  allocatedAmount: string;
+  splits: ExpenseSplitItemForm[];
+}
+
 export class Expense {
   constructor(init?: Partial<Expense>) {
     Object.assign(this, init);

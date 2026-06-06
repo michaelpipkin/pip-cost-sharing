@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  email as emailValidator,
+  form,
+  FormField,
+  maxLength,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -20,59 +21,69 @@ import {
 } from '@services/help-content.service';
 import { HelpService } from '@services/help.service';
 
+interface IssueForm {
+  title: string;
+  body: string;
+  email: string;
+}
+
 @Component({
   selector: 'app-help',
   templateUrl: './help.component.html',
   styleUrl: './help.component.scss',
   imports: [
+    FormField,
     MatExpansionModule,
-    FormsModule,
-    ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatButtonModule,
     MatInputModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HelpComponent {
   protected readonly helpService = inject(HelpService);
   protected readonly helpContentService = inject(HelpContentService);
   protected readonly loading = inject(LoadingService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
 
   helpSections: HelpSection[] = [];
 
-  issueForm = this.fb.group({
-    title: ['', Validators.required],
-    body: ['', Validators.required],
-    email: ['', Validators.email],
+  protected readonly issueModel = signal<IssueForm>({
+    title: '',
+    body: '',
+    email: '',
+  });
+  protected readonly hasFormContent = computed(() => {
+    const f = this.issueModel();
+    return f.title !== '' || f.body !== '' || f.email !== '';
+  });
+
+  protected readonly issueForm = form(this.issueModel, (p) => {
+    required(p.title, { message: '*Required' });
+    required(p.body, { message: '*Required' });
+    maxLength(p.body, 2000, { message: 'Maximum 2000 characters' });
+    emailValidator(p.email, { message: '*Invalid email address' });
   });
 
   constructor() {
     this.helpSections = this.helpContentService.getAllHelpSections();
   }
 
-  public get f() {
-    return this.issueForm.controls;
-  }
-
   clearForm(): void {
-    this.issueForm.reset();
-    this.issueForm.markAsPristine();
-    this.issueForm.markAsUntouched();
+    this.issueModel.set({ title: '', body: '', email: '' });
   }
 
   async onSubmit(): Promise<void> {
     this.loading.loadingOn();
-    const issue = this.issueForm.value;
-    const body = issue.email
-      ? `${issue.body}\n\nSubmitted by: ${issue.email}`
-      : issue.body;
+    const f = this.issueForm().value();
+    const body = f.email
+      ? `${f.body}\n\nSubmitted by: ${f.email}`
+      : f.body;
 
     try {
-      await this.helpService.createIssue(issue.title!, body!);
+      await this.helpService.createIssue(f.title, body);
       this.clearForm();
       this.loading.loadingOff();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {

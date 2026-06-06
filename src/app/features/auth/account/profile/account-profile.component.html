@@ -7,23 +7,23 @@
     </p>
   } @else {
     <form
-      [formGroup]="emailForm"
       class="container"
       data-testid="email-form"
       aria-label="Update email form"
+      (submit)="$event.preventDefault()"
     >
       <mat-form-field class="email-input" data-testid="account-email-field">
         <mat-label>Email Address</mat-label>
         <input
           matInput
           type="email"
-          formControlName="email"
+          [formField]="emailForm.email"
           data-testid="account-email-input"
           aria-label="Email address"
         />
-        @if (e.email.errors?.email) {
-          <mat-error data-testid="account-email-error">
-            Invalid email address
+        @for (error of emailForm.email().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'account-email-error-' + i">
+            {{ error.message }}
           </mat-error>
         }
       </mat-form-field>
@@ -32,7 +32,7 @@
           mat-raised-button
           class="btn-tertiary"
           type="button"
-          [disabled]="firebaseUser()?.emailVerified || emailForm.dirty"
+          [disabled]="firebaseUser()?.emailVerified || emailForm().dirty()"
           (click)="verifyEmail()"
           data-testid="verify-email-button"
           [aria-label]="
@@ -50,9 +50,9 @@
           class="btn-primary"
           type="submit"
           [disabled]="
-            emailForm.invalid ||
-            e.email.value === firebaseUser()?.email ||
-            e.email.value === ''
+            !emailForm().valid() ||
+            emailForm.email().value() === firebaseUser()?.email ||
+            emailForm.email().value() === ''
           "
           (click)="onSubmitEmail()"
           data-testid="update-email-button"
@@ -71,7 +71,7 @@
             mat-raised-button
             class="btn-secondary"
             type="button"
-            [disabled]="emailForm.dirty"
+            [disabled]="emailForm().dirty()"
             (click)="syncMemberEmails()"
             data-testid="sync-member-emails-button"
             aria-label="Sync Member Emails"

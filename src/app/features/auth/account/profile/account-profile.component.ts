@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -6,7 +7,11 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  email as emailValidator,
+  form,
+  FormField,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +25,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { ProfileForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
@@ -37,7 +43,7 @@ import {
   templateUrl: './account-profile.component.html',
   styleUrls: ['./account-profile.component.scss'],
   imports: [
-    ReactiveFormsModule,
+    FormField,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -46,11 +52,11 @@ import {
     RouterLink,
     MatDividerModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountProfileComponent {
   protected readonly auth = inject(getAuth);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly memberService = inject(MemberService);
@@ -64,18 +70,17 @@ export class AccountProfileComponent {
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
   hidePassword = model<boolean>(true);
 
-  emailForm = this.fb.group({
-    email: [this.currentUser()?.email, Validators.email],
+  protected readonly emailModel = signal<ProfileForm>({
+    email: this.currentUser()?.email ?? '',
+  });
+  protected readonly emailForm = form(this.emailModel, (p) => {
+    emailValidator(p.email, { message: 'Invalid email address' });
   });
 
   constructor() {
     effect(() => {
-      this.emailForm.patchValue({ email: this.currentUser()?.email });
+      this.emailModel.set({ email: this.currentUser()?.email ?? '' });
     });
-  }
-
-  get e() {
-    return this.emailForm.controls;
   }
 
   async verifyEmail(): Promise<void> {
@@ -109,12 +114,11 @@ export class AccountProfileComponent {
   }
 
   async onSubmitEmail(): Promise<void> {
-    this.emailForm.disable();
-    const newEmail = this.emailForm.value.email;
+    const newEmail = this.emailForm().value().email;
     const user = this.firebaseUser()!;
     if (newEmail !== user.email) {
       try {
-        await updateEmail(user, newEmail!);
+        await updateEmail(user, newEmail);
         this.userStore.setIsEmailConfirmed(false);
         await this.verifyEmail();
       } catch (err: any) {
@@ -143,7 +147,6 @@ export class AccountProfileComponent {
         }
       }
     }
-    this.emailForm.enable();
   }
 
   async onToggleEmailOptOut(event: MatSlideToggleChange): Promise<void> {

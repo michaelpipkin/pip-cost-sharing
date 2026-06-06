@@ -1,4 +1,4 @@
-import { Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 export interface ToggleFilterValue {
@@ -7,7 +7,6 @@ export interface ToggleFilterValue {
 
 @Component({
   selector: 'app-toggle-filter-panel',
-  standalone: true,
   imports: [MatButtonModule],
   template: `
     <div class="filter-panel">
@@ -66,6 +65,7 @@ export interface ToggleFilterValue {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToggleFilterPanelComponent {
   initialValue = input<ToggleFilterValue>();

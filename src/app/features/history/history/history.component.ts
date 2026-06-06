@@ -31,6 +31,7 @@ import { MemberStore } from '@store/member.store';
 import { DocumentReference } from 'firebase/firestore';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -65,6 +66,7 @@ import {
     DatePipe,
     DocRefCompareDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryComponent {
   protected readonly groupStore = inject(GroupStore);

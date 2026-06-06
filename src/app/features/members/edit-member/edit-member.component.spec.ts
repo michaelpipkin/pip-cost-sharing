@@ -113,6 +113,7 @@ describe('EditMemberComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   }
 
   afterEach(() => {
@@ -164,6 +165,7 @@ describe('EditMemberComponent', () => {
       nameInput.value = 'Alicia';
       nameInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+      fixture.detectChanges();
 
       const saveBtn = query('edit-member-save-button') as HTMLButtonElement;
       expect(saveBtn.disabled).toBe(false);
