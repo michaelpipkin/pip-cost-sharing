@@ -1,4 +1,4 @@
-import { Component, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -32,6 +32,7 @@ type DeletionState = 'unverified' | 'verified' | 'completed';
   ],
   templateUrl: './delete-account.component.html',
   styleUrl: './delete-account.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeleteAccountComponent {
   protected readonly auth = inject(getAuth);

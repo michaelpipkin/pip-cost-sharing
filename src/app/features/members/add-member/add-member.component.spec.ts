@@ -4,17 +4,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
-import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
-import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
   createMockDemoService,
   createMockDialogRef,
-  createMockGroupService,
   createMockLoadingService,
   createMockSnackBar,
-  createMockUserStore,
   mockDocRef,
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,9 +41,7 @@ describe('AddMemberComponent', () => {
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
-        { provide: UserStore, useValue: createMockUserStore() },
         { provide: MemberService, useValue: mockMemberService },
-        { provide: GroupService, useValue: createMockGroupService() },
         { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
@@ -57,6 +51,7 @@ describe('AddMemberComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -101,6 +96,7 @@ describe('AddMemberComponent', () => {
       nameInput.value = 'Alice';
       nameInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+      fixture.detectChanges();
 
       const saveBtn = query('add-member-save-button') as HTMLButtonElement;
       expect(saveBtn.disabled).toBe(true);
@@ -115,6 +111,7 @@ describe('AddMemberComponent', () => {
       emailInput.value = 'not-an-email';
       emailInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+      fixture.detectChanges();
 
       const saveBtn = query('add-member-save-button') as HTMLButtonElement;
       expect(saveBtn.disabled).toBe(true);
@@ -129,6 +126,7 @@ describe('AddMemberComponent', () => {
       emailInput.value = 'alice@example.com';
       emailInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+      fixture.detectChanges();
 
       const saveBtn = query('add-member-save-button') as HTMLButtonElement;
       expect(saveBtn.disabled).toBe(false);

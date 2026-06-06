@@ -8,7 +8,11 @@ import { AnalyticsService } from '@services/analytics.service';
 describe('DeepLinkService', () => {
   let service: DeepLinkService;
   const mockRouter = { navigate: vi.fn() };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   function createService(): DeepLinkService {
     TestBed.configureTestingModule({
@@ -89,9 +93,11 @@ describe('DeepLinkService', () => {
 
     it('should log an error event for a malformed URL', () => {
       urlOpenHandler({ url: 'not-a-valid-url' });
-      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
-        'app_error',
-        expect.objectContaining({ component: 'DeepLinkService' })
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Deep Link Service',
+        'handleDeepLink',
+        'Failed to parse deep link',
+        expect.any(String)
       );
     });
 

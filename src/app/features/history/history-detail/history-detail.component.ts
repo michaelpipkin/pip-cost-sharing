@@ -30,6 +30,7 @@ import { parseDate } from '@utils/date-utils';
 import { DocumentReference, getDoc } from 'firebase/firestore';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   inject,
@@ -56,6 +57,7 @@ import {
     CurrencyPipe,
     DatePipe,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryDetailComponent {
   protected readonly route = inject(ActivatedRoute);

@@ -48,6 +48,7 @@ describe('RegisterComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -56,6 +57,15 @@ describe('RegisterComponent', () => {
 
   function query(testId: string): HTMLElement | null {
     return el.querySelector(`[data-testid="${testId}"]`);
+  }
+
+  function setInputValue(testId: string, value: string): void {
+    const input = el.querySelector(
+      `[data-testid="${testId}"]`
+    ) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
   }
 
   it('should create', () => {
@@ -79,36 +89,41 @@ describe('RegisterComponent', () => {
   });
 
   describe('form validation', () => {
-    it('should have required validation on email', () => {
-      component.r.email.setValue('');
-      component.r.email.markAsTouched();
-      expect(component.r.email.hasError('required')).toBe(true);
+    it('should show email required error when email is empty and blurred', async () => {
+      setInputValue('register-email-input', '');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('register-email-error-0')).toBeTruthy();
     });
 
-    it('should have email format validation', () => {
-      component.r.email.setValue('notanemail');
-      component.r.email.markAsTouched();
-      expect(component.r.email.hasError('email')).toBe(true);
+    it('should show email format error for invalid email', async () => {
+      setInputValue('register-email-input', 'notanemail');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('register-email-error-0')).toBeTruthy();
     });
 
-    it('should have required validation on password', () => {
-      component.r.password.setValue('');
-      component.r.password.markAsTouched();
-      expect(component.r.password.hasError('required')).toBe(true);
+    it('should not show email errors for valid email', async () => {
+      setInputValue('register-email-input', 'test@example.com');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('register-email-error-0')).toBeNull();
     });
 
-    it('should detect password mismatch via custom validator', () => {
-      component.r.email.setValue('test@example.com');
-      component.r.password.setValue('password123');
-      component.r.confirmPassword.setValue('differentpassword');
-      expect(component.registerForm.errors?.['passwordMismatch']).toBe(true);
+    it('should show password mismatch error when passwords differ', async () => {
+      setInputValue('register-password-input', 'password123');
+      setInputValue('register-confirm-password-input', 'differentpassword');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('register-password-mismatch-error')).toBeTruthy();
     });
 
-    it('should pass password match validation when passwords are equal', () => {
-      component.r.email.setValue('test@example.com');
-      component.r.password.setValue('password123');
-      component.r.confirmPassword.setValue('password123');
-      expect(component.registerForm.errors?.['passwordMismatch']).toBeFalsy();
+    it('should not show mismatch error when passwords match', async () => {
+      setInputValue('register-password-input', 'password123');
+      setInputValue('register-confirm-password-input', 'password123');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('register-password-mismatch-error')).toBeNull();
     });
   });
 

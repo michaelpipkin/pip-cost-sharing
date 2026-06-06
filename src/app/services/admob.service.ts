@@ -25,9 +25,9 @@ export class AdMobService {
     // Only initialize if we are in an App environment (TWA or Standalone)
     // and not just a regular browser, to comply with policy.
     if (this.pwaService.isRunningAsApp()) {
+      this.setupAutoAdLogic();
       afterNextRender(() => {
         this.initializeAdMob();
-        this.setupAutoAdLogic();
       });
     }
   }
@@ -62,8 +62,6 @@ export class AdMobService {
     this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd)) return;
 
-      this.navigationCount++;
-
       // Skip specific routes where we don't want ads
       const excludedRoutes = [
         'home',
@@ -78,6 +76,7 @@ export class AdMobService {
       )
         return;
 
+      this.navigationCount++;
       this.checkForAutoAd();
     });
   }

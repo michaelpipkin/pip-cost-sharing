@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -31,6 +32,7 @@ import { User as FirebaseUser, getAuth } from 'firebase/auth';
     RouterLink,
     RouterOutlet,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountComponent {
   protected readonly auth = inject(getAuth);

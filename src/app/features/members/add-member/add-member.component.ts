@@ -1,10 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  email as emailValidator,
+  form,
+  FormField,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -16,18 +16,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
-import { Member } from '@models/member';
+import { AddMemberForm, Member } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
-import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
-import { UserStore } from '@store/user.store';
 
 @Component({
   selector: 'app-add-member',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -35,27 +32,26 @@ import { UserStore } from '@store/user.store';
   ],
   templateUrl: './add-member.component.html',
   styleUrl: './add-member.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddMemberComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddMemberComponent>);
-  protected readonly fb = inject(FormBuilder);
-  protected readonly userStore = inject(UserStore);
   protected readonly memberService = inject(MemberService);
-  protected readonly groupService = inject(GroupService);
   protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
-  addMemberForm = this.fb.group({
-    displayName: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
+  protected readonly addMemberModel = signal<AddMemberForm>({
+    displayName: '',
+    email: '',
   });
-
-  public get f() {
-    return this.addMemberForm.controls;
-  }
+  protected readonly addMemberForm = form(this.addMemberModel, (p) => {
+    required(p.displayName, { message: '*Required' });
+    required(p.email, { message: '*Required' });
+    emailValidator(p.email, { message: '*Not a valid email address' });
+  });
 
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
@@ -64,11 +60,11 @@ export class AddMemberComponent {
     }
     try {
       this.loading.loadingOn();
-      const val = this.addMemberForm.value;
+      const val = this.addMemberForm().value();
       const newMember: Partial<Member> = {
         userRef: null,
-        displayName: val.displayName ?? undefined,
-        email: val.email ?? undefined,
+        displayName: val.displayName,
+        email: val.email,
         active: true,
         groupAdmin: false,
       };

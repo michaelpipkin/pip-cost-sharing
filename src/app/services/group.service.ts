@@ -176,7 +176,7 @@ export class GroupService implements IGroupService {
         const userGroup = userGroups.find((g) => g.groupId === doc.id);
         return new Group({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data()!,
           userActiveInGroup: userGroup?.active,
           userIsAdmin: userGroup?.groupAdmin,
           ref: doc.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints

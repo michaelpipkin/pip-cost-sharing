@@ -14,7 +14,6 @@ import { ForgotPasswordComponent } from './forgot-password.component';
 
 describe('ForgotPasswordComponent', () => {
   let fixture: ComponentFixture<ForgotPasswordComponent>;
-  let component: ForgotPasswordComponent;
   let el: HTMLElement;
 
   beforeEach(async () => {
@@ -30,7 +29,7 @@ describe('ForgotPasswordComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ForgotPasswordComponent);
-    component = fixture.componentInstance;
+    fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
   });
@@ -70,9 +69,9 @@ describe('ForgotPasswordComponent', () => {
     });
 
     it('should disable submit when email is invalid', async () => {
-      component.forgotPasswordForm.controls.email.setValue('notanemail');
-      component.forgotPasswordForm.controls.email.markAsTouched();
-      component.forgotPasswordForm.controls.email.markAsDirty();
+      const input = query('forgot-email-input') as HTMLInputElement;
+      input.value = 'notanemail';
+      input.dispatchEvent(new Event('input'));
       await fixture.whenStable();
 
       const submitBtn = query('forgot-password-submit') as HTMLButtonElement;
@@ -80,9 +79,9 @@ describe('ForgotPasswordComponent', () => {
     });
 
     it('should enable submit when valid email is entered', async () => {
-      component.forgotPasswordForm.controls.email.setValue('test@example.com');
-      component.forgotPasswordForm.controls.email.markAsTouched();
-      component.forgotPasswordForm.controls.email.markAsDirty();
+      const input = query('forgot-email-input') as HTMLInputElement;
+      input.value = 'test@example.com';
+      input.dispatchEvent(new Event('input'));
       await fixture.whenStable();
 
       const submitBtn = query('forgot-password-submit') as HTMLButtonElement;

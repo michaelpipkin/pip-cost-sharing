@@ -1,4 +1,4 @@
-import { Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -13,7 +13,6 @@ export interface DateRangeFilterValue {
 
 @Component({
   selector: 'app-date-range-filter-panel',
-  standalone: true,
   imports: [
     FormsModule,
     MatFormFieldModule,
@@ -119,6 +118,7 @@ export interface DateRangeFilterValue {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DateRangeFilterPanelComponent {
   initialValue = input<DateRangeFilterValue>();

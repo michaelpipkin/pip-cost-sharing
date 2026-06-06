@@ -1,5 +1,5 @@
 <h1 mat-dialog-title data-testid="add-category-title">Add Category</h1>
-<form data-testid="add-category-form" aria-label="Add category form">
+<form data-testid="add-category-form" aria-label="Add category form" (submit)="$event.preventDefault()">
   <mat-dialog-content class="content" data-testid="add-category-content">
     <mat-form-field appearance="fill" data-testid="category-name-field">
       <mat-label>Category name</mat-label>

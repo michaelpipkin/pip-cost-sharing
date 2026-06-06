@@ -217,9 +217,11 @@ describe('AdminEmailLogComponent', () => {
         new Error('Network error')
       );
       await component.loadMailDocuments();
-      expect(mockAnalyticsService.logEvent).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ action: 'load_mail_documents' })
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Admin Email Log Component',
+        'load_mail_documents',
+        'Failed to load mail documents',
+        expect.any(String)
       );
     });
   });

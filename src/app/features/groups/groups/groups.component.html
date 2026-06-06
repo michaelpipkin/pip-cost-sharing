@@ -38,9 +38,9 @@
     </div>
     <div class="mb-4">
       <form
-        [formGroup]="groupForm"
         aria-label="Select group form"
         data-testid="select-group-form"
+        (submit)="$event.preventDefault()"
       >
         @if (activeUserGroups().length > 0) {
           <mat-form-field
@@ -52,8 +52,7 @@
             <mat-label>Select Group</mat-label>
             <mat-select
               data-testid="group-select"
-              formControlName="selectedGroupRef"
-              name="group"
+              [value]="selectedGroupRef()"
               (selectionChange)="onSelectGroup($event)"
               docRefCompare
             >

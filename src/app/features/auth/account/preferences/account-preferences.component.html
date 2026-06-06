@@ -1,15 +1,16 @@
 <div class="container" data-testid="preferences-container">
   <h4 data-testid="preferences-title">Preferences</h4>
   <form
-    [formGroup]="groupForm"
     class="container"
     data-testid="preferences-form"
     aria-label="Preferences form"
+    (submit)="$event.preventDefault()"
   >
     <mat-form-field data-testid="default-group-field">
       <mat-label>Default Group</mat-label>
       <mat-select
-        formControlName="groupRef"
+        [value]="groupRef()"
+        (selectionChange)="groupRef.set($event.value); isDirty.set(true)"
         docRefCompare
         data-testid="default-group-select"
         aria-label="Default group"
@@ -27,7 +28,7 @@
       mat-raised-button
       class="btn-primary"
       type="submit"
-      [disabled]="groupForm.pristine"
+      [disabled]="!isDirty()"
       (click)="onSubmitGroup()"
       data-testid="save-preferences-button"
       aria-label="Save preferences"

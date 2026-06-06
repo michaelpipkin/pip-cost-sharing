@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -57,6 +58,7 @@ import { EditCategoryComponent } from '../edit-category/edit-category.component'
     MatCardModule,
     ActiveInactivePipe,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoriesComponent {
   protected readonly router = inject(Router);

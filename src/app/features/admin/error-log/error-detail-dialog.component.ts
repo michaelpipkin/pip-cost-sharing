@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ type GroupedError = AppError & { count: number };
   selector: 'app-error-detail-dialog',
   templateUrl: './error-detail-dialog.component.html',
   imports: [DatePipe, MatDialogModule, MatButtonModule, MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ErrorDetailDialogComponent {
   protected readonly data: AppError | GroupedError = inject(MAT_DIALOG_DATA);

@@ -2,30 +2,18 @@ import { DecimalPipe } from '@angular/common';
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   ElementRef,
   inject,
-  Signal,
   signal,
-  viewChild,
+  Signal,
   viewChildren,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
   MatDialog,
   MatDialogConfig,
@@ -36,7 +24,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
@@ -49,6 +36,7 @@ import {
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
+import { ExpenseSplitItemForm, MemorizedForm } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized } from '@models/memorized';
@@ -63,10 +51,9 @@ import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils/allocation-utils.service';
 import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
-import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 @Component({
@@ -74,31 +61,28 @@ import { getStorage } from 'firebase/storage';
   templateUrl: './add-memorized.component.html',
   styleUrl: './add-memorized.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
     MatDialogModule,
-    MatTableModule,
     MatButtonModule,
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
     MatInputModule,
     MatTooltipModule,
-    MatDatepickerModule,
     MatIconModule,
     DecimalPipe,
     CurrencyPipe,
     FormatCurrencyInputDirective,
     DocRefCompareDirective,
     SplitMethodToggleComponent,
+    FormField,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddMemorizedComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly dialog = inject(MatDialog);
   protected readonly router = inject(Router);
-  protected readonly fb = inject(FormBuilder);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
@@ -107,7 +91,6 @@ export class AddMemorizedComponent {
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly decimalPipe = inject(DecimalPipe);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
@@ -120,69 +103,71 @@ export class AddMemorizedComponent {
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
   readonly #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
-  activeCategories = computed<Category[]>(() => {
-    return this.#categories().filter((c) => c.active);
-  });
-
-  totalAmountField = viewChild<ElementRef>('totalAmount');
-  allocatedAmountField = viewChild<ElementRef>('propAmount');
-  inputElements = viewChildren<ElementRef>('inputElement');
-  memberAmounts = viewChildren<ElementRef>('memberAmount');
-
-  addMemorizedForm = this.fb.group({
-    paidByMember: [this.currentMember()?.ref, Validators.required],
-    date: [new Date(), Validators.required],
-    amount: [0, [Validators.required, this.amountValidator()]],
-    description: ['', Validators.required],
-    category: [
-      null as unknown as DocumentReference<Category>,
-      Validators.required,
-    ],
-    sharedAmount: [0, Validators.required],
-    allocatedAmount: [0, Validators.required],
-    splits: this.fb.array([], [Validators.required, Validators.minLength(1)]),
-  });
+  activeCategories = computed<Category[]>(() =>
+    this.#categories().filter((c) => c.active)
+  );
 
   autoAddMembers = computed<boolean>(
     () => this.currentGroup()?.autoAddMembers ?? false
   );
 
+  inputElements = viewChildren<ElementRef>('inputElement');
+
+  protected readonly expenseModel = signal<Pick<MemorizedForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>({
+    paidByMember: this.currentMember()?.ref ?? null,
+    category: null,
+    sharedAmount: 0,
+    splits: [],
+  });
+
+  protected readonly expenseFormData = signal<Pick<MemorizedForm, 'amount' | 'description' | 'allocatedAmount'>>({
+    amount: '0.00',
+    description: '',
+    allocatedAmount: '0.00',
+  });
+
+  protected readonly expenseForm = form(this.expenseFormData, (p) => {
+    required(p.amount, { message: '*Required' });
+    validate(p.amount, ({ value }) =>
+      this.stringUtils.toNumber(value()) === 0
+        ? { kind: 'zeroAmount', message: 'Cannot be zero' }
+        : null
+    );
+    required(p.description, { message: '*Required' });
+  });
+
+  protected readonly paidByMemberValid = computed(() => this.expenseModel().paidByMember !== null);
+  protected readonly categoryValid = computed(() => this.expenseModel().category !== null);
+
+  protected readonly splitsValid = computed(() =>
+    this.expenseModel().splits.length >= 1 &&
+    this.expenseModel().splits.every(s => s.owedByMemberRef !== null)
+  );
+
+  protected updateSplit(index: number, field: keyof ExpenseSplitItemForm, value: unknown): void {
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: m.splits.map((s, i) => i === index ? { ...s, [field]: value } : s),
+    }));
+  }
+
   constructor() {
     this.loading.loadingOn();
-    afterNextRender(() => {
-      this.totalAmountField()!.nativeElement.value =
-        this.localeService.getFormattedZero();
-      this.allocatedAmountField()!.nativeElement.value =
-        this.localeService.getFormattedZero();
-      this.memberAmounts().forEach((elementRef: ElementRef) => {
-        elementRef.nativeElement.value = this.localeService.getFormattedZero();
-      });
-    });
     afterEveryRender(() => {
       this.addSelectFocus();
     });
-    effect(() => {
-      // Set default payer to current member if not already set
+    afterNextRender(() => {
       const currentMemberRef = this.currentMember()?.ref;
-      if (currentMemberRef && !this.addMemorizedForm.value.paidByMember) {
-        this.addMemorizedForm.patchValue({
-          paidByMember: currentMemberRef,
-        });
+      if (currentMemberRef && !this.expenseModel().paidByMember) {
+        this.expenseModel.update(m => ({ ...m, paidByMember: currentMemberRef }));
       }
-      // Auto-add members if group setting is enabled
       if (this.autoAddMembers()) {
         this.addAllActiveGroupMembers();
       }
-      // Set default category if only one exists
       if (this.activeCategories().length === 1) {
-        this.addMemorizedForm.patchValue({
-          category: this.activeCategories()[0]!.ref,
-        });
+        this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]!.ref ?? null }));
       }
-      // Turn off loading once stores are populated
-      if (currentMemberRef) {
-        this.loading.loadingOff();
-      }
+      this.loading.loadingOff();
     });
   }
 
@@ -199,119 +184,31 @@ export class AddMemorizedComponent {
     });
   }
 
-  createSplitFormGroup(): FormGroup {
-    const existingMembers = new Set(
-      this.splitsFormArray.controls.map((c) => c.get('owedByMemberRef')!.value.id)
-    );
-    const availableMembers = this.activeMembers().filter(
-      (m) => !existingMembers.has(m.id)
-    );
-    return this.fb.group({
-      owedByMemberRef: [
-        availableMembers.length > 0 ? availableMembers[0]!.ref : null,
-        Validators.required,
-      ],
-      assignedAmount: [
-        this.localeService.getFormattedZero(),
-        Validators.required,
-      ],
-      percentage: [0],
-      shares: [0],
-      allocatedAmount: [0],
-    });
+  #formatForInput(value: number): string {
+    const rounded = this.localeService.roundToCurrency(value);
+    const currency = this.localeService.currency();
+    return rounded.toFixed(currency.decimalPlaces).replace('.', currency.decimalSeparator);
   }
 
-  amountValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      return control.value === 0 ? { zeroAmount: true } : null;
-    };
-  }
-
-  get e() {
-    return this.addMemorizedForm.controls;
-  }
-
-  get splitsFormArray(): FormArray {
-    return this.addMemorizedForm.get('splits') as FormArray;
-  }
-
-  addSplit(): void {
-    this.splitsFormArray.push(this.createSplitFormGroup());
-    // Set the value of the newly created input element to '0.00'
-    setTimeout(() => {
-      const lastInput = this.memberAmounts().find(
-        (i) => i.nativeElement.value === ''
-      );
-      if (lastInput) {
-        lastInput.nativeElement.value = this.localeService.getFormattedZero();
-        // Manually trigger the input event to update the mat-label
-        const event = new Event('input', { bubbles: true });
-        lastInput.nativeElement.dispatchEvent(event);
-      }
-    });
-    this.recalculateAllocation();
-  }
-
-  addAllActiveGroupMembers(): void {
-    const existingMembers = new Set(
-      this.splitsFormArray.controls.map((c) => c.get('owedByMemberRef')!.value.id)
-    );
-
-    this.activeMembers().forEach((member: Member) => {
-      if (!existingMembers.has(member.id)) {
-        this.splitsFormArray.push(
-          this.fb.group({
-            owedByMemberRef: [member.ref, Validators.required],
-            assignedAmount: [
-              this.localeService.getFormattedZero(),
-              Validators.required,
-            ],
-            percentage: [0],
-            shares: [0],
-            allocatedAmount: [0],
-          })
-        );
-      }
-    });
-    setTimeout(() => {
-      const newInputs = this.memberAmounts().filter(
-        (i) => i.nativeElement.value === ''
-      );
-      newInputs.forEach((input) => {
-        input.nativeElement.value = this.localeService.getFormattedZero();
-        // Manually trigger the input event to update the mat-label
-        const event = new Event('input', { bubbles: true });
-        input.nativeElement.dispatchEvent(event);
+  #mergeAllocationResults(
+    modelSplits: ExpenseSplitItemForm[],
+    resultSplits: AllocationSplit[],
+    updatePercentage: boolean
+  ): ExpenseSplitItemForm[] {
+    const updated = modelSplits.map(s => ({ ...s }));
+    resultSplits.forEach(split => {
+      const ref = split.owedByMemberRef;
+      if (!ref) return;
+      const key = ref.id || ref.toString();
+      const idx = updated.findIndex(s => {
+        const r = s.owedByMemberRef;
+        return r && (r.id || r.toString()) === key;
       });
+      if (idx === -1) return;
+      if (updatePercentage) updated[idx]!.percentage = split.percentage;
+      updated[idx]!.allocatedAmount = split.allocatedAmount;
     });
-    this.recalculateAllocation();
-  }
-
-  availableMembersForSplit(index: number): Member[] {
-    const selectedMemberIds = new Set(
-      this.splitsFormArray.controls
-        .filter((_, i) => i !== index)
-        .map((c) => c.get('owedByMemberRef')!.value)
-        .filter((ref) => ref !== null)
-        .map((ref) => ref.id)
-    );
-    return this.activeMembers().filter(
-      (member) => !selectedMemberIds.has(member.id)
-    );
-  }
-
-  removeSplit(index: number): void {
-    this.splitsFormArray.removeAt(index);
-    this.recalculateAllocation();
-  }
-
-  onSplitMethodChange(): void {
-    this.addMemorizedForm.markAsDirty();
-    this.recalculateAllocation();
-  }
-
-  updateTotalAmount(): void {
-    this.recalculateAllocation();
+    return updated;
   }
 
   private recalculateAllocation(): void {
@@ -323,96 +220,170 @@ export class AddMemorizedComponent {
   }
 
   allocateSharedAmounts(): void {
-    const val = this.addMemorizedForm.value;
-    const input = {
-      totalAmount: val.amount!,
-      sharedAmount: val.sharedAmount!,
-      allocatedAmount: val.allocatedAmount!,
-      splits: this.splitsFormArray.value.map((split: Split) => ({
-        owedByMemberRef: split.owedByMemberRef,
-        assignedAmount: split.assignedAmount,
-        percentage: split.percentage,
-        shares: split.shares ?? 0,
-        allocatedAmount: split.allocatedAmount,
+    const model = this.expenseModel();
+    const fd = this.expenseFormData();
+    const input: AllocationInput = {
+      totalAmount: this.stringUtils.toNumber(fd.amount),
+      sharedAmount: model.sharedAmount,
+      allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
+      splits: model.splits.map(s => ({
+        owedByMemberRef: s.owedByMemberRef,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
+        shares: s.shares ?? 0,
+        allocatedAmount: s.allocatedAmount,
       })),
     };
-
     const result = this.allocationUtils.allocateSharedAmounts(input);
-
-    // Update the form with the adjusted shared amount if it changed
-    if (result.adjustedSharedAmount !== val.sharedAmount) {
-      this.addMemorizedForm.patchValue({
-        sharedAmount: result.adjustedSharedAmount,
-      });
-    }
-
-    // Apply the allocation results to the form array
-    this.allocationUtils.applyAllocationToFormArray(
-      this.splitsFormArray,
-      result
-    );
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, false);
+    this.expenseModel.update(m => ({
+      ...m,
+      sharedAmount: result.adjustedSharedAmount,
+      splits: updatedSplits,
+    }));
   }
 
   allocateByPercentage(): void {
-    if (this.splitsFormArray.length === 0) return;
+    const model = this.expenseModel();
+    if (model.splits.length === 0) return;
     const result = this.allocationUtils.allocateByPercentage({
-      totalAmount: +this.addMemorizedForm.value.amount!,
-      splits: this.splitsFormArray.getRawValue().map((s: any) => ({
+      totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),
+      splits: model.splits.map(s => ({
         owedByMemberRef: s.owedByMemberRef,
-        assignedAmount: s.assignedAmount,
-        percentage: s.percentage,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
         shares: s.shares ?? 0,
         allocatedAmount: s.allocatedAmount,
       })),
     });
-    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, true);
+    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
   }
 
   allocateByShares(): void {
-    if (this.splitsFormArray.length === 0) return;
+    const model = this.expenseModel();
+    if (model.splits.length === 0) return;
     const result = this.allocationUtils.allocateByShares({
-      totalAmount: +this.addMemorizedForm.value.amount!,
-      splits: this.splitsFormArray.getRawValue().map((s: any) => ({
+      totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),
+      splits: model.splits.map(s => ({
         owedByMemberRef: s.owedByMemberRef,
-        assignedAmount: s.assignedAmount,
-        percentage: s.percentage,
+        assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+        percentage: s.percentage ?? 0,
         shares: s.shares ?? 0,
         allocatedAmount: s.allocatedAmount,
       })),
     });
-    this.allocationUtils.applyPercentageAllocationToFormArray(this.splitsFormArray, result);
+    const updatedSplits = this.#mergeAllocationResults(model.splits, result.splits, true);
+    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
+  }
+
+  addSplit(): void {
+    const existingIds = new Set(
+      this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
+    );
+    const available = this.activeMembers().filter(m => !existingIds.has(m.id));
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: [
+        ...m.splits,
+        {
+          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          assignedAmount: this.localeService.getFormattedZero(),
+          percentage: 0,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+      ],
+    }));
+    this.recalculateAllocation();
+  }
+
+  addAllActiveGroupMembers(): void {
+    const existingIds = new Set(
+      this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
+    );
+    const newSplits: ExpenseSplitItemForm[] = this.activeMembers()
+      .filter(m => !existingIds.has(m.id))
+      .map(m => ({
+        owedByMemberRef: m.ref ?? null,
+        assignedAmount: this.localeService.getFormattedZero(),
+        percentage: 0,
+        shares: 0,
+        allocatedAmount: 0,
+      }));
+    if (newSplits.length === 0) return;
+    this.expenseModel.update(m => ({ ...m, splits: [...m.splits, ...newSplits] }));
+    this.recalculateAllocation();
+  }
+
+  availableMembersForSplit(index: number): Member[] {
+    const selectedIds = new Set(
+      this.expenseModel().splits
+        .filter((_, i) => i !== index)
+        .map(s => s.owedByMemberRef?.id)
+        .filter(Boolean)
+    );
+    return this.activeMembers().filter(m => !selectedIds.has(m.id));
+  }
+
+  removeSplit(index: number): void {
+    this.expenseModel.update(m => ({
+      ...m,
+      splits: m.splits.filter((_, i) => i !== index),
+    }));
+    this.recalculateAllocation();
+  }
+
+  onSplitMethodChange(): void {
+    this.recalculateAllocation();
   }
 
   protected effectivePercentage(index: number): number {
-    const splits = this.splitsFormArray.getRawValue();
-    const totalShares = splits.reduce((t: number, s: any) => t + (+s.shares || 0), 0);
+    const splits = this.expenseModel().splits;
+    const totalShares = splits.reduce((t, s) => t + (s.shares ?? 0), 0);
     if (totalShares === 0) return 0;
-    return ((+splits[index].shares || 0) / totalShares) * 100;
+    return ((splits[index]!.shares ?? 0) / totalShares) * 100;
   }
 
   getAssignedTotal = (): number =>
     this.localeService.roundToCurrency(
-      +[...this.splitsFormArray.value].reduce(
-        (total, s) =>
-          total + this.localeService.roundToCurrency(+s.assignedAmount),
+      this.expenseModel().splits.reduce(
+        (total, s) => total + this.localeService.roundToCurrency(this.stringUtils.toNumber(s.assignedAmount)),
         0
       )
     );
 
   getAllocatedTotal = (): number =>
     this.localeService.roundToCurrency(
-      +[...this.splitsFormArray.value].reduce(
-        (total, s) =>
-          total + this.localeService.roundToCurrency(+s.allocatedAmount),
+      this.expenseModel().splits.reduce(
+        (total, s) => total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
     );
 
   memorizedFullyAllocated = (): boolean =>
-    this.addMemorizedForm.value.amount == this.getAllocatedTotal();
+    this.stringUtils.toNumber(this.expenseFormData().amount) === this.getAllocatedTotal();
 
   isLastSplit(index: number): boolean {
-    return this.splitMethod() === 'percentage' && index === this.splitsFormArray.length - 1;
+    return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
+  }
+
+  openCalculator(event: Event, field: 'amount' | 'allocatedAmount', index?: number): void {
+    const target = event.target as HTMLElement;
+    this.calculatorOverlay.openCalculator(target, (result: number) => {
+      const formatted = this.#formatForInput(result);
+      if (index === undefined) {
+        this.expenseFormData.update(fd => ({ ...fd, [field]: formatted }));
+      } else {
+        this.expenseModel.update(m => ({
+          ...m,
+          splits: m.splits.map((s, i) =>
+            i === index ? { ...s, assignedAmount: formatted } : s
+          ),
+        }));
+      }
+      this.recalculateAllocation();
+    });
   }
 
   async onSubmit(): Promise<void> {
@@ -420,56 +391,37 @@ export class AddMemorizedComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    const val = this.addMemorizedForm.getRawValue();
+    const model = this.expenseModel();
+    const fd = this.expenseFormData();
     const memorized: Partial<Memorized> = {
-      description: val.description!,
-      categoryRef: val.category!,
-      paidByMemberRef: val.paidByMember!,
-      sharedAmount: +val.sharedAmount!,
-      allocatedAmount: +val.allocatedAmount!,
-      totalAmount: +val.amount!,
+      description: fd.description,
+      categoryRef: model.category!,
+      paidByMemberRef: model.paidByMember!,
+      sharedAmount: model.sharedAmount,
+      allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
+      totalAmount: this.stringUtils.toNumber(fd.amount),
       splitMethod: this.splitMethod(),
     };
-    let splits: Partial<Split>[] = [];
-    this.splitsFormArray.getRawValue().forEach((s) => {
-      const split = {
-        assignedAmount: +s.assignedAmount,
-        percentage: +s.percentage,
-        shares: s.shares ?? 0,
-        allocatedAmount: +s.allocatedAmount,
-        paidByMemberRef: val.paidByMember!,
-        owedByMemberRef: s.owedByMemberRef,
-      };
-      splits.push(split);
-    });
+    const splits: Partial<Split>[] = model.splits.map(s => ({
+      assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
+      percentage: s.percentage ?? 0,
+      shares: s.shares ?? 0,
+      allocatedAmount: s.allocatedAmount,
+      paidByMemberRef: model.paidByMember!,
+      owedByMemberRef: s.owedByMemberRef!,
+    }));
     memorized.splits = splits;
     this.loading.loadingOn();
     try {
-      await this.memorizedService.addMemorized(
-        this.currentGroup()!.id,
-        memorized
-      );
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Memorized expense added' },
-      });
+      await this.memorizedService.addMemorized(this.currentGroup()!.id, memorized);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: 'Memorized expense added' } });
       this.router.navigate(['/memorized']);
     } catch (error) {
       if (error instanceof Error) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: error.message },
-        });
-        this.analytics.logError(
-          'Add Memorized Component',
-          'memorize_expense',
-          'Failed to memorize expense',
-          error.message
-        );
+        this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: error.message } });
+        this.analytics.logError('Add Memorized Component', 'memorize_expense', 'Failed to memorize expense', error.message);
       } else {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: {
-            message: 'Something went wrong - could not memorize expense',
-          },
-        });
+        this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: 'Something went wrong - could not memorize expense' } });
       }
     } finally {
       this.loading.loadingOff();
@@ -478,29 +430,6 @@ export class AddMemorizedComponent {
 
   onCancel(): void {
     this.router.navigate(['/memorized']);
-  }
-
-  openCalculator(event: Event, controlName: string, index?: number): void {
-    const target = event.target as HTMLElement;
-    this.calculatorOverlay.openCalculator(target, (result: number) => {
-      if (index === undefined) {
-        const control = this.addMemorizedForm.get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.updateTotalAmount();
-        }
-      } else {
-        const control = this.splitsFormArray.at(index).get(controlName);
-        if (control) {
-          control.setValue(this.localeService.roundToCurrency(result), {
-            emitEvent: true,
-          });
-          this.recalculateAllocation();
-        }
-      }
-    });
   }
 
   showHelp(): void {

@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { TestBed } from '@angular/core/testing';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+import * as authModule from 'firebase/auth';
+import * as functionsModule from 'firebase/functions';
 import { AnalyticsService } from './analytics.service';
 
 describe('AnalyticsService', () => {
@@ -7,7 +10,14 @@ describe('AnalyticsService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new AnalyticsService();
+    TestBed.configureTestingModule({
+      providers: [
+        AnalyticsService,
+        { provide: authModule.getAuth, useValue: { currentUser: null } },
+        { provide: functionsModule.getFunctions, useValue: {} },
+      ],
+    });
+    service = TestBed.inject(AnalyticsService);
   });
 
   afterEach(() => {

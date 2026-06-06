@@ -1,10 +1,5 @@
-import { Component, inject, Signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, Signal, signal } from '@angular/core';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -19,7 +14,7 @@ import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
-import { Group } from '@models/group';
+import { AddGroupForm, Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
@@ -32,21 +27,20 @@ import { UserStore } from '@store/user.store';
   templateUrl: './add-group.component.html',
   styleUrl: './add-group.component.scss',
   imports: [
-    FormsModule,
+    FormField,
     MatButtonModule,
     MatDialogModule,
-    ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
     MatSelectModule,
     MatOptionModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddGroupComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddGroupComponent>);
-  protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
@@ -54,18 +48,19 @@ export class AddGroupComponent {
   protected readonly analytics = inject(AnalyticsService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
-
-  newGroupForm = this.fb.group({
-    groupName: ['', Validators.required],
-    displayName: ['', Validators.required],
-    autoAddMembers: [false],
-    currencyCode: ['USD', Validators.required],
-  });
   user: Signal<User | null> = this.userStore.user;
 
-  public get f() {
-    return this.newGroupForm.controls;
-  }
+  protected readonly newGroupModel = signal<AddGroupForm>({
+    groupName: '',
+    displayName: '',
+    autoAddMembers: false,
+    currencyCode: 'USD',
+  });
+  protected readonly newGroupForm = form(this.newGroupModel, (p) => {
+    required(p.groupName, { message: '*Required' });
+    required(p.displayName, { message: '*Required' });
+    required(p.currencyCode, { message: '*Required' });
+  });
 
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
@@ -74,20 +69,20 @@ export class AddGroupComponent {
     }
     try {
       this.loading.loadingOn();
-      const val = this.newGroupForm.value;
-      const currencyConfig = getCurrencyConfig(val.currencyCode!)!;
+      const val = this.newGroupForm().value();
+      const currencyConfig = getCurrencyConfig(val.currencyCode)!;
       const newGroup: Partial<Group> = {
-        name: val.groupName ?? undefined,
+        name: val.groupName,
         active: true,
-        autoAddMembers: val.autoAddMembers ?? undefined,
-        currencyCode: val.currencyCode ?? undefined,
+        autoAddMembers: val.autoAddMembers,
+        currencyCode: val.currencyCode,
         currencySymbol: currencyConfig.symbol,
         decimalPlaces: currencyConfig.decimalPlaces,
         archived: false,
       };
       const newMember: Partial<Member> = {
         userRef: this.user()!.ref,
-        displayName: val.displayName ?? undefined,
+        displayName: val.displayName,
         email: this.user()!.email,
         active: true,
         groupAdmin: true,

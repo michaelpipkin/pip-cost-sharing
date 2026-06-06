@@ -50,6 +50,7 @@ import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -94,6 +95,7 @@ import {
     DateRangeFilterDirective,
   ],
   providers: [TableFilterService],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExpensesComponent {
   protected readonly storage = inject(getStorage);

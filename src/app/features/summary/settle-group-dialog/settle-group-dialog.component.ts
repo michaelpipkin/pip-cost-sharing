@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import { CurrencyPipe } from '@shared/pipes/currency.pipe';
   selector: 'app-settle-group-dialog',
   imports: [MatDialogModule, MatButtonModule, CurrencyPipe],
   templateUrl: './settle-group-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettleGroupDialogComponent {
   protected readonly snackbar = inject(MatSnackBar);

@@ -19,46 +19,46 @@ export class FormatCurrencyInputDirective {
 
   @HostListener('blur', ['$event']) onBlur(event: FocusEvent) {
     const target = event.target as HTMLInputElement;
-    if (!target?.value) return;
+    const raw = (target?.value ?? '').trim().replaceAll(/\.([^\d]|$)/g, '$1');
+    const calc = raw ? this.stringUtils.toNumber(raw) : 0;
 
-    let value = target.value.trim().replaceAll(/\.([^\d]|$)/g, '$1');
-    const calc = this.stringUtils.toNumber(value);
-
-    if (this.formGroupDirective) {
-      if (this.el.nativeElement.hasAttribute('parentControlName')) {
-        const parentControlName =
-          this.el.nativeElement.getAttribute('parentControlName');
-        const parentControl = this.formGroupDirective.form.get(
-          parentControlName
-        ) as FormArray;
-        const index = this.el.nativeElement.dataset.index;
-        const controlName =
-          this.el.nativeElement.getAttribute('formControlName');
-        const control = parentControl.at(+index).get(controlName);
-        if (control) {
-          control.setValue(calc, { emitEvent: false });
-        }
-      } else {
-        const controlName =
-          this.el.nativeElement.getAttribute('formControlName');
-        if (controlName) {
-          const control = this.formGroupDirective.form.get(controlName);
-          if (control) {
-            control.setValue(calc, { emitEvent: false });
-          }
-        }
-      }
-    }
-
-    // Format using currency's decimal separator
     const currency = this.localeService.currency();
-    const formatted = this.formatWithCurrencySeparator(
+    this.el.nativeElement.value = this.formatWithCurrencySeparator(
       calc,
       currency.decimalPlaces,
       currency.decimalSeparator,
       currency.symbolPosition
     );
-    this.el.nativeElement.value = formatted;
+
+    if (this.formGroupDirective) {
+      this.#updateReactiveFormControl(calc);
+    } else {
+      // Signals forms context: dispatch input AFTER formatting so [formField] reads formatted value
+      this.el.nativeElement.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  #updateReactiveFormControl(calc: number): void {
+    const el = this.el.nativeElement;
+    if (el.hasAttribute('parentControlName')) {
+      const parentControl = this.formGroupDirective!.form.get(
+        el.getAttribute('parentControlName')
+      ) as FormArray;
+      const control = parentControl.at(+el.dataset.index).get(
+        el.getAttribute('formControlName')
+      );
+      if (control) {
+        control.setValue(calc, { emitEvent: false });
+      }
+    } else {
+      const controlName = el.getAttribute('formControlName');
+      if (controlName) {
+        const control = this.formGroupDirective!.form.get(controlName);
+        if (control) {
+          control.setValue(calc, { emitEvent: false });
+        }
+      }
+    }
   }
 
   private formatWithCurrencySeparator(
@@ -67,13 +67,8 @@ export class FormatCurrencyInputDirective {
     decimalSeparator: string,
     symbolPosition: 'prefix' | 'suffix' | 'none'
   ): string {
-    // Format the number with fixed decimal places
     const fixed = value.toFixed(decimalPlaces);
-
-    // Replace dot with currency's decimal separator
     const formatted = fixed.replace('.', decimalSeparator);
-
-    // Add trailing space for suffix currencies to separate from symbol
     return symbolPosition === 'suffix' ? `${formatted} ` : formatted;
   }
 }

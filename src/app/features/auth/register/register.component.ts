@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   inject,
@@ -7,11 +8,11 @@ import {
   signal,
 } from '@angular/core';
 import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  email as emailValidator,
+  form,
+  FormField,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +23,7 @@ import { Router, RouterModule } from '@angular/router';
 import { Browser } from '@capacitor/browser';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { RegisterForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { FirebaseError } from 'firebase/app';
@@ -32,15 +34,14 @@ import {
   sendEmailVerification,
 } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { passwordMatchValidator } from '../auth-main/password-match-validator';
+import { applyPasswordMatch } from '../auth-main/password-match-schema';
 export declare const hcaptcha: any;
 
 @Component({
   selector: 'app-register',
   imports: [
     RouterModule,
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatIconModule,
     MatFormFieldModule,
@@ -49,12 +50,12 @@ export declare const hcaptcha: any;
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RegisterComponent {
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly router = inject(Router);
-  protected readonly fb = inject(FormBuilder);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
@@ -69,14 +70,18 @@ export class RegisterComponent {
 
   #intervalId: ReturnType<typeof setInterval> | null = null;
 
-  registerForm = this.fb.group(
-    {
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
-      confirmPassword: ['', Validators.required],
-    },
-    { validators: passwordMatchValidator() }
-  );
+  protected readonly registerModel = signal<RegisterForm>({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  protected readonly registerForm = form(this.registerModel, (p) => {
+    required(p.email, { message: 'Email is required.' });
+    emailValidator(p.email, { message: 'Invalid email address.' });
+    required(p.password, { message: 'Password is required.' });
+    required(p.confirmPassword, { message: 'Confirm password is required.' });
+    applyPasswordMatch(p);
+  });
 
   constructor() {
     afterNextRender(() => {
@@ -116,6 +121,7 @@ export class RegisterComponent {
       }
     });
   }
+
   isRunningInBrowser(): boolean {
     return this.pwaDetection.isRunningInBrowser();
   }
@@ -132,16 +138,11 @@ export class RegisterComponent {
     this.hideConfirmPassword.update((h) => !h);
   }
 
-  get r() {
-    return this.registerForm.controls;
-  }
-
   async register() {
     try {
       this.loading.loadingOn();
-      const email = this.registerForm.value.email;
-      const password = this.registerForm.value.password;
-      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email!);
+      const { email, password } = this.registerForm().value();
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length > 0 && signInMethods.includes('password')) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Account already exists for this email address' },
@@ -150,8 +151,8 @@ export class RegisterComponent {
       } else {
         const userCredential = await createUserWithEmailAndPassword(
           this.auth,
-          email!,
-          password!
+          email,
+          password
         );
         const actionCodeSettings = {
           url: globalThis.location.origin + '/auth/account-action',

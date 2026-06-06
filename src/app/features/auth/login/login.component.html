@@ -13,9 +13,8 @@
     </mat-card-header>
     <mat-card-content>
       <form
-        [formGroup]="loginForm"
         class="login"
-        (submit)="emailLogin()"
+        (submit)="$event.preventDefault(); emailLogin()"
         data-testid="login-form"
         aria-label="Login form"
       >
@@ -24,14 +23,14 @@
           <input
             matInput
             type="email"
-            formControlName="email"
+            [formField]="loginForm.email"
             #emailInput
             data-testid="email-input"
             aria-label="Email address"
           />
-          @if (l.email.errors?.email) {
-            <mat-error data-testid="email-error">
-              Invalid email address
+          @for (error of loginForm.email().errors(); track error; let i = $index) {
+            <mat-error [attr.data-testid]="'email-error-' + i">
+              {{ error.message }}
             </mat-error>
           }
         </mat-form-field>
@@ -40,9 +39,9 @@
           <input
             matInput
             [type]="hidePassword() ? 'password' : 'text'"
-            formControlName="password"
+            [formField]="loginForm.password"
             (keydown.enter)="
-              $event.preventDefault(); loginForm.valid && emailLogin()
+              $event.preventDefault(); loginForm().valid() && emailLogin()
             "
             #passwordInput
             data-testid="password-input"

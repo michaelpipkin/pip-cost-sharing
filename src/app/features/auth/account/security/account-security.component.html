@@ -6,10 +6,10 @@
     </p>
   } @else {
     <form
-      [formGroup]="passwordForm"
       class="container"
       data-testid="password-form"
       aria-label="Change password form"
+      (submit)="$event.preventDefault()"
     >
       <mat-form-field data-testid="new-password-field">
         <mat-label>New Password</mat-label>
@@ -18,7 +18,7 @@
           matInput
           [type]="hidePassword() ? 'password' : 'text'"
           autocomplete="new-password"
-          formControlName="password"
+          [formField]="passwordForm.password"
           data-testid="new-password-input"
           aria-label="Enter new password"
         />
@@ -42,7 +42,7 @@
           matInput
           [type]="hideConfirm() ? 'password' : 'text'"
           autocomplete="new-password"
-          formControlName="confirmPassword"
+          [formField]="passwordForm.confirmPassword"
         />
         <button
           mat-icon-button
@@ -55,7 +55,10 @@
             {{ hideConfirm() ? 'visibility_off' : 'visibility' }}
           </mat-icon>
         </button>
-        @if (passwordForm.errors?.['mismatch']) {
+        @if (
+          passwordForm().errors().some(e => e.message === 'Passwords do not match.') &&
+          passwordForm.confirmPassword().touched()
+        ) {
           <mat-error>Passwords do not match.</mat-error>
         }
       </mat-form-field>
@@ -64,8 +67,8 @@
         class="btn-primary"
         type="submit"
         [disabled]="
-          passwordForm.invalid ||
-          passwordForm.controls['confirmPassword'].value === ''
+          !passwordForm().valid() ||
+          passwordForm.confirmPassword().value() === ''
         "
         (click)="onSubmitPassword()"
         data-testid="change-password-button"

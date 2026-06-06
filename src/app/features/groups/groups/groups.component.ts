@@ -1,11 +1,12 @@
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
+  linkedSignal,
   Signal,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
@@ -40,7 +41,6 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
   templateUrl: './groups.component.html',
   styleUrls: ['./groups.component.scss'],
   imports: [
-    ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,
     MatOptionModule,
@@ -50,6 +50,7 @@ import { ManageGroupsComponent } from '../manage-groups/manage-groups.component'
     MatCardModule,
     DocRefCompareDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GroupsComponent {
   protected readonly userStore = inject(UserStore);
@@ -61,7 +62,6 @@ export class GroupsComponent {
   protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly fb = inject(FormBuilder);
   protected readonly analytics = inject(AnalyticsService);
 
   readonly #user: Signal<User | null> = this.userStore.user;
@@ -69,9 +69,9 @@ export class GroupsComponent {
   readonly allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
   readonly activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
-  groupForm = this.fb.group({
-    selectedGroupRef: [this.groupStore.currentGroup()?.ref ?? null],
-  });
+  protected readonly selectedGroupRef = linkedSignal<DocumentReference<Group> | null>(
+    () => this.groupStore.currentGroup()?.ref ?? null
+  );
 
   constructor() {
     effect(() => {
@@ -82,21 +82,9 @@ export class GroupsComponent {
       }
     });
 
-    // Patch form value in demo mode
-    if (this.demoService.isInDemoMode()) {
-      this.groupForm.patchValue({
-        selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
-      });
-    }
-
     afterNextRender(() => {
-      // Check if we should auto-start the groups tour
       this.tourService.checkForContinueTour('groups');
     });
-  }
-
-  get selectedGroupRef() {
-    return this.groupForm.get('selectedGroupRef')!.value;
   }
 
   addGroup(): void {
@@ -112,16 +100,12 @@ export class GroupsComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Group added' },
           });
-          this.groupForm.patchValue({
-            selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
-          });
         }
       });
   }
 
   async onSelectGroup(e: MatSelectChange): Promise<void> {
     if (this.demoService.isInDemoMode()) {
-      // In demo mode, just find and set the group from the store
       const selectedGroup = this.allUserGroups().find(
         (g) => g.ref!.id === e.value.id
       );
@@ -166,9 +150,6 @@ export class GroupsComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message },
           });
-          this.groupForm.patchValue({
-            selectedGroupRef: this.groupStore.currentGroup()?.ref ?? null,
-          });
         }
       });
   }
@@ -183,7 +164,6 @@ export class GroupsComponent {
   }
 
   startTour(): void {
-    // Force start the Welcome Tour (ignoring completion state)
     this.tourService.startWelcomeTour(true);
   }
 }

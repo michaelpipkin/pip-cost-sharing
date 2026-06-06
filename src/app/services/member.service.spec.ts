@@ -30,10 +30,14 @@ describe('MemberService', () => {
     groupMembers: signal<any[]>([]),
     currentMember: signal<any>(null),
   };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     userSignal.set(null);
 
     vi.spyOn(firestoreModule, 'collection').mockReturnValue({} as any);
@@ -261,6 +265,7 @@ describe('MemberService', () => {
     const mockMemberRef = { id: 'member-1' } as any;
 
     it('should throw when the member is the only admin', async () => {
+      userSignal.set({ ref: { id: 'user-1' } });
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
         makeSnap([makeDocSnap('member-1', { groupAdmin: true })]) as any
       );

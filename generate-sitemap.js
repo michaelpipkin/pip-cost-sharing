@@ -37,62 +37,6 @@ const publicRoutes = [
     priority: '0.7',
     changefreq: 'monthly',
   },
-  {
-    path: 'auth/forgot-password',
-    priority: '0.6',
-    changefreq: 'monthly',
-  },
-  // Demo routes - showcase app features without requiring authentication
-  {
-    path: 'demo/administration/groups',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/administration/members',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/administration/categories',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/expenses',
-    priority: '0.9',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/expenses/add',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/memorized',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/analysis/summary',
-    priority: '0.9',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/analysis/history',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/split',
-    priority: '0.8',
-    changefreq: 'weekly',
-  },
-  {
-    path: 'demo/help',
-    priority: '0.7',
-    changefreq: 'monthly',
-  },
 ];
 
 function generateSitemap() {
@@ -154,12 +98,8 @@ try {
   console.log(`\nFiles generated in: ${outputDir}`);
   console.log('\nNext steps:');
   console.log('1. Upload your site to production');
-  console.log(
-    `2. Submit ${BASE_URL}/sitemap.xml to Google Search Console`
-  );
-  console.log(
-    `3. Verify ${BASE_URL}/robots.txt is accessible in your browser`
-  );
+  console.log(`2. Submit ${BASE_URL}/sitemap.xml to Google Search Console`);
+  console.log(`3. Verify ${BASE_URL}/robots.txt is accessible in your browser`);
 } catch (error) {
   console.error('Error generating sitemap:', error);
   process.exit(1);

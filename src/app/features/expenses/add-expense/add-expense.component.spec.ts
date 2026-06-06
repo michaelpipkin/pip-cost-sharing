@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
@@ -57,6 +58,27 @@ describe('AddExpenseComponent', () => {
   let mockExpenseService: ReturnType<typeof createMockExpenseService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockRouter: Router;
+
+  function getModel(): ExpenseForm {
+    return (component as any).expenseModel();
+  }
+
+  function patchModel(patch: Partial<ExpenseForm>): void {
+    (component as any).expenseModel.update((m: ExpenseForm) => ({ ...m, ...patch }));
+  }
+
+  function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
+    (component as any).expenseModel.update((m: ExpenseForm) => ({
+      ...m,
+      splits: m.splits.map((s: ExpenseSplitItemForm, i: number) =>
+        i === index ? { ...s, ...patch } : s
+      ),
+    }));
+  }
+
+  function getForm() {
+    return (component as any).expenseForm;
+  }
 
   beforeEach(async () => {
     mockGroupStore = createMockGroupStore();
@@ -161,9 +183,7 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should default payer to current member', () => {
-      expect(component.addExpenseForm.value.paidByMember?.path).toContain(
-        'member-1'
-      );
+      expect(getModel().paidByMember?.path).toContain('member-1');
     });
 
     it('should auto-select category when only one exists', async () => {
@@ -216,7 +236,7 @@ describe('AddExpenseComponent', () => {
 
     it('should default date to today', () => {
       const today = new Date();
-      const formDate = component.addExpenseForm.value.date;
+      const formDate = getModel().date;
 
       expect(formDate?.getDate()).toBe(today.getDate());
       expect(formDate?.getMonth()).toBe(today.getMonth());
@@ -233,28 +253,28 @@ describe('AddExpenseComponent', () => {
     });
   });
 
-  describe('FormArray operations', () => {
+  describe('model split operations', () => {
     it('should add split with DocumentReference for member', () => {
-      expect(component.splitsFormArray.length).toBe(0);
+      expect(getModel().splits.length).toBe(0);
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
 
-      const split = component.splitsFormArray.at(0);
-      expect(split.get('owedByMemberRef')).toBeTruthy();
+      const split = getModel().splits[0];
+      expect(split?.owedByMemberRef).toBeTruthy();
     });
 
-    it('should remove split from FormArray', () => {
+    it('should remove split from model', () => {
       component.addSplit();
       component.addSplit();
-      expect(component.splitsFormArray.length).toBe(2);
+      expect(getModel().splits.length).toBe(2);
 
       component.removeSplit(0);
-      expect(component.splitsFormArray.length).toBe(1);
+      expect(getModel().splits.length).toBe(1);
     });
 
     it('should add all active members when button clicked', () => {
       component.addAllActiveGroupMembers();
-      expect(component.splitsFormArray.length).toBe(2);
+      expect(getModel().splits.length).toBe(2);
     });
 
     it('should reflect autoAddMembers from group', () => {
@@ -267,23 +287,22 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should require at least one split', () => {
-      expect(component.splitsFormArray.length).toBe(0);
-      const splitsControl = component.addExpenseForm.get('splits');
-      expect(splitsControl?.hasError('required')).toBe(true);
+      expect(getModel().splits.length).toBe(0);
+      expect(getForm().splits().errors().length > 0).toBe(true);
 
       component.addSplit();
-      expect(splitsControl?.hasError('required')).toBe(false);
+      expect(getForm().splits().errors().length === 0).toBe(true);
     });
 
     it('should create split with member ref and amounts', () => {
       component.addSplit();
-      const split = component.splitsFormArray.at(0);
+      const split = getModel().splits[0]!;
 
-      expect(split.get('owedByMemberRef')).toBeTruthy();
-      expect(split.get('assignedAmount')).toBeTruthy();
-      expect(split.get('percentage')).toBeTruthy();
-      expect(split.get('shares')).toBeTruthy();
-      expect(split.get('allocatedAmount')).toBeTruthy();
+      expect(split.owedByMemberRef).toBeTruthy();
+      expect(split.assignedAmount).toBeTruthy();
+      expect(split.percentage).not.toBeUndefined();
+      expect(split.shares).not.toBeUndefined();
+      expect(split.allocatedAmount).not.toBeUndefined();
     });
   });
 
@@ -295,24 +314,16 @@ describe('AddExpenseComponent', () => {
       const memberRef1 = mockDocRef('groups/group-1/members/member-1');
       const memberRef2 = mockDocRef('groups/group-1/members/member-2');
 
-      component.splitsFormArray
-        .at(0)
-        .patchValue({ owedByMemberRef: memberRef1 });
-      component.splitsFormArray
-        .at(1)
-        .patchValue({ owedByMemberRef: memberRef2 });
+      patchSplit(0, { owedByMemberRef: memberRef1 });
+      patchSplit(1, { owedByMemberRef: memberRef2 });
 
-      component.addExpenseForm.patchValue({
-        amount: 100,
-        sharedAmount: 100,
-        allocatedAmount: 0,
-      });
+      patchModel({ amount: '100.00', sharedAmount: 100, allocatedAmount: '0.00' });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(50);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(50);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(50);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(50);
     });
 
     it('should handle percentage mode toggle', async () => {
@@ -327,21 +338,21 @@ describe('AddExpenseComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.addExpenseForm.patchValue({ amount: 100 });
-      component.splitsFormArray.at(0).patchValue({ percentage: 70 });
-      component.splitsFormArray.at(1).patchValue({ percentage: 30 });
+      patchModel({ amount: '100.00' });
+      patchSplit(0, { percentage: 70 });
+      patchSplit(1, { percentage: 30 });
 
       component.allocateByPercentage();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(70);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(30);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(70);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(30);
     });
 
     it('should check if expense is fully allocated', () => {
       component.addSplit();
-      component.addExpenseForm.patchValue({ amount: 100 });
-      component.splitsFormArray.at(0).patchValue({ allocatedAmount: 100 });
+      patchModel({ amount: '100.00' });
+      patchSplit(0, { allocatedAmount: 100 });
 
       expect(component.expenseFullyAllocated()).toBe(true);
     });
@@ -364,14 +375,15 @@ describe('AddExpenseComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      component.splitsFormArray.at(0).patchValue({ percentage: 40 });
-      component.splitsFormArray.at(1).patchValue({ percentage: 35 });
+      patchSplit(2, { owedByMemberRef: mockDocRef('groups/group-1/members/member-3') });
+      patchSplit(0, { percentage: 40 });
+      patchSplit(1, { percentage: 35 });
 
       component.allocateByPercentage();
       await fixture.whenStable();
 
       // Last split should be 25 (100 - 75)
-      expect(component.splitsFormArray.at(2).value.percentage).toBe(25);
+      expect(getModel().splits[2]!.percentage).toBe(25);
     });
 
     it('should allocate by shares correctly', async () => {
@@ -384,21 +396,21 @@ describe('AddExpenseComponent', () => {
       const memberRef2 = mockDocRef('groups/group-1/members/member-2');
       const memberRef3 = mockDocRef('groups/group-1/members/member-3');
 
-      component.splitsFormArray.at(0).patchValue({ owedByMemberRef: memberRef1, shares: 1 });
-      component.splitsFormArray.at(1).patchValue({ owedByMemberRef: memberRef2, shares: 1 });
-      component.splitsFormArray.at(2).patchValue({ owedByMemberRef: memberRef3, shares: 2 });
+      patchSplit(0, { owedByMemberRef: memberRef1, shares: 1 });
+      patchSplit(1, { owedByMemberRef: memberRef2, shares: 1 });
+      patchSplit(2, { owedByMemberRef: memberRef3, shares: 2 });
 
-      component.addExpenseForm.patchValue({ amount: 100 });
+      patchModel({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
 
-      expect(component.splitsFormArray.at(0).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(1).value.allocatedAmount).toBe(25);
-      expect(component.splitsFormArray.at(2).value.allocatedAmount).toBe(50);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[1]!.allocatedAmount).toBe(25);
+      expect(getModel().splits[2]!.allocatedAmount).toBe(50);
     });
 
-    it('should update form when allocation changes', () => {
+    it('should update model when allocation changes', () => {
       const allocationUtils = TestBed.inject(AllocationUtilsService);
       const spy = vi.spyOn(allocationUtils, 'allocateSharedAmounts');
 
@@ -473,14 +485,14 @@ describe('AddExpenseComponent', () => {
   describe('form submission', () => {
     beforeEach(() => {
       component.addSplit();
-      component.addExpenseForm.patchValue({
+      patchModel({
         paidByMember: mockDocRef('groups/group-1/members/member-1'),
         date: new Date(),
-        amount: 100,
+        amount: '100.00',
         description: 'Test expense',
         category: mockDocRef('groups/group-1/categories/cat-1'),
       });
-      component.splitsFormArray.at(0).patchValue({
+      patchSplit(0, {
         owedByMemberRef: mockDocRef('groups/group-1/members/member-1'),
         allocatedAmount: 100,
       });
@@ -505,7 +517,7 @@ describe('AddExpenseComponent', () => {
 
     it('should keep date as today even with memorized data', () => {
       const today = new Date();
-      const formDate = component.addExpenseForm.value.date;
+      const formDate = getModel().date;
 
       expect(formDate?.getDate()).toBe(today.getDate());
     });
@@ -533,7 +545,7 @@ describe('AddExpenseComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
       } as any;
-      component.openCalculator(mockEvent, 'sharedAmount');
+      component.openCalculator(mockEvent, 'allocatedAmount');
 
       expect(spy).toHaveBeenCalled();
     });
@@ -547,7 +559,7 @@ describe('AddExpenseComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
       } as any;
-      component.openCalculator(mockEvent, 'assignedAmount', 0);
+      component.openCalculator(mockEvent, 'allocatedAmount', 0);
 
       expect(spy).toHaveBeenCalled();
     });

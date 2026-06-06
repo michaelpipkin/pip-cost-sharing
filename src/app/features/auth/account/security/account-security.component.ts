@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   effect,
   inject,
@@ -6,11 +7,7 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-} from '@angular/forms';
+import { form, FormField } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,31 +16,45 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { PasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
 import { User as FirebaseUser, getAuth, updatePassword } from 'firebase/auth';
+import { applyPasswordMatch } from '../../auth-main/password-match-schema';
 
 @Component({
   selector: 'app-account-security',
   templateUrl: './account-security.component.html',
   imports: [
-    ReactiveFormsModule,
+    FormField,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountSecurityComponent {
   protected readonly auth = inject(getAuth);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly fb = inject(FormBuilder);
   protected readonly userStore = inject(UserStore);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
 
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
+
+  firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
+  hidePassword = model<boolean>(true);
+  hideConfirm = model<boolean>(true);
+
+  protected readonly passwordModel = signal<PasswordForm>({
+    password: '',
+    confirmPassword: '',
+  });
+  protected readonly passwordForm = form(this.passwordModel, (p) => {
+    applyPasswordMatch(p);
+  });
 
   constructor() {
     effect(() => {
@@ -53,18 +64,6 @@ export class AccountSecurityComponent {
     });
   }
 
-  firebaseUser = signal<FirebaseUser>(this.auth.currentUser);
-  hidePassword = model<boolean>(true);
-  hideConfirm = model<boolean>(true);
-
-  passwordForm = this.fb.group(
-    {
-      password: '',
-      confirmPassword: '',
-    },
-    { validators: this.passwordMatchValidator }
-  );
-
   toggleHidePassword() {
     this.hidePassword.update((h) => !h);
   }
@@ -73,28 +72,22 @@ export class AccountSecurityComponent {
     this.hideConfirm.update((h) => !h);
   }
 
-  passwordMatchValidator(g: AbstractControl) {
-    return g.get('password')!.value === g.get('confirmPassword')!.value
-      ? null
-      : { mismatch: true };
-  }
-
   onSubmitPassword(): void {
-    const changes = this.passwordForm.value;
+    const f = this.passwordForm().value();
     const user = this.firebaseUser()!;
     this.loading.loadingOn();
     try {
-      if (changes.password === '') {
+      if (f.password === '') {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Password cannot be empty' },
         });
       } else {
-        updatePassword(user, changes.password!)
+        updatePassword(user, f.password)
           .then(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: 'Your password has been updated' },
             });
-            this.passwordForm.reset();
+            this.passwordModel.set({ password: '', confirmPassword: '' });
           })
           .catch(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {

@@ -1,4 +1,4 @@
-import { Component, inject, output, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -28,6 +28,7 @@ interface Language {
   ],
   templateUrl: './account-menu.component.html',
   styleUrl: './account-menu.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountMenuComponent {
   protected readonly router = inject(Router);

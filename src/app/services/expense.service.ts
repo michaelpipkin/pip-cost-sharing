@@ -36,22 +36,29 @@ export class ExpenseService implements IExpenseService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
 
-  async doesGroupHaveExpenses(groupId: string): Promise<void> {
+  async checkGroupHasExpenses(groupId: string): Promise<boolean> {
     try {
       const q = query(
         collection(this.fs, `groups/${groupId}/expenses`),
         limit(1)
       );
       const snapshot = await getDocs(q);
-      this.expenseStore.setGroupHasExpenses(!snapshot.empty);
+      return !snapshot.empty;
     } catch (error) {
       this.analytics.logError(
         'Expense Service',
-        'doesGroupHaveExpenses',
+        'checkGroupHasExpenses',
         'Failed to check if group has expenses',
         error instanceof Error ? error.message : 'Unknown error'
       );
+      return false;
     }
+  }
+
+  async doesGroupHaveExpenses(groupId: string): Promise<void> {
+    this.expenseStore.setGroupHasExpenses(
+      await this.checkGroupHasExpenses(groupId)
+    );
   }
 
   async getGroupExpensesByDateRange(

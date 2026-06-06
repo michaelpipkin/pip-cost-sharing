@@ -3,6 +3,7 @@ import { SplitDto } from '@models/split';
 import { DocumentReference } from 'firebase/firestore';
 
 export interface IExpenseService {
+  checkGroupHasExpenses(groupId: string): Promise<boolean>;
   getGroupExpensesByDateRange(
     groupId: string,
     startDate?: Date,

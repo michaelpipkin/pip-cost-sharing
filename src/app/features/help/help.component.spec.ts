@@ -18,6 +18,7 @@ import { HelpComponent } from './help.component';
 describe('HelpComponent', () => {
   let fixture: ComponentFixture<HelpComponent>;
   let component: HelpComponent;
+  let el: HTMLElement;
   let mockHelpService: { createIssue: ReturnType<typeof vi.fn> };
   let mockHelpContentService: {
     getAllHelpSections: ReturnType<typeof vi.fn>;
@@ -56,12 +57,27 @@ describe('HelpComponent', () => {
 
     fixture = TestBed.createComponent(HelpComponent);
     component = fixture.componentInstance;
+    el = fixture.nativeElement;
     await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  function query(testId: string): HTMLElement | null {
+    return el.querySelector(`[data-testid="${testId}"]`);
+  }
+
+  function setInputValue(testId: string, value: string): void {
+    const input = el.querySelector(
+      `[data-testid="${testId}"]`
+    ) as HTMLInputElement | HTMLTextAreaElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+  }
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -73,59 +89,95 @@ describe('HelpComponent', () => {
   });
 
   describe('issueForm', () => {
-    it('should be invalid when empty', () => {
-      expect(component.issueForm.invalid).toBe(true);
+    it('should disable submit button when form is empty', () => {
+      expect((query('submit-issue-button') as HTMLButtonElement).disabled).toBe(
+        true
+      );
     });
 
-    it('should be valid with title and body', () => {
-      component.f.title.setValue('Test Issue');
-      component.f.body.setValue('This is the body of the issue.');
-      expect(component.issueForm.valid).toBe(true);
+    it('should enable submit button when title and body are filled', async () => {
+      setInputValue('issue-title-input', 'Test Issue');
+      setInputValue('issue-body-input', 'Issue body text');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('submit-issue-button') as HTMLButtonElement).disabled).toBe(
+        false
+      );
     });
 
-    it('should be invalid when title is missing', () => {
-      component.f.body.setValue('Body text');
-      expect(component.issueForm.invalid).toBe(true);
+    it('should disable submit button when title is missing', async () => {
+      setInputValue('issue-body-input', 'Body text');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('submit-issue-button') as HTMLButtonElement).disabled).toBe(
+        true
+      );
     });
 
-    it('should be invalid when body is missing', () => {
-      component.f.title.setValue('Title');
-      expect(component.issueForm.invalid).toBe(true);
+    it('should disable submit button when body is missing', async () => {
+      setInputValue('issue-title-input', 'Title');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('submit-issue-button') as HTMLButtonElement).disabled).toBe(
+        true
+      );
     });
 
-    it('should mark email as invalid with bad format', () => {
-      component.f.email.setValue('not-an-email');
-      expect(component.f.email.invalid).toBe(true);
+    it('should show email error for invalid format', async () => {
+      setInputValue('issue-email-input', 'not-an-email');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('issue-email-error-0')).toBeTruthy();
     });
 
-    it('should mark email as valid with proper format', () => {
-      component.f.email.setValue('user@example.com');
-      expect(component.f.email.valid).toBe(true);
+    it('should not show email error for valid format', async () => {
+      setInputValue('issue-email-input', 'user@example.com');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('issue-email-error-0')).toBeNull();
     });
   });
 
   describe('clearForm', () => {
-    it('should reset form values', () => {
-      component.f.title.setValue('Title');
-      component.f.body.setValue('Body');
+    it('should reset form values to empty', async () => {
+      setInputValue('issue-title-input', 'Title');
+      setInputValue('issue-body-input', 'Body');
+      await fixture.whenStable();
       component.clearForm();
-      expect(component.f.title.value).toBeNull();
-      expect(component.f.body.value).toBeNull();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(
+        (el.querySelector('[data-testid="issue-title-input"]') as HTMLInputElement).value
+      ).toBe('');
+      expect(
+        (el.querySelector('[data-testid="issue-body-input"]') as HTMLTextAreaElement).value
+      ).toBe('');
     });
 
-    it('should mark form as pristine and untouched', () => {
-      component.f.title.markAsDirty();
-      component.f.body.markAsTouched();
+    it('should enable clear button when form has content and disable after clearing', async () => {
+      expect((query('clear-issue-button') as HTMLButtonElement).disabled).toBe(
+        true
+      );
+      setInputValue('issue-title-input', 'Title');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('clear-issue-button') as HTMLButtonElement).disabled).toBe(
+        false
+      );
       component.clearForm();
-      expect(component.issueForm.pristine).toBe(true);
-      expect(component.issueForm.untouched).toBe(true);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect((query('clear-issue-button') as HTMLButtonElement).disabled).toBe(
+        true
+      );
     });
   });
 
   describe('onSubmit', () => {
-    beforeEach(() => {
-      component.f.title.setValue('Test Issue');
-      component.f.body.setValue('Issue body text');
+    beforeEach(async () => {
+      setInputValue('issue-title-input', 'Test Issue');
+      setInputValue('issue-body-input', 'Issue body text');
+      await fixture.whenStable();
     });
 
     it('should call helpService.createIssue with title and body', async () => {
@@ -137,7 +189,8 @@ describe('HelpComponent', () => {
     });
 
     it('should append email to body when email is provided', async () => {
-      component.f.email.setValue('user@example.com');
+      setInputValue('issue-email-input', 'user@example.com');
+      await fixture.whenStable();
       await component.onSubmit();
       expect(mockHelpService.createIssue).toHaveBeenCalledWith(
         'Test Issue',
@@ -147,7 +200,11 @@ describe('HelpComponent', () => {
 
     it('should clear form on success', async () => {
       await component.onSubmit();
-      expect(component.f.title.value).toBeNull();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(
+        (el.querySelector('[data-testid="issue-title-input"]') as HTMLInputElement).value
+      ).toBe('');
     });
 
     it('should show success snackbar on success', async () => {

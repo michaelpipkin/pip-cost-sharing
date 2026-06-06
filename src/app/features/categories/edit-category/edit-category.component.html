@@ -1,29 +1,29 @@
 <h1 mat-dialog-title data-testid="edit-category-title">Edit Category</h1>
-<form
-  [formGroup]="editCategoryForm"
-  data-testid="edit-category-form"
-  aria-label="Edit category form"
->
+<form data-testid="edit-category-form" aria-label="Edit category form" (submit)="$event.preventDefault()">
   <mat-dialog-content data-testid="edit-category-content">
     <div class="content" data-testid="edit-category-fields">
       <mat-form-field appearance="fill" data-testid="edit-category-name-field">
         <mat-label>Category name</mat-label>
         <input
           matInput
-          formControlName="categoryName"
+          [formField]="editCategoryForm.categoryName"
           data-testid="edit-category-name-input"
           aria-label="Category name"
         />
-        @if (f.categoryName.errors?.['required']) {
-          <mat-error data-testid="edit-category-name-error">
-            *Required
+        @for (
+          error of editCategoryForm.categoryName().errors();
+          track error;
+          let i = $index
+        ) {
+          <mat-error [attr.data-testid]="'edit-category-name-error-' + i">
+            {{ error.message }}
           </mat-error>
         }
       </mat-form-field>
     </div>
     <div class="toggle" data-testid="edit-category-toggles">
       <mat-slide-toggle
-        formControlName="active"
+        [formField]="editCategoryForm.active"
         data-testid="edit-category-active-toggle"
         aria-label="Category is active"
       >
@@ -38,9 +38,9 @@
       type="submit"
       defaultButton
       [disabled]="
-        !editCategoryForm.valid ||
-        editCategoryForm.pristine ||
-        editCategoryForm.disabled
+        !editCategoryForm().valid() ||
+        !editCategoryForm().dirty() ||
+        editCategoryForm().disabled()
       "
       (click)="onSubmit()"
       data-testid="edit-category-save-button"
@@ -52,7 +52,7 @@
       mat-raised-button
       type="button"
       class="btn-danger"
-      [disabled]="editCategoryForm.disabled"
+      [disabled]="editCategoryForm().disabled()"
       (click)="deleteCategory()"
       data-testid="delete-category-button"
       aria-label="Delete category"
@@ -62,7 +62,7 @@
     <button
       mat-stroked-button
       type="button"
-      [disabled]="editCategoryForm.disabled"
+      [disabled]="editCategoryForm().disabled()"
       [mat-dialog-close]="{ success: false }"
       data-testid="edit-category-cancel-button"
       aria-label="Cancel editing category"

@@ -270,14 +270,17 @@ export function createMockMemorizedStore() {
 
 export function createMockExpenseStore() {
   const groupExpenses = signal<Expense[]>([]);
+  const groupHasExpenses = signal(false);
   const loaded = signal(true);
   return {
     groupExpenses,
+    groupHasExpenses: groupHasExpenses.asReadonly(),
     loaded,
     unpaidGroupExpenses: computed(() => groupExpenses().filter((e) => !e.paid)),
     setGroupExpenses: vi.fn((expenses: Expense[]) =>
       groupExpenses.set(expenses)
     ),
+    setGroupHasExpenses: vi.fn((val: boolean) => groupHasExpenses.set(val)),
     clearGroupExpenses: vi.fn(() => {
       groupExpenses.set([]);
       loaded.set(false);
@@ -310,6 +313,18 @@ export function createMockLoadingService() {
 export function createMockAnalyticsService() {
   return {
     logEvent: vi.fn(),
+    logError: vi.fn(),
+    logScreenView: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
+}
+
+export function createMockUserService() {
+  return {
+    getPaymentMethods: vi.fn().mockResolvedValue({}),
+    getUserDetails: vi.fn().mockResolvedValue(null),
+    createUserIfNotExists: vi.fn().mockResolvedValue(null),
+    logout: vi.fn().mockResolvedValue(undefined),
   };
 }
 

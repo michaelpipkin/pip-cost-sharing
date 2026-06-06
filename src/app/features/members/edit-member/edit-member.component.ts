@@ -1,11 +1,18 @@
-import { Component, inject, Signal } from '@angular/core';
 import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  Signal,
+  signal,
+} from '@angular/core';
+import {
+  disabled,
+  email,
+  form,
+  FormField,
+  required,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -24,7 +31,7 @@ import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialo
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
-import { Member } from '@models/member';
+import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
@@ -38,8 +45,7 @@ import { UserStore } from '@store/user.store';
   templateUrl: './edit-member.component.html',
   styleUrl: './edit-member.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
+    FormField,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -47,10 +53,10 @@ import { UserStore } from '@store/user.store';
     MatSlideToggleModule,
     MatTooltipModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditMemberComponent {
   protected readonly dialogRef = inject(MatDialogRef<EditMemberComponent>);
-  protected readonly fb = inject(FormBuilder);
   protected readonly dialog = inject(MatDialog);
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
@@ -63,47 +69,52 @@ export class EditMemberComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
-  public member: Member = this.data.member;
+  readonly member: Member = this.data.member;
+  protected readonly currentMember: Signal<Member | null> =
+    this.memberStore.currentMember;
+  protected readonly user: Signal<User | null> = this.userStore.user;
 
-  editMemberForm: FormGroup;
+  private readonly activeMemberCount =
+    this.memberStore.activeGroupMembers().length;
 
-  currentMember: Signal<Member | null> = this.memberStore.currentMember;
-  user: Signal<User | null> = this.userStore.user;
-  activeMemberCount: number = this.memberStore.activeGroupMembers().length;
+  protected readonly activeTooltip: string =
+    this.activeMemberCount === 1 && this.member.active
+      ? 'There must be at least one active member in the group'
+      : '';
+  protected readonly groupAdminTooltip: string = this.member.userRef?.eq(
+    this.userStore.user()!.ref!
+  )
+    ? 'You cannot remove yourself as a group admin'
+    : '';
 
-  activeTooltip: string = '';
-  groupAdminTooltip: string = '';
+  protected readonly editMemberModel = signal<EditMemberForm>({
+    memberName: this.member.displayName,
+    email: this.member.email ?? '',
+    active: this.member.active,
+    groupAdmin: this.member.groupAdmin,
+  });
 
-  constructor() {
-    const userRef = this.user()!.ref!;
-    this.editMemberForm = this.fb.group({
-      memberName: [this.member.displayName, Validators.required],
-      email: [this.member.email, Validators.email],
-      active: [
-        {
-          value: this.member.active,
-          disabled: this.activeMemberCount === 1 && this.member.active,
-        },
-      ],
-      groupAdmin: [
-        {
-          value: this.member.groupAdmin,
-          disabled: this.member.userRef?.eq(userRef),
-        },
-      ],
+  protected readonly editMemberForm = form(this.editMemberModel, (p) => {
+    required(p.memberName, { message: '*Required' });
+    email(p.email, { message: '*Not a valid email address' });
+    disabled(p.active, {
+      when: () =>
+        this.activeMemberCount === 1 && !!this.editMemberModel().active,
     });
-    if (this.member.userRef?.eq(userRef)) {
-      this.groupAdminTooltip = 'You cannot remove yourself as a group admin';
-    }
-    if (this.activeMemberCount === 1 && this.member.active) {
-      this.activeTooltip =
-        'There must be at least one active member in the group';
-    }
-  }
+    disabled(p.groupAdmin, {
+      when: () => !!this.member.userRef?.eq(this.userStore.user()!.ref!),
+    });
+  });
 
-  public get f() {
-    return this.editMemberForm.controls;
-  }
+  protected readonly hasChanges = computed(() => {
+    const current = this.editMemberForm().value();
+    return (
+      current.memberName !== this.member.displayName ||
+      current.email !== (this.member.email ?? '') ||
+      current.active !== this.member.active ||
+      current.groupAdmin !== this.member.groupAdmin
+    );
+  });
 
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
@@ -112,12 +123,12 @@ export class EditMemberComponent {
     }
     try {
       this.loading.loadingOn();
-      const form = this.editMemberForm.getRawValue();
+      const val = this.editMemberForm().value();
       const changes: Partial<Member> = {
-        displayName: form.memberName,
-        email: form.email,
-        active: form.active,
-        groupAdmin: form.groupAdmin,
+        displayName: val.memberName,
+        email: val.email,
+        active: val.active,
+        groupAdmin: val.groupAdmin,
       };
       const memberRef = this.member.ref!;
       await this.memberService.updateMemberWithUserMatching(
@@ -126,10 +137,7 @@ export class EditMemberComponent {
         this.member.userRef,
         this.member.email
       );
-      this.dialogRef.close({
-        success: true,
-        operation: 'saved',
-      });
+      this.dialogRef.close({ success: true, operation: 'saved' });
     } catch (error) {
       if (error instanceof Error) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -167,10 +175,7 @@ export class EditMemberComponent {
             this.data.groupId,
             memberRef
           );
-          this.dialogRef.close({
-            success: true,
-            operation: 'removed',
-          });
+          this.dialogRef.close({ success: true, operation: 'removed' });
         } catch (error) {
           if (error instanceof Error) {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -217,9 +222,7 @@ export class EditMemberComponent {
           this.userStore.updateUser({ defaultGroupRef: null });
           localStorage.removeItem('currentGroup');
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: {
-              message: 'You have left the group successfully.',
-            },
+            data: { message: 'You have left the group successfully.' },
           });
           this.dialogRef.close();
           this.router.navigate(['/groups']);

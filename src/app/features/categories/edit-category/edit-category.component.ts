@@ -1,10 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -20,7 +15,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
-import { Category } from '@models/category';
+import { Category, EditCategoryForm } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { DemoService } from '@services/demo.service';
@@ -30,19 +25,18 @@ import { DemoService } from '@services/demo.service';
   templateUrl: './edit-category.component.html',
   styleUrl: './edit-category.component.scss',
   imports: [
-    FormsModule,
-    ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
     MatButtonModule,
+    FormField,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditCategoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<EditCategoryComponent>);
-  protected readonly fb = inject(FormBuilder);
   protected readonly categoryService = inject(CategoryService);
   protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
@@ -52,14 +46,13 @@ export class EditCategoryComponent {
 
   readonly #category = signal<Category>(this.data.category);
 
-  editCategoryForm = this.fb.group({
-    categoryName: [this.data.category.name, Validators.required],
-    active: [this.data.category.active],
+  protected readonly categoryModel = signal<EditCategoryForm>({
+    categoryName: this.data.category.name,
+    active: this.data.category.active,
   });
-
-  public get f() {
-    return this.editCategoryForm.controls;
-  }
+  protected readonly editCategoryForm = form(this.categoryModel, (p) => {
+    required(p.categoryName, { message: '*Required' });
+  });
 
   async onSubmit(): Promise<void> {
     if (this.demoService.isInDemoMode()) {
@@ -68,10 +61,10 @@ export class EditCategoryComponent {
     }
     try {
       this.loading.loadingOn();
-      const form = this.editCategoryForm.getRawValue();
+      const f = this.editCategoryForm().value();
       const changes: Partial<Category> = {
-        name: form.categoryName ?? undefined,
-        active: form.active ?? undefined,
+        name: f.categoryName,
+        active: f.active,
       };
       const categoryRef = this.#category().ref!;
       await this.categoryService.updateCategory(categoryRef, changes);

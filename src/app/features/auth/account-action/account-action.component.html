@@ -34,15 +34,15 @@
         <div class="reset-password-form">
           <p>Enter your new password below:</p>
 
-          <form [formGroup]="resetPasswordForm" (ngSubmit)="resetPassword()">
+          <form (submit)="$event.preventDefault(); resetPassword()">
             <mat-form-field>
               <mat-label>New Password</mat-label>
               <input
                 matInput
                 [type]="hidePassword() ? 'password' : 'text'"
                 autocomplete="new-password"
-                formControlName="password"
-                required
+                [formField]="resetPasswordForm.password"
+                data-testid="account-action-password-input"
               />
               <button
                 mat-icon-button
@@ -64,8 +64,8 @@
                 matInput
                 [type]="hideConfirmPassword() ? 'password' : 'text'"
                 autocomplete="new-password"
-                formControlName="confirmPassword"
-                required
+                [formField]="resetPasswordForm.confirmPassword"
+                data-testid="account-action-confirm-password-input"
               />
               <button
                 mat-icon-button
@@ -79,7 +79,7 @@
                   {{ hideConfirmPassword() ? 'visibility_off' : 'visibility' }}
                 </mat-icon>
               </button>
-              @if (resetPasswordForm.errors?.['mismatch']) {
+              @if (resetPasswordForm().errors().some(e => e.message === 'Passwords do not match.')) {
                 <mat-error>Passwords do not match.</mat-error>
               }
             </mat-form-field>
@@ -89,7 +89,7 @@
                 mat-raised-button
                 color="primary"
                 type="submit"
-                [disabled]="resetPasswordForm.invalid"
+                [disabled]="!resetPasswordForm().valid()"
               >
                 Reset Password
               </button>

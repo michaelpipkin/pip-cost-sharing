@@ -1,35 +1,32 @@
 <h1 mat-dialog-title data-testid="edit-member-title">Edit Member</h1>
-<form
-  [formGroup]="editMemberForm"
-  data-testid="edit-member-form"
-  aria-label="Edit member form"
->
+<form data-testid="edit-member-form" aria-label="Edit member form" (submit)="$event.preventDefault()">
   <mat-dialog-content data-testid="edit-member-content">
     <div class="content" data-testid="edit-member-fields">
       <mat-form-field appearance="fill" data-testid="edit-member-name-field">
         <mat-label>Member name</mat-label>
         <input
           matInput
-          formControlName="memberName"
+          [formField]="editMemberForm.memberName"
           data-testid="edit-member-name-input"
           aria-label="Member name"
         />
-        @if (f['memberName']?.errors?.['required']) {
-          <mat-error data-testid="edit-member-name-error">*Required</mat-error>
+        @for (error of editMemberForm.memberName().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'edit-member-name-error-' + i">
+            {{ error.message }}
+          </mat-error>
         }
       </mat-form-field>
       <mat-form-field appearance="fill" data-testid="edit-member-email-field">
         <mat-label>Email</mat-label>
         <input
           matInput
-          email
-          formControlName="email"
+          [formField]="editMemberForm.email"
           data-testid="edit-member-email-input"
           aria-label="Member email"
         />
-        @if (f['email']?.errors?.['email']) {
-          <mat-error data-testid="edit-member-email-error">
-            *Not a valid email address
+        @for (error of editMemberForm.email().errors(); track error; let i = $index) {
+          <mat-error [attr.data-testid]="'edit-member-email-error-' + i">
+            {{ error.message }}
           </mat-error>
         }
       </mat-form-field>
@@ -40,7 +37,7 @@
       data-testid="edit-member-toggles"
     >
       <mat-slide-toggle
-        formControlName="active"
+        [formField]="editMemberForm.active"
         [matTooltip]="activeTooltip"
         data-testid="edit-member-active-toggle"
         aria-label="Member is active"
@@ -48,7 +45,7 @@
         Active
       </mat-slide-toggle>
       <mat-slide-toggle
-        formControlName="groupAdmin"
+        [formField]="editMemberForm.groupAdmin"
         [matTooltip]="groupAdminTooltip"
         data-testid="edit-member-admin-toggle"
         aria-label="Member is group admin"
@@ -63,11 +60,7 @@
       class="btn-secondary"
       type="submit"
       defaultButton
-      [disabled]="
-        !editMemberForm.valid ||
-        editMemberForm.pristine ||
-        editMemberForm.disabled
-      "
+      [disabled]="!editMemberForm().valid() || !hasChanges()"
       (click)="onSubmit()"
       data-testid="edit-member-save-button"
       aria-label="Save member changes"
@@ -80,7 +73,6 @@
         type="button"
         class="btn-danger"
         (click)="leaveGroup()"
-        [disabled]="editMemberForm.disabled"
         data-testid="leave-group-button"
         aria-label="Leave group"
       >
@@ -92,7 +84,6 @@
         type="button"
         class="btn-danger"
         (click)="removeMember()"
-        [disabled]="editMemberForm.disabled"
         data-testid="remove-member-button"
         aria-label="Remove member from group"
       >
@@ -103,7 +94,6 @@
       mat-stroked-button
       type="button"
       [mat-dialog-close]="{ success: false }"
-      [disabled]="editMemberForm.disabled"
       data-testid="edit-member-cancel-button"
       aria-label="Cancel editing member"
     >

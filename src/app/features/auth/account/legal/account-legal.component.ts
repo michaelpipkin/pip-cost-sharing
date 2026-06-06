@@ -1,4 +1,4 @@
-import { Component, inject, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -15,6 +15,7 @@ import { UserStore } from '@store/user.store';
   templateUrl: './account-legal.component.html',
   styleUrls: ['./account-legal.component.scss'],
   imports: [FormsModule, MatCheckboxModule, MatButtonModule, MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountLegalComponent {
   protected readonly analytics = inject(AnalyticsService);

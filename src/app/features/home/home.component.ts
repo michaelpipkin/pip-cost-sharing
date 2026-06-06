@@ -1,4 +1,4 @@
-import { Component, inject, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
@@ -11,6 +11,7 @@ import { UserStore } from '@store/user.store';
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
   imports: [RouterLink, MatIconModule, MatButtonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeComponent {
   protected readonly userStore = inject(UserStore);

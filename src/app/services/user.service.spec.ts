@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { Router } from '@angular/router';
 import * as firestoreModule from 'firebase/firestore';
 import * as authModule from 'firebase/auth';
+import * as functionsModule from 'firebase/functions';
 import { UserService } from './user.service';
 import { UserStore } from '@store/user.store';
 import { GroupStore } from '@store/group.store';
@@ -17,6 +19,7 @@ import { GroupService } from './group.service';
 import { DemoModeService } from './demo-mode.service';
 
 const mockFs = {};
+const mockFunctions = {};
 const mockAuth = {
   onAuthStateChanged: vi.fn(),
   signOut: vi.fn().mockResolvedValue(undefined),
@@ -83,8 +86,12 @@ describe('UserService', () => {
     logout: vi.fn(),
   };
   const mockDemoModeService = { initializeDemoData: vi.fn() };
-  const mockAnalytics = { logEvent: vi.fn().mockResolvedValue(undefined) };
-  const mockRouter = { navigate: vi.fn() };
+  const mockAnalytics = {
+    logEvent: vi.fn().mockResolvedValue(undefined),
+    logError: vi.fn(),
+    logSnapshotError: vi.fn(),
+  };
+  const mockRouter = { navigate: vi.fn(), url: '/' };
 
   function createService(): UserService {
     TestBed.configureTestingModule({
@@ -92,6 +99,8 @@ describe('UserService', () => {
         UserService,
         { provide: firestoreModule.getFirestore, useValue: mockFs },
         { provide: authModule.getAuth, useValue: mockAuth },
+        { provide: functionsModule.getFunctions, useValue: mockFunctions },
+        { provide: Router, useValue: mockRouter },
         { provide: UserStore, useValue: mockUserStore },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
