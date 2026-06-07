@@ -1,21 +1,15 @@
-import {
-  Directive,
-  ElementRef,
-  HostListener,
-  inject,
-  input,
-} from '@angular/core';
+import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { NgControl } from '@angular/forms';
+import { FORM_FIELD } from '@angular/forms/signals';
 
 @Directive({
   selector: '[appDateShortcutKeys]',
   standalone: true,
 })
 export class DateShortcutKeysDirective {
-  readonly #ngControl = inject(NgControl);
+  readonly #formField = inject(FORM_FIELD, { optional: true });
+  readonly #ngControl = inject(NgControl, { optional: true });
   readonly #el = inject(ElementRef);
-
-  appDateShortcutKeys = input<any>();
 
   @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
@@ -23,7 +17,7 @@ export class DateShortcutKeysDirective {
       const inputDate = new Date(this.#el.nativeElement.value);
       const today = new Date();
       if (inputDate.toString() === 'Invalid Date') {
-        this.#ngControl.control?.patchValue(today);
+        this.#setValue(today);
       } else {
         let newDate: Date;
         switch (event.key) {
@@ -47,9 +41,17 @@ export class DateShortcutKeysDirective {
           default:
             newDate = today;
         }
-        this.#ngControl.control?.patchValue(newDate);
+        this.#setValue(newDate);
       }
       event.preventDefault();
+    }
+  }
+
+  #setValue(date: Date): void {
+    if (this.#formField) {
+      this.#formField.state().value.set(date);
+    } else {
+      this.#ngControl?.control?.patchValue(date);
     }
   }
 }
