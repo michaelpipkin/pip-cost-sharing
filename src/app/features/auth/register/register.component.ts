@@ -14,6 +14,7 @@ import {
   required,
 } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +24,7 @@ import { Router, RouterModule } from '@angular/router';
 import { Browser } from '@capacitor/browser';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { environment } from '@env/environment';
 import { RegisterForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
@@ -43,6 +45,7 @@ export declare const hcaptcha: any;
     RouterModule,
     FormField,
     MatButtonModule,
+    MatCardModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
@@ -65,10 +68,16 @@ export class RegisterComponent {
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
 
-  passedCaptcha = signal<boolean>(false);
+  protected readonly useEmulators = environment.useEmulators;
+
+  passedCaptcha = signal<boolean>(environment.useEmulators);
   hCaptchaWidgetId = signal<string>('');
+  registrationComplete = signal<boolean>(false);
+  registeredEmail = signal<string>('');
+  resendCooldown = signal<number>(0);
 
   #intervalId: ReturnType<typeof setInterval> | null = null;
+  #resendIntervalId: ReturnType<typeof setInterval> | null = null;
 
   protected readonly registerModel = signal<RegisterForm>({
     email: '',
@@ -85,6 +94,9 @@ export class RegisterComponent {
 
   constructor() {
     afterNextRender(() => {
+      if (environment.useEmulators) {
+        return;
+      }
       const widgetId = hcaptcha.render('hcaptcha-container', {
         sitekey: 'fbd4c20a-78ac-493c-bf4a-f65c143a2322',
         callback: async (token: string) => {
@@ -118,6 +130,9 @@ export class RegisterComponent {
     this.#destroyRef.onDestroy(() => {
       if (this.#intervalId) {
         clearInterval(this.#intervalId);
+      }
+      if (this.#resendIntervalId) {
+        clearInterval(this.#resendIntervalId);
       }
     });
   }
@@ -154,35 +169,28 @@ export class RegisterComponent {
           email,
           password
         );
-        const actionCodeSettings = {
-          url: globalThis.location.origin + '/auth/account-action',
-          handleCodeInApp: true,
-        };
-        sendEmailVerification(userCredential.user, actionCodeSettings).catch(
-          (err: Error) => {
-            if (!(err instanceof FirebaseError)) {
-              this.analytics.logError(
-                'Register Component',
-                'verify_email',
-                'Failed to send verification email after registration',
-                err.message
-              );
-            }
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: {
-                message:
-                  'Something went wrong - verification email could not be sent',
-              },
-            });
+        sendEmailVerification(
+          userCredential.user,
+          this.#getActionCodeSettings()
+        ).catch((err: Error) => {
+          if (!(err instanceof FirebaseError)) {
+            this.analytics.logError(
+              'Register Component',
+              'verify_email',
+              'Failed to send verification email after registration',
+              err.message
+            );
           }
-        );
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: {
-            message:
-              'Account created! Please check your email to verify your email address before accessing the app',
-          },
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: {
+              message:
+                'Something went wrong - verification email could not be sent',
+            },
+          });
         });
-        // Navigation will be handled automatically by auth state change
+        this.registeredEmail.set(email);
+        this.registrationComplete.set(true);
+        this.#startResendCooldown();
       }
     } catch (error: any) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -191,6 +199,62 @@ export class RegisterComponent {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  async resendVerificationEmail(): Promise<void> {
+    if (this.resendCooldown() > 0 || !this.auth.currentUser) {
+      return;
+    }
+    try {
+      await sendEmailVerification(
+        this.auth.currentUser,
+        this.#getActionCodeSettings()
+      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Verification email sent! Please check your inbox.' },
+      });
+      this.analytics.logEvent('verification_email_resent', {
+        component: 'Register Component',
+      });
+      this.#startResendCooldown();
+    } catch (err: any) {
+      if (!(err instanceof FirebaseError)) {
+        this.analytics.logError(
+          'Register Component',
+          'resend_verification_email',
+          'Failed to resend verification email',
+          err.message
+        );
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message:
+            'Something went wrong - verification email could not be sent',
+        },
+      });
+    }
+  }
+
+  #getActionCodeSettings() {
+    return {
+      url: globalThis.location.origin + '/auth/account-action',
+      handleCodeInApp: true,
+    };
+  }
+
+  #startResendCooldown(): void {
+    if (this.#resendIntervalId) {
+      clearInterval(this.#resendIntervalId);
+    }
+    this.resendCooldown.set(60);
+    this.#resendIntervalId = setInterval(() => {
+      const remaining = this.resendCooldown() - 1;
+      this.resendCooldown.set(remaining);
+      if (remaining <= 0) {
+        clearInterval(this.#resendIntervalId!);
+        this.#resendIntervalId = null;
+      }
+    }, 1000);
   }
 
   async openPrivacyPolicy(event: Event) {

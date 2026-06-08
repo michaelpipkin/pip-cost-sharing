@@ -10,7 +10,7 @@
           data-testid="edit-member-name-input"
           aria-label="Member name"
         />
-        @for (error of editMemberForm.memberName().errors(); track error; let i = $index) {
+        @for (error of editMemberForm.memberName().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'edit-member-name-error-' + i">
             {{ error.message }}
           </mat-error>
@@ -24,7 +24,7 @@
           data-testid="edit-member-email-input"
           aria-label="Member email"
         />
-        @for (error of editMemberForm.email().errors(); track error; let i = $index) {
+        @for (error of editMemberForm.email().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'edit-member-email-error-' + i">
             {{ error.message }}
           </mat-error>

@@ -200,7 +200,10 @@ export class UserService implements IUserService {
 
   async updateUser(changes: Partial<User>): Promise<void> {
     try {
-      const userId = this.userStore.user()!.id;
+      const userId = this.auth.currentUser?.uid;
+      if (!userId) {
+        throw new Error('Cannot update user: no authenticated user.');
+      }
       const docRef = doc(this.fs, `users/${userId}`);
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
@@ -216,7 +219,10 @@ export class UserService implements IUserService {
   }
 
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
-    const userId = this.userStore.user()!.id;
+    const userId = this.auth.currentUser?.uid;
+    if (!userId) {
+      throw new Error('Cannot update email: no authenticated user.');
+    }
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,

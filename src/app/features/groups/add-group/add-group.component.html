@@ -8,7 +8,7 @@
         [formField]="newGroupForm.groupName"
         data-testid="group-name-input"
       />
-      @for (error of newGroupForm.groupName().errors(); track error; let i = $index) {
+      @for (error of newGroupForm.groupName().errors(); track error.kind; let i = $index) {
         <mat-error [attr.data-testid]="'group-name-error-' + i">
           {{ error.message }}
         </mat-error>
@@ -21,7 +21,7 @@
         [formField]="newGroupForm.displayName"
         data-testid="display-name-input"
       />
-      @for (error of newGroupForm.displayName().errors(); track error; let i = $index) {
+      @for (error of newGroupForm.displayName().errors(); track error.kind; let i = $index) {
         <mat-error [attr.data-testid]="'display-name-error-' + i">
           {{ error.message }}
         </mat-error>
@@ -45,7 +45,7 @@
           }
         }
       </mat-select>
-      @for (error of newGroupForm.currencyCode().errors(); track error; let i = $index) {
+      @for (error of newGroupForm.currencyCode().errors(); track error.kind; let i = $index) {
         <mat-error [attr.data-testid]="'currency-error-' + i">
           {{ error.message }}
         </mat-error>

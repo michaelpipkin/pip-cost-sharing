@@ -21,7 +21,7 @@
           data-testid="account-email-input"
           aria-label="Email address"
         />
-        @for (error of emailForm.email().errors(); track error; let i = $index) {
+        @for (error of emailForm.email().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'account-email-error-' + i">
             {{ error.message }}
           </mat-error>

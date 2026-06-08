@@ -42,7 +42,7 @@
           [formField]="issueForm.title"
           data-testid="issue-title-input"
         />
-        @for (error of issueForm.title().errors(); track error; let i = $index) {
+        @for (error of issueForm.title().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'issue-title-error-' + i">
             {{ error.message }}
           </mat-error>
@@ -59,7 +59,7 @@
           Optional - provide your email address if you would like the developer
           to contact you regarding the issue
         </mat-hint>
-        @for (error of issueForm.email().errors(); track error; let i = $index) {
+        @for (error of issueForm.email().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'issue-email-error-' + i">
             {{ error.message }}
           </mat-error>
@@ -73,7 +73,7 @@
           rows="5"
           data-testid="issue-body-input"
         ></textarea>
-        @for (error of issueForm.body().errors(); track error; let i = $index) {
+        @for (error of issueForm.body().errors(); track error.kind; let i = $index) {
           <mat-error [attr.data-testid]="'issue-body-error-' + i">
             {{ error.message }}
           </mat-error>
