@@ -43,3 +43,32 @@ h2 {
 #hcaptcha-container {
   justify-self: center;
 }
+
+.confirmation-card {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.confirmation-state {
+  padding: 20px 0;
+
+  .confirmation-icon {
+    font-size: 64px;
+    height: 64px;
+    width: 64px;
+    color: #4caf50;
+    margin-bottom: 16px;
+  }
+
+  p {
+    margin-bottom: 12px;
+  }
+}
+
+mat-card-actions {
+  justify-content: center;
+  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+}

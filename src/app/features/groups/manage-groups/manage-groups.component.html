@@ -34,7 +34,7 @@
               [formField]="editGroupForm.groupName"
               data-testid="manage-group-name-input"
             />
-            @for (error of editGroupForm.groupName().errors(); track error; let i = $index) {
+            @for (error of editGroupForm.groupName().errors(); track error.kind; let i = $index) {
               <mat-error [attr.data-testid]="'manage-group-name-error-' + i">
                 {{ error.message }}
               </mat-error>
@@ -60,7 +60,7 @@
                 }
               }
             </mat-select>
-            @for (error of editGroupForm.currencyCode().errors(); track error; let i = $index) {
+            @for (error of editGroupForm.currencyCode().errors(); track error.kind; let i = $index) {
               <mat-error [attr.data-testid]="'manage-currency-error-' + i">
                 {{ error.message }}
               </mat-error>

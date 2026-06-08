@@ -133,6 +133,7 @@ describe('UserService', () => {
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
     vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined as any);
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
+    (mockAuth as any).currentUser = null;
     userSignal.set(null);
     service = createService();
   });
@@ -321,6 +322,81 @@ describe('UserService', () => {
       const result = await service.getPaymentMethods(memberRef);
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe('updateUser', () => {
+    it('should update user document using auth uid even when userStore.user() is null', async () => {
+      (mockAuth as any).currentUser = { uid: 'user-123' };
+
+      await service.updateUser({ email: 'updated@test.com' });
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        { email: 'updated@test.com' },
+        { merge: true }
+      );
+      expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+        email: 'updated@test.com',
+      });
+    });
+
+    it('should throw and log error when no authenticated user', async () => {
+      (mockAuth as any).currentUser = null;
+
+      await expect(
+        service.updateUser({ email: 'updated@test.com' })
+      ).rejects.toThrow('Cannot update user: no authenticated user.');
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'User Service',
+        'updateUser',
+        'Failed to update user',
+        'Cannot update user: no authenticated user.'
+      );
+    });
+  });
+
+  describe('updateUserEmailAndLinkMembers', () => {
+    it('should update email using auth uid when userStore.user() is null (regression: email verification race)', async () => {
+      (mockAuth as any).currentUser = { uid: 'user-123' };
+
+      await service.updateUserEmailAndLinkMembers('new@test.com');
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        { email: 'new@test.com' },
+        { merge: true }
+      );
+      expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+        email: 'new@test.com',
+      });
+    });
+
+    it('should link unlinked member records after updating email', async () => {
+      (mockAuth as any).currentUser = { uid: 'user-123' };
+      const memberRef1 = { id: 'm1' };
+      const memberRef2 = { id: 'm2' };
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([{ ref: memberRef1 }, { ref: memberRef2 }]) as any
+      );
+
+      await service.updateUserEmailAndLinkMembers('new@test.com');
+
+      expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef1, {
+        userRef: mockDocRef,
+      });
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef2, {
+        userRef: mockDocRef,
+      });
+    });
+
+    it('should throw when no authenticated user', async () => {
+      (mockAuth as any).currentUser = null;
+
+      await expect(
+        service.updateUserEmailAndLinkMembers('new@test.com')
+      ).rejects.toThrow('Cannot update email: no authenticated user.');
     });
   });
 

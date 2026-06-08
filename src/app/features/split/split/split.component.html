@@ -95,7 +95,7 @@
             >
               <mat-icon>calculate</mat-icon>
             </button>
-            @for (error of expenseForm.amount().errors(); track error; let i = $index) {
+            @for (error of expenseForm.amount().errors(); track error.kind; let i = $index) {
               <mat-error [attr.data-testid]="'amount-error-' + i">
                 {{ error.message }}
               </mat-error>

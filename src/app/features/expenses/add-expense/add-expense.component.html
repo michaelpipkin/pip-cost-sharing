@@ -79,7 +79,7 @@
             #expenseDatePicker
             data-testid="date-picker"
           ></mat-datepicker>
-          @for (error of expenseForm.date().errors(); track error) {
+          @for (error of expenseForm.date().errors(); track error.kind) {
             <mat-error data-testid="date-error">{{ error.message }}</mat-error>
           }
         </mat-form-field>
@@ -97,7 +97,7 @@
             data-testid="description-input"
             aria-label="Enter expense description"
           />
-          @for (error of expenseForm.description().errors(); track error) {
+          @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
@@ -159,7 +159,7 @@
           >
             <mat-icon>calculate</mat-icon>
           </button>
-          @for (error of expenseForm.amount().errors(); track error) {
+          @for (error of expenseForm.amount().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
@@ -201,7 +201,7 @@
             <mat-icon>calculate</mat-icon>
           </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
-          @for (error of expenseForm.allocatedAmount().errors(); track error) {
+          @for (error of expenseForm.allocatedAmount().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>

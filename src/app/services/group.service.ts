@@ -74,7 +74,10 @@ export class GroupService implements IGroupService {
     if (!this.userStore.isValidUser()) {
       // Don't redirect if on account-action page - let verification complete first
       const currentUrl = this.router.url;
-      if (!currentUrl.includes('/auth/account-action')) {
+      if (
+        !currentUrl.includes('/auth/account-action') &&
+        !currentUrl.includes('/auth/register')
+      ) {
         this.router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
       }
       this.loading.loadingOff();
