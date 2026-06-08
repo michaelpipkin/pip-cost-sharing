@@ -10,6 +10,7 @@ import {
   createMockPwaDetectionService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import * as authModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -158,8 +159,94 @@ describe('RegisterComponent', () => {
   });
 
   describe('passedCaptcha signal', () => {
-    it('should start as false', () => {
-      expect(component.passedCaptcha()).toBe(false);
+    it('should start as true when running with emulators (captcha bypassed)', () => {
+      expect(component.passedCaptcha()).toBe(true);
+    });
+  });
+
+  describe('post-registration confirmation card', () => {
+    beforeEach(async () => {
+      component.registrationComplete.set(true);
+      component.registeredEmail.set('test@example.com');
+      await fixture.whenStable();
+      fixture.detectChanges();
+    });
+
+    it('should show the confirmation card and hide the form', () => {
+      expect(query('register-confirmation-card')).toBeTruthy();
+      expect(query('register-form')).toBeNull();
+    });
+
+    it('should display the registered email address', () => {
+      const card = query('register-confirmation-card');
+      expect(card?.textContent).toContain('test@example.com');
+    });
+
+    it('should mention the spam/junk folder', () => {
+      const card = query('register-confirmation-card');
+      expect(card?.textContent?.toLowerCase()).toContain('spam');
+    });
+
+    it('should show the resend button', () => {
+      expect(query('register-resend-button')).toBeTruthy();
+    });
+
+    it('should disable the resend button while cooldown is active', async () => {
+      component.resendCooldown.set(30);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const button = query('register-resend-button') as HTMLButtonElement;
+      expect(button?.disabled).toBe(true);
+    });
+
+    it('should enable the resend button when cooldown reaches zero', async () => {
+      component.resendCooldown.set(0);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const button = query('register-resend-button') as HTMLButtonElement;
+      expect(button?.disabled).toBe(false);
+    });
+
+    it('should show the countdown in the resend button label while cooldown is active', async () => {
+      component.resendCooldown.set(45);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const button = query('register-resend-button');
+      expect(button?.textContent).toContain('45s');
+    });
+  });
+
+  describe('resendVerificationEmail', () => {
+    it('should call sendEmailVerification and restart the cooldown', async () => {
+      const sendSpy = vi
+        .spyOn(authModule, 'sendEmailVerification')
+        .mockResolvedValue(undefined);
+      (component as any).auth = { currentUser: { uid: 'u1' } };
+      component.resendCooldown.set(0);
+
+      await component.resendVerificationEmail();
+
+      expect(sendSpy).toHaveBeenCalled();
+      expect(component.resendCooldown()).toBe(60);
+    });
+
+    it('should not call sendEmailVerification while cooldown is active', async () => {
+      const sendSpy = vi.spyOn(authModule, 'sendEmailVerification');
+      component.resendCooldown.set(15);
+
+      await component.resendVerificationEmail();
+
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not call sendEmailVerification when no auth user', async () => {
+      const sendSpy = vi.spyOn(authModule, 'sendEmailVerification');
+      (component as any).auth = { currentUser: null };
+      component.resendCooldown.set(0);
+
+      await component.resendVerificationEmail();
+
+      expect(sendSpy).not.toHaveBeenCalled();
     });
   });
 });

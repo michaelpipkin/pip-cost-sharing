@@ -1,4 +1,5 @@
 <div class="container" data-testid="register-container">
+@if (!registrationComplete()) {
   <h2 data-testid="register-title">Create Account</h2>
   <form
     class="register"
@@ -15,7 +16,7 @@
         data-testid="register-email-input"
         aria-label="Email address"
       />
-      @for (error of registerForm.email().errors(); track error; let i = $index) {
+      @for (error of registerForm.email().errors(); track error.kind; let i = $index) {
         <mat-error [attr.data-testid]="'register-email-error-' + i">
           {{ error.message }}
         </mat-error>
@@ -73,7 +74,9 @@
         Passwords do not match.
       </div>
     }
-    <div id="hcaptcha-container"></div>
+    @if (!useEmulators) {
+      <div id="hcaptcha-container"></div>
+    }
     <p
       class="privacy-notice"
       style="
@@ -136,4 +139,41 @@
       </div>
     }
   </div>
+} @else {
+  <mat-card class="confirmation-card" data-testid="register-confirmation-card">
+    <mat-card-header>
+      <mat-card-title>Check Your Email</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="confirmation-state">
+        <mat-icon class="confirmation-icon">mark_email_unread</mat-icon>
+        <p>
+          We sent a verification link to <strong>{{ registeredEmail() }}</strong>.
+        </p>
+        <p>
+          Please check your <strong>inbox</strong> and
+          <strong>spam/junk folder</strong> for the email and click the link to
+          verify your account.
+        </p>
+      </div>
+    </mat-card-content>
+    <mat-card-actions>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        [disabled]="resendCooldown() > 0"
+        (click)="resendVerificationEmail()"
+        data-testid="register-resend-button"
+      >
+        @if (resendCooldown() > 0) {
+          Resend email ({{ resendCooldown() }}s)
+        } @else {
+          Resend email
+        }
+      </button>
+      <a class="primary-link" routerLink="../login">Return to Login</a>
+    </mat-card-actions>
+  </mat-card>
+}
 </div>

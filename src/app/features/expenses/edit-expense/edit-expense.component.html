@@ -58,7 +58,7 @@
             [for]="expenseDatePicker"
           ></mat-datepicker-toggle>
           <mat-datepicker #expenseDatePicker></mat-datepicker>
-          @for (error of expenseForm.date().errors(); track error) {
+          @for (error of expenseForm.date().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
@@ -67,7 +67,7 @@
         <mat-form-field appearance="fill" id="description">
           <mat-label>Description</mat-label>
           <input matInput [formField]="expenseForm.description" />
-          @for (error of expenseForm.description().errors(); track error) {
+          @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
@@ -129,7 +129,7 @@
           >
             <mat-icon>calculate</mat-icon>
           </button>
-          @for (error of expenseForm.amount().errors(); track error) {
+          @for (error of expenseForm.amount().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
