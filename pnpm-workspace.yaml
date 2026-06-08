@@ -1,6 +1,9 @@
 packages:
   - '.'
 
+overrides:
+  xcode>uuid: ^11.1.1
+
 allowBuilds:
   '@firebase/util': true
   '@parcel/watcher': true
