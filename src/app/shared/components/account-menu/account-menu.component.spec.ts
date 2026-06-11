@@ -6,7 +6,7 @@ import { UserStore } from '@store/user.store';
 import { UserService } from '@services/user.service';
 import { ThemeService } from '@services/theme.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { TranslateService, provideTranslateService } from '@ngx-translate/core';
 import {
   createMockUserStore,
   createMockAnalyticsService,
@@ -34,9 +34,10 @@ describe('AccountMenuComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [AccountMenuComponent, TranslateModule.forRoot()],
+      imports: [AccountMenuComponent],
       providers: [
         provideRouter([]),
+        provideTranslateService({}),
         { provide: UserStore, useValue: mockUserStore },
         { provide: UserService, useValue: mockUserService },
         { provide: ThemeService, useValue: mockThemeService },

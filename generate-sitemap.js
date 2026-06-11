@@ -13,6 +13,11 @@ const publicRoutes = [
     changefreq: 'weekly',
   },
   {
+    path: 'home',
+    priority: '1.0',
+    changefreq: 'weekly',
+  },
+  {
     path: 'help',
     priority: '0.8',
     changefreq: 'monthly',
