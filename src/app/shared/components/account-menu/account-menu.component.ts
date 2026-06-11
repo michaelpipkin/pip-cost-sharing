@@ -5,7 +5,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { User } from '@models/user';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AnalyticsService } from '@services/analytics.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -23,7 +23,7 @@ interface Language {
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
-    TranslateModule,
+    TranslatePipe,
     RouterLink,
   ],
   templateUrl: './account-menu.component.html',
