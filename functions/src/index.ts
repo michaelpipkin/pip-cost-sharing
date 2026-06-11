@@ -1,14 +1,22 @@
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase-admin/app';
+import {
+  DocumentData,
+  DocumentReference,
+  FieldValue,
+  getFirestore,
+  Timestamp,
+} from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getHCaptchaSecret } from './common';
 
-admin.initializeApp();
+initializeApp();
 
-const db = admin.firestore();
-const storage = admin.storage();
+const db = getFirestore();
+const storage = getStorage();
 
 const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
@@ -100,7 +108,7 @@ function buildPaymentMethodsHtml(methods: string): string {
  * Returns a fallback string if no payment methods are configured.
  */
 function buildPaymentMethodLines(
-  userData: admin.firestore.DocumentData
+  userData: DocumentData
 ): string {
   const methods: string[] = [];
   if (userData['venmoId'])
@@ -128,8 +136,8 @@ function buildPaymentMethodLines(
  * empty string if no splits are provided.
  */
 async function buildCategoryBreakdown(
-  splitRefs: admin.firestore.DocumentReference[],
-  payerMemberRef: admin.firestore.DocumentReference,
+  splitRefs: DocumentReference[],
+  payerMemberRef: DocumentReference,
   currencyCode: string,
   currencySymbol: string,
   decimalPlaces: number
@@ -140,11 +148,11 @@ async function buildCategoryBreakdown(
   const splitDocs = await Promise.all(splitRefs.map((ref) => ref.get()));
 
   // Collect unique category refs
-  const categoryRefMap = new Map<string, admin.firestore.DocumentReference>();
+  const categoryRefMap = new Map<string, DocumentReference>();
   for (const splitDoc of splitDocs) {
     if (!splitDoc.exists) continue;
     const categoryRef = splitDoc.data()!['categoryRef'] as
-      | admin.firestore.DocumentReference
+      | DocumentReference
       | undefined;
     if (categoryRef) categoryRefMap.set(categoryRef.path, categoryRef);
   }
@@ -169,11 +177,11 @@ async function buildCategoryBreakdown(
     if (!splitDoc.exists) continue;
     const splitData = splitDoc.data()!;
     const categoryRef = splitData['categoryRef'] as
-      | admin.firestore.DocumentReference
+      | DocumentReference
       | undefined;
     const owedByRef = splitData[
       'owedByMemberRef'
-    ] as admin.firestore.DocumentReference;
+    ] as DocumentReference;
     const allocatedAmount = splitData['allocatedAmount'] as number;
 
     const categoryName = categoryRef
@@ -213,7 +221,7 @@ async function buildCategoryBreakdown(
  * (for orphaned group cleanup).
  */
 async function deleteGroupInternal(
-  groupRef: admin.firestore.DocumentReference
+  groupRef: DocumentReference
 ): Promise<void> {
   const groupId = groupRef.id;
   console.log(`Starting internal deletion of group: ${groupId}`);
@@ -358,7 +366,7 @@ export const verifyUserEmail = onCall(async (request) => {
   }
 
   try {
-    await admin.auth().updateUser(uid, {
+    await getAuth().updateUser(uid, {
       emailVerified: true,
     });
 
@@ -422,7 +430,7 @@ export const deleteUserAccount = onCall(async (request) => {
   }
 
   try {
-    const userRecord = await admin.auth().getUser(uid);
+    const userRecord = await getAuth().getUser(uid);
     const userEmail = userRecord.email || '';
     console.log(
       `Authenticated deletion request for UID: ${uid}, email: ${userEmail}`
@@ -440,7 +448,7 @@ export const deleteUserAccount = onCall(async (request) => {
     }
 
     // Track groups that need to be deleted (where user is the only active member)
-    const groupsToDelete: admin.firestore.DocumentReference[] = [];
+    const groupsToDelete: DocumentReference[] = [];
 
     try {
       const groupsSnapshot = await db.collection('groups').get();
@@ -535,7 +543,7 @@ export const deleteUserAccount = onCall(async (request) => {
       console.log(`Deleted user document: ${userDocRef.path}`);
     }
 
-    await admin.auth().deleteUser(uid);
+    await getAuth().deleteUser(uid);
     console.log(`Deleted auth account for UID: ${uid}`);
 
     return {
@@ -633,7 +641,7 @@ export const syncAuthEmailsToUsers = onCall(async (request) => {
 
     for (const userDoc of usersSnapshot.docs) {
       try {
-        const authUser = await admin.auth().getUser(userDoc.id);
+        const authUser = await getAuth().getUser(userDoc.id);
         if (authUser.email) {
           batch.update(userDoc.ref, { email: authUser.email });
           batchCount++;
@@ -843,16 +851,16 @@ export const sendPaymentNotificationEmail = onDocumentCreated(
 );
 
 async function handleMemberPaymentEmail(
-  data: admin.firestore.DocumentData,
-  groupRef: admin.firestore.DocumentReference,
+  data: DocumentData,
+  groupRef: DocumentReference,
   splitCount: number
 ): Promise<void> {
   const payerMemberRef = data[
     'paidByMemberRef'
-  ] as admin.firestore.DocumentReference;
+  ] as DocumentReference;
   const payeeMemberRef = data[
     'paidToMemberRef'
-  ] as admin.firestore.DocumentReference;
+  ] as DocumentReference;
   const totalPaid = data['totalPaid'] as number;
 
   const [payerDoc, payeeDoc, groupDoc] = await Promise.all([
@@ -889,15 +897,15 @@ async function handleMemberPaymentEmail(
   );
 
   const splitRefs =
-    (data['splitsPaid'] as admin.firestore.DocumentReference[]) ?? [];
+    (data['splitsPaid'] as DocumentReference[]) ?? [];
 
   // Fetch payer/payee user docs and category breakdown in parallel
   const payerUserRef = payerData[
     'userRef'
-  ] as admin.firestore.DocumentReference | null;
+  ] as DocumentReference | null;
   const payeeUserRef = payeeData[
     'userRef'
-  ] as admin.firestore.DocumentReference | null;
+  ] as DocumentReference | null;
   const [payerUserDoc, payeeUserDoc, categoryBreakdown] = await Promise.all([
     payerUserRef ? payerUserRef.get() : Promise.resolve(null),
     payeeUserRef ? payeeUserRef.get() : Promise.resolve(null),
@@ -916,7 +924,7 @@ async function handleMemberPaymentEmail(
 
   const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
 
-  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+  const mailWrites: Promise<DocumentReference>[] = [];
 
   const payerHasAccount = !!payerUserRef;
   const payeeHasAccount = !!payeeUserRef;
@@ -1023,8 +1031,8 @@ export const sendEmail = onCall<{
 });
 
 async function handleSettleEmail(
-  data: admin.firestore.DocumentData,
-  groupRef: admin.firestore.DocumentReference,
+  data: DocumentData,
+  groupRef: DocumentReference,
   groupId: string
 ): Promise<void> {
   const batchId: string = data['batchId'];
@@ -1079,14 +1087,14 @@ async function handleSettleEmail(
   const transfers = historySnap.docs.map((d) => d.data());
 
   // Collect unique member refs (both sides)
-  const memberRefMap = new Map<string, admin.firestore.DocumentReference>();
+  const memberRefMap = new Map<string, DocumentReference>();
   for (const transfer of transfers) {
     const payerRef = transfer[
       'paidByMemberRef'
-    ] as admin.firestore.DocumentReference;
+    ] as DocumentReference;
     const payeeRef = transfer[
       'paidToMemberRef'
-    ] as admin.firestore.DocumentReference;
+    ] as DocumentReference;
     memberRefMap.set(payerRef.path, payerRef);
     memberRefMap.set(payeeRef.path, payeeRef);
   }
@@ -1096,7 +1104,7 @@ async function handleSettleEmail(
   const memberDocs = await Promise.all(memberRefs.map((ref) => ref.get()));
 
   // Build a map: path → { doc data }
-  const memberDataMap = new Map<string, admin.firestore.DocumentData>();
+  const memberDataMap = new Map<string, DocumentData>();
   for (const memberDoc of memberDocs) {
     if (memberDoc.exists) {
       memberDataMap.set(memberDoc.ref.path, memberDoc.data()!);
@@ -1104,11 +1112,11 @@ async function handleSettleEmail(
   }
 
   // Fetch user docs for members that have a userRef
-  const userRefMap = new Map<string, admin.firestore.DocumentReference>();
+  const userRefMap = new Map<string, DocumentReference>();
   for (const [path, memberData] of memberDataMap.entries()) {
     const userRef = memberData[
       'userRef'
-    ] as admin.firestore.DocumentReference | null;
+    ] as DocumentReference | null;
     if (userRef) {
       userRefMap.set(path, userRef);
     }
@@ -1116,7 +1124,7 @@ async function handleSettleEmail(
   const userDocs = await Promise.all(
     [...userRefMap.values()].map((ref) => ref.get())
   );
-  const userDataMap = new Map<string, admin.firestore.DocumentData>();
+  const userDataMap = new Map<string, DocumentData>();
   for (const userDoc of userDocs) {
     if (userDoc.exists) {
       userDataMap.set(userDoc.ref.path, userDoc.data()!);
@@ -1124,7 +1132,7 @@ async function handleSettleEmail(
   }
 
   // Build per-member email
-  const mailWrites: Promise<admin.firestore.DocumentReference>[] = [];
+  const mailWrites: Promise<DocumentReference>[] = [];
 
   for (const [memberPath, memberData] of memberDataMap.entries()) {
     const memberEmail: string = memberData['email'] ?? '';
@@ -1133,7 +1141,7 @@ async function handleSettleEmail(
 
     const memberUserRef = memberData[
       'userRef'
-    ] as admin.firestore.DocumentReference | null;
+    ] as DocumentReference | null;
     const memberUserData = memberUserRef
       ? userDataMap.get(memberUserRef.path)
       : undefined;
@@ -1148,10 +1156,10 @@ async function handleSettleEmail(
     for (const transfer of transfers) {
       const payerRef = transfer[
         'paidByMemberRef'
-      ] as admin.firestore.DocumentReference;
+      ] as DocumentReference;
       const payeeRef = transfer[
         'paidToMemberRef'
-      ] as admin.firestore.DocumentReference;
+      ] as DocumentReference;
       const amount = transfer['totalPaid'] as number;
       const formattedAmount = formatAmount(
         amount,
@@ -1166,7 +1174,7 @@ async function handleSettleEmail(
         const payeeName: string =
           payeeData?.['displayName'] ?? 'another member';
         const payeeUserRef = payeeData?.['userRef'] as
-          | admin.firestore.DocumentReference
+          | DocumentReference
           | null
           | undefined;
         const payeeUserData = payeeUserRef
@@ -1287,7 +1295,7 @@ export const logAppError = onCall<{
   const queryLimit = Math.max(threshold, 50);
   const recentSnap = await db
     .collection('app_errors')
-    .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(windowStart))
+    .where('timestamp', '>=', Timestamp.fromDate(windowStart))
     .orderBy('timestamp', 'desc')
     .limit(queryLimit)
     .get();
@@ -1298,7 +1306,7 @@ export const logAppError = onCall<{
   let shouldSend = false;
   await db.runTransaction(async (tx) => {
     const freshSnap = await tx.get(configRef);
-    const lastAlertSent: admin.firestore.Timestamp | null =
+    const lastAlertSent: Timestamp | null =
       freshSnap.data()?.['lastAlertSent'] ?? null;
     const cooldownMs = cooldownMinutes * 60 * 1000;
 
