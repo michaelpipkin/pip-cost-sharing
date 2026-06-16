@@ -1,5 +1,9 @@
 <h1 mat-dialog-title data-testid="edit-member-title">Edit Member</h1>
-<form data-testid="edit-member-form" aria-label="Edit member form" (submit)="$event.preventDefault()">
+<form
+  data-testid="edit-member-form"
+  aria-label="Edit member form"
+  (submit)="$event.preventDefault()"
+>
   <mat-dialog-content data-testid="edit-member-content">
     <div class="content" data-testid="edit-member-fields">
       <mat-form-field appearance="fill" data-testid="edit-member-name-field">
@@ -10,13 +14,21 @@
           data-testid="edit-member-name-input"
           aria-label="Member name"
         />
-        @for (error of editMemberForm.memberName().errors(); track error.kind; let i = $index) {
+        @for (
+          error of editMemberForm.memberName().errors();
+          track error.kind;
+          let i = $index
+        ) {
           <mat-error [attr.data-testid]="'edit-member-name-error-' + i">
             {{ error.message }}
           </mat-error>
         }
       </mat-form-field>
-      <mat-form-field appearance="fill" data-testid="edit-member-email-field">
+      <mat-form-field
+        appearance="fill"
+        subscriptSizing="dynamic"
+        data-testid="edit-member-email-field"
+      >
         <mat-label>Email</mat-label>
         <input
           matInput
@@ -24,7 +36,15 @@
           data-testid="edit-member-email-input"
           aria-label="Member email"
         />
-        @for (error of editMemberForm.email().errors(); track error.kind; let i = $index) {
+        <mat-hint>
+          Optional. A member can only access and interact with this group if
+          this matches the email address they used to register for the app.
+        </mat-hint>
+        @for (
+          error of editMemberForm.email().errors();
+          track error.kind;
+          let i = $index
+        ) {
           <mat-error [attr.data-testid]="'edit-member-email-error-' + i">
             {{ error.message }}
           </mat-error>
@@ -32,7 +52,7 @@
       </mat-form-field>
     </div>
     <div
-      class="toggle"
+      class="toggle mt-2"
       [class.hidden]="!currentMember()?.groupAdmin"
       data-testid="edit-member-toggles"
     >

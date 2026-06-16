@@ -49,7 +49,6 @@ export class AddMemberComponent {
   });
   protected readonly addMemberForm = form(this.addMemberModel, (p) => {
     required(p.displayName, { message: '*Required' });
-    required(p.email, { message: '*Required' });
     emailValidator(p.email, { message: '*Not a valid email address' });
   });
 

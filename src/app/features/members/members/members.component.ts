@@ -146,6 +146,7 @@ export class MembersComponent {
       return;
     }
     const dialogConfig: MatDialogConfig = {
+      maxWidth: '320px',
       data: {
         groupId: this.currentGroup()!.id,
       },
@@ -170,6 +171,7 @@ export class MembersComponent {
       (!!member.userRef && this.user()!.ref!.eq(member.userRef))
     ) {
       const dialogConfig: MatDialogConfig = {
+        maxWidth: '320px',
         data: {
           groupId: this.currentGroup()!.id,
           userId: this.user()!.id,

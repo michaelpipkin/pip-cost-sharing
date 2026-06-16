@@ -1,14 +1,16 @@
-import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { computed, effect, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { getCurrencyConfig } from '@models/currency-config.interface';
 import { GroupStore } from '@store/group.store';
 
 @Injectable({ providedIn: 'root' })
 export class LocaleService {
   private readonly groupStore = inject(GroupStore);
+  private readonly platformId = inject(PLATFORM_ID);
 
-  // Browser locale detection
+  // Browser locale detection; default to 'en-US' on the server
   private readonly browserLocale = signal<string>(
-    navigator.language || 'en-US'
+    isPlatformBrowser(this.platformId) ? navigator.language || 'en-US' : 'en-US'
   );
 
   // Current group's currency (set automatically from GroupStore)
