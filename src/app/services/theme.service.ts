@@ -1,8 +1,10 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   computed,
   effect,
   inject,
   Injectable,
+  PLATFORM_ID,
   Renderer2,
   RendererFactory2,
   signal,
@@ -30,17 +32,22 @@ export class ThemeService implements IThemeService {
     null
   );
   private readonly themeKey = 'app-theme-preference';
+  private readonly platformId = inject(PLATFORM_ID);
 
-  // Create a signal for the current theme
-  private readonly _currentTheme = signal<ThemeMode>(this.getSavedTheme());
+  // Create a signal for the current theme; default to 'light' on the server
+  private readonly _currentTheme = signal<ThemeMode>(
+    isPlatformBrowser(this.platformId) ? this.getSavedTheme() : 'light'
+  );
 
   // Create a readable computed for external components
   readonly currentTheme = computed(() => this._currentTheme());
 
   constructor() {
-    // Use an effect to apply theme changes
+    // Apply theme changes only in the browser — document.body is not available on the server
     effect(() => {
-      this.applyTheme(this._currentTheme());
+      if (isPlatformBrowser(this.platformId)) {
+        this.applyTheme(this._currentTheme());
+      }
     });
 
     // Listen for system theme preference changes

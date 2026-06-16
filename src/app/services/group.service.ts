@@ -1,4 +1,5 @@
-import { inject, Injectable } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
@@ -51,20 +52,23 @@ export class GroupService implements IGroupService {
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   #unsubscribeMembers?: () => void;
   #unsubscribeGroups?: () => void;
 
   constructor() {
-    const currentGroup = localStorage.getItem('currentGroup');
-    if (currentGroup !== null) {
-      const group = new Group({ ...JSON.parse(currentGroup) });
-      // prettier-ignore
-      group.ref = doc( // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
-        this.fs,
-        `groups/${group.id}`
-      ) as DocumentReference<Group>;
-      this.groupStore.setCurrentGroup(group);
+    if (isPlatformBrowser(this.platformId)) {
+      const currentGroup = localStorage.getItem('currentGroup');
+      if (currentGroup !== null) {
+        const group = new Group({ ...JSON.parse(currentGroup) });
+        // prettier-ignore
+        group.ref = doc( // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
+          this.fs,
+          `groups/${group.id}`
+        ) as DocumentReference<Group>;
+        this.groupStore.setCurrentGroup(group);
+      }
     }
   }
 

@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 
 export type DisplayMode = 'browser' | 'standalone' | 'twa';
@@ -7,10 +8,13 @@ export type DisplayMode = 'browser' | 'standalone' | 'twa';
   providedIn: 'root',
 })
 export class PwaDetectionService {
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly displayMode = signal<DisplayMode>('browser');
 
   constructor() {
-    this.detectDisplayMode();
+    if (isPlatformBrowser(this.platformId)) {
+      this.detectDisplayMode();
+    }
   }
 
   private detectDisplayMode(): void {

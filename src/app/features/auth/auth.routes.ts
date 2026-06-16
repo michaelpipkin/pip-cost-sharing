@@ -15,6 +15,11 @@ export const authRoutes: Routes = [
             (m) => m.LoginComponent
           ),
         canActivate: [loggedInGuard],
+        data: {
+          description:
+            'Log in to PipSplit to manage your expense groups, track shared costs, and see who owes what.',
+          ogTitle: 'Log In – PipSplit',
+        },
       },
       {
         path: 'register',
@@ -24,6 +29,11 @@ export const authRoutes: Routes = [
             (m) => m.RegisterComponent
           ),
         canActivate: [loggedInGuard],
+        data: {
+          description:
+            'Sign up for PipSplit for free. Create expense groups, split costs with unlimited people, and track who owes what.',
+          ogTitle: 'Sign Up Free – PipSplit',
+        },
       },
       {
         path: 'forgot-password',

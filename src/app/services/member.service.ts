@@ -119,25 +119,29 @@ export class MemberService implements IMemberService {
     groupId: string,
     member: Partial<Member>
   ): Promise<DocumentReference<Member>> {
-    const membersQuery = query(
-      collection(this.fs, `groups/${groupId}/members`),
-      where('email', '==', member.email)
-    );
-    const membersSnapshot = await getDocs(membersQuery);
-
-    if (!membersSnapshot.empty) {
-      throw new Error(
-        'A member with this email address already exists in the group.'
+    // Only check for duplicate email and attempt user matching when an email is provided.
+    // A blank email means the member is not intended to sign in to the app.
+    if (member.email) {
+      const membersQuery = query(
+        collection(this.fs, `groups/${groupId}/members`),
+        where('email', '==', member.email)
       );
-    }
+      const membersSnapshot = await getDocs(membersQuery);
 
-    const userQuery = query(
-      collection(this.fs, 'users'),
-      where('email', '==', member.email)
-    );
-    const userSnapshot = await getDocs(userQuery);
-    if (!userSnapshot.empty) {
-      member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
+      if (!membersSnapshot.empty) {
+        throw new Error(
+          'A member with this email address already exists in the group.'
+        );
+      }
+
+      const userQuery = query(
+        collection(this.fs, 'users'),
+        where('email', '==', member.email)
+      );
+      const userSnapshot = await getDocs(userQuery);
+      if (!userSnapshot.empty) {
+        member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
+      }
     }
 
     // prettier-ignore

@@ -15,7 +15,7 @@
         </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill" data-testid="member-email-field">
+    <mat-form-field appearance="fill" subscriptSizing="dynamic" data-testid="member-email-field">
       <mat-label>Email</mat-label>
       <input
         matInput
@@ -23,6 +23,10 @@
         data-testid="member-email-input"
         aria-label="Member email"
       />
+      <mat-hint>
+        Optional. A member can only access and interact with this group if this matches the email
+        address they used to register for the app.
+      </mat-hint>
       @for (error of addMemberForm.email().errors(); track error.kind; let i = $index) {
         <mat-error [attr.data-testid]="'member-email-error-' + i">
           {{ error.message }}

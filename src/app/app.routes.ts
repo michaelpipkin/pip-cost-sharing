@@ -15,6 +15,21 @@ export const appRoutes: Routes = [
     path: '',
     title: 'Home',
     component: HomeComponent,
+    data: {
+      description:
+        'PipSplit makes it effortless to track and split shared expenses with unlimited groups. Free for roommates, friends, and group trips — no account needed to try it.',
+      ogTitle: 'PipSplit – Fair Expense Splitting Made Easy',
+    },
+  },
+  {
+    path: 'home',
+    title: 'Home',
+    component: HomeComponent,
+    data: {
+      description:
+        'PipSplit makes it effortless to track and split shared expenses with unlimited groups. Free for roommates, friends, and group trips — no account needed to try it.',
+      ogTitle: 'PipSplit – Fair Expense Splitting Made Easy',
+    },
   },
   {
     path: 'auth',
@@ -64,11 +79,21 @@ export const appRoutes: Routes = [
     path: 'help',
     title: 'Help',
     component: HelpComponent,
+    data: {
+      description:
+        'Get answers to common questions about PipSplit. Learn how to create groups, add expenses, split costs, and track who owes what.',
+      ogTitle: 'Help Center – PipSplit',
+    },
   },
   {
     path: 'about',
     title: 'About Us',
     component: AboutComponent,
+    data: {
+      description:
+        'PipSplit is a free expense-sharing app for any group. Split costs with unlimited members, track who owes what, and settle up quickly — for roommates, trips, and more.',
+      ogTitle: 'About PipSplit – Free Expense Sharing App',
+    },
   },
   {
     path: 'split',

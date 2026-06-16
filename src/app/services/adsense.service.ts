@@ -1,4 +1,5 @@
-import { inject, Injectable } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { PwaDetectionService } from './pwa-detection.service';
 
 @Injectable({
@@ -6,12 +7,13 @@ import { PwaDetectionService } from './pwa-detection.service';
 })
 export class AdSenseService {
   protected readonly pwaService = inject(PwaDetectionService);
+  private readonly platformId = inject(PLATFORM_ID);
   private isLoaded = false;
 
   constructor() {
     // Only load AdSense for browser users, not native app users
     // Native app users get AdMob ads instead (handled by AdMobService)
-    if (this.pwaService.isRunningInBrowser()) {
+    if (isPlatformBrowser(this.platformId) && this.pwaService.isRunningInBrowser()) {
       this.loadAdSense();
     }
   }

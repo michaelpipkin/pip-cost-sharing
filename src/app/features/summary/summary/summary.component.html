@@ -183,20 +183,25 @@
                   Request
                 </th>
                 <td mat-cell *matCellDef="let amountDue" class="cell-center">
-                  <button
-                    class="btn btn-tertiary"
-                    mat-mini-fab
-                    (click)="
-                      requestPayment(amountDue); $event.stopPropagation()
+                  <span
+                    [matTooltip]="
+                      amountDue.owedByMember.userRef
+                        ? 'Send payment request email to ' +
+                          amountDue.owedByMember.displayName
+                        : amountDue.owedByMember.displayName +
+                          ' is not associated with a registered app user and cannot receive emails'
                     "
-                    [title]="
-                      'Send payment request email to ' +
-                      amountDue.owedByMember.displayName
-                    "
-                    aria-label="Send payment request email"
                   >
-                    <mat-icon>forward_to_inbox</mat-icon>
-                  </button>
+                    <button
+                      class="btn btn-tertiary"
+                      mat-mini-fab
+                      [disabled]="!amountDue.owedByMember.userRef"
+                      (click)="requestPayment(amountDue); $event.stopPropagation()"
+                      aria-label="Send payment request email"
+                    >
+                      <mat-icon>forward_to_inbox</mat-icon>
+                    </button>
+                  </span>
                 </td>
               </ng-container>
               <ng-container matColumnDef="markPaid">
@@ -214,11 +219,13 @@
                       );
                       $event.stopPropagation()
                     "
-                    title="
-                Pay expenses owed to {{
-                      amountDue.owedToMember.displayName
-                    }} from {{ amountDue.owedByMember.displayName }}.
-              "
+                    [matTooltip]="
+                      'Pay expenses owed to ' +
+                      amountDue.owedToMember.displayName +
+                      ' from ' +
+                      amountDue.owedByMember.displayName
+                    "
+                    aria-label="Pay expenses"
                   >
                     <mat-icon>attach_money</mat-icon>
                   </button>
@@ -396,17 +403,26 @@
             >
               Settle Group
             </button>
-            <button
-              mat-raised-button
-              class="btn-secondary"
-              type="button"
-              (click)="requestAllPayments()"
-              data-testid="request-all-payments-button"
-              aria-label="Request All Payments"
+            <span
+              [matTooltip]="
+                hasEmailableRecipients()
+                  ? 'Send a payment request email to each member who owes and can receive emails'
+                  : 'No members in this settlement are registered app users who can receive emails'
+              "
             >
-              <mat-icon>forward_to_inbox</mat-icon>
-              Request All Payments
-            </button>
+              <button
+                mat-raised-button
+                class="btn-secondary"
+                type="button"
+                [disabled]="!hasEmailableRecipients()"
+                (click)="requestAllPayments()"
+                data-testid="request-all-payments-button"
+                aria-label="Request All Payments"
+              >
+                <mat-icon>forward_to_inbox</mat-icon>
+                Request All Payments
+              </button>
+            </span>
             <button
               mat-raised-button
               class="btn-secondary"
