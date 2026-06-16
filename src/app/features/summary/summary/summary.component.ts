@@ -326,6 +326,10 @@ export class SummaryComponent {
     return transfers;
   });
 
+  protected readonly hasEmailableRecipients = computed(() =>
+    this.leastTransfers().some((t) => !!t.owedByMember?.userRef)
+  );
+
   constructor() {
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);

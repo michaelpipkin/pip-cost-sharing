@@ -1,8 +1,25 @@
-import { DOCUMENT } from '@angular/common';
-import { inject, Injectable } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
-import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  RouterStateSnapshot,
+  TitleStrategy,
+} from '@angular/router';
 import { AnalyticsService } from './analytics.service';
+
+const BASE_URL = 'https://pipsplit.com';
+
+const INDEXABLE_ROUTES = new Set([
+  '',
+  '/',
+  '/home',
+  '/about',
+  '/help',
+  '/split',
+  '/auth/login',
+  '/auth/register',
+]);
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +29,7 @@ export class PageTitleStrategyService extends TitleStrategy {
   protected readonly document = inject(DOCUMENT);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly meta = inject(Meta);
+  private readonly platformId = inject(PLATFORM_ID);
 
   constructor() {
     super();
@@ -19,9 +37,12 @@ export class PageTitleStrategyService extends TitleStrategy {
 
   override updateTitle(routerState: RouterStateSnapshot) {
     const title = this.buildTitle(routerState);
-    const pageLink = routerState.url.split('?')[0]!; // strip query params
-    if (title !== undefined) {
-      this.title.setTitle(`PipSplit | ${title}`);
+    const pageLink = routerState.url.split('?')[0]!;
+    const pageTitle = title !== undefined ? `PipSplit | ${title}` : 'PipSplit';
+
+    this.title.setTitle(pageTitle);
+
+    if (title !== undefined && isPlatformBrowser(this.platformId)) {
       const excludedScreens = [
         'Admin Statistics',
         'App Error Log',
@@ -31,24 +52,36 @@ export class PageTitleStrategyService extends TitleStrategy {
         this.analytics.logScreenView(title);
       }
     }
+
     this.updateCanonical(pageLink);
 
-    const indexableRoutes = [
-      '',
-      '/',
-      '/home',
-      '/about',
-      '/help',
-      '/split',
-      '/auth/login',
-      '/auth/register',
-    ];
-    const shouldIndex = indexableRoutes.includes(pageLink);
+    const shouldIndex = INDEXABLE_ROUTES.has(pageLink);
     if (shouldIndex) {
       this.meta.removeTag('name="robots"');
     } else {
       this.meta.updateTag({ name: 'robots', content: 'noindex' });
     }
+
+    const leafRoute = this.getLeafRoute(routerState.root);
+    const description = leafRoute.data['description'] as string | undefined;
+    const ogTitle = (leafRoute.data['ogTitle'] as string | undefined) ?? pageTitle;
+    const canonicalUrl = `${BASE_URL}${pageLink}`;
+
+    if (description) {
+      this.meta.updateTag({ name: 'description', content: description });
+      this.meta.updateTag({ property: 'og:description', content: description });
+      this.meta.updateTag({ name: 'twitter:description', content: description });
+    }
+    this.meta.updateTag({ property: 'og:title', content: ogTitle });
+    this.meta.updateTag({ name: 'twitter:title', content: ogTitle });
+    this.meta.updateTag({ property: 'og:url', content: canonicalUrl });
+  }
+
+  private getLeafRoute(route: ActivatedRouteSnapshot): ActivatedRouteSnapshot {
+    while (route.firstChild) {
+      route = route.firstChild;
+    }
+    return route;
   }
 
   private updateCanonical(path: string): void {
@@ -59,6 +92,6 @@ export class PageTitleStrategyService extends TitleStrategy {
       link.setAttribute('rel', 'canonical');
       head.appendChild(link);
     }
-    link.setAttribute('href', `https://pipsplit.com${path}`);
+    link.setAttribute('href', `${BASE_URL}${path}`);
   }
 }

@@ -91,7 +91,7 @@ describe('AddMemberComponent', () => {
       expect(saveBtn.disabled).toBe(true);
     });
 
-    it('should disable Save when name is filled but email is empty', async () => {
+    it('should enable Save when name is filled and email is empty (email is optional)', async () => {
       const nameInput = query('member-name-input') as HTMLInputElement;
       nameInput.value = 'Alice';
       nameInput.dispatchEvent(new Event('input'));
@@ -99,7 +99,7 @@ describe('AddMemberComponent', () => {
       fixture.detectChanges();
 
       const saveBtn = query('add-member-save-button') as HTMLButtonElement;
-      expect(saveBtn.disabled).toBe(true);
+      expect(saveBtn.disabled).toBe(false);
     });
 
     it('should disable Save when email is invalid', async () => {

@@ -53,12 +53,26 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "dialog-polyfill",
-              "moment"
+              "moment",
+              "@grpc/grpc-js",
+              "@grpc/proto-loader"
             ],
-            "browser": "src/main.ts"
+            "browser": "src/main.ts",
+            "server": "src/main.server.ts",
+            "outputMode": "static"
           },
           "configurations": {
             "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": false
+                }
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -110,7 +124,9 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
-            "setupFiles": ["src/testing/media-query-setup.ts"]
+            "setupFiles": [
+              "src/testing/media-query-setup.ts"
+            ]
           }
         }
       }

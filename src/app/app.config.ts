@@ -20,7 +20,6 @@ import {
   MAT_SNACK_BAR_DEFAULT_OPTIONS,
   MatSnackBarConfig,
 } from '@angular/material/snack-bar';
-import { BrowserModule } from '@angular/platform-browser';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { environment } from '@env/environment';
@@ -64,7 +63,6 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideHttpClient(withInterceptorsFromDi()),
     importProvidersFrom(
-      BrowserModule,
       FormsModule,
       ReactiveFormsModule,
       MatNativeDateModule,
