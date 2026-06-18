@@ -1,0 +1,17 @@
+{
+  "name": "db-scripts",
+  "version": "1.0.0",
+  "description": "Ad hoc Firestore and Firebase Auth query scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "query": "node --experimental-strip-types"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^6.0.3"
+  }
+}

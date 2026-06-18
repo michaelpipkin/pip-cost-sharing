@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ad Hoc DB Query Scripts</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; line-height: 1.6; }
+    h1 { border-bottom: 2px solid #ccc; padding-bottom: .4rem; }
+    h2 { margin-top: 2rem; }
+    code { background: #f4f4f4; padding: .1em .4em; border-radius: 3px; font-size: .95em; }
+    pre { background: #f4f4f4; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: .5rem .75rem; text-align: left; }
+    th { background: #f0f0f0; }
+    .warn { background: #fff3cd; border-left: 4px solid #f0ad4e; padding: .75rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<h1>Ad Hoc DB Query Scripts</h1>
+
+<p>
+  A small, self-contained toolbox for running ad hoc queries against the live
+  <code>pip-cost-sharing</code> Firestore database and Firebase Auth.
+  Uses the same <code>firebase-admin</code> SDK as the Cloud Functions,
+  so it bypasses Firestore security rules and can query anything.
+</p>
+
+<div class="warn">
+  <strong>⚠ These scripts target live production data.</strong>
+  Keep queries read-only unless you are intentionally mutating documents.
+</div>
+
+<h2>One-time setup</h2>
+
+<ol>
+  <li>
+    Install <a href="https://cloud.google.com/sdk/docs/install">Google Cloud CLI</a> if not already present.
+  </li>
+  <li>
+    Log in with Application Default Credentials — this is what the Admin SDK uses to authenticate:
+    <pre><code>gcloud auth application-default login</code></pre>
+    A browser window opens; sign in as the GCP project owner.
+    Credentials are stored locally at <code>~/.config/gcloud/application_default_credentials.json</code>
+    — <strong>no service-account key file is created or committed</strong>.
+  </li>
+  <li>
+    Install dependencies (run from the repo root):
+    <pre><code>pnpm --dir scripts/db install</code></pre>
+  </li>
+</ol>
+
+<h2>Running queries</h2>
+
+<p>
+  Scripts use Node 24's built-in TypeScript stripping (<code>--experimental-strip-types</code>),
+  so no external TypeScript runner is needed.
+  <strong>Always run commands from the repo root</strong> to ensure Node resolves
+  <code>firebase-admin</code> from <code>scripts/db/node_modules</code>.
+</p>
+
+<h3>Scratch file (ad hoc)</h3>
+<p>Edit <code>query.ts</code> with whatever you need, then run from the repo root:</p>
+<pre><code>pnpm --dir scripts/db query</code></pre>
+
+<h3>Example scripts</h3>
+<p>Run any example directly from the repo root (Node walks up to find <code>scripts/db/node_modules</code>):</p>
+<pre><code>node --experimental-strip-types scripts/db/examples/users-last-7-days.ts
+node --experimental-strip-types scripts/db/examples/expenses-count-aggregation.ts
+node --experimental-strip-types scripts/db/examples/groups-and-members.ts</code></pre>
+
+<h2>Available helpers (<code>lib.ts</code>)</h2>
+
+<table>
+  <thead><tr><th>Export</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>db</code></td>
+      <td>Firestore Admin SDK instance — use exactly like <code>db</code> in <code>functions/src/index.ts</code></td>
+    </tr>
+    <tr>
+      <td><code>auth</code></td>
+      <td>Firebase Auth Admin SDK — access user records, <code>listUsers()</code>, <code>getUser(uid)</code>, etc.</td>
+    </tr>
+    <tr>
+      <td><code>dump(snap)</code></td>
+      <td>Pretty-print every document in a <code>QuerySnapshot</code></td>
+    </tr>
+    <tr>
+      <td><code>logCount(label, n)</code></td>
+      <td>Print a labelled count: <code>Total users: 42</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Collection map</h2>
+
+<table>
+  <thead><tr><th>Path</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>users</code></td><td>One doc per auth UID. No createdDate — use Auth for registration time.</td></tr>
+    <tr><td><code>groups</code></td><td>Top-level groups.</td></tr>
+    <tr><td><code>groups/{id}/members</code></td><td>Subcollection; queryable via <code>collectionGroup('members')</code></td></tr>
+    <tr><td><code>groups/{id}/categories</code></td><td>Subcollection; queryable via <code>collectionGroup('categories')</code></td></tr>
+    <tr><td><code>groups/{id}/expenses</code></td><td>Subcollection; <code>date</code> stored as <code>"YYYY-MM-DD"</code> string</td></tr>
+    <tr><td><code>groups/{id}/splits</code></td><td>Subcollection; queryable via <code>collectionGroup('splits')</code></td></tr>
+    <tr><td><code>groups/{id}/history</code></td><td>Subcollection</td></tr>
+    <tr><td><code>groups/{id}/memorized</code></td><td>Subcollection</td></tr>
+    <tr><td><code>groups/{id}/settleBatches</code></td><td>Subcollection (server-only)</td></tr>
+    <tr><td><code>mail</code></td><td>Trigger Email extension. Fully locked by security rules.</td></tr>
+    <tr><td><code>app_errors</code></td><td>Error log; <code>timestamp</code> is a Firestore <code>Timestamp</code>.</td></tr>
+    <tr><td><code>admin_config</code></td><td>Admin-only config (server-only)</td></tr>
+  </tbody>
+</table>
+
+<h2>Quick-reference patterns</h2>
+
+<pre><code>// Count all documents in a collection
+const snap = await db.collection('users').count().get();
+console.log(snap.data().count);
+
+// Count with a filter (date strings are lexicographically comparable)
+const thirtyDaysAgo = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+const recent = await db.collectionGroup('expenses')
+  .where('date', '>=', thirtyDaysAgo).count().get();
+
+// Fetch docs and print them
+const usersSnap = await db.collection('users').limit(10).get();
+dump(usersSnap);  // from lib.ts
+
+// Follow a DocumentReference field
+const groupDoc = await db.collection('groups').doc('someGroupId').get();
+const catRef = groupDoc.data()?.defaultCategoryRef;
+if (catRef) {
+  const catDoc = await catRef.get();
+  console.log(catDoc.data());
+}
+
+// Firebase Auth — registration time (Firestore users have no createdDate)
+const { users } = await auth.listUsers(1000);
+const cutoff = Date.now() - 7*864e5;
+const newUsers = users.filter(u =>
+  new Date(u.metadata.creationTime).getTime() >= cutoff
+);
+</code></pre>
+
+</body>
+</html>
