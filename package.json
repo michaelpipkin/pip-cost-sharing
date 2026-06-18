@@ -28,7 +28,8 @@
     "e2e:local:fast": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium",
     "e2e:local:fast:headed": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium --headed",
     "test": "ng test --watch=false",
-    "test:watch": "ng test"
+    "test:watch": "ng test",
+    "query": "pnpm --dir scripts/db query"
   },
   "private": true,
   "dependencies": {
