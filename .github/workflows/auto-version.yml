@@ -79,7 +79,7 @@ jobs:
         if: steps.version-check.outputs.skip == 'false'
         run: |
           git add package.json
-          git commit -m "chore: bump version from ${{ steps.current-version.outputs.version }} to ${{ steps.new-version.outputs.version }}"
+          git commit -m "chore: bump version from ${{ steps.current-version.outputs.version }} to ${{ steps.new-version.outputs.version }} [skip ci]"
           git push
 
       - name: Comment on PR
