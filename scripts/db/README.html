@@ -25,12 +25,25 @@
   <code>pip-cost-sharing</code> Firestore database and Firebase Auth.
   Uses the same <code>firebase-admin</code> SDK as the Cloud Functions,
   so it bypasses Firestore security rules and can query anything.
+  Scripts run directly on Node 24 via built-in TypeScript type-stripping
+  — no compilation step required.
 </p>
 
 <div class="warn">
   <strong>⚠ These scripts target live production data.</strong>
   Keep queries read-only unless you are intentionally mutating documents.
 </div>
+
+<h2>Folder structure</h2>
+
+<pre><code>scripts/db/
+  lib.ts          — shared Firebase Admin SDK init + helper functions
+  run.ts          — runner: resolves query name → queries/ file
+  queries/        — your saved queries (add new .ts files here)
+  examples/       — reference patterns (users-last-7-days, expenses, groups)
+  package.json
+  tsconfig.json
+  README.html</code></pre>
 
 <h2>One-time setup</h2>
 
@@ -47,25 +60,45 @@
   </li>
   <li>
     Install dependencies (run from the repo root):
-    <pre><code>pnpm --dir scripts/db install</code></pre>
+    <pre><code>pnpm install</code></pre>
+    <code>scripts/db</code> is a pnpm workspace package, so this installs its
+    dependencies (<code>firebase-admin</code>) alongside the main app.
   </li>
 </ol>
 
 <h2>Running queries</h2>
 
+<p>All commands run from the <strong>repo root</strong>.</p>
+
+<h3>Run a saved query</h3>
 <p>
-  Scripts use Node 24's built-in TypeScript stripping (<code>--experimental-strip-types</code>),
-  so no external TypeScript runner is needed.
-  <strong>Always run commands from the repo root</strong> to ensure Node resolves
-  <code>firebase-admin</code> from <code>scripts/db/node_modules</code>.
+  Pass the filename from <code>queries/</code> without the <code>.ts</code> extension:
 </p>
+<pre><code>pnpm query active-groups</code></pre>
+<p>
+  This invokes <code>run.ts</code>, which looks up <code>queries/active-groups.ts</code>
+  and executes it. Adding <code>.ts</code> explicitly also works:
+</p>
+<pre><code>pnpm query active-groups.ts</code></pre>
 
-<h3>Scratch file (ad hoc)</h3>
-<p>Edit <code>query.ts</code> with whatever you need, then run from the repo root:</p>
-<pre><code>pnpm --dir scripts/db query</code></pre>
+<h3>Add a new query</h3>
+<p>
+  Create a <code>.ts</code> file in <code>scripts/db/queries/</code>.
+  Import helpers from <code>../lib.ts</code> and write top-level <code>await</code> freely.
+  No registration or config change needed — just run it by name.
+</p>
+<pre><code>// scripts/db/queries/my-query.ts
+import { db, logCount } from '../lib.ts';
 
-<h3>Example scripts</h3>
-<p>Run any example directly from the repo root (Node walks up to find <code>scripts/db/node_modules</code>):</p>
+const snap = await db.collection('users').count().get();
+logCount('Total users', snap.data().count);</code></pre>
+<pre><code>pnpm query my-query</code></pre>
+
+<h3>Reference examples</h3>
+<p>
+  The <code>examples/</code> folder contains ready-made patterns but is not
+  wired through the query runner. Run examples directly:
+</p>
 <pre><code>node --experimental-strip-types scripts/db/examples/users-last-7-days.ts
 node --experimental-strip-types scripts/db/examples/expenses-count-aggregation.ts
 node --experimental-strip-types scripts/db/examples/groups-and-members.ts</code></pre>
@@ -100,37 +133,50 @@ node --experimental-strip-types scripts/db/examples/groups-and-members.ts</code>
   <thead><tr><th>Path</th><th>Notes</th></tr></thead>
   <tbody>
     <tr><td><code>users</code></td><td>One doc per auth UID. No createdDate — use Auth for registration time.</td></tr>
-    <tr><td><code>groups</code></td><td>Top-level groups.</td></tr>
-    <tr><td><code>groups/{id}/members</code></td><td>Subcollection; queryable via <code>collectionGroup('members')</code></td></tr>
-    <tr><td><code>groups/{id}/categories</code></td><td>Subcollection; queryable via <code>collectionGroup('categories')</code></td></tr>
-    <tr><td><code>groups/{id}/expenses</code></td><td>Subcollection; <code>date</code> stored as <code>"YYYY-MM-DD"</code> string</td></tr>
-    <tr><td><code>groups/{id}/splits</code></td><td>Subcollection; queryable via <code>collectionGroup('splits')</code></td></tr>
-    <tr><td><code>groups/{id}/history</code></td><td>Subcollection</td></tr>
-    <tr><td><code>groups/{id}/memorized</code></td><td>Subcollection</td></tr>
-    <tr><td><code>groups/{id}/settleBatches</code></td><td>Subcollection (server-only)</td></tr>
+    <tr><td><code>groups</code></td><td>Top-level groups. Fields: <code>name</code>, <code>active</code>, <code>archived</code>, <code>currencyCode</code>, etc.</td></tr>
+    <tr><td><code>groups/{id}/members</code></td><td>Fields: <code>email</code>, <code>displayName</code>, <code>active</code>, <code>groupAdmin</code>, <code>userRef</code>. Queryable via <code>collectionGroup('members')</code>.</td></tr>
+    <tr><td><code>groups/{id}/categories</code></td><td>Queryable via <code>collectionGroup('categories')</code>.</td></tr>
+    <tr><td><code>groups/{id}/expenses</code></td><td><code>date</code> stored as <code>"YYYY-MM-DD"</code> string — lexicographically sortable/comparable. Queryable via <code>collectionGroup('expenses')</code>.</td></tr>
+    <tr><td><code>groups/{id}/splits</code></td><td>Queryable via <code>collectionGroup('splits')</code>.</td></tr>
+    <tr><td><code>groups/{id}/history</code></td><td>Subcollection.</td></tr>
+    <tr><td><code>groups/{id}/memorized</code></td><td>Subcollection.</td></tr>
+    <tr><td><code>groups/{id}/settleBatches</code></td><td>Subcollection (server-only).</td></tr>
     <tr><td><code>mail</code></td><td>Trigger Email extension. Fully locked by security rules.</td></tr>
     <tr><td><code>app_errors</code></td><td>Error log; <code>timestamp</code> is a Firestore <code>Timestamp</code>.</td></tr>
-    <tr><td><code>admin_config</code></td><td>Admin-only config (server-only)</td></tr>
+    <tr><td><code>admin_config</code></td><td>Admin-only config (server-only).</td></tr>
   </tbody>
 </table>
 
 <h2>Quick-reference patterns</h2>
 
-<pre><code>// Count all documents in a collection
-const snap = await db.collection('users').count().get();
-console.log(snap.data().count);
+<pre><code>import { db, auth, dump, logCount } from '../lib.ts';
 
-// Count with a filter (date strings are lexicographically comparable)
+// Count all documents in a collection
+const snap = await db.collection('users').count().get();
+logCount('Total users', snap.data().count);
+
+// Count with a date filter (date strings are lexicographically comparable)
 const thirtyDaysAgo = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
 const recent = await db.collectionGroup('expenses')
   .where('date', '>=', thirtyDaysAgo).count().get();
+logCount('Expenses in last 30 days', recent.data().count);
+
+// Most recent expense in a group
+const latestSnap = await db
+  .collection('groups').doc('GROUP_ID')
+  .collection('expenses').orderBy('date', 'desc').limit(1).get();
+console.log(latestSnap.docs[0]?.data()['date']);
+
+// Query across all groups using collectionGroup
+const allMembers = await db.collectionGroup('members')
+  .where('active', '==', true).get();
 
 // Fetch docs and print them
 const usersSnap = await db.collection('users').limit(10).get();
-dump(usersSnap);  // from lib.ts
+dump(usersSnap);
 
 // Follow a DocumentReference field
-const groupDoc = await db.collection('groups').doc('someGroupId').get();
+const groupDoc = await db.collection('groups').doc('GROUP_ID').get();
 const catRef = groupDoc.data()?.defaultCategoryRef;
 if (catRef) {
   const catDoc = await catRef.get();
@@ -138,12 +184,33 @@ if (catRef) {
 }
 
 // Firebase Auth — registration time (Firestore users have no createdDate)
-const { users } = await auth.listUsers(1000);
 const cutoff = Date.now() - 7*864e5;
-const newUsers = users.filter(u =>
-  new Date(u.metadata.creationTime).getTime() >= cutoff
-);
+let count = 0, token: string | undefined;
+do {
+  const page = await auth.listUsers(1000, token);
+  count += page.users.filter(u =>
+    new Date(u.metadata.creationTime).getTime() >= cutoff
+  ).length;
+  token = page.pageToken;
+} while (token);
+console.log(`New users in last 7 days: ${count}`);
 </code></pre>
+
+<h2>Notes</h2>
+<ul>
+  <li>
+    Import from <code>lib.ts</code> using the <code>.ts</code> extension:
+    <code>import { db } from '../lib.ts'</code>.
+    This is required because scripts run via Node's type-stripping mode (no compilation).
+  </li>
+  <li>
+    The <code>users</code> collection has no <code>createdDate</code> field.
+    Use Firebase Auth (<code>auth.listUsers()</code>) to filter by registration time.
+  </li>
+  <li>
+    Admin SDK bypasses Firestore security rules — handle with care.
+  </li>
+</ul>
 
 </body>
 </html>

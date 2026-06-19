@@ -1,4 +1,4 @@
-import { db } from '../lib.ts';
+import { db, writeTable } from '../lib.ts';
 /**
  * Lists active groups that have at least 2 non-excluded active members
  * and at least 1 expense.
@@ -75,3 +75,14 @@ for (const r of filtered) {
     `${r.name.padEnd(40)} ${r.id.padEnd(30)} ${String(r.memberCount).padEnd(10)} ${String(r.expenseCount).padEnd(10)} ${r.latestExpenseDate}`
   );
 }
+
+writeTable(
+  'Active Groups',
+  filtered.map(({ name, id, memberCount, expenseCount, latestExpenseDate }) => ({
+    'Group Name': name,
+    'ID': id,
+    'Members': memberCount,
+    'Expenses': expenseCount,
+    'Latest Expense': latestExpenseDate,
+  })),
+);
