@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "query": "node --experimental-strip-types"
+    "query": "node --experimental-strip-types run.ts"
   },
   "dependencies": {
     "firebase-admin": "^14.0.0"
