@@ -1,3 +1,4 @@
+import { db, logCount } from '../lib.ts';
 /**
  * Scratch file — edit this for your ad hoc queries and run:
  *   pnpm query
@@ -7,7 +8,6 @@
  *
  * See examples/ for ready-made patterns.
  */
-import { db, logCount } from './lib.ts';
 
 // Example: total user count
 const usersSnap = await db.collection('users').count().get();
