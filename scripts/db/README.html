@@ -40,7 +40,6 @@
   lib.ts          — shared Firebase Admin SDK init + helper functions
   run.ts          — runner: resolves query name → queries/ file
   queries/        — your saved queries (add new .ts files here)
-  examples/       — reference patterns (users-last-7-days, expenses, groups)
   package.json
   tsconfig.json
   README.html</code></pre>
@@ -96,12 +95,12 @@ logCount('Total users', snap.data().count);</code></pre>
 
 <h3>Reference examples</h3>
 <p>
-  The <code>examples/</code> folder contains ready-made patterns but is not
+  The <code>queries/</code> folder contains ready-made patterns but is not
   wired through the query runner. Run examples directly:
 </p>
-<pre><code>node --experimental-strip-types scripts/db/examples/users-last-7-days.ts
-node --experimental-strip-types scripts/db/examples/expenses-count-aggregation.ts
-node --experimental-strip-types scripts/db/examples/groups-and-members.ts</code></pre>
+<pre><code>node --experimental-strip-types scripts/db/queries/users-last-7-days.ts
+node --experimental-strip-types scripts/db/queries/expenses-count-aggregation.ts
+node --experimental-strip-types scripts/db/queries/groups-and-members.ts</code></pre>
 
 <h2>Available helpers (<code>lib.ts</code>)</h2>
 
