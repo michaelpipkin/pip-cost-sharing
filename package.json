@@ -29,7 +29,9 @@
     "e2e:local:fast:headed": "playwright test navigation.spec.ts auth-unauthenticated.spec.ts auth-authenticated.spec.ts --project=chromium --headed",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
-    "query": "pnpm --dir scripts/db query"
+    "query": "pnpm --dir scripts/db query",
+    "security:fix": "ts-node --project ../dependabot-agent/tsconfig.json -r dotenv/config ../dependabot-agent/dependabot-agent.ts",
+    "security:dry-run": "DRY_RUN=true ts-node --project ../dependabot-agent/tsconfig.json -r dotenv/config ../dependabot-agent/dependabot-agent.ts"
   },
   "private": true,
   "dependencies": {
@@ -46,12 +48,12 @@
     "@capacitor-community/admob": "^8.0.0",
     "@capacitor-firebase/analytics": "^8.3.0",
     "@capacitor-firebase/authentication": "^8.3.0",
-    "@capacitor/android": "^8.4.0",
+    "@capacitor/android": "^8.4.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/camera": "^8.2.0",
-    "@capacitor/cli": "^8.4.0",
-    "@capacitor/core": "^8.4.0",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@capacitor/text-zoom": "^8.0.1",
     "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.8",
     "@ngrx/signals": "^21.1.1",
@@ -71,23 +73,25 @@
     "@capacitor/assets": "^3.0.5",
     "@hcaptcha/types": "^1.2.0",
     "@playwright/test": "^1.61.0",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-unused-imports": "^4.4.1",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.4",
-    "prettier-eslint-cli": "^9.2.0",
+    "prettier-eslint-cli": "^9.2.1",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9",
     "wait-on": "^9.0.10"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.62.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.62.0"
+    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
   }
 }
