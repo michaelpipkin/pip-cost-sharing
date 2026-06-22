@@ -78,6 +78,7 @@
     "@typescript-eslint/parser": "^8.61.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
+    "dependabot-agent": "^0.1.0",
     "dotenv": "^17.4.2",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",

@@ -1,0 +1,10 @@
+{
+  "repo": "michaelpipkin/pip-cost-sharing",
+  "packageManager": "pnpm",
+  "workspaceRoot": ".",
+  "discoverPackages": true,
+  "packages": [],
+  "updateStrategy": "latest",
+  "dryRun": true,
+  "skipUpdate": false
+}

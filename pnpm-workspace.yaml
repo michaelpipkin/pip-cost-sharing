@@ -17,3 +17,5 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - dependabot-agent@0.1.0
