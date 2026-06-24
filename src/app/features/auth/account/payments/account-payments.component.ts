@@ -57,10 +57,10 @@ export class AccountPaymentsComponent {
     this.loading.loadingOn();
     try {
       await this.userService.updateUser({
-        venmoId: f.venmoId || undefined,
-        paypalId: f.paypalId || undefined,
-        cashAppId: f.cashAppId || undefined,
-        zelleId: f.zelleId || undefined,
+        venmoId: f.venmoId,
+        paypalId: f.paypalId,
+        cashAppId: f.cashAppId,
+        zelleId: f.zelleId,
       });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Payment service IDs updated' },

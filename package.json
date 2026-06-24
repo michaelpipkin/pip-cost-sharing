@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.21.13",
+  "version": "1.21.14",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -30,8 +30,8 @@
     "test": "ng test --watch=false",
     "test:watch": "ng test",
     "query": "pnpm --dir scripts/db query",
-    "security:fix": "ts-node --project ../dependabot-agent/tsconfig.json -r dotenv/config ../dependabot-agent/dependabot-agent.ts",
-    "security:dry-run": "DRY_RUN=true ts-node --project ../dependabot-agent/tsconfig.json -r dotenv/config ../dependabot-agent/dependabot-agent.ts"
+    "deps:dry-run": "dependabot-agent --dry-run",
+    "deps:fix": "dependabot-agent"
   },
   "private": true,
   "dependencies": {
@@ -78,6 +78,7 @@
     "@typescript-eslint/parser": "^8.61.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
+    "dependabot-agent": "^0.1.2",
     "dotenv": "^17.4.2",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
