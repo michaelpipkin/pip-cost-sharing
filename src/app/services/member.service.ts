@@ -9,8 +9,10 @@ import {
   collection,
   collectionGroup,
   deleteDoc,
+  doc,
   documentId,
   DocumentReference,
+  getDoc,
   getDocs,
   getFirestore,
   limit,
@@ -203,16 +205,28 @@ export class MemberService implements IMemberService {
       collection(this.fs, `groups/${groupId}/splits`)
     );
     const memberSplit = splits.docs.find(
-      (doc) =>
-        doc.data().owedByMemberRef.eq(memberRef) ||
-        doc.data().paidByMemberRef.eq(memberRef)
+      (splitDoc) =>
+        splitDoc.data().owedByMemberRef.eq(memberRef) ||
+        splitDoc.data().paidByMemberRef.eq(memberRef)
     );
 
     if (memberSplit) {
       throw new Error('This member has existing splits and cannot be deleted.');
     }
 
+    const memberSnap = await getDoc(memberRef);
+    const removedUserRef = memberSnap.data()?.userRef;
+
     await deleteDoc(memberRef);
+
+    if (removedUserRef) {
+      const groupRef = doc(this.fs, `groups/${groupId}`);
+      const removedUserSnap = await getDoc(removedUserRef);
+      const removedDefault = removedUserSnap.data()?.defaultGroupRef;
+      if (removedDefault?.eq(groupRef)) {
+        await updateDoc(removedUserRef, { defaultGroupRef: null });
+      }
+    }
   }
 
   async leaveGroup(

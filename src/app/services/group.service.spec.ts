@@ -308,14 +308,46 @@ describe('GroupService', () => {
       service = createService();
     });
 
-    it('should throw when the group document does not exist', async () => {
+    it('should resolve gracefully when the group document does not exist', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
         exists: () => false,
       } as any);
+      userSignal.set({ ref: { id: 'user-1' }, defaultGroupRef: null });
 
       await expect(
-        service.getGroup({ id: 'ghost-group' } as any, {} as any)
-      ).rejects.toThrow('Group with ID ghost-group not found');
+        service.getGroup({ id: 'ghost-group' } as any, { id: 'user-1' } as any)
+      ).resolves.toBeUndefined();
+
+      expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalledOnce();
+      expect(localStorage.getItem('currentGroup')).toBeNull();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Group Service',
+        'getGroup',
+        'Cleared stale default group reference',
+        'Group with ID ghost-group not found'
+      );
+    });
+
+    it('should null stale defaultGroupRef when the missing group was the user default', async () => {
+      const ghostGroupRef = {
+        id: 'ghost-group',
+        eq: (other: any) => other?.id === 'ghost-group',
+      } as any;
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        exists: () => false,
+      } as any);
+      userSignal.set({ ref: { id: 'user-1' }, defaultGroupRef: ghostGroupRef });
+
+      await service.getGroup(ghostGroupRef, { id: 'user-1' } as any);
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        { defaultGroupRef: null },
+        { merge: true }
+      );
+      expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+        defaultGroupRef: null,
+      });
     });
 
     it('should set current group in store when document exists', async () => {

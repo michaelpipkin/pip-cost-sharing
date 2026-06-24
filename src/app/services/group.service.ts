@@ -197,14 +197,24 @@ export class GroupService implements IGroupService {
     const userRef = user?.ref;
     if (!userRef) return;
 
+    let defaultGroupRef = user?.defaultGroupRef ?? null;
+
+    // Self-heal: a defaultGroupRef pointing at a group the user no longer belongs to
+    // (e.g. deleted out-of-band) would otherwise crash auto-select.
+    if (defaultGroupRef && !groups.some((g) => g.ref!.eq(defaultGroupRef!))) {
+      await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
+      this.userStore.updateUser({ defaultGroupRef: null });
+      defaultGroupRef = null;
+    }
+
     const activeGroups = groups.filter((g) => g.active);
     const currentGroup = this.groupStore.currentGroup();
 
     if (!this.groupStore.skipAutoSelect()) {
       if (currentGroup?.ref && groups.some((g) => g.id === currentGroup.id)) {
         await this.getGroup(currentGroup.ref, userRef);
-      } else if (user?.defaultGroupRef) {
-        await this.getGroup(user.defaultGroupRef, userRef);
+      } else if (defaultGroupRef) {
+        await this.getGroup(defaultGroupRef, userRef);
       } else if (activeGroups.length === 1 && activeGroups[0]?.ref) {
         await this.getGroup(activeGroups[0].ref, userRef);
       } else {
@@ -240,7 +250,20 @@ export class GroupService implements IGroupService {
       const docSnap = await getDoc(groupRef);
 
       if (!docSnap.exists()) {
-        throw new Error(`Group with ID ${groupRef.id} not found`);
+        // Group was deleted out-of-band; clear selection and any stale default.
+        this.groupStore.clearCurrentGroup();
+        localStorage.removeItem('currentGroup');
+        if (this.userStore.user()?.defaultGroupRef?.eq(groupRef)) {
+          await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
+          this.userStore.updateUser({ defaultGroupRef: null });
+        }
+        this.analytics.logError(
+          'Group Service',
+          'getGroup',
+          'Cleared stale default group reference',
+          `Group with ID ${groupRef.id} not found`
+        );
+        return;
       }
 
       const group = new Group({
