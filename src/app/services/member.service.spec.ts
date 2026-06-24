@@ -48,6 +48,11 @@ describe('MemberService', () => {
     vi.spyOn(firestoreModule, 'limit').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'documentId').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'onSnapshot').mockReturnValue(vi.fn() as any);
+    vi.spyOn(firestoreModule, 'doc').mockReturnValue({ id: 'group-mock' } as any);
+    vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
+      exists: () => true,
+      data: () => ({}),
+    } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'addDoc').mockResolvedValue({
       id: 'new-member',
@@ -258,6 +263,73 @@ describe('MemberService', () => {
       await service.removeMemberFromGroup('group-1', mockMemberRef);
 
       expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockMemberRef);
+    });
+
+    it('should null the removed user defaultGroupRef when it pointed at this group', async () => {
+      const mockGroupRef = {
+        id: 'group-1',
+        eq: (other: any) => other?.id === 'group-1',
+      };
+      const mockUserRef = { id: 'user-1' };
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
+      vi.spyOn(firestoreModule, 'doc').mockReturnValueOnce(mockGroupRef as any);
+      vi.spyOn(firestoreModule, 'getDoc')
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ userRef: mockUserRef }),
+        } as any)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ defaultGroupRef: mockGroupRef }),
+        } as any);
+
+      await service.removeMemberFromGroup('group-1', mockMemberRef);
+
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockUserRef, {
+        defaultGroupRef: null,
+      });
+    });
+
+    it('should not null removed user defaultGroupRef when it pointed at a different group', async () => {
+      const mockGroupRef = {
+        id: 'group-1',
+        eq: (other: any) => other?.id === 'group-1',
+      };
+      const otherGroupRef = {
+        id: 'group-2',
+        eq: (other: any) => other?.id === 'group-2',
+      };
+      const mockUserRef = { id: 'user-1' };
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
+      vi.spyOn(firestoreModule, 'doc').mockReturnValueOnce(mockGroupRef as any);
+      vi.spyOn(firestoreModule, 'getDoc')
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ userRef: mockUserRef }),
+        } as any)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ defaultGroupRef: otherGroupRef }),
+        } as any);
+
+      await service.removeMemberFromGroup('group-1', mockMemberRef);
+
+      expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+    });
+
+    it('should not attempt to clear defaultGroupRef when removed member has no user account', async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
+      // default getDoc mock returns data: () => ({}) — no userRef
+
+      await service.removeMemberFromGroup('group-1', mockMemberRef);
+
+      expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
     });
   });
 

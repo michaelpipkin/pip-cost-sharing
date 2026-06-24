@@ -18,4 +18,4 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - dependabot-agent@0.1.0
+  - dependabot-agent
