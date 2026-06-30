@@ -198,8 +198,9 @@ export class EditExpenseComponent {
       this.addSelectFocus();
     });
     const expense = this.expense();
-    if (expense.hasReceipt) {
-      getDownloadURL(expense.receiptRef!).then((url: string) => {
+    const receiptRef = expense.receiptRef;
+    if (receiptRef) {
+      getDownloadURL(receiptRef).then((url: string) => {
         if (url) this.receiptUrl.set(url);
       }).catch((error: unknown) => {
         if (error instanceof FirebaseError) {
@@ -345,13 +346,13 @@ export class EditExpenseComponent {
     const existingIds = new Set(
       this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
     );
-    const available = this.splitMembers().filter(m => !existingIds.has(m.id));
+    const available = this.splitMembers().find(m => !existingIds.has(m.id));
     this.expenseModel.update(m => ({
       ...m,
       splits: [
         ...m.splits,
         {
-          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          owedByMemberRef: available?.ref ?? null,
           assignedAmount: this.localeService.getFormattedZero(),
           percentage: 0,
           shares: 0,
@@ -537,11 +538,13 @@ export class EditExpenseComponent {
           const model = this.expenseModel();
           const fd = this.expenseFormData();
           const expenseDate = toIsoFormat(fd.date!);
+          const categoryRef = model.category!;
+          const paidByMemberRef = model.paidByMember!;
           const changes: Partial<ExpenseDto> = {
             date: expenseDate,
             description: fd.description,
-            categoryRef: model.category!,
-            paidByMemberRef: model.paidByMember!,
+            categoryRef,
+            paidByMemberRef,
             sharedAmount: model.sharedAmount,
             allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
             totalAmount: this.stringUtils.toNumber(fd.amount),
@@ -550,14 +553,14 @@ export class EditExpenseComponent {
           };
           const splits: Partial<SplitDto>[] = model.splits.map(s => ({
             date: expenseDate,
-            categoryRef: model.category!,
+            categoryRef,
             assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
             percentage: s.percentage ?? 0,
             shares: s.shares ?? 0,
             allocatedAmount: s.allocatedAmount,
-            paidByMemberRef: model.paidByMember!,
+            paidByMemberRef,
             owedByMemberRef: s.owedByMemberRef!,
-            paid: s.owedByMemberRef!.eq(model.paidByMember!),
+            paid: s.owedByMemberRef!.eq(paidByMemberRef),
           }));
           const expenseRef = this.expense().ref!;
           await this.expenseService.updateExpense(

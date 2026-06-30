@@ -8,7 +8,7 @@ export type DisplayMode = 'browser' | 'standalone' | 'twa';
   providedIn: 'root',
 })
 export class PwaDetectionService {
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly platformId = inject(PLATFORM_ID);
   private readonly displayMode = signal<DisplayMode>('browser');
 
   constructor() {

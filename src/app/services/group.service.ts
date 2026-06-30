@@ -52,7 +52,7 @@ export class GroupService implements IGroupService {
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly platformId = inject(PLATFORM_ID);
 
   #unsubscribeMembers?: () => void;
   #unsubscribeGroups?: () => void;
@@ -198,10 +198,11 @@ export class GroupService implements IGroupService {
     if (!userRef) return;
 
     let defaultGroupRef = user?.defaultGroupRef ?? null;
+    const currentDefaultGroupRef = defaultGroupRef;
 
     // Self-heal: a defaultGroupRef pointing at a group the user no longer belongs to
     // (e.g. deleted out-of-band) would otherwise crash auto-select.
-    if (defaultGroupRef && !groups.some((g) => g.ref!.eq(defaultGroupRef!))) {
+    if (currentDefaultGroupRef && !groups.some((g) => g.ref?.eq(currentDefaultGroupRef))) {
       await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
       this.userStore.updateUser({ defaultGroupRef: null });
       defaultGroupRef = null;

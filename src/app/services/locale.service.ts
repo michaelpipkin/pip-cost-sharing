@@ -5,8 +5,8 @@ import { GroupStore } from '@store/group.store';
 
 @Injectable({ providedIn: 'root' })
 export class LocaleService {
-  private readonly groupStore = inject(GroupStore);
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly groupStore = inject(GroupStore);
+  protected readonly platformId = inject(PLATFORM_ID);
 
   // Browser locale detection; default to 'en-US' on the server
   private readonly browserLocale = signal<string>(
@@ -53,8 +53,8 @@ export class LocaleService {
     const absValue = Math.abs(value);
     const fixed = absValue.toFixed(curr.decimalPlaces);
     const parts = fixed.split('.');
-    const integerPart = parts[0]!;
-    const decimalPart = parts[1]!;
+    const integerPart = parts[0] ?? '';
+    const decimalPart = parts[1] ?? '';
 
     // Add thousands separators
     const formattedInteger = integerPart.replaceAll(

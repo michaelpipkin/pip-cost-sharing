@@ -32,7 +32,7 @@ export class ThemeService implements IThemeService {
     null
   );
   private readonly themeKey = 'app-theme-preference';
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly platformId = inject(PLATFORM_ID);
 
   // Create a signal for the current theme; default to 'light' on the server
   private readonly _currentTheme = signal<ThemeMode>(

@@ -168,13 +168,22 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: service-account-key.json
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account-key.json
-          if firebase deploy --only hosting --project pip-cost-sharing --non-interactive; then
-            echo "outcome=success" >> $GITHUB_OUTPUT
+          # Always remove the credentials file, even if the deploy fails
+          trap 'rm -f service-account-key.json deploy.log' EXIT
+
+          set +e
+          firebase deploy --only hosting --project pip-cost-sharing --non-interactive 2>&1 | tee deploy.log
+          deploy_status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$deploy_status" -eq 0 ]; then
+            echo "Hosting deploy succeeded."
+          elif grep -q "is the current active version" deploy.log; then
+            echo "::warning::Hosting bundle is identical to the live release; nothing new to release. Treating as success."
           else
-            echo "outcome=failure" >> $GITHUB_OUTPUT
+            echo "Hosting deploy failed."
             exit 1
           fi
-          rm service-account-key.json
 
       - name: Configure Git for merge
         if: steps.deploy.outcome == 'success' || steps.check-skip.outputs.skip_deploy == 'true'

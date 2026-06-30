@@ -48,7 +48,7 @@ export class NavigationLoadingService {
               disableClose: true,
             })
             .afterClosed()
-            .subscribe(() => window.location.reload());
+            .subscribe(() => globalThis.location.reload());
         } else {
           this.analytics.logError(
             'Navigation Loading Service',

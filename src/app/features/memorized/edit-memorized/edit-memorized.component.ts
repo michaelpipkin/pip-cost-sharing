@@ -285,13 +285,13 @@ export class EditMemorizedComponent {
     const existingIds = new Set(
       this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
     );
-    const available = this.splitMembers().filter(m => !existingIds.has(m.id));
+    const available = this.splitMembers().find(m => !existingIds.has(m.id));
     this.expenseModel.update(m => ({
       ...m,
       splits: [
         ...m.splits,
         {
-          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          owedByMemberRef: available?.ref ?? null,
           assignedAmount: this.localeService.getFormattedZero(),
           percentage: 0,
           shares: 0,
@@ -387,7 +387,7 @@ export class EditMemorizedComponent {
       }));
       changes.splits = splits;
       await this.memorizedService.updateMemorized(
-        this.memorized().ref!,
+        this.memorized().ref,
         changes
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -428,7 +428,7 @@ export class EditMemorizedComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.memorizedService.deleteMemorized(this.memorized().ref!);
+          await this.memorizedService.deleteMemorized(this.memorized().ref);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Memorized expense deleted' },
           });
