@@ -387,7 +387,7 @@ export class EditMemorizedComponent {
       }));
       changes.splits = splits;
       await this.memorizedService.updateMemorized(
-        this.memorized().ref,
+        this.memorized().ref!, // NOSONAR - ref is always set when navigating to this page
         changes
       );
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -428,7 +428,7 @@ export class EditMemorizedComponent {
       if (confirm) {
         try {
           this.loading.loadingOn();
-          await this.memorizedService.deleteMemorized(this.memorized().ref);
+          await this.memorizedService.deleteMemorized(this.memorized().ref!); // NOSONAR - ref is always set when navigating to this page
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Memorized expense deleted' },
           });
