@@ -346,13 +346,13 @@ export class EditExpenseComponent {
     const existingIds = new Set(
       this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
     );
-    const available = this.splitMembers().filter(m => !existingIds.has(m.id));
+    const available = this.splitMembers().find(m => !existingIds.has(m.id));
     this.expenseModel.update(m => ({
       ...m,
       splits: [
         ...m.splits,
         {
-          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          owedByMemberRef: available?.ref ?? null,
           assignedAmount: this.localeService.getFormattedZero(),
           percentage: 0,
           shares: 0,

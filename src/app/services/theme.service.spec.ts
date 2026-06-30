@@ -32,7 +32,7 @@ describe('ThemeService', () => {
     vi.clearAllMocks();
     localStorage.clear();
     vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('web');
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       writable: true,
       value: vi.fn().mockReturnValue({
         matches: false,
@@ -82,14 +82,14 @@ describe('ThemeService', () => {
 
     it('should apply dark-theme class to document body', () => {
       service.setTheme('dark');
-      TestBed.flushEffects();
+      TestBed.tick();
       expect(addClassSpy).toHaveBeenCalledWith(document.body, 'dark-theme');
       expect(removeClassSpy).toHaveBeenCalledWith(document.body, 'light-theme');
     });
 
     it('should apply light-theme class to document body', () => {
       service.setTheme('light');
-      TestBed.flushEffects();
+      TestBed.tick();
       expect(addClassSpy).toHaveBeenCalledWith(document.body, 'light-theme');
       expect(removeClassSpy).toHaveBeenCalledWith(document.body, 'dark-theme');
     });

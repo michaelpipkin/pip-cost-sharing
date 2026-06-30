@@ -7,7 +7,7 @@ import { PwaDetectionService } from './pwa-detection.service';
 })
 export class AdSenseService {
   protected readonly pwaService = inject(PwaDetectionService);
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly platformId = inject(PLATFORM_ID);
   private isLoaded = false;
 
   constructor() {

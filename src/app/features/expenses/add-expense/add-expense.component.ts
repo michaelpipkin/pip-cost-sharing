@@ -198,7 +198,7 @@ export class AddExpenseComponent {
           this.addAllActiveGroupMembers();
         }
         if (this.activeCategories().length === 1) {
-          this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]!.ref ?? null }));
+          this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]?.ref ?? null }));
         }
       }
       this.loading.loadingOff();
@@ -251,13 +251,13 @@ export class AddExpenseComponent {
     const existingIds = new Set(
       this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
     );
-    const available = this.activeMembers().filter(m => !existingIds.has(m.id));
+    const available = this.activeMembers().find(m => !existingIds.has(m.id));
     this.expenseModel.update(m => ({
       ...m,
       splits: [
         ...m.splits,
         {
-          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          owedByMemberRef: available?.ref ?? null,
           assignedAmount: this.localeService.getFormattedZero(),
           percentage: 0,
           shares: 0,
@@ -554,13 +554,15 @@ export class AddExpenseComponent {
     try {
       this.loading.loadingOn();
       const model = this.expenseModel();
+      const categoryRef = model.category!;
+      const paidByMemberRef = model.paidByMember!;
       const fd = this.expenseFormData();
       const expenseDate = toIsoFormat(fd.date!);
       const expense: Partial<ExpenseDto> = {
         date: expenseDate,
         description: fd.description,
-        categoryRef: model.category!,
-        paidByMemberRef: model.paidByMember!,
+        categoryRef,
+        paidByMemberRef,
         paid: false,
         sharedAmount: model.sharedAmount,
         allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
@@ -572,14 +574,14 @@ export class AddExpenseComponent {
         if (s.allocatedAmount !== 0) {
           splits.push({
             date: expenseDate,
-            categoryRef: model.category!,
+            categoryRef,
             assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
             percentage: s.percentage ?? 0,
             shares: s.shares ?? 0,
             allocatedAmount: s.allocatedAmount,
-            paidByMemberRef: model.paidByMember!,
+            paidByMemberRef,
             owedByMemberRef: s.owedByMemberRef!,
-            paid: s.owedByMemberRef!.eq(model.paidByMember!),
+            paid: s.owedByMemberRef!.eq(paidByMemberRef),
           });
         }
       });
@@ -589,7 +591,7 @@ export class AddExpenseComponent {
       if (saveAndAdd) {
         this.expenseModel.set({
           paidByMember: this.currentMember()!.ref ?? null,
-          category: this.activeCategories().length === 1 ? (this.activeCategories()[0]!.ref ?? null) : null,
+          category: this.activeCategories().length === 1 ? (this.activeCategories()[0]?.ref ?? null) : null,
           sharedAmount: 0,
           splits: [],
         });

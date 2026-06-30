@@ -29,7 +29,7 @@ export class PageTitleStrategyService extends TitleStrategy {
   protected readonly document = inject(DOCUMENT);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly meta = inject(Meta);
-  private readonly platformId = inject(PLATFORM_ID);
+  protected readonly platformId = inject(PLATFORM_ID);
 
   constructor() {
     super();
@@ -37,8 +37,8 @@ export class PageTitleStrategyService extends TitleStrategy {
 
   override updateTitle(routerState: RouterStateSnapshot) {
     const title = this.buildTitle(routerState);
-    const pageLink = routerState.url.split('?')[0]!;
-    const pageTitle = title !== undefined ? `PipSplit | ${title}` : 'PipSplit';
+    const pageLink = routerState.url.split('?')[0] ?? '';
+    const pageTitle = title === undefined ? 'PipSplit' : `PipSplit | ${title}`;
 
     this.title.setTitle(pageTitle);
 

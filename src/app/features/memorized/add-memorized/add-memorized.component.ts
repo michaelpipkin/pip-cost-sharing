@@ -165,7 +165,7 @@ export class AddMemorizedComponent {
         this.addAllActiveGroupMembers();
       }
       if (this.activeCategories().length === 1) {
-        this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]!.ref ?? null }));
+        this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]?.ref ?? null }));
       }
       this.loading.loadingOff();
     });
@@ -281,13 +281,13 @@ export class AddMemorizedComponent {
     const existingIds = new Set(
       this.expenseModel().splits.map(s => s.owedByMemberRef?.id).filter(Boolean)
     );
-    const available = this.activeMembers().filter(m => !existingIds.has(m.id));
+    const available = this.activeMembers().find(m => !existingIds.has(m.id));
     this.expenseModel.update(m => ({
       ...m,
       splits: [
         ...m.splits,
         {
-          owedByMemberRef: available.length > 0 ? (available[0]!.ref ?? null) : null,
+          owedByMemberRef: available?.ref ?? null,
           assignedAmount: this.localeService.getFormattedZero(),
           percentage: 0,
           shares: 0,

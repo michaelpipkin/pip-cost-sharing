@@ -7,7 +7,7 @@ import { CalculatorComponent } from '@components/calculator/calculator.component
   providedIn: 'root',
 })
 export class CalculatorOverlayService {
-  private readonly overlay = inject(Overlay);
+  protected readonly overlay = inject(Overlay);
   private overlayRef: OverlayRef | null = null;
   private calculatorRef: ComponentRef<CalculatorComponent> | null = null;
   private readonly isOpen = signal(false);
@@ -119,7 +119,7 @@ export class CalculatorOverlayService {
 
         // Force viewport reset to dismiss keyboard on iOS
         if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-          window.scrollTo(0, 0);
+          globalThis.scrollTo(0, 0);
         }
 
         // Create a temporary hidden input to steal focus
