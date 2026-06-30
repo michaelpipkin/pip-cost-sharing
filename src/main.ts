@@ -10,7 +10,9 @@ if (environment.production) {
   enableProdMode();
 }
 
-bootstrapApplication(AppComponent, appConfig).catch((err) => {
+try {
+  await bootstrapApplication(AppComponent, appConfig);
+} catch (err) {
   // Log bootstrap errors to console (cannot use Firebase Analytics here due to injection context)
   console.error('Bootstrap error:', err);
-});
+}
