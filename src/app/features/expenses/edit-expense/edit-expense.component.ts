@@ -392,6 +392,7 @@ export class EditExpenseComponent {
   removeFile(): void {
     this.receiptFile.set(null);
     this.fileName.set('');
+    this.modelDirty.set(true);
   }
 
   async openFileSelectionDialog(): Promise<void> {
@@ -471,6 +472,7 @@ export class EditExpenseComponent {
     } else {
       this.receiptFile.set(file);
       this.fileName.set(file.name);
+      this.modelDirty.set(true);
     }
   }
 
