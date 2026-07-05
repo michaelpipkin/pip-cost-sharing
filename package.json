@@ -12,6 +12,7 @@
     "emu:data": "firebase emulators:start --import seed-data",
     "emu:export": "firebase emulators:export seed-data --force",
     "get-indexes": "firebase firestore:indexes",
+    "sync-indexes": "node ./updateFirestoreIndexes.js",
     "build:cap": "ng build --configuration=production && npx cap sync",
     "build:prod": "pnpm --no-git-tag-version version patch && node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
     "build:ci": "node ./setBuildDate.js && node ./updatePrivacyDate.js && ng build --configuration=production && node ./generate-sitemap.js",
