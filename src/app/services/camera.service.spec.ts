@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Camera, CameraSource } from '@capacitor/camera';
+import { Camera } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { CameraService } from './camera.service';
 
@@ -13,9 +13,13 @@ describe('CameraService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
-    vi.spyOn(Camera, 'getPhoto').mockResolvedValue({
+    vi.spyOn(Camera, 'takePhoto').mockResolvedValue({
       webPath: 'test://photo.jpg',
-      format: 'jpeg',
+      saved: false,
+      metadata: { format: 'jpeg' },
+    } as any);
+    vi.spyOn(Camera, 'chooseFromGallery').mockResolvedValue({
+      results: [],
     } as any);
     service = new CameraService();
   });
@@ -38,11 +42,12 @@ describe('CameraService', () => {
   });
 
   describe('takePicture', () => {
-    it('should call Camera.getPhoto with Camera source', async () => {
+    it('should call Camera.takePhoto', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+      vi.spyOn(Camera, 'takePhoto').mockResolvedValueOnce({
         webPath: 'test://photo.jpg',
-        format: 'jpeg',
+        saved: false,
+        metadata: { format: 'jpeg' },
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
@@ -50,16 +55,17 @@ describe('CameraService', () => {
 
       await service.takePicture();
 
-      expect(Camera.getPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({ source: CameraSource.Camera })
+      expect(Camera.takePhoto).toHaveBeenCalledWith(
+        expect.objectContaining({ includeMetadata: true })
       );
     });
 
     it('should return a File with the correct MIME type from the blob', async () => {
       const mockBlob = makeMockBlob('image/png');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+      vi.spyOn(Camera, 'takePhoto').mockResolvedValueOnce({
         webPath: 'test://photo.png',
-        format: undefined,
+        saved: false,
+        metadata: undefined,
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
@@ -71,11 +77,12 @@ describe('CameraService', () => {
       expect(result!.type).toBe('image/png');
     });
 
-    it('should use photo.format for the filename when available', async () => {
+    it('should use metadata.format for the filename when available', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+      vi.spyOn(Camera, 'takePhoto').mockResolvedValueOnce({
         webPath: 'test://photo.jpg',
-        format: 'heic',
+        saved: false,
+        metadata: { format: 'heic' },
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
@@ -86,11 +93,12 @@ describe('CameraService', () => {
       expect(result!.name).toBe('photo.heic');
     });
 
-    it('should fall back to MIME type extension when format is not available', async () => {
+    it('should fall back to MIME type extension when metadata format is not available', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
+      vi.spyOn(Camera, 'takePhoto').mockResolvedValueOnce({
         webPath: 'test://photo.jpg',
-        format: undefined,
+        saved: false,
+        metadata: undefined,
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
@@ -101,8 +109,8 @@ describe('CameraService', () => {
       expect(result!.name).toBe('camera-photo.jpeg');
     });
 
-    it('should return null when Camera.getPhoto throws (user cancelled)', async () => {
-      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(
+    it('should return null when Camera.takePhoto throws (user cancelled)', async () => {
+      vi.spyOn(Camera, 'takePhoto').mockRejectedValueOnce(
         new Error('User cancelled')
       );
 
@@ -113,11 +121,16 @@ describe('CameraService', () => {
   });
 
   describe('selectFromGallery', () => {
-    it('should call Camera.getPhoto with Photos source', async () => {
+    it('should call Camera.chooseFromGallery', async () => {
       const mockBlob = makeMockBlob('image/jpeg');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
-        webPath: 'test://photo.jpg',
-        format: 'jpeg',
+      vi.spyOn(Camera, 'chooseFromGallery').mockResolvedValueOnce({
+        results: [
+          {
+            webPath: 'test://photo.jpg',
+            saved: false,
+            metadata: { format: 'jpeg' },
+          },
+        ],
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
@@ -125,13 +138,13 @@ describe('CameraService', () => {
 
       await service.selectFromGallery();
 
-      expect(Camera.getPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({ source: CameraSource.Photos })
+      expect(Camera.chooseFromGallery).toHaveBeenCalledWith(
+        expect.objectContaining({ includeMetadata: true })
       );
     });
 
-    it('should return null when Camera.getPhoto throws (user cancelled)', async () => {
-      vi.spyOn(Camera, 'getPhoto').mockRejectedValueOnce(
+    it('should return null when Camera.chooseFromGallery throws (user cancelled)', async () => {
+      vi.spyOn(Camera, 'chooseFromGallery').mockRejectedValueOnce(
         new Error('User cancelled')
       );
 
@@ -140,11 +153,26 @@ describe('CameraService', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null when the gallery selection is empty', async () => {
+      vi.spyOn(Camera, 'chooseFromGallery').mockResolvedValueOnce({
+        results: [],
+      } as any);
+
+      const result = await service.selectFromGallery();
+
+      expect(result).toBeNull();
+    });
+
     it('should use gallery-photo as the base filename when format is not available', async () => {
       const mockBlob = makeMockBlob('image/png');
-      vi.spyOn(Camera, 'getPhoto').mockResolvedValueOnce({
-        webPath: 'test://photo.png',
-        format: undefined,
+      vi.spyOn(Camera, 'chooseFromGallery').mockResolvedValueOnce({
+        results: [
+          {
+            webPath: 'test://photo.png',
+            saved: false,
+            metadata: undefined,
+          },
+        ],
       } as any);
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         blob: async () => mockBlob,
