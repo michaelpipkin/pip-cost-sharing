@@ -18,13 +18,18 @@ describe('DemoService', () => {
     navigateByUrl: vi.fn(),
   };
 
-  const mockDemoModeService = { initializeDemoData: vi.fn() };
   const mockSnackBar = { openFromComponent: vi.fn() };
   const mockUserStore = {
     clearUser: vi.fn(),
-    setIsDemoMode: vi.fn(),
+    // Mirror the real UserStore: writing isDemoMode actually updates the
+    // signal, since DemoService.isInDemoMode is now computed from it.
+    setIsDemoMode: vi.fn((value: boolean) => mockUserStore.isDemoMode.set(value)),
     user: signal<any>(null),
     isDemoMode: signal(false),
+  };
+  // Mirrors DemoModeService.initializeDemoData flipping UserStore.isDemoMode.
+  const mockDemoModeService = {
+    initializeDemoData: vi.fn(() => mockUserStore.setIsDemoMode(true)),
   };
   const mockGroupStore = {
     clearCurrentGroup: vi.fn(),
@@ -67,10 +72,16 @@ describe('DemoService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // isDemoMode is a shared signal across tests (DemoService.isInDemoMode is
+    // computed from it) - reset it so state doesn't leak between tests.
+    mockUserStore.isDemoMode.set(false);
+    mockUserStore.user.set(null);
+    localStorage.clear();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    localStorage.clear();
   });
 
   describe('demo mode state', () => {
@@ -97,6 +108,14 @@ describe('DemoService', () => {
 
     it('should not detect /expenses as a demo route', () => {
       const service = createService('/expenses');
+      expect(service.isInDemoMode()).toBe(false);
+    });
+
+    it('should track UserStore.isDemoMode as the single source of truth', () => {
+      const service = createService('/');
+      mockUserStore.isDemoMode.set(true);
+      expect(service.isInDemoMode()).toBe(true);
+      mockUserStore.isDemoMode.set(false);
       expect(service.isInDemoMode()).toBe(false);
     });
   });
@@ -140,6 +159,17 @@ describe('DemoService', () => {
       const service = createService('/');
       service.exitDemoMode(); // no-op when not in demo mode
       expect(mockUserStore.clearUser).not.toHaveBeenCalled();
+    });
+
+    it('should remove the stale demo group from localStorage when exitDemoMode is called', () => {
+      localStorage.setItem(
+        'currentGroup',
+        JSON.stringify({ id: 'demo-group-123', name: 'Demo Household' })
+      );
+      const service = createService('/');
+      service.enterDemoMode();
+      service.exitDemoMode();
+      expect(localStorage.getItem('currentGroup')).toBeNull();
     });
   });
 

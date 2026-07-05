@@ -28,6 +28,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { CategoryService } from './category.service';
+import { DEMO_GROUP_ID } from './demo-mode.service';
 import { ExpenseService } from './expense.service';
 import { IGroupService } from './group.service.interface';
 import { HistoryService } from './history.service';
@@ -62,12 +63,18 @@ export class GroupService implements IGroupService {
       const currentGroup = localStorage.getItem('currentGroup');
       if (currentGroup !== null) {
         const group = new Group({ ...JSON.parse(currentGroup) });
-        // prettier-ignore
-        group.ref = doc( // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
-          this.fs,
-          `groups/${group.id}`
-        ) as DocumentReference<Group>;
-        this.groupStore.setCurrentGroup(group);
+        // A leftover demo group (e.g. from a demo session that didn't clean
+        // up localStorage) should never be rehydrated as a real group.
+        if (group.id === DEMO_GROUP_ID) {
+          localStorage.removeItem('currentGroup');
+        } else {
+          // prettier-ignore
+          group.ref = doc( // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
+            this.fs,
+            `groups/${group.id}`
+          ) as DocumentReference<Group>;
+          this.groupStore.setCurrentGroup(group);
+        }
       }
     }
   }
