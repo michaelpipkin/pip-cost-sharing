@@ -1,5 +1,7 @@
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { afterNextRender, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -54,11 +56,35 @@ export class UserService implements IUserService {
   protected readonly splitStore = inject(SplitStore);
   protected readonly demoModeService = inject(DemoModeService);
   protected readonly functions = inject(getFunctions);
+  protected readonly snackbar = inject(MatSnackBar);
+
+  #intentionalLogout = false;
+  #handlingSessionExpiry = false;
 
   constructor() {
     afterNextRender(async () => {
       await this.initializeAuth();
     });
+  }
+
+  private handleSessionExpired(): void {
+    if (this.#handlingSessionExpiry) return;
+    this.#handlingSessionExpiry = true;
+    this.groupService.logout();
+    this.userStore.clearUser();
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: 'Your session has expired. Please sign in again.' },
+    });
+    this.router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+  }
+
+  #requireUserId(): string {
+    const userId = this.auth.currentUser?.uid;
+    if (!userId) {
+      this.handleSessionExpired();
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    return userId;
   }
 
   private async initializeAuth(): Promise<void> {
@@ -92,6 +118,7 @@ export class UserService implements IUserService {
                 !!firebaseUser.emailVerified
               );
               await this.groupService.getUserGroups(user);
+              this.#handlingSessionExpiry = false;
             } catch (error) {
               this.analytics.logError(
                 'User Service',
@@ -100,6 +127,18 @@ export class UserService implements IUserService {
                 error instanceof Error ? error.message : 'Unknown error'
               );
             }
+          } else {
+            // Firebase transitioned to a logged-out state. Distinguish an
+            // intentional logout() call from an involuntary session loss
+            // (revoked token, evicted persistence, sign-out in another tab).
+            if (
+              !this.#intentionalLogout &&
+              this.userStore.isLoggedIn() &&
+              !this.userStore.isDemoMode()
+            ) {
+              this.handleSessionExpired();
+            }
+            this.#intentionalLogout = false;
           }
         }
       );
@@ -200,10 +239,7 @@ export class UserService implements IUserService {
 
   async updateUser(changes: Partial<User>): Promise<void> {
     try {
-      const userId = this.auth.currentUser?.uid;
-      if (!userId) {
-        throw new Error('Cannot update user: no authenticated user.');
-      }
+      const userId = this.#requireUserId();
       const docRef = doc(this.fs, `users/${userId}`);
       await setDoc(docRef, changes, { merge: true });
       this.userStore.updateUser(changes);
@@ -219,10 +255,7 @@ export class UserService implements IUserService {
   }
 
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
-    const userId = this.auth.currentUser?.uid;
-    if (!userId) {
-      throw new Error('Cannot update email: no authenticated user.');
-    }
+    const userId = this.#requireUserId();
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,
@@ -561,6 +594,7 @@ export class UserService implements IUserService {
   }
 
   async logout(redirect: boolean = true): Promise<void> {
+    this.#intentionalLogout = true;
     this.groupService.logout();
     await this.auth.signOut();
     this.userStore.clearUser();
