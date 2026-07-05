@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
@@ -22,12 +22,14 @@ export class DemoService {
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
 
-  isInDemoMode = signal<boolean>(false);
+  // Single source of truth: demo state lives on UserStore so it can never
+  // desync from the state login/logout already reset (UserStore.initUser
+  // always sets isDemoMode: false for a real, authenticated user).
+  isInDemoMode = computed(() => this.userStore.isDemoMode());
   private demoDataInitialized = false;
 
   enterDemoMode(): void {
     if (!this.isInDemoMode()) {
-      this.isInDemoMode.set(true);
       if (!this.demoDataInitialized) {
         this.demoModeService.initializeDemoData();
         this.demoDataInitialized = true;
@@ -37,7 +39,6 @@ export class DemoService {
 
   exitDemoMode(): void {
     if (this.isInDemoMode()) {
-      this.isInDemoMode.set(false);
       this.clearDemoData();
     }
   }
@@ -52,6 +53,7 @@ export class DemoService {
     this.categoryStore.clearGroupCategories();
     this.expenseStore.clearGroupExpenses();
     this.demoDataInitialized = false;
+    localStorage.removeItem('currentGroup');
   }
 
   showDemoModeRestrictionMessage(): void {

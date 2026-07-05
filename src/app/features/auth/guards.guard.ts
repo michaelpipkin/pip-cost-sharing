@@ -99,13 +99,12 @@ export const loggedInGuard: CanActivateFn = async () => {
     const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
     const isEmailConfirmed = user.emailVerified;
 
-    // Redirect validated users to expenses, unvalidated users to account
+    // Any authenticated user belongs in the real app, not demo:
+    // validated users go to expenses, unvalidated users go to account.
     if (isGoogleUser || isEmailConfirmed) {
-      //   return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
-      // } else {
-      return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
     }
-    return true;
+    return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
   } else {
     return true;
   }

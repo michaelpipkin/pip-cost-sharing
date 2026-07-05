@@ -16,6 +16,11 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 
+// Sentinel id for the fake group seeded during demo mode. Exported so other
+// services (e.g. GroupService) can recognize and discard a stale demo group
+// instead of treating it like a real one.
+export const DEMO_GROUP_ID = 'demo-group-123';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -340,7 +345,7 @@ export class DemoModeService {
 
     // Create demo group
     const demoGroup = new Group({
-      id: 'demo-group-123',
+      id: DEMO_GROUP_ID,
       name: 'Demo Household',
       active: true,
       members: [alice, bob, charlie],
@@ -349,7 +354,7 @@ export class DemoModeService {
       autoAddMembers: false,
       userActiveInGroup: true,
       userIsAdmin: true,
-      ref: this.createMockDocRef('demo-group-123'),
+      ref: this.createMockDocRef(DEMO_GROUP_ID),
     });
 
     // Initialize stores with demo data

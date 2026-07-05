@@ -1,13 +1,13 @@
-import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
+import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const indexesFile = 'firestore.indexes.json';
 
 try {
   const output = execSync('firebase firestore:indexes', { encoding: 'utf8' });
 
-  if (!output || !output.trim()) {
-    throw 'firebase firestore:indexes returned no output';
+  if (!output?.trim()) {
+    throw new Error('firebase firestore:indexes returned no output');
   }
 
   const deployedIndexes = JSON.parse(output);
