@@ -152,6 +152,18 @@ describe('GroupService', () => {
 
       expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
     });
+
+    it('should discard a stale demo group instead of rehydrating it', () => {
+      localStorage.setItem(
+        'currentGroup',
+        JSON.stringify({ id: 'demo-group-123', name: 'Demo Household' })
+      );
+
+      service = createService();
+
+      expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+      expect(localStorage.getItem('currentGroup')).toBeNull();
+    });
   });
 
   describe('addGroup', () => {
