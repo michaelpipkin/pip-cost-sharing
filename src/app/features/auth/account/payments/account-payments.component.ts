@@ -62,6 +62,7 @@ export class AccountPaymentsComponent {
         cashAppId: f.cashAppId,
         zelleId: f.zelleId,
       });
+      this.paymentsForm().reset();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Payment service IDs updated' },
       });

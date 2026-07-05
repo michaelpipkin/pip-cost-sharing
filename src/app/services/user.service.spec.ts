@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import * as firestoreModule from 'firebase/firestore';
 import * as authModule from 'firebase/auth';
 import * as functionsModule from 'firebase/functions';
@@ -39,12 +40,22 @@ function makeSnap(docs: any[]) {
   return { size: docs.length, empty: docs.length === 0, docs };
 }
 
+async function getAuthStateCallback(
+  service: UserService
+): Promise<(user: any) => Promise<void>> {
+  await (service as any).initializeAuth();
+  return (mockAuth.onAuthStateChanged as any).mock.calls[0][0];
+}
+
 describe('UserService', () => {
   let service: UserService;
 
   const userSignal = signal<any>(null);
+  const isDemoModeSignal = signal<boolean>(false);
   const mockUserStore = {
     user: userSignal,
+    isLoggedIn: () => !!userSignal(),
+    isDemoMode: isDemoModeSignal,
     setUser: vi.fn(),
     clearUser: vi.fn(),
     updateUser: vi.fn(),
@@ -52,6 +63,7 @@ describe('UserService', () => {
     setIsGoogleUser: vi.fn(),
     setIsEmailConfirmed: vi.fn(),
   };
+  const mockSnackBar = { openFromComponent: vi.fn() };
   const mockGroupStore = {
     clearAllUserGroups: vi.fn(),
     currentGroup: signal<any>(null),
@@ -101,6 +113,7 @@ describe('UserService', () => {
         { provide: authModule.getAuth, useValue: mockAuth },
         { provide: functionsModule.getFunctions, useValue: mockFunctions },
         { provide: Router, useValue: mockRouter },
+        { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: UserStore, useValue: mockUserStore },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
@@ -135,6 +148,7 @@ describe('UserService', () => {
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
     (mockAuth as any).currentUser = null;
     userSignal.set(null);
+    isDemoModeSignal.set(false);
     service = createService();
   });
 
@@ -346,13 +360,26 @@ describe('UserService', () => {
 
       await expect(
         service.updateUser({ email: 'updated@test.com' })
-      ).rejects.toThrow('Cannot update user: no authenticated user.');
+      ).rejects.toThrow('Your session has expired. Please sign in again.');
       expect(mockAnalytics.logError).toHaveBeenCalledWith(
         'User Service',
         'updateUser',
         'Failed to update user',
-        'Cannot update user: no authenticated user.'
+        'Your session has expired. Please sign in again.'
       );
+    });
+
+    it('should clear the store, show a snackbar, and redirect to login when no authenticated user', async () => {
+      (mockAuth as any).currentUser = null;
+
+      await expect(
+        service.updateUser({ email: 'updated@test.com' })
+      ).rejects.toThrow();
+
+      expect(mockGroupService.logout).toHaveBeenCalled();
+      expect(mockUserStore.clearUser).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/auth/login']);
     });
   });
 
@@ -396,7 +423,7 @@ describe('UserService', () => {
 
       await expect(
         service.updateUserEmailAndLinkMembers('new@test.com')
-      ).rejects.toThrow('Cannot update email: no authenticated user.');
+      ).rejects.toThrow('Your session has expired. Please sign in again.');
     });
   });
 
@@ -424,6 +451,57 @@ describe('UserService', () => {
       await service.logout();
 
       expect(mockGroupService.logout).toHaveBeenCalled();
+    });
+  });
+
+  describe('involuntary session loss', () => {
+    it('clears the store, shows a snackbar, and redirects to login when the session is lost while logged in', async () => {
+      userSignal.set({ id: 'user-123' });
+      const callback = await getAuthStateCallback(service);
+
+      await callback(null);
+
+      expect(mockGroupService.logout).toHaveBeenCalled();
+      expect(mockUserStore.clearUser).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('does not treat an intentional logout() as a session loss', async () => {
+      userSignal.set({ id: 'user-123' });
+      const callback = await getAuthStateCallback(service);
+
+      await service.logout();
+      mockGroupService.logout.mockClear();
+      mockUserStore.clearUser.mockClear();
+      mockRouter.navigate.mockClear();
+      userSignal.set(null);
+
+      await callback(null);
+
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('does not trigger session-expired handling in demo mode', async () => {
+      userSignal.set({ id: 'user-123' });
+      isDemoModeSignal.set(true);
+      const callback = await getAuthStateCallback(service);
+
+      await callback(null);
+
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('does not fire on initial load when no user was ever logged in', async () => {
+      userSignal.set(null);
+      const callback = await getAuthStateCallback(service);
+
+      await callback(null);
+
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
     });
   });
 });
