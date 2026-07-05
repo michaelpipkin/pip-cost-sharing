@@ -19,7 +19,10 @@ describe('HelpComponent', () => {
   let fixture: ComponentFixture<HelpComponent>;
   let component: HelpComponent;
   let el: HTMLElement;
-  let mockHelpService: { createIssue: ReturnType<typeof vi.fn> };
+  let mockHelpService: {
+    createIssue: ReturnType<typeof vi.fn>;
+    notifyAdminOfIssue: ReturnType<typeof vi.fn>;
+  };
   let mockHelpContentService: {
     getAllHelpSections: ReturnType<typeof vi.fn>;
   };
@@ -38,7 +41,13 @@ describe('HelpComponent', () => {
     mockSnackBar = createMockSnackBar();
     mockLoadingService = createMockLoadingService();
     mockHelpService = {
-      createIssue: vi.fn().mockResolvedValue({}),
+      createIssue: vi.fn().mockResolvedValue({
+        number: 42,
+        html_url: 'https://github.com/michaelpipkin/pip-cost-sharing/issues/42',
+        title: 'Test Issue',
+        body: 'Issue body text',
+      }),
+      notifyAdminOfIssue: vi.fn().mockResolvedValue(undefined),
     };
     mockHelpContentService = {
       getAllHelpSections: vi.fn().mockReturnValue(mockSections),
@@ -216,6 +225,51 @@ describe('HelpComponent', () => {
       mockHelpService.createIssue.mockRejectedValue(new Error('API error'));
       await component.onSubmit();
       expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+    });
+
+    it('should notify the admin with the created issue after a successful submission', async () => {
+      await component.onSubmit();
+      expect(mockHelpService.notifyAdminOfIssue).toHaveBeenCalledWith(
+        {
+          number: 42,
+          html_url:
+            'https://github.com/michaelpipkin/pip-cost-sharing/issues/42',
+          title: 'Test Issue',
+          body: 'Issue body text',
+        },
+        'Issue body text',
+        ''
+      );
+    });
+
+    it('should pass the reporter email to notifyAdminOfIssue when provided', async () => {
+      setInputValue('issue-email-input', 'user@example.com');
+      await fixture.whenStable();
+      await component.onSubmit();
+      expect(mockHelpService.notifyAdminOfIssue).toHaveBeenCalledWith(
+        expect.anything(),
+        'Issue body text',
+        'user@example.com'
+      );
+    });
+
+    it('should not call notifyAdminOfIssue when issue creation fails', async () => {
+      mockHelpService.createIssue.mockRejectedValue(new Error('API error'));
+      await component.onSubmit();
+      expect(mockHelpService.notifyAdminOfIssue).not.toHaveBeenCalled();
+    });
+
+    it('should still show the success snackbar when the admin notification fails', async () => {
+      mockHelpService.notifyAdminOfIssue.mockRejectedValue(
+        new Error('Notify failed')
+      );
+      await component.onSubmit();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: { message: 'Issue submitted. Thank you!' },
+        })
+      );
     });
 
     it('should call loadingOn and loadingOff', async () => {
