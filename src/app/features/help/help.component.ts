@@ -83,21 +83,36 @@ export class HelpComponent {
       : f.body;
 
     try {
-      await this.helpService.createIssue(f.title, body);
+      const issue = await this.helpService.createIssue(f.title, body);
       this.clearForm();
-      this.loading.loadingOff();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Issue submitted. Thank you!' },
       });
+      this.analytics.logEvent('issue_created', {
+        action: 'submit_issue',
+      });
+
+      try {
+        await this.helpService.notifyAdminOfIssue(issue, f.body, f.email);
+      } catch (notifyError) {
+        this.analytics.logEvent('issue_notify_failed', {
+          action: 'submit_issue',
+          message:
+            notifyError instanceof Error
+              ? notifyError.message
+              : 'Unknown error',
+        });
+      }
     } catch (error) {
-      this.loading.loadingOff();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Error creating issue' },
       });
-      this.analytics.logEvent('issue_created', {
+      this.analytics.logEvent('issue_create_failed', {
         action: 'submit_issue',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      this.loading.loadingOff();
     }
   }
 }
