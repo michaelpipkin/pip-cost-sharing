@@ -20,6 +20,7 @@ const storage = getStorage();
 
 const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
+const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
 
 // ---------------------------------------------------------------------------
 // Payment Notification Email helpers
@@ -65,9 +66,14 @@ function escapeHtml(str: string): string {
 
 /**
  * Wrap email body content in the standard PipSplit HTML email shell.
+ * `footerText` defaults to the member opt-out notice; pass a different
+ * value for emails that aren't sent to group members (e.g. admin alerts).
  */
-function buildEmailHtml(content: string): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.</p></td></tr></table></td></tr></table></body></html>`;
+function buildEmailHtml(
+  content: string,
+  footerText: string = 'You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.'
+): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">${footerText}</p></td></tr></table></td></tr></table></body></html>`;
 }
 
 /**
@@ -1390,4 +1396,66 @@ export const logAppError = onCall<{
   console.log(
     `Error alert sent to ${adminEmail}: ${errorCount} errors in ${windowMinutes} minutes`
   );
+});
+
+// ---------------------------------------------------------------------------
+// New Issue Notification — GitHub issue creation happens client-side (see
+// HelpService.createIssue), authenticated as the repo owner, so GitHub never
+// notifies us of issues we effectively "create ourselves." This function
+// emails the admin directly once the client confirms the issue was filed.
+//
+// Deliberately NOT gated behind request.auth: the /help page is public and
+// the app does not use anonymous sign-in, so a logged-out bug reporter must
+// still be able to trigger this. The recipient is hardcoded server-side
+// (not client-controlled), so an unauthenticated caller can only cause a
+// mail to be sent to the admin — it cannot be abused to spam other inboxes.
+// ---------------------------------------------------------------------------
+
+export const notifyNewIssue = onCall<{
+  number: number;
+  url: string;
+  title: string;
+  body: string;
+  reporterEmail?: string;
+}>(async (request) => {
+  const { number, url, title, body, reporterEmail } = request.data;
+  if (!number || !url || !title) {
+    throw new HttpsError(
+      'invalid-argument',
+      'number, url, and title are required'
+    );
+  }
+
+  const subject = `New PipSplit issue #${number}: ${title}`;
+  const reporterLine = reporterEmail
+    ? `Reported by: ${reporterEmail}\n`
+    : '';
+  const bodyText =
+    `A new issue was filed on PipSplit:\n\n` +
+    `Title: ${title}\n` +
+    `${reporterLine}` +
+    `${body ? `\n${body}\n\n` : '\n'}` +
+    `View it on GitHub: ${url}`;
+
+  const reporterHtml = reporterEmail
+    ? `<p style="margin:0 0 16px 0;"><strong>Reported by:</strong> ${escapeHtml(reporterEmail)}</p>`
+    : '';
+  const bodyHtml = buildEmailHtml(
+    `<p style="color:#105208;font-size:18px;font-weight:bold;margin:0 0 16px 0;">New Issue Filed</p>` +
+      `<h3 style="color:#191d17;margin:0 0 12px 0;">${escapeHtml(title)}</h3>` +
+      reporterHtml +
+      (body
+        ? `<p style="margin:0 0 20px 0;white-space:pre-wrap;">${escapeHtml(body)}</p>`
+        : '') +
+      `<p style="margin:0;"><a href="${escapeHtml(url)}" style="display:inline-block;background-color:#105208;color:#ffffff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View Issue #${number} on GitHub</a></p>`,
+    'You received this email because you are the PipSplit admin.'
+  );
+
+  await db.collection('mail').add({
+    to: ISSUE_NOTIFY_EMAIL,
+    message: { subject, text: bodyText, html: bodyHtml },
+  });
+
+  console.log(`New issue notification sent for issue #${number}`);
+  return { success: true };
 });
