@@ -15,5 +15,5 @@
   "yaml.schemas": {
     "": ["**/pnpm-workspace.yaml"]
   },
-  "java.gradle.buildServer.enabled": "off"
+  "gradle.autoDetect": "off"
 }
