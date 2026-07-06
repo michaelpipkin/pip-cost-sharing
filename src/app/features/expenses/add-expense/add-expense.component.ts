@@ -595,7 +595,7 @@ export class AddExpenseComponent {
           sharedAmount: 0,
           splits: [],
         });
-        this.expenseFormData.set({
+        this.expenseForm().reset({
           date: new Date(),
           amount: this.localeService.getFormattedZero(),
           description: '',

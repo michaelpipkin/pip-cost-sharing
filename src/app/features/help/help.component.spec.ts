@@ -163,6 +163,17 @@ describe('HelpComponent', () => {
       ).toBe('');
     });
 
+    it('should not show required errors on the now-blank fields after clearing a touched form', async () => {
+      setInputValue('issue-title-input', 'Title');
+      setInputValue('issue-body-input', 'Body');
+      await fixture.whenStable();
+      component.clearForm();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('issue-title-error-0')).toBeNull();
+      expect(query('issue-body-error-0')).toBeNull();
+    });
+
     it('should enable clear button when form has content and disable after clearing', async () => {
       expect((query('clear-issue-button') as HTMLButtonElement).disabled).toBe(
         true
@@ -214,6 +225,14 @@ describe('HelpComponent', () => {
       expect(
         (el.querySelector('[data-testid="issue-title-input"]') as HTMLInputElement).value
       ).toBe('');
+    });
+
+    it('should not show required errors after a successful submission clears the form', async () => {
+      await component.onSubmit();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(query('issue-title-error-0')).toBeNull();
+      expect(query('issue-body-error-0')).toBeNull();
     });
 
     it('should show success snackbar on success', async () => {

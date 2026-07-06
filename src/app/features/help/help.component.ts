@@ -72,7 +72,7 @@ export class HelpComponent {
   }
 
   clearForm(): void {
-    this.issueModel.set({ title: '', body: '', email: '' });
+    this.issueForm().reset({ title: '', body: '', email: '' });
   }
 
   async onSubmit(): Promise<void> {

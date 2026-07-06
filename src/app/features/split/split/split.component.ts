@@ -637,7 +637,7 @@ export class SplitComponent {
 
   resetForm(): void {
     const currentCurrency = this.expenseModel().currencyCode;
-    this.expenseModel.set({
+    this.expenseForm().reset({
       currencyCode: currentCurrency,
       amount: this.localeService.getFormattedZero(),
       sharedAmount: 0,
