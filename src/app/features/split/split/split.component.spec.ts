@@ -633,5 +633,17 @@ describe('SplitComponent', () => {
       expect(getModel().currencyCode).toBe('EUR');
       expect(component.submitted()).toBe(false);
     });
+
+    it('should not show a zero-amount error after resetForm clears a touched form', async () => {
+      (component as any).expenseForm.amount().markAsTouched();
+      patchModel({ amount: '100.00' });
+      await fixture.whenStable();
+
+      component.resetForm();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(query('amount-error-0')).toBeNull();
+    });
   });
 });

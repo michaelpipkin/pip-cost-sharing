@@ -87,7 +87,7 @@ export class AccountSecurityComponent {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
               data: { message: 'Your password has been updated' },
             });
-            this.passwordModel.set({ password: '', confirmPassword: '' });
+            this.passwordForm().reset({ password: '', confirmPassword: '' });
           })
           .catch(() => {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
