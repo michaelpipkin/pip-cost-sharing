@@ -323,6 +323,10 @@ body.dark-theme {
   &.with-table {
     height: 100%;
     overflow: hidden;
+
+    &.in-nav-tab {
+      height: calc(100% - 44px);
+    }
   }
 }
 
@@ -488,6 +492,12 @@ tfoot tr {
 table thead th {
   background-color: tokens.color('primary');
   color: tokens.color('on-primary');
+}
+
+table thead th mat-checkbox {
+  --mat-checkbox-unselected-icon-color: #{tokens.color('on-primary')};
+  --mat-checkbox-unselected-hover-icon-color: #{tokens.color('on-primary')};
+  --mat-checkbox-unselected-focus-icon-color: #{tokens.color('on-primary')};
 }
 
 table tbody tr td {
@@ -1170,7 +1180,7 @@ a:hover {
 
   dd {
     margin: 0;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 }
 
