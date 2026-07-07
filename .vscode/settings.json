@@ -14,5 +14,6 @@
   "prettier.printWidth": 120,
   "yaml.schemas": {
     "": ["**/pnpm-workspace.yaml"]
-  }
+  },
+  "gradle.autoDetect": "off"
 }

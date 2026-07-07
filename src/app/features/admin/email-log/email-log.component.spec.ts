@@ -1,5 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { MailDocument } from '@models/mail';
@@ -8,8 +9,10 @@ import { AnalyticsService } from '@services/analytics.service';
 import {
   createMockAnalyticsService,
   createMockLoadingService,
+  createMockMatDialog,
 } from '@testing/test-helpers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EmailDetailDialogComponent } from './email-detail-dialog.component';
 import { AdminEmailLogComponent } from './email-log.component';
 
 function mockMailDoc(overrides: Partial<MailDocument> = {}): MailDocument {
@@ -29,7 +32,11 @@ function mockMailDoc(overrides: Partial<MailDocument> = {}): MailDocument {
 describe('AdminEmailLogComponent', () => {
   let fixture: ComponentFixture<AdminEmailLogComponent>;
   let component: AdminEmailLogComponent;
-  let mockMailService: { getMailDocuments: ReturnType<typeof vi.fn> };
+  let mockMailService: {
+    getMailDocuments: ReturnType<typeof vi.fn>;
+    deleteMailDocument: ReturnType<typeof vi.fn>;
+    deleteMailDocuments: ReturnType<typeof vi.fn>;
+  };
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
   let mockSnackBar: { openFromComponent: ReturnType<typeof vi.fn> };
@@ -44,7 +51,11 @@ describe('AdminEmailLogComponent', () => {
     mockLoadingService = createMockLoadingService();
     mockAnalyticsService = createMockAnalyticsService();
     mockSnackBar = { openFromComponent: vi.fn() };
-    mockMailService = { getMailDocuments: vi.fn().mockResolvedValue([]) };
+    mockMailService = {
+      getMailDocuments: vi.fn().mockResolvedValue([]),
+      deleteMailDocument: vi.fn().mockResolvedValue(undefined),
+      deleteMailDocuments: vi.fn().mockResolvedValue(undefined),
+    };
 
     await TestBed.configureTestingModule({
       imports: [AdminEmailLogComponent],
@@ -54,6 +65,7 @@ describe('AdminEmailLogComponent', () => {
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MatDialog, useValue: createMockMatDialog() },
       ],
     }).compileComponents();
 
@@ -74,6 +86,11 @@ describe('AdminEmailLogComponent', () => {
   });
 
   describe('columnsToDisplay', () => {
+    it('should always start with the select column', async () => {
+      await createComponent();
+      expect(component.columnsToDisplay()[0]).toBe('select');
+    });
+
     it('should include subject column on desktop', async () => {
       await createComponent();
       component.isMobile.set(false);
@@ -166,6 +183,17 @@ describe('AdminEmailLogComponent', () => {
       component.selectedState.set('ERROR');
       expect(component.filteredDocuments().length).toBe(0);
     });
+
+    it('should clear the current selection when the state filter changes', async () => {
+      await createComponent();
+      const doc = mockMailDoc();
+      component.mailDocuments.set([doc]);
+      component.toggleRow(doc);
+      expect(component.hasSelection()).toBe(true);
+      component.selectedState.set('ERROR');
+      TestBed.flushEffects();
+      expect(component.hasSelection()).toBe(false);
+    });
   });
 
   describe('loadMailDocuments()', () => {
@@ -184,6 +212,17 @@ describe('AdminEmailLogComponent', () => {
       mockMailService.getMailDocuments.mockResolvedValue(docs);
       await component.loadMailDocuments();
       expect(component.mailDocuments()).toEqual(docs);
+    });
+
+    it('should clear the current selection', async () => {
+      await createComponent();
+      const doc = mockMailDoc();
+      mockMailService.getMailDocuments.mockResolvedValue([doc]);
+      await component.loadMailDocuments();
+      component.toggleRow(doc);
+      expect(component.hasSelection()).toBe(true);
+      await component.loadMailDocuments();
+      expect(component.hasSelection()).toBe(false);
     });
 
     it('should clear error signal before loading', async () => {
@@ -250,29 +289,148 @@ describe('AdminEmailLogComponent', () => {
     });
   });
 
+  describe('selection', () => {
+    it('should mark a row selected after toggleRow and unselected after toggling again', async () => {
+      await createComponent();
+      const doc = mockMailDoc();
+      component.mailDocuments.set([doc]);
+      expect(component.isRowSelected(doc)).toBe(false);
+      component.toggleRow(doc);
+      expect(component.isRowSelected(doc)).toBe(true);
+      component.toggleRow(doc);
+      expect(component.isRowSelected(doc)).toBe(false);
+    });
+
+    it('hasSelection should reflect whether any row is selected', async () => {
+      await createComponent();
+      const doc = mockMailDoc();
+      component.mailDocuments.set([doc]);
+      expect(component.hasSelection()).toBe(false);
+      component.toggleRow(doc);
+      expect(component.hasSelection()).toBe(true);
+    });
+
+    it('toggleAll should select every visible row when none are selected', async () => {
+      await createComponent();
+      const docs = [mockMailDoc({ id: 'mail-1' }), mockMailDoc({ id: 'mail-2' })];
+      component.mailDocuments.set(docs);
+      component.toggleAll();
+      expect(component.allSelected()).toBe(true);
+      docs.forEach((d) => expect(component.isRowSelected(d)).toBe(true));
+    });
+
+    it('toggleAll should clear the selection when all visible rows are already selected', async () => {
+      await createComponent();
+      const docs = [mockMailDoc({ id: 'mail-1' }), mockMailDoc({ id: 'mail-2' })];
+      component.mailDocuments.set(docs);
+      component.toggleAll();
+      component.toggleAll();
+      expect(component.hasSelection()).toBe(false);
+    });
+
+    it('someSelected should be true only when some but not all rows are selected', async () => {
+      await createComponent();
+      const docs = [mockMailDoc({ id: 'mail-1' }), mockMailDoc({ id: 'mail-2' })];
+      component.mailDocuments.set(docs);
+      component.toggleRow(docs[0]!);
+      expect(component.someSelected()).toBe(true);
+      component.toggleRow(docs[1]!);
+      expect(component.someSelected()).toBe(false);
+      expect(component.allSelected()).toBe(true);
+    });
+  });
+
   describe('onRowClick()', () => {
-    it('should expand the clicked row', async () => {
+    it('should open the email detail dialog for the clicked row', async () => {
       await createComponent();
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => ({ subscribe: vi.fn() }) } as any);
       const doc = mockMailDoc();
       component.onRowClick(doc);
-      expect(component.expandedRow()).toBe(doc);
+      expect(openSpy).toHaveBeenCalledWith(EmailDetailDialogComponent, {
+        data: doc,
+      });
     });
 
-    it('should collapse a row when the same row is clicked again', async () => {
+    it('should not prompt for delete confirmation when the detail dialog is closed without a delete request', async () => {
       await createComponent();
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(false) }),
+      } as any);
+      component.onRowClick(mockMailDoc());
+      expect(openSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should delete the email when the detail dialog requests deletion and the user confirms', async () => {
+      await createComponent();
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open')
+        .mockReturnValueOnce({
+          afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),
+        } as any)
+        .mockReturnValueOnce({
+          afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),
+        } as any);
       const doc = mockMailDoc();
+      component.mailDocuments.set([doc]);
       component.onRowClick(doc);
-      component.onRowClick(doc);
-      expect(component.expandedRow()).toBeNull();
+      await fixture.whenStable();
+      expect(mockMailService.deleteMailDocument).toHaveBeenCalledWith(doc.id);
+      expect(component.mailDocuments()).toEqual([]);
+    });
+  });
+
+  describe('deleteSelected()', () => {
+    it('should delete the selected emails and clear the selection on confirm', async () => {
+      await createComponent();
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),
+      } as any);
+      const docs = [mockMailDoc({ id: 'mail-1' }), mockMailDoc({ id: 'mail-2' })];
+      component.mailDocuments.set(docs);
+      component.toggleRow(docs[0]!);
+      component.deleteSelected();
+      await fixture.whenStable();
+      expect(mockMailService.deleteMailDocuments).toHaveBeenCalledWith(['mail-1']);
+      expect(component.mailDocuments()).toEqual([docs[1]!]);
+      expect(component.hasSelection()).toBe(false);
     });
 
-    it('should switch to newly clicked row when a different row is clicked', async () => {
+    it('should not delete anything when the user cancels', async () => {
       await createComponent();
-      const doc1 = mockMailDoc({ id: 'mail-1' });
-      const doc2 = mockMailDoc({ id: 'mail-2' });
-      component.onRowClick(doc1);
-      component.onRowClick(doc2);
-      expect(component.expandedRow()).toBe(doc2);
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(false) }),
+      } as any);
+      const doc = mockMailDoc();
+      component.mailDocuments.set([doc]);
+      component.toggleRow(doc);
+      component.deleteSelected();
+      await fixture.whenStable();
+      expect(mockMailService.deleteMailDocuments).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clearLog()', () => {
+    it('should delete all documents in the current view on confirm', async () => {
+      await createComponent();
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValue({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),
+      } as any);
+      const docs = [mockMailDoc({ id: 'mail-1' }), mockMailDoc({ id: 'mail-2' })];
+      component.mailDocuments.set(docs);
+      component.clearLog();
+      await fixture.whenStable();
+      expect(mockMailService.deleteMailDocuments).toHaveBeenCalledWith([
+        'mail-1',
+        'mail-2',
+      ]);
+      expect(component.mailDocuments()).toEqual([]);
     });
   });
 

@@ -98,36 +98,7 @@
   color: var(--error);
   font-style: italic;
   max-width: 240px;
-  word-break: break-word;
-}
-
-// Override global grid layout — no copy button in this component
-.detail-table-container {
-  display: flex;
-}
-
-// Expanded detail panel
-.detail-content {
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.detail-section {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.detail-label {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.detail-value {
-  word-break: break-all;
-  color: var(--on-surface);
+  overflow-wrap: break-word;
 }
 
 .no-data {
