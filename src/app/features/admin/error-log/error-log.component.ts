@@ -13,6 +13,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -40,6 +41,7 @@ type GroupedError = AppError & { count: number; ids: string[] };
     FormsModule,
     MatButtonModule,
     MatButtonToggleModule,
+    MatCheckboxModule,
     MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
@@ -65,6 +67,7 @@ export class AdminErrorLogComponent {
   loadError = signal<string | null>(null);
   groupedView = model<boolean>(false);
   isMobile = signal(false);
+  selectedErrorIds = signal<Set<string>>(new Set());
 
   sortActive = signal<string>('dateTime');
   sortDirection = signal<SortDirection>('desc');
@@ -140,10 +143,27 @@ export class AdminErrorLogComponent {
 
   columnsToDisplay = computed<string[]>(() => {
     const fifth = this.groupedView() ? 'count' : 'dateTime';
-    return this.isMobile()
+    const cols = this.isMobile()
       ? ['component', 'action', 'message', fifth]
       : ['component', 'action', 'message', 'error', fifth];
+    return ['select', ...cols];
   });
+
+  allSelected = computed<boolean>(() => {
+    const rows = this.displayedErrors();
+    return (
+      rows.length > 0 &&
+      rows.every((row) =>
+        this.rowIds(row).every((id) => this.selectedErrorIds().has(id))
+      )
+    );
+  });
+
+  someSelected = computed<boolean>(() => {
+    return this.selectedErrorIds().size > 0 && !this.allSelected();
+  });
+
+  hasSelection = computed<boolean>(() => this.selectedErrorIds().size > 0);
 
   constructor() {
     this.breakpointObserver
@@ -156,6 +176,7 @@ export class AdminErrorLogComponent {
       const fifth = this.groupedView() ? 'count' : 'dateTime';
       this.sortActive.set(fifth);
       this.sortDirection.set('desc');
+      this.selectedErrorIds.set(new Set());
     });
 
     afterNextRender(async () => {
@@ -172,6 +193,7 @@ export class AdminErrorLogComponent {
     try {
       const data = await this.errorLogService.getAppErrors(start, end);
       this.errors.set(data);
+      this.selectedErrorIds.set(new Set());
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to load error log';
@@ -207,16 +229,20 @@ export class AdminErrorLogComponent {
   async deleteError(row: AppError | GroupedError): Promise<void> {
     this.loading.loadingOn();
     try {
+      const idsToDelete = new Set(this.rowIds(row));
       if ('ids' in row) {
         await this.errorLogService.deleteAppErrors(row.ids);
-        const idsToDelete = new Set(row.ids);
-        this.errors.update((errors) =>
-          errors.filter((e) => !idsToDelete.has(e.id))
-        );
       } else {
         await this.errorLogService.deleteAppError(row.id);
-        this.errors.update((errors) => errors.filter((e) => e.id !== row.id));
       }
+      this.errors.update((errors) =>
+        errors.filter((e) => !idsToDelete.has(e.id))
+      );
+      this.selectedErrorIds.update((selected) => {
+        const next = new Set(selected);
+        idsToDelete.forEach((id) => next.delete(id));
+        return next;
+      });
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message: 'Error(s) deleted successfully' },
       });
@@ -247,6 +273,40 @@ export class AdminErrorLogComponent {
           : this.errors().map((e) => e.id);
         await this.errorLogService.deleteAppErrors(idsToDelete);
         this.errors.set([]);
+        this.selectedErrorIds.set(new Set());
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Errors deleted successfully' },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to delete errors';
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message },
+        });
+      } finally {
+        this.loading.loadingOff();
+      }
+    });
+  }
+
+  deleteSelected(): void {
+    const confirmRef = this.dialog.open(DeleteDialogComponent, {
+      data: {
+        operation: 'Delete',
+        target: 'the selected error(s)',
+      },
+    });
+    confirmRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      this.loading.loadingOn();
+      try {
+        const idsToDelete = [...this.selectedErrorIds()];
+        await this.errorLogService.deleteAppErrors(idsToDelete);
+        const deleted = new Set(idsToDelete);
+        this.errors.update((errors) =>
+          errors.filter((e) => !deleted.has(e.id))
+        );
+        this.selectedErrorIds.set(new Set());
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Errors deleted successfully' },
         });
@@ -269,5 +329,36 @@ export class AdminErrorLogComponent {
 
   asGroupedError(row: AppError | GroupedError): GroupedError {
     return row as GroupedError;
+  }
+
+  rowIds(row: AppError | GroupedError): string[] {
+    return 'ids' in row ? row.ids : [row.id];
+  }
+
+  isRowSelected(row: AppError | GroupedError): boolean {
+    return this.rowIds(row).every((id) => this.selectedErrorIds().has(id));
+  }
+
+  toggleRow(row: AppError | GroupedError): void {
+    const ids = this.rowIds(row);
+    this.selectedErrorIds.update((selected) => {
+      const next = new Set(selected);
+      if (this.isRowSelected(row)) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }
+
+  toggleAll(): void {
+    if (this.allSelected()) {
+      this.selectedErrorIds.set(new Set());
+    } else {
+      this.selectedErrorIds.set(
+        new Set(this.displayedErrors().flatMap((row) => this.rowIds(row)))
+      );
+    }
   }
 }
