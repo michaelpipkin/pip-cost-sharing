@@ -5,6 +5,5 @@
   "discoverPackages": true,
   "packages": [],
   "updateStrategy": "latest",
-  "dryRun": true,
   "skipUpdate": false
 }
