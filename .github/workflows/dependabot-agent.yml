@@ -14,7 +14,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  security-events: read # required to read Dependabot alerts
+# Note: the Dependabot alerts REST API is not accessible to the built-in GITHUB_TOKEN under any
+# `permissions:` grant — it requires a PAT with `security_events` scope (see DEPENDABOT_AGENT_TOKEN
+# secret, used below only for the agent invocation, not for checkout/PR creation).
 
 jobs:
   reconcile:
@@ -42,13 +44,13 @@ jobs:
       - name: Preview override changes (dry run)
         if: steps.mode.outputs.apply != 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AGENT_TOKEN }}
         run: pnpm deps:dry-run
 
       - name: Apply override changes
         if: steps.mode.outputs.apply == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_AGENT_TOKEN }}
         run: pnpm deps:fix
 
       - name: Sync lockfiles to new overrides
