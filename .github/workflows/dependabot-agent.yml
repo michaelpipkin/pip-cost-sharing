@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Reconcile Dependabot Overrides
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print planned changes, write nothing, no PR)"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC (no native "new alert" trigger exists)
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: read # required to read Dependabot alerts
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine mode
+        id: mode
+        run: echo "apply=${{ (github.event_name != 'workflow_dispatch') || (!inputs.dry_run) }}" >> "$GITHUB_OUTPUT"
+
+      - name: Preview override changes (dry run)
+        if: steps.mode.outputs.apply != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm deps:dry-run
+
+      - name: Apply override changes
+        if: steps.mode.outputs.apply == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm deps:fix
+
+      - name: Sync lockfiles to new overrides
+        if: steps.mode.outputs.apply == 'true'
+        run: |
+          pnpm install --no-frozen-lockfile
+          cd functions && pnpm install --no-frozen-lockfile
+
+      - name: Open pull request
+        if: steps.mode.outputs.apply == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: dev
+          branch: dependabot-agent/reconcile-overrides
+          commit-message: "chore: reconcile dependency overrides with Dependabot alerts"
+          title: "chore: reconcile dependency overrides"
+          body: |
+            Automated override reconciliation by `dependabot-agent` (pinned devDependency).
+            Adds/updates overrides for still-open transitive alerts and removes stale ones,
+            across the root workspace and the `functions/` sub-package.
+            **Merge only after review/CI** — the tool does not build or test.
+          labels: dependencies
