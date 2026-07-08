@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.21.24",
+  "version": "1.21.25",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -76,8 +76,8 @@
     "@hcaptcha/types": "^1.2.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.62.1",
-    "@typescript-eslint/parser": "^8.62.1",
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "dependabot-agent": "^0.1.2",
