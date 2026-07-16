@@ -89,7 +89,7 @@
     "prettier": "^3.9.5",
     "prettier-eslint-cli": "^9.2.1",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.10",
     "wait-on": "^9.0.10"
   },
