@@ -139,8 +139,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       dependabot-agent:
-        specifier: ^0.1.12
-        version: 0.1.12
+        specifier: ^0.1.16
+        version: 0.1.16
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -3014,8 +3014,8 @@ packages:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
     engines: {node: '>= 0.8'}
 
-  dependabot-agent@0.1.12:
-    resolution: {integrity: sha512-wjbkItndsNRRjGt/bi+bTTwb3OQZPrsGG6tMwOwNUVtL/yUfr5R8y27pAK/Nr/yNws96LT7juv5dG693dGBE8Q==}
+  dependabot-agent@0.1.16:
+    resolution: {integrity: sha512-W1FKcDVRh8Q/4DgnFF0hxtRXVdwj9POE/1pMOKwFYBnPsWQhFwyE3SIMRRcg1YTEivhydLmCpnqTjWkHxbgC5g==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -8477,7 +8477,7 @@ snapshots:
 
   depd@2.0.0: {}
 
-  dependabot-agent@0.1.12:
+  dependabot-agent@0.1.16:
     dependencies:
       js-yaml: 4.3.0
 
