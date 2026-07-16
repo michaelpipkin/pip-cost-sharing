@@ -20,36 +20,41 @@ jobs:
         with:
           retries: 3
           script: |
-            // Find the most recent merged PR to release branch
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              base: 'release',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 1
-            });
-
             const skipKeywords = ['[no-deploy]', '[skip-deploy]'];
             let shouldSkip = false;
             let reason = '';
 
-            if (prs.length > 0 && prs[0].merged_at) {
-              const pr = prs[0];
-              const title = pr.title.toLowerCase();
-              const body = (pr.body || '').toLowerCase();
+            try {
+              // Find the most recent merged PR to release branch
+              const { data: prs } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                base: 'release',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 1
+              });
 
-              for (const keyword of skipKeywords) {
-                if (title.includes(keyword) || body.includes(keyword)) {
-                  shouldSkip = true;
-                  reason = `Found "${keyword}" in PR #${pr.number}`;
-                  break;
+              if (prs.length > 0 && prs[0].merged_at) {
+                const pr = prs[0];
+                const title = pr.title.toLowerCase();
+                const body = (pr.body || '').toLowerCase();
+
+                for (const keyword of skipKeywords) {
+                  if (title.includes(keyword) || body.includes(keyword)) {
+                    shouldSkip = true;
+                    reason = `Found "${keyword}" in PR #${pr.number}`;
+                    break;
+                  }
                 }
-              }
 
-              console.log(`PR #${pr.number}: "${pr.title}"`);
-              console.log(`Skip deployment: ${shouldSkip}${reason ? ' - ' + reason : ''}`);
+                console.log(`PR #${pr.number}: "${pr.title}"`);
+                console.log(`Skip deployment: ${shouldSkip}${reason ? ' - ' + reason : ''}`);
+              }
+            } catch (error) {
+              // A GitHub API outage here shouldn't block deployment - fail open (deploy normally)
+              core.warning(`Could not determine skip-deployment status, proceeding with deployment: ${error.message}`);
             }
 
             core.setOutput('skip_deploy', shouldSkip.toString());
@@ -273,25 +278,30 @@ jobs:
         with:
           retries: 3
           script: |
-            // Find the most recent merged PR to release branch
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              base: 'release',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 1
-            });
-
-            if (prs.length > 0 && prs[0].merged_at) {
-              const pr = prs[0];
-              await github.rest.issues.createComment({
-                issue_number: pr.number,
+            try {
+              // Find the most recent merged PR to release branch
+              const { data: prs } = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged to main using deploy key\n✅ Main branch now contains the latest deployed code`
+                state: 'closed',
+                base: 'release',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 1
               });
+
+              if (prs.length > 0 && prs[0].merged_at) {
+                const pr = prs[0];
+                await github.rest.issues.createComment({
+                  issue_number: pr.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `🚀 **Deployment Successful!**\n\nThe application has been successfully deployed to production and the code has been merged to the main branch.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n✅ Release branch merged to main using deploy key\n✅ Main branch now contains the latest deployed code`
+                });
+              }
+            } catch (error) {
+              // Deployment and merge already succeeded - a failure to post this comment shouldn't fail the job
+              core.warning(`Failed to post deployment success comment: ${error.message}`);
             }
 
       - name: Create skip deployment comment
@@ -300,25 +310,30 @@ jobs:
         with:
           retries: 3
           script: |
-            // Find the most recent merged PR to release branch
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              base: 'release',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 1
-            });
-
-            if (prs.length > 0 && prs[0].merged_at) {
-              const pr = prs[0];
-              await github.rest.issues.createComment({
-                issue_number: pr.number,
+            try {
+              // Find the most recent merged PR to release branch
+              const { data: prs } = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `⏭️ **Deployment Skipped**\n\nDeployment was skipped due to skip keyword in PR title or description.\n\n✅ Release branch merged to main to keep branches in sync\n⏭️ No deployment was performed`
+                state: 'closed',
+                base: 'release',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 1
               });
+
+              if (prs.length > 0 && prs[0].merged_at) {
+                const pr = prs[0];
+                await github.rest.issues.createComment({
+                  issue_number: pr.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `⏭️ **Deployment Skipped**\n\nDeployment was skipped due to skip keyword in PR title or description.\n\n✅ Release branch merged to main to keep branches in sync\n⏭️ No deployment was performed`
+                });
+              }
+            } catch (error) {
+              // The skip + merge already succeeded - a failure to post this comment shouldn't fail the job
+              core.warning(`Failed to post skip-deployment comment: ${error.message}`);
             }
 
       - name: Handle deployment failure
@@ -327,28 +342,32 @@ jobs:
         with:
           retries: 3
           script: |
-            // Find the most recent merged PR to release branch
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              base: 'release',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 1
-            });
-            
-            if (prs.length > 0 && prs[0].merged_at) {
-              const pr = prs[0];
-              await github.rest.issues.createComment({
-                issue_number: pr.number,
+            try {
+              // Find the most recent merged PR to release branch
+              const { data: prs } = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `❌ **Deployment Failed!**\n\nThe deployment to production failed. The code was NOT merged to the main branch.\n\n⚠️ Please check the deployment logs and fix any issues before attempting another deployment.\n⚠️ Main branch remains unchanged and contains only successfully deployed code.`
+                state: 'closed',
+                base: 'release',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 1
               });
+
+              if (prs.length > 0 && prs[0].merged_at) {
+                const pr = prs[0];
+                await github.rest.issues.createComment({
+                  issue_number: pr.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `❌ **Deployment Failed!**\n\nThe deployment to production failed. The code was NOT merged to the main branch.\n\n⚠️ Please check the deployment logs and fix any issues before attempting another deployment.\n⚠️ Main branch remains unchanged and contains only successfully deployed code.`
+                });
+              }
+            } catch (error) {
+              core.warning(`Failed to post deployment failure comment: ${error.message}`);
             }
-            
-            // Also fail the workflow to make the failure visible
+
+            // Always fail the workflow to make the failure visible, even if the comment above couldn't be posted
             core.setFailed('Deployment to Firebase failed')
 
       - name: Handle merge failure
@@ -357,26 +376,30 @@ jobs:
         with:
           retries: 3
           script: |
-            // Find the most recent merged PR to release branch
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              base: 'release',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 1
-            });
-            
-            if (prs.length > 0 && prs[0].merged_at) {
-              const pr = prs[0];
-              await github.rest.issues.createComment({
-                issue_number: pr.number,
+            try {
+              // Find the most recent merged PR to release branch
+              const { data: prs } = await github.rest.pulls.list({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `⚠️ **Deployment Successful, but Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n❌ Failed to merge release to main branch\n\n**Action Required**: Please manually create a PR from \`release\` to \`main\` branch to update the main branch with the deployed code.`
+                state: 'closed',
+                base: 'release',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 1
               });
+
+              if (prs.length > 0 && prs[0].merged_at) {
+                const pr = prs[0];
+                await github.rest.issues.createComment({
+                  issue_number: pr.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `⚠️ **Deployment Successful, but Merge Failed!**\n\nThe deployment to production was successful, but the automatic merge to main branch failed.\n\n✅ Deployment URL: [View Live Site](https://pip-cost-sharing.web.app)\n❌ Failed to merge release to main branch\n\n**Action Required**: Please manually create a PR from \`release\` to \`main\` branch to update the main branch with the deployed code.`
+                });
+              }
+            } catch (error) {
+              core.warning(`Failed to post merge failure comment: ${error.message}`);
             }
-            
+
             // Set warning but don't fail the entire workflow since deployment succeeded
             core.warning('Deployment succeeded but merge to main failed - manual intervention required')
