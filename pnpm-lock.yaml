@@ -139,8 +139,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       dependabot-agent:
-        specifier: ^0.1.16
-        version: 0.1.16
+        specifier: ^1.0.0
+        version: 1.0.0
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -2894,9 +2894,9 @@ packages:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
     engines: {node: '>= 0.8'}
 
-  dependabot-agent@0.1.16:
-    resolution: {integrity: sha512-W1FKcDVRh8Q/4DgnFF0hxtRXVdwj9POE/1pMOKwFYBnPsWQhFwyE3SIMRRcg1YTEivhydLmCpnqTjWkHxbgC5g==}
-    engines: {node: '>=20'}
+  dependabot-agent@1.0.0:
+    resolution: {integrity: sha512-XTd4X3oPqDobIq71xEV/l+swUx9Geln3R+RUA7Yb0rbWTntEk0MNMXtYn1PRuAs8Yyfi0nIpdUItL4V3XwTG4Q==}
+    engines: {node: '>=22'}
     hasBin: true
 
   detect-libc@2.1.2:
@@ -6757,7 +6757,7 @@ snapshots:
     dependencies:
       '@ionic/utils-object': 2.1.6
       '@ionic/utils-terminal': 2.3.4
-      debug: 4.3.4
+      debug: 4.4.3
       signal-exit: 3.0.7
       tree-kill: 1.2.2
       tslib: 2.8.1
@@ -6777,7 +6777,7 @@ snapshots:
 
   '@ionic/utils-stream@3.1.6':
     dependencies:
-      debug: 4.3.4
+      debug: 4.4.3
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -6818,7 +6818,7 @@ snapshots:
   '@ionic/utils-terminal@2.3.4':
     dependencies:
       '@types/slice-ansi': 4.0.0
-      debug: 4.3.4
+      debug: 4.4.3
       signal-exit: 3.0.7
       slice-ansi: 4.0.0
       string-width: 4.2.3
@@ -7065,7 +7065,7 @@ snapshots:
 
   '@npmcli/fs@5.0.0':
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
 
   '@npmcli/git@7.0.2':
     dependencies:
@@ -8292,7 +8292,7 @@ snapshots:
 
   depd@2.0.0: {}
 
-  dependabot-agent@0.1.16:
+  dependabot-agent@1.0.0:
     dependencies:
       js-yaml: 4.3.0
 
@@ -9723,7 +9723,7 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.7.4
+      semver: 7.8.5
       tar: 7.5.20
       tinyglobby: 0.2.17
       undici: 6.27.0
@@ -9760,7 +9760,7 @@ snapshots:
 
   npm-install-checks@8.0.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.5
 
   npm-normalize-package-bin@5.0.0: {}
 
