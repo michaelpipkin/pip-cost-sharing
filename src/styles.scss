@@ -11,6 +11,12 @@
 // Plus imports for other components in your app.
 $enable-negative-margins: true;
 
+// Shared values reused across multiple rules below
+$transition-standard: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+$radius-hover: 0.5em;
+$font-size-xs: 0.7rem;
+$error-margin-offset: -20px;
+
 // Include the common styles for Angular Material. We include this here so that you only
 // have to load a single css file for Angular Material in your app.
 // Be sure that you only ever include this mixin once!
@@ -155,13 +161,13 @@ body.dark-theme {
   .mat-mdc-icon-button:hover {
     background-color: tokens.color('primary-light') !important;
     color: tokens.color('on-primary-light');
-    border-radius: 0.5em !important;
+    border-radius: $radius-hover !important;
   }
 
   .links .mat-mdc-button.active {
     background-color: tokens.color('secondary') !important;
     color: tokens.color('on-secondary') !important;
-    border-radius: 0.5em !important;
+    border-radius: $radius-hover !important;
     font-weight: 500 !important;
     mat-icon {
       color: tokens.color('on-secondary') !important;
@@ -177,7 +183,7 @@ body.dark-theme {
   .account.links a:hover {
     background-color: tokens.color('primary-light') !important;
     color: tokens.color('on-primary-light');
-    border-radius: 0.5em !important;
+    border-radius: $radius-hover !important;
   }
 
   .menu a,
@@ -433,16 +439,16 @@ body.dark-theme {
   justify-items: center;
   padding: 0 1rem;
   overflow: hidden;
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all $transition-standard;
 
   // For enter animation - smooth slide down
   &.detail-expand {
-    animation: expand-in 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: expand-in $transition-standard forwards;
   }
 
   // For leave animation - smooth slide up
   &.detail-collapse {
-    animation: collapse-out 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: collapse-out $transition-standard forwards;
   }
 }
 
@@ -683,18 +689,18 @@ input.number-right::-webkit-inner-spin-button {
 
 mat-error,
 mat-hint {
-  font-size: 0.7rem;
+  font-size: $font-size-xs;
 }
 
 .mat-error {
-  font-size: 0.7rem;
+  font-size: $font-size-xs;
   color: tokens.color('error');
-  margin-top: -20px;
+  margin-top: $error-margin-offset;
 }
 
 .form-error {
   color: tokens.color('error');
-  margin-top: -20px;
+  margin-top: $error-margin-offset;
 }
 
 mat-slide-toggle {
@@ -716,7 +722,7 @@ mat-slide-toggle {
   display: grid;
   align-items: start;
   padding: 4px 16px;
-  font-size: 0.7rem;
+  font-size: $font-size-xs;
   white-space: nowrap;
 }
 
