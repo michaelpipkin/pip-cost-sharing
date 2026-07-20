@@ -19,8 +19,8 @@
   "dependencies": {
     "@google-cloud/functions-framework": "^5.0.5",
     "@google-cloud/secret-manager": "^6.2.0",
-    "firebase-admin": "^14.1.0",
-    "firebase-functions": "^7.2.5"
+    "firebase-admin": "^14.2.0",
+    "firebase-functions": "^7.3.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
