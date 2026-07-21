@@ -4,6 +4,6 @@
   "workspaceRoot": ".",
   "discoverPackages": true,
   "packages": [],
-  "updateStrategy": "compatible",
+  "updateStrategy": "latest",
   "skipUpdate": false
 }

@@ -1,6 +1,9 @@
 packages:
   - .
   - scripts/db
+updateConfig:
+  ignoreDependencies:
+    - typescript
 overrides:
   '@babel/core': '>=7.29.6 <8'
   esbuild: '>=0.28.1 <0.29'

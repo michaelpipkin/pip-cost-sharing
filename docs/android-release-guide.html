@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PipSplit — Android Release Guide</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1c1c1c;
+    --muted: #5b5b5b;
+    --border: #e0e0e0;
+    --code-bg: #f4f4f4;
+    --accent: #105208;
+    --accent-bg: #eaf3e8;
+    --warn-bg: #fdf3e7;
+    --warn-border: #e8b96a;
+    --step-num-bg: #105208;
+    --step-num-fg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --fg: #e6e6e6;
+      --muted: #a3a3a3;
+      --border: #3a3a3a;
+      --code-bg: #262626;
+      --accent: #6fcf5f;
+      --accent-bg: #223321;
+      --warn-bg: #332a1a;
+      --warn-border: #a87c30;
+      --step-num-bg: #3a7a2e;
+      --step-num-fg: #ffffff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.9rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.3rem;
+    margin-top: 2.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border);
+  }
+  h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+  code {
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; }
+  .step {
+    display: flex;
+    gap: 1rem;
+    margin: 1.75rem 0;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--step-num-bg);
+    color: var(--step-num-fg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .step-body { flex: 1; min-width: 0; }
+  .step-body h3 { margin-top: 0; }
+  .note, .warn {
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+  }
+  .note {
+    background: var(--accent-bg);
+    border-left: 4px solid var(--accent);
+  }
+  .warn {
+    background: var(--warn-bg);
+    border-left: 4px solid var(--warn-border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: 0.3rem 0; }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .toc a { color: var(--fg); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 0.3rem 0; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Android Release Guide</h1>
+<p class="subtitle">PipSplit (<code>com.pipsplit.app</code>) — bumping, building, and publishing a new Android release</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#prereqs">Prerequisites</a></li>
+    <li><a href="#steps">Release steps</a></li>
+    <li><a href="#reference">Quick reference</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+  </ol>
+</div>
+
+<h2 id="prereqs">Prerequisites</h2>
+<ul>
+  <li>Android Studio installed, with the Android SDK Platform matching <code>compileSdkVersion</code> in <code>android/variables.gradle</code> (currently <strong>36</strong>) installed via SDK Manager.</li>
+  <li>The release <strong>keystore file</strong> and its store password, key alias, and key password. This is <em>not</em> checked into the repo — it must exist somewhere safe on your machine (or wherever you normally keep it). Without it you cannot produce a bundle that Play will accept as an update, unless the app is enrolled in Play App Signing and you're using a separate upload key.</li>
+  <li>Access to the <strong>Google Play Console</strong> with permission to create releases for PipSplit.</li>
+  <li>Project dependencies installed (<code>pnpm install</code> — hand this off to a terminal you control if it hasn't been run recently).</li>
+</ul>
+
+<h2 id="steps">Release steps</h2>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h3>Bump the version numbers</h3>
+    <p>Edit <code>android/app/build.gradle</code> — bump both fields:</p>
+    <pre><code>versionCode 23        // must strictly increase from the last uploaded value
+versionName "1.2.0"   // user-facing string, e.g. bump to "1.2.1" or "1.3.0"</code></pre>
+    <div class="note">
+      <strong>versionCode</strong> must be higher than the highest value ever uploaded to <em>any</em> track (Production, Closed, Internal), not just the last Production release. Play rejects an upload that reuses or lowers it.<br><br>
+      <strong>versionName</strong> is just a display string — bump it however fits (patch for a fix, minor for features).
+    </div>
+    <p>If you also want the web/PWA version in sync, you can bump <code>package.json</code>'s <code>version</code> field too, but it's independent of the Android version — <code>pnpm run build:prod</code> auto-bumps it as a patch version when building the web app, and it isn't read by the Android build.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h3>Build the production web bundle and sync Capacitor</h3>
+    <p>From the repo root:</p>
+    <pre><code>pnpm run build:cap</code></pre>
+    <p>This runs <code>ng build --configuration=production</code>, then <code>npx cap sync</code>, which copies <code>dist/browser</code> into <code>android/app/src/main/assets/public</code> and regenerates the native plugin config that Capacitor reads at runtime.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h3>Open the project in Android Studio</h3>
+    <pre><code>npx cap open android</code></pre>
+    <p>Let Gradle sync finish. If it complains about a missing SDK Platform, open <strong>Tools &gt; SDK Manager</strong> and install the platform matching <code>compileSdkVersion</code>/<code>targetSdkVersion</code> in <code>android/variables.gradle</code>.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <h3>Smoke test on a device or emulator</h3>
+    <p>Run the app (▶) before packaging a release. Confirm:</p>
+    <ul>
+      <li>The app loads content from <code>https://pipsplit.com</code> correctly (per <code>capacitor.config.ts</code>'s <code>server.url</code>).</li>
+      <li>Google Sign-In (Firebase Authentication) still works.</li>
+      <li>No crashes in Logcat — pay special attention right after bumping <code>targetSdkVersion</code>, since Android tightens behavior each release (edge-to-edge enforcement, predictive back gestures, notification permissions, etc.).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <h3>Generate the signed release bundle (AAB)</h3>
+    <ol>
+      <li><strong>Build &gt; Generate Signed Bundle / APK…</strong></li>
+      <li>Choose <strong>Android App Bundle</strong> → Next.</li>
+      <li>Point <strong>Key store path</strong> at your release keystore file. Enter the store password, key alias, and key password.</li>
+      <li>Destination folder: default (<code>android/app/release/</code>) is fine.</li>
+      <li>Build Variant: <strong>release</strong>.</li>
+      <li>Click <strong>Create</strong>/<strong>Finish</strong> and wait for the build to finish.</li>
+    </ol>
+    <p>Android Studio shows a notification with a "locate" link when done. The output file is <code>android/app/release/app-release.aab</code>.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-body">
+    <h3>Upload to Google Play Console</h3>
+    <ol>
+      <li>Go to <strong>Play Console &gt; PipSplit &gt; Release</strong>, and pick a track (Production, or a testing track first if you stage rollouts).</li>
+      <li><strong>Create new release</strong>, upload <code>app-release.aab</code>.</li>
+      <li>Write release notes ("What's new").</li>
+      <li>Review — Play Console flags issues like target API level warnings here; this run's warning should be resolved now that <code>targetSdkVersion</code> is bumped.</li>
+      <li>Save → Review release → Start rollout.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">7</div>
+  <div class="step-body">
+    <h3>Commit the version bump</h3>
+    <pre><code>git add android/app/build.gradle android/variables.gradle
+git commit -m "chore: bump Android release to 1.2.0 (versionCode 23)"</code></pre>
+    <p>Push through your normal branch/PR workflow so the bumped version is tracked alongside the release.</p>
+  </div>
+</div>
+
+<h2 id="reference">Quick reference</h2>
+<table>
+  <tr><th>What</th><th>File</th><th>Notes</th></tr>
+  <tr><td><code>versionCode</code> / <code>versionName</code></td><td><code>android/app/build.gradle</code></td><td>Bump every release; versionCode must strictly increase</td></tr>
+  <tr><td><code>compileSdkVersion</code> / <code>targetSdkVersion</code></td><td><code>android/variables.gradle</code></td><td>Bump when Play requires a newer target API level</td></tr>
+  <tr><td>App ID / name</td><td><code>capacitor.config.ts</code>, <code>android/app/build.gradle</code></td><td><code>com.pipsplit.app</code> / "PipSplit" — should not change</td></tr>
+  <tr><td>Signed bundle output</td><td><code>android/app/release/app-release.aab</code></td><td>Produced by the Generate Signed Bundle wizard</td></tr>
+</table>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<div class="warn">
+  <strong>"Version code already used" on upload</strong><br>
+  You reused or lowered <code>versionCode</code>. Check the highest code ever uploaded across <em>all</em> tracks in Play Console, then set a value higher than that.
+</div>
+
+<div class="warn">
+  <strong>Upload rejected for signature mismatch</strong><br>
+  You must sign with the same key used for all prior releases (unless the app is enrolled in Play App Signing with a separate upload key, in which case use that upload key). Using the wrong keystore/alias produces this error.
+</div>
+
+<div class="warn">
+  <strong>Gradle sync fails after bumping SDK versions</strong><br>
+  Open <strong>Tools &gt; SDK Manager</strong> in Android Studio and install the missing Android SDK Platform/Build-Tools version, then re-sync.
+</div>
+
+<div class="warn">
+  <strong>Target API level warning persists in Play Console after upload</strong><br>
+  Confirm the uploaded <code>.aab</code> was actually built <em>after</em> the <code>targetSdkVersion</code> bump — a stale cached build in <code>android/app/release/</code> is a common culprit. Rebuild the signed bundle.
+</div>
+
+<footer>PipSplit — internal engineering doc.</footer>
+
+</body>
+</html>
