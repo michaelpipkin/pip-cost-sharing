@@ -36,7 +36,11 @@ export class NavigationLoadingService {
           event.error instanceof Error
             ? event.error.message
             : String(event.error);
-        if (msg.startsWith('Failed to fetch dynamically imported module')) {
+        const isStaleModuleError =
+          msg.startsWith('Failed to fetch dynamically imported module') ||
+          msg.startsWith('Importing a module script failed') ||
+          msg.startsWith('error loading dynamically imported module');
+        if (isStaleModuleError) {
           this.dialog
             .open(ConfirmDialogComponent, {
               data: {
