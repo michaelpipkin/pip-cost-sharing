@@ -6,7 +6,11 @@ updateConfig:
     - typescript
 overrides:
   '@babel/core': '>=7.29.6 <8'
+  '@hono/node-server': '>=2.0.5 <3'
   esbuild: '>=0.28.1 <0.29'
+  fast-xml-parser: '>=5.10.1 <6'
+  sharp: '>=0.35.0 <0.36'
+  shell-quote: '>=1.9.0 <2'
   tar: '>=7.5.16 <8'
   uuid: '>=11.1.1 <12'
 allowBuilds:
