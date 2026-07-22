@@ -11,7 +11,8 @@ import { getStorage } from 'firebase-admin/storage';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { getHCaptchaSecret } from './common';
+import * as nodemailer from 'nodemailer';
+import { getHCaptchaSecret, getSmtpPassword } from './common';
 
 initializeApp();
 
@@ -21,6 +22,14 @@ const storage = getStorage();
 const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
+
+// SMTP config replicating the retired "Trigger Email from Firestore" extension.
+const SMTP_HOST = 'smtp.office365.com';
+const SMTP_PORT = 587;
+const SMTP_USER = 'admin@pipsplit.com';
+const MAIL_FROM = 'PipSplit <admin@pipsplit.com>';
+const MAIL_REPLY_TO = 'no-reply@pipsplit.com';
+const MAIL_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year, matches the extension's Firestore TTL
 
 // ---------------------------------------------------------------------------
 // Payment Notification Email helpers
@@ -1459,3 +1468,94 @@ export const notifyNewIssue = onCall<{
   console.log(`New issue notification sent for issue #${number}`);
   return { success: true };
 });
+
+// ---------------------------------------------------------------------------
+// Mail queue sender — replaces the retired "Trigger Email from Firestore"
+// extension. Watches the `mail` collection (written to by
+// handleMemberPaymentEmail, handleSettleEmail, sendEmail, logAppError, and
+// notifyNewIssue above), delivers each queued message via SMTP, and writes
+// back a `delivery` object in the same shape the extension used to, which
+// src/app/models/mail.ts and the admin email-log UI already expect.
+// ---------------------------------------------------------------------------
+
+async function getMailTransport(): Promise<nodemailer.Transporter> {
+  const pass = await getSmtpPassword();
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: false,
+    requireTLS: true,
+    auth: { user: SMTP_USER, pass },
+  });
+}
+
+export const sendMailQueueEmail = onDocumentCreated(
+  'mail/{docId}',
+  async (event) => {
+    const snap = event.data;
+    const data = snap?.data();
+    if (!snap || !data) return;
+
+    // Defensive: skip docs that already have a delivery result (e.g. a replay).
+    if (data['delivery']) return;
+
+    const to = data['to'] as string | string[] | undefined;
+    const message = data['message'] as
+      | { subject?: string; text?: string; html?: string }
+      | undefined;
+
+    if (!to || !message?.subject) {
+      console.warn(
+        `Mail doc ${event.params['docId']} missing to/subject, skipping.`
+      );
+      return;
+    }
+
+    const startTime = Timestamp.now();
+    await snap.ref.update({
+      delivery: { state: 'PROCESSING', attempts: 1, startTime },
+    });
+
+    try {
+      const transport = await getMailTransport();
+      const info = await transport.sendMail({
+        from: MAIL_FROM,
+        replyTo: MAIL_REPLY_TO,
+        to,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      });
+
+      await snap.ref.update({
+        delivery: {
+          state: 'SUCCESS',
+          attempts: 1,
+          startTime,
+          endTime: Timestamp.now(),
+          info: {
+            messageId: info.messageId ?? '',
+            accepted: info.accepted ?? [],
+            rejected: info.rejected ?? [],
+            response: info.response ?? '',
+          },
+        },
+        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error sending mail doc ${event.params['docId']}:`, error);
+      await snap.ref.update({
+        delivery: {
+          state: 'ERROR',
+          attempts: 1,
+          startTime,
+          endTime: Timestamp.now(),
+          error: errorMessage,
+        },
+        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+      });
+    }
+  }
+);
