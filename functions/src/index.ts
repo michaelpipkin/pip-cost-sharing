@@ -2,8 +2,11 @@ import { initializeApp } from 'firebase-admin/app';
 import {
   DocumentData,
   DocumentReference,
+  DocumentSnapshot,
   FieldValue,
   getFirestore,
+  QueryDocumentSnapshot,
+  QuerySnapshot,
   Timestamp,
 } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
@@ -39,7 +42,7 @@ const MAIL_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year, matches the extension'
  * Format a monetary amount using the group's currency settings.
  * Falls back to symbol + toFixed for non-ISO codes (OTH, OT2).
  */
-function formatAmount(
+export function formatAmount(
   amount: number,
   currencyCode: string,
   currencySymbol: string,
@@ -65,12 +68,12 @@ function formatAmount(
 /**
  * Escape HTML special characters in a string for safe embedding in HTML.
  */
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 /**
@@ -78,7 +81,7 @@ function escapeHtml(str: string): string {
  * `footerText` defaults to the member opt-out notice; pass a different
  * value for emails that aren't sent to group members (e.g. admin alerts).
  */
-function buildEmailHtml(
+export function buildEmailHtml(
   content: string,
   footerText: string = 'You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.'
 ): string {
@@ -89,7 +92,7 @@ function buildEmailHtml(
  * Convert a plain-text category breakdown string to an HTML table.
  * Each line has the form "  Category: $X.XX".
  */
-function buildCategoryBreakdownHtml(breakdown: string): string {
+export function buildCategoryBreakdownHtml(breakdown: string): string {
   if (!breakdown.trim()) return '';
   const rows = breakdown
     .trim()
@@ -108,7 +111,7 @@ function buildCategoryBreakdownHtml(breakdown: string): string {
 /**
  * Convert a plain-text payment methods string to HTML paragraphs.
  */
-function buildPaymentMethodsHtml(methods: string): string {
+export function buildPaymentMethodsHtml(methods: string): string {
   if (methods === '(No payment methods on file)') {
     return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
   }
@@ -122,7 +125,7 @@ function buildPaymentMethodsHtml(methods: string): string {
  * Build a newline-separated list of payment method lines for a user.
  * Returns a fallback string if no payment methods are configured.
  */
-function buildPaymentMethodLines(
+export function buildPaymentMethodLines(
   userData: DocumentData
 ): string {
   const methods: string[] = [];
@@ -139,30 +142,10 @@ function buildPaymentMethodLines(
     : '(No payment methods on file)';
 }
 
-/**
- * Build a per-category breakdown of a member-to-member payment, matching the
- * "Summary by Category" view in the history detail screen.
- *
- * Amounts are direction-adjusted from the payer's perspective:
- *   positive  → payer owed this split (they are paying it)
- *   negative  → payee owed this split (it offsets what the payer owes)
- *
- * Returns a formatted multi-line string ready to embed in an email, or an
- * empty string if no splits are provided.
- */
-async function buildCategoryBreakdown(
-  splitRefs: DocumentReference[],
-  payerMemberRef: DocumentReference,
-  currencyCode: string,
-  currencySymbol: string,
-  decimalPlaces: number
-): Promise<string> {
-  if (splitRefs.length === 0) return '';
-
-  // Fetch all split docs in parallel
-  const splitDocs = await Promise.all(splitRefs.map((ref) => ref.get()));
-
-  // Collect unique category refs
+/** Collect the unique category DocumentReferences referenced by a set of split docs. */
+export function collectCategoryRefs(
+  splitDocs: DocumentSnapshot[]
+): Map<string, DocumentReference> {
   const categoryRefMap = new Map<string, DocumentReference>();
   for (const splitDoc of splitDocs) {
     if (!splitDoc.exists) continue;
@@ -171,8 +154,13 @@ async function buildCategoryBreakdown(
       | undefined;
     if (categoryRef) categoryRefMap.set(categoryRef.path, categoryRef);
   }
+  return categoryRefMap;
+}
 
-  // Fetch all category docs in parallel
+/** Fetch category docs in parallel and map path -> category name. */
+export async function fetchCategoryNames(
+  categoryRefMap: Map<string, DocumentReference>
+): Promise<Map<string, string>> {
   const categoryDocs = await Promise.all(
     [...categoryRefMap.values()].map((ref) => ref.get())
   );
@@ -185,8 +173,15 @@ async function buildCategoryBreakdown(
       );
     }
   }
+  return categoryNameMap;
+}
 
-  // Accumulate direction-adjusted totals per category
+/** Accumulate direction-adjusted totals per category from a set of split docs. */
+export function accumulateCategoryTotals(
+  splitDocs: DocumentSnapshot[],
+  categoryNameMap: Map<string, string>,
+  payerMemberRef: DocumentReference
+): Map<string, number> {
   const totalsMap = new Map<string, number>();
   for (const splitDoc of splitDocs) {
     if (!splitDoc.exists) continue;
@@ -214,6 +209,39 @@ async function buildCategoryBreakdown(
       (totalsMap.get(categoryName) ?? 0) + contribution
     );
   }
+  return totalsMap;
+}
+
+/**
+ * Build a per-category breakdown of a member-to-member payment, matching the
+ * "Summary by Category" view in the history detail screen.
+ *
+ * Amounts are direction-adjusted from the payer's perspective:
+ *   positive  → payer owed this split (they are paying it)
+ *   negative  → payee owed this split (it offsets what the payer owes)
+ *
+ * Returns a formatted multi-line string ready to embed in an email, or an
+ * empty string if no splits are provided.
+ */
+export async function buildCategoryBreakdown(
+  splitRefs: DocumentReference[],
+  payerMemberRef: DocumentReference,
+  currencyCode: string,
+  currencySymbol: string,
+  decimalPlaces: number
+): Promise<string> {
+  if (splitRefs.length === 0) return '';
+
+  // Fetch all split docs in parallel
+  const splitDocs = await Promise.all(splitRefs.map((ref) => ref.get()));
+
+  const categoryRefMap = collectCategoryRefs(splitDocs);
+  const categoryNameMap = await fetchCategoryNames(categoryRefMap);
+  const totalsMap = accumulateCategoryTotals(
+    splitDocs,
+    categoryNameMap,
+    payerMemberRef
+  );
 
   // Sort alphabetically and format
   return [...totalsMap.entries()]
@@ -235,53 +263,42 @@ async function buildCategoryBreakdown(
  * Used by both deleteGroup (for user-initiated deletion) and deleteUserAccount
  * (for orphaned group cleanup).
  */
-async function deleteGroupInternal(
-  groupRef: DocumentReference
+/** Delete all documents in each of the given subcollections, batched at 500 writes. */
+export async function deleteSubcollectionDocs(
+  groupRef: DocumentReference,
+  subcollections: string[]
 ): Promise<void> {
-  const groupId = groupRef.id;
-  console.log(`Starting internal deletion of group: ${groupId}`);
-
-  // Define subcollections to delete
-  const subcollections = [
-    'members',
-    'categories',
-    'expenses',
-    'splits',
-    'history',
-    'memorized',
-    'settleBatches',
-  ];
-
-  // Delete all documents in each subcollection
   for (const subcollection of subcollections) {
     const snapshot = await groupRef.collection(subcollection).get();
-    if (!snapshot.empty) {
-      const batchSize = 500;
-      let batch = db.batch();
-      let count = 0;
+    if (snapshot.empty) continue;
 
-      for (const doc of snapshot.docs) {
-        batch.delete(doc.ref);
-        count++;
+    const batchSize = 500;
+    let batch = db.batch();
+    let count = 0;
 
-        if (count >= batchSize) {
-          await batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      }
+    for (const doc of snapshot.docs) {
+      batch.delete(doc.ref);
+      count++;
 
-      if (count > 0) {
+      if (count >= batchSize) {
         await batch.commit();
+        batch = db.batch();
+        count = 0;
       }
-
-      console.log(
-        `Deleted ${snapshot.size} documents from ${subcollection} subcollection`
-      );
     }
-  }
 
-  // Delete receipts from storage
+    if (count > 0) {
+      await batch.commit();
+    }
+
+    console.log(
+      `Deleted ${snapshot.size} documents from ${subcollection} subcollection`
+    );
+  }
+}
+
+/** Delete all receipt files in storage for a group. Missing files are not an error. */
+export async function deleteGroupReceipts(groupId: string): Promise<void> {
   try {
     const bucket = storage.bucket();
     const [files] = await bucket.getFiles({
@@ -297,21 +314,45 @@ async function deleteGroupInternal(
   } catch (storageError) {
     console.warn('Error deleting receipt files (may not exist):', storageError);
   }
+}
 
-  // Clear this group as default for any users who have it set
+/** Clear defaultGroupRef for any users who have this group set as their default. */
+export async function clearDefaultGroupRefs(
+  groupRef: DocumentReference
+): Promise<void> {
   const usersWithDefault = await db
     .collection('users')
     .where('defaultGroupRef', '==', groupRef)
     .get();
 
-  if (!usersWithDefault.empty) {
-    const batch = db.batch();
-    usersWithDefault.docs.forEach((userDoc) => {
-      batch.update(userDoc.ref, { defaultGroupRef: null });
-    });
-    await batch.commit();
-    console.log(`Cleared defaultGroupRef for ${usersWithDefault.size} users`);
-  }
+  if (usersWithDefault.empty) return;
+
+  const batch = db.batch();
+  usersWithDefault.docs.forEach((userDoc) => {
+    batch.update(userDoc.ref, { defaultGroupRef: null });
+  });
+  await batch.commit();
+  console.log(`Cleared defaultGroupRef for ${usersWithDefault.size} users`);
+}
+
+export async function deleteGroupInternal(
+  groupRef: DocumentReference
+): Promise<void> {
+  const groupId = groupRef.id;
+  console.log(`Starting internal deletion of group: ${groupId}`);
+
+  const subcollections = [
+    'members',
+    'categories',
+    'expenses',
+    'splits',
+    'history',
+    'memorized',
+    'settleBatches',
+  ];
+  await deleteSubcollectionDocs(groupRef, subcollections);
+  await deleteGroupReceipts(groupId);
+  await clearDefaultGroupRefs(groupRef);
 
   // Finally, delete the group document itself
   await groupRef.delete();
@@ -434,6 +475,104 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
   }
 });
 
+/**
+ * Handle a single group's membership record for a user being deleted:
+ * promote other active members to admin if the user was the sole admin,
+ * or simply anonymize the user's own member record otherwise.
+ * Returns true if the group has no other active members and should be deleted.
+ */
+export async function handleUserGroupMembership(
+  groupRef: DocumentReference,
+  userMemberDoc: QueryDocumentSnapshot,
+  allMembers: QueryDocumentSnapshot[]
+): Promise<boolean> {
+  const userMemberData = userMemberDoc.data();
+  const activeMembers = allMembers.filter(
+    (doc) => doc.data().active === true
+  );
+
+  if (activeMembers.length === 1 && userMemberData.active === true) {
+    console.log(
+      `User is the only active member of group ${groupRef.id} - marking for deletion`
+    );
+    return true;
+  }
+
+  const admins = allMembers.filter((doc) => doc.data().groupAdmin === true);
+  const userIsOnlyAdmin =
+    admins.length === 1 && userMemberData.groupAdmin === true;
+
+  if (userIsOnlyAdmin && activeMembers.length > 1) {
+    // User is the only admin but there are other active members
+    // Promote all other active members to admin and demote/anonymize user
+    console.log(
+      `User is the only admin of group ${groupRef.id} - promoting other members`
+    );
+
+    const batch = db.batch();
+    for (const memberDoc of activeMembers) {
+      if (memberDoc.id !== userMemberDoc.id) {
+        batch.update(memberDoc.ref, { groupAdmin: true });
+        console.log(`Promoting member ${memberDoc.id} to admin`);
+      }
+    }
+    batch.update(userMemberDoc.ref, { groupAdmin: false, userRef: null });
+    console.log(`Demoting and anonymizing member: ${userMemberDoc.id}`);
+
+    await batch.commit();
+    console.log(`Updated members in group ${groupRef.id}`);
+  } else {
+    // User is either not an admin, or there are other admins
+    // Just anonymize the user's member record (keep email)
+    await userMemberDoc.ref.update({ userRef: null });
+    console.log(`Anonymizing member document: ${userMemberDoc.ref.path}`);
+  }
+
+  return false;
+}
+
+/**
+ * Walk every group, updating/anonymizing the user's membership in each and
+ * collecting the groups where the user was the only active member.
+ */
+export async function processUserGroupMemberships(
+  userDocRef: DocumentReference
+): Promise<DocumentReference[]> {
+  const groupsToDelete: DocumentReference[] = [];
+  const groupsSnapshot = await db.collection('groups').get();
+
+  for (const groupDoc of groupsSnapshot.docs) {
+    const membersSnapshot = await groupDoc.ref.collection('members').get();
+    const userMemberDoc = membersSnapshot.docs.find(
+      (doc) => doc.data().userRef?.path === userDocRef.path
+    );
+    if (!userMemberDoc) continue;
+
+    const shouldDelete = await handleUserGroupMembership(
+      groupDoc.ref,
+      userMemberDoc,
+      membersSnapshot.docs
+    );
+    if (shouldDelete) groupsToDelete.push(groupDoc.ref);
+  }
+
+  return groupsToDelete;
+}
+
+/** Delete orphaned groups (where the deleted user was the only active member). */
+export async function deleteOrphanedGroups(
+  groupsToDelete: DocumentReference[]
+): Promise<void> {
+  for (const groupRef of groupsToDelete) {
+    try {
+      await deleteGroupInternal(groupRef);
+      console.log(`Deleted orphaned group: ${groupRef.id}`);
+    } catch (error) {
+      console.error(`Error deleting orphaned group ${groupRef.id}:`, error);
+    }
+  }
+}
+
 export const deleteUserAccount = onCall(async (request) => {
   const uid = request.auth?.uid;
 
@@ -462,93 +601,9 @@ export const deleteUserAccount = onCall(async (request) => {
       console.log(`Found user document: ${userDocRef.path}`);
     }
 
-    // Track groups that need to be deleted (where user is the only active member)
-    const groupsToDelete: DocumentReference[] = [];
-
     try {
-      const groupsSnapshot = await db.collection('groups').get();
-
-      for (const groupDoc of groupsSnapshot.docs) {
-        // Get all members for this group
-        const membersSnapshot = await groupDoc.ref.collection('members').get();
-
-        // Find if user is a member of this group
-        const userMemberDoc = membersSnapshot.docs.find(
-          (doc) => doc.data().userRef?.path === userDocRef.path
-        );
-
-        // Skip if user is not a member of this group
-        if (!userMemberDoc) {
-          continue;
-        }
-
-        const userMemberData = userMemberDoc.data();
-        const allMembers = membersSnapshot.docs;
-        const activeMembers = allMembers.filter(
-          (doc) => doc.data().active === true
-        );
-
-        // Check if user is the only active member
-        if (activeMembers.length === 1 && userMemberData.active === true) {
-          // User is the only active member - mark group for deletion
-          console.log(
-            `User is the only active member of group ${groupDoc.id} - marking for deletion`
-          );
-          groupsToDelete.push(groupDoc.ref);
-        } else {
-          // Check if user is the only admin
-          const admins = allMembers.filter(
-            (doc) => doc.data().groupAdmin === true
-          );
-          const userIsOnlyAdmin =
-            admins.length === 1 && userMemberData.groupAdmin === true;
-
-          if (userIsOnlyAdmin && activeMembers.length > 1) {
-            // User is the only admin but there are other active members
-            // Promote all other active members to admin and demote/anonymize user
-            console.log(
-              `User is the only admin of group ${groupDoc.id} - promoting other members`
-            );
-
-            const batch = db.batch();
-
-            // Promote all other active members to admin
-            for (const memberDoc of activeMembers) {
-              if (memberDoc.id !== userMemberDoc.id) {
-                batch.update(memberDoc.ref, { groupAdmin: true });
-                console.log(`Promoting member ${memberDoc.id} to admin`);
-              }
-            }
-
-            // Demote and anonymize user's member record (keep email)
-            batch.update(userMemberDoc.ref, {
-              groupAdmin: false,
-              userRef: null,
-            });
-            console.log(`Demoting and anonymizing member: ${userMemberDoc.id}`);
-
-            await batch.commit();
-            console.log(`Updated members in group ${groupDoc.id}`);
-          } else {
-            // User is either not an admin, or there are other admins
-            // Just anonymize the user's member record (keep email)
-            await userMemberDoc.ref.update({ userRef: null });
-            console.log(
-              `Anonymizing member document: ${userMemberDoc.ref.path}`
-            );
-          }
-        }
-      }
-
-      // Delete orphaned groups (where user was the only active member)
-      for (const groupRef of groupsToDelete) {
-        try {
-          await deleteGroupInternal(groupRef);
-          console.log(`Deleted orphaned group: ${groupRef.id}`);
-        } catch (error) {
-          console.error(`Error deleting orphaned group ${groupRef.id}:`, error);
-        }
-      }
+      const groupsToDelete = await processUserGroupMemberships(userDocRef);
+      await deleteOrphanedGroups(groupsToDelete);
     } catch (error) {
       console.error('Error processing member documents:', error);
     }
@@ -631,6 +686,34 @@ export const deleteGroup = onCall(async (request) => {
   }
 });
 
+interface SyncEmailResults {
+  synced: number;
+  skipped: number;
+  errors: string[];
+}
+
+/** Look up a user's current auth email, updating the results tally as it goes. */
+export async function tryGetAuthEmail(
+  uid: string,
+  results: SyncEmailResults
+): Promise<string | null> {
+  try {
+    const authUser = await getAuth().getUser(uid);
+    if (!authUser.email) {
+      results.skipped++;
+      return null;
+    }
+    results.synced++;
+    return authUser.email;
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.log(`Could not get auth for ${uid}: ${errorMessage}`);
+    results.errors.push(`${uid}: ${errorMessage}`);
+    return null;
+  }
+}
+
 export const syncAuthEmailsToUsers = onCall(async (request) => {
   console.log('syncAuthEmailsToUsers called');
 
@@ -640,7 +723,7 @@ export const syncAuthEmailsToUsers = onCall(async (request) => {
 
   console.log('User authenticated:', request.auth.uid);
 
-  const results: { synced: number; skipped: number; errors: string[] } = {
+  const results: SyncEmailResults = {
     synced: 0,
     skipped: 0,
     errors: [],
@@ -655,26 +738,16 @@ export const syncAuthEmailsToUsers = onCall(async (request) => {
     let batchCount = 0;
 
     for (const userDoc of usersSnapshot.docs) {
-      try {
-        const authUser = await getAuth().getUser(userDoc.id);
-        if (authUser.email) {
-          batch.update(userDoc.ref, { email: authUser.email });
-          batchCount++;
-          results.synced++;
+      const email = await tryGetAuthEmail(userDoc.id, results);
+      if (!email) continue;
 
-          if (batchCount >= batchSize) {
-            await batch.commit();
-            batch = db.batch();
-            batchCount = 0;
-          }
-        } else {
-          results.skipped++;
-        }
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
-        console.log(`Could not get auth for ${userDoc.id}: ${errorMessage}`);
-        results.errors.push(`${userDoc.id}: ${errorMessage}`);
+      batch.update(userDoc.ref, { email });
+      batchCount++;
+
+      if (batchCount >= batchSize) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
       }
     }
 
@@ -694,6 +767,141 @@ export const syncAuthEmailsToUsers = onCall(async (request) => {
   }
 });
 
+/**
+ * Build "YYYY-MM-DD" cutoff string for the last-30-days filter.
+ * Expense dates are stored as "YYYY-MM-DD" strings, so lexicographic
+ * comparison with a same-format cutoff is correct.
+ */
+export function buildThirtyDaysAgoIso(): string {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return `${thirtyDaysAgo.getFullYear()}-${String(
+    thirtyDaysAgo.getMonth() + 1
+  ).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Find every group the admin is an active member of so they can be
+ * excluded from statistics (they skew the picture of other users' usage).
+ */
+export async function getAdminExcludedGroupIds(
+  adminUserRef: DocumentReference
+): Promise<Set<string>> {
+  const adminMembershipsSnapshot = await db
+    .collectionGroup('members')
+    .where('userRef', '==', adminUserRef)
+    .where('active', '==', true)
+    .get();
+  return new Set<string>(
+    adminMembershipsSnapshot.docs
+      .map((m) => m.ref.parent.parent?.id)
+      .filter((id): id is string => !!id)
+  );
+}
+
+/** Tally total/active group counts and collect active group refs, excluding the admin's own groups. */
+export function summarizeGroups(
+  groupsSnapshot: QuerySnapshot,
+  excludedGroupIds: Set<string>
+): {
+  totalGroups: number;
+  activeGroups: number;
+  activeGroupRefs: DocumentReference[];
+} {
+  let totalGroups = 0;
+  let activeGroups = 0;
+  const activeGroupRefs: DocumentReference[] = [];
+
+  for (const groupDoc of groupsSnapshot.docs) {
+    if (excludedGroupIds.has(groupDoc.id)) continue;
+    totalGroups++;
+
+    const groupData = groupDoc.data();
+    if (groupData.active && !groupData.archived) {
+      activeGroups++;
+      activeGroupRefs.push(groupDoc.ref);
+    }
+  }
+
+  return { totalGroups, activeGroups, activeGroupRefs };
+}
+
+/**
+ * For a single group, fire four count() aggregations concurrently —
+ * no document downloads required.
+ */
+export async function getGroupStats(
+  groupRef: DocumentReference,
+  thirtyDaysAgoIso: string
+): Promise<{
+  totalMembers: number;
+  activeMembers: number;
+  hasExpenses: boolean;
+  recentExpenses: number;
+}> {
+  const members = groupRef.collection('members');
+  const expenses = groupRef.collection('expenses');
+  const [
+    totalMembersSnap,
+    activeMembersSnap,
+    expenseCountSnap,
+    recentExpenseSnap,
+  ] = await Promise.all([
+    members.count().get(),
+    members.where('active', '==', true).count().get(),
+    expenses.count().get(),
+    expenses.where('date', '>=', thirtyDaysAgoIso).count().get(),
+  ]);
+  return {
+    totalMembers: totalMembersSnap.data().count,
+    activeMembers: activeMembersSnap.data().count,
+    hasExpenses: expenseCountSnap.data().count > 0,
+    recentExpenses: recentExpenseSnap.data().count,
+  };
+}
+
+/** Aggregate per-group stats into the overall admin statistics totals. */
+export function aggregateGroupStats(
+  perGroupStats: Array<{
+    totalMembers: number;
+    activeMembers: number;
+    hasExpenses: boolean;
+    recentExpenses: number;
+  }>
+): {
+  activeGroupsWithMultipleMembers: number;
+  activeGroupsWithExpenses: number;
+  totalMembers: number;
+  totalActiveMembers: number;
+  groupsWithRecentActivity: number;
+  expensesCreatedLast30Days: number;
+} {
+  let activeGroupsWithMultipleMembers = 0;
+  let activeGroupsWithExpenses = 0;
+  let totalMembers = 0;
+  let totalActiveMembers = 0;
+  let groupsWithRecentActivity = 0;
+  let expensesCreatedLast30Days = 0;
+
+  for (const g of perGroupStats) {
+    totalMembers += g.totalMembers;
+    totalActiveMembers += g.activeMembers;
+    if (g.activeMembers > 1) activeGroupsWithMultipleMembers++;
+    if (g.hasExpenses) activeGroupsWithExpenses++;
+    if (g.recentExpenses > 0) groupsWithRecentActivity++;
+    expensesCreatedLast30Days += g.recentExpenses;
+  }
+
+  return {
+    activeGroupsWithMultipleMembers,
+    activeGroupsWithExpenses,
+    totalMembers,
+    totalActiveMembers,
+    groupsWithRecentActivity,
+    expensesCreatedLast30Days,
+  };
+}
+
 export const getAdminStatistics = onCall(async (request) => {
   const uid = request.auth?.uid;
 
@@ -708,90 +916,29 @@ export const getAdminStatistics = onCall(async (request) => {
   }
 
   try {
-    // Build "YYYY-MM-DD" cutoff string for the last-30-days filter.
-    // Expense dates are stored as "YYYY-MM-DD" strings, so lexicographic
-    // comparison with a same-format cutoff is correct.
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const thirtyDaysAgoIso = `${thirtyDaysAgo.getFullYear()}-${String(
-      thirtyDaysAgo.getMonth() + 1
-    ).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
+    const thirtyDaysAgoIso = buildThirtyDaysAgoIso();
 
-    // Find every group the admin is an active member of so they can be
-    // excluded from statistics (they skew the picture of other users' usage).
     const adminUserRef = db.collection('users').doc(uid);
-    const adminMembershipsSnapshot = await db
-      .collectionGroup('members')
-      .where('userRef', '==', adminUserRef)
-      .where('active', '==', true)
-      .get();
-    const excludedGroupIds = new Set<string>(
-      adminMembershipsSnapshot.docs
-        .map((m) => m.ref.parent.parent?.id)
-        .filter((id): id is string => !!id)
-    );
+    const excludedGroupIds = await getAdminExcludedGroupIds(adminUserRef);
 
     // Fetch all group docs (needed to filter on active/archived fields).
     const groupsSnapshot = await db.collection('groups').get();
+    const { totalGroups, activeGroups, activeGroupRefs } = summarizeGroups(
+      groupsSnapshot,
+      excludedGroupIds
+    );
 
-    let totalGroups = 0;
-    let activeGroups = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activeGroupRefs: any[] = [];
-
-    for (const groupDoc of groupsSnapshot.docs) {
-      // Skip groups the admin belongs to.
-      if (excludedGroupIds.has(groupDoc.id)) continue;
-      totalGroups++;
-
-      const groupData = groupDoc.data();
-      if (groupData.active && !groupData.archived) {
-        activeGroups++;
-        activeGroupRefs.push(groupDoc.ref);
-      }
-    }
-
-    // For each active (non-excluded) group, fire four count() aggregations
-    // concurrently — no document downloads required.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function getGroupStats(groupRef: any) {
-      const members = groupRef.collection('members');
-      const expenses = groupRef.collection('expenses');
-      const [
-        totalMembersSnap,
-        activeMembersSnap,
-        expenseCountSnap,
-        recentExpenseSnap,
-      ] = await Promise.all([
-        members.count().get(),
-        members.where('active', '==', true).count().get(),
-        expenses.count().get(),
-        expenses.where('date', '>=', thirtyDaysAgoIso).count().get(),
-      ]);
-      return {
-        totalMembers: totalMembersSnap.data().count,
-        activeMembers: activeMembersSnap.data().count,
-        hasExpenses: expenseCountSnap.data().count > 0,
-        recentExpenses: recentExpenseSnap.data().count,
-      };
-    }
-
-    let activeGroupsWithMultipleMembers = 0;
-    let activeGroupsWithExpenses = 0;
-    let totalMembers = 0;
-    let totalActiveMembers = 0;
-    let groupsWithRecentActivity = 0;
-    let expensesCreatedLast30Days = 0;
-
-    const perGroupStats = await Promise.all(activeGroupRefs.map(getGroupStats));
-    for (const g of perGroupStats) {
-      totalMembers += g.totalMembers;
-      totalActiveMembers += g.activeMembers;
-      if (g.activeMembers > 1) activeGroupsWithMultipleMembers++;
-      if (g.hasExpenses) activeGroupsWithExpenses++;
-      if (g.recentExpenses > 0) groupsWithRecentActivity++;
-      expensesCreatedLast30Days += g.recentExpenses;
-    }
+    const perGroupStats = await Promise.all(
+      activeGroupRefs.map((ref) => getGroupStats(ref, thirtyDaysAgoIso))
+    );
+    const {
+      activeGroupsWithMultipleMembers,
+      activeGroupsWithExpenses,
+      totalMembers,
+      totalActiveMembers,
+      groupsWithRecentActivity,
+      expensesCreatedLast30Days,
+    } = aggregateGroupStats(perGroupStats);
 
     // Count users via aggregation and exclude the admin's own account.
     const usersCountSnap = await db.collection('users').count().get();
@@ -1045,6 +1192,146 @@ export const sendEmail = onCall<{
   return { success: true };
 });
 
+/**
+ * Atomically claim responsibility for sending a settle batch's emails.
+ * Returns false if another function instance already claimed this batch.
+ */
+export async function claimSettleBatch(
+  groupRef: DocumentReference,
+  batchId: string
+): Promise<boolean> {
+  const batchMarkerRef = groupRef.collection('settleBatches').doc(batchId);
+  let shouldSendEmails = false;
+  await db.runTransaction(async (txn) => {
+    const markerDoc = await txn.get(batchMarkerRef);
+    if (!markerDoc.exists) {
+      txn.set(batchMarkerRef, {
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      shouldSendEmails = true;
+    }
+  });
+  return shouldSendEmails;
+}
+
+/** Fetch all member docs (both sides of every transfer) and their linked user docs. */
+export async function collectSettleMemberAndUserData(
+  transfers: DocumentData[]
+): Promise<{
+  memberDataMap: Map<string, DocumentData>;
+  userDataMap: Map<string, DocumentData>;
+}> {
+  const memberRefMap = new Map<string, DocumentReference>();
+  for (const transfer of transfers) {
+    const payerRef = transfer['paidByMemberRef'] as DocumentReference;
+    const payeeRef = transfer['paidToMemberRef'] as DocumentReference;
+    memberRefMap.set(payerRef.path, payerRef);
+    memberRefMap.set(payeeRef.path, payeeRef);
+  }
+
+  const memberDocs = await Promise.all(
+    [...memberRefMap.values()].map((ref) => ref.get())
+  );
+  const memberDataMap = new Map<string, DocumentData>();
+  for (const memberDoc of memberDocs) {
+    if (memberDoc.exists) {
+      memberDataMap.set(memberDoc.ref.path, memberDoc.data()!);
+    }
+  }
+
+  const userRefMap = new Map<string, DocumentReference>();
+  for (const [path, memberData] of memberDataMap.entries()) {
+    const userRef = memberData['userRef'] as DocumentReference | null;
+    if (userRef) {
+      userRefMap.set(path, userRef);
+    }
+  }
+  const userDocs = await Promise.all(
+    [...userRefMap.values()].map((ref) => ref.get())
+  );
+  const userDataMap = new Map<string, DocumentData>();
+  for (const userDoc of userDocs) {
+    if (userDoc.exists) {
+      userDataMap.set(userDoc.ref.path, userDoc.data()!);
+    }
+  }
+
+  return { memberDataMap, userDataMap };
+}
+
+/** Build the plain-text and HTML "you owe" / "you're owed" content for one member. */
+export function buildMemberTransferBlocks(
+  memberPath: string,
+  transfers: DocumentData[],
+  memberDataMap: Map<string, DocumentData>,
+  userDataMap: Map<string, DocumentData>,
+  currencyCode: string,
+  currencySymbol: string,
+  decimalPlaces: number
+): { transferLines: string; transferHtmlBlocks: string } {
+  const owesLines: string[] = [];
+  const owedLines: string[] = [];
+  const owesHtmlBlocks: string[] = [];
+  const owedHtmlBlocks: string[] = [];
+
+  for (const transfer of transfers) {
+    const payerRef = transfer['paidByMemberRef'] as DocumentReference;
+    const payeeRef = transfer['paidToMemberRef'] as DocumentReference;
+    const amount = transfer['totalPaid'] as number;
+    const formattedAmount = formatAmount(
+      amount,
+      currencyCode,
+      currencySymbol,
+      decimalPlaces
+    );
+
+    if (payerRef.path === memberPath) {
+      // This member owes money — include payee's payment methods
+      const payeeData = memberDataMap.get(payeeRef.path);
+      const payeeName: string =
+        payeeData?.['displayName'] ?? 'another member';
+      const payeeUserRef = payeeData?.['userRef'] as
+        | DocumentReference
+        | null
+        | undefined;
+      const payeeUserData = payeeUserRef
+        ? userDataMap.get(payeeUserRef.path)
+        : undefined;
+      const paymentMethods = payeeUserData
+        ? buildPaymentMethodLines(payeeUserData)
+        : '(No payment methods on file)';
+      owesLines.push(
+        `- You owe ${formattedAmount} to ${payeeName}\n  ${payeeName}'s payment methods:\n  ${paymentMethods.replaceAll('\n', '\n  ')}`
+      );
+      owesHtmlBlocks.push(
+        `<div style="border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
+          `<p style="margin:0 0 8px 0;">You owe <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong></p>` +
+          `<p style="margin:0 0 6px 0;font-size:13px;color:#5b6058;"><strong>${escapeHtml(payeeName)}</strong>&rsquo;s payment methods:</p>` +
+          `<div style="background-color:#f7fbf0;border-radius:4px;padding:8px;">${buildPaymentMethodsHtml(paymentMethods)}</div>` +
+          `</div>`
+      );
+    } else if (payeeRef.path === memberPath) {
+      // This member is owed money
+      const payerData = memberDataMap.get(payerRef.path);
+      const payerName: string =
+        payerData?.['displayName'] ?? 'another member';
+      owedLines.push(
+        `- ${payerName} owes you ${formattedAmount} — be on the lookout for this payment.`
+      );
+      owedHtmlBlocks.push(
+        `<div style="border:1px solid #cdebbf;background-color:#f7fbf0;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
+          `<p style="margin:0;"><strong>${escapeHtml(payerName)}</strong> owes you <strong>${escapeHtml(formattedAmount)}</strong> &mdash; be on the lookout for this payment.</p>` +
+          `</div>`
+      );
+    }
+  }
+
+  return {
+    transferLines: [...owesLines, ...owedLines].join('\n\n'),
+    transferHtmlBlocks: [...owesHtmlBlocks, ...owedHtmlBlocks].join(''),
+  };
+}
+
 async function handleSettleEmail(
   data: DocumentData,
   groupRef: DocumentReference,
@@ -1069,19 +1356,7 @@ async function handleSettleEmail(
     return;
   }
 
-  // Atomically claim responsibility for sending this batch's emails
-  const batchMarkerRef = groupRef.collection('settleBatches').doc(batchId);
-  let shouldSendEmails = false;
-  await db.runTransaction(async (txn) => {
-    const markerDoc = await txn.get(batchMarkerRef);
-    if (!markerDoc.exists) {
-      txn.set(batchMarkerRef, {
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      shouldSendEmails = true;
-    }
-  });
-
+  const shouldSendEmails = await claimSettleBatch(groupRef, batchId);
   if (!shouldSendEmails) {
     // Another function instance already claimed this batch
     return;
@@ -1100,51 +1375,8 @@ async function handleSettleEmail(
 
   // Collect all transfer docs in this batch
   const transfers = historySnap.docs.map((d) => d.data());
-
-  // Collect unique member refs (both sides)
-  const memberRefMap = new Map<string, DocumentReference>();
-  for (const transfer of transfers) {
-    const payerRef = transfer[
-      'paidByMemberRef'
-    ] as DocumentReference;
-    const payeeRef = transfer[
-      'paidToMemberRef'
-    ] as DocumentReference;
-    memberRefMap.set(payerRef.path, payerRef);
-    memberRefMap.set(payeeRef.path, payeeRef);
-  }
-
-  // Fetch all member docs in parallel
-  const memberRefs = [...memberRefMap.values()];
-  const memberDocs = await Promise.all(memberRefs.map((ref) => ref.get()));
-
-  // Build a map: path → { doc data }
-  const memberDataMap = new Map<string, DocumentData>();
-  for (const memberDoc of memberDocs) {
-    if (memberDoc.exists) {
-      memberDataMap.set(memberDoc.ref.path, memberDoc.data()!);
-    }
-  }
-
-  // Fetch user docs for members that have a userRef
-  const userRefMap = new Map<string, DocumentReference>();
-  for (const [path, memberData] of memberDataMap.entries()) {
-    const userRef = memberData[
-      'userRef'
-    ] as DocumentReference | null;
-    if (userRef) {
-      userRefMap.set(path, userRef);
-    }
-  }
-  const userDocs = await Promise.all(
-    [...userRefMap.values()].map((ref) => ref.get())
-  );
-  const userDataMap = new Map<string, DocumentData>();
-  for (const userDoc of userDocs) {
-    if (userDoc.exists) {
-      userDataMap.set(userDoc.ref.path, userDoc.data()!);
-    }
-  }
+  const { memberDataMap, userDataMap } =
+    await collectSettleMemberAndUserData(transfers);
 
   // Build per-member email
   const mailWrites: Promise<DocumentReference>[] = [];
@@ -1162,70 +1394,16 @@ async function handleSettleEmail(
       : undefined;
     if (!memberUserRef || memberUserData?.['emailOptOut'] === true) continue;
 
-    // Find transfers this member is involved in
-    const owesLines: string[] = [];
-    const owedLines: string[] = [];
-    const owesHtmlBlocks: string[] = [];
-    const owedHtmlBlocks: string[] = [];
+    const { transferLines, transferHtmlBlocks } = buildMemberTransferBlocks(
+      memberPath,
+      transfers,
+      memberDataMap,
+      userDataMap,
+      currencyCode,
+      currencySymbol,
+      decimalPlaces
+    );
 
-    for (const transfer of transfers) {
-      const payerRef = transfer[
-        'paidByMemberRef'
-      ] as DocumentReference;
-      const payeeRef = transfer[
-        'paidToMemberRef'
-      ] as DocumentReference;
-      const amount = transfer['totalPaid'] as number;
-      const formattedAmount = formatAmount(
-        amount,
-        currencyCode,
-        currencySymbol,
-        decimalPlaces
-      );
-
-      if (payerRef.path === memberPath) {
-        // This member owes money — include payee's payment methods
-        const payeeData = memberDataMap.get(payeeRef.path);
-        const payeeName: string =
-          payeeData?.['displayName'] ?? 'another member';
-        const payeeUserRef = payeeData?.['userRef'] as
-          | DocumentReference
-          | null
-          | undefined;
-        const payeeUserData = payeeUserRef
-          ? userDataMap.get(payeeUserRef.path)
-          : undefined;
-        const paymentMethods = payeeUserData
-          ? buildPaymentMethodLines(payeeUserData)
-          : '(No payment methods on file)';
-        owesLines.push(
-          `- You owe ${formattedAmount} to ${payeeName}\n  ${payeeName}'s payment methods:\n  ${paymentMethods.split('\n').join('\n  ')}`
-        );
-        owesHtmlBlocks.push(
-          `<div style="border:1px solid #c4c8be;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
-            `<p style="margin:0 0 8px 0;">You owe <strong>${escapeHtml(formattedAmount)}</strong> to <strong>${escapeHtml(payeeName)}</strong></p>` +
-            `<p style="margin:0 0 6px 0;font-size:13px;color:#5b6058;"><strong>${escapeHtml(payeeName)}</strong>&rsquo;s payment methods:</p>` +
-            `<div style="background-color:#f7fbf0;border-radius:4px;padding:8px;">${buildPaymentMethodsHtml(paymentMethods)}</div>` +
-            `</div>`
-        );
-      } else if (payeeRef.path === memberPath) {
-        // This member is owed money
-        const payerData = memberDataMap.get(payerRef.path);
-        const payerName: string =
-          payerData?.['displayName'] ?? 'another member';
-        owedLines.push(
-          `- ${payerName} owes you ${formattedAmount} — be on the lookout for this payment.`
-        );
-        owedHtmlBlocks.push(
-          `<div style="border:1px solid #cdebbf;background-color:#f7fbf0;border-radius:8px;padding:16px;margin:0 0 12px 0;">` +
-            `<p style="margin:0;"><strong>${escapeHtml(payerName)}</strong> owes you <strong>${escapeHtml(formattedAmount)}</strong> &mdash; be on the lookout for this payment.</p>` +
-            `</div>`
-        );
-      }
-    }
-
-    const transferLines = [...owesLines, ...owedLines].join('\n\n');
-    const transferHtmlBlocks = [...owesHtmlBlocks, ...owedHtmlBlocks].join('');
     const settleHtml = buildEmailHtml(
       `<h2 style="color:#105208;margin:0 0 20px 0;">Group Settlement</h2>` +
         `<p style="margin:0 0 16px 0;">Hi <strong>${escapeHtml(memberName)}</strong>,</p>` +
@@ -1439,11 +1617,12 @@ export const notifyNewIssue = onCall<{
   const reporterLine = reporterEmail
     ? `Reported by: ${reporterEmail}\n`
     : '';
+  const bodySection = body ? `\n${body}\n\n` : '\n';
   const bodyText =
     `A new issue was filed on PipSplit:\n\n` +
     `Title: ${title}\n` +
     `${reporterLine}` +
-    `${body ? `\n${body}\n\n` : '\n'}` +
+    bodySection +
     `View it on GitHub: ${url}`;
 
   const reporterHtml = reporterEmail

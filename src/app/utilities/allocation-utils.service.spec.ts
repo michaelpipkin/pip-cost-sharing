@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import {
-  AllocationUtilsService,
-  AllocationInput,
-  AllocationSplit,
-} from './allocation-utils.service';
+import { TestBed } from '@angular/core/testing';
 import { LocaleService } from '@services/locale.service';
 import { GroupStore } from '@store/group.store';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  AllocationInput,
+  AllocationSplit,
+  AllocationUtilsService,
+} from './allocation-utils.service';
 
 function makeSplit(
   memberRef: any,
@@ -71,7 +71,7 @@ describe('AllocationUtilsService', () => {
         splits: [makeSplit({ id: 'member1' }), makeSplit({ id: 'member2' })],
       };
       const result = service.allocateSharedAmounts(input);
-      expect(result.splits.length).toBe(2);
+      expect(result.splits).toHaveLength(2);
       expect(result.splits[0]!.allocatedAmount).toBe(50);
       expect(result.splits[1]!.allocatedAmount).toBe(50);
       const total = result.splits.reduce(
@@ -95,7 +95,7 @@ describe('AllocationUtilsService', () => {
         ],
       };
       const result = service.allocateSharedAmounts(input);
-      expect(result.splits.length).toBe(3);
+      expect(result.splits).toHaveLength(3);
       const total = localeService.roundToCurrency(
         result.splits.reduce((sum, s) => sum + s.allocatedAmount, 0)
       );
@@ -116,7 +116,7 @@ describe('AllocationUtilsService', () => {
         ],
       };
       const result = service.allocateSharedAmounts(input);
-      expect(result.splits.length).toBe(2);
+      expect(result.splits).toHaveLength(2);
     });
 
     it('should keep splits with assigned amount but no member', () => {
@@ -130,7 +130,7 @@ describe('AllocationUtilsService', () => {
         ],
       };
       const result = service.allocateSharedAmounts(input);
-      expect(result.splits.length).toBe(2);
+      expect(result.splits).toHaveLength(2);
     });
   });
 
@@ -203,15 +203,36 @@ describe('AllocationUtilsService', () => {
 
   describe('allocateByPercentage', () => {
     it('should return empty splits when input has no splits', () => {
-      const result = service.allocateByPercentage({ totalAmount: 100, splits: [] });
+      const result = service.allocateByPercentage({
+        totalAmount: 100,
+        splits: [],
+      });
       expect(result.splits).toEqual([]);
     });
 
     it('should allocate 30/30/40 percentages on $100', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 30, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 30, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member3' }, assignedAmount: 0, percentage: 40, shares: 0, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 30,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 30,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member3' },
+          assignedAmount: 0,
+          percentage: 40,
+          shares: 0,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByPercentage({ totalAmount: 100, splits });
       expect(result.splits[0]!.allocatedAmount).toBe(30);
@@ -222,9 +243,27 @@ describe('AllocationUtilsService', () => {
     it('should auto-balance last row percentage to 100', () => {
       // First two are set; last row should be auto-calculated to 100 - 70 = 30
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 40, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 30, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member3' }, assignedAmount: 0, percentage: 0, shares: 0, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 40,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 30,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member3' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 0,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByPercentage({ totalAmount: 100, splits });
       expect(result.splits[2]!.percentage).toBe(30);
@@ -233,9 +272,27 @@ describe('AllocationUtilsService', () => {
 
     it('should ensure allocated amounts sum to total amount', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 33, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 33, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member3' }, assignedAmount: 0, percentage: 34, shares: 0, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 33,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 33,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member3' },
+          assignedAmount: 0,
+          percentage: 34,
+          shares: 0,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByPercentage({ totalAmount: 100, splits });
       const total = localeService.roundToCurrency(
@@ -253,9 +310,27 @@ describe('AllocationUtilsService', () => {
 
     it('should allocate $100 with integer ratios [1, 1, 2] → [25, 25, 50]', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 0, shares: 1, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 0, shares: 1, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member3' }, assignedAmount: 0, percentage: 0, shares: 2, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 1,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 1,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member3' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 2,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByShares({ totalAmount: 100, splits });
       expect(result.splits[0]!.allocatedAmount).toBe(25);
@@ -265,9 +340,27 @@ describe('AllocationUtilsService', () => {
 
     it('should allocate $100 with decimal ratios [1.5, 1, 1] and total correctly', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 0, shares: 1.5, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 0, shares: 1, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member3' }, assignedAmount: 0, percentage: 0, shares: 1, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 1.5,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 1,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member3' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 1,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByShares({ totalAmount: 100, splits });
       const total = localeService.roundToCurrency(
@@ -278,8 +371,20 @@ describe('AllocationUtilsService', () => {
 
     it('should return zero allocations when all shares are zero', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 0, shares: 0, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'member2' }, assignedAmount: 0, percentage: 0, shares: 0, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 0,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'member2' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 0,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByShares({ totalAmount: 100, splits });
       expect(result.splits[0]!.allocatedAmount).toBe(0);
@@ -288,7 +393,13 @@ describe('AllocationUtilsService', () => {
 
     it('should allocate full amount to single member', () => {
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'member1' }, assignedAmount: 0, percentage: 0, shares: 5, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'member1' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 5,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByShares({ totalAmount: 75, splits });
       expect(result.splits[0]!.allocatedAmount).toBe(75);
