@@ -25,4 +25,5 @@ export interface MailDocument {
     html?: string;
   };
   delivery?: MailDelivery;
+  expireAt?: Timestamp;
 }
