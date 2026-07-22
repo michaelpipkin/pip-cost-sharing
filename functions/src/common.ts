@@ -13,3 +13,14 @@ export const getHCaptchaSecret = async () => {
     return payload;
   }
 };
+
+export const getSmtpPassword = async () => {
+  if (process.env.FUNCTIONS_EMULATOR === 'true') {
+    return process.env.SMTP_PASSWORD;
+  } else {
+    const name = 'projects/175229019851/secrets/smtp-password/versions/latest';
+    const [version] = await smsClient.accessSecretVersion({ name });
+    const payload = version.payload?.data?.toString() || '';
+    return payload;
+  }
+};
