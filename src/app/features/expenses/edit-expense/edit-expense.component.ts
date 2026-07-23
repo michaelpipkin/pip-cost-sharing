@@ -702,6 +702,11 @@ export class EditExpenseComponent {
     if (!rental) return;
     const dialogConfig: MatDialogConfig<RentalEditDialogData> = {
       disableClose: false,
+      // Explicit, so the grid inside has a known surface width to fill
+      // (via --rental-grid-max-width: 100%) instead of guessing at the
+      // CDK's default and risking the dialog content ending up wider than
+      // the dialog surface itself.
+      maxWidth: '90vw',
       data: {
         rental,
         totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),

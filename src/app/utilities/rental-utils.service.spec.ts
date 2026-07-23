@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Category } from '@models/category';
 import { RentalDetails } from '@models/expense';
 import { DocumentReference } from 'firebase/firestore';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -6,6 +7,10 @@ import { RentalUtilsService } from './rental-utils.service';
 
 function ref(id: string): any {
   return new DocumentReference(id, `groups/g/members/${id}`);
+}
+
+function category(name: string): Category {
+  return new Category({ id: name, name, active: true, ref: ref(name) });
 }
 
 describe('RentalUtilsService', () => {
@@ -103,6 +108,37 @@ describe('RentalUtilsService', () => {
         stays: [{ memberRef: ref('a'), nights: [0, 1] }],
       };
       expect(service.emptyNights(details)).toEqual([]);
+    });
+  });
+
+  describe('guessCategory', () => {
+    it('picks the highest-priority match, regardless of list order', () => {
+      const categories = [
+        category('Groceries'),
+        category('Rental'),
+        category('Travel'),
+        category('Utilities'),
+      ];
+      expect(service.guessCategory(categories)?.name).toBe('Travel');
+    });
+
+    it('matches case-insensitively', () => {
+      const categories = [category('vacation'), category('Groceries')];
+      expect(service.guessCategory(categories)?.name).toBe('vacation');
+    });
+
+    it('falls through the priority list to a lower-ranked match', () => {
+      const categories = [category('Airbnb'), category('Groceries')];
+      expect(service.guessCategory(categories)?.name).toBe('Airbnb');
+    });
+
+    it('returns null when nothing matches', () => {
+      const categories = [category('Groceries'), category('Utilities')];
+      expect(service.guessCategory(categories)).toBeNull();
+    });
+
+    it('returns null for an empty category list', () => {
+      expect(service.guessCategory([])).toBeNull();
     });
   });
 });

@@ -1,3 +1,39 @@
+// No forced min-width here: it used to force mat-dialog-content wider than
+// the dialog surface's own max-width (set explicitly in the MatDialogConfig
+// that opens this component), which made the CONTENT wider than the box
+// that's supposed to show it - so the whole dialog scrolled horizontally
+// instead of just the night columns. Let it size naturally from its
+// content instead (the grid already shrink-wraps a small number of nights
+// and caps/scrolls internally for a large one).
 mat-dialog-content {
-  min-width: min(90vw, 640px);
+  // The app-wide `mat-dialog-content { display: grid !important; }` rule
+  // has no explicit grid-template-columns, so its implicit column track
+  // sizes to `auto` - which, unlike a normal block element, does NOT
+  // shrink to the container's own available width; it grows to match its
+  // child's natural content size instead. That let this dialog's grid
+  // content render at its full (unscrolled) width even when the dialog
+  // itself was capped much narrower, which is what actually caused the
+  // whole dialog - not just the night columns - to need its own
+  // horizontal scrollbar. minmax(0, 1fr) is the standard fix: it gives
+  // the track a real 0 minimum so it respects the container's width and
+  // lets its child shrink/scroll internally instead of overflowing.
+  grid-template-columns: minmax(0, 1fr);
+}
+
+app-rental-grid {
+  // The occupancy grid's default width cap (96vw) assumes it's on its own
+  // page; here it's inside a dialog that's already bounded to a sane
+  // width, so let it just fill that instead of a viewport-relative value
+  // that could exceed the dialog's actual (much narrower) box.
+  --rental-grid-max-width: 100%;
+}
+
+app-rental-grid .rental-controls-row {
+  // The grid's own @media (min-width: 600px) centers this row once it
+  // renders as one line - correct on the routed wizard page (page width
+  // IS the viewport there), but a dialog is a much narrower box floating
+  // in a full-width viewport, so that media query fires "wide" even when
+  // the dialog itself is small. A dialog is never wide enough to want
+  // this centered, so just force it left-aligned here regardless.
+  justify-content: flex-start !important;
 }

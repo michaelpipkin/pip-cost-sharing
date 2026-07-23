@@ -16,10 +16,9 @@
   </div>
 
   <p>
-    Enter the total cost and number of nights for the rental, then use the
-    grid below to mark who stayed each night. We'll calculate a fair
-    shares-based split and hand it off to the expense form for you to review
-    and save.
+    Enter the total cost and number of nights for the rental, then use the grid
+    below to mark who stayed each night. We'll calculate a fair shares-based
+    split and hand it off to the expense form for you to review and save.
   </p>
 
   <div class="flex-wrap fw-start row-gap mb-2" data-tour="rental-basic-info">
@@ -31,6 +30,7 @@
       <mat-label>Total Cost</mat-label>
       <input
         matInput
+        #inputElement
         class="number-right"
         [value]="amount()"
         appFormatCurrencyInput
@@ -43,14 +43,12 @@
         <span matTextPrefix>{{ localeService.currency().symbol }}</span>
       }
       @if (localeService.currency().symbolPosition === 'suffix') {
-        <span matTextSuffix>
-          &nbsp;{{ localeService.currency().symbol }}
-        </span>
+        <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
       }
     </mat-form-field>
     <mat-form-field
       appearance="fill"
-      class="number-field"
+      class="night-count-field no-subscript"
       subscriptSizing="dynamic"
     >
       <mat-label>Number of Nights</mat-label>
@@ -58,7 +56,7 @@
         matInput
         type="number"
         min="1"
-        class="number-right"
+        class="night-count-input"
         [value]="nightCount()"
         (blur)="onNightCountInput($any($event.target).value)"
         data-testid="night-count-input"
@@ -81,7 +79,7 @@
     [availableMembers]="activeMembers()"
     [nightCount]="nightCount()"
     [totalAmount]="totalAmountValue()"
-    [(participants)]="participants"
+    [(members)]="members"
   />
 
   <div class="flex-wrap fw-start row-gap mt-3">

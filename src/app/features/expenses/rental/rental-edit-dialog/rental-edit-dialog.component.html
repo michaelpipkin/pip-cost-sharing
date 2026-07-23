@@ -9,7 +9,7 @@
     </div>
     <mat-form-field
       appearance="fill"
-      class="number-field"
+      class="night-count-field no-subscript"
       subscriptSizing="dynamic"
     >
       <mat-label>Number of Nights</mat-label>
@@ -17,7 +17,7 @@
         matInput
         type="number"
         min="1"
-        class="number-right"
+        class="night-count-input"
         [value]="nightCount()"
         (blur)="onNightCountInput($any($event.target).value)"
         data-testid="rental-edit-night-count-input"
@@ -30,7 +30,7 @@
     [availableMembers]="data.availableMembers"
     [nightCount]="nightCount()"
     [totalAmount]="data.totalAmount"
-    [(participants)]="participants"
+    [(members)]="members"
   />
 </mat-dialog-content>
 <mat-dialog-actions>

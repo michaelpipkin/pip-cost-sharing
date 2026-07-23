@@ -242,9 +242,14 @@ export class AddExpenseComponent {
 
     this.splitMethod.set('shares');
     this.rentalDetails.set(rental);
+    const categories = this.activeCategories();
+    const guessedCategory =
+      categories.length === 1
+        ? categories[0]
+        : this.rentalUtils.guessCategory(categories);
     this.expenseModel.set({
       paidByMember: this.currentMember()?.ref ?? null,
-      category: this.activeCategories().length === 1 ? (this.activeCategories()[0]?.ref ?? null) : null,
+      category: guessedCategory?.ref ?? null,
       sharedAmount: 0,
       splits,
     });

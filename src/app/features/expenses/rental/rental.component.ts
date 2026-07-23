@@ -1,11 +1,14 @@
 import {
+  afterEveryRender,
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   inject,
   signal,
   Signal,
+  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -28,7 +31,7 @@ import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import {
   RentalGridComponent,
-  RentalParticipantRow,
+  RentalMemberRow,
 } from './rental-grid/rental-grid.component';
 
 /**
@@ -65,7 +68,9 @@ export class RentalComponent {
   protected readonly amount = signal<string>('0.00');
   protected readonly description = signal<string>('Vacation Rental');
   protected readonly nightCount = signal<number>(1);
-  protected readonly participants = signal<RentalParticipantRow[]>([]);
+  protected readonly members = signal<RentalMemberRow[]>([]);
+
+  inputElements = viewChildren<ElementRef>('inputElement');
 
   protected readonly totalAmountValue = computed(() =>
     this.stringUtils.toNumber(this.amount())
@@ -73,7 +78,7 @@ export class RentalComponent {
 
   protected readonly rentalDetails = computed<RentalDetails>(() => ({
     nightCount: this.nightCount(),
-    stays: this.participants().map((p) => ({
+    stays: this.members().map((p) => ({
       memberRef: p.memberRef,
       nights: p.nights
         .map((present, i) => (present ? i : -1))
@@ -89,18 +94,34 @@ export class RentalComponent {
     () =>
       this.totalAmountValue() > 0 &&
       this.nightCount() >= 1 &&
-      this.participants().length > 0 &&
+      this.members().length > 0 &&
       this.emptyNightIndices().length === 0
   );
 
   constructor() {
+    afterEveryRender(() => {
+      this.addSelectFocus();
+    });
     afterNextRender(() => {
       this.addAllActiveMembers();
     });
   }
 
+  addSelectFocus(): void {
+    this.inputElements().forEach((elementRef: ElementRef<any>) => {
+      const input = elementRef.nativeElement as HTMLInputElement;
+      input.addEventListener('focus', function () {
+        if (this.value === '0.00') {
+          this.value = '';
+        } else {
+          this.select();
+        }
+      });
+    });
+  }
+
   addAllActiveMembers(): void {
-    this.participants.set(
+    this.members.set(
       this.activeMembers()
         .filter((m) => !!m.ref)
         .map((m) => ({
@@ -122,7 +143,7 @@ export class RentalComponent {
       totalAmount: this.totalAmountValue(),
       description: this.description(),
       nightCount: this.nightCount(),
-      stays: this.participants().map((p) => ({
+      stays: this.members().map((p) => ({
         memberId: p.memberRef.id,
         nights: p.nights
           .map((present, i) => (present ? i : -1))

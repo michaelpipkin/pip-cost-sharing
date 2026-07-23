@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Category } from '@models/category';
 import { RentalDetails } from '@models/expense';
 import { Member } from '@models/member';
 import { DocumentReference } from 'firebase/firestore';
@@ -7,6 +8,22 @@ export interface RentalShareResult {
   memberRef: DocumentReference<Member>;
   shares: number;
 }
+
+/**
+ * Category names to look for (case-insensitive, exact match) when guessing
+ * a category for a vacation rental expense, in priority order.
+ */
+export const RENTAL_CATEGORY_NAME_PRIORITY: readonly string[] = [
+  'Travel',
+  'Vacation',
+  'Hotel',
+  'Rental',
+  'Lodging',
+  'Accommodation',
+  'Airbnb',
+  'VRBO',
+  'Trip',
+];
 
 /**
  * Computes vacation-rental share allocations for the shares split method.
@@ -61,6 +78,22 @@ export class RentalUtilsService {
     return occupancy
       .map((count, night) => (count === 0 ? night : -1))
       .filter((night) => night >= 0);
+  }
+
+  /**
+   * Guesses a category for a vacation rental expense by looking for an
+   * exact, case-insensitive match against RENTAL_CATEGORY_NAME_PRIORITY,
+   * checked in that order. Returns null if none of the group's categories
+   * match, leaving the field for the user to fill in as usual.
+   */
+  guessCategory(categories: Category[]): Category | null {
+    for (const name of RENTAL_CATEGORY_NAME_PRIORITY) {
+      const match = categories.find(
+        (c) => c.name.trim().toLowerCase() === name.toLowerCase()
+      );
+      if (match) return match;
+    }
+    return null;
   }
 
   #occupancyByNight(details: RentalDetails): number[] {

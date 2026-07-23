@@ -404,5 +404,31 @@ describe('AllocationUtilsService', () => {
       const result = service.allocateByShares({ totalAmount: 75, splits });
       expect(result.splits[0]!.allocatedAmount).toBe(75);
     });
+
+    it('gives members with equal shares equal amounts, regardless of position in the list', () => {
+      // Regression test: shares [3, 6.33, 4.33, 6.33] on $950 previously
+      // rounded each member's percentage independently, then dumped the
+      // entire leftover rounding remainder onto the LAST row only -
+      // giving the last of two equal-share members a different amount
+      // than the other, off by far more than a cent (a real report from
+      // a vacation-rental split where several members had identical
+      // shares).
+      const splits: AllocationSplit[] = [
+        { owedByMemberRef: { id: 'anya' }, assignedAmount: 0, percentage: 0, shares: 3, allocatedAmount: 0 },
+        { owedByMemberRef: { id: 'brie' }, assignedAmount: 0, percentage: 0, shares: 6.33, allocatedAmount: 0 },
+        { owedByMemberRef: { id: 'dmitri' }, assignedAmount: 0, percentage: 0, shares: 4.33, allocatedAmount: 0 },
+        { owedByMemberRef: { id: 'michael' }, assignedAmount: 0, percentage: 0, shares: 6.33, allocatedAmount: 0 },
+      ];
+      const result = service.allocateByShares({ totalAmount: 950, splits });
+
+      const byId = new Map(result.splits.map(s => [s.owedByMemberRef.id, s]));
+      expect(byId.get('brie')!.allocatedAmount).toBe(byId.get('michael')!.allocatedAmount);
+      expect(byId.get('brie')!.percentage).toBe(byId.get('michael')!.percentage);
+
+      const total = localeService.roundToCurrency(
+        result.splits.reduce((sum, s) => sum + s.allocatedAmount, 0)
+      );
+      expect(total).toBe(950);
+    });
   });
 });
