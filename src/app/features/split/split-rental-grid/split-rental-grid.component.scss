@@ -1,0 +1,21 @@
+@use '../../../styles/occupancy-grid' as og;
+
+// The layout rules (box-sizing scoping, width/max-width clamping, the
+// three-tables-side-by-side flex mechanics, row heights) are shared with
+// RentalGridComponent (the group-expense flow's version of this grid) via
+// this mixin - see _occupancy-grid.scss for the full reasoning behind each
+// rule. Only the add-by-name row styling (this component's own affordance,
+// replacing the group flow's roster dropdown) stays local below.
+@include og.occupancy-grid-layout;
+
+#add-participant-input {
+  min-width: 220px;
+}
+
+// Always left-aligned: unlike the group-expense grid (which centers once
+// its controls row is wide enough - see that component's stylesheet), this
+// row is just a name field + one button, short enough that centering it
+// alone on a wide page would look adrift from the table below it.
+.rental-controls-row {
+  justify-content: flex-start;
+}

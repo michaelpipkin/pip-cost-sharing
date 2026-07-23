@@ -52,6 +52,7 @@ export class HelpContentService {
         'Click the Splits arrow on any row to expand the split detail for that expense. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing. Group admins can use the Mark Paid/Unpaid button on a split row to make corrections to individual splits. Note that this does not create a payment history record — to record a payment between members with history and notifications, use the Summary page.',
         'Click the Add New Expense button to create a new expense for the group.',
         'Click on an expense row to edit the expense details. Please note that editing an expense will mark all splits unpaid. When viewing an existing expense, you can view the receipt, if one exists.',
+        'Sharing a vacation rental where not everyone stays every night? Click the Vacation Rental button for a guided way to split the cost fairly - see the Vacation Rental help section for details.',
       ],
     },
     {
@@ -67,6 +68,18 @@ export class HelpContentService {
         "If you are splitting by shares, enter a share value for each member (decimals allowed, e.g., 1.5). The effective percentage for each member is shown next to their shares input and updates as you type. Shares let you express ratios (e.g., 2:1) without computing percentages manually.",
         'Click the calculator button in amount fields to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'The form also allows you to upload a supporting receipt for the expense. The receipt must be a PDF or an image file, with a maximum size of 5MB. Click the Upload receipt button, then select your file. The receipt will be saved with the expense. Please note that receipts are automatically deleted after 90 days if the expense is fully paid. If you need to keep a receipt for your records, please save a copy on your device.',
+      ],
+    },
+    {
+      id: 'vacation-rental',
+      title: 'Vacation Rental',
+      content: [
+        "Use this wizard when a group shares a vacation rental (like a VRBO or AirBnB) and not everyone stays every night, so a simple even split isn't fair.",
+        'Enter the total cost of the rental and the number of nights. By default, every active group member is added as a participant for the full stay - use Add Participant, Add All Members, or the delete button on a row to adjust who is included.',
+        "In the grid, uncheck a night for anyone who didn't stay that night. The checkbox at the top of each night's column toggles everyone for that night at once. Every night needs at least one participant checked, or the wizard can't calculate a fair split for that night.",
+        "As you check and uncheck nights, each participant's Shares and Amount columns update automatically. Nights with fewer participants cost each of them more, and nights with more participants cost each of them less, so the total for each night is always split evenly among whoever stayed.",
+        'When you click Continue, the calculated split is handed off to the Add Expense page as a Shares split, already filled in. Review the payer, category, and date, then save as usual.',
+        "If you need to change who stayed which nights after saving, open the expense from the Expenses page and click Edit Occupancy Grid. The split is recalculated automatically and you can save it like any other edit.",
       ],
     },
     {
@@ -137,6 +150,7 @@ export class HelpContentService {
         "If you are splitting by shares, enter a share value for each member (decimals allowed, e.g., 1.5). The effective percentage is shown next to each shares input. Shares let you express ratios (e.g., 2:1) without computing percentages manually.",
         'You can perform basic arithmetic directly in any amount input field, but not percentage fields. (i.e. entering 3*6-2 in the total amount field will evaluate to 16.00) You can also use the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'When all of the amounts are entered, click the Generate Summary button to create a summary of the split expense. On the summary, there is a copy button you can click to copy the summary to your clipboard so that it can be easily shared.',
+        "Sharing a vacation rental where not everyone stays every night? Click the Vacation Rental button for a guided occupancy grid: enter the number of nights, add participants, and check off who stayed each night. Every night's cost is divided evenly among whoever stayed, so nights with fewer people cost each of them more. Click Apply Shares to convert the grid into a shares split you can still review and fine-tune before generating your summary.",
       ],
     },
   ];

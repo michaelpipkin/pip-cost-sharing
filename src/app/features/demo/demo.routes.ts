@@ -4,6 +4,7 @@ import { AddExpenseComponent } from '@features/expenses/add-expense/add-expense.
 import { editExpenseResolver } from '@features/expenses/edit-expense.resolver';
 import { EditExpenseComponent } from '@features/expenses/edit-expense/edit-expense.component';
 import { ExpensesComponent } from '@features/expenses/expenses/expenses.component';
+import { RentalComponent } from '@features/expenses/rental/rental.component';
 import { GroupsComponent } from '@features/groups/groups/groups.component';
 import { HelpComponent } from '@features/help/help.component';
 import { HistoryComponent } from '@features/history/history/history.component';
@@ -52,6 +53,11 @@ export const demoRoutes: Routes = [
         path: 'add',
         title: 'Demo - Add Expense',
         component: AddExpenseComponent,
+      },
+      {
+        path: 'rental',
+        title: 'Demo - Vacation Rental',
+        component: RentalComponent,
       },
       {
         path: ':id',

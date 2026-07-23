@@ -354,6 +354,10 @@ body.dark-theme {
   &.row-gap {
     row-gap: 1rem;
   }
+
+  &.align-baseline {
+    align-items: baseline;
+  }
 }
 
 .page-header {
@@ -685,6 +689,21 @@ tr.detail-row:hover {
 input.number-right::-webkit-outer-spin-button,
 input.number-right::-webkit-inner-spin-button {
   display: none;
+}
+
+// Unlike .number-right, this keeps the native up/down spinner visible -
+// used for plain type="number" inputs (e.g. Number of Nights) where the
+// stepper is wanted, rather than the app's custom currency/decimal inputs.
+.night-count-input {
+  text-align: right !important;
+}
+
+// Same width as .number-field (wide enough for a floated label like
+// "Number of Nights"), but deliberately without its infix max-width
+// override - that 150px/100px split leaves a dead gap after a visible
+// number spinner, since nothing else fills the infix's extra width.
+.night-count-field {
+  width: 130px;
 }
 
 mat-error,

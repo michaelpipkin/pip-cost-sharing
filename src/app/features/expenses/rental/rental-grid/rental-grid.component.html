@@ -1,0 +1,170 @@
+<div class="rental-grid" data-testid="rental-grid">
+  @if (remainingMembers().length > 0) {
+    <div class="flex-wrap rental-controls-row row-gap mb-2">
+      <mat-form-field id="add-member-select" subscriptSizing="dynamic">
+        <mat-label>Add Member</mat-label>
+        <mat-select
+          [(ngModel)]="selectedMemberToAdd"
+          docRefCompare
+          data-testid="add-member-select"
+          aria-label="Select a member to add"
+        >
+          @for (member of remainingMembers(); track member.ref) {
+            <mat-option [value]="member.ref">
+              {{ member.displayName }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-primary"
+        [disabled]="!selectedMemberToAdd"
+        (click)="addSelectedMember()"
+        data-testid="add-member-button"
+      >
+        Add Member
+      </button>
+      <button
+        mat-raised-button
+        type="button"
+        class="btn-primary"
+        [disabled]="remainingMembers().length === 0"
+        (click)="addAllRemainingMembers()"
+        data-testid="add-all-members-button"
+      >
+        Add All Members
+      </button>
+    </div>
+  }
+
+  @if (members().length === 0) {
+    <p class="error-text" data-testid="no-members-message">
+      Add at least one member to build the occupancy grid.
+    </p>
+  } @else {
+    <div class="table-container rental-table-container">
+      <div class="occupancy-grid" data-testid="occupancy-table">
+        <table class="static-table compact-table occupancy-fixed-left">
+          <thead>
+            <tr>
+              <th class="cell-left">Member</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of members(); track row.memberRef.id) {
+              <tr data-testid="member-row">
+                <td class="cell-left">{{ row.displayName }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="cell-left no-wrap">Total</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="occupancy-scroll">
+          <table class="static-table compact-table">
+            <thead>
+              <tr>
+                @for (night of nightIndices(); track night) {
+                  <th class="cell-center no-wrap">
+                    <div>Night {{ night + 1 }}</div>
+                    <mat-checkbox
+                      [checked]="isNightFull(night)"
+                      [indeterminate]="isNightPartial(night)"
+                      (change)="setAllForNight(night, $event.checked)"
+                      [attr.aria-label]="
+                        'Toggle all members for night ' + (night + 1)
+                      "
+                    ></mat-checkbox>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of members(); track row.memberRef.id; let i = $index) {
+                <tr>
+                  @for (night of nightIndices(); track night) {
+                    <td class="cell-center">
+                      <mat-checkbox
+                        [checked]="row.nights[night]"
+                        (change)="toggleNight(i, night)"
+                        [attr.aria-label]="
+                          row.displayName + ' present night ' + (night + 1)
+                        "
+                      ></mat-checkbox>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                @for (night of nightIndices(); track night) {
+                  <td></td>
+                }
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <table class="static-table compact-table occupancy-fixed-right">
+          <thead>
+            <tr>
+              <th class="cell-right no-wrap">Shares</th>
+              <th class="cell-right no-wrap">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of members(); track row.memberRef.id; let i = $index) {
+              <tr>
+                <td class="cell-right" data-testid="member-shares">
+                  {{ shareFor(row.memberRef) | number: '1.2-2' }}
+                </td>
+                <td class="cell-right" data-testid="member-amount">
+                  {{ amountFor(row.memberRef) | currency }}
+                </td>
+                <td class="cell-center">
+                  <button
+                    mat-mini-fab
+                    type="button"
+                    class="btn-danger"
+                    (click)="removeMember(i)"
+                    data-testid="remove-member-button"
+                    aria-label="Remove member"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="cell-right no-wrap" data-testid="total-shares">
+                {{ totalShares() | number: '1.2-2' }}
+              </td>
+              <td class="cell-right no-wrap" data-testid="total-amount">
+                {{ totalPreviewAmount() | currency }}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (emptyNightIndices().length > 0) {
+    <p class="error-text" data-testid="empty-nights-warning">
+      No one is staying on
+      {{ emptyNightIndices().length === 1 ? 'night' : 'nights' }}
+      {{ emptyNightLabel() }}. Every night must have at least one member.
+    </p>
+  }
+</div>

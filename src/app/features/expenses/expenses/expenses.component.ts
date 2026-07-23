@@ -312,6 +312,14 @@ export class ExpensesComponent {
     }
   }
 
+  onAddRentalClick(): void {
+    if (this.demoService.isInDemoMode()) {
+      this.router.navigate(['/demo/expenses/rental']);
+    } else {
+      this.router.navigate(['/expenses/rental']);
+    }
+  }
+
   onRowClick(expense: Expense): void {
     if (this.demoService.isInDemoMode()) {
       this.demoService.showDemoModeRestrictionMessage();

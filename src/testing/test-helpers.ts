@@ -348,11 +348,14 @@ export function createMockTourService() {
     checkForContinueTour: vi.fn(),
     resetAllTours: vi.fn(),
     startWelcomeTour: vi.fn(),
+    startGroupsTour: vi.fn(),
     startMembersTour: vi.fn(),
     startCategoriesTour: vi.fn(),
     startHistoryTour: vi.fn(),
     startMemorizedTour: vi.fn(),
     startExpensesTour: vi.fn(),
+    startAddExpenseTour: vi.fn(),
+    startSummaryTour: vi.fn(),
   };
 }
 

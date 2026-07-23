@@ -164,6 +164,7 @@ export class GroupsComponent {
   }
 
   startTour(): void {
-    this.tourService.startWelcomeTour(true);
+    // Force start the Groups Tour (ignoring completion state)
+    this.tourService.startGroupsTour(true);
   }
 }
