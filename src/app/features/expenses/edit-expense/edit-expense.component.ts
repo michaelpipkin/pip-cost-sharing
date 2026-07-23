@@ -41,11 +41,22 @@ import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
 import {
+  RentalEditDialogComponent,
+  RentalEditDialogData,
+  RentalEditDialogResult,
+} from '@features/expenses/rental/rental-edit-dialog/rental-edit-dialog.component';
+import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { Expense, ExpenseDto, ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
+import {
+  Expense,
+  ExpenseDto,
+  ExpenseForm,
+  ExpenseSplitItemForm,
+  RentalDetails,
+} from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
@@ -63,6 +74,7 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils/allocation-utils.service';
 import { toIsoFormat } from '@utils/date-utils';
+import { RentalUtilsService } from '@utils/rental-utils.service';
 import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
 import { FirebaseError } from 'firebase/app';
@@ -110,6 +122,7 @@ export class EditExpenseComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
 
@@ -137,6 +150,8 @@ export class EditExpenseComponent {
   });
 
   splitMethod = signal<SplitMethod>(this.expense().splitMethod);
+  rentalDetails = signal<RentalDetails | null>(this.expense().rental ?? null);
+  hasRental = computed(() => this.rentalDetails() !== null);
 
   fileName = model<string>('');
   receiptFile = model<File | null>(null);
@@ -550,6 +565,7 @@ export class EditExpenseComponent {
             totalAmount: this.stringUtils.toNumber(fd.amount),
             splitMethod: this.splitMethod(),
             paid: false,
+            ...(this.rentalDetails() ? { rental: this.rentalDetails() } : {}),
           };
           const splits: Partial<SplitDto>[] = model.splits.map(s => ({
             date: expenseDate,
@@ -679,5 +695,41 @@ export class EditExpenseComponent {
       data: { sectionId: 'add-edit-expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  editRentalGrid(): void {
+    const rental = this.rentalDetails();
+    if (!rental) return;
+    const dialogConfig: MatDialogConfig<RentalEditDialogData> = {
+      disableClose: false,
+      data: {
+        rental,
+        totalAmount: this.stringUtils.toNumber(this.expenseFormData().amount),
+        availableMembers: this.splitMembers(),
+      },
+    };
+    const dialogRef = this.dialog.open(RentalEditDialogComponent, dialogConfig);
+    dialogRef
+      .afterClosed()
+      .subscribe((result: RentalEditDialogResult | undefined) => {
+        if (result) {
+          this.#applyRentalEdit(result.rental);
+        }
+      });
+  }
+
+  #applyRentalEdit(rental: RentalDetails): void {
+    this.modelDirty.set(true);
+    this.rentalDetails.set(rental);
+    const shareResults = this.rentalUtils.computeShares(rental);
+    const splits: ExpenseSplitItemForm[] = shareResults.map(r => ({
+      owedByMemberRef: r.memberRef,
+      assignedAmount: this.localeService.getFormattedZero(),
+      percentage: 0,
+      shares: r.shares,
+      allocatedAmount: 0,
+    }));
+    this.expenseModel.update(m => ({ ...m, splits }));
+    this.allocateByShares();
   }
 }

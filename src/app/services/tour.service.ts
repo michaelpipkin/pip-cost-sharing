@@ -641,6 +641,20 @@ export class TourService {
           ],
         },
         {
+          id: 'expenses-vacation-rental',
+          attachTo: {
+            element: '[data-tour="add-rental-button"]',
+            on: 'bottom',
+          },
+          title: 'Splitting a Vacation Rental',
+          text: "Sharing a vacation rental where not everyone stays every night? Click here for a guided wizard that figures out a fair split for you, based on who stayed which nights.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
           id: 'expenses-next-steps',
           title: 'Try Adding an Expense',
           text: "Let's explore how to add an expense with splits!",

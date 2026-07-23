@@ -6,6 +6,7 @@ import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { SplitStore } from '@store/split.store';
 import { parseDate, toIsoFormat } from '@utils/date-utils';
+import { ISplitService } from './split.service.interface';
 import {
   collection,
   doc,
@@ -17,7 +18,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { ISplitService } from './split.service.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -211,7 +211,7 @@ export class SplitService implements ISplitService {
     // Create one history record per transfer with full split ref list
     const batchId =
       crypto.randomUUID?.() ??
-      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`; // NOSONAR
     const batchSize = transfers.length;
     const splitRefs = splits
       .filter((s) => s.ref != null)

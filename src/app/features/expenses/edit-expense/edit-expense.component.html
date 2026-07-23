@@ -236,6 +236,22 @@
           (methodChanged)="onSplitMethodChange()"
         />
       </div>
+      @if (hasRental()) {
+        <div class="flex-wrap fw-start row-gap mt-2" data-testid="rental-banner">
+          <p class="no-wrap">
+            This expense was created from the Vacation Rental wizard.
+          </p>
+          <button
+            mat-raised-button
+            type="button"
+            class="btn-primary"
+            (click)="editRentalGrid()"
+            data-testid="edit-rental-grid-button"
+          >
+            Edit Occupancy Grid
+          </button>
+        </div>
+      }
       <div class="mt-3">
         @for (
           split of expenseModel().splits;

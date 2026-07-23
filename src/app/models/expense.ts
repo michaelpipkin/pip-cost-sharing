@@ -34,6 +34,43 @@ export interface MemorizedForm {
   splits: ExpenseSplitItemForm[];
 }
 
+/**
+ * Per-night occupancy for a single participant in a vacation rental expense.
+ * `nights` holds the 0-based indices of the nights this member stayed.
+ */
+export interface RentalStay {
+  memberRef: DocumentReference<Member>;
+  nights: number[];
+}
+
+/**
+ * Occupancy details for a vacation rental expense, used to derive the
+ * shares split (see RentalUtilsService). Persisted alongside the expense
+ * so the occupancy grid can be reopened and edited later.
+ */
+export interface RentalDetails {
+  nightCount: number;
+  stays: RentalStay[];
+}
+
+/**
+ * Serializable form of a rental wizard result, passed via router navigation
+ * state from the Vacation Rental wizard to Add Expense (DocumentReferences
+ * aren't structured-cloneable, so member associations travel as plain ids -
+ * mirrors SerializableMemorized for the same reason).
+ */
+export interface SerializableRentalStay {
+  memberId: string;
+  nights: number[];
+}
+
+export interface SerializableRentalPayload {
+  totalAmount: number;
+  description: string;
+  nightCount: number;
+  stays: SerializableRentalStay[];
+}
+
 export class Expense {
   constructor(init?: Partial<Expense>) {
     Object.assign(this, init);
@@ -52,6 +89,8 @@ export class Expense {
   splits!: Split[];
   receiptPath?: string | null; // Store the storage path as a string
   paid: boolean = false;
+  /** Present only for expenses created via the Vacation Rental wizard. */
+  rental?: RentalDetails | null;
   ref?: DocumentReference<Expense>;
 
   get hasReceipt(): boolean {

@@ -1,0 +1,107 @@
+<div class="container pt-3" data-testid="rental-container">
+  <div class="page-header" data-testid="page-header">
+    <div></div>
+    <h3 data-testid="page-title">Vacation Rental</h3>
+    <div class="help-icon" data-testid="help-icon-container">
+      <mat-icon
+        matTooltip="Help"
+        (click)="showHelp()"
+        (keydown.enter)="showHelp()"
+        data-testid="help-button"
+        aria-label="Show help for the vacation rental wizard"
+      >
+        help
+      </mat-icon>
+    </div>
+  </div>
+
+  <p>
+    Enter the total cost and number of nights for the rental, then use the
+    grid below to mark who stayed each night. We'll calculate a fair
+    shares-based split and hand it off to the expense form for you to review
+    and save.
+  </p>
+
+  <div class="flex-wrap fw-start row-gap mb-2" data-tour="rental-basic-info">
+    <mat-form-field
+      appearance="fill"
+      floatLabel="always"
+      class="total-amount-field"
+    >
+      <mat-label>Total Cost</mat-label>
+      <input
+        matInput
+        class="number-right"
+        [value]="amount()"
+        appFormatCurrencyInput
+        (blur)="amount.set($any($event.target).value)"
+        inputmode="decimal"
+        data-testid="amount-input"
+        aria-label="Total cost of the rental"
+      />
+      @if (localeService.currency().symbolPosition === 'prefix') {
+        <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+      }
+      @if (localeService.currency().symbolPosition === 'suffix') {
+        <span matTextSuffix>
+          &nbsp;{{ localeService.currency().symbol }}
+        </span>
+      }
+    </mat-form-field>
+    <mat-form-field
+      appearance="fill"
+      class="number-field"
+      subscriptSizing="dynamic"
+    >
+      <mat-label>Number of Nights</mat-label>
+      <input
+        matInput
+        type="number"
+        min="1"
+        class="number-right"
+        [value]="nightCount()"
+        (blur)="onNightCountInput($any($event.target).value)"
+        data-testid="night-count-input"
+        aria-label="Number of nights"
+      />
+    </mat-form-field>
+    <mat-form-field appearance="fill" id="description">
+      <mat-label>Description</mat-label>
+      <input
+        matInput
+        [value]="description()"
+        (blur)="description.set($any($event.target).value)"
+        data-testid="description-input"
+        aria-label="Description"
+      />
+    </mat-form-field>
+  </div>
+
+  <app-rental-grid
+    [availableMembers]="activeMembers()"
+    [nightCount]="nightCount()"
+    [totalAmount]="totalAmountValue()"
+    [(participants)]="participants"
+  />
+
+  <div class="flex-wrap fw-start row-gap mt-3">
+    <button
+      mat-raised-button
+      class="btn-secondary"
+      type="button"
+      [disabled]="!canContinue()"
+      (click)="onContinue()"
+      data-testid="continue-button"
+    >
+      Continue
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="onCancel()"
+      data-testid="cancel-button"
+    >
+      Cancel
+    </button>
+  </div>
+</div>

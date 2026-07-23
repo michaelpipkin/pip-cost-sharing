@@ -1,0 +1,55 @@
+<h2 mat-dialog-title>Edit Occupancy Grid</h2>
+<mat-dialog-content>
+  <div class="flex-wrap fw-start row-gap mb-2">
+    <div class="mock-input">
+      <span class="mock-label">Total Cost</span>
+      <span class="mock-value-right" data-testid="rental-edit-total-cost">
+        {{ data.totalAmount | currency }}
+      </span>
+    </div>
+    <mat-form-field
+      appearance="fill"
+      class="number-field"
+      subscriptSizing="dynamic"
+    >
+      <mat-label>Number of Nights</mat-label>
+      <input
+        matInput
+        type="number"
+        min="1"
+        class="number-right"
+        [value]="nightCount()"
+        (blur)="onNightCountInput($any($event.target).value)"
+        data-testid="rental-edit-night-count-input"
+        aria-label="Number of nights"
+      />
+    </mat-form-field>
+  </div>
+
+  <app-rental-grid
+    [availableMembers]="data.availableMembers"
+    [nightCount]="nightCount()"
+    [totalAmount]="data.totalAmount"
+    [(participants)]="participants"
+  />
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button
+    mat-stroked-button
+    type="button"
+    (click)="onCancel()"
+    data-testid="rental-edit-cancel-button"
+  >
+    Cancel
+  </button>
+  <button
+    mat-raised-button
+    class="btn-secondary"
+    type="button"
+    [disabled]="!canSave()"
+    (click)="onSave()"
+    data-testid="rental-edit-save-button"
+  >
+    Save
+  </button>
+</mat-dialog-actions>
