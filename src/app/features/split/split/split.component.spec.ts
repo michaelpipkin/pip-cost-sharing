@@ -609,6 +609,34 @@ describe('SplitComponent', () => {
 
       expect(mockTourService.startWelcomeTour).toHaveBeenCalled();
     });
+
+    it('restores the pristine demo data when restarting the tour after Apply Shares changed it', async () => {
+      await fixture.whenStable();
+
+      component.rentalParticipants.set([
+        { name: 'Alice', nights: [true] },
+        { name: 'Bob', nights: [true] },
+        { name: 'Charlie', nights: [true] },
+      ]);
+      component.rentalMode.set(true);
+      component.applyShares();
+      await fixture.whenStable();
+
+      expect(component.splitMethod()).toBe('shares');
+
+      component.startTour();
+      await fixture.whenStable();
+
+      expect(component.splitMethod()).toBe('amount');
+      expect(getModel().splits.map(s => s.owedBy)).toEqual([
+        'Alice',
+        'Bob',
+        'Charlie',
+      ]);
+      expect(getModel().splits[0]!.assignedAmount).toBe('12.55');
+      expect(getModel().splits[1]!.assignedAmount).toBe('13.37');
+      expect(getModel().splits[2]!.assignedAmount).toBe('14.02');
+    });
   });
 
   describe('methods', () => {
@@ -619,6 +647,16 @@ describe('SplitComponent', () => {
 
     it('should delegate startTour to tourService', () => {
       component.startTour();
+      expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
+    });
+
+    it('should exit rental mode before starting the tour, so the tour targets elements that are actually visible', () => {
+      component.rentalParticipants.set([{ name: 'Alice', nights: [true] }]);
+      component.rentalMode.set(true);
+
+      component.startTour();
+
+      expect(component.rentalMode()).toBe(false);
       expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
     });
 
@@ -644,6 +682,142 @@ describe('SplitComponent', () => {
       fixture.detectChanges();
 
       expect(query('amount-error-0')).toBeNull();
+    });
+  });
+
+  describe('vacation rental', () => {
+    it('seeds rentalParticipants from existing owedBy names when entering rental mode', () => {
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+      patchSplit(0, { owedBy: 'Alice' });
+      patchSplit(1, { owedBy: 'Bob' });
+      patchSplit(2, { owedBy: '' });
+
+      component.rentalNightCount.set(3);
+      component.enterRentalMode();
+
+      expect(component.rentalMode()).toBe(true);
+      expect(component.rentalParticipants()).toEqual([
+        { name: 'Alice', nights: [true, true, true] },
+        { name: 'Bob', nights: [true, true, true] },
+      ]);
+    });
+
+    it('de-duplicates seeded names case-insensitively', () => {
+      component.addSplit();
+      component.addSplit();
+      patchSplit(0, { owedBy: 'Alice' });
+      patchSplit(1, { owedBy: 'alice' });
+
+      component.enterRentalMode();
+
+      expect(component.rentalParticipants().length).toBe(1);
+    });
+
+    it('exitRentalMode leaves splits and splitMethod untouched', () => {
+      component.addSplit();
+      patchSplit(0, { owedBy: 'Alice' });
+      component.enterRentalMode();
+      component.rentalParticipants.set([{ name: 'Bob', nights: [true] }]);
+
+      component.exitRentalMode();
+
+      expect(component.rentalMode()).toBe(false);
+      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits[0]!.owedBy).toBe('Alice');
+      expect(component.splitMethod()).toBe('amount');
+    });
+
+    it('applyShares rebuilds splits from the grid and switches to shares mode', async () => {
+      // Alice both nights, Bob only night 1: pool = 2*2 = 4, Alice = 3
+      // shares (75%), Bob = 1 share (25%) - see the worked example in
+      // split-rental-grid.component.spec.ts.
+      patchModel({ amount: '100.00' });
+      component.rentalNightCount.set(2);
+      component.rentalParticipants.set([
+        { name: 'Alice', nights: [true, true] },
+        { name: 'Bob', nights: [true, false] },
+      ]);
+      component.rentalMode.set(true);
+
+      component.applyShares();
+      await fixture.whenStable();
+
+      expect(component.splitMethod()).toBe('shares');
+      expect(component.rentalMode()).toBe(false);
+
+      const alice = getModel().splits.find(s => s.owedBy === 'Alice')!;
+      const bob = getModel().splits.find(s => s.owedBy === 'Bob')!;
+      expect(alice.allocatedAmount).toBe(75);
+      expect(bob.allocatedAmount).toBe(25);
+    });
+
+    it('resets assignedAmount, while percentage reflects the computed share', async () => {
+      // assignedAmount is irrelevant to shares mode and is cleared; percentage
+      // is NOT left at zero - the subsequent allocateByShares() call (which
+      // applyShares() invokes to fill allocatedAmount) recomputes it as the
+      // real derived share percentage, same as everywhere else shares mode
+      // is used. A lone participant legitimately ends up at 100%.
+      patchModel({ amount: '10.00' });
+      component.rentalNightCount.set(1);
+      component.rentalParticipants.set([{ name: 'Alice', nights: [true] }]);
+      component.rentalMode.set(true);
+
+      component.applyShares();
+      await fixture.whenStable();
+
+      expect(parseFloat(getModel().splits[0]!.assignedAmount)).toBe(0);
+      expect(getModel().splits[0]!.percentage).toBe(100);
+      expect(getModel().splits[0]!.shares).toBe(1);
+    });
+
+    it('applyShares does nothing when there are no participants', () => {
+      component.rentalMode.set(true);
+      component.rentalParticipants.set([]);
+
+      component.applyShares();
+
+      expect(component.rentalMode()).toBe(true);
+      expect(getModel().splits.length).toBe(0);
+    });
+
+    it('applyShares does nothing when a night has no occupants', () => {
+      component.rentalNightCount.set(2);
+      component.rentalParticipants.set([
+        { name: 'Alice', nights: [true, false] },
+      ]);
+      component.rentalMode.set(true);
+
+      expect(component.canApplyShares()).toBe(false);
+
+      component.applyShares();
+
+      expect(component.rentalMode()).toBe(true);
+      expect(getModel().splits.length).toBe(0);
+    });
+
+    it('resetForm clears rental state', () => {
+      component.rentalMode.set(true);
+      component.rentalNightCount.set(5);
+      component.rentalParticipants.set([{ name: 'Alice', nights: [true] }]);
+
+      component.resetForm();
+
+      expect(component.rentalMode()).toBe(false);
+      expect(component.rentalNightCount()).toBe(1);
+      expect(component.rentalParticipants()).toEqual([]);
+    });
+
+    it('onRentalNightCountInput clamps to a minimum of 1', () => {
+      component.onRentalNightCountInput('0');
+      expect(component.rentalNightCount()).toBe(1);
+
+      component.onRentalNightCountInput('-3');
+      expect(component.rentalNightCount()).toBe(1);
+
+      component.onRentalNightCountInput('5');
+      expect(component.rentalNightCount()).toBe(5);
     });
   });
 });

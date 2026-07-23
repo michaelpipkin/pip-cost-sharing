@@ -27,7 +27,13 @@
           <mat-label>Payer</mat-label>
           <mat-select
             [value]="expenseModel().paidByMember"
-            (selectionChange)="expenseModel.update(m => ({...m, paidByMember: $event.value})); modelDirty.set(true)"
+            (selectionChange)="
+              expenseModel.update((m) => ({
+                ...m,
+                paidByMember: $event.value,
+              }));
+              modelDirty.set(true)
+            "
             docRefCompare
           >
             @for (member of expenseMembers(); track member.ref) {
@@ -78,7 +84,10 @@
           <mat-label>Category</mat-label>
           <mat-select
             [value]="expenseModel().category"
-            (selectionChange)="expenseModel.update(m => ({...m, category: $event.value})); modelDirty.set(true)"
+            (selectionChange)="
+              expenseModel.update((m) => ({ ...m, category: $event.value }));
+              modelDirty.set(true)
+            "
             docRefCompare
           >
             @for (category of categories(); track category.ref) {
@@ -236,19 +245,37 @@
           (methodChanged)="onSplitMethodChange()"
         />
       </div>
+      @if (hasRental()) {
+        <div
+          class="flex-wrap fw-start row-gap align-baseline mt-2"
+          data-testid="rental-banner"
+        >
+          <p class="no-wrap">
+            This expense was created from the Vacation Rental wizard.
+          </p>
+          <button
+            mat-raised-button
+            type="button"
+            class="btn-primary"
+            (click)="editRentalGrid()"
+            data-testid="edit-rental-grid-button"
+          >
+            Edit Occupancy Grid
+          </button>
+        </div>
+      }
       <div class="mt-3">
-        @for (
-          split of expenseModel().splits;
-          track $index;
-          let i = $index
-        ) {
+        @for (split of expenseModel().splits; track $index; let i = $index) {
           <div class="flex-wrap fw-start row-gap">
             <div class="splits-1">
               <mat-form-field id="split-member" subscriptSizing="dynamic">
                 <mat-label>Member</mat-label>
                 <mat-select
                   [value]="split.owedByMemberRef"
-                  (selectionChange)="updateSplit(i, 'owedByMemberRef', $event.value); allocateSharedAmounts()"
+                  (selectionChange)="
+                    updateSplit(i, 'owedByMemberRef', $event.value);
+                    allocateSharedAmounts()
+                  "
                   docRefCompare
                 >
                   @for (
@@ -295,7 +322,14 @@
                         #inputElement
                         class="number-right"
                         [value]="split.percentage ?? 0"
-                        (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()"
+                        (blur)="
+                          updateSplit(
+                            i,
+                            'percentage',
+                            +$any($event.target).value || 0
+                          );
+                          allocateByPercentage()
+                        "
                       />
                     }
                     <span matTextSuffix>%</span>
@@ -315,7 +349,14 @@
                         class="number-right"
                         [value]="split.shares ?? 0"
                         inputmode="decimal"
-                        (blur)="updateSplit(i, 'shares', +$any($event.target).value || 0); allocateByShares()"
+                        (blur)="
+                          updateSplit(
+                            i,
+                            'shares',
+                            +$any($event.target).value || 0
+                          );
+                          allocateByShares()
+                        "
                       />
                       <span matTextSuffix class="no-wrap">
                         &nbsp;&nbsp;({{
@@ -338,7 +379,14 @@
                       class="number-right"
                       [value]="split.assignedAmount"
                       appFormatCurrencyInput
-                      (blur)="updateSplit(i, 'assignedAmount', $any($event.target).value); allocateSharedAmounts()"
+                      (blur)="
+                        updateSplit(
+                          i,
+                          'assignedAmount',
+                          $any($event.target).value
+                        );
+                        allocateSharedAmounts()
+                      "
                       inputmode="decimal"
                     />
                     @if (localeService.currency().symbolPosition === 'prefix') {
@@ -407,11 +455,7 @@
       >
         Delete
       </button>
-      <button
-        mat-stroked-button
-        type="button"
-        (click)="onCancel()"
-      >
+      <button mat-stroked-button type="button" (click)="onCancel()">
         Cancel
       </button>
     </div>

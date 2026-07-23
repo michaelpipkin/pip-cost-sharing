@@ -43,7 +43,14 @@ import {
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
 import { Category } from '@models/category';
-import { ExpenseDto, ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
+import {
+  ExpenseDto,
+  ExpenseForm,
+  ExpenseSplitItemForm,
+  RentalDetails,
+  RentalStay,
+  SerializableRentalPayload,
+} from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { SerializableMemorized } from '@models/memorized';
@@ -65,6 +72,7 @@ import { UserStore } from '@store/user.store';
 import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils/allocation-utils.service';
 import { toIsoFormat } from '@utils/date-utils';
+import { RentalUtilsService } from '@utils/rental-utils.service';
 import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
@@ -112,6 +120,7 @@ export class AddExpenseComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
 
@@ -121,6 +130,8 @@ export class AddExpenseComponent {
   readonly #categories: Signal<Category[]> = this.categoryStore.groupCategories;
 
   memorizedExpense = signal<SerializableMemorized | null>(null);
+  rentalPayload = signal<SerializableRentalPayload | null>(null);
+  rentalDetails = signal<RentalDetails | null>(null);
 
   activeCategories = computed<Category[]>(() =>
     this.#categories().filter((c) => c.active)
@@ -180,14 +191,18 @@ export class AddExpenseComponent {
   constructor() {
     this.loading.loadingOn();
     const navigation = this.router.currentNavigation();
-    if (navigation?.extras?.state?.expense) {
+    if (navigation?.extras?.state?.rental) {
+      this.rentalPayload.set(navigation.extras.state.rental);
+    } else if (navigation?.extras?.state?.expense) {
       this.memorizedExpense.set(navigation.extras.state.expense);
     }
     afterEveryRender(() => {
       this.addSelectFocus();
     });
     afterNextRender(() => {
-      if (this.memorizedExpense()) {
+      if (this.rentalPayload()) {
+        this.loadRentalExpense();
+      } else if (this.memorizedExpense()) {
         this.loadMemorizedExpense();
       } else {
         const currentMemberRef = this.currentMember()?.ref;
@@ -203,6 +218,48 @@ export class AddExpenseComponent {
       }
       this.loading.loadingOff();
     });
+  }
+
+  loadRentalExpense(): void {
+    const payload = this.rentalPayload()!;
+    const stays: RentalStay[] = payload.stays
+      .map(stay => {
+        const member = this.activeMembers().find(m => m.id === stay.memberId);
+        return member?.ref ? { memberRef: member.ref, nights: stay.nights } : null;
+      })
+      .filter((s): s is RentalStay => s !== null);
+
+    const rental: RentalDetails = { nightCount: payload.nightCount, stays };
+    const shareResults = this.rentalUtils.computeShares(rental);
+
+    const splits: ExpenseSplitItemForm[] = shareResults.map(r => ({
+      owedByMemberRef: r.memberRef,
+      assignedAmount: this.localeService.getFormattedZero(),
+      percentage: 0,
+      shares: r.shares,
+      allocatedAmount: 0,
+    }));
+
+    this.splitMethod.set('shares');
+    this.rentalDetails.set(rental);
+    const categories = this.activeCategories();
+    const guessedCategory =
+      categories.length === 1
+        ? categories[0]
+        : this.rentalUtils.guessCategory(categories);
+    this.expenseModel.set({
+      paidByMember: this.currentMember()?.ref ?? null,
+      category: guessedCategory?.ref ?? null,
+      sharedAmount: 0,
+      splits,
+    });
+    this.expenseFormData.set({
+      date: new Date(),
+      amount: this.#formatForInput(payload.totalAmount),
+      description: payload.description,
+      allocatedAmount: this.localeService.getFormattedZero(),
+    });
+    this.allocateByShares();
   }
 
   loadMemorizedExpense(): void {
@@ -568,6 +625,7 @@ export class AddExpenseComponent {
         allocatedAmount: this.stringUtils.toNumber(fd.allocatedAmount),
         totalAmount: this.stringUtils.toNumber(fd.amount),
         splitMethod: this.splitMethod(),
+        ...(this.rentalDetails() ? { rental: this.rentalDetails() } : {}),
       };
       const splits: Partial<SplitDto>[] = [];
       model.splits.forEach(s => {
@@ -589,6 +647,8 @@ export class AddExpenseComponent {
       this.analytics.logEvent('expense_created');
       this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: 'Expense added.' } });
       if (saveAndAdd) {
+        this.rentalPayload.set(null);
+        this.rentalDetails.set(null);
         this.expenseModel.set({
           paidByMember: this.currentMember()!.ref ?? null,
           category: this.activeCategories().length === 1 ? (this.activeCategories()[0]?.ref ?? null) : null,

@@ -1,0 +1,36 @@
+@use '../../../../styles/occupancy-grid' as og;
+
+// The layout rules (box-sizing scoping, width/max-width clamping, the
+// three-tables-side-by-side flex mechanics, row heights) are shared with
+// SplitRentalGridComponent (the standalone Split Expense calculator's
+// version of this grid) via this mixin - see _occupancy-grid.scss for the
+// full reasoning behind each rule. Only roster/dropdown-specific rules
+// (this component's own "Add Member" affordance) stay local below.
+@include og.occupancy-grid-layout;
+
+#add-member-select {
+  min-width: 220px;
+}
+
+// Left-aligned by default so it reads naturally when it wraps to multiple
+// lines on narrow screens; centered on wider screens where it renders as
+// one line and .rental-table-container below is also centered, so the
+// two line up visually instead of the controls sitting off to one side.
+//
+// This is viewport-relative (@media), which is only correct because this
+// component's other host - RentalEditDialogComponent - force-overrides it
+// back to flex-start regardless of viewport width (see that component's
+// stylesheet). A CSS container query would be the "correct" tool here so
+// this responds to the component's own rendered width instead of the
+// viewport, but container-type: inline-size on any element in this
+// component's ancestor chain made .rental-grid's width:100% collapse to
+// 0 - .container (the routed page's ancestor) has no definite width of
+// its own for size containment to resolve against. Not worth chasing
+// further; the two-host-override approach below is simpler and reliable.
+.rental-controls-row {
+  justify-content: flex-start;
+
+  @media (min-width: 600px) {
+    justify-content: center;
+  }
+}

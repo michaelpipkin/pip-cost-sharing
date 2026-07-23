@@ -141,9 +141,9 @@ describe('GroupsComponent', () => {
   });
 
   describe('startTour', () => {
-    it('should call tourService.startWelcomeTour with force=true', () => {
+    it('should call tourService.startGroupsTour with force=true', () => {
       component.startTour();
-      expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
+      expect(mockTourService.startGroupsTour).toHaveBeenCalledWith(true);
     });
   });
 });
