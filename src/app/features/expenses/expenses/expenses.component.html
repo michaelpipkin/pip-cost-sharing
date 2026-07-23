@@ -158,6 +158,15 @@
       >
         Add New Expense
       </button>
+      <button
+        matButton="elevated"
+        class="btn-primary add-button"
+        (click)="onAddRentalClick()"
+        data-tour="add-rental-button"
+        data-testid="add-rental-button"
+      >
+        Vacation Rental
+      </button>
     </div>
     @if (groupHasExpenses()) {
       @if (expenses().length >= 200) {

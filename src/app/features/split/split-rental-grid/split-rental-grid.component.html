@@ -1,0 +1,157 @@
+<div class="rental-grid" data-testid="split-rental-grid">
+  <div class="flex-wrap rental-controls-row row-gap mb-2">
+    <mat-form-field id="add-participant-input" subscriptSizing="dynamic">
+      <mat-label>Participant Name</mat-label>
+      <input
+        matInput
+        [(ngModel)]="newParticipantName"
+        (keydown.enter)="addParticipant(); $event.preventDefault()"
+        data-testid="add-participant-input"
+        aria-label="Participant name"
+      />
+      @if (isDuplicateName()) {
+        <mat-hint>That name has already been added</mat-hint>
+      }
+    </mat-form-field>
+    <button
+      mat-raised-button
+      type="button"
+      class="btn-primary"
+      [disabled]="!canAddParticipant()"
+      (click)="addParticipant()"
+      data-testid="add-participant-button"
+    >
+      Add Participant
+    </button>
+  </div>
+
+  @if (participants().length === 0) {
+    <p class="error-text" data-testid="no-participants-message">
+      Add at least one participant to build the occupancy grid.
+    </p>
+  } @else {
+    <div class="table-container rental-table-container">
+      <div class="occupancy-grid" data-testid="split-occupancy-table">
+        <table class="static-table compact-table occupancy-fixed-left">
+          <thead>
+            <tr>
+              <th class="cell-left">Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of participants(); track row.name) {
+              <tr data-testid="participant-row">
+                <td class="cell-left">{{ row.name }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="cell-left no-wrap">Total</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="occupancy-scroll">
+          <table class="static-table compact-table">
+            <thead>
+              <tr>
+                @for (night of nightIndices(); track night) {
+                  <th class="cell-center no-wrap">
+                    <div>Night {{ night + 1 }}</div>
+                    <mat-checkbox
+                      [checked]="isNightFull(night)"
+                      [indeterminate]="isNightPartial(night)"
+                      (change)="setAllForNight(night, $event.checked)"
+                      [attr.aria-label]="
+                        'Toggle all participants for night ' + (night + 1)
+                      "
+                    ></mat-checkbox>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of participants(); track row.name; let i = $index) {
+                <tr>
+                  @for (night of nightIndices(); track night) {
+                    <td class="cell-center">
+                      <mat-checkbox
+                        [checked]="row.nights[night]"
+                        (change)="toggleNight(i, night)"
+                        [attr.aria-label]="
+                          row.name + ' present night ' + (night + 1)
+                        "
+                      ></mat-checkbox>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                @for (night of nightIndices(); track night) {
+                  <td></td>
+                }
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <table class="static-table compact-table occupancy-fixed-right">
+          <thead>
+            <tr>
+              <th class="cell-right no-wrap">Shares</th>
+              <th class="cell-right no-wrap">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of participants(); track row.name; let i = $index) {
+              <tr>
+                <td class="cell-right" data-testid="participant-shares">
+                  {{ shareFor(row.name) | number: '1.2-2' }}
+                </td>
+                <td class="cell-right" data-testid="participant-amount">
+                  {{ amountFor(row.name) | currency }}
+                </td>
+                <td class="cell-center">
+                  <button
+                    mat-mini-fab
+                    type="button"
+                    class="btn-danger"
+                    (click)="removeParticipant(i)"
+                    data-testid="remove-participant-button"
+                    aria-label="Remove participant"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="cell-right no-wrap" data-testid="total-shares">
+                {{ totalShares() | number: '1.2-2' }}
+              </td>
+              <td class="cell-right no-wrap" data-testid="total-amount">
+                {{ totalPreviewAmount() | currency }}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (emptyNightIndices().length > 0) {
+    <p class="error-text" data-testid="split-empty-nights-warning">
+      No one is staying on
+      {{ emptyNightIndices().length === 1 ? 'night' : 'nights' }}
+      {{ emptyNightLabel() }}. Every night must have at least one
+      participant.
+    </p>
+  }
+</div>

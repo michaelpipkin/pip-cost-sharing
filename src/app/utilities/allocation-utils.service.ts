@@ -135,9 +135,17 @@ export class AllocationUtilsService {
   }
 
   /**
-   * Allocates by shares. Derives each member's effective percentage from their share
-   * of the total shares, then delegates to allocateByPercentage. Returns splits with
-   * updated percentage and allocatedAmount — caller patches both back into the form.
+   * Allocates by shares. Computes each member's percentage and dollar amount
+   * directly from their share of the total (not via allocateByPercentage,
+   * which dumps its whole rounding remainder onto the last row — a
+   * percentage-point residual that can swing a single member's amount by
+   * far more than a cent once multiplied against a large total). Any
+   * leftover cents from rounding are instead reconciled by
+   * #adjustAllocationForRounding, one smallest-currency-increment at a
+   * time, cycling through members — so members with equal shares always
+   * end up with equal amounts regardless of their position in the list.
+   * Returns splits with updated percentage and allocatedAmount — caller
+   * patches both back into the form.
    */
   allocateByShares(input: {
     totalAmount: number;
@@ -145,10 +153,10 @@ export class AllocationUtilsService {
   }): { splits: AllocationSplit[] } {
     if (input.splits.length === 0) return { splits: [] };
 
-    const splits = [...input.splits];
+    const splits = input.splits.filter(s => s.owedByMemberRef || s.assignedAmount !== 0);
     const totalShares = splits.reduce((t, s) => t + (+s.shares || 0), 0);
 
-    if (totalShares === 0) {
+    if (totalShares === 0 || splits.length === 0) {
       splits.forEach(s => {
         s.percentage = 0;
         s.allocatedAmount = 0;
@@ -156,23 +164,23 @@ export class AllocationUtilsService {
       return { splits };
     }
 
+    const totalAmount = +input.totalAmount;
+
     splits.forEach(s => {
-      s.percentage = this.localeService.roundToCurrency(
-        ((+s.shares || 0) / totalShares) * 100
-      );
+      const shareRatio = (+s.shares || 0) / totalShares;
+      s.percentage = this.localeService.roundToCurrency(shareRatio * 100);
+      s.allocatedAmount = this.localeService.roundToCurrency(shareRatio * totalAmount);
     });
 
-    // Ensure percentages sum to exactly 100 by adjusting the last row
-    const percentageSum = this.localeService.roundToCurrency(
-      splits.reduce((t, s) => t + s.percentage, 0)
+    const allocatedTotal = this.localeService.roundToCurrency(
+      splits.reduce((total, s) => total + s.allocatedAmount, 0)
     );
-    if (percentageSum !== 100 && splits.length > 0) {
-      splits.at(-1)!.percentage = this.localeService.roundToCurrency(
-        splits.at(-1)!.percentage + (100 - percentageSum)
-      );
+
+    if (allocatedTotal !== totalAmount) {
+      this.#adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
     }
 
-    return this.allocateByPercentage({ totalAmount: input.totalAmount, splits });
+    return { splits };
   }
 
   #filterSplitsAndSetLastPercentage(splits: AllocationSplit[]): AllocationSplit[] {

@@ -4,6 +4,7 @@ import { AddExpenseComponent } from './add-expense/add-expense.component';
 import { editExpenseResolver } from './edit-expense.resolver';
 import { EditExpenseComponent } from './edit-expense/edit-expense.component';
 import { ExpensesComponent } from './expenses/expenses.component';
+import { RentalComponent } from './rental/rental.component';
 
 export const expensesRoutes: Routes = [
   {
@@ -15,6 +16,12 @@ export const expensesRoutes: Routes = [
     path: 'add',
     title: 'Add Expense',
     component: AddExpenseComponent,
+    canActivate: [noCrawlerGuard],
+  },
+  {
+    path: 'rental',
+    title: 'Vacation Rental',
+    component: RentalComponent,
     canActivate: [noCrawlerGuard],
   },
   {

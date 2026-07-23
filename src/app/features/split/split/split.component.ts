@@ -35,6 +35,7 @@ import {
   getCurrencyConfig,
   SUPPORTED_CURRENCIES,
 } from '@models/currency-config.interface';
+import { RentalDetails } from '@models/expense';
 import { SplitExpenseForm, SplitItemForm } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
@@ -44,8 +45,13 @@ import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
+import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { SplitMethod } from '@utils/split-method';
+import {
+  SplitRentalGridComponent,
+  SplitRentalRow,
+} from '../split-rental-grid/split-rental-grid.component';
 
 @Component({
   selector: 'app-split',
@@ -64,6 +70,7 @@ import { SplitMethod } from '@utils/split-method';
     FormatCurrencyInputDirective,
     RouterLink,
     SplitMethodToggleComponent,
+    SplitRentalGridComponent,
   ],
   templateUrl: './split.component.html',
   styleUrl: './split.component.scss',
@@ -79,11 +86,34 @@ export class SplitComponent {
   protected readonly localeService = inject(LocaleService);
   protected readonly groupStore = inject(GroupStore);
   protected readonly allocationUtils = inject(AllocationUtilsService);
+  protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly stringUtils = inject(StringUtils);
 
   readonly supportedCurrencies = SUPPORTED_CURRENCIES;
   readonly submitted = signal<boolean>(false);
   readonly splitMethod = signal<SplitMethod>('amount');
+
+  // Vacation Rental: an input aid that computes shares from an occupancy
+  // grid, then hands them off into the normal shares-editing flow above -
+  // same philosophy as the group-expense flow's wizard, just inline since
+  // this single-page calculator has no second page to navigate to.
+  readonly rentalMode = signal<boolean>(false);
+  readonly rentalNightCount = signal<number>(1);
+  readonly rentalParticipants = signal<SplitRentalRow[]>([]);
+
+  readonly rentalTotalAmount = computed(() =>
+    this.stringUtils.toNumber(this.expenseModel().amount)
+  );
+
+  readonly rentalEmptyNights = computed(() =>
+    this.rentalUtils.emptyNights<string>(this.#rentalDetails())
+  );
+
+  readonly canApplyShares = computed(
+    () =>
+      this.rentalParticipants().length > 0 &&
+      this.rentalEmptyNights().length === 0
+  );
 
   private readonly localCurrencyCode = signal<string>('USD');
 
@@ -157,6 +187,11 @@ export class SplitComponent {
 
     const fmt = (v: number) => this.#formatForInput(v);
 
+    // The tour's narration is hardcoded to this exact Amount-mode data, so
+    // restoring it always means Amount mode too - matters when this is
+    // re-called from startTour() after the split method was changed (e.g.
+    // by Apply Shares) rather than just on initial page load.
+    this.splitMethod.set('amount');
     this.expenseModel.update(m => ({
       ...m,
       amount: fmt(65.33),
@@ -646,6 +681,70 @@ export class SplitComponent {
     });
     this.submitted.set(false);
     this.splitMethod.set('amount');
+    this.rentalMode.set(false);
+    this.rentalNightCount.set(1);
+    this.rentalParticipants.set([]);
+  }
+
+  enterRentalMode(): void {
+    const existingNames = new Set<string>();
+    const seeded: SplitRentalRow[] = [];
+    for (const split of this.expenseModel().splits) {
+      const name = split.owedBy.trim();
+      const normalized = name.toLowerCase();
+      if (!name || existingNames.has(normalized)) continue;
+      existingNames.add(normalized);
+      seeded.push({
+        name,
+        nights: new Array<boolean>(this.rentalNightCount()).fill(true),
+      });
+    }
+    this.rentalParticipants.set(seeded);
+    this.rentalMode.set(true);
+  }
+
+  exitRentalMode(): void {
+    this.rentalMode.set(false);
+  }
+
+  onRentalNightCountInput(value: string): void {
+    const parsed = Math.max(1, Math.round(this.stringUtils.toNumber(value)));
+    this.rentalNightCount.set(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+  }
+
+  applyShares(): void {
+    if (!this.canApplyShares()) return;
+
+    const shareResults = this.rentalUtils.computeShares<string>(
+      this.#rentalDetails()
+    );
+
+    const splits: SplitItemForm[] = shareResults
+      .filter(r => r.memberRef.trim())
+      .map(r => ({
+        owedBy: r.memberRef,
+        assignedAmount: this.localeService.getFormattedZero(),
+        percentage: 0,
+        shares: r.shares,
+        allocatedAmount: 0,
+      }));
+
+    this.expenseModel.update(m => ({ ...m, splits }));
+    this.splitMethod.set('shares');
+    this.rentalMode.set(false);
+    this.allocateByShares();
+  }
+
+  #rentalDetails(): RentalDetails<string> {
+    return {
+      nightCount: this.rentalNightCount(),
+      stays: this.rentalParticipants().map(p => ({
+        memberRef: p.name,
+        nights: p.nights
+          .map((present, i) => (present ? i : -1))
+          .filter(i => i >= 0),
+      })),
+    };
   }
 
   openCalculator(
@@ -681,6 +780,21 @@ export class SplitComponent {
   }
 
   startTour(): void {
+    // The tour targets elements from the normal (non-rental) view - e.g.
+    // .total-amount-field, #split-member, the Generate Summary button -
+    // none of which render while rentalMode() is true (that section shows
+    // the occupancy grid instead). Exit rental mode first so those targets
+    // actually exist on the page.
+    this.exitRentalMode();
+    // The tour's narration is hardcoded to the original demo numbers
+    // ($65.33 total, Alice $12.55, etc. in Amount mode) - restore that
+    // pristine state so restarting the tour after playing with Vacation
+    // Rental (or anything else that changes the split method/amounts)
+    // doesn't leave the tour narrating numbers that no longer match
+    // what's on screen.
+    if (this.demoService.isInDemoMode()) {
+      this.populateDemoData();
+    }
     this.tourService.startWelcomeTour(true);
   }
 

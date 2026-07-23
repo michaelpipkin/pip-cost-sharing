@@ -294,6 +294,20 @@ export class TourService {
           ],
         },
         {
+          id: 'vacation-rental-mention',
+          attachTo: {
+            element: '[data-tour="vacation-rental-button"]',
+            on: 'bottom',
+          },
+          title: 'Splitting a Vacation Rental',
+          text: "Sharing a vacation rental where not everyone stayed every night? Click here for an occupancy grid that fairly divides each night among whoever stayed, then hands you a ready-to-edit shares split.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
           id: 'try-summary',
           attachTo: {
             element: '[data-tour="generate-summary-button"]',
@@ -634,6 +648,20 @@ export class TourService {
           },
           title: 'Adding Expenses',
           text: 'Click here to add a new expense. Even in demo mode, you can explore the full add expense interface!',
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
+          id: 'expenses-vacation-rental',
+          attachTo: {
+            element: '[data-tour="add-rental-button"]',
+            on: 'bottom',
+          },
+          title: 'Splitting a Vacation Rental',
+          text: "Sharing a vacation rental where not everyone stays every night? Click here for a guided wizard that figures out a fair split for you, based on who stayed which nights.",
           buttons: [
             this.getBackButton(),
             this.getNextButton(),

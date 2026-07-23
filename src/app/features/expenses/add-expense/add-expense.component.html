@@ -435,7 +435,7 @@
       >
         Save
       </button>
-      @if (!memorizedExpense()) {
+      @if (!memorizedExpense() && !rentalPayload()) {
         <button
           mat-raised-button
           class="btn-secondary"
