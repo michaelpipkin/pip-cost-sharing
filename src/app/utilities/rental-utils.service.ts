@@ -4,8 +4,8 @@ import { RentalDetails } from '@models/expense';
 import { Member } from '@models/member';
 import { DocumentReference } from 'firebase/firestore';
 
-export interface RentalShareResult {
-  memberRef: DocumentReference<Member>;
+export interface RentalShareResult<K = DocumentReference<Member>> {
+  memberRef: K;
   shares: number;
 }
 
@@ -44,7 +44,9 @@ export const RENTAL_CATEGORY_NAME_PRIORITY: readonly string[] = [
   providedIn: 'root',
 })
 export class RentalUtilsService {
-  computeShares(details: RentalDetails): RentalShareResult[] {
+  computeShares<K = DocumentReference<Member>>(
+    details: RentalDetails<K>
+  ): RentalShareResult<K>[] {
     const participantCount = details.stays.length;
     if (participantCount === 0 || details.nightCount <= 0) {
       return details.stays.map((stay) => ({
@@ -72,7 +74,7 @@ export class RentalUtilsService {
    * Nights with zero occupants can't be allocated a share of the cost.
    * Callers should surface this to the user rather than saving the expense.
    */
-  emptyNights(details: RentalDetails): number[] {
+  emptyNights<K = DocumentReference<Member>>(details: RentalDetails<K>): number[] {
     if (details.nightCount <= 0) return [];
     const occupancy = this.#occupancyByNight(details);
     return occupancy
@@ -96,7 +98,7 @@ export class RentalUtilsService {
     return null;
   }
 
-  #occupancyByNight(details: RentalDetails): number[] {
+  #occupancyByNight<K>(details: RentalDetails<K>): number[] {
     const occupancy = new Array<number>(details.nightCount).fill(0);
     details.stays.forEach((stay) => {
       stay.nights.forEach((night) => {

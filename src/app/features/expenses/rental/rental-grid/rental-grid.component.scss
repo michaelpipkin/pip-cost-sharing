@@ -1,41 +1,12 @@
-// The app has no global box-sizing: border-box reset (only <body> has it),
-// so a bordered/padded element's max-width otherwise excludes its own
-// border+padding, letting it render wider than the box it was supposed to
-// fit within - e.g. .table-container's 12px border used to add 24px on
-// top of whatever width the max-width chain above it computed. Scoped to
-// just the plain wrapper elements this component authors (not a blanket
-// `.rental-grid *`, which broke Angular Material's own internal elements
-// - mat-checkbox/mat-form-field/etc. carry box-sizing assumptions of
-// their own that a wildcard override collided with).
-.rental-grid,
-.rental-table-container,
-.occupancy-grid,
-.occupancy-fixed-left,
-.occupancy-fixed-right,
-.occupancy-scroll {
-  box-sizing: border-box;
-}
+@use '../../../../styles/occupancy-grid' as og;
 
-.rental-grid {
-  // A DEFINITE width (not fit-content) here is what lets the night columns
-  // clamp + scroll below: .container (the page ancestor) is itself sized
-  // via fit-content with no horizontal clipping, so a fit-content width at
-  // this level would have no real bound to shrink against and the whole
-  // chain falls back to each element's full (unscrolled) content size -
-  // which is what actually caused the page-wide horizontal scroll. Giving
-  // this element a definite width gives .rental-table-container below a
-  // real available-space bound to clamp its own fit-content sizing against.
-  //
-  // The cap itself is a custom property, not a hardcoded vw value: this
-  // component is hosted both on the routed wizard page (where the page
-  // IS effectively the viewport, so a vw-based cap makes sense - the
-  // default below) and inside a MatDialog (a much narrower box floating
-  // in a full-width viewport, where a vw-based cap would still let this
-  // element grow wider than the dialog itself). The dialog host overrides
-  // this property to bound against its own real width instead.
-  width: 100%;
-  max-width: var(--rental-grid-max-width, 96vw);
-}
+// The layout rules (box-sizing scoping, width/max-width clamping, the
+// three-tables-side-by-side flex mechanics, row heights) are shared with
+// SplitRentalGridComponent (the standalone Split Expense calculator's
+// version of this grid) via this mixin - see _occupancy-grid.scss for the
+// full reasoning behind each rule. Only roster/dropdown-specific rules
+// (this component's own "Add Member" affordance) stay local below.
+@include og.occupancy-grid-layout;
 
 #add-member-select {
   min-width: 220px;
@@ -61,78 +32,5 @@
 
   @media (min-width: 600px) {
     justify-content: center;
-  }
-}
-
-// .table-container is a shared flex column; by default it both fills its
-// parent's width (a plain block's width:auto) AND stretches its child to
-// that width (align-items:stretch). Override both so the bordered card
-// shrink-wraps the table (e.g. a single night) instead of leaving empty
-// space, and center it in case a wider sibling (like the Add Member row)
-// drives .rental-grid wider than the table itself. This only shrink-wraps
-// correctly because .rental-grid above gives it a definite (not another
-// fit-content) width to clamp against.
-.rental-table-container {
-  width: fit-content;
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  align-items: flex-start;
-}
-
-// Three tables side by side (fixed member column | scrollable night
-// columns | fixed shares/amount/delete columns) so only the night columns
-// need to scroll horizontally on narrow screens, keeping identifying and
-// summary columns always visible. Sized to fit its content (not the full
-// available width) so a short list of nights doesn't leave a large gap
-// before the Shares/Amount columns; max-width caps it so a long list of
-// nights scrolls internally instead of growing past the page.
-.occupancy-grid {
-  display: flex;
-  align-items: flex-start;
-  width: fit-content;
-  max-width: 100%;
-  // Fallback containment: .occupancy-fixed-left/right never shrink
-  // (flex: 0 0 auto), so on a very narrow host (e.g. a small dialog) their
-  // combined minimum width can still exceed the available space even
-  // after .occupancy-scroll has shrunk to nothing. If that happens, this
-  // keeps the overflow scoped to the grid itself (its own scrollbar)
-  // rather than leaking out to the dialog's fallback scrollbar.
-  overflow-x: auto;
-
-  table {
-    width: auto;
-  }
-
-  // Taller than the body/footer rows to comfortably fit the two-line
-  // "Night N" label + toggle-all checkbox, while staying equal across
-  // all three tables so the header row heights line up.
-  thead tr {
-    height: 64px;
-  }
-
-  tbody tr,
-  tfoot tr {
-    height: 56px;
-  }
-
-  td,
-  th {
-    vertical-align: middle;
-  }
-}
-
-.occupancy-fixed-left,
-.occupancy-fixed-right {
-  flex: 0 0 auto;
-}
-
-.occupancy-scroll {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-
-  table {
-    width: max-content;
   }
 }

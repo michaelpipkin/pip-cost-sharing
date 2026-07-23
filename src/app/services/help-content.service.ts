@@ -150,6 +150,7 @@ export class HelpContentService {
         "If you are splitting by shares, enter a share value for each member (decimals allowed, e.g., 1.5). The effective percentage is shown next to each shares input. Shares let you express ratios (e.g., 2:1) without computing percentages manually.",
         'You can perform basic arithmetic directly in any amount input field, but not percentage fields. (i.e. entering 3*6-2 in the total amount field will evaluate to 16.00) You can also use the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'When all of the amounts are entered, click the Generate Summary button to create a summary of the split expense. On the summary, there is a copy button you can click to copy the summary to your clipboard so that it can be easily shared.',
+        "Sharing a vacation rental where not everyone stays every night? Click the Vacation Rental button for a guided occupancy grid: enter the number of nights, add participants, and check off who stayed each night. Every night's cost is divided evenly among whoever stayed, so nights with fewer people cost each of them more. Click Apply Shares to convert the grid into a shares split you can still review and fine-tune before generating your summary.",
       ],
     },
   ];

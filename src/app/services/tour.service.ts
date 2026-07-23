@@ -294,6 +294,20 @@ export class TourService {
           ],
         },
         {
+          id: 'vacation-rental-mention',
+          attachTo: {
+            element: '[data-tour="vacation-rental-button"]',
+            on: 'bottom',
+          },
+          title: 'Splitting a Vacation Rental',
+          text: "Sharing a vacation rental where not everyone stayed every night? Click here for an occupancy grid that fairly divides each night among whoever stayed, then hands you a ready-to-edit shares split.",
+          buttons: [
+            this.getBackButton(),
+            this.getNextButton(),
+            this.getSkipButton(),
+          ],
+        },
+        {
           id: 'try-summary',
           attachTo: {
             element: '[data-tour="generate-summary-button"]',

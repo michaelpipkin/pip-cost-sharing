@@ -37,9 +37,13 @@ export interface MemorizedForm {
 /**
  * Per-night occupancy for a single participant in a vacation rental expense.
  * `nights` holds the 0-based indices of the nights this member stayed.
+ *
+ * `memberRef` is the participant key - a `DocumentReference<Member>` in the
+ * group-expense flow (the default), or a plain name string in the
+ * standalone Split Expense calculator, which has no persistent Members.
  */
-export interface RentalStay {
-  memberRef: DocumentReference<Member>;
+export interface RentalStay<K = DocumentReference<Member>> {
+  memberRef: K;
   nights: number[];
 }
 
@@ -48,9 +52,9 @@ export interface RentalStay {
  * shares split (see RentalUtilsService). Persisted alongside the expense
  * so the occupancy grid can be reopened and edited later.
  */
-export interface RentalDetails {
+export interface RentalDetails<K = DocumentReference<Member>> {
   nightCount: number;
-  stays: RentalStay[];
+  stays: RentalStay<K>[];
 }
 
 /**
