@@ -22,9 +22,11 @@ import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { LoginForm } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import {
   fetchSignInMethodsForEmail,
+  getAdditionalUserInfo,
   getAuth,
   GoogleAuthProvider,
   signInWithCredential,
@@ -49,6 +51,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
+  protected readonly analytics = inject(AnalyticsService);
   protected readonly auth = inject(getAuth);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -109,9 +112,15 @@ export class LoginComponent {
         );
 
         await signInWithCredential(this.auth, credential);
+        if (result.additionalUserInfo?.isNewUser) {
+          this.analytics.logEvent('sign_up', { method: 'google.com' });
+        }
       } else {
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(this.auth, provider);
+        const result = await signInWithPopup(this.auth, provider);
+        if (getAdditionalUserInfo(result)?.isNewUser) {
+          this.analytics.logEvent('sign_up', { method: 'google.com' });
+        }
       }
       // Navigation handled automatically by UserService.onAuthStateChanged
     } catch {
