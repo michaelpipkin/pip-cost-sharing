@@ -10,6 +10,7 @@ describe('HelpContentService', () => {
     'categories',
     'expenses',
     'add-edit-expenses',
+    'vacation-rental',
     'memorized-expenses',
     'add-edit-memorized',
     'summary',
@@ -47,7 +48,7 @@ describe('HelpContentService', () => {
   describe('getAllHelpSections', () => {
     it('should return all sections', () => {
       const sections = service.getAllHelpSections();
-      expect(sections.length).toBe(knownIds.length);
+      expect(sections).toHaveLength(knownIds.length);
     });
 
     it('should include every known id', () => {

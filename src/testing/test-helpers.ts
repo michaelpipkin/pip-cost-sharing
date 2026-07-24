@@ -422,6 +422,7 @@ export function createMockExpenseService() {
     getExpense: vi.fn(),
     getExpenses: vi.fn(),
     getGroupExpensesByDateRange: vi.fn(() => Promise.resolve([])),
+    checkGroupHasExpenses: vi.fn(() => Promise.resolve(false)),
   };
 }
 

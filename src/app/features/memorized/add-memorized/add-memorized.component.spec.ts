@@ -50,11 +50,22 @@ describe('AddMemorizedComponent', () => {
   let router: Router;
 
   function getModel(): MemorizedForm {
-    return (component as any).expenseModel();
+    return {
+      ...(component as any).expenseModel(),
+      ...(component as any).expenseFormData(),
+    };
   }
 
-  function patchModel(patch: Partial<MemorizedForm>): void {
-    (component as any).expenseModel.update((m: MemorizedForm) => ({ ...m, ...patch }));
+  function patchModel(
+    patch: Partial<Pick<MemorizedForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>
+  ): void {
+    (component as any).expenseModel.update((m: any) => ({ ...m, ...patch }));
+  }
+
+  function patchFormData(
+    patch: Partial<Pick<MemorizedForm, 'amount' | 'description' | 'allocatedAmount'>>
+  ): void {
+    (component as any).expenseFormData.update((fd: any) => ({ ...fd, ...patch }));
   }
 
   function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
@@ -145,64 +156,64 @@ describe('AddMemorizedComponent', () => {
     });
 
     it('should populate activeMembers from store', () => {
-      expect(component.activeMembers().length).toBe(2);
+      expect(component.activeMembers()).toHaveLength(2);
     });
 
     it('should populate activeCategories from store', () => {
-      expect(component.activeCategories().length).toBe(2);
+      expect(component.activeCategories()).toHaveLength(2);
     });
 
     it('should start with empty splits array', () => {
-      expect(getModel().splits.length).toBe(0);
+      expect(getModel().splits).toHaveLength(0);
     });
   });
 
   describe('form validation', () => {
     it('should require description', () => {
-      patchModel({ description: '' });
+      patchFormData({ description: '' });
       expect(getForm().description().errors().length).toBeGreaterThan(0);
     });
 
     it('should require a payer', () => {
       patchModel({ paidByMember: null });
-      expect(getForm().paidByMember().errors().length).toBeGreaterThan(0);
+      expect((component as any).paidByMemberValid()).toBe(false);
     });
 
     it('should reject zero amount', () => {
-      patchModel({ amount: '0.00' });
+      patchFormData({ amount: '0.00' });
       expect(getForm().amount().errors().length).toBeGreaterThan(0);
     });
 
     it('should accept non-zero amount', () => {
-      patchModel({ amount: '25.00' });
-      expect(getForm().amount().errors().length).toBe(0);
+      patchFormData({ amount: '25.00' });
+      expect(getForm().amount().errors()).toHaveLength(0);
     });
   });
 
   describe('addSplit / removeSplit', () => {
     it('should add a split row when addSplit is called', () => {
       component.addSplit();
-      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits).toHaveLength(1);
     });
 
     it('should remove a split row when removeSplit is called', () => {
       component.addSplit();
       component.addSplit();
       component.removeSplit(0);
-      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits).toHaveLength(1);
     });
   });
 
   describe('memorizedFullyAllocated', () => {
     it('should return true when amount equals allocated total', () => {
-      patchModel({ amount: '10.00' });
+      patchFormData({ amount: '10.00' });
       component.addSplit();
       patchSplit(0, { allocatedAmount: 10 });
       expect(component.memorizedFullyAllocated()).toBe(true);
     });
 
     it('should return false when amount does not equal allocated total', () => {
-      patchModel({ amount: '10.00' });
+      patchFormData({ amount: '10.00' });
       expect(component.memorizedFullyAllocated()).toBe(false);
     });
   });
@@ -219,9 +230,11 @@ describe('AddMemorizedComponent', () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
       vi.spyOn(router, 'navigate').mockResolvedValue(true);
       patchModel({
+        category: mockDocRef('groups/group-1/categories/cat-1'),
+      });
+      patchFormData({
         description: 'Test Expense',
         amount: '50.00',
-        category: mockDocRef('groups/group-1/categories/cat-1'),
       });
       component.addSplit();
       await component.onSubmit();
@@ -231,7 +244,7 @@ describe('AddMemorizedComponent', () => {
     it('should navigate to /memorized after successful submit', async () => {
       mockDemoService.isInDemoMode.mockReturnValue(false);
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      patchModel({ description: 'Test', amount: '50.00' });
+      patchFormData({ description: 'Test', amount: '50.00' });
       await component.onSubmit();
       expect(navigateSpy).toHaveBeenCalledWith(['/memorized']);
     });
@@ -280,7 +293,7 @@ describe('AddMemorizedComponent', () => {
         shares: 2,
       });
 
-      patchModel({ amount: '100.00' });
+      patchFormData({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();

@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
+import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -15,6 +16,7 @@ import {
   createMockAnalyticsService,
   createMockDemoService,
   createMockDialogRef,
+  createMockExpenseService,
   createMockExpenseStore,
   createMockGroupService,
   createMockGroupStore,
@@ -61,6 +63,7 @@ describe('ManageGroupsComponent', () => {
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: GroupService, useValue: mockGroupService },
+        { provide: ExpenseService, useValue: createMockExpenseService() },
         { provide: ExpenseStore, useValue: mockExpenseStore },
         { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
@@ -118,6 +121,8 @@ describe('ManageGroupsComponent', () => {
     it('should disable currency field when group has expenses', async () => {
       const mockExpenseStoreWithExpenses = createMockExpenseStore();
       mockExpenseStoreWithExpenses.setGroupHasExpenses(true);
+      const mockExpenseServiceWithExpenses = createMockExpenseService();
+      mockExpenseServiceWithExpenses.checkGroupHasExpenses.mockResolvedValue(true);
 
       await TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
@@ -129,6 +134,7 @@ describe('ManageGroupsComponent', () => {
           { provide: LoadingService, useValue: createMockLoadingService() },
           { provide: GroupStore, useValue: mockGroupStore },
           { provide: GroupService, useValue: mockGroupService },
+          { provide: ExpenseService, useValue: mockExpenseServiceWithExpenses },
           {
             provide: ExpenseStore,
             useValue: mockExpenseStoreWithExpenses,

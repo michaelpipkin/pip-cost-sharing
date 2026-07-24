@@ -60,11 +60,22 @@ describe('AddExpenseComponent', () => {
   let mockRouter: Router;
 
   function getModel(): ExpenseForm {
-    return (component as any).expenseModel();
+    return {
+      ...(component as any).expenseModel(),
+      ...(component as any).expenseFormData(),
+    };
   }
 
-  function patchModel(patch: Partial<ExpenseForm>): void {
-    (component as any).expenseModel.update((m: ExpenseForm) => ({ ...m, ...patch }));
+  function patchModel(
+    patch: Partial<Pick<ExpenseForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>
+  ): void {
+    (component as any).expenseModel.update((m: any) => ({ ...m, ...patch }));
+  }
+
+  function patchFormData(
+    patch: Partial<Pick<ExpenseForm, 'date' | 'amount' | 'description' | 'allocatedAmount'>>
+  ): void {
+    (component as any).expenseFormData.update((fd: any) => ({ ...fd, ...patch }));
   }
 
   function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
@@ -74,10 +85,6 @@ describe('AddExpenseComponent', () => {
         i === index ? { ...s, ...patch } : s
       ),
     }));
-  }
-
-  function getForm() {
-    return (component as any).expenseForm;
   }
 
   beforeEach(async () => {
@@ -163,7 +170,7 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should populate payer dropdown with active group members', () => {
-      expect(component.activeMembers().length).toBe(2);
+      expect(component.activeMembers()).toHaveLength(2);
       expect(
         component.activeMembers().some((m) => m.displayName === 'Alice')
       ).toBe(true);
@@ -173,7 +180,7 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should populate category dropdown with active categories', () => {
-      expect(component.activeCategories().length).toBe(2);
+      expect(component.activeCategories()).toHaveLength(2);
       expect(component.activeCategories().some((c) => c.name === 'Food')).toBe(
         true
       );
@@ -231,7 +238,7 @@ describe('AddExpenseComponent', () => {
       const newFixture = TestBed.createComponent(AddExpenseComponent);
       await newFixture.whenStable();
 
-      expect(newFixture.componentInstance.activeCategories().length).toBe(1);
+      expect(newFixture.componentInstance.activeCategories()).toHaveLength(1);
     });
 
     it('should default date to today', () => {
@@ -255,9 +262,9 @@ describe('AddExpenseComponent', () => {
 
   describe('model split operations', () => {
     it('should add split with DocumentReference for member', () => {
-      expect(getModel().splits.length).toBe(0);
+      expect(getModel().splits).toHaveLength(0);
       component.addSplit();
-      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits).toHaveLength(1);
 
       const split = getModel().splits[0];
       expect(split?.owedByMemberRef).toBeTruthy();
@@ -266,15 +273,15 @@ describe('AddExpenseComponent', () => {
     it('should remove split from model', () => {
       component.addSplit();
       component.addSplit();
-      expect(getModel().splits.length).toBe(2);
+      expect(getModel().splits).toHaveLength(2);
 
       component.removeSplit(0);
-      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits).toHaveLength(1);
     });
 
     it('should add all active members when button clicked', () => {
       component.addAllActiveGroupMembers();
-      expect(getModel().splits.length).toBe(2);
+      expect(getModel().splits).toHaveLength(2);
     });
 
     it('should reflect autoAddMembers from group', () => {
@@ -287,11 +294,11 @@ describe('AddExpenseComponent', () => {
     });
 
     it('should require at least one split', () => {
-      expect(getModel().splits.length).toBe(0);
-      expect(getForm().splits().errors().length > 0).toBe(true);
+      expect(getModel().splits).toHaveLength(0);
+      expect((component as any).splitsValid()).toBe(false);
 
       component.addSplit();
-      expect(getForm().splits().errors().length === 0).toBe(true);
+      expect((component as any).splitsValid()).toBe(true);
     });
 
     it('should create split with member ref and amounts', () => {
@@ -317,7 +324,8 @@ describe('AddExpenseComponent', () => {
       patchSplit(0, { owedByMemberRef: memberRef1 });
       patchSplit(1, { owedByMemberRef: memberRef2 });
 
-      patchModel({ amount: '100.00', sharedAmount: 100, allocatedAmount: '0.00' });
+      patchModel({ sharedAmount: 100 });
+      patchFormData({ amount: '100.00', allocatedAmount: '0.00' });
 
       component.allocateSharedAmounts();
       await fixture.whenStable();
@@ -338,7 +346,7 @@ describe('AddExpenseComponent', () => {
       component.addSplit();
       component.addSplit();
 
-      patchModel({ amount: '100.00' });
+      patchFormData({ amount: '100.00' });
       patchSplit(0, { percentage: 70 });
       patchSplit(1, { percentage: 30 });
 
@@ -351,7 +359,7 @@ describe('AddExpenseComponent', () => {
 
     it('should check if expense is fully allocated', () => {
       component.addSplit();
-      patchModel({ amount: '100.00' });
+      patchFormData({ amount: '100.00' });
       patchSplit(0, { allocatedAmount: 100 });
 
       expect(component.expenseFullyAllocated()).toBe(true);
@@ -400,7 +408,7 @@ describe('AddExpenseComponent', () => {
       patchSplit(1, { owedByMemberRef: memberRef2, shares: 1 });
       patchSplit(2, { owedByMemberRef: memberRef3, shares: 2 });
 
-      patchModel({ amount: '100.00' });
+      patchFormData({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
@@ -487,10 +495,12 @@ describe('AddExpenseComponent', () => {
       component.addSplit();
       patchModel({
         paidByMember: mockDocRef('groups/group-1/members/member-1'),
+        category: mockDocRef('groups/group-1/categories/cat-1'),
+      });
+      patchFormData({
         date: new Date(),
         amount: '100.00',
         description: 'Test expense',
-        category: mockDocRef('groups/group-1/categories/cat-1'),
       });
       patchSplit(0, {
         owedByMemberRef: mockDocRef('groups/group-1/members/member-1'),
