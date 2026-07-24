@@ -23,29 +23,34 @@ describe('PageTitleStrategyService', () => {
     titleService = TestBed.inject(Title);
   });
 
+  const fakeRouterState = (url: string): any => ({
+    url,
+    root: { firstChild: null, data: {} },
+  });
+
   it('should set title with "PipSplit | " prefix when a title is found', () => {
     vi.spyOn(service as any, 'buildTitle').mockReturnValue('Expenses');
     const setTitleSpy = vi.spyOn(titleService, 'setTitle');
 
-    service.updateTitle({ url: '/expenses' } as any);
+    service.updateTitle(fakeRouterState('/expenses'));
 
     expect(setTitleSpy).toHaveBeenCalledWith('PipSplit | Expenses');
   });
 
-  it('should not set title when buildTitle returns undefined', () => {
+  it('should set default title when buildTitle returns undefined', () => {
     vi.spyOn(service as any, 'buildTitle').mockReturnValue(undefined);
     const setTitleSpy = vi.spyOn(titleService, 'setTitle');
 
-    service.updateTitle({ url: '/expenses' } as any);
+    service.updateTitle(fakeRouterState('/expenses'));
 
-    expect(setTitleSpy).not.toHaveBeenCalled();
+    expect(setTitleSpy).toHaveBeenCalledWith('PipSplit');
   });
 
   it('should include the full route title in the page title', () => {
     vi.spyOn(service as any, 'buildTitle').mockReturnValue('History');
     const setTitleSpy = vi.spyOn(titleService, 'setTitle');
 
-    service.updateTitle({ url: '/history' } as any);
+    service.updateTitle(fakeRouterState('/history'));
 
     expect(setTitleSpy).toHaveBeenCalledWith('PipSplit | History');
   });

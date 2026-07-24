@@ -74,11 +74,16 @@ describe('EditMemorizedComponent', () => {
   });
 
   function getModel(): MemorizedForm {
-    return (component as any).expenseModel();
+    return {
+      ...(component as any).expenseModel(),
+      ...(component as any).expenseFormData(),
+    };
   }
 
-  function patchModel(patch: Partial<MemorizedForm>): void {
-    (component as any).expenseModel.update((m: MemorizedForm) => ({ ...m, ...patch }));
+  function patchFormData(
+    patch: Partial<Pick<MemorizedForm, 'amount' | 'description' | 'allocatedAmount'>>
+  ): void {
+    (component as any).expenseFormData.update((fd: any) => ({ ...fd, ...patch }));
   }
 
   function patchSplit(index: number, patch: Partial<ExpenseSplitItemForm>): void {
@@ -169,7 +174,7 @@ describe('EditMemorizedComponent', () => {
     });
 
     it('should pre-populate splits from memorized data', () => {
-      expect(getModel().splits.length).toBe(1);
+      expect(getModel().splits).toHaveLength(1);
     });
 
     it('should load memorized from route data', () => {
@@ -180,12 +185,12 @@ describe('EditMemorizedComponent', () => {
   describe('model split operations', () => {
     it('should add a split row', () => {
       component.addSplit();
-      expect(getModel().splits.length).toBe(2);
+      expect(getModel().splits).toHaveLength(2);
     });
 
     it('should remove a split row', () => {
       component.removeSplit(0);
-      expect(getModel().splits.length).toBe(0);
+      expect(getModel().splits).toHaveLength(0);
     });
   });
 
@@ -274,7 +279,7 @@ describe('EditMemorizedComponent', () => {
 
       patchSplit(0, { owedByMemberRef: splitMemberRef, shares: 1 });
       patchSplit(1, { owedByMemberRef: memberRef, shares: 3 });
-      patchModel({ amount: '100.00' });
+      patchFormData({ amount: '100.00' });
 
       component.allocateByShares();
       await fixture.whenStable();
