@@ -169,6 +169,7 @@ export class RegisterComponent {
           email,
           password
         );
+        this.analytics.logEvent('sign_up', { method: 'password' });
         sendEmailVerification(
           userCredential.user,
           this.#getActionCodeSettings()

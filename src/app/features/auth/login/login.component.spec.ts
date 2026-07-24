@@ -2,14 +2,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import {
+  createMockAnalyticsService,
   createMockLoadingService,
   createMockPwaDetectionService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import * as firebaseAuthModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
@@ -17,15 +20,19 @@ describe('LoginComponent', () => {
   let component: LoginComponent;
   let el: HTMLElement;
   let mockPwaDetection: ReturnType<typeof createMockPwaDetectionService>;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     mockPwaDetection = createMockPwaDetectionService();
+    mockAnalytics = createMockAnalyticsService();
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
         provideRouter([]),
         { provide: getAuth, useValue: {} },
+        { provide: AnalyticsService, useValue: mockAnalytics },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: PwaDetectionService, useValue: mockPwaDetection },
@@ -36,6 +43,10 @@ describe('LoginComponent', () => {
     component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   function query(testId: string): HTMLElement | null {
@@ -133,6 +144,36 @@ describe('LoginComponent', () => {
     it('should delegate isRunningAsApp to PwaDetectionService', () => {
       expect(component.isRunningAsApp()).toBe(false);
       expect(mockPwaDetection.isRunningAsApp).toHaveBeenCalled();
+    });
+  });
+
+  describe('googleLogin analytics', () => {
+    // mockPwaDetection.isRunningAsApp() is false by default, so googleLogin() uses signInWithPopup
+    it('should log a sign_up event when Google sign-in creates a new user', async () => {
+      vi.spyOn(firebaseAuthModule, 'getAdditionalUserInfo').mockReturnValue({
+        isNewUser: true,
+        providerId: 'google.com',
+      });
+
+      await component.googleLogin();
+
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith('sign_up', {
+        method: 'google.com',
+      });
+    });
+
+    it('should not log a sign_up event when Google sign-in is an existing user', async () => {
+      vi.spyOn(firebaseAuthModule, 'getAdditionalUserInfo').mockReturnValue({
+        isNewUser: false,
+        providerId: 'google.com',
+      });
+
+      await component.googleLogin();
+
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'sign_up',
+        expect.anything()
+      );
     });
   });
 });
