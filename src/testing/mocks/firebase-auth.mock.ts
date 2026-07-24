@@ -35,6 +35,11 @@ export interface UserCredential {
   providerId: string | null;
 }
 
+export interface AdditionalUserInfo {
+  isNewUser: boolean;
+  providerId: string | null;
+}
+
 // ──────────────────────────────────────────────
 // Mock classes
 // ──────────────────────────────────────────────
@@ -126,3 +131,9 @@ export const fetchSignInMethodsForEmail: (
   auth: Auth,
   email: string
 ) => Promise<string[]> = vi.fn().mockResolvedValue([]) as any;
+
+export const getAdditionalUserInfo: (
+  userCredential: UserCredential
+) => AdditionalUserInfo | null = vi
+  .fn()
+  .mockReturnValue({ isNewUser: false, providerId: 'google.com' }) as any;
