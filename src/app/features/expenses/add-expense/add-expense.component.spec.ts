@@ -14,6 +14,7 @@ import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
+import { ReceiptScanPayload } from '@services/receipt-scan-handoff.service';
 import { TourService } from '@services/tour.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -580,6 +581,43 @@ describe('AddExpenseComponent', () => {
       const navigateSpy = vi.spyOn(mockRouter, 'navigate');
       component.onCancel();
       expect(navigateSpy).toHaveBeenCalledWith(['/expenses']);
+    });
+  });
+
+  describe('loadReceiptScanExpense', () => {
+    it('routes unassigned items to the evenly-shared amount and tax/tip to the proportional amount', () => {
+      const bob = mockMember({
+        id: 'member-2',
+        displayName: 'Bob',
+        ref: mockDocRef('groups/group-1/members/member-2'),
+      });
+      const payload: ReceiptScanPayload = {
+        file: new File(['bytes'], 'receipt.jpg', { type: 'image/jpeg' }),
+        fileName: 'receipt.jpg',
+        totalAmount: 82.4,
+        description: 'Compton Ale House',
+        sharedAmount: 0,
+        proportionalAmount: 21.4,
+        splits: [
+          { memberRef: mockMember({ ref: mockDocRef('groups/group-1/members/member-1') }).ref!, assignedAmount: 30 },
+          { memberRef: bob.ref!, assignedAmount: 31 },
+        ],
+      };
+
+      (component as any).receiptScanPayload.set(payload);
+      component.loadReceiptScanExpense();
+
+      const model = getModel();
+      // The "Evenly Shared Remainder" field is fed by sharedAmount - only
+      // unassigned items should land there, not tax/tip.
+      expect(model.sharedAmount).toBe(0);
+      // The "Proportional Amount" field (allocatedAmount) is what the app's
+      // own help text documents as being for tax/tip - this is the bug the
+      // user found: tax/tip were landing in sharedAmount (evenly split)
+      // instead of here (proportionally split).
+      expect(model.allocatedAmount).toBe('21.40');
+      expect(model.amount).toBe('82.40');
+      expect(model.description).toBe('Compton Ale House');
     });
   });
 });

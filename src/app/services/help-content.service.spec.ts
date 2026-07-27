@@ -10,6 +10,7 @@ describe('HelpContentService', () => {
     'categories',
     'expenses',
     'add-edit-expenses',
+    'scan-receipt',
     'vacation-rental',
     'memorized-expenses',
     'add-edit-memorized',

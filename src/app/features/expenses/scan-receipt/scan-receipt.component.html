@@ -1,0 +1,255 @@
+<div class="container pt-3" data-testid="scan-receipt-container">
+  <div class="page-header" data-testid="page-header">
+    <div></div>
+    <h3 data-testid="page-title">Create Expense From Receipt</h3>
+    <div class="help-icon" data-testid="help-icon-container">
+      <mat-icon
+        matTooltip="Help"
+        (click)="showHelp()"
+        (keydown.enter)="showHelp()"
+        data-testid="help-button"
+        aria-label="Show help for the receipt scan wizard"
+      >
+        help
+      </mat-icon>
+    </div>
+  </div>
+
+  <input
+    type="file"
+    accept=".pdf,image/*"
+    class="file-input"
+    (change)="onFileSelected($event)"
+    data-testid="file-input"
+    aria-label="Select receipt file to scan"
+  />
+
+  @if (!hasScanned()) {
+    <mat-card class="mt-4 placeholder-content placeholder-card" data-testid="select-photo-placeholder">
+      <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
+        document_scanner
+      </mat-icon>
+      <p class="placeholder-text placeholder-card-text">
+        Select a photo of your receipt and we'll pull out the total, tax,
+        tip, and line items for you to assign.
+      </p>
+      <button
+        matButton="elevated"
+        class="btn-primary"
+        (click)="selectReceiptPhoto()"
+        data-testid="select-photo-button"
+      >
+        Select Receipt Photo
+      </button>
+    </mat-card>
+  } @else {
+    <p>
+      Review the scanned amounts below, then assign each line item to
+      whoever purchased it - leave an item unassigned if it was shared.
+      Unassigned items are split evenly among assigned members; tax and tip
+      are split proportionally to what each member purchased, once you
+      continue to Add Expense.
+    </p>
+
+    <div class="scanned-file-info" data-testid="scanned-file-info">
+      <mat-icon>description</mat-icon>
+      <span class="filename" data-testid="scanned-filename">{{ fileName() }}</span>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="rescan()"
+        data-testid="rescan-button"
+      >
+        Choose a Different Photo
+      </button>
+    </div>
+
+    <div class="amounts-row" data-tour="scan-receipt-amounts">
+      <mat-form-field appearance="fill" floatLabel="always" class="amount-total">
+        <mat-label>Total Amount</mat-label>
+        <input
+          matInput
+          #inputElement
+          class="number-right"
+          [value]="totalAmount()"
+          appFormatCurrencyInput
+          (blur)="totalAmount.set($any($event.target).value)"
+          inputmode="decimal"
+          data-testid="total-amount-input"
+          aria-label="Receipt total amount"
+        />
+        @if (localeService.currency().symbolPosition === 'prefix') {
+          <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+        }
+        @if (localeService.currency().symbolPosition === 'suffix') {
+          <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="fill" floatLabel="always" class="amount-small">
+        <mat-label>Tax</mat-label>
+        <input
+          matInput
+          #inputElement
+          class="number-right"
+          [value]="taxAmount()"
+          appFormatCurrencyInput
+          (blur)="taxAmount.set($any($event.target).value)"
+          inputmode="decimal"
+          data-testid="tax-amount-input"
+          aria-label="Tax amount"
+        />
+        @if (localeService.currency().symbolPosition === 'prefix') {
+          <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+        }
+        @if (localeService.currency().symbolPosition === 'suffix') {
+          <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="fill" floatLabel="always" class="amount-small">
+        <mat-label>Tip</mat-label>
+        <input
+          matInput
+          #inputElement
+          class="number-right"
+          [value]="tipAmount()"
+          appFormatCurrencyInput
+          (blur)="tipAmount.set($any($event.target).value)"
+          inputmode="decimal"
+          data-testid="tip-amount-input"
+          aria-label="Tip amount"
+        />
+        @if (localeService.currency().symbolPosition === 'prefix') {
+          <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+        }
+        @if (localeService.currency().symbolPosition === 'suffix') {
+          <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
+        }
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="fill" id="description" class="mb-2">
+      <mat-label>Description</mat-label>
+      <input
+        matInput
+        [value]="description()"
+        (blur)="description.set($any($event.target).value)"
+        data-testid="description-input"
+        aria-label="Expense description"
+      />
+    </mat-form-field>
+
+    <div class="line-items" data-testid="line-items-list">
+      @for (item of lineItems(); track $index) {
+        <div class="line-item-row" data-testid="line-item-row">
+          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-description">
+            <input
+              matInput
+              [value]="item.description"
+              (blur)="updateItem($index, { description: $any($event.target).value })"
+              placeholder="Item description"
+              [attr.data-testid]="'line-item-description-' + $index"
+              aria-label="Line item description"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-amount">
+            <input
+              matInput
+              #inputElement
+              class="number-right"
+              [value]="item.amount"
+              appFormatCurrencyInput
+              (blur)="updateItem($index, { amount: $any($event.target).value })"
+              inputmode="decimal"
+              [attr.data-testid]="'line-item-amount-' + $index"
+              aria-label="Line item amount"
+            />
+            @if (localeService.currency().symbolPosition === 'prefix') {
+              <span matTextPrefix>{{ localeService.currency().symbol }}</span>
+            }
+            @if (localeService.currency().symbolPosition === 'suffix') {
+              <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-assignee">
+            <mat-select
+              [value]="item.assignedTo"
+              (selectionChange)="updateItem($index, { assignedTo: $event.value })"
+              docRefCompare
+              [attr.data-testid]="'line-item-assignee-' + $index"
+              aria-label="Assign this item to a member"
+            >
+              <mat-option [value]="null">Shared / No one</mat-option>
+              @for (member of activeMembers(); track member.ref) {
+                <mat-option [value]="member.ref">
+                  {{ member.displayName }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (isLowConfidence(item)) {
+            <mat-icon
+              class="low-confidence-icon"
+              color="warn"
+              matTooltip="Low-confidence scan - please double-check this line"
+              aria-label="Low-confidence scan result"
+              [attr.data-testid]="'line-item-low-confidence-' + $index"
+            >
+              warning
+            </mat-icon>
+          }
+          <button
+            mat-mini-fab
+            class="btn-danger line-item-delete"
+            (click)="removeItem($index)"
+            [attr.data-testid]="'remove-line-item-' + $index"
+            aria-label="Remove this line item"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      }
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="addItem()"
+        data-testid="add-line-item-button"
+      >
+        <mat-icon>add</mat-icon>
+        Add Item
+      </button>
+    </div>
+
+    <div class="flex-wrap fw-start row-gap mt-3" data-testid="running-totals">
+      @for (row of memberSubtotals(); track row.member.ref) {
+        <div class="mock-input" data-testid="member-subtotal">
+          <span class="mock-label">{{ row.member.displayName }}</span>
+          <span class="mock-value-right">{{ row.amount | currency }}</span>
+        </div>
+      }
+      <div class="mock-input" data-testid="unassigned-items-total">
+        <span class="mock-label">Unassigned Items (split evenly)</span>
+        <span class="mock-value-right">{{ unassignedItemsTotal() | currency }}</span>
+      </div>
+      <div class="mock-input" data-testid="tax-tip-total">
+        <span class="mock-label">Tax + Tip (split proportionally)</span>
+        <span class="mock-value-right">{{ taxTipTotal() | currency }}</span>
+      </div>
+    </div>
+
+    <div class="flex-wrap fw-center row-gap mt-3">
+      <button mat-stroked-button type="button" (click)="onCancel()" data-testid="cancel-button">
+        Cancel
+      </button>
+      <button
+        matButton="elevated"
+        class="btn-primary"
+        type="button"
+        [disabled]="!canContinue()"
+        (click)="onContinue()"
+        data-testid="continue-button"
+      >
+        Continue
+      </button>
+    </div>
+  }
+</div>
