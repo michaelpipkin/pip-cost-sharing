@@ -75,7 +75,7 @@
     "@capacitor/assets": "^3.0.5",
     "@hcaptcha/types": "^1.2.0",
     "@playwright/test": "^1.62.0",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",
     "concurrently": "^10.0.4",
@@ -85,7 +85,7 @@
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "prettier": "^3.9.6",
     "prettier-eslint-cli": "^9.2.1",
     "ts-node": "^10.9.2",
@@ -94,7 +94,7 @@
     "wait-on": "^9.1.0"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
-    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
+    "@rollup/rollup-linux-x64-gnu": "^4.62.3",
+    "@rollup/rollup-win32-x64-msvc": "^4.62.3"
   }
 }
