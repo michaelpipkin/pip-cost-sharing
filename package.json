@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.23.1",
+  "version": "1.23.2",
   "type": "module",
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
@@ -80,7 +80,7 @@
     "@typescript-eslint/parser": "^8.65.0",
     "concurrently": "^10.0.4",
     "cross-env": "^10.1.0",
-    "dependabot-agent": "^1.0.2",
+    "dependabot-agent": "^1.1.0",
     "dotenv": "^17.4.2",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
