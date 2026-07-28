@@ -10,3 +10,7 @@ node_modules/
 *.local
 
 .env
+
+# tesseract.js downloads its language data into the CWD when run locally
+# (e.g. via the emulator or a local script) - not something to commit.
+*.traineddata

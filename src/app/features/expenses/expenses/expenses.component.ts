@@ -61,6 +61,10 @@ import {
 } from '@angular/core';
 import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import {
+  AddExpenseOption,
+  AddExpenseOptionsDialogComponent,
+} from '../add-expense-options-dialog/add-expense-options-dialog.component';
+import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
@@ -305,19 +309,27 @@ export class ExpensesComponent {
   }
 
   onAddExpenseClick(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.router.navigate(['/demo/expenses/add']);
-    } else {
-      this.router.navigate(['/expenses/add']);
-    }
-  }
-
-  onAddRentalClick(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.router.navigate(['/demo/expenses/rental']);
-    } else {
-      this.router.navigate(['/expenses/rental']);
-    }
+    const dialogRef = this.dialog.open(AddExpenseOptionsDialogComponent, {
+      maxWidth: '400px',
+    });
+    dialogRef.afterClosed().subscribe((result: AddExpenseOption | null) => {
+      const isDemoMode = this.demoService.isInDemoMode();
+      const demoPrefix = isDemoMode ? '/demo' : '';
+      if (result === 'manual') {
+        this.router.navigate([`${demoPrefix}/expenses/add`]);
+      } else if (result === 'rental') {
+        this.router.navigate([`${demoPrefix}/expenses/rental`]);
+      } else if (result === 'receipt') {
+        // Scanning calls a real (billable-compute) Cloud Function keyed to a
+        // real group membership, so it's not available against a fake demo
+        // group - there's no /demo/expenses/scan-receipt route.
+        if (isDemoMode) {
+          this.demoService.showDemoModeRestrictionMessage();
+        } else {
+          this.router.navigate(['/expenses/scan-receipt']);
+        }
+      }
+    });
   }
 
   onRowClick(expense: Expense): void {

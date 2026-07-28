@@ -17,6 +17,8 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
 import { getHCaptchaSecret, getSmtpPassword } from './common';
 
+export { scanReceipt } from './receipt-ocr';
+
 initializeApp();
 
 const db = getFirestore();

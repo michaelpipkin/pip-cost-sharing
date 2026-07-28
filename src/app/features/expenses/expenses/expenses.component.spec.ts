@@ -40,6 +40,10 @@ import {
 } from '@testing/test-helpers';
 import { getStorage } from 'firebase/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  AddExpenseOption,
+  AddExpenseOptionsDialogComponent,
+} from '../add-expense-options-dialog/add-expense-options-dialog.component';
 import { ExpensesComponent } from './expenses.component';
 
 describe('ExpensesComponent', () => {
@@ -155,18 +159,66 @@ describe('ExpensesComponent', () => {
   });
 
   describe('onAddExpenseClick', () => {
-    it('should navigate to /demo/expenses/add in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    function mockDialogResult(result: AddExpenseOption | null) {
+      const dialog = TestBed.inject(MatDialog);
+      return vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({
+          subscribe: (cb: (result: AddExpenseOption | null) => void) => cb(result),
+        }),
+      } as any);
+    }
+
+    it('opens the add-expense options dialog', () => {
+      const openSpy = mockDialogResult(null);
       component.onAddExpenseClick();
-      expect(navigateSpy).toHaveBeenCalledWith(['/demo/expenses/add']);
+      expect(openSpy).toHaveBeenCalledWith(
+        AddExpenseOptionsDialogComponent,
+        expect.any(Object)
+      );
     });
 
-    it('should navigate to /expenses/add in normal mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it.each<{
+      isDemoMode: boolean;
+      choice: AddExpenseOption;
+      expectedRoute: string;
+    }>([
+      { isDemoMode: true, choice: 'manual', expectedRoute: '/demo/expenses/add' },
+      { isDemoMode: false, choice: 'manual', expectedRoute: '/expenses/add' },
+      { isDemoMode: true, choice: 'rental', expectedRoute: '/demo/expenses/rental' },
+      { isDemoMode: false, choice: 'rental', expectedRoute: '/expenses/rental' },
+    ])(
+      'should navigate to $expectedRoute when $choice is chosen (demo mode: $isDemoMode)',
+      ({ isDemoMode, choice, expectedRoute }) => {
+        mockDemoService.isInDemoMode.mockReturnValue(isDemoMode);
+        mockDialogResult(choice);
+        const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+        component.onAddExpenseClick();
+        expect(navigateSpy).toHaveBeenCalledWith([expectedRoute]);
+      }
+    );
+
+    it('should not navigate when the dialog is cancelled', () => {
+      mockDialogResult(null);
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.onAddExpenseClick();
-      expect(navigateSpy).toHaveBeenCalledWith(['/expenses/add']);
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should navigate to /expenses/scan-receipt in normal mode when receipt is chosen', () => {
+      mockDemoService.isInDemoMode.mockReturnValue(false);
+      mockDialogResult('receipt');
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      component.onAddExpenseClick();
+      expect(navigateSpy).toHaveBeenCalledWith(['/expenses/scan-receipt']);
+    });
+
+    it('should show the demo restriction message instead of navigating in demo mode when receipt is chosen', () => {
+      mockDemoService.isInDemoMode.mockReturnValue(true);
+      mockDialogResult('receipt');
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      component.onAddExpenseClick();
+      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
+      expect(navigateSpy).not.toHaveBeenCalled();
     });
   });
 

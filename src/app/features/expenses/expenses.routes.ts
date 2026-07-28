@@ -5,6 +5,7 @@ import { editExpenseResolver } from './edit-expense.resolver';
 import { EditExpenseComponent } from './edit-expense/edit-expense.component';
 import { ExpensesComponent } from './expenses/expenses.component';
 import { RentalComponent } from './rental/rental.component';
+import { ScanReceiptComponent } from './scan-receipt/scan-receipt.component';
 
 export const expensesRoutes: Routes = [
   {
@@ -22,6 +23,12 @@ export const expensesRoutes: Routes = [
     path: 'rental',
     title: 'Vacation Rental',
     component: RentalComponent,
+    canActivate: [noCrawlerGuard],
+  },
+  {
+    path: 'scan-receipt',
+    title: 'Create Expense From Receipt',
+    component: ScanReceiptComponent,
     canActivate: [noCrawlerGuard],
   },
   {
