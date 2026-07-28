@@ -1,0 +1,49 @@
+<h1 mat-dialog-title data-testid="dialog-title">Add New Expense</h1>
+<mat-dialog-content data-testid="dialog-content">
+  <div class="selection-options">
+    <button
+      mat-raised-button
+      class="btn-primary selection-button"
+      type="button"
+      [mat-dialog-close]="'manual'"
+      data-testid="manual-expense-button"
+      aria-label="Enter a manual expense"
+    >
+      <mat-icon>edit_note</mat-icon>
+      <span>Enter Manual Expense</span>
+    </button>
+    <button
+      mat-raised-button
+      class="btn-primary selection-button"
+      type="button"
+      [mat-dialog-close]="'receipt'"
+      data-testid="receipt-expense-button"
+      aria-label="Create an expense from a receipt photo"
+    >
+      <mat-icon>document_scanner</mat-icon>
+      <span>Create Expense From Receipt</span>
+    </button>
+    <button
+      mat-raised-button
+      class="btn-primary selection-button"
+      type="button"
+      [mat-dialog-close]="'rental'"
+      data-testid="rental-expense-button"
+      aria-label="Enter a vacation rental expense"
+    >
+      <mat-icon>cottage</mat-icon>
+      <span>Vacation Rental</span>
+    </button>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions data-testid="dialog-actions">
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="null"
+    data-testid="cancel-button"
+    aria-label="Cancel"
+  >
+    Cancel
+  </button>
+</mat-dialog-actions>

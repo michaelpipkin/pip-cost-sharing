@@ -6,4 +6,5 @@ overrides:
 allowBuilds:
   '@firebase/util': true
   protobufjs: true
+  tesseract.js: true
   unrs-resolver: true

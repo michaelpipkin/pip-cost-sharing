@@ -1,0 +1,134 @@
+// .container is `width: fit-content` globally, which works fine for pages
+// whose rows already wrap or are made of small fixed-width fields that
+// naturally sum to something narrow. This page's amount and line-item rows
+// are deliberately non-wrapping and need to shrink against a real,
+// viewport-relative width instead - fit-content gives them nothing to
+// shrink against, so they were overflowing the page horizontally rather
+// than actually getting smaller. Give this page's own container a real
+// bounded width so the rows below have something concrete to resolve
+// percentages/flex-shrink against.
+.container {
+  width: 100%;
+  max-width: 640px;
+  box-sizing: border-box;
+}
+
+#description {
+  min-width: 220px;
+  flex: 1;
+}
+
+.scanned-file-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  mat-icon {
+    align-self: center;
+  }
+}
+
+// Total/Tax/Tip: always one row, however narrow the screen - amounts here
+// never need more than a handful of digits, so they shrink freely instead
+// of wrapping like a typical form row would.
+.amounts-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+// mat-form-field doesn't force its own <input> to shrink below the input's
+// native browser-default sizing (~20 characters) just because the
+// form-field itself has been squeezed by flex - without this, the field
+// wrapper shrinks correctly but the input inside pokes out past it.
+.amount-total,
+.amount-small {
+  input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.amount-total {
+  flex: 1.3 1 0;
+  min-width: 0;
+}
+
+.amount-small {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.line-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+// Description/amount/assignee/delete share one row on wide-enough screens.
+// Below $line-item-breakpoint, the description gets a line to itself
+// (forced via flex-basis: 100%, which pushes everything after it onto the
+// next line) and amount/assignee/delete share a second, less cramped line -
+// four fields plus a full-length description just don't fit together on a
+// narrow phone screen.
+$line-item-breakpoint: 599px;
+
+.line-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.line-item-description {
+  flex: 1 1 140px;
+  min-width: 0;
+
+  @media (max-width: $line-item-breakpoint) {
+    flex-basis: 100%;
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+  }
+}
+
+// Capped rather than sharing the assignee's flex-grow - a currency amount
+// never needs anywhere near as much room as a member name, and letting it
+// grow to match looked strange (an oversized, mostly-empty amount field).
+.line-item-amount {
+  flex: 0 1 125px;
+  min-width: 0;
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.line-item-assignee {
+  flex: 2 1 25px;
+  min-width: 0;
+
+  .mat-mdc-select-trigger {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.low-confidence-icon,
+.line-item-delete {
+  flex: 0 0 auto;
+}
