@@ -50,9 +50,8 @@ export class HelpContentService {
         'You can filter certain columns in the expenses table by clicking the filter icon in the column header. This will open a popup where you can enter filter criteria for that column. Multiple column filters can be applied at the same time.',
         'Clicking the Date header will toggle sorting the table in ascending or descending date order.',
         'Click the Splits arrow on any row to expand the split detail for that expense. You can also click anywhere on the detail table to copy a text summary of the expense to your clipboard for easy sharing. Group admins can use the Mark Paid/Unpaid button on a split row to make corrections to individual splits. Note that this does not create a payment history record — to record a payment between members with history and notifications, use the Summary page.',
-        'Click the Add New Expense button to create a new expense for the group.',
+        'Click the Add New Expense button for a popup with three ways to create a new expense: a manual entry, a photo scan of a receipt, or (if not everyone stayed every night) a guided Vacation Rental split - see the Create Expense From Receipt and Vacation Rental help sections for details.',
         'Click on an expense row to edit the expense details. Please note that editing an expense will mark all splits unpaid. When viewing an existing expense, you can view the receipt, if one exists.',
-        'Sharing a vacation rental where not everyone stays every night? Click the Vacation Rental button for a guided way to split the cost fairly - see the Vacation Rental help section for details.',
       ],
     },
     {
@@ -68,6 +67,18 @@ export class HelpContentService {
         "If you are splitting by shares, enter a share value for each member (decimals allowed, e.g., 1.5). The effective percentage for each member is shown next to their shares input and updates as you type. Shares let you express ratios (e.g., 2:1) without computing percentages manually.",
         'Click the calculator button in amount fields to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'The form also allows you to upload a supporting receipt for the expense. The receipt must be a PDF or an image file, with a maximum size of 5MB. Click the Upload receipt button, then select your file. The receipt will be saved with the expense. Please note that receipts are automatically deleted after 90 days if the expense is fully paid. If you need to keep a receipt for your records, please save a copy on your device.',
+      ],
+    },
+    {
+      id: 'scan-receipt',
+      title: 'Create Expense From Receipt',
+      content: [
+        "Use this wizard to create an expense from a photo of a receipt instead of typing everything in by hand.",
+        'Select or take a photo of the receipt. We scan it to pull out the total, tax, tip, and individual line items - this can take a few seconds. If a photo scans poorly, click Choose a Different Photo to try again, or just correct the fields by hand.',
+        'The total, tax, tip, and description fields are all editable, so double-check them against the receipt. Every line item is also editable, and items flagged with a warning icon had a low-confidence scan and are especially worth checking.',
+        "For each line item, assign it to whoever purchased it, or leave it as \"Shared / No one\" if it was shared by the group. You can also add a missing item or remove one that shouldn't be there.",
+        'The running totals show what each assigned member owes for their own items, an Unassigned Items total (any items left as "Shared / No one," split evenly among assigned members), and a Tax + Tip total (split proportionally to what each member purchased).',
+        'Click Continue to hand everything off to the Add Expense form, pre-filled with the total, description, per-member amounts, and the receipt photo already attached. Review it there and save as usual.',
       ],
     },
     {
@@ -150,7 +161,7 @@ export class HelpContentService {
         "If you are splitting by shares, enter a share value for each member (decimals allowed, e.g., 1.5). The effective percentage is shown next to each shares input. Shares let you express ratios (e.g., 2:1) without computing percentages manually.",
         'You can perform basic arithmetic directly in any amount input field, but not percentage fields. (i.e. entering 3*6-2 in the total amount field will evaluate to 16.00) You can also use the calculator button to open a popup calculator to perform calculations. After entering calculations, clicking the = button will insert the result back into the amount field.',
         'When all of the amounts are entered, click the Generate Summary button to create a summary of the split expense. On the summary, there is a copy button you can click to copy the summary to your clipboard so that it can be easily shared.',
-        "Sharing a vacation rental where not everyone stays every night? Click the Vacation Rental button for a guided occupancy grid: enter the number of nights, add participants, and check off who stayed each night. Every night's cost is divided evenly among whoever stayed, so nights with fewer people cost each of them more. Click Apply Shares to convert the grid into a shares split you can still review and fine-tune before generating your summary.",
+        "Sharing a vacation rental where not everyone stays every night? From the Expenses page, click Add New Expense, then Vacation Rental, for a guided occupancy grid: enter the number of nights, add participants, and check off who stayed each night. Every night's cost is divided evenly among whoever stayed, so nights with fewer people cost each of them more. Click Apply Shares to convert the grid into a shares split you can still review and fine-tune before generating your summary.",
       ],
     },
   ];

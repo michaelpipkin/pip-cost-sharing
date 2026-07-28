@@ -647,21 +647,7 @@ export class TourService {
             on: 'bottom',
           },
           title: 'Adding Expenses',
-          text: 'Click here to add a new expense. Even in demo mode, you can explore the full add expense interface!',
-          buttons: [
-            this.getBackButton(),
-            this.getNextButton(),
-            this.getSkipButton(),
-          ],
-        },
-        {
-          id: 'expenses-vacation-rental',
-          attachTo: {
-            element: '[data-tour="add-rental-button"]',
-            on: 'bottom',
-          },
-          title: 'Splitting a Vacation Rental',
-          text: "Sharing a vacation rental where not everyone stays every night? Click here for a guided wizard that figures out a fair split for you, based on who stayed which nights.",
+          text: "Click here to add a new expense. A popup will let you choose how: a manual entry, a photo scan of a receipt that pulls out the total and line items for you (not available in demo mode), or (if not everyone stayed every night) a guided vacation rental wizard that figures out a fair split based on who stayed which nights. Even in demo mode, you can explore the full add expense interface!",
           buttons: [
             this.getBackButton(),
             this.getNextButton(),

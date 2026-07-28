@@ -12,7 +12,6 @@ export type FileSelectionDialogData = {
 @Component({
   selector: 'app-file-selection-dialog',
   templateUrl: './file-selection-dialog.component.html',
-  styleUrl: './file-selection-dialog.component.scss',
   imports: [MatDialogModule, MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

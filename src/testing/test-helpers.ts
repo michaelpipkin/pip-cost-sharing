@@ -9,6 +9,8 @@ import { History } from '@models/history';
 import { Memorized } from '@models/memorized';
 import { Split } from '@models/split';
 import { AmountDue } from '@models/amount-due';
+import { ParsedReceipt } from '@models/receipt-scan';
+import { ReceiptFilePickResult } from '@services/receipt-file-selection.service';
 
 // ---- Mock DocumentReference ----
 
@@ -439,8 +441,46 @@ export function createMockMemorizedService() {
 
 export function createMockCameraService() {
   return {
-    takePicture: vi.fn(() => Promise.resolve(null)),
-    chooseFromGallery: vi.fn(() => Promise.resolve(null)),
+    isAvailable: vi.fn(() => false),
+    takePicture: vi.fn((): Promise<File | null> => Promise.resolve(null)),
+    selectFromGallery: vi.fn(
+      (): Promise<File | null> => Promise.resolve(null)
+    ),
+  };
+}
+
+export function createMockReceiptFileSelectionService() {
+  return {
+    ensureReceiptPolicyAccepted: vi.fn(() => Promise.resolve(true)),
+    pickSource: vi.fn(
+      (): Promise<ReceiptFilePickResult> =>
+        Promise.resolve({ type: 'cancelled' })
+    ),
+    pasteFromClipboard: vi.fn((): Promise<File | null> => Promise.resolve(null)),
+    validateFile: vi.fn((file: File) => file),
+  };
+}
+
+export function createMockReceiptScanService() {
+  return {
+    scanReceipt: vi.fn(
+      (): Promise<ParsedReceipt> =>
+        Promise.resolve({
+          total: null,
+          subtotal: null,
+          tax: null,
+          tip: null,
+          lineItems: [],
+          rawText: '',
+        })
+    ),
+  };
+}
+
+export function createMockReceiptScanHandoffService() {
+  return {
+    setPayload: vi.fn(),
+    takePayload: vi.fn(() => null),
   };
 }
 

@@ -29,12 +29,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
-import {
-  FileSelectionDialogComponent,
-  FileSelectionOption,
-} from '@components/file-selection-dialog/file-selection-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
-import { ReceiptDialogComponent } from '@components/receipt-dialog/receipt-dialog.component';
 import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
@@ -63,6 +58,11 @@ import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
+import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
+import {
+  ReceiptScanHandoffService,
+  ReceiptScanPayload,
+} from '@services/receipt-scan-handoff.service';
 import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -115,6 +115,8 @@ export class AddExpenseComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly memorizedService = inject(MemorizedService);
+  protected readonly receiptFileSelection = inject(ReceiptFileSelectionService);
+  protected readonly receiptScanHandoff = inject(ReceiptScanHandoffService);
   protected readonly tourService = inject(TourService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -132,6 +134,7 @@ export class AddExpenseComponent {
   memorizedExpense = signal<SerializableMemorized | null>(null);
   rentalPayload = signal<SerializableRentalPayload | null>(null);
   rentalDetails = signal<RentalDetails | null>(null);
+  receiptScanPayload = signal<ReceiptScanPayload | null>(null);
 
   activeCategories = computed<Category[]>(() =>
     this.#categories().filter((c) => c.active)
@@ -191,7 +194,10 @@ export class AddExpenseComponent {
   constructor() {
     this.loading.loadingOn();
     const navigation = this.router.currentNavigation();
-    if (navigation?.extras?.state?.rental) {
+    const receiptScanPayload = this.receiptScanHandoff.takePayload();
+    if (receiptScanPayload) {
+      this.receiptScanPayload.set(receiptScanPayload);
+    } else if (navigation?.extras?.state?.rental) {
       this.rentalPayload.set(navigation.extras.state.rental);
     } else if (navigation?.extras?.state?.expense) {
       this.memorizedExpense.set(navigation.extras.state.expense);
@@ -200,7 +206,9 @@ export class AddExpenseComponent {
       this.addSelectFocus();
     });
     afterNextRender(() => {
-      if (this.rentalPayload()) {
+      if (this.receiptScanPayload()) {
+        this.loadReceiptScanExpense();
+      } else if (this.rentalPayload()) {
         this.loadRentalExpense();
       } else if (this.memorizedExpense()) {
         this.loadMemorizedExpense();
@@ -218,6 +226,35 @@ export class AddExpenseComponent {
       }
       this.loading.loadingOff();
     });
+  }
+
+  loadReceiptScanExpense(): void {
+    const payload = this.receiptScanPayload()!;
+    const splits: ExpenseSplitItemForm[] = payload.splits.map(s => ({
+      owedByMemberRef: s.memberRef,
+      assignedAmount: this.#formatForInput(s.assignedAmount),
+      percentage: 0,
+      shares: 0,
+      allocatedAmount: 0,
+    }));
+
+    this.splitMethod.set('amount');
+    const categories = this.activeCategories();
+    this.expenseModel.set({
+      paidByMember: this.currentMember()?.ref ?? null,
+      category: categories.length === 1 ? (categories[0]?.ref ?? null) : null,
+      sharedAmount: payload.sharedAmount,
+      splits,
+    });
+    this.expenseFormData.set({
+      date: new Date(),
+      amount: this.#formatForInput(payload.totalAmount),
+      description: payload.description,
+      allocatedAmount: this.#formatForInput(payload.proportionalAmount),
+    });
+    this.receiptFile.set(payload.file);
+    this.fileName.set(payload.fileName);
+    this.allocateSharedAmounts();
   }
 
   loadRentalExpense(): void {
@@ -377,124 +414,40 @@ export class AddExpenseComponent {
   }
 
   /**
-   * Opens file selection dialog
-   * First checks if user has accepted receipt policy
-   * On native platforms: shows dialog to choose camera, gallery, file browser, or clipboard
-   * On web/PWA: shows dialog to choose file browser or clipboard
+   * Opens the shared receipt-policy + source-picker flow. Camera/gallery/
+   * clipboard choices resolve directly; "browse files" clicks this
+   * component's own hidden file input (needed for both the native picker
+   * and e2e tests, which target a real, always-present element).
    */
   async openFileSelectionDialog(): Promise<void> {
-    const currentUser = this.userStore.user();
-    if (!currentUser?.receiptPolicy) {
-      const policyDialogRef = this.dialog.open(ReceiptDialogComponent, {
-        disableClose: true,
-        maxWidth: '600px',
-      });
+    const accepted = await this.receiptFileSelection.ensureReceiptPolicyAccepted();
+    if (!accepted) return;
 
-      const accepted = await new Promise<boolean>((resolve) => {
-        policyDialogRef.afterClosed().subscribe((value) => resolve(value));
-      });
-
-      if (!accepted) {
-        return;
-      }
-    }
-
-    const dialogConfig: MatDialogConfig = {
-      disableClose: false,
-      maxWidth: '400px',
-      data: {
-        isNativePlatform: this.cameraService.isAvailable(),
-      },
-    };
-
-    const dialogRef = this.dialog.open(
-      FileSelectionDialogComponent,
-      dialogConfig
+    const result = await this.receiptFileSelection.pickSource(
+      this.cameraService.isAvailable()
     );
 
-    const result: FileSelectionOption | null = await new Promise((resolve) => {
-      dialogRef.afterClosed().subscribe((value) => resolve(value));
-    });
-
-    if (!result) {
+    if (result.type === 'cancelled') return;
+    if (result.type === 'browseFiles') {
+      const fileInput = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      fileInput?.click();
       return;
     }
 
-    try {
-      let file: File | null = null;
-
-      if (result === 'camera') {
-        file = await this.cameraService.takePicture();
-      } else if (result === 'gallery') {
-        file = await this.cameraService.selectFromGallery();
-      } else if (result === 'file') {
-        const fileInput = document.querySelector(
-          'input[type="file"]'
-        ) as HTMLInputElement;
-        if (fileInput) {
-          fileInput.click();
-        }
-        return;
-      } else if (result === 'clipboard') {
-        await this.pasteFromClipboard();
-        return;
-      }
-
-      if (file) {
-        this.processSelectedFile(file);
-      }
-    } catch (error) {
-      console.error('Error selecting file:', error);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'Failed to select file. Please try again.' },
-      });
-    }
+    this.processSelectedFile(result.file);
   }
 
   /**
-   * Reads an image from the clipboard and processes it as a receipt
-   * Uses the Clipboard API to read image data
-   */
-  private async pasteFromClipboard(): Promise<void> {
-    try {
-      const clipboardItems = await navigator.clipboard.read();
-      for (const item of clipboardItems) {
-        const imageType = item.types.find((type) => type.startsWith('image/'));
-        if (imageType) {
-          const blob = await item.getType(imageType);
-          const extension = imageType.split('/')[1] || 'png';
-          const file = new File([blob], `pasted-receipt.${extension}`, {
-            type: imageType,
-          });
-          this.processSelectedFile(file);
-          return;
-        }
-      }
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'No image found in clipboard.' },
-      });
-    } catch (error) {
-      console.error('Error reading from clipboard:', error);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Unable to read from clipboard. Please check permissions.',
-        },
-      });
-    }
-  }
-
-  /**
-   * Process a file (from camera, gallery, or file browser)
-   * Validates size and sets the file in the component state
+   * Validates a selected file (from camera, gallery, file browser, or
+   * clipboard) and sets it in the component state.
    */
   private processSelectedFile(file: File): void {
-    if (file.size > 5 * 1024 * 1024) {
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: 'File is too large. File size limited to 5MB.' },
-      });
-    } else {
-      this.receiptFile.set(file);
-      this.fileName.set(file.name);
+    const validated = this.receiptFileSelection.validateFile(file);
+    if (validated) {
+      this.receiptFile.set(validated);
+      this.fileName.set(validated.name);
     }
   }
 
