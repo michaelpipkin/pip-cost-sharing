@@ -14,11 +14,17 @@ permissions:
 jobs:
   auto-version:
     runs-on: ubuntu-latest
+    # Skip keywords ('[no-deploy]', '[skip-deploy]') must stay in sync with
+    # the skipKeywords list in firebase-deploy.yml
     if: |
       !contains(github.event.pull_request.title, 'version bump') &&
       !contains(github.event.pull_request.title, 'bump version') &&
       !contains(github.event.pull_request.title, 'chore: bump') &&
-      !contains(github.event.pull_request.title, 'release')
+      !contains(github.event.pull_request.title, 'release') &&
+      !contains(github.event.pull_request.title, '[no-deploy]') &&
+      !contains(github.event.pull_request.title, '[skip-deploy]') &&
+      !contains(github.event.pull_request.body || '', '[no-deploy]') &&
+      !contains(github.event.pull_request.body || '', '[skip-deploy]')
     
     steps:
       - name: Checkout PR branch
