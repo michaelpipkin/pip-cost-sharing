@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { ParsedReceipt } from '@models/receipt-scan';
 import { CameraService } from '@services/camera.service';
@@ -171,6 +172,44 @@ describe('ScanReceiptComponent', () => {
       expect((component as any).totalAmount()).toBe('13.00');
     });
 
+    it('leaves description blank when the first OCR line looks like a purchased line item', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockResolvedValueOnce({
+        total: 9.93,
+        subtotal: null,
+        tax: null,
+        tip: null,
+        lineItems: [],
+        rawText: 'Crompton Burger 1 $22.00\nCrompton Ale House',
+      });
+
+      await (component as any).selectReceiptPhoto();
+
+      expect((component as any).description()).toBe('');
+    });
+
+    it('leaves description blank when the first OCR line is a grocery-style line item with a tax-code letter', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockResolvedValueOnce({
+        total: 5.99,
+        subtotal: null,
+        tax: null,
+        tip: null,
+        lineItems: [],
+        rawText: 'OGVAL MILK 2% 5.99 F\nWegmans',
+      });
+
+      await (component as any).selectReceiptPhoto();
+
+      expect((component as any).description()).toBe('');
+    });
+
     it('degrades to an empty, editable state when scanning fails', async () => {
       mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
         type: 'selected',
@@ -185,6 +224,80 @@ describe('ScanReceiptComponent', () => {
       expect((component as any).hasScanned()).toBe(true);
       expect((component as any).totalAmount()).toBe('0.00');
       expect((component as any).lineItems()).toEqual([]);
+    });
+
+    it('shows a "Receipt Not Readable" dialog instead of degrading to an empty form when the PDF has no text layer', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockRejectedValueOnce({
+        code: 'functions/failed-precondition',
+        message: 'This PDF does not contain readable text.',
+        details: { reason: 'pdf-not-readable' },
+      });
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({ subscribe: (cb: (result: unknown) => void) => cb(null) }),
+      } as any);
+
+      await (component as any).selectReceiptPhoto();
+
+      expect(openSpy).toHaveBeenCalledWith(
+        ConfirmDialogComponent,
+        expect.objectContaining({
+          data: expect.objectContaining({ dialogTitle: 'Receipt Not Readable' }),
+        })
+      );
+      // Unlike a generic scan failure, this should not leave a degraded
+      // "scanned but empty" form behind - the user is being sent to pick a
+      // different file instead.
+      expect((component as any).hasScanned()).toBe(false);
+    });
+
+    it('resets and reopens the photo picker after the "Receipt Not Readable" dialog closes', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockRejectedValueOnce({
+        code: 'functions/failed-precondition',
+        message: 'unreadable',
+        details: { reason: 'pdf-not-readable' },
+      });
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({ subscribe: (cb: (result: unknown) => void) => cb(null) }),
+      } as any);
+      // pickSource is called a second time when the picker reopens.
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'cancelled',
+      });
+
+      await (component as any).selectReceiptPhoto();
+      // The dialog's afterClosed() callback re-triggers selectReceiptPhoto()
+      // without the outer call awaiting it (matching how a real dialog-close
+      // handler fires) - flush microtasks so that fire-and-forget chain
+      // settles before asserting.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockReceiptFileSelection.pickSource).toHaveBeenCalledTimes(2);
+    });
+
+    it('treats a differently-coded or generic error as a normal scan failure, not a PDF-specific one', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockRejectedValueOnce({
+        code: 'functions/internal',
+        message: 'boom',
+      });
+
+      await (component as any).selectReceiptPhoto();
+
+      expect((component as any).hasScanned()).toBe(true);
+      expect((component as any).totalAmount()).toBe('0.00');
     });
 
     it('clicks the hidden file input when the user chooses to browse files', async () => {

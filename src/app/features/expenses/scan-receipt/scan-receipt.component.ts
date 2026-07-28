@@ -20,6 +20,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
@@ -46,6 +47,13 @@ import { StringUtils } from '@utils/string-utils.service';
 import { DocumentReference } from 'firebase/firestore';
 
 const LOW_CONFIDENCE_THRESHOLD = 70;
+
+// Mirrors (a simplified version of) functions/src/receipt-parser.ts's
+// AMOUNT_RE - a trailing currency figure, optionally followed by a
+// grocery-style tax-status letter (e.g. "5.99 F"). Used to recognize when
+// the first OCR'd line is actually a purchased line item rather than a
+// store/receipt header, so it doesn't get guessed as the description.
+const TRAILING_AMOUNT_RE = /\d{1,3}(?:,\d{3})*\.\d{2}(?:\s?[A-Z])?\s*$/;
 
 interface ScanLineItemRow {
   description: string;
@@ -300,6 +308,10 @@ export class ScanReceiptComponent {
       this.applyParsedReceipt(parsed);
     } catch (error) {
       console.error('Error scanning receipt:', error);
+      if (this.#isPdfNotReadableError(error)) {
+        this.#showPdfNotReadableDialog();
+        return;
+      }
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
           message:
@@ -317,6 +329,51 @@ export class ScanReceiptComponent {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  /**
+   * True for the specific "this PDF has no readable text" error scanReceipt
+   * throws - see receipt-ocr.ts. Duck-typed rather than an `instanceof
+   * FunctionsError` check: the SDK's exported error class doesn't resolve
+   * consistently between the app build and the test build, and this is
+   * robust either way since callable errors reliably carry `.details`.
+   */
+  #isPdfNotReadableError(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('details' in error)) {
+      return false;
+    }
+    const details = (error as { details?: unknown }).details;
+    return (
+      !!details &&
+      typeof details === 'object' &&
+      (details as { reason?: string }).reason === 'pdf-not-readable'
+    );
+  }
+
+  /**
+   * A PDF with no text layer (e.g. a paper receipt scanned/photographed and
+   * saved as an image-only PDF) can't be read without OCR-rasterizing the
+   * page, which isn't supported - see receipt-ocr.ts for why. Rather than
+   * silently degrading to an empty form, tell the user directly and send
+   * them back to pick a photo instead.
+   */
+  #showPdfNotReadableDialog(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      disableClose: false,
+      maxWidth: '400px',
+      data: {
+        dialogTitle: 'Receipt Not Readable',
+        confirmationText:
+          "We couldn't find any readable text in this PDF. If you scanned or " +
+          'photographed the receipt and saved it as a PDF, try taking a regular ' +
+          'photo of the receipt instead.',
+        confirmButtonText: 'Choose a Different Photo',
+      },
+    });
+    dialogRef.afterClosed().subscribe(() => {
+      this.rescan();
+      this.selectReceiptPhoto();
+    });
   }
 
   private applyParsedReceipt(parsed: ParsedReceipt): void {
@@ -337,11 +394,23 @@ export class ScanReceiptComponent {
     this.hasScanned.set(true);
   }
 
+  /**
+   * Guesses a description from the first non-empty OCR'd line - typically
+   * the store/restaurant name printed at the top of a receipt. Only used
+   * when that line is obviously not itself a purchased line item (i.e. it
+   * has no trailing cost); otherwise a cropped or oddly-scanned photo can
+   * end up guessing something like "Crompton Burger 1 $22.00" as the
+   * expense description. Leaves the description blank rather than guessing
+   * wrong - the user still has to fill it in, but a blank field is a much
+   * clearer signal than a plausible-looking wrong one.
+   */
   #guessDescription(rawText: string): string {
     const firstLine = rawText
       .split('\n')
-      .find((line) => line.trim().length > 0);
-    return firstLine?.trim() ?? '';
+      .find((line) => line.trim().length > 0)
+      ?.trim();
+    if (!firstLine || TRAILING_AMOUNT_RE.test(firstLine)) return '';
+    return firstLine;
   }
 
   #formatForInput(value: number): string {

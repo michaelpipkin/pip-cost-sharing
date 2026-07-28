@@ -647,7 +647,7 @@ export class TourService {
             on: 'bottom',
           },
           title: 'Adding Expenses',
-          text: "Click here to add a new expense. You'll be asked to choose how: a manual entry, or (if not everyone stayed every night) a guided vacation rental wizard that figures out a fair split based on who stayed which nights. Even in demo mode, you can explore the full add expense interface!",
+          text: "Click here to add a new expense. A popup will let you choose how: a manual entry, a photo scan of a receipt that pulls out the total and line items for you (not available in demo mode), or (if not everyone stayed every night) a guided vacation rental wizard that figures out a fair split based on who stayed which nights. Even in demo mode, you can explore the full add expense interface!",
           buttons: [
             this.getBackButton(),
             this.getNextButton(),
