@@ -23,6 +23,7 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import {
@@ -32,7 +33,9 @@ import {
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
+import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
+import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
@@ -42,6 +45,12 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
+
+// Anti-spam window for invites, mirrored server-side in
+// functions/src/index.ts (INVITE_COOLDOWN_MS). This copy is UX only — the
+// Cloud Function re-checks the cooldown and is the real gate.
+const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 @Component({
   selector: 'app-members',
@@ -75,15 +84,17 @@ export class MembersComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly analytics = inject(AnalyticsService);
+  protected readonly inviteService = inject(InviteService);
 
   user: Signal<User | null> = this.userStore.user;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
-  sortField = signal<string>('name');
+  sortField = signal<string>('displayName');
   sortAsc = signal<boolean>(true);
-  columnsToDisplay = signal<string[]>([]);
+  smallScreen = signal<boolean>(false);
 
   activeOnly = model<boolean>(true);
   nameFilter = model<string>('');
@@ -91,17 +102,38 @@ export class MembersComponent {
   filteredMembers = computed(() => {
     let members = this.groupMembers().filter((m: Member) => {
       return (
-        (m.active || m.active == this.activeOnly()) &&
+        (!this.activeOnly() || m.active) &&
         (m.displayName
           .toLowerCase()
           .includes(this.nameFilter().toLowerCase()) ||
-          m.email.toLowerCase().includes(this.nameFilter().toLowerCase()))
+          (m.email ?? '')
+            .toLowerCase()
+            .includes(this.nameFilter().toLowerCase()))
       );
     });
     if (members.length > 0) {
       members = this.sorter.sort(members, this.sortField(), this.sortAsc());
     }
     return members;
+  });
+
+  protected readonly isGroupAdmin = computed(
+    () => this.currentMember()?.groupAdmin ?? false
+  );
+
+  /**
+   * The Invite column exists only when a *currently visible* member could
+   * actually be invited, and only for group admins.
+   */
+  protected readonly showInviteColumn = computed(
+    () => this.isGroupAdmin() && this.filteredMembers().some((m) => this.canInvite(m))
+  );
+
+  columnsToDisplay = computed<string[]>(() => {
+    const columns = this.smallScreen()
+      ? ['nameEmail', 'active', 'groupAdmin']
+      : ['displayName', 'email', 'active', 'groupAdmin'];
+    return this.showInviteColumn() ? [...columns, 'invite'] : columns;
   });
 
   constructor() {
@@ -116,18 +148,7 @@ export class MembersComponent {
     // Observe breakpoint changes for responsive column display
     this.breakpointObserver
       .observe('(max-width: 1009px)')
-      .subscribe((result) => {
-        if (result.matches) {
-          this.columnsToDisplay.set(['nameEmail', 'active', 'groupAdmin']);
-        } else {
-          this.columnsToDisplay.set([
-            'displayName',
-            'email',
-            'active',
-            'groupAdmin',
-          ]);
-        }
-      });
+      .subscribe((result) => this.smallScreen.set(result.matches));
 
     afterNextRender(() => {
       // Check if we should auto-start the members tour
@@ -136,8 +157,87 @@ export class MembersComponent {
   }
 
   sortMembers(e: { active: string; direction: string }): void {
-    this.sortField.set(e.active);
+    // The mobile "Name / Email" column sorts by name.
+    this.sortField.set(e.active === 'nameEmail' ? 'displayName' : e.active);
     this.sortAsc.set(e.direction == 'asc');
+  }
+
+  /** Whether the current user can open `member` for editing. */
+  canEdit(member: Member): boolean {
+    return (
+      this.isGroupAdmin() ||
+      (!!member.userRef && !!this.user()?.ref?.eq(member.userRef))
+    );
+  }
+
+  /**
+   * A member can be invited when they have never registered, are active,
+   * have a plausible email address, and either have never been invited or
+   * were last invited at a different address or more than 24 hours ago. The
+   * server enforces all of this again in sendGroupInvite; this is UX only.
+   */
+  canInvite(member: Member): boolean {
+    if (member.userRef || !member.active) return false;
+
+    const email = (member.email ?? '').trim();
+    if (!INVITE_EMAIL_PATTERN.test(email)) return false;
+
+    const invite = member.invite;
+    if (!invite) return true;
+    if (invite.lastSentTo !== email) return true; // address changed - reset
+
+    return (
+      Date.now() - (invite.lastSentAt?.toMillis() ?? 0) >= INVITE_COOLDOWN_MS
+    );
+  }
+
+  sendInvite(member: Member): void {
+    if (this.demoService.isInDemoMode()) {
+      this.demoService.showDemoModeRestrictionMessage();
+      return;
+    }
+    const dialogConfig: MatDialogConfig = {
+      data: {
+        dialogTitle: 'Send App Invitation',
+        confirmationText: `Do you want to send an email to ${member.displayName} inviting them to create an account for this app?`,
+        cancelButtonText: 'Cancel',
+        confirmButtonText: 'Send',
+      },
+    };
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe(async (confirm) => {
+      if (!confirm) return;
+      try {
+        this.loading.loadingOn();
+        await this.inviteService.sendGroupInvite(
+          this.currentGroup()!.id,
+          member.id
+        );
+        this.analytics.logEvent('group_invite_sent');
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: `Invitation sent to ${member.email}` },
+        });
+      } catch (error) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: {
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Something went wrong - could not send invitation',
+          },
+        });
+        if (error instanceof Error) {
+          this.analytics.logError(
+            'Members Component',
+            'send_group_invite',
+            'Failed to send group invite',
+            error.message
+          );
+        }
+      } finally {
+        this.loading.loadingOff();
+      }
+    });
   }
 
   addMember(): void {
@@ -166,10 +266,7 @@ export class MembersComponent {
       this.demoService.showDemoModeRestrictionMessage();
       return;
     }
-    if (
-      this.currentMember()!.groupAdmin ||
-      (!!member.userRef && this.user()!.ref!.eq(member.userRef))
-    ) {
+    if (this.canEdit(member)) {
       const dialogConfig: MatDialogConfig = {
         maxWidth: '320px',
         data: {
