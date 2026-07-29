@@ -31,6 +31,7 @@ export class HelpContentService {
         'Group admins can add members by clicking the Add Member button. Enter the display name and email address for the new member. If someone registers for the app with the same email address, their account will be automatically linked to the member record.',
         'Group admins can edit all group members, change their active status, and give or remove admin rights to other members. An admin may not remove their own admin rights - another admin must perform that update.',
         "Group members can only be removed if they don't have any expenses/splits assigned to them. Group members who are made inactive will no longer show up in the dropdown list when creating a new expense.",
+        "Group admins can invite members who haven't registered yet by clicking the send-email icon in the Invite to App column. The icon only appears for active members with a valid email address who have no account yet, and is hidden again for 24 hours after an invitation is sent (or until the member's email address changes).",
       ],
     },
     {

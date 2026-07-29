@@ -330,6 +330,14 @@ export function createMockUserService() {
   };
 }
 
+export function createMockInviteService() {
+  return {
+    sendGroupInvite: vi
+      .fn()
+      .mockResolvedValue({ success: true, sentTo: '', sendCount: 1 }),
+  };
+}
+
 export function createMockDemoService() {
   return {
     isInDemoMode: vi.fn(() => false),

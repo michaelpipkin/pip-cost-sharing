@@ -1,4 +1,4 @@
-import { DocumentReference } from 'firebase/firestore';
+import { DocumentReference, Timestamp } from 'firebase/firestore';
 import { User } from './user';
 
 export interface AddMemberForm {
@@ -13,6 +13,17 @@ export interface EditMemberForm {
   groupAdmin: boolean;
 }
 
+/**
+ * Record of app invitations sent to a member who has not registered yet.
+ * Written only by the `sendGroupInvite` Cloud Function; the client never
+ * writes this field. Absent on members who have never been invited.
+ */
+export interface MemberInvite {
+  lastSentAt: Timestamp;
+  lastSentTo: string;
+  sendCount: number;
+}
+
 export class Member {
   constructor(init?: Partial<Member>) {
     Object.assign(this, init);
@@ -23,5 +34,6 @@ export class Member {
   email!: string;
   active!: boolean;
   groupAdmin!: boolean;
+  invite?: MemberInvite;
   ref?: DocumentReference<Member>;
 }
