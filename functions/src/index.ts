@@ -28,6 +28,17 @@ const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
 
+// Mirrors BASE_URL in src/app/services/page-title-strategy.service.ts. The two
+// projects don't share a path-mapped module, so this one constant is
+// deliberately duplicated rather than imported.
+const APP_BASE_URL = 'https://pipsplit.com';
+const PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=com.pipsplit.app';
+// Anti-spam window for sendGroupInvite: one invite per member per address per
+// this many ms, mirrored client-side in members.component.ts for UX only.
+const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 // SMTP config replicating the retired "Trigger Email from Firestore" extension.
 const SMTP_HOST = 'smtp.office365.com';
 const SMTP_PORT = 587;
@@ -1585,6 +1596,226 @@ export const logAppError = onCall<{
   console.log(
     `Error alert sent to ${adminEmail}: ${errorCount} errors in ${windowMinutes} minutes`
   );
+});
+
+// ---------------------------------------------------------------------------
+// Group Invitation — emails a member who has no PipSplit account yet, asking
+// them to register. Deliberately NOT built on the generic `sendEmail`
+// callable: the recipient address is read server-side from the member
+// document, never taken from the client, so this cannot be used as an open
+// relay to spam arbitrary addresses.
+//
+// Anti-spam: one invitation per member per 24 hours, reset early if the
+// member's email address changes (tracked via invite.lastSentTo — comparing
+// addresses is simpler and more robust than clearing the field on every
+// email edit, and it naturally keeps sendCount accumulating across address
+// changes for abuse visibility). The whole check-and-record step runs in a
+// single transaction so two admins clicking at the same time cannot both
+// send: the loser's transaction retries, re-reads invite.lastSentAt (now
+// inside the window), and returns the cooldown status instead of sending.
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the invitation email sent to a group member who has no PipSplit
+ * account yet. Pure/exported so it can be unit tested without Firestore.
+ */
+export function buildGroupInviteEmail(params: {
+  memberName: string;
+  groupName: string;
+  inviterName: string;
+}): { subject: string; text: string; html: string } {
+  const { memberName, groupName, inviterName } = params;
+
+  const subject = `You're invited to join ${groupName} on PipSplit`;
+
+  const text =
+    `Hi ${memberName},\n\n` +
+    `${inviterName} added you to the group "${groupName}" on PipSplit, ` +
+    `an app for tracking and splitting shared expenses.\n\n` +
+    `Create a free account with this email address to see the group's ` +
+    `expenses and what you owe:\n${APP_BASE_URL}\n\n` +
+    `Or get the Android app on Google Play:\n${PLAY_STORE_URL}\n\n` +
+    `If you weren't expecting this invitation, you can ignore this email.`;
+
+  const html = buildEmailHtml(
+    `<p style="color:#105208;font-size:18px;font-weight:bold;margin:0 0 16px 0;">You're invited to PipSplit</p>` +
+      `<p style="margin:0 0 16px 0;">Hi ${escapeHtml(memberName)},</p>` +
+      `<p style="margin:0 0 16px 0;"><strong>${escapeHtml(inviterName)}</strong> added you to the group ` +
+      `<strong>${escapeHtml(groupName)}</strong> on PipSplit, an app for tracking and splitting shared expenses.</p>` +
+      `<p style="margin:0 0 20px 0;">Create a free account with this email address to see the group's expenses and what you owe.</p>` +
+      `<p style="margin:0 0 16px 0;"><a href="${APP_BASE_URL}" style="display:inline-block;background-color:#105208;color:#ffffff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Create your account</a></p>` +
+      `<p style="margin:0 0 20px 0;"><a href="${PLAY_STORE_URL}" style="color:#2c6b21;">Or get the Android app on Google Play</a></p>` +
+      `<p style="margin:0;color:#5b6058;font-size:13px;">If you weren't expecting this invitation, you can ignore this email.</p>`,
+    'You received this email because a PipSplit group admin invited you to join their group.'
+  );
+
+  return { subject, text, html };
+}
+
+/**
+ * Decide whether a new invite to `email` should be throttled, given the
+ * member's existing invite record. Exported and pure so the anti-spam rule
+ * has direct unit test coverage without mocking Firestore.
+ */
+export function shouldThrottleInvite(
+  invite: { lastSentAt?: Timestamp; lastSentTo?: string } | undefined,
+  email: string,
+  nowMs: number
+): boolean {
+  if (!invite?.lastSentAt || invite.lastSentTo !== email) return false;
+  return nowMs - invite.lastSentAt.toMillis() < INVITE_COOLDOWN_MS;
+}
+
+type InviteTxnResult =
+  | { status: 'sent'; sentTo: string; sendCount: number }
+  | { status: 'not-found' }
+  | { status: 'already-registered' }
+  | { status: 'inactive' }
+  | { status: 'invalid-email' }
+  | { status: 'cooldown'; retryAfterMs: number };
+
+export const sendGroupInvite = onCall<{
+  groupId: string;
+  memberId: string;
+}>(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError(
+      'unauthenticated',
+      'User must be authenticated to send an invitation'
+    );
+  }
+
+  const { groupId, memberId } = request.data ?? {};
+  if (!groupId || !memberId) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Group ID and member ID are required'
+    );
+  }
+
+  try {
+    const groupRef = db.collection('groups').doc(groupId);
+
+    // Verify the caller is an admin of this group (same pattern as deleteGroup).
+    const adminSnapshot = await groupRef
+      .collection('members')
+      .where('userRef', '==', db.collection('users').doc(uid))
+      .where('groupAdmin', '==', true)
+      .limit(1)
+      .get();
+
+    if (adminSnapshot.empty) {
+      throw new HttpsError(
+        'permission-denied',
+        'User must be an admin of the group to send invitations'
+      );
+    }
+
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      throw new HttpsError('not-found', 'Group not found');
+    }
+
+    const groupName =
+      (groupSnap.data()?.['name'] as string | undefined) ?? 'a PipSplit group';
+    const inviterName =
+      (adminSnapshot.docs[0]!.data()['displayName'] as string | undefined) ??
+      'A group admin';
+
+    const memberRef = groupRef.collection('members').doc(memberId);
+    const mailRef = db.collection('mail').doc();
+
+    // Single transaction: validate, queue the mail doc, and record the
+    // invite. Returns a status instead of throwing so that HttpsError never
+    // escapes the transaction callback (which would confuse the SDK's retry
+    // logic on contention).
+    const result: InviteTxnResult = await db.runTransaction(async (txn) => {
+      const memberSnap = await txn.get(memberRef);
+      if (!memberSnap.exists) return { status: 'not-found' };
+
+      const member = memberSnap.data()!;
+      if (member['userRef']) return { status: 'already-registered' };
+      if (member['active'] !== true) return { status: 'inactive' };
+
+      const email = String(member['email'] ?? '').trim();
+      if (!INVITE_EMAIL_PATTERN.test(email)) return { status: 'invalid-email' };
+
+      const invite = member['invite'] as
+        | { lastSentAt?: Timestamp; lastSentTo?: string; sendCount?: number }
+        | undefined;
+
+      const now = Timestamp.now();
+      if (shouldThrottleInvite(invite, email, now.toMillis())) {
+        const elapsed = now.toMillis() - invite!.lastSentAt!.toMillis();
+        return {
+          status: 'cooldown',
+          retryAfterMs: INVITE_COOLDOWN_MS - elapsed,
+        };
+      }
+
+      const memberName = String(member['displayName'] ?? '').trim() || email;
+      const { subject, text, html } = buildGroupInviteEmail({
+        memberName,
+        groupName,
+        inviterName,
+      });
+
+      const sendCount = (invite?.sendCount ?? 0) + 1;
+
+      txn.create(mailRef, { to: email, message: { subject, text, html } });
+      txn.update(memberRef, {
+        invite: { lastSentAt: now, lastSentTo: email, sendCount },
+      });
+
+      return { status: 'sent', sentTo: email, sendCount };
+    });
+
+    switch (result.status) {
+      case 'sent':
+        console.log(
+          `Group invite #${result.sendCount} sent for group ${groupId}, member ${memberId}`
+        );
+        return {
+          success: true,
+          sentTo: result.sentTo,
+          sendCount: result.sendCount,
+        };
+      case 'not-found':
+        throw new HttpsError('not-found', 'Member not found');
+      case 'already-registered':
+        throw new HttpsError(
+          'failed-precondition',
+          'This member already has a PipSplit account'
+        );
+      case 'inactive':
+        throw new HttpsError(
+          'failed-precondition',
+          'Invitations can only be sent to active members'
+        );
+      case 'invalid-email':
+        throw new HttpsError(
+          'failed-precondition',
+          'This member does not have a valid email address'
+        );
+      case 'cooldown': {
+        const hours = Math.ceil(result.retryAfterMs / (60 * 60 * 1000));
+        throw new HttpsError(
+          'resource-exhausted',
+          `An invitation was already sent to this address recently. Try again in ${hours} hour(s).`
+        );
+      }
+    }
+  } catch (error: unknown) {
+    console.error('Error sending group invite:', error);
+    if (error instanceof HttpsError) throw error;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new HttpsError(
+      'internal',
+      `Error sending group invite: ${errorMessage}`
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------

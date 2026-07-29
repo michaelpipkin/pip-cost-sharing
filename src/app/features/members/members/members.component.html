@@ -108,10 +108,6 @@
             data-testid="members-table"
             aria-label="Members table"
           >
-            <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>Id</th>
-              <td mat-cell *matCellDef="let member">{{ member.id }}</td>
-            </ng-container>
             <ng-container matColumnDef="displayName">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
               <td mat-cell *matCellDef="let member">
@@ -150,6 +146,22 @@
                 {{ member.groupAdmin | yesNo }}
               </td>
             </ng-container>
+            <ng-container matColumnDef="invite">
+              <th mat-header-cell *matHeaderCellDef class="cell-center">
+                Invite
+                <br />
+                to App
+              </th>
+              <td mat-cell *matCellDef="let member" class="cell-center">
+                @if (canInvite(member)) {
+                  <!-- S7927 false positive: icon-only button, no visible text label — prettier-ignore keeps NOSONAR on the correct line -->
+                  <!-- prettier-ignore -->
+                  <button matIconButton matTooltip="Send app invitation" [attr.aria-label]="'Invite ' + member.displayName + ' to create an account'" [attr.data-testid]="'invite-member-button-' + member.id" (click)="sendInvite(member); $event.stopPropagation()"> <!-- //NOSONAR -->
+                    <mat-icon fontSet="material-symbols-outlined">forward_to_inbox</mat-icon>
+                  </button>
+                }
+              </td>
+            </ng-container>
             <tr
               mat-header-row
               *matHeaderRowDef="columnsToDisplay(); sticky: true"
@@ -159,9 +171,7 @@
               *matRowDef="let member; columns: columnsToDisplay()"
               (click)="onRowClick(member)"
               (keydown.enter)="onRowClick(member)"
-              [class.clickable-row]="
-                currentMember()?.groupAdmin || user()?.ref?.eq(member.userRef)
-              "
+              [class.clickable-row]="canEdit(member)"
               [attr.data-testid]="'member-row-' + member.id"
               [attr.aria-label]="'Member: ' + member.displayName"
             ></tr>
