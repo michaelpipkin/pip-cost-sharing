@@ -36,6 +36,7 @@ describe('DemoModeService', () => {
   };
   const mockExpenseStore = {
     setGroupExpenses: vi.fn(),
+    setGroupHasExpenses: vi.fn(),
     groupExpenses: signal<any[]>([]),
   };
   const mockMemorizedStore = {
@@ -121,6 +122,10 @@ describe('DemoModeService', () => {
       expect(mockExpenseStore.setGroupExpenses).toHaveBeenCalledOnce();
       const expenses = mockExpenseStore.setGroupExpenses.mock.calls[0]![0];
       expect(expenses).toHaveLength(4);
+    });
+
+    it('should mark the group as having expenses', () => {
+      expect(mockExpenseStore.setGroupHasExpenses).toHaveBeenCalledWith(true);
     });
 
     it('should populate memorized store with two templates', () => {
