@@ -31,7 +31,11 @@ export const ExpenseStore = signalStore(
       patchState(store, { groupExpenses: expenses, loaded: true });
     },
     clearGroupExpenses: () => {
-      patchState(store, { groupExpenses: [], loaded: false });
+      patchState(store, {
+        groupExpenses: [],
+        groupHasExpenses: false,
+        loaded: false,
+      });
     },
   })),
   withComputed(({ groupExpenses: expenses }) => ({
