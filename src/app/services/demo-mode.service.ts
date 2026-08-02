@@ -376,6 +376,7 @@ export class DemoModeService {
       expense3,
       expense4,
     ]);
+    this.expenseStore.setGroupHasExpenses(true);
     this.memorizedStore.setMemorizedExpenses([memorized1, memorized2]);
     this.historyStore.setHistory([history1, history2]);
     this.splitStore.setSplits(allUnpaidSplits);
