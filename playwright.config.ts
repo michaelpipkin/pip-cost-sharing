@@ -24,7 +24,6 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    /* Use localhost for all environments - tests don't use registration page (which requires hCaptcha) */
     baseURL: 'http://localhost:4200',
 
     /* Faster timeouts for CI */
@@ -72,8 +71,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   /* Firebase emulators should be started manually during development */
   webServer: {
-    command: process.env.CI ? 'pnpm start:ci' : 'pnpm start',
-    /* Use localhost for all environments - tests don't require hCaptcha */
+    command: 'pnpm start',
     url: 'http://localhost:4200',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

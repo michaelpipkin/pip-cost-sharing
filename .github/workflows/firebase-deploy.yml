@@ -127,6 +127,10 @@ jobs:
             appId: '${{ secrets.FIREBASE_APP_ID }}',
             measurementId: '${{ secrets.FIREBASE_MEASUREMENT_ID }}',
           };
+
+          export const appCheckConfig = {
+            recaptchaSiteKey: '${{ secrets.RECAPTCHA_V3_SITE_KEY }}',
+          };
           EOF
       
       - name: Create Github config file

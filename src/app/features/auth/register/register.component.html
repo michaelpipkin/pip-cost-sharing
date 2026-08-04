@@ -74,24 +74,12 @@
         Passwords do not match.
       </div>
     }
-    @if (!useEmulators) {
-      <div id="hcaptcha-container"></div>
-    }
-    <p
-      class="privacy-notice"
-      style="
-        font-size: 0.875rem;
-        text-align: center;
-        margin: 10px 0;
-        color: #666;
-      "
-    >
+    <p class="privacy-notice">
       By registering, you agree to our
       <a
         href="/privacy-policy.html"
         target="_blank"
         (click)="openPrivacyPolicy($event)"
-        style="color: #4caf50; text-decoration: none"
       >
         Privacy Policy
       </a>
@@ -101,7 +89,7 @@
         mat-raised-button
         class="btn-primary"
         type="submit"
-        [disabled]="!registerForm().valid() || !registerForm().dirty() || !passedCaptcha()"
+        [disabled]="!registerForm().valid() || !registerForm().dirty()"
       >
         <span class="register-button">Register</span>
       </button>

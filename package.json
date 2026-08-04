@@ -5,8 +5,7 @@
   "scripts": {
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "ng": "ng",
-    "start": "ng serve --host=local.dev.com",
-    "start:ci": "ng serve --host=local.dev.com --configuration=ci",
+    "start": "ng serve --host=127.0.0.1",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
     "emu": "node scripts/start-emulators.js --only auth,functions,firestore,hosting,storage",
     "emu:data": "node scripts/start-emulators.js --only auth,functions,firestore,hosting,storage --import seed-data",
@@ -73,7 +72,6 @@
     "@angular/cli": "^22.1.2",
     "@angular/compiler-cli": "^22.1.0",
     "@capacitor/assets": "^3.0.5",
-    "@hcaptcha/types": "^1.2.0",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.1.2",
     "@typescript-eslint/eslint-plugin": "^8.65.0",

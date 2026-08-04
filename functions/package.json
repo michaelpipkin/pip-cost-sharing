@@ -29,6 +29,7 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@firebase/app": "^0.16.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
     "@types/nodemailer": "^8.0.1",

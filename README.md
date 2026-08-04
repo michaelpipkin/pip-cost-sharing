@@ -22,9 +22,9 @@ Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.
 
 This project uses Playwright for end-to-end testing with Firebase emulator integration. The testing setup supports two environments:
 
-### Local Development Environment (with hCaptcha)
-- Uses `local.dev.com:4200` for hCaptcha compatibility
-- Requires adding `127.0.0.1 local.dev.com` to your hosts file
+### Local Development Environment
+- Uses `localhost:4200`
+- App Check is skipped whenever `environment.useEmulators` is true, so no reCAPTCHA/App Check setup is needed locally
 - Run tests: `pnpm e2e` or `pnpm e2e:local`
 - Run with UI: `pnpm e2e:headed` or `pnpm e2e:local:headed`
 
