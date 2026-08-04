@@ -34,7 +34,9 @@ jobs:
         with:
           # Pin exact version (not just major "11") to avoid pnpm/action-setup's
           # self-update step, which has a known crash bug: pnpm/pnpm#10643
-          version: 11.13.0
+          # 11.13.0 itself later turned out to ship a broken @pnpm/exe binary
+          # (pnpm/pnpm#13067) - bumped to 11.19.0.
+          version: 11.19.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
