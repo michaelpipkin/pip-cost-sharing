@@ -5,6 +5,7 @@ import { ReceiptScanService } from './receipt-scan.service';
 
 describe('ReceiptScanService', () => {
   let service: ReceiptScanService;
+  let scanReceiptFn: ReturnType<typeof vi.fn>;
   const mockFunctions = {};
   const mockParsed = {
     total: 12.34,
@@ -19,8 +20,9 @@ describe('ReceiptScanService', () => {
     vi.spyOn(functionsModule, 'getFunctions').mockReturnValue(
       mockFunctions as any
     );
+    scanReceiptFn = vi.fn().mockResolvedValue({ data: mockParsed });
     vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
-      vi.fn().mockResolvedValue({ data: mockParsed }) as any
+      scanReceiptFn as any
     );
 
     TestBed.configureTestingModule({
@@ -47,15 +49,13 @@ describe('ReceiptScanService', () => {
       mockFunctions,
       'scanReceipt'
     );
-    const callableFn = vi.mocked(functionsModule.httpsCallable).mock
-      .results[0]!.value;
-    expect(callableFn).toHaveBeenCalledWith(
+    expect(scanReceiptFn).toHaveBeenCalledWith(
       expect.objectContaining({
         groupId: 'group-1',
         imageBase64: expect.any(String),
       })
     );
-    const { imageBase64 } = callableFn.mock.calls[0][0];
+    const { imageBase64 } = scanReceiptFn.mock.calls[0]![0];
     expect(imageBase64.length).toBeGreaterThan(0);
     expect(imageBase64).not.toContain('data:');
   });

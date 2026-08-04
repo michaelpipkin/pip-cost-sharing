@@ -13,7 +13,7 @@ test.describe('Authentication - Unauthenticated User Tests', () => {
     await expect(authPage.loginButton).toBeVisible();
   });
 
-  test('should display register form (with hCaptcha)', async ({ page }) => {
+  test('should display register form', async ({ page }) => {
     const authPage = new AuthPage(page);
     await authPage.gotoSignUp();
 

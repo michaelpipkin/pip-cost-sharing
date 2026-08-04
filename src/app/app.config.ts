@@ -27,18 +27,35 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { appRoutes } from './app.routes';
-import { firebaseConfig } from './firebase.config';
+import { appCheckConfig, firebaseConfig } from './firebase.config';
 import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 
 const useEmulators = environment.useEmulators;
 
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
+
+// This module also executes during SSR/prerender (app.config.server.ts merges
+// appConfig, and angular.json uses outputMode: "static"), where neither
+// `window` nor `grecaptcha` exist. App Check must register on the FirebaseApp
+// before any other service issues its first request, so this has to happen
+// here at module scope rather than in a DI initializer. Skipped under
+// emulators: there's no App Check emulator and none of the emulated services
+// verify tokens, so initializing would only fail attestation calls against
+// the live App Check backend.
+const isBrowser = typeof window !== 'undefined';
+if (isBrowser && !useEmulators) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckConfig.recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 // Initialize Firebase services
 const auth = getAuth(app);

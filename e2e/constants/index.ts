@@ -1,6 +1,5 @@
 // Test environment configuration
 export const TEST_CONFIG = {
-  // Use localhost for all environments - tests don't use registration page (which requires hCaptcha)
   baseUrl: 'http://localhost:4200',
   // Clipboard functionality works on localhost
   supportsClipboard: true,

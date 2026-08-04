@@ -30,11 +30,10 @@ jobs:
           node-version: "22"
 
       - name: Install pnpm
+        # Version is read from package.json's "packageManager" field (single
+        # source of truth). Omitting it here avoids pnpm/action-setup's
+        # self-update step, which has a known crash bug: pnpm/pnpm#10643.
         uses: pnpm/action-setup@v6
-        with:
-          # Pin exact version (not just major "11") to avoid pnpm/action-setup's
-          # self-update step, which has a known crash bug: pnpm/pnpm#10643
-          version: 11.13.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

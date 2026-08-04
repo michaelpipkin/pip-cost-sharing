@@ -154,7 +154,6 @@ The main configuration is in `playwright.config.ts` at the project root. Key fea
 
 - **Base URL**: Set to `http://localhost:4200` for all environments
   - Tests use Firebase Auth emulator API to create users (not the registration page)
-  - Registration page requires hCaptcha, but tests bypass it entirely
   - localhost enables clipboard API for copy-to-clipboard tests
 - **Firebase Emulators**: Automatically starts `pnpm emu:data` before tests
 - **Web Server Integration**: Starts your Angular dev server after emulators

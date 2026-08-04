@@ -12,16 +12,8 @@ import {
 } from '@testing/test-helpers';
 import * as authModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
-import { getFunctions } from 'firebase/functions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RegisterComponent } from './register.component';
-
-// Mock hcaptcha global before tests run
-const mockHcaptcha = {
-  render: vi.fn(() => 'widget-id-123'),
-  reset: vi.fn(),
-};
-(window as any).hcaptcha = mockHcaptcha;
 
 describe('RegisterComponent', () => {
   let fixture: ComponentFixture<RegisterComponent>;
@@ -37,7 +29,6 @@ describe('RegisterComponent', () => {
       providers: [
         provideRouter([]),
         { provide: getAuth, useValue: {} },
-        { provide: getFunctions, useValue: {} },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: PwaDetectionService, useValue: mockPwaDetection },
@@ -155,12 +146,6 @@ describe('RegisterComponent', () => {
     it('should delegate isRunningAsApp to PwaDetectionService', () => {
       expect(component.isRunningAsApp()).toBe(false);
       expect(mockPwaDetection.isRunningAsApp).toHaveBeenCalled();
-    });
-  });
-
-  describe('passedCaptcha signal', () => {
-    it('should start as true when running with emulators (captcha bypassed)', () => {
-      expect(component.passedCaptcha()).toBe(true);
     });
   });
 
