@@ -27,7 +27,10 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from 'firebase/app-check';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
@@ -52,7 +55,7 @@ const app = initializeApp(firebaseConfig);
 const isBrowser = typeof window !== 'undefined';
 if (isBrowser && !useEmulators) {
   initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(appCheckConfig.recaptchaSiteKey),
+    provider: new ReCaptchaEnterpriseProvider(appCheckConfig.recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   });
 }
