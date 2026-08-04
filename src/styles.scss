@@ -755,6 +755,18 @@ mat-hint {
   margin-top: $error-margin-offset;
 }
 
+.privacy-notice {
+  font-size: 0.875rem;
+  text-align: center;
+  margin: 10px 0;
+  color: tokens.color('on-surface');
+
+  a {
+    color: tokens.color('primary');
+    text-decoration: none;
+  }
+}
+
 mat-slide-toggle {
   padding-bottom: 8px;
 }

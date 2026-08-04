@@ -15,7 +15,7 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
-import { getHCaptchaSecret, getSmtpPassword } from './common';
+import { getSmtpPassword } from './common';
 
 export { scanReceipt } from './receipt-ocr';
 
@@ -372,80 +372,32 @@ export async function deleteGroupInternal(
   console.log(`Deleted group document: ${groupId}`);
 }
 
-export const validateHCaptcha = onCall(async (request) => {
-  const token = request.data.token;
+// Emulator-only helper for e2e tests (see e2e/utils/firebase.ts) to mark a
+// seeded test user's email verified without going through the real email
+// flow. Guarded out of production: it takes an arbitrary uid with no auth
+// check, so it must never be a live endpoint.
+export const verifyUserEmail =
+  process.env.FUNCTIONS_EMULATOR === 'true'
+    ? onCall(async (request) => {
+        const uid = request.data.uid;
 
-  // Validate token presence before making network request
-  if (!token) {
-    throw new HttpsError(
-      'invalid-argument',
-      'The function must be called with a "token".'
-    );
-  }
+        if (!uid) {
+          throw new HttpsError('invalid-argument', 'UID is required');
+        }
 
-  const secret = await getHCaptchaSecret();
-  if (!secret) {
-    throw new HttpsError('internal', 'hCaptcha secret is not configured.');
-  }
+        try {
+          await getAuth().updateUser(uid, {
+            emailVerified: true,
+          });
 
-  const formData = new FormData();
-  formData.append('secret', secret);
-  formData.append('response', token);
-
-  try {
-    const res = await fetch('https://api.hcaptcha.com/siteverify', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!res.ok) {
-      throw new HttpsError('unavailable', 'hCaptcha server is unreachable.');
-    }
-
-    const data = await res.json();
-
-    if (!data.success) {
-      console.warn('hCaptcha validation failed:', data['error-codes']);
-      throw new HttpsError(
-        'permission-denied',
-        'Captcha validation failed. Please try again.'
-      );
-    }
-
-    return { status: 'verified' };
-  } catch (error) {
-    // Re-throw HttpsErrors as-is
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-
-    console.error('Error validating hCaptcha:', error);
-    throw new HttpsError(
-      'internal',
-      'An unexpected error occurred during validation.'
-    );
-  }
-});
-
-export const verifyUserEmail = onCall(async (request) => {
-  const uid = request.data.uid;
-
-  if (!uid) {
-    throw new HttpsError('invalid-argument', 'UID is required');
-  }
-
-  try {
-    await getAuth().updateUser(uid, {
-      emailVerified: true,
-    });
-
-    console.log(`Successfully verified email for user: ${uid}`);
-    return { success: true, message: `Email verified for user ${uid}` };
-  } catch (error) {
-    console.error(`Error verifying email for user ${uid}:`, error);
-    throw new HttpsError('internal', 'Error verifying user email');
-  }
-});
+          console.log(`Successfully verified email for user: ${uid}`);
+          return { success: true, message: `Email verified for user ${uid}` };
+        } catch (error) {
+          console.error(`Error verifying email for user ${uid}:`, error);
+          throw new HttpsError('internal', 'Error verifying user email');
+        }
+      })
+    : undefined;
 
 export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
   try {

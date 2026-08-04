@@ -51,8 +51,8 @@ export class AuthPage extends BasePage {
    */
   async gotoSignUp() {
     await super.goto('/auth/register');
-    // Don't wait for networkidle on register page due to hCaptcha
-    // Instead, wait for domcontentloaded
+    // Don't wait for networkidle - background analytics requests never
+    // fully quiesce. Wait for domcontentloaded instead.
     await this.page.waitForLoadState('domcontentloaded');
 
     // Wait for register form email input (has different testid than login page)
@@ -126,7 +126,7 @@ export class AuthPage extends BasePage {
     }
 
     await this.signUpButton.click();
-    // Don't wait for networkidle after signup due to potential hCaptcha interaction
+    // Don't wait for networkidle after signup - see gotoSignUp() above.
     await this.page.waitForLoadState('domcontentloaded');
   }
 
