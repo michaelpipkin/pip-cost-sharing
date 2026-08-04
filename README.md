@@ -2,6 +2,20 @@
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 13.2.6.
 
+## Local setup
+
+A few gitignored config files need to be created locally before the app
+will build/run. Each has an `.example` template checked into git - copy it,
+drop the `.example` suffix, and fill in real values (see the comments in
+each template for where the values come from):
+
+| Template | Copy to | Required for |
+|---|---|---|
+| `src/app/firebase.config.example.ts` | `src/app/firebase.config.ts` | Building the app at all - `app.config.ts` imports from it unconditionally |
+| `src/app/github.config.example.ts` | `src/app/github.config.ts` | The Help feature's "report an issue" flow |
+| `functions/.env.example` | `functions/.env` | Sending email locally via the Functions emulator |
+| `.env.example` | `.env` | Running `pnpm deps:dry-run` / `pnpm deps:fix` (dependabot-agent) locally |
+
 ## Development server
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
