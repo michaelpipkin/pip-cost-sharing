@@ -11,13 +11,10 @@ each template for where the values come from):
 
 | Template | Copy to | Required for |
 |---|---|---|
+| `src/app/firebase.config.example.ts` | `src/app/firebase.config.ts` | Building the app at all - `app.config.ts` imports from it unconditionally |
 | `src/app/github.config.example.ts` | `src/app/github.config.ts` | The Help feature's "report an issue" flow |
 | `functions/.env.example` | `functions/.env` | Sending email locally via the Functions emulator |
 | `.env.example` | `.env` | Running `pnpm deps:dry-run` / `pnpm deps:fix` (dependabot-agent) locally |
-
-`src/app/firebase.config.ts` is tracked directly in git - it holds only the
-Firebase Web SDK config and the reCAPTCHA site key, both meant to be
-public (see the comment at the top of the file for why this is safe).
 
 ## Development server
 
