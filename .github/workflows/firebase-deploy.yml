@@ -113,25 +113,6 @@ jobs:
             echo "Changes detected in Firestore config files"
           fi
 
-      - name: Create Firebase config file
-        if: steps.check-skip.outputs.skip_deploy != 'true'
-        run: |
-          cat << EOF > src/app/firebase.config.ts
-          export const firebaseConfig = {
-            apiKey: '${{ secrets.FIREBASE_API_KEY }}',
-            authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
-            projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
-            storageBucket: '${{ secrets.FIREBASE_STORAGE_BUCKET }}',
-            messagingSenderId: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}',
-            appId: '${{ secrets.FIREBASE_APP_ID }}',
-            measurementId: '${{ secrets.FIREBASE_MEASUREMENT_ID }}',
-          };
-
-          export const appCheckConfig = {
-            recaptchaSiteKey: '${{ secrets.RECAPTCHA_V3_SITE_KEY }}',
-          };
-          EOF
-      
       - name: Create Github config file
         if: steps.check-skip.outputs.skip_deploy != 'true'
         run: |
