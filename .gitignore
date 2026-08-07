@@ -41,7 +41,6 @@ testem.log
 /typings
 *.sqlite
 *.vsidx
-src/app/firebase.config.ts
 
 # Testing
 /playwright-report/
@@ -58,7 +57,6 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 seed-data
-seed-data.ts
 .firebase/hosting.*
 
 # Files with sensitive information
