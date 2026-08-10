@@ -15,7 +15,7 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
-import { getSmtpPassword } from './common';
+import { callableAppCheck, getSmtpPassword } from './common';
 
 export { scanReceipt } from './receipt-ocr';
 
@@ -538,7 +538,7 @@ export async function deleteOrphanedGroups(
   }
 }
 
-export const deleteUserAccount = onCall(async (request) => {
+export const deleteUserAccount = onCall(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -598,7 +598,7 @@ export const deleteUserAccount = onCall(async (request) => {
   }
 });
 
-export const deleteGroup = onCall(async (request) => {
+export const deleteGroup = onCall(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
   const groupId = request.data.groupId;
 
@@ -679,7 +679,7 @@ export async function tryGetAuthEmail(
   }
 }
 
-export const syncAuthEmailsToUsers = onCall(async (request) => {
+export const syncAuthEmailsToUsers = onCall(callableAppCheck, async (request) => {
   console.log('syncAuthEmailsToUsers called');
 
   if (!request.auth) {
@@ -867,7 +867,7 @@ export function aggregateGroupStats(
   };
 }
 
-export const getAdminStatistics = onCall(async (request) => {
+export const getAdminStatistics = onCall(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -1145,7 +1145,7 @@ export const sendEmail = onCall<{
   subject: string;
   text: string;
   html: string;
-}>(async (request) => {
+}>(callableAppCheck, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -1411,6 +1411,9 @@ async function handleSettleEmail(
 // allows the app_errors collection write rule to be locked to `if false`.
 // ---------------------------------------------------------------------------
 
+// Deliberately not App Check-enforced: this is the client's error-reporting
+// channel, so enforcing it would blind us to an App Check outage while it's
+// actually happening.
 export const logAppError = onCall<{
   component: string;
   action: string;
@@ -1629,7 +1632,7 @@ type InviteTxnResult =
 export const sendGroupInvite = onCall<{
   groupId: string;
   memberId: string;
-}>(async (request) => {
+}>(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new HttpsError(
@@ -1789,7 +1792,7 @@ export const notifyNewIssue = onCall<{
   title: string;
   body: string;
   reporterEmail?: string;
-}>(async (request) => {
+}>(callableAppCheck, async (request) => {
   const { number, url, title, body, reporterEmail } = request.data;
   if (!number || !url || !title) {
     throw new HttpsError(
