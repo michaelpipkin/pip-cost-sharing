@@ -44,7 +44,7 @@ describe('RentalRoomsComponent', () => {
     it('adds a room with a default name and rate 1', () => {
       (component as any).addRoom();
 
-      expect(component.rooms().length).toBe(1);
+      expect(component.rooms()).toHaveLength(1);
       expect(component.rooms()[0]!.rate).toBe(1);
       expect(component.rooms()[0]!.name).toBeTruthy();
     });
@@ -64,7 +64,7 @@ describe('RentalRoomsComponent', () => {
 
       (component as any).removeRoom(roomId);
 
-      expect(component.rooms().length).toBe(0);
+      expect(component.rooms()).toHaveLength(0);
       expect(component.assignments()).toEqual({});
     });
 
@@ -76,7 +76,7 @@ describe('RentalRoomsComponent', () => {
 
       (component as any).removeRoom(roomA!.id);
 
-      expect(component.rooms().length).toBe(1);
+      expect(component.rooms()).toHaveLength(1);
       expect(component.rooms()[0]!.id).toBe(roomB!.id);
       expect(component.assignments()).toEqual({ bob: roomB!.id });
     });
@@ -160,7 +160,7 @@ describe('RentalRoomsComponent', () => {
 
   describe('unassigned participants', () => {
     it('lists every participant as unassigned when no rooms exist', () => {
-      expect((component as any).unassignedParticipants().length).toBe(3);
+      expect((component as any).unassignedParticipants()).toHaveLength(3);
     });
 
     it('excludes assigned participants from the unassigned list', () => {
@@ -182,7 +182,7 @@ describe('RentalRoomsComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(queryAll('room-row').length).toBe(2);
+      expect(queryAll('room-row')).toHaveLength(2);
     });
 
     it('shows the unassigned-participants note only when rooms exist and someone is unassigned', async () => {
