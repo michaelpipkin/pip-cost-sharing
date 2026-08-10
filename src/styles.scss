@@ -1258,3 +1258,10 @@ a:hover {
   color: tokens.color('error');
   font-style: italic;
 }
+
+.tip-text {
+  font-size: $font-size-xs;
+  font-style: italic;
+  color: tokens.color('on-surface');
+  margin-bottom: 8px;
+}

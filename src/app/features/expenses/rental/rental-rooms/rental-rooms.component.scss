@@ -1,0 +1,43 @@
+@use '../../../../styles/color-tokens.scss' as tokens;
+
+// Rooms stack vertically (one card per room) rather than joining the
+// occupancy grid's horizontal layout - the grid already reserves ~300px+
+// for its two fixed side tables before a single night column renders, so
+// any per-member room control there would tighten an already-tight mobile
+// budget. Vertical stacking costs nothing horizontally and reads fine on
+// any width.
+.rental-rooms {
+  display: flex;
+  flex-direction: column;
+  row-gap: 12px;
+  margin-bottom: 12px;
+}
+
+.room-row {
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
+  padding: 12px;
+  border: 1px solid tokens.color('border');
+  border-radius: 8px;
+}
+
+.room-row-header {
+  align-items: flex-start;
+}
+
+.room-name-field {
+  min-width: 160px;
+}
+
+.room-rate-field {
+  width: 100px;
+}
+
+.room-occupants-field {
+  min-width: 220px;
+}
+
+.unassigned-note {
+  font-style: italic;
+}
