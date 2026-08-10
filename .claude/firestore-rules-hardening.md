@@ -1,7 +1,15 @@
 # Firestore & Storage Rules Hardening — Handoff
 
-Status as of 2026-08-10: **Phase 0 done.** This doc is meant to be
-self-contained so a fresh session can pick this up with no other context.
+Status as of 2026-08-10: **Phases 0 and 1 done and deployed. Phase 2
+intentionally paused**, waiting on
+[[app-check-enforcement-followup.md]] — Storage/Firestore App Check
+enforcement is actively being rolled out over the next 3-4 days (as of
+2026-08-10), and per the Sequencing note at the bottom of this doc, Phase 2
+should not start until that's fully enforced. Explicit user decision
+2026-08-10: pause Phase 2 entirely rather than draft-ahead: **do not start
+Phase 2 work until told App Check enforcement is fully done on Storage and
+Firestore.** This doc is meant to be self-contained so a fresh session can
+pick this up with no other context.
 
 ## Why
 
@@ -179,20 +187,43 @@ the user belongs to, correctly excluding the unrelated second group —
 confirming both the query rewrite and the composite index work together
 correctly.
 
-**Not yet deployed.** Unlike Phase 0 (deployed via a manual `firebase
-deploy` — see note below), Phase 1's code sat uncommitted on `dev` pending a
-process discovery: this repo has `.github/workflows/firebase-deploy.yml`,
-which deploys functions / Firestore rules+indexes / hosting automatically on
-push to `release` (git-diff-gated per area) and then auto-merges `release`
-into `main`. The normal path is commit → PR → merge to `release`, not a
-manual `firebase deploy` from a dev session. **Phase 0's manual deploy
-predates this discovery and is an acknowledged exception** — production
-functions and the `memberUids` backfill are live, but the corresponding code
-had not yet been committed when that happened. Both phases are being
-committed together now so git catches up to what's live (Phase 0) and Phase
-1 can go out through the normal CI path, including the new Firestore index
-deploying (via the CI job's rules+indexes step, which runs before its
-hosting step) before the frontend code that depends on it goes live.
+**Deployed to production 2026-08-10** through the normal path: this repo
+has `.github/workflows/firebase-deploy.yml`, which deploys functions /
+Firestore rules+indexes / hosting automatically on push to `release`
+(git-diff-gated per area) and then auto-merges `release` into `main`. Phase
+0 and Phase 1 were committed together (`dev@f579c5d`) so git caught up to
+what Phase 0 already had live in prod, then PR'd and merged to `release`.
+
+**First deploy attempt failed** on `Deploy Firestore Rules and Indexes`:
+`403 The caller does not have permission` creating the new composite index
+on `groups`. Root cause: the CI service account
+(`github-action-756950903@pip-cost-sharing.iam.gserviceaccount.com`) was
+scoped only for "Hosting and Cloud Functions" (per its own IAM description)
+— Firestore/Datastore index management was never included. Functions had
+already deployed successfully by that point (it's an earlier step), so
+`linkInvitedMembers` was live; only the index creation and everything after
+it (hosting deploy, release→main merge) were blocked.
+
+**Fixed in two parts:**
+1. Deployed the index manually via an authenticated `firebase deploy --only
+   firestore:indexes` session (not the CI service account) to unblock
+   immediately - confirmed identical to what CI was attempting.
+2. **User action 2026-08-10**: granted the CI service account the `Cloud
+   Datastore Index Admin` role (`roles/datastore.indexAdmin`) via GCP
+   Console IAM, so future index changes deploy through CI without the
+   manual-deploy workaround. Un-flagged residual risk: rules deploys have
+   only ever been a no-op skip (unchanged content) for this account, so
+   whether it can *write* new rules content is still unverified - worth
+   watching the first time `firestore.rules` itself actually changes (i.e.
+   Phase 2's deploy).
+
+Re-ran the failed GitHub Actions job (`gh run rerun --failed`) after the
+manual index fix - it completed clean: functions, rules+indexes, hosting,
+and the release→main merge all succeeded. A separate small drift fix (an
+unrelated pre-existing `mail.expireAt` TTL field override that existed in
+production but was missing from `firestore.indexes.json` - unrelated to this
+work, just discovered along the way) was committed separately with a
+`[no-deploy]` tag since it was already live.
 
 ## Phase 2 — Tighten the rules (the actual security win)
 

@@ -15,7 +15,7 @@
     </div>
   </div>
 
-  <p>
+  <p class="intro-text">
     Enter the total cost and number of nights for the rental, then use the grid
     below to mark who stayed each night. We'll calculate a fair shares-based
     split and hand it off to the expense form for you to review and save.
@@ -75,10 +75,35 @@
     </mat-form-field>
   </div>
 
+  <mat-slide-toggle
+    [checked]="roomsEnabled()"
+    (change)="roomsEnabled.set($event.checked)"
+    data-testid="rooms-enabled-toggle"
+    aria-label="Rooms have different rates or are shared"
+  >
+    Rooms have different rates or are shared
+  </mat-slide-toggle>
+
+  @if (roomsEnabled()) {
+    <p class="tip-text rooms-tip" data-testid="rooms-tip">
+      Enter the name and rate for each room/space. For example, a master bedroom
+      might be charged at 1.5x, whereas a couch might be charged at 0.5x. You
+      can also mark which members stay in each room. Room rates are split
+      between all occupants who share that room.
+    </p>
+    <app-rental-rooms
+      [participants]="roomParticipants()"
+      [(rooms)]="rooms"
+      [(assignments)]="roomAssignments"
+    />
+  }
+
   <app-rental-grid
     [availableMembers]="activeMembers()"
     [nightCount]="nightCount()"
     [totalAmount]="totalAmountValue()"
+    [rooms]="roomsEnabled() ? rooms() : []"
+    [roomAssignments]="roomsEnabled() ? roomAssignments() : {}"
     [(members)]="members"
   />
 

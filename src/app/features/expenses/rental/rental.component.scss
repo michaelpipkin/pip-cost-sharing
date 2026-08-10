@@ -1,3 +1,18 @@
 #description {
   min-width: 220px;
 }
+
+// Cap the intro paragraph to the basic-info row's own width (Total Cost's
+// 140px + Number of Nights' 130px + Description's 220px min-width, plus
+// the row's two 1rem column-gaps) so the text doesn't wrap far wider than
+// the form it's introducing.
+.intro-text {
+  max-width: 522px;
+}
+
+// Cap the rooms tip to a room card's own width (the name field's 160px
+// min-width + the rate field's 100px + the ~40px delete mini-fab, plus two
+// 1rem column-gaps and the card's own padding/border).
+.rooms-tip {
+  max-width: 360px;
+}

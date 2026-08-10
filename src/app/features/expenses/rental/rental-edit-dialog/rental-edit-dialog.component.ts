@@ -14,7 +14,8 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { RentalDetails } from '@models/expense';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { RentalDetails, RentalRoom } from '@models/expense';
 import { Member } from '@models/member';
 import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
@@ -22,6 +23,10 @@ import {
   RentalGridComponent,
   RentalMemberRow,
 } from '../rental-grid/rental-grid.component';
+import {
+  RentalRoomsComponent,
+  RoomParticipant,
+} from '../rental-rooms/rental-rooms.component';
 
 export interface RentalEditDialogData {
   rental: RentalDetails;
@@ -49,8 +54,10 @@ export interface RentalEditDialogResult {
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSlideToggleModule,
     CurrencyPipe,
     RentalGridComponent,
+    RentalRoomsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -67,15 +74,40 @@ export class RentalEditDialogComponent {
     this.#buildInitialMembers()
   );
 
-  protected readonly rentalDetails = computed<RentalDetails>(() => ({
-    nightCount: this.nightCount(),
-    stays: this.members().map((p) => ({
-      memberRef: p.memberRef,
-      nights: p.nights
-        .map((present, i) => (present ? i : -1))
-        .filter((i) => i >= 0),
-    })),
-  }));
+  protected readonly roomsEnabled = signal<boolean>(
+    (this.data.rental.rooms?.length ?? 0) > 0
+  );
+  protected readonly rooms = signal<RentalRoom[]>(
+    this.data.rental.rooms ?? []
+  );
+  /** memberId -> roomId. Retained even while roomsEnabled() is false, so
+   * toggling back on doesn't lose the user's setup. */
+  protected readonly roomAssignments = signal<Record<string, string>>(
+    this.#buildInitialRoomAssignments()
+  );
+
+  protected readonly roomParticipants = computed<RoomParticipant[]>(() =>
+    this.members().map((p) => ({
+      id: p.memberRef.id,
+      name: p.displayName,
+    }))
+  );
+
+  protected readonly rentalDetails = computed<RentalDetails>(() => {
+    const roomsActive = this.roomsEnabled() && this.rooms().length > 0;
+    const assignments = this.roomAssignments();
+    return {
+      nightCount: this.nightCount(),
+      stays: this.members().map((p) => ({
+        memberRef: p.memberRef,
+        nights: p.nights
+          .map((present, i) => (present ? i : -1))
+          .filter((i) => i >= 0),
+        ...(roomsActive ? { roomId: assignments[p.memberRef.id] } : {}),
+      })),
+      ...(roomsActive ? { rooms: this.rooms() } : {}),
+    };
+  });
 
   protected readonly emptyNightIndices = computed(() =>
     this.rentalUtils.emptyNights(this.rentalDetails())
@@ -118,5 +150,13 @@ export class RentalEditDialogComponent {
         nights,
       };
     });
+  }
+
+  #buildInitialRoomAssignments(): Record<string, string> {
+    const assignments: Record<string, string> = {};
+    this.data.rental.stays.forEach((stay) => {
+      if (stay.roomId) assignments[stay.memberRef.id] = stay.roomId;
+    });
+    return assignments;
   }
 }

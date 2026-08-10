@@ -35,16 +35,34 @@ export interface MemorizedForm {
 }
 
 /**
+ * A room/space within a vacation rental, with a base rate multiplier
+ * relative to a standard bedroom (1.0). Occupants of a room split its rate
+ * between them on any night they're all present - see
+ * RentalUtilsService.computeShares for the exact math. Optional: a rental
+ * with no rooms defined splits every night evenly, as before.
+ */
+export interface RentalRoom {
+  id: string;
+  name: string;
+  rate: number;
+}
+
+/**
  * Per-night occupancy for a single participant in a vacation rental expense.
  * `nights` holds the 0-based indices of the nights this member stayed.
  *
  * `memberRef` is the participant key - a `DocumentReference<Member>` in the
  * group-expense flow (the default), or a plain name string in the
  * standalone Split Expense calculator, which has no persistent Members.
+ *
+ * `roomId` is optional and only meaningful when the rental has rooms
+ * defined; a participant with no roomId is treated as a private room at
+ * the standard rate (1.0).
  */
 export interface RentalStay<K = DocumentReference<Member>> {
   memberRef: K;
   nights: number[];
+  roomId?: string;
 }
 
 /**
@@ -55,6 +73,7 @@ export interface RentalStay<K = DocumentReference<Member>> {
 export interface RentalDetails<K = DocumentReference<Member>> {
   nightCount: number;
   stays: RentalStay<K>[];
+  rooms?: RentalRoom[];
 }
 
 /**
@@ -66,6 +85,7 @@ export interface RentalDetails<K = DocumentReference<Member>> {
 export interface SerializableRentalStay {
   memberId: string;
   nights: number[];
+  roomId?: string;
 }
 
 export interface SerializableRentalPayload {
@@ -73,6 +93,7 @@ export interface SerializableRentalPayload {
   description: string;
   nightCount: number;
   stays: SerializableRentalStay[];
+  rooms?: RentalRoom[];
 }
 
 export class Expense {

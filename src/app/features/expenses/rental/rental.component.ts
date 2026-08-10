@@ -1,3 +1,4 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   afterEveryRender,
   afterNextRender,
@@ -15,14 +16,20 @@ import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
-import { RentalDetails, SerializableRentalPayload } from '@models/expense';
+import {
+  RentalDetails,
+  RentalRoom,
+  SerializableRentalPayload,
+} from '@models/expense';
 import { Member } from '@models/member';
 import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
@@ -33,6 +40,10 @@ import {
   RentalGridComponent,
   RentalMemberRow,
 } from './rental-grid/rental-grid.component';
+import {
+  RentalRoomsComponent,
+  RoomParticipant,
+} from './rental-rooms/rental-rooms.component';
 
 /**
  * Vacation Rental wizard: collects the total cost, number of nights, and
@@ -48,15 +59,18 @@ import {
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
+    MatSlideToggleModule,
     MatTooltipModule,
     FormatCurrencyInputDirective,
     RentalGridComponent,
+    RentalRoomsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RentalComponent {
   protected readonly router = inject(Router);
   protected readonly dialog = inject(MatDialog);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly memberStore = inject(MemberStore);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
@@ -70,21 +84,40 @@ export class RentalComponent {
   protected readonly nightCount = signal<number>(1);
   protected readonly members = signal<RentalMemberRow[]>([]);
 
+  protected readonly roomsEnabled = signal<boolean>(false);
+  protected readonly rooms = signal<RentalRoom[]>([]);
+  /** memberId -> roomId. Retained even while roomsEnabled() is false, so
+   * toggling back on doesn't lose the user's setup. */
+  protected readonly roomAssignments = signal<Record<string, string>>({});
+
   inputElements = viewChildren<ElementRef>('inputElement');
 
   protected readonly totalAmountValue = computed(() =>
     this.stringUtils.toNumber(this.amount())
   );
 
-  protected readonly rentalDetails = computed<RentalDetails>(() => ({
-    nightCount: this.nightCount(),
-    stays: this.members().map((p) => ({
-      memberRef: p.memberRef,
-      nights: p.nights
-        .map((present, i) => (present ? i : -1))
-        .filter((i) => i >= 0),
-    })),
-  }));
+  protected readonly roomParticipants = computed<RoomParticipant[]>(() =>
+    this.members().map((p) => ({
+      id: p.memberRef.id,
+      name: p.displayName,
+    }))
+  );
+
+  protected readonly rentalDetails = computed<RentalDetails>(() => {
+    const roomsActive = this.roomsEnabled() && this.rooms().length > 0;
+    const assignments = this.roomAssignments();
+    return {
+      nightCount: this.nightCount(),
+      stays: this.members().map((p) => ({
+        memberRef: p.memberRef,
+        nights: p.nights
+          .map((present, i) => (present ? i : -1))
+          .filter((i) => i >= 0),
+        ...(roomsActive ? { roomId: assignments[p.memberRef.id] } : {}),
+      })),
+      ...(roomsActive ? { rooms: this.rooms() } : {}),
+    };
+  });
 
   protected readonly emptyNightIndices = computed(() =>
     this.rentalUtils.emptyNights(this.rentalDetails())
@@ -104,6 +137,7 @@ export class RentalComponent {
     });
     afterNextRender(() => {
       this.addAllActiveMembers();
+      this.#showSmallScreenNoticeIfNeeded();
     });
   }
 
@@ -139,6 +173,8 @@ export class RentalComponent {
 
   onContinue(): void {
     if (!this.canContinue()) return;
+    const roomsActive = this.roomsEnabled() && this.rooms().length > 0;
+    const assignments = this.roomAssignments();
     const payload: SerializableRentalPayload = {
       totalAmount: this.totalAmountValue(),
       description: this.description(),
@@ -148,7 +184,9 @@ export class RentalComponent {
         nights: p.nights
           .map((present, i) => (present ? i : -1))
           .filter((i) => i >= 0),
+        ...(roomsActive ? { roomId: assignments[p.memberRef.id] } : {}),
       })),
+      ...(roomsActive ? { rooms: this.rooms() } : {}),
     };
     const target = this.demoService.isInDemoMode()
       ? '/demo/expenses/add'
@@ -170,5 +208,25 @@ export class RentalComponent {
       data: { sectionId: 'vacation-rental' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  /**
+   * One-time check on load (not an ongoing subscription) - resizing the
+   * window after landing on the page shouldn't keep re-triggering this.
+   */
+  #showSmallScreenNoticeIfNeeded(): void {
+    if (!this.breakpointObserver.isMatched('(max-width: 767px)')) return;
+    this.dialog.open(ConfirmDialogComponent, {
+      disableClose: false,
+      maxWidth: '400px',
+      data: {
+        dialogTitle: 'Best Viewed on a Larger Screen',
+        confirmationText:
+          'Due to the amount of information collected, the Vacation ' +
+          "Rental wizard works best on a full-size browser. Feel free to " +
+          "continue if you'd like.",
+        confirmButtonText: 'OK',
+      },
+    });
   }
 }
