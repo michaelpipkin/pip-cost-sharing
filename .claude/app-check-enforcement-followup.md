@@ -43,6 +43,46 @@ remaining unverified traffic explainable (e.g. stale cached clients from
 before this shipped). If there's a persistent, non-decaying unverified
 band, investigate before enforcing anything - don't just flip switches.
 
+**That APIs tab does NOT cover Cloud Functions** - confirmed via Firebase's
+own docs (2026-08-04). The dashboard only supports Firestore, Storage,
+Realtime Database, Auth, AI Logic, Data Connect, Maps, and Places; the
+Functions row just shows a "Learn how to enforce" link with no
+verified/unverified data, regardless of traffic volume - this was
+initially mistaken for "no traffic yet," which was wrong (confirmed by
+real invocations of `getAdminStatistics` and the help-form's
+`notifyNewIssue` not showing up there either). Every callable invocation
+does still write a structured log entry with a verification status
+(`VALID` / `INVALID` / `MISSING`) to Cloud Logging - check it via Google
+Cloud Console -> Logging with:
+
+```
+labels."firebase-log-type"="callable-request-verification"
+```
+
+Add `resource.labels.function_name="..."` to scope to one function once
+you've confirmed the query works - **do not filter on
+`resource.type="cloud_function"`**, that was tried first and returned zero
+results even with confirmed real traffic. All of this project's functions
+are 2nd-gen, and 2nd-gen Cloud Functions are actually Cloud Run services
+under the hood, so their logs carry `resource.type="cloud_run_revision"`
+instead ([known Google Cloud quirk](https://github.com/googleapis/google-cloud-go/issues/6367),
+not project-specific). The plain label filter above works regardless of
+resource type and is the simplest reliable query.
+
+**Checked 2026-08-07** (Cloud Logging, last 7 days, unscoped by function -
+covers whichever callables actually got invoked, confirmed to include at
+least `getAdminStatistics` and the help-form's `notifyNewIssue`): 15
+verification log entries, `verifications.app` = 11 `VALID` / 4 `MISSING` /
+0 `INVALID`, `verifications.auth` in exact lockstep (same 11/4 split).
+Confirmed the 4 `MISSING` are all timestamped 8/3 or earlier - i.e. before
+this shipped on 8/4. **Every request since the deploy has verified
+successfully with zero exceptions.** Strong signal for the functions
+actually exercised so far; still worth spot-checking `scanReceipt`,
+`sendGroupInvite`, `deleteUserAccount`, etc. specifically before enforcing
+Functions broadly, since those get real end-user (including Android)
+traffic that hasn't necessarily shown up in this sample yet - see the
+Android WebView risk note below.
+
 ### Code change needed first
 
 `enforceAppCheck: true` is rejected by the Functions emulator too - the
