@@ -174,15 +174,30 @@ describe('GroupService', () => {
     it('should create group, member, and default category in a batch', async () => {
       const result = await service.addGroup(
         { name: 'New Group' },
-        { displayName: 'Alice' }
+        { displayName: 'Alice', userRef: { id: 'user-1' } as any }
       );
 
       expect(mockBatch.set).toHaveBeenCalledTimes(3); // group + member + default category
       expect(result).toBe(mockDocRef);
     });
 
+    it('should set memberUids to the creator on the group doc', async () => {
+      await service.addGroup(
+        { name: 'New Group' },
+        { displayName: 'Alice', userRef: { id: 'user-1' } as any }
+      );
+
+      const groupSetCall = mockBatch.set.mock.calls.find(
+        (call: any[]) => call[1]?.name === 'New Group'
+      );
+      expect(groupSetCall![1]).toMatchObject({ memberUids: ['user-1'] });
+    });
+
     it('should always create a category named "Default"', async () => {
-      await service.addGroup({ name: 'New Group' }, { displayName: 'Alice' });
+      await service.addGroup(
+        { name: 'New Group' },
+        { displayName: 'Alice', userRef: { id: 'user-1' } as any }
+      );
 
       const categorySetCall = mockBatch.set.mock.calls.find(
         (call: any[]) => call[1]?.name === 'Default'
@@ -249,6 +264,56 @@ describe('GroupService', () => {
       await service.updateGroup(groupRef, { active: false });
 
       expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getUserGroups', () => {
+    beforeEach(() => {
+      service = createService();
+    });
+
+    it('scopes the groups query to the current user via memberUids', async () => {
+      let membersCallback: ((snap: any) => void) | undefined;
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          membersCallback ??= onNext;
+          return vi.fn();
+        }
+      );
+
+      const user = { id: 'user-1', ref: { id: 'user-1' } } as any;
+      await service.getUserGroups(user);
+      membersCallback!(
+        makeSnap([
+          {
+            ref: { parent: { parent: { id: 'group-1' } } },
+            data: () => ({ active: true, groupAdmin: false }),
+          },
+        ])
+      );
+
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'memberUids',
+        'array-contains',
+        'user-1'
+      );
+    });
+
+    it('redirects to admin groups without querying groups when the user has none', async () => {
+      let membersCallback: ((snap: any) => void) | undefined;
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          membersCallback ??= onNext;
+          return vi.fn();
+        }
+      );
+
+      const user = { id: 'user-1', ref: { id: 'user-1' } } as any;
+      await service.getUserGroups(user);
+      membersCallback!(makeSnap([]));
+
+      expect(mockGroupStore.setAllUserGroups).toHaveBeenCalledWith([]);
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
   });
 

@@ -124,6 +124,7 @@ export class GroupService implements IGroupService {
 
             const groupQuery = query(
               collection(this.fs, 'groups'),
+              where('memberUids', 'array-contains', user.id),
               orderBy('name')
             );
             this.#unsubscribeGroups?.();
@@ -183,20 +184,16 @@ export class GroupService implements IGroupService {
     groupQuerySnap: QuerySnapshot,
     userGroups: { groupId: string; active: boolean; groupAdmin: boolean }[]
   ): Promise<void> {
-    const userGroupIds = new Set(userGroups.map((m) => m.groupId));
-
-    const groups: Group[] = groupQuerySnap.docs
-      .map((doc) => {
-        const userGroup = userGroups.find((g) => g.groupId === doc.id);
-        return new Group({
-          id: doc.id,
-          ...doc.data()!,
-          userActiveInGroup: userGroup?.active,
-          userIsAdmin: userGroup?.groupAdmin,
-          ref: doc.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
-        });
-      })
-      .filter((g) => userGroupIds.has(g.id));
+    const groups: Group[] = groupQuerySnap.docs.map((doc) => {
+      const userGroup = userGroups.find((g) => g.groupId === doc.id);
+      return new Group({
+        id: doc.id,
+        ...doc.data()!,
+        userActiveInGroup: userGroup?.active,
+        userIsAdmin: userGroup?.groupAdmin,
+        ref: doc.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
+      });
+    });
 
     this.groupStore.setAllUserGroups(groups);
 
@@ -319,7 +316,10 @@ export class GroupService implements IGroupService {
     const batch = writeBatch(this.fs);
     const groupRef = doc(collection(this.fs, 'groups'));
 
-    batch.set(groupRef, group);
+    // Set memberUids directly so the creator has rule-checked access
+    // immediately, without waiting ~1s for the syncGroupMemberUids trigger.
+    const groupWithMemberUids = { ...group, memberUids: [member.userRef!.id] };
+    batch.set(groupRef, groupWithMemberUids);
 
     const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
     batch.set(memberRef, member);
@@ -337,7 +337,7 @@ export class GroupService implements IGroupService {
     if (this.groupStore.currentGroup() === null) {
       this.groupStore.setCurrentGroup(
         new Group({
-          ...group,
+          ...groupWithMemberUids,
           id: groupRef.id,
           ref: groupRef as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
         })

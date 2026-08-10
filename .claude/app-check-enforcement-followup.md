@@ -43,6 +43,14 @@ remaining unverified traffic explainable (e.g. stale cached clients from
 before this shipped). If there's a persistent, non-decaying unverified
 band, investigate before enforcing anything - don't just flip switches.
 
+**Checked 2026-08-10** (App Check console, APIs tab): Firestore 99%
+verified / 1% unverified. Storage had shown "Unenforced - metrics will be
+displayed when the Storage API receives requests" (no traffic yet) as of
+8/4; after manually exercising `scanReceipt` + a real receipt upload
+today, Storage flipped to 100% verified / 0% unverified, status
+"Monitoring" - confirms the upload path attests correctly, though this is
+one manual exercise, not sustained real-world traffic yet.
+
 **That APIs tab does NOT cover Cloud Functions** - confirmed via Firebase's
 own docs (2026-08-04). The dashboard only supports Firestore, Storage,
 Realtime Database, Auth, AI Logic, Data Connect, Maps, and Places; the
@@ -83,7 +91,36 @@ Functions broadly, since those get real end-user (including Android)
 traffic that hasn't necessarily shown up in this sample yet - see the
 Android WebView risk note below.
 
+**Checked 2026-08-10, post-Functions-deploy:** `gcloud logging read` with
+the label filter above confirmed working, returned a `scanReceipt` entry
+at 15:19:20 (`VALID`/`VALID`) of ambiguous pre/post-deploy timing. Re-ran
+the scan flow and re-checked logs: a second entry at 15:30:35
+(`VALID`/`VALID`), confirmed after the deploy, call succeeded end-to-end
+client-side. **`scanReceipt` enforcement confirmed working in production.**
+Still no direct traffic sample yet for `sendGroupInvite`,
+`deleteUserAccount`, `deleteGroup`, `syncAuthEmailsToUsers`,
+`getAdminStatistics`, `sendEmail`, `notifyNewIssue` since the deploy -
+worth a quick manual exercise of each, or just watching for organic
+traffic/errors over the >=24h window before moving to Storage.
+
 ### Code change needed first
+
+**Done 2026-08-10.** `callableAppCheck` added to `functions/src/common.ts`
+and applied to all 8 callables listed below; `logAppError` left unenforced
+with an explanatory comment. `pnpm run build` in `functions/` passes clean.
+
+**Deployed 2026-08-10** via `firebase deploy --only functions`. All 12
+functions in the codebase updated successfully (the 8 enforced ones plus
+`deleteOldPaidExpenses`, `sendPaymentNotificationEmail`, `logAppError`,
+`sendMailQueueEmail`, which are unaffected/untouched by this change).
+**Cloud Functions App Check enforcement is now LIVE in production** for
+`deleteUserAccount`, `deleteGroup`, `syncAuthEmailsToUsers`,
+`getAdminStatistics`, `sendEmail`, `sendGroupInvite`, `notifyNewIssue`,
+`scanReceipt`. This is step 1 of the "Console toggles" plan below - watch
+Cloud Logging (`callable-request-verification` label) for `INVALID`/
+rejected requests over the next 24h+ before moving on to Storage, per the
+>=24h-apart rule. If something breaks, rollback requires a redeploy with
+`enforceAppCheck: false` (~5 min), not a console flip.
 
 `enforceAppCheck: true` is rejected by the Functions emulator too - the
 client skips App Check init under emulators, and `firebase-functions`
@@ -116,7 +153,9 @@ unaffected either way.
 ### Console toggles - one at a time, >=24h apart
 
 1. **Cloud Functions** (after deploying the code above) - smallest blast
-   radius, clearest per-callable metrics.
+   radius, clearest per-callable metrics. **DONE 2026-08-10** (deployed,
+   live in prod - this is code-based, not a console toggle, see note
+   above). Watching before proceeding to step 2.
 2. **Cloud Storage** - lowest traffic (receipt images only), fast rollback.
 3. **Cloud Firestore** - the big one, every screen depends on it. Do this
    last and watch closely.

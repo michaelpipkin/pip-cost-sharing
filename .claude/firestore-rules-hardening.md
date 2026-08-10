@@ -1,6 +1,6 @@
 # Firestore & Storage Rules Hardening — Handoff
 
-Status as of 2026-08-07: **planned, not started.** This doc is meant to be
+Status as of 2026-08-10: **Phase 0 done.** This doc is meant to be
 self-contained so a fresh session can pick this up with no other context.
 
 ## Why
@@ -68,6 +68,58 @@ every group's `memberUids` matches its members' linked UIDs. Then add/remove a
 member and confirm the trigger updates the array. Deploy and spot-check
 production with `pnpm query`.
 
+**Done 2026-08-10.** All three items implemented:
+- `syncGroupMemberUids` trigger added to `functions/src/index.ts` (in its own
+  "Group membership sync trigger" section, right before the payment
+  notification section). Recomputes from the full members subcollection on
+  every write and skips the update if the array is unchanged.
+- Backfill query added at `scripts/db/queries/backfill-member-uids.ts`.
+  Dry-run by default (`pnpm query backfill-member-uids`); pass `--apply` to
+  write. Prints a before/after count table and also calls `writeTable()`.
+- `Group.memberUids: string[] = []` added to `src/app/models/group.ts`.
+  `addGroup` (`group.service.ts:315-349`) now sets
+  `memberUids: [member.userRef!.id]` on the group payload at creation time,
+  reused for both the batch write and the local store update — no more
+  waiting on the trigger for the creator's own access. Updated
+  `group.service.spec.ts` call sites to pass a `userRef` on the test member
+  (previously omitted since nothing read it).
+
+**Verified against the emulator** (Firestore + Functions, no seed-data
+import — fresh in-memory per run, cleaned up after):
+- Seeded a group with 2 members while only the Firestore emulator was
+  running (functions emulator down) → `memberUids` stayed unset, confirming
+  the "pre-migration" state the backfill script targets.
+- `pnpm query backfill-member-uids` (dry run) correctly reported 1 group,
+  0 → 2, correctly excluding a third member seeded with `userRef: null`
+  (unregistered invitee). `--apply` wrote `['uid-alice', 'uid-bob']`; a
+  second dry-run afterward reported nothing to do (idempotent).
+- Restarted with the Functions emulator also running (had to `pnpm run
+  kill-ports` first — a bare `firebase emulators:start` doesn't reuse the
+  `start-emulators.js` wrapper's auto-kill). Confirmed live via the trigger,
+  each checked ~2s after the write: adding a member appends its uid; deleting
+  a member's doc removes its uid; setting `userRef: null` on a member (the
+  account-anonymization path at `functions/src/index.ts:492`, now a few lines
+  further down after this section was added) also removes its uid. All
+  matched expectations; no manual data cleanup needed since it was emulator
+  state.
+- `pnpm exec ng test --watch=false --include
+  src/app/services/group.service.spec.ts` — 22/22 pass, including a new test
+  asserting `memberUids: ['user-1']` on the group `batch.set` call.
+- `functions`: `pnpm run build` clean.
+
+**Deployed to production 2026-08-10.** Dry-run against prod showed 174
+groups needing backfill (all with `memberUids` currently unset, counts 1-9
+members, none dropping to zero); `--apply` wrote them, and an immediate
+re-run of the dry run confirmed "nothing to do." `firebase deploy --only
+functions` succeeded — `syncGroupMemberUids` created (`ACTIVE`, Eventarc
+trigger wired to `groups/{groupId}/members/{memberId}` writes), all 12
+existing functions updated cleanly alongside it. Confirmed healthy via
+`firebase functions:log` (container started, startup probe succeeded, no
+errors) — no organic invocations yet at check time since no member docs had
+been written since deploy; that'll show up as real usage happens. Phase 0 is
+now fully live: existing groups have `memberUids`, new member writes keep it
+in sync going forward, and new groups get it set at creation time.
+
 ## Phase 1 — Rewrite the queries that rules would reject (still no rule changes)
 
 Two client query patterns are incompatible with any membership-scoped rule.
@@ -91,6 +143,56 @@ rule — it does not filter results.
 
 **Verify:** registration with a pre-existing invite still links the member;
 group list still loads with multiple groups. Cover both against the emulator.
+
+**Done 2026-08-10.** Both items implemented:
+- `group.service.ts` `getUserGroups`/`handleGroupsSnapshot`: the groups query
+  now includes `where('memberUids', 'array-contains', user.id)` alongside
+  `orderBy('name')`; the now-redundant client-side `.filter()` and its
+  `userGroupIds` set were removed. Added a composite index
+  (`memberUids` CONTAINS + `name` ASC) to `firestore.indexes.json` by hand
+  (not yet deployed/synced — see note below).
+- New `linkInvitedMembers` callable added to `functions/src/index.ts`
+  (with `callableAppCheck`, consistent with the other 8 enforced callables).
+  Takes `{email}`, uses `request.auth.uid` as the link target, finds
+  `collectionGroup('members')` docs with that email and `userRef == null`,
+  batch-updates them via the Admin SDK. Both `createUserIfNotExists` and
+  `updateUserEmailAndLinkMembers` in `user.service.ts` now call this instead
+  of querying/updating Firestore directly client-side; the now-unused
+  `collectionGroup`/`query`/`where`/`getDocs`/`updateDoc` imports were
+  removed from `user.service.ts`.
+- Updated `group.service.spec.ts` (new `getUserGroups` describe block, 2
+  tests) and `user.service.spec.ts` (replaced the Firestore-query-based
+  member-linking tests with ones that mock the callable; removed the
+  now-dead `makeSnap` helper and stale `query`/`where`/`collectionGroup`/
+  `getDocs`/`updateDoc` spies). Full suite: 1178/1178 pass.
+
+**Verified against the emulator** (Auth + Firestore + Functions, fresh
+in-memory, script deleted after): seeded a group with an admin member and an
+unregistered invitee (`userRef: null`, matching email) plus an unrelated
+second group; signed up a real Auth-emulator user with the invitee's email
+(mirroring actual registration); called `linkInvitedMembers` — it linked the
+member (`membersLinked: 1`), the member doc's `userRef` now pointed at the
+new user, and `syncGroupMemberUids` picked up the change and added the new
+uid to the group's `memberUids` within ~2s. The `memberUids`
+array-contains + orderBy('name') query then returned exactly the one group
+the user belongs to, correctly excluding the unrelated second group —
+confirming both the query rewrite and the composite index work together
+correctly.
+
+**Not yet deployed.** Unlike Phase 0 (deployed via a manual `firebase
+deploy` — see note below), Phase 1's code sat uncommitted on `dev` pending a
+process discovery: this repo has `.github/workflows/firebase-deploy.yml`,
+which deploys functions / Firestore rules+indexes / hosting automatically on
+push to `release` (git-diff-gated per area) and then auto-merges `release`
+into `main`. The normal path is commit → PR → merge to `release`, not a
+manual `firebase deploy` from a dev session. **Phase 0's manual deploy
+predates this discovery and is an acknowledged exception** — production
+functions and the `memberUids` backfill are live, but the corresponding code
+had not yet been committed when that happened. Both phases are being
+committed together now so git catches up to what's live (Phase 0) and Phase
+1 can go out through the normal CI path, including the new Firestore index
+deploying (via the CI job's rules+indexes step, which runs before its
+hosting step) before the frontend code that depends on it goes live.
 
 ## Phase 2 — Tighten the rules (the actual security win)
 

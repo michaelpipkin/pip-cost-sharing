@@ -37,6 +37,9 @@ export class Group {
   currencySymbol!: string; // Display symbol ($, €, £, etc.)
   decimalPlaces!: number; // Decimal precision (2 for most, 0 for JPY)
   archived: boolean = false;
+  // Denormalized member UIDs, maintained server-side by syncGroupMemberUids.
+  // Clients must never write this field directly.
+  memberUids: string[] = [];
   ref?: DocumentReference<Group>;
   userActiveInGroup?: boolean;
   userIsAdmin?: boolean;

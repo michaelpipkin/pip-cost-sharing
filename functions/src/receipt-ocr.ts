@@ -3,6 +3,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import * as path from 'node:path';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
+import { callableAppCheck } from './common';
 import { OcrLine, ParsedReceipt, parseReceiptLines } from './receipt-parser';
 
 // Points pdf.js at its own bundled font metrics so it doesn't warn (and
@@ -136,7 +137,7 @@ interface ScanReceiptRequest {
  * Storage for this function to create or for anything to clean up.
  */
 export const scanReceipt = onCall<ScanReceiptRequest>(
-  { memory: '1GiB', timeoutSeconds: 60 },
+  { memory: '1GiB', timeoutSeconds: 60, ...callableAppCheck },
   async (request): Promise<ParsedReceipt> => {
     const uid = request.auth?.uid;
     if (!uid) {
