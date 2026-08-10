@@ -3,6 +3,7 @@ updateConfig:
     - typescript
 overrides:
   brace-expansion: '>=5.0.8 <6'
+  js-yaml: '>=3.15.1 <4'
   postcss: '>=8.5.23 <9'
   uuid: '>=11.1.1 <12'
 allowBuilds:
