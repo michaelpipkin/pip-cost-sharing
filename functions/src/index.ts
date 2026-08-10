@@ -11,7 +11,10 @@ import {
 } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import {
+  onDocumentCreated,
+  onDocumentWritten,
+} from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
@@ -651,6 +654,59 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
   }
 });
 
+/**
+ * Links unlinked (`userRef == null`) member records with a given email to
+ * the calling user. Runs server-side because it's a cross-tenant
+ * `collectionGroup('members')` search by a user who may belong to no group
+ * yet - no Firestore rule can permit that from the client. Called right
+ * after account creation and after email verification (see
+ * `user.service.ts`).
+ */
+export const linkInvitedMembers = onCall<{ email: string }>(
+  callableAppCheck,
+  async (request) => {
+    const uid = request.auth?.uid;
+    const email = request.data?.email;
+
+    if (!uid) {
+      throw new HttpsError(
+        'unauthenticated',
+        'User must be authenticated to link members'
+      );
+    }
+    if (!email || typeof email !== 'string') {
+      throw new HttpsError('invalid-argument', 'email is required');
+    }
+
+    try {
+      const membersSnapshot = await db
+        .collectionGroup('members')
+        .where('email', '==', email)
+        .where('userRef', '==', null)
+        .get();
+
+      if (!membersSnapshot.empty) {
+        const userRef = db.collection('users').doc(uid);
+        const batch = db.batch();
+        for (const memberDoc of membersSnapshot.docs) {
+          batch.update(memberDoc.ref, { userRef });
+        }
+        await batch.commit();
+      }
+
+      return { membersLinked: membersSnapshot.size };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error linking invited members:', error);
+      throw new HttpsError(
+        'internal',
+        `Error linking members: ${errorMessage}`
+      );
+    }
+  }
+);
+
 interface SyncEmailResults {
   synced: number;
   skipped: number;
@@ -938,6 +994,41 @@ export const getAdminStatistics = onCall(callableAppCheck, async (request) => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// Group membership sync trigger
+// ---------------------------------------------------------------------------
+
+/**
+ * Denormalizes each group's member UIDs onto the group doc as `memberUids`,
+ * so Firestore rules can check membership with a single get() instead of a
+ * query. Recomputes from the full members subcollection on every write
+ * (rather than arrayUnion/arrayRemove) so it self-heals and catches every
+ * mutation path, including Admin SDK writes and userRef anonymization.
+ */
+export const syncGroupMemberUids = onDocumentWritten(
+  'groups/{groupId}/members/{memberId}',
+  async (event) => {
+    const groupId = event.params['groupId'];
+    const groupRef = db.collection('groups').doc(groupId);
+
+    const membersSnapshot = await groupRef.collection('members').get();
+    const memberUids = membersSnapshot.docs
+      .map((doc) => (doc.data()['userRef'] as DocumentReference | null)?.id)
+      .filter((uid): uid is string => !!uid);
+
+    const groupSnapshot = await groupRef.get();
+    if (!groupSnapshot.exists) return;
+
+    const currentUids: string[] = groupSnapshot.data()?.['memberUids'] ?? [];
+    const unchanged =
+      memberUids.length === currentUids.length &&
+      memberUids.every((uid) => currentUids.includes(uid));
+    if (unchanged) return;
+
+    await groupRef.update({ memberUids });
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Payment notification email trigger
