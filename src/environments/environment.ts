@@ -1,5 +1,5 @@
 // Local environment configuration for development
-const useEmulators = false;
+const useEmulators = true;
 
 export const environment = {
   production: false,
