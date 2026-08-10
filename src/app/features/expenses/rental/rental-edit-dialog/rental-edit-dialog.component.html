@@ -26,10 +26,34 @@
     </mat-form-field>
   </div>
 
+  <mat-slide-toggle
+    [checked]="roomsEnabled()"
+    (change)="roomsEnabled.set($event.checked)"
+    data-testid="rental-edit-rooms-enabled-toggle"
+    aria-label="Rooms have different rates or are shared"
+  >
+    Rooms have different rates or are shared
+  </mat-slide-toggle>
+
+  @if (roomsEnabled()) {
+    <p class="tip-text" data-testid="rental-edit-rooms-tip">
+      Enter the name and rate for each room/space. For example, a master
+      bedroom might be charged at 1.5x, whereas a couch might be charged at
+      0.5x.
+    </p>
+    <app-rental-rooms
+      [participants]="roomParticipants()"
+      [(rooms)]="rooms"
+      [(assignments)]="roomAssignments"
+    />
+  }
+
   <app-rental-grid
     [availableMembers]="data.availableMembers"
     [nightCount]="nightCount()"
     [totalAmount]="data.totalAmount"
+    [rooms]="roomsEnabled() ? rooms() : []"
+    [roomAssignments]="roomsEnabled() ? roomAssignments() : {}"
     [(members)]="members"
   />
 </mat-dialog-content>

@@ -262,11 +262,21 @@ export class AddExpenseComponent {
     const stays: RentalStay[] = payload.stays
       .map(stay => {
         const member = this.activeMembers().find(m => m.id === stay.memberId);
-        return member?.ref ? { memberRef: member.ref, nights: stay.nights } : null;
+        return member?.ref
+          ? {
+              memberRef: member.ref,
+              nights: stay.nights,
+              ...(stay.roomId ? { roomId: stay.roomId } : {}),
+            }
+          : null;
       })
       .filter((s): s is RentalStay => s !== null);
 
-    const rental: RentalDetails = { nightCount: payload.nightCount, stays };
+    const rental: RentalDetails = {
+      nightCount: payload.nightCount,
+      stays,
+      ...(payload.rooms?.length ? { rooms: payload.rooms } : {}),
+    };
     const shareResults = this.rentalUtils.computeShares(rental);
 
     const splits: ExpenseSplitItemForm[] = shareResults.map(r => ({

@@ -55,7 +55,13 @@
           <tbody>
             @for (row of members(); track row.memberRef.id) {
               <tr data-testid="member-row">
-                <td class="cell-left">{{ row.displayName }}</td>
+                <td
+                  class="cell-left"
+                  [matTooltip]="roomNameFor(row.memberRef) ?? ''"
+                  [matTooltipDisabled]="!roomNameFor(row.memberRef)"
+                >
+                  {{ row.displayName }}
+                </td>
               </tr>
             }
           </tbody>

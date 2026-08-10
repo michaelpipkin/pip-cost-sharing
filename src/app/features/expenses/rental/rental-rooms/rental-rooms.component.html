@@ -1,0 +1,89 @@
+<div class="rental-rooms" data-testid="rental-rooms">
+  @for (room of rooms(); track room.id) {
+    <div class="room-row" data-testid="room-row">
+      <div class="room-row-header flex-wrap fw-start row-gap align-baseline">
+        <mat-form-field
+          appearance="fill"
+          class="room-name-field"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>Room Name</mat-label>
+          <input
+            matInput
+            [value]="room.name"
+            (blur)="updateRoomName(room.id, $any($event.target).value)"
+            data-testid="room-name-input"
+            aria-label="Room name"
+          />
+        </mat-form-field>
+        <mat-form-field
+          appearance="fill"
+          class="room-rate-field"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>Rate</mat-label>
+          <input
+            matInput
+            type="number"
+            min="0.01"
+            step="0.05"
+            class="number-right"
+            [value]="room.rate"
+            (blur)="updateRoomRate(room.id, $any($event.target).value)"
+            data-testid="room-rate-input"
+            aria-label="Room rate multiplier"
+          />
+          <span matTextSuffix>&times;</span>
+        </mat-form-field>
+        <button
+          mat-mini-fab
+          type="button"
+          class="btn-danger"
+          (click)="removeRoom(room.id)"
+          data-testid="remove-room-button"
+          aria-label="Remove room"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+
+      <mat-form-field
+        appearance="fill"
+        class="room-occupants-field"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>Occupants</mat-label>
+        <mat-select
+          multiple
+          [value]="occupantIdsFor(room.id)"
+          (selectionChange)="onOccupantsChange(room.id, $event)"
+          data-testid="room-occupants-select"
+          aria-label="Room occupants"
+        >
+          @for (participant of participants(); track participant.id) {
+            <mat-option [value]="participant.id">
+              {{ participant.name }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  }
+
+  <button
+    mat-raised-button
+    type="button"
+    class="btn-primary"
+    (click)="addRoom()"
+    data-testid="add-room-button"
+  >
+    Add Room
+  </button>
+
+  @if (rooms().length > 0 && unassignedParticipants().length > 0) {
+    <p class="unassigned-note" data-testid="unassigned-participants-note">
+      Not assigned to a room (charged the standard rate, 1.0&times;):
+      {{ unassignedNames() }}
+    </p>
+  }
+</div>

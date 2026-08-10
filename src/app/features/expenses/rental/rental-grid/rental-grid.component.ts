@@ -15,8 +15,9 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
-import { RentalDetails } from '@models/expense';
+import { RentalDetails, RentalRoom } from '@models/expense';
 import { Member } from '@models/member';
 import {
   AllocationSplit,
@@ -51,6 +52,7 @@ export interface RentalMemberRow {
     MatButtonModule,
     MatIconModule,
     MatCheckboxModule,
+    MatTooltipModule,
     DocRefCompareDirective,
     CurrencyPipe,
     DecimalPipe,
@@ -65,6 +67,10 @@ export class RentalGridComponent {
   availableMembers = input.required<Member[]>();
   nightCount = input.required<number>();
   totalAmount = input<number>(0);
+  /** Optional room/rate definitions - see RentalRoomsComponent. */
+  rooms = input<RentalRoom[]>([]);
+  /** memberId -> roomId - see RentalRoomsComponent's `assignments` model. */
+  roomAssignments = input<Record<string, string>>({});
 
   members = model<RentalMemberRow[]>([]);
 
@@ -91,6 +97,7 @@ export class RentalGridComponent {
   );
 
   protected readonly shareResults = computed(() => {
+    const assignments = this.roomAssignments();
     const details: RentalDetails = {
       nightCount: this.nightCount(),
       stays: this.members().map((row) => ({
@@ -98,10 +105,22 @@ export class RentalGridComponent {
         nights: row.nights
           .map((present, night) => (present ? night : -1))
           .filter((night) => night >= 0),
+        roomId: assignments[row.memberRef.id],
       })),
+      rooms: this.rooms(),
     };
     return this.rentalUtils.computeShares(details);
   });
+
+  protected readonly roomNameById = computed(
+    () => new Map(this.rooms().map((room) => [room.id, room.name]))
+  );
+
+  protected roomNameFor(memberRef: DocumentReference<Member>): string | null {
+    const roomId = this.roomAssignments()[memberRef.id];
+    if (!roomId) return null;
+    return this.roomNameById().get(roomId) ?? null;
+  }
 
   protected readonly previewSplits = computed<AllocationSplit[]>(() => {
     const rows = this.members();
