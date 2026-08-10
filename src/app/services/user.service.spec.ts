@@ -36,10 +36,6 @@ function makeUserSnap(exists: boolean, data?: any) {
   };
 }
 
-function makeSnap(docs: any[]) {
-  return { size: docs.length, empty: docs.length === 0, docs };
-}
-
 async function getAuthStateCallback(
   service: UserService
 ): Promise<(user: any) => Promise<void>> {
@@ -132,19 +128,22 @@ describe('UserService', () => {
     return svc;
   }
 
+  let linkInvitedMembersFn: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(firestoreModule, 'doc').mockReturnValue(mockDocRef as any);
-    vi.spyOn(firestoreModule, 'query').mockReturnValue({} as any);
-    vi.spyOn(firestoreModule, 'where').mockReturnValue({} as any);
-    vi.spyOn(firestoreModule, 'collectionGroup').mockReturnValue({} as any);
     vi.spyOn(authModule, 'setPersistence').mockResolvedValue(undefined);
     vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
       exists: () => false,
     } as any);
-    vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
-    vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined as any);
+    linkInvitedMembersFn = vi.fn().mockResolvedValue({
+      data: { membersLinked: 0 },
+    });
+    vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+      linkInvitedMembersFn as any
+    );
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
     (mockAuth as any).currentUser = null;
     userSignal.set(null);
@@ -222,9 +221,6 @@ describe('UserService', () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
-      );
 
       await service.createUserIfNotExists('new-user', 'new@test.com');
 
@@ -242,38 +238,40 @@ describe('UserService', () => {
       );
     });
 
-    it('should link unlinked member records to the new user', async () => {
-      const memberRef1 = { id: 'm1' };
-      const memberRef2 = { id: 'm2' };
+    it('should ask the server to link unlinked member records to the new user', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([{ ref: memberRef1 }, { ref: memberRef2 }]) as any
-      );
+      linkInvitedMembersFn.mockResolvedValueOnce({
+        data: { membersLinked: 2 },
+      });
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
-      expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef1, {
-        userRef: mockDocRef,
+      expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
+        mockFunctions,
+        'linkInvitedMembers'
+      );
+      expect(linkInvitedMembersFn).toHaveBeenCalledWith({
+        email: 'alice@test.com',
       });
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef2, {
-        userRef: mockDocRef,
-      });
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'new_user_members_linked',
+        { email: 'alice@test.com', membersLinked: 2 }
+      );
     });
 
-    it('should not link members when none exist with the email', async () => {
+    it('should not log an analytics event when no members were linked', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
-      );
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
       );
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
-      expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'new_user_members_linked',
+        expect.anything()
+      );
     });
   });
 
@@ -399,23 +397,25 @@ describe('UserService', () => {
       });
     });
 
-    it('should link unlinked member records after updating email', async () => {
+    it('should ask the server to link unlinked member records after updating email', async () => {
       (mockAuth as any).currentUser = { uid: 'user-123' };
-      const memberRef1 = { id: 'm1' };
-      const memberRef2 = { id: 'm2' };
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([{ ref: memberRef1 }, { ref: memberRef2 }]) as any
-      );
+      linkInvitedMembersFn.mockResolvedValueOnce({
+        data: { membersLinked: 2 },
+      });
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
 
-      expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef1, {
-        userRef: mockDocRef,
+      expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
+        mockFunctions,
+        'linkInvitedMembers'
+      );
+      expect(linkInvitedMembersFn).toHaveBeenCalledWith({
+        email: 'new@test.com',
       });
-      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(memberRef2, {
-        userRef: mockDocRef,
-      });
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'email_verified_members_linked',
+        { email: 'new@test.com', membersLinked: 2 }
+      );
     });
 
     it('should throw when no authenticated user', async () => {
