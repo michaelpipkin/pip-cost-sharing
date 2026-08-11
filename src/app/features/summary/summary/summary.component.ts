@@ -9,8 +9,10 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -66,6 +68,7 @@ import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-
     MatInputModule,
     MatDatepickerModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatTooltipModule,
     MatTableModule,
@@ -93,6 +96,7 @@ export class SummaryComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
+  protected readonly breakpointObserver = inject(BreakpointObserver);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -113,6 +117,9 @@ export class SummaryComponent {
   );
   startDate = model<Date | null>(null);
   endDate = model<Date | null>(null);
+
+  smallScreen = signal<boolean>(false);
+  summaryView = signal<'individual' | 'settlement'>('individual');
 
   filteredSplits = computed(() => {
     let startDate: Date;
@@ -196,6 +203,15 @@ export class SummaryComponent {
     return memberPaths.size;
   });
 
+  // On small screens both tables can't comfortably share the viewport, so
+  // only one section shows at a time, switched via summaryView().
+  showIndividualSection = computed(
+    () => !this.smallScreen() || this.summaryView() === 'individual'
+  );
+  showSettlementSection = computed(
+    () => !this.smallScreen() || this.summaryView() === 'settlement'
+  );
+
   detailData = computed(
     (
       owedToMemberRef: DocumentReference<Member> = this.owedToMemberRef(),
@@ -213,8 +229,8 @@ export class SummaryComponent {
       );
       categories.forEach((category) => {
         if (
-          memberSplits.some((split: Split) =>
-            split.categoryRef.eq(category.ref!) // NOSONAR
+          memberSplits.some(
+            (split: Split) => split.categoryRef.eq(category.ref!) // NOSONAR
           )
         ) {
           const owedToMember1 = memberSplits
@@ -341,6 +357,13 @@ export class SummaryComponent {
         this.loading.loadingOn();
       }
     });
+    // Below this size, the two summary tables can't both show a useful
+    // number of rows at once, so they're shown one at a time via a toggle.
+    this.breakpointObserver
+      .observe(['(max-width: 600px)', '(max-height: 700px)'])
+      .subscribe((result) => {
+        this.smallScreen.set(result.matches);
+      });
     afterNextRender(() => {
       this.tourService.checkForContinueTour('summary');
     });

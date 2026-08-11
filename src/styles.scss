@@ -463,6 +463,17 @@ body.dark-theme {
   border: 12px solid tokens.color('surface');
   justify-content: center;
   overflow: hidden; /* Prevent overflow outside the container */
+
+  /* When two table-containers are stacked as flex siblings (e.g. Summary's
+     member and settlement tables), unconstrained flex-shrink divides the
+     deficit proportionally to each table's natural content height — so the
+     shorter table gets shrunk to almost nothing while the taller one still
+     shows plenty of rows. Capping each at half the shared flex parent's
+     height keeps neither table from crowding out the other; a table that
+     already fits in less than half keeps its natural size. */
+  &.half-height {
+    max-height: 50%;
+  }
 }
 
 .scrollable-table {

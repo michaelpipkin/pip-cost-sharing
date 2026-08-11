@@ -862,7 +862,7 @@ The app supports three split methods with a toggle (Amount / % / Shares) to swit
 **Guards**: `authGuard`, `groupGuard`
 
 **Functionality**:
-This page has two sections: a member-centric view of pairwise balances, and a group-wide Least Transfers Settlement view that calculates the minimum number of transactions needed to settle all debts at once.
+This page has two sections: a member-centric view of pairwise balances, and a group-wide Fewest Transfers Settlement view that calculates the minimum number of transactions needed to settle all debts at once.
 
 **Page Components**:
 - **Member Dropdown** (at top):
@@ -903,7 +903,7 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
   - Click on expanded detail to **copy to clipboard**
   - Useful for sharing breakdown with other member
 
-- **Section 2 — Least Transfers Settlement Table**:
+- **Section 2 — Fewest Transfers Settlement Table**:
   - Calculates the minimum number of payments needed to zero out all debts across the entire group
   - Uses a greedy net-balance algorithm: each member's net balance is computed, then the largest debtor is matched to the largest creditor
   - Example: If Alice owes Bob $40 and Bob owes Carol $40, Alice pays Carol $40 directly (one transfer instead of two)
@@ -921,7 +921,7 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
   - Demo mode blocks this action
 
 - **Request All Payments Button** (beside the Settle Group button):
-  - Sends payment request emails to all members who owe money in the Least Transfers table
+  - Sends payment request emails to all members who owe money in the Fewest Transfers table
   - Skips members who are not registered or have opted out of email notifications
   - Shows a snackbar with the count of emails sent, or "No eligible members" if none qualify
   - Demo mode blocks this action
@@ -960,14 +960,14 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] Summary updates when expenses are added/edited/deleted
 - [ ] Summary updates when group changes
 
-**Section 2 — Least Transfers Settlement**:
-- [ ] Least Transfers table is always visible below the member-to-member section
+**Section 2 — Fewest Transfers Settlement**:
+- [ ] Fewest Transfers table is always visible below the member-to-member section
 - [ ] Table shows correct minimum-transfer rows (verified by manual calculation)
 - [ ] Algorithm correctly consolidates indirect debts (A→B→C simplifies to A→C)
-- [ ] Same date range filters affect Least Transfers table as Section 1
-- [ ] Changing date filter updates Least Transfers table
+- [ ] Same date range filters affect Fewest Transfers table as Section 1
+- [ ] Changing date filter updates Fewest Transfers table
 - [ ] When no outstanding expenses, table shows empty state message
-- [ ] Settle Group button is visible when Least Transfers table has rows
+- [ ] Settle Group button is visible when Fewest Transfers table has rows
 - [ ] Settle Group button opens confirmation dialog
 - [ ] Confirmation dialog lists all expected transfers
 - [ ] Confirming settlement marks all filtered splits as paid
@@ -977,7 +977,7 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] After settlement, both tables show empty state
 - [ ] Demo mode blocks Settle Group action with appropriate message
 - [ ] Loading overlay is shown during settlement operation
-- [ ] Request All Payments button is visible when Least Transfers table has rows
+- [ ] Request All Payments button is visible when Fewest Transfers table has rows
 - [ ] Clicking Request All Payments sends emails to all eligible members
 - [ ] Members not registered or opted out are silently skipped
 - [ ] Snackbar shows count: "Payment request(s) sent to X member(s)"
@@ -1370,7 +1370,7 @@ The app provides three different ways to mark splits as paid, each with differen
 
 1. User navigates to Summary page
 2. Optionally sets date range filters
-3. Views the Least Transfers Settlement table (Section 2) showing minimum transfers needed
+3. Views the Fewest Transfers Settlement table (Section 2) showing minimum transfers needed
 4. Members make real-world transfers as shown in the table
 5. User clicks Settle Group button
 6. Settle Group Confirmation Dialog opens, listing all expected transfers
