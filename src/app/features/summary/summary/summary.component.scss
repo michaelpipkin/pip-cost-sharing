@@ -1,0 +1,18 @@
+.actions-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  // Extra vertical breathing room so the mini-fab buttons' drop shadow isn't
+  // clipped by the opaque background of the adjacent table row.
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+// mat-button-toggle-group clips its content to its rounded pill shape via
+// overflow: hidden, which gives it an automatic flex min-height of 0 - so
+// without flex-shrink: 0 it competes for space with the tables below it and
+// gets crushed instead of only the (intentionally shrinkable) tables.
+mat-button-toggle-group {
+  flex-shrink: 0;
+}

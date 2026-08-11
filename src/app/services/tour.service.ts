@@ -821,7 +821,7 @@ export class TourService {
         {
           id: 'summary-intro',
           title: 'Payment Summary',
-          text: 'The Summary page has two sections: a member-to-member view for individual payments, and a Least Transfers Settlement section that calculates the minimum number of transactions needed to zero out all debts.',
+          text: 'The Summary page has two sections: a member-to-member view for individual payments, and a Fewest Transfers Settlement section that calculates the minimum number of transactions needed to zero out all debts.',
           buttons: [this.getNextButton(), this.getSkipButton()],
         },
         {
@@ -844,7 +844,7 @@ export class TourService {
             element: '[data-tour="least-transfers-table"]',
             on: 'top',
           },
-          title: 'Least Transfers Settlement',
+          title: 'Fewest Transfers Settlement',
           text: 'This table shows the minimum number of payments needed to settle all debts across the whole group. Our algorithm calculates net balances and finds the most efficient path — for example, if Alice owes Bob and Bob owes Carol, Alice might pay Carol directly instead.',
           buttons: [
             this.getBackButton(),

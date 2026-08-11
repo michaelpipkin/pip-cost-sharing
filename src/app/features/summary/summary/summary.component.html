@@ -147,205 +147,243 @@
           <mat-datepicker #endDatePicker></mat-datepicker>
         </mat-form-field>
       </div>
-      @if (summaryData().length > 0) {
-        <div class="table-container mat-elevation-z8" data-tour="payment-flow">
-          <div class="scrollable-table">
-            <table
-              mat-table
-              [dataSource]="summaryData()"
-              multiTemplateDataRows
-              class="expandable-table"
-            >
-              @let summaryColumnsToDisplay =
-                ['owedBy', 'owedTo', 'amount', 'request', 'markPaid'];
-              <ng-container matColumnDef="owedBy">
-                <th mat-header-cell *matHeaderCellDef>Owed By</th>
-                <td mat-cell *matCellDef="let amountDue">
-                  {{ amountDue.owedByMember.displayName }}
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="owedTo">
-                <th mat-header-cell *matHeaderCellDef>Owed To</th>
-                <td mat-cell *matCellDef="let amountDue">
-                  {{ amountDue.owedToMember.displayName }}
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="amount">
-                <th mat-header-cell *matHeaderCellDef class="cell-right">
-                  Amount
-                </th>
-                <td mat-cell *matCellDef="let amountDue" class="cell-right">
-                  {{ amountDue.amount | currency }}
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="request">
-                <th mat-header-cell *matHeaderCellDef class="cell-center">
-                  Request
-                </th>
-                <td mat-cell *matCellDef="let amountDue" class="cell-center">
-                  <span
-                    [matTooltip]="
-                      amountDue.owedByMember.userRef
-                        ? 'Send payment request email to ' +
-                          amountDue.owedByMember.displayName
-                        : amountDue.owedByMember.displayName +
-                          ' is not associated with a registered app user and cannot receive emails'
-                    "
+      @if (smallScreen() && summaryMemberCount() > 2) {
+        <mat-button-toggle-group
+          class="mb-2"
+          [value]="summaryView()"
+          (change)="summaryView.set($event.value)"
+          aria-label="Summary view"
+          hideSingleSelectionIndicator="true"
+          data-testid="summary-view-toggle"
+        >
+          <mat-button-toggle
+            value="individual"
+            data-testid="summary-view-individual-toggle"
+          >
+            Individual Payments
+          </mat-button-toggle>
+          <mat-button-toggle
+            value="settlement"
+            data-testid="summary-view-settlement-toggle"
+          >
+            Group Settlement
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      }
+      @if (showIndividualSection()) {
+        @if (summaryData().length > 0) {
+          <div
+            class="table-container mat-elevation-z8"
+            [class.half-height]="
+              summaryMemberCount() > 2 &&
+              leastTransfers().length > 0 &&
+              !smallScreen()
+            "
+            data-tour="payment-flow"
+          >
+            <div class="scrollable-table">
+              <table
+                mat-table
+                [dataSource]="summaryData()"
+                multiTemplateDataRows
+                class="expandable-table"
+              >
+                @let summaryColumnsToDisplay =
+                  ['owedBy', 'owedTo', 'amount', 'actions'];
+                <ng-container matColumnDef="owedBy">
+                  <th mat-header-cell *matHeaderCellDef>Owed By</th>
+                  <td mat-cell *matCellDef="let amountDue">
+                    {{ amountDue.owedByMember.displayName }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="owedTo">
+                  <th mat-header-cell *matHeaderCellDef>Owed To</th>
+                  <td mat-cell *matCellDef="let amountDue">
+                    {{ amountDue.owedToMember.displayName }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="amount">
+                  <th mat-header-cell *matHeaderCellDef class="cell-right">
+                    Amount
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let amountDue"
+                    class="cell-right amount-cell"
                   >
-                    <button
-                      class="btn btn-tertiary"
-                      mat-mini-fab
-                      [disabled]="!amountDue.owedByMember.userRef"
-                      (click)="requestPayment(amountDue); $event.stopPropagation()"
-                      aria-label="Send payment request email"
-                    >
-                      <mat-icon>forward_to_inbox</mat-icon>
-                    </button>
-                  </span>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="markPaid">
-                <th mat-header-cell *matHeaderCellDef class="cell-center">
-                  Pay
-                </th>
-                <td mat-cell *matCellDef="let amountDue" class="cell-center">
-                  <button
-                    class="btn btn-success"
-                    mat-mini-fab
-                    (click)="
-                      payExpenses(
-                        amountDue.owedToMemberRef,
-                        amountDue.owedByMemberRef
-                      );
-                      $event.stopPropagation()
-                    "
-                    [matTooltip]="
-                      'Pay expenses owed to ' +
-                      amountDue.owedToMember.displayName +
-                      ' from ' +
-                      amountDue.owedByMember.displayName
-                    "
-                    aria-label="Pay expenses"
-                  >
-                    <mat-icon>attach_money</mat-icon>
-                  </button>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="expandedDetail">
-                <td
-                  mat-cell
-                  *matCellDef="let amountDue"
-                  [colSpan]="summaryColumnsToDisplay.length + 1"
-                >
-                  @if (amountDue == expandedDetail()) {
-                    <div
-                      class="detail-table-container"
-                      animate.enter="detail-expand"
-                      animate.leave="detail-collapse"
+                    {{ amountDue.amount | currency }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef class="cell-center">
+                    Request&nbsp;/&nbsp;Pay
+                  </th>
+                  <td mat-cell *matCellDef="let amountDue" class="actions-cell">
+                    <span
+                      [matTooltip]="
+                        amountDue.owedByMember.userRef
+                          ? 'Send payment request email to ' +
+                            amountDue.owedByMember.displayName
+                          : amountDue.owedByMember.displayName +
+                            ' is not associated with a registered app user and cannot receive emails'
+                      "
                     >
                       <button
-                        mat-icon-button
-                        class="copy-btn"
+                        class="btn btn-tertiary"
+                        mat-mini-fab
+                        [disabled]="!amountDue.owedByMember.userRef"
                         (click)="
-                          copySummaryToClipboard(amountDue);
-                          $event.stopPropagation()
+                          requestPayment(amountDue); $event.stopPropagation()
                         "
-                        matTooltip="Copy summary to clipboard"
-                        aria-label="Copy summary to clipboard"
+                        aria-label="Send payment request email"
                       >
-                        <mat-icon>content_copy</mat-icon>
+                        <mat-icon>forward_to_inbox</mat-icon>
                       </button>
-                      <table
-                        mat-table
-                        [dataSource]="detailData()"
-                        class="static-table info-detail-table"
+                    </span>
+                    <button
+                      class="btn btn-success"
+                      mat-mini-fab
+                      (click)="
+                        payExpenses(
+                          amountDue.owedToMemberRef,
+                          amountDue.owedByMemberRef
+                        );
+                        $event.stopPropagation()
+                      "
+                      [matTooltip]="
+                        'Pay expenses owed to ' +
+                        amountDue.owedToMember.displayName +
+                        ' from ' +
+                        amountDue.owedByMember.displayName
+                      "
+                      aria-label="Pay expenses"
+                    >
+                      <mat-icon>attach_money</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="expandedDetail">
+                  <td
+                    mat-cell
+                    *matCellDef="let amountDue"
+                    [colSpan]="summaryColumnsToDisplay.length + 1"
+                  >
+                    @if (amountDue == expandedDetail()) {
+                      <div
+                        class="detail-table-container"
+                        animate.enter="detail-expand"
+                        animate.leave="detail-collapse"
                       >
-                        @let detailColumnsToDisplay = ['category', 'amount'];
-                        <ng-container matColumnDef="category">
-                          <th mat-header-cell *matHeaderCellDef>Category</th>
-                          <td mat-cell *matCellDef="let lineItem">
-                            {{ lineItem.category.name }}
-                          </td>
-                        </ng-container>
-                        <ng-container matColumnDef="amount">
-                          <th
-                            mat-header-cell
-                            *matHeaderCellDef
-                            class="cell-right"
-                          >
-                            Amount
-                          </th>
-                          <td
-                            mat-cell
-                            *matCellDef="let lineItem"
-                            class="cell-right amount-cell"
-                          >
-                            {{ lineItem.amount | currency }}
-                          </td>
-                        </ng-container>
-                        <tr
-                          mat-header-row
-                          *matHeaderRowDef="detailColumnsToDisplay"
-                        ></tr>
-                        <tr
-                          mat-row
-                          *matRowDef="
-                            let lineItem;
-                            columns: detailColumnsToDisplay
+                        <button
+                          mat-icon-button
+                          class="copy-btn"
+                          (click)="
+                            copySummaryToClipboard(amountDue);
+                            $event.stopPropagation()
                           "
-                        ></tr>
-                      </table>
-                    </div>
-                  }
-                </td>
-              </ng-container>
-              <tr
-                mat-header-row
-                *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
-              ></tr>
-              <tr
-                mat-row
-                *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
-                class="summary-row clickable-row expandable-row"
-                [class.clickable-row]="categories().length > 1"
-                tabindex="0"
-                (click)="onExpandClick(amountDue)"
-                (keydown.enter)="onExpandClick(amountDue)"
-                (keydown.space)="onExpandClick(amountDue); $event.preventDefault()"
-              ></tr>
-              <tr
-                mat-row
-                *matRowDef="let lineItem; columns: ['expandedDetail']"
-                class="detail-row"
-              ></tr>
-              <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell" [colSpan]="summaryColumnsToDisplay.length">
-                  No outstanding expenses found for selected member.
-                </td>
-              </tr>
-            </table>
+                          matTooltip="Copy summary to clipboard"
+                          aria-label="Copy summary to clipboard"
+                        >
+                          <mat-icon>content_copy</mat-icon>
+                        </button>
+                        <table
+                          mat-table
+                          [dataSource]="detailData()"
+                          class="static-table info-detail-table"
+                        >
+                          @let detailColumnsToDisplay = ['category', 'amount'];
+                          <ng-container matColumnDef="category">
+                            <th mat-header-cell *matHeaderCellDef>Category</th>
+                            <td mat-cell *matCellDef="let lineItem">
+                              {{ lineItem.category.name }}
+                            </td>
+                          </ng-container>
+                          <ng-container matColumnDef="amount">
+                            <th
+                              mat-header-cell
+                              *matHeaderCellDef
+                              class="cell-right"
+                            >
+                              Amount
+                            </th>
+                            <td
+                              mat-cell
+                              *matCellDef="let lineItem"
+                              class="cell-right amount-cell"
+                            >
+                              {{ lineItem.amount | currency }}
+                            </td>
+                          </ng-container>
+                          <tr
+                            mat-header-row
+                            *matHeaderRowDef="detailColumnsToDisplay"
+                          ></tr>
+                          <tr
+                            mat-row
+                            *matRowDef="
+                              let lineItem;
+                              columns: detailColumnsToDisplay
+                            "
+                          ></tr>
+                        </table>
+                      </div>
+                    }
+                  </td>
+                </ng-container>
+                <tr
+                  mat-header-row
+                  *matHeaderRowDef="summaryColumnsToDisplay; sticky: true"
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
+                  class="summary-row clickable-row expandable-row"
+                  [class.clickable-row]="categories().length > 1"
+                  tabindex="0"
+                  (click)="onExpandClick(amountDue)"
+                  (keydown.enter)="onExpandClick(amountDue)"
+                  (keydown.space)="
+                    onExpandClick(amountDue); $event.preventDefault()
+                  "
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="let lineItem; columns: ['expandedDetail']"
+                  class="detail-row"
+                ></tr>
+                <tr class="mat-row" *matNoDataRow>
+                  <td
+                    class="mat-cell"
+                    [colSpan]="summaryColumnsToDisplay.length"
+                  >
+                    No outstanding expenses found for selected member.
+                  </td>
+                </tr>
+              </table>
+            </div>
           </div>
-        </div>
-      } @else {
-        <div class="placeholder-content">
-          <mat-icon
-            class="placeholder-icon"
-            fontSet="material-symbols-outlined"
-          >
-            check_circle
-          </mat-icon>
-          <p class="placeholder-text">
-            No outstanding expenses found for selected member.
-          </p>
-        </div>
+        } @else {
+          <div class="placeholder-content">
+            <mat-icon
+              class="placeholder-icon"
+              fontSet="material-symbols-outlined"
+            >
+              check_circle
+            </mat-icon>
+            <p class="placeholder-text">
+              No outstanding expenses found for selected member.
+            </p>
+          </div>
+        }
       }
-      @if (summaryMemberCount() > 2) {
+      @if (summaryMemberCount() > 2 && showSettlementSection()) {
         <h4 class="mt-4" data-testid="least-transfers-heading">
-          Least Transfers Settlement
+          Fewest Transfers Settlement
         </h4>
         @if (leastTransfers().length > 0) {
           <div
             class="table-container mat-elevation-z8"
+            [class.half-height]="!smallScreen()"
             data-testid="least-transfers-table-container"
             data-tour="least-transfers-table"
           >
@@ -373,7 +411,11 @@
                   <th mat-header-cell *matHeaderCellDef class="cell-right">
                     Amount
                   </th>
-                  <td mat-cell *matCellDef="let transfer" class="cell-right">
+                  <td
+                    mat-cell
+                    *matCellDef="let transfer"
+                    class="cell-right amount-cell"
+                  >
                     {{ transfer.amount | currency }}
                   </td>
                 </ng-container>
