@@ -147,6 +147,44 @@ client's error-reporting channel. If App Check itself breaks, enforcing
 this one blinds you to the outage that's happening. Leave it unenforced
 with a comment explaining why.
 
+**Checked 2026-08-12** (App Check console, ~2 days after Functions
+deploy): Storage 100% verified / 0% unverified - sustained across real
+traffic, not just the earlier manual test. Clean green light, well past
+the >=99% bar. Firestore moved the wrong direction, 99%->97% verified
+(1%->3% unverified) - not disqualifying by itself (could be the Android
+WebView reCAPTCHA quirk noted below, or sample noise) but worth watching
+before enforcing Firestore specifically; hold off there until it's
+explained or trending back toward 100%.
+
+**Storage enforcement turned ON 2026-08-12** via console toggle - step 2
+of the plan is done.
+
+**Note on `linkInvitedMembers`:** not in the original 8-callable list
+above because it didn't exist yet when this doc was written - added
+2026-08-10 12:44pm (after the Functions enforcement deploy, in the
+separate "Firestore rules hardening Phase 0+1" work) already wired up
+with `callableAppCheck` from the start. No gap; confirmed via
+`git log` and the current Functions dashboard (shows live traffic).
+`syncGroupMemberUids` (also added in that commit) is an `onDocumentWritten`
+trigger, not a callable - no App Check concept applies.
+
+**Checked 2026-08-12** (Functions dashboard, 24h request counts): only
+`getAdminStatistics` (2 reqs) and `linkInvitedMembers` (4 reqs) among the
+enforced callables have real traffic; `deleteOldPaidExpenses` (1 req) is
+the unaffected scheduled trigger. Everything else enforced
+(`sendEmail`, `notifyNewIssue`, `deleteGroup`, `syncAuthEmailsToUsers`,
+`deleteUserAccount`, `sendGroupInvite`, `scanReceipt`) shows 0 requests in
+the window - low usage, not a red flag; verification-log checks only make
+sense for the two with actual traffic. `app_errors` Firestore collection
+is the standing backstop for the zero-traffic ones (see `logAppError`
+note above) rather than waiting for/forcing traffic on each.
+
+**Checked 2026-08-12**: verification logs for `getAdminStatistics` and
+`linkInvitedMembers` reviewed, nothing unexpected. That's now 3 of the 8
+enforced callables (plus `scanReceipt`) directly confirmed clean
+post-deploy via logs; the other 5 rely on zero real traffic +
+`app_errors` silence as the backstop.
+
 `onDocumentCreated` / `onSchedule` triggers have no App Check concept -
 unaffected either way.
 
@@ -157,8 +195,12 @@ unaffected either way.
    live in prod - this is code-based, not a console toggle, see note
    above). Watching before proceeding to step 2.
 2. **Cloud Storage** - lowest traffic (receipt images only), fast rollback.
+   **DONE 2026-08-12** - enforcement turned on via console toggle after
+   100%/0% verified sustained over ~2 days of real traffic. Watching
+   before proceeding to step 3.
 3. **Cloud Firestore** - the big one, every screen depends on it. Do this
-   last and watch closely.
+   last and watch closely. Holding as of 2026-08-12: verified % dipped
+   99%->97%, investigate before flipping (see note above).
 
 **Leave Authentication unenforced.** `login.component.ts` calls
 `FirebaseAuthentication.signInWithGoogle()` with `skipNativeAuth: false`,
@@ -195,3 +237,10 @@ native Play Integrity via `@capacitor-firebase/app-check` when
 - The classic `reCAPTCHA` (non-Enterprise) provider registration on the
   Firebase App Check console is unused dead weight - fine to remove
   whenever, purely cosmetic.
+- **Added 2026-08-12:** Authentication App Check enforcement is worth
+  investigating as its own separate effort down the line - not part of
+  this Phase 2 rollout. Needs `@capacitor-firebase/app-check` with a Play
+  Integrity provider wired into the native Android sign-in path (see
+  "Leave Authentication unenforced" above for why the current setup can't
+  just be flipped on) - real scope, deserves its own doc/plan rather than
+  being squeezed into this one when it's picked up.
