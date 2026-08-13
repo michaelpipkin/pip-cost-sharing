@@ -113,10 +113,14 @@ export class GroupService implements IGroupService {
               groupId: string;
               active: boolean;
               groupAdmin: boolean;
+              leftGroup: boolean;
+              memberRef: DocumentReference<Member>;
             }[] = memberQuerySnap.docs.map((d) => ({
               groupId: d.ref.parent.parent!.id,
               active: d.data().active,
               groupAdmin: d.data().groupAdmin,
+              leftGroup: !!d.data().leftGroup,
+              memberRef: d.ref as DocumentReference<Member>, // NOSONAR
             }));
 
             if (userGroups.length === 0) {
@@ -200,7 +204,13 @@ export class GroupService implements IGroupService {
 
   private async handleGroupsSnapshot(
     groupQuerySnap: QuerySnapshot,
-    userGroups: { groupId: string; active: boolean; groupAdmin: boolean }[]
+    userGroups: {
+      groupId: string;
+      active: boolean;
+      groupAdmin: boolean;
+      leftGroup: boolean;
+      memberRef: DocumentReference<Member>;
+    }[]
   ): Promise<void> {
     const groups: Group[] = groupQuerySnap.docs.map((doc) => {
       const userGroup = userGroups.find((g) => g.groupId === doc.id);
@@ -208,7 +218,9 @@ export class GroupService implements IGroupService {
         id: doc.id,
         ...doc.data()!,
         userActiveInGroup: userGroup?.active,
+        userLeftGroup: userGroup?.leftGroup,
         userIsAdmin: userGroup?.groupAdmin,
+        userMemberRef: userGroup?.memberRef,
         ref: doc.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
       });
     });
@@ -219,31 +231,14 @@ export class GroupService implements IGroupService {
     const userRef = user?.ref;
     if (!userRef) return;
 
-    let defaultGroupRef = user?.defaultGroupRef ?? null;
-    const currentDefaultGroupRef = defaultGroupRef;
-
-    // Self-heal: a defaultGroupRef pointing at a group the user no longer belongs to
-    // (e.g. deleted out-of-band) would otherwise crash auto-select.
-    if (currentDefaultGroupRef && !groups.some((g) => g.ref?.eq(currentDefaultGroupRef))) {
-      await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
-      this.userStore.updateUser({ defaultGroupRef: null });
-      defaultGroupRef = null;
-    }
-
-    const activeGroups = groups.filter((g) => g.active);
-    const currentGroup = this.groupStore.currentGroup();
+    const defaultGroupRef = await this.resolveDefaultGroupRef(
+      user?.defaultGroupRef ?? null,
+      groups,
+      userRef
+    );
 
     if (!this.groupStore.skipAutoSelect()) {
-      if (currentGroup?.ref && groups.some((g) => g.id === currentGroup.id)) {
-        await this.getGroup(currentGroup.ref, userRef);
-      } else if (defaultGroupRef) {
-        await this.getGroup(defaultGroupRef, userRef);
-      } else if (activeGroups.length === 1 && activeGroups[0]?.ref) {
-        await this.getGroup(activeGroups[0].ref, userRef);
-      } else {
-        this.groupStore.clearCurrentGroup();
-        localStorage.removeItem('currentGroup');
-      }
+      await this.autoSelectGroup(groups, defaultGroupRef, userRef);
     }
 
     // Handle auto-navigation for bookmarked/direct home page visits
@@ -262,6 +257,51 @@ export class GroupService implements IGroupService {
       } else {
         this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       }
+    }
+  }
+
+  // Self-heal: a defaultGroupRef pointing at a group the user no longer
+  // belongs to (e.g. deleted out-of-band) would otherwise crash auto-select.
+  private async resolveDefaultGroupRef(
+    defaultGroupRef: DocumentReference<Group> | null,
+    groups: Group[],
+    userRef: DocumentReference<User>
+  ): Promise<DocumentReference<Group> | null> {
+    if (
+      defaultGroupRef &&
+      !groups.some((g) => g.ref?.eq(defaultGroupRef))
+    ) {
+      await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
+      this.userStore.updateUser({ defaultGroupRef: null });
+      return null;
+    }
+    return defaultGroupRef;
+  }
+
+  private async autoSelectGroup(
+    groups: Group[],
+    defaultGroupRef: DocumentReference<Group> | null,
+    userRef: DocumentReference<User>
+  ): Promise<void> {
+    // Both `active` (the group itself) and `userActiveInGroup` (this user's
+    // own membership) must hold - a departed member who left voluntarily
+    // (active:false on their own member doc, but still userRef-linked so
+    // the group otherwise "matches") must never be auto-selected back in.
+    const activeGroups = groups.filter((g) => g.active && g.userActiveInGroup);
+    const currentGroup = this.groupStore.currentGroup();
+    const freshCurrentGroup = currentGroup?.ref
+      ? groups.find((g) => g.id === currentGroup.id)
+      : undefined;
+
+    if (freshCurrentGroup?.ref && freshCurrentGroup.userActiveInGroup) {
+      await this.getGroup(freshCurrentGroup.ref, userRef);
+    } else if (defaultGroupRef) {
+      await this.getGroup(defaultGroupRef, userRef);
+    } else if (activeGroups.length === 1 && activeGroups[0]?.ref) {
+      await this.getGroup(activeGroups[0].ref, userRef);
+    } else {
+      this.groupStore.clearCurrentGroup();
+      localStorage.removeItem('currentGroup');
     }
   }
 

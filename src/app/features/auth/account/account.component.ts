@@ -19,6 +19,7 @@ import {
 } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
+import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { User as FirebaseUser, getAuth } from 'firebase/auth';
 
@@ -37,6 +38,7 @@ import { User as FirebaseUser, getAuth } from 'firebase/auth';
 export class AccountComponent {
   protected readonly auth = inject(getAuth);
   protected readonly userStore = inject(UserStore);
+  protected readonly groupStore = inject(GroupStore);
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute);
   protected readonly breakpointObserver = inject(BreakpointObserver);
@@ -44,6 +46,12 @@ export class AccountComponent {
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
+  // Only show the Group Membership nav item when the user has at least one
+  // group to rejoin - most users never leave a group and shouldn't see an
+  // empty page in the sidebar.
+  hasLeftGroups = computed(
+    () => this.groupStore.leftUserGroups().length > 0
+  );
 
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
   isAdmin = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);

@@ -102,6 +102,14 @@ export const authRoutes: Routes = [
                 (m) => m.AccountLegalComponent
               ),
           },
+          {
+            path: 'group-membership',
+            title: 'Group Membership',
+            loadComponent: () =>
+              import('@features/auth/account/group-membership/account-group-membership.component').then(
+                (m) => m.AccountGroupMembershipComponent
+              ),
+          },
         ],
       },
       {

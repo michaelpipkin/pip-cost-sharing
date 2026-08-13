@@ -136,6 +136,9 @@ export function createMockGroupStore() {
     userAdminGroups: computed(() =>
       allUserGroups().filter((g) => g.userIsAdmin)
     ),
+    leftUserGroups: computed(() =>
+      allUserGroups().filter((g) => g.userLeftGroup)
+    ),
     setCurrentGroup: vi.fn((g: Group) => currentGroup.set(g)),
     clearCurrentGroup: vi.fn(() => currentGroup.set(null)),
     setAllUserGroups: vi.fn((groups: Group[]) => allUserGroups.set(groups)),

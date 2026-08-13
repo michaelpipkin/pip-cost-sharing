@@ -64,5 +64,10 @@ export const GroupStore = signalStore(
     userAdminGroups: computed(() =>
       allUserGroups().filter((g) => g.userIsAdmin)
     ),
+    // Groups the user voluntarily left (see Member.leftGroup) - the
+    // candidate list for the self-service "rejoin" page.
+    leftUserGroups: computed(() =>
+      allUserGroups().filter((g) => g.userLeftGroup)
+    ),
   }))
 );
