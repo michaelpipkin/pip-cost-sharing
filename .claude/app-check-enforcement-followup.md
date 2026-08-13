@@ -230,6 +230,56 @@ band, don't enforce yet - the fix is a `CustomProvider` that delegates to
 native Play Integrity via `@capacitor-firebase/app-check` when
 `pwaDetection.isRunningAsApp()` is true. Not built yet.
 
+### Incident: `linkInvitedMembers` 401s from a startup race, not bot-scoring
+
+**2026-08-13.** The app error log showed a run of `"Unauthenticated"` errors
+from `linkInvitedMembers` starting 2026-08-12, absent before. Investigated via
+Cloud Logging (`labels."firebase-log-type"="callable-request-verification"`,
+`resource.labels.function_name="linkInvitedMembers"`) - every failure showed:
+
+```json
+"verifications": { "app": "MISSING", "auth": "VALID" }
+```
+
+**`MISSING`, not `INVALID`** - this is a different failure mode than the
+"known risk" above. The user's Firebase Auth token was always fine; the
+request simply carried no App Check token at all. All failures were Android
+WebView user agents, but other Android WebView calls minutes apart succeeded
+with `VALID`/`VALID` - same platform, same call, intermittent. That pattern
+(not persistent, not correlated with a specific device) is a **startup race**,
+not reCAPTCHA scoring real traffic as bot-like.
+
+**Root cause:** `initializeAppCheck()` (`app.config.ts`) only registers
+synchronously; the reCAPTCHA Enterprise token exchange is async and completes
+well after bootstrap. `linkInvitedMembers` fires at cold boot
+(`user.service.ts` `afterNextRender` -> `onAuthStateChanged` ->
+`createUserIfNotExists`), and if it wins the race, the Firebase SDK
+soft-fails - it sends the request with no App Check header rather than
+waiting for one - and the enforced function rejects it with 401.
+`app.config.ts` discarded the `initializeAppCheck()` return value, so nothing
+could await token readiness.
+
+**Fix shipped:** `src/app/app-check.ts` now captures the `AppCheck` instance
+and exposes `appCheckTokenReady()`, which callers to `linkInvitedMembers`
+(centralized in `src/app/services/member-link.service.ts`) await before
+firing; a 10s-timeout miss skips the call rather than firing a
+guaranteed-to-fail request. `group.service.ts` retries once for any user who
+ends up with zero groups, so a skipped/failed link attempt self-heals on the
+next snapshot instead of silently losing the invite. A one-time backfill
+(`scripts/db/queries/link-orphaned-members.ts`) repaired member records
+orphaned by this bug between 2026-08-10 (when `linkInvitedMembers` first
+shipped enforced) and the fix landing.
+
+**Relevance to the still-held Firestore enforcement decision:** the Firestore
+verified-rate dip noted above (99%->97% around 2026-08-10 to 2026-08-12) was
+attributed to the Android-WebView-scoring risk without a confirmed mechanism.
+This incident is a confirmed, different mechanism (a startup race, affecting
+any App Check-enforced request fired early in the boot sequence, not
+Firestore-specific) - worth re-examining that dip through this lens before
+concluding it's scoring-related, since the two would call for different
+fixes (Play Integrity `CustomProvider` vs. more startup-time readiness
+gating like this one).
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

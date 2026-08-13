@@ -23,6 +23,9 @@
       "firebase/auth": ["./src/testing/mocks/firebase-auth.mock.ts"],
       "firebase/storage": ["./src/testing/mocks/firebase-storage.mock.ts"],
       "firebase/functions": ["./src/testing/mocks/firebase-functions.mock.ts"],
+      "firebase/app-check": [
+        "./src/testing/mocks/firebase-app-check.mock.ts"
+      ],
       "@capacitor-firebase/analytics": [
         "./src/testing/mocks/capacitor-firebase-analytics.mock.ts"
       ],
