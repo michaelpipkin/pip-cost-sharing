@@ -29,6 +29,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { appCheckTokenReady } from '../app-check';
 import { DemoModeService } from './demo-mode.service';
 import { GroupService } from './group.service';
 import { IUserService } from './user.service.interface';
@@ -100,6 +101,14 @@ export class UserService implements IUserService {
               this.memorizedStore.clearMemorizedExpenses();
               this.historyStore.clearHistory();
               this.splitStore.clearSplits();
+
+              // Best-effort wait for App Check's async first token before the
+              // earliest Firestore reads/writes of the session - the same
+              // cold-boot race that caused linkInvitedMembers 401s (see
+              // MemberLinkService) applies here too. Unlike that callable,
+              // this path can't be skipped on timeout - login has to
+              // proceed regardless, so this only delays, never blocks.
+              await appCheckTokenReady();
 
               const userData = await this.createUserIfNotExists(
                 firebaseUser.uid,
