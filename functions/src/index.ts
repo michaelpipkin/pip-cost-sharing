@@ -42,6 +42,13 @@ const PLAY_STORE_URL =
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+// Canonical form for email comparisons - Firestore has no case-insensitive
+// query operator, and email casing isn't meaningful for matching in
+// practice, so every match/lookup normalizes through this first.
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 // SMTP config replicating the retired "Trigger Email from Firestore" extension.
 const SMTP_HOST = 'smtp.office365.com';
 const SMTP_PORT = 587;
@@ -1027,6 +1034,64 @@ export const syncGroupMemberUids = onDocumentWritten(
     if (unchanged) return;
 
     await groupRef.update({ memberUids });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Email normalization triggers
+// ---------------------------------------------------------------------------
+
+/**
+ * The `emailLower` value that should be stored for a given `email` value, or
+ * null if none should be stored. Blank/missing email means a placeholder
+ * member not intended to sign in (see member.service.ts addMemberToGroup) -
+ * emailLower is omitted entirely for those rather than stored as '' or null,
+ * so it can never accidentally satisfy an equality match against another
+ * placeholder. Exported and pure for direct unit test coverage.
+ */
+export function deriveEmailLower(
+  email: string | undefined | null
+): string | null {
+  return email ? normalizeEmail(email) : null;
+}
+
+async function syncEmailLower(
+  docRef: DocumentReference,
+  data: DocumentData | undefined
+): Promise<void> {
+  if (!data) return;
+
+  const desired = deriveEmailLower(data['email'] as string | undefined);
+  const current = (data['emailLower'] as string | undefined) ?? null;
+  if (desired === current) return;
+
+  await docRef.update(
+    desired === null ? { emailLower: FieldValue.delete() } : { emailLower: desired }
+  );
+}
+
+/**
+ * Maintains `users/{uid}.emailLower`, a lowercased copy of `email`, so
+ * member-to-user matching can query case-insensitively (Firestore has no
+ * case-insensitive query operator). Recomputes on every write rather than
+ * requiring every write site to remember to set it - self-heals and catches
+ * every mutation path, including Admin SDK writes (e.g. syncAuthEmailsToUsers).
+ */
+export const syncUserEmailLower = onDocumentWritten('users/{userId}', async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+  await syncEmailLower(after.ref, after.data());
+});
+
+/**
+ * Same as syncUserEmailLower, for `groups/{groupId}/members/{memberId}.emailLower`.
+ */
+export const syncMemberEmailLower = onDocumentWritten(
+  'groups/{groupId}/members/{memberId}',
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return;
+    await syncEmailLower(after.ref, after.data());
   }
 );
 
