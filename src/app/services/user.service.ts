@@ -6,6 +6,7 @@ import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -32,10 +33,6 @@ import { DemoModeService } from './demo-mode.service';
 import { GroupService } from './group.service';
 import { IUserService } from './user.service.interface';
 
-interface LinkInvitedMembersResponse {
-  membersLinked: number;
-}
-
 @Injectable({
   providedIn: 'root',
 })
@@ -54,6 +51,7 @@ export class UserService implements IUserService {
   protected readonly historyStore = inject(HistoryStore);
   protected readonly splitStore = inject(SplitStore);
   protected readonly demoModeService = inject(DemoModeService);
+  protected readonly memberLinkService = inject(MemberLinkService);
   protected readonly functions = inject(getFunctions);
   protected readonly snackbar = inject(MatSnackBar);
 
@@ -202,16 +200,12 @@ export class UserService implements IUserService {
       const userDocRef = docRef as DocumentReference<User>; // NOSONAR
 
       // Link any unlinked member records with this email to the new user
-      const linkInvitedMembers = httpsCallable<
-        { email: string },
-        LinkInvitedMembersResponse
-      >(this.functions, 'linkInvitedMembers');
-      const { data } = await linkInvitedMembers({ email });
-
-      if (data.membersLinked > 0) {
+      const membersLinked =
+        await this.memberLinkService.linkInvitedMembers(email);
+      if (membersLinked !== null && membersLinked > 0) {
         this.analytics.logEvent('new_user_members_linked', {
           email: email,
-          membersLinked: data.membersLinked,
+          membersLinked,
         });
       }
 
@@ -261,16 +255,14 @@ export class UserService implements IUserService {
     this.userStore.updateUser({ email: newEmail });
 
     // Link any unlinked member records with this email to this user
-    const linkInvitedMembers = httpsCallable<
-      { email: string },
-      LinkInvitedMembersResponse
-    >(this.functions, 'linkInvitedMembers');
-    const { data } = await linkInvitedMembers({ email: newEmail });
-
-    this.analytics.logEvent('email_verified_members_linked', {
-      email: newEmail,
-      membersLinked: data.membersLinked,
-    });
+    const membersLinked =
+      await this.memberLinkService.linkInvitedMembers(newEmail);
+    if (membersLinked !== null) {
+      this.analytics.logEvent('email_verified_members_linked', {
+        email: newEmail,
+        membersLinked,
+      });
+    }
   }
 
   async getPaymentMethods(

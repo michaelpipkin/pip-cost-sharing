@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import * as firestoreModule from 'firebase/firestore';
@@ -75,6 +76,9 @@ describe('GroupService', () => {
     logSnapshotError: vi.fn(),
   };
   const mockExpenseService = { doesGroupHaveExpenses: vi.fn().mockResolvedValue(false) };
+  const mockMemberLinkService = {
+    linkInvitedMembers: vi.fn().mockResolvedValue(0),
+  };
 
   function createService(): GroupService {
     TestBed.configureTestingModule({
@@ -92,6 +96,7 @@ describe('GroupService', () => {
         { provide: HistoryService, useValue: mockHistoryService },
         { provide: LoadingService, useValue: mockLoading },
         { provide: AnalyticsService, useValue: mockAnalytics },
+        { provide: MemberLinkService, useValue: mockMemberLinkService },
       ],
     });
     const svc = TestBed.inject(GroupService);
@@ -121,6 +126,8 @@ describe('GroupService', () => {
     } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
+
+    mockMemberLinkService.linkInvitedMembers.mockResolvedValue(0);
 
     localStorage.clear();
     currentGroupSignal.set(null);
@@ -314,6 +321,124 @@ describe('GroupService', () => {
 
       expect(mockGroupStore.setAllUserGroups).toHaveBeenCalledWith([]);
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    describe('zero-groups self-heal (App Check token race recovery)', () => {
+      let membersCallback: ((snap: any) => void) | undefined;
+
+      beforeEach(() => {
+        membersCallback = undefined;
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          (_query: any, onNext: any) => {
+            membersCallback ??= onNext;
+            return vi.fn();
+          }
+        );
+      });
+
+      it('retries linking invited members before redirecting', async () => {
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
+          'alice@test.com'
+        );
+      });
+
+      it('does not redirect when the retry links a member', async () => {
+        mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(1);
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+      });
+
+      it('redirects when the retry finds nothing to link', async () => {
+        mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(0);
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+      });
+
+      it('redirects when the retry is skipped (no App Check token)', async () => {
+        mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+      });
+
+      it('only retries once even if the listener fires repeatedly with zero groups', async () => {
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+        await membersCallback!(makeSnap([]));
+        await membersCallback!(makeSnap([]));
+
+        expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+          1
+        );
+      });
+
+      it('skips the retry when the user has no email', async () => {
+        const user = { id: 'user-1', ref: { id: 'user-1' } } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockMemberLinkService.linkInvitedMembers).not.toHaveBeenCalled();
+        expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+      });
+
+      it('allows a fresh retry after logout resets the attempt flag', async () => {
+        const user = {
+          id: 'user-1',
+          ref: { id: 'user-1' },
+          email: 'alice@test.com',
+        } as any;
+
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+        service.logout();
+
+        membersCallback = undefined;
+        await service.getUserGroups(user);
+        await membersCallback!(makeSnap([]));
+
+        expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+          2
+        );
+      });
     });
   });
 
