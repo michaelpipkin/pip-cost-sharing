@@ -59,6 +59,12 @@ export class LoginComponent {
 
   hidePassword = model<boolean>(true);
 
+  // Guards against a double-click/double-tap firing a second sign-in
+  // attempt before the loading overlay (rendered asynchronously via an
+  // effect) actually blocks further input. Shared across both methods below
+  // since they drive the same overlay and shouldn't run concurrently.
+  #submitting = false;
+
   protected readonly loginModel = signal<LoginForm>({ email: '', password: '' });
   protected readonly loginForm = form(this.loginModel, (p) => {
     emailValidator(p.email, { message: 'Invalid email address' });
@@ -77,6 +83,8 @@ export class LoginComponent {
   }
 
   async emailLogin() {
+    if (this.#submitting) return;
+    this.#submitting = true;
     try {
       this.loading.loadingOn();
       const { email, password } = this.loginForm().value();
@@ -99,10 +107,14 @@ export class LoginComponent {
         },
       });
       this.loading.loadingOff();
+    } finally {
+      this.#submitting = false;
     }
   }
 
   async googleLogin() {
+    if (this.#submitting) return;
+    this.#submitting = true;
     try {
       this.loading.loadingOn();
       if (this.isRunningAsApp()) {
@@ -131,6 +143,8 @@ export class LoginComponent {
         },
       });
       this.loading.loadingOff();
+    } finally {
+      this.#submitting = false;
     }
   }
 }

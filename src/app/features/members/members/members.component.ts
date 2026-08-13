@@ -184,7 +184,9 @@ export class MembersComponent {
 
     const invite = member.invite;
     if (!invite) return true;
-    if (invite.lastSentTo !== email) return true; // address changed - reset
+    if (invite.lastSentTo?.trim().toLowerCase() !== email.toLowerCase()) {
+      return true; // address changed - reset
+    }
 
     return (
       Date.now() - (invite.lastSentAt?.toMillis() ?? 0) >= INVITE_COOLDOWN_MS

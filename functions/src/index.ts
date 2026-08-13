@@ -663,11 +663,40 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
 
 /**
  * Links unlinked (`userRef == null`) member records with a given email to
- * the calling user. Runs server-side because it's a cross-tenant
- * `collectionGroup('members')` search by a user who may belong to no group
- * yet - no Firestore rule can permit that from the client. Called right
- * after account creation and after email verification (see
- * `user.service.ts`).
+ * `uid`. Matches on `emailLower` so casing differences between the invite
+ * and the registered account don't prevent the link. Exported separately
+ * from the callable wrapper below so it has direct unit test coverage
+ * without mocking the callable request shape (mirrors
+ * handleUserGroupMembership / deleteGroupInternal).
+ */
+export async function linkInvitedMembersInternal(
+  uid: string,
+  email: string
+): Promise<{ membersLinked: number }> {
+  const membersSnapshot = await db
+    .collectionGroup('members')
+    .where('emailLower', '==', normalizeEmail(email))
+    .where('userRef', '==', null)
+    .get();
+
+  if (!membersSnapshot.empty) {
+    const userRef = db.collection('users').doc(uid);
+    const batch = db.batch();
+    for (const memberDoc of membersSnapshot.docs) {
+      batch.update(memberDoc.ref, { userRef });
+    }
+    await batch.commit();
+  }
+
+  return { membersLinked: membersSnapshot.size };
+}
+
+/**
+ * Callable wrapper for linkInvitedMembersInternal. Runs server-side because
+ * it's a cross-tenant `collectionGroup('members')` search by a user who may
+ * belong to no group yet - no Firestore rule can permit that from the
+ * client. Called right after account creation and after email verification
+ * (see `user.service.ts`).
  */
 export const linkInvitedMembers = onCall<{ email: string }>(
   callableAppCheck,
@@ -686,22 +715,7 @@ export const linkInvitedMembers = onCall<{ email: string }>(
     }
 
     try {
-      const membersSnapshot = await db
-        .collectionGroup('members')
-        .where('email', '==', email)
-        .where('userRef', '==', null)
-        .get();
-
-      if (!membersSnapshot.empty) {
-        const userRef = db.collection('users').doc(uid);
-        const batch = db.batch();
-        for (const memberDoc of membersSnapshot.docs) {
-          batch.update(memberDoc.ref, { userRef });
-        }
-        await batch.commit();
-      }
-
-      return { membersLinked: membersSnapshot.size };
+      return await linkInvitedMembersInternal(uid, email);
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -1773,7 +1787,13 @@ export function shouldThrottleInvite(
   email: string,
   nowMs: number
 ): boolean {
-  if (!invite?.lastSentAt || invite.lastSentTo !== email) return false;
+  if (
+    !invite?.lastSentAt ||
+    !invite.lastSentTo ||
+    normalizeEmail(invite.lastSentTo) !== normalizeEmail(email)
+  ) {
+    return false;
+  }
   return nowMs - invite.lastSentAt.toMillis() < INVITE_COOLDOWN_MS;
 }
 
