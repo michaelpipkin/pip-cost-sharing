@@ -37,6 +37,14 @@ export class MemberService implements IMemberService {
 
   #unsubscribe?: () => void;
 
+  // Canonical form for email comparisons - Firestore has no case-insensitive
+  // query operator, so matches/lookups query the emailLower field (kept in
+  // sync by the syncUserEmailLower/syncMemberEmailLower Cloud Functions
+  // triggers) using this same normalization.
+  #normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   async getMemberByUserRef(
     groupId: string,
     userRef: DocumentReference<User>
@@ -124,9 +132,10 @@ export class MemberService implements IMemberService {
     // Only check for duplicate email and attempt user matching when an email is provided.
     // A blank email means the member is not intended to sign in to the app.
     if (member.email) {
+      const emailLower = this.#normalizeEmail(member.email);
       const membersQuery = query(
         collection(this.fs, `groups/${groupId}/members`),
-        where('email', '==', member.email)
+        where('emailLower', '==', emailLower)
       );
       const membersSnapshot = await getDocs(membersQuery);
 
@@ -138,11 +147,21 @@ export class MemberService implements IMemberService {
 
       const userQuery = query(
         collection(this.fs, 'users'),
-        where('email', '==', member.email)
+        where('emailLower', '==', emailLower)
       );
       const userSnapshot = await getDocs(userQuery);
-      if (!userSnapshot.empty) {
+      if (userSnapshot.size === 1) {
         member.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
+      } else if (userSnapshot.size > 1) {
+        // Multiple accounts share this email (a pre-existing duplicate
+        // account situation, not something this lookup created) - leave
+        // the member unlinked rather than guessing which account is right.
+        this.analytics.logError(
+          'Member Service',
+          'addMemberToGroup',
+          'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
+          emailLower
+        );
       }
     }
 
@@ -161,7 +180,7 @@ export class MemberService implements IMemberService {
     if (changes.email) {
       const q = query(
         memberRef.parent,
-        where('email', '==', changes.email),
+        where('emailLower', '==', this.#normalizeEmail(changes.email)),
         where(documentId(), '!=', memberRef.id)
       );
       const snap = await getDocs(q);
@@ -183,14 +202,28 @@ export class MemberService implements IMemberService {
     currentEmail: string
   ): Promise<void> {
     // Only search for user if member is not already linked and email is changing
-    if (!currentUserRef && changes.email && changes.email !== currentEmail) {
+    if (
+      !currentUserRef &&
+      changes.email &&
+      this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail)
+    ) {
       const userQuery = query(
         collection(this.fs, 'users'),
-        where('email', '==', changes.email)
+        where('emailLower', '==', this.#normalizeEmail(changes.email))
       );
       const userSnapshot = await getDocs(userQuery);
-      if (!userSnapshot.empty) {
+      if (userSnapshot.size === 1) {
         changes.userRef = userSnapshot.docs[0]!.ref as DocumentReference<User>; // NOSONAR
+      } else if (userSnapshot.size > 1) {
+        // Multiple accounts share this email (a pre-existing duplicate
+        // account situation, not something this lookup created) - leave
+        // the member unlinked rather than guessing which account is right.
+        this.analytics.logError(
+          'Member Service',
+          'updateMemberWithUserMatching',
+          'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
+          this.#normalizeEmail(changes.email)
+        );
       }
     }
 
@@ -204,7 +237,7 @@ export class MemberService implements IMemberService {
     const splits = await getDocs(
       collection(this.fs, `groups/${groupId}/splits`)
     );
-    const memberSplit = splits.docs.find(
+    const memberSplit = splits.docs.some(
       (splitDoc) =>
         splitDoc.data().owedByMemberRef.eq(memberRef) ||
         splitDoc.data().paidByMemberRef.eq(memberRef)
@@ -246,7 +279,7 @@ export class MemberService implements IMemberService {
     const splits = await getDocs(
       collection(this.fs, `groups/${groupId}/splits`)
     );
-    const memberSplit = splits.docs.find(
+    const memberSplit = splits.docs.some(
       (doc) =>
         doc.data().owedByMemberRef.eq(memberRef) ||
         doc.data().paidByMemberRef.eq(memberRef)

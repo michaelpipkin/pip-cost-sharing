@@ -176,4 +176,45 @@ describe('LoginComponent', () => {
       );
     });
   });
+
+  describe('double-submit guard', () => {
+    it('should not fire signInWithPopup twice when googleLogin is called rapidly', async () => {
+      const signInSpy = vi
+        .spyOn(firebaseAuthModule, 'signInWithPopup')
+        .mockResolvedValue({ user: {} } as any);
+
+      const first = component.googleLogin();
+      const second = component.googleLogin();
+      await Promise.all([first, second]);
+
+      expect(signInSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should block emailLogin while googleLogin is still in flight (shared guard)', async () => {
+      vi.spyOn(firebaseAuthModule, 'signInWithPopup').mockResolvedValue({
+        user: {},
+      } as any);
+      const emailSignInSpy = vi.spyOn(
+        firebaseAuthModule,
+        'signInWithEmailAndPassword'
+      );
+
+      const first = component.googleLogin();
+      const second = component.emailLogin();
+      await Promise.all([first, second]);
+
+      expect(emailSignInSpy).not.toHaveBeenCalled();
+    });
+
+    it('should allow a fresh login attempt after the previous one finishes', async () => {
+      const signInSpy = vi
+        .spyOn(firebaseAuthModule, 'signInWithPopup')
+        .mockResolvedValue({ user: {} } as any);
+
+      await component.googleLogin();
+      await component.googleLogin();
+
+      expect(signInSpy).toHaveBeenCalledTimes(2);
+    });
+  });
 });

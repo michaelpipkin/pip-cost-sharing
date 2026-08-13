@@ -162,6 +162,33 @@ describe('ResetPasswordComponent', () => {
         'newpassword'
       );
     });
+
+    it('should not fire confirmPasswordReset twice when called rapidly (double-click guard)', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      setInputValue('new-password-input', 'newpassword');
+      setInputValue('confirm-password-input', 'newpassword');
+      await fixture.whenStable();
+      vi.mocked(authModule.confirmPasswordReset).mockClear();
+
+      const first = component.resetPassword();
+      const second = component.resetPassword();
+      await Promise.all([first, second]);
+
+      expect(authModule.confirmPasswordReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('should allow a fresh call after the previous one finishes', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      setInputValue('new-password-input', 'newpassword');
+      setInputValue('confirm-password-input', 'newpassword');
+      await fixture.whenStable();
+      vi.mocked(authModule.confirmPasswordReset).mockClear();
+
+      await component.resetPassword();
+      await component.resetPassword();
+
+      expect(authModule.confirmPasswordReset).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('oobCode signal', () => {

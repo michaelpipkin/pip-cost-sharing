@@ -201,6 +201,43 @@ describe('RegisterComponent', () => {
     });
   });
 
+  describe('register', () => {
+    it('should not fire createUserWithEmailAndPassword twice when called rapidly (double-click guard)', async () => {
+      setInputValue('register-email-input', 'test@example.com');
+      setInputValue('register-password-input', 'password123');
+      setInputValue('register-confirm-password-input', 'password123');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const createSpy = vi
+        .spyOn(authModule, 'createUserWithEmailAndPassword')
+        .mockResolvedValue({ user: { uid: 'u1' } } as any);
+
+      const first = component.register();
+      const second = component.register();
+      await Promise.all([first, second]);
+
+      expect(createSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should allow a fresh register() call after the previous one finishes', async () => {
+      setInputValue('register-email-input', 'test@example.com');
+      setInputValue('register-password-input', 'password123');
+      setInputValue('register-confirm-password-input', 'password123');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const createSpy = vi
+        .spyOn(authModule, 'createUserWithEmailAndPassword')
+        .mockResolvedValue({ user: { uid: 'u1' } } as any);
+
+      await component.register();
+      await component.register();
+
+      expect(createSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('resendVerificationEmail', () => {
     it('should call sendEmailVerification and restart the cooldown', async () => {
       const sendSpy = vi

@@ -121,6 +121,31 @@ describe('MemberService', () => {
       expect(member.userRef).toBeUndefined();
     });
 
+    it('should not set userRef and should log when multiple accounts share the email', async () => {
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockResolvedValueOnce(makeSnap([]) as any) // no duplicate member
+        .mockResolvedValueOnce(
+          makeSnap([
+            makeDocSnap('user-1', {}, { id: 'user-1' }),
+            makeDocSnap('user-2', {}, { id: 'user-2' }),
+          ]) as any
+        ); // ambiguous - two matching accounts
+      vi.spyOn(firestoreModule, 'addDoc').mockResolvedValueOnce({
+        id: 'new-member',
+      } as any);
+
+      const member: any = { email: 'dup@test.com' };
+      await service.addMemberToGroup('group-1', member);
+
+      expect(member.userRef).toBeUndefined();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'addMemberToGroup',
+        'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
+        'dup@test.com'
+      );
+    });
+
     it('should call addDoc to persist the new member', async () => {
       vi.spyOn(firestoreModule, 'getDocs')
         .mockResolvedValueOnce(makeSnap([]) as any)
@@ -132,6 +157,27 @@ describe('MemberService', () => {
       await service.addMemberToGroup('group-1', { email: 'new@test.com' });
 
       expect(firestoreModule.addDoc).toHaveBeenCalledOnce();
+    });
+
+    it('should query emailLower with a normalized (trimmed, lowercased) email', async () => {
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockResolvedValueOnce(makeSnap([]) as any)
+        .mockResolvedValueOnce(makeSnap([]) as any);
+
+      await service.addMemberToGroup('group-1', {
+        email: '  New@Test.com  ',
+      });
+
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'emailLower',
+        '==',
+        'new@test.com'
+      );
+      expect(firestoreModule.where).not.toHaveBeenCalledWith(
+        'email',
+        '==',
+        expect.anything()
+      );
     });
   });
 
@@ -173,6 +219,22 @@ describe('MemberService', () => {
         displayName: 'Alice',
       });
     });
+
+    it('should query emailLower with a normalized (trimmed, lowercased) email', async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
+
+      await service.updateMember(mockMemberRef, {
+        email: '  New@Test.com  ',
+      });
+
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'emailLower',
+        '==',
+        'new@test.com'
+      );
+    });
   });
 
   describe('updateMemberWithUserMatching', () => {
@@ -197,6 +259,32 @@ describe('MemberService', () => {
       expect(firestoreModule.updateDoc).toHaveBeenCalledWith(
         mockMemberRef,
         changes
+      );
+    });
+
+    it('should not set userRef and should log when multiple accounts share the email', async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([
+          makeDocSnap('user-1', {}, { id: 'user-1' }),
+          makeDocSnap('user-2', {}, { id: 'user-2' }),
+        ]) as any
+      );
+      vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
+
+      const changes: any = { email: 'dup@test.com' };
+      await service.updateMemberWithUserMatching(
+        mockMemberRef,
+        changes,
+        null,
+        'old@test.com'
+      );
+
+      expect(changes.userRef).toBeUndefined();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'updateMemberWithUserMatching',
+        'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
+        'dup@test.com'
       );
     });
 
@@ -227,6 +315,40 @@ describe('MemberService', () => {
       );
 
       expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+    });
+
+    it('should not search when only the casing of the email changes', async () => {
+      vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
+
+      const changes: any = { email: 'Same@Test.com' };
+      await service.updateMemberWithUserMatching(
+        mockMemberRef,
+        changes,
+        null,
+        'same@test.com'
+      );
+
+      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+    });
+
+    it('should query emailLower with a normalized (trimmed, lowercased) email', async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([]) as any
+      );
+
+      const changes: any = { email: '  New@Test.com  ' };
+      await service.updateMemberWithUserMatching(
+        mockMemberRef,
+        changes,
+        null,
+        'old@test.com'
+      );
+
+      expect(firestoreModule.where).toHaveBeenCalledWith(
+        'emailLower',
+        '==',
+        'new@test.com'
+      );
     });
   });
 

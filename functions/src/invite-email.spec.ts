@@ -94,4 +94,15 @@ describe('shouldThrottleInvite', () => {
     };
     expect(shouldThrottleInvite(invite, email, Date.now())).toBe(false);
   });
+
+  it('still throttles when only the casing differs between lastSentTo and email', () => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    const invite = {
+      lastSentAt: Timestamp.fromMillis(oneHourAgo),
+      lastSentTo: 'Alex@Example.com',
+    };
+    expect(shouldThrottleInvite(invite, 'alex@example.com', Date.now())).toBe(
+      true
+    );
+  });
 });

@@ -65,6 +65,12 @@ export class RegisterComponent {
   resendCooldown = signal<number>(0);
 
   #resendIntervalId: ReturnType<typeof setInterval> | null = null;
+  // Guards against a double-click/double-tap firing register() twice before
+  // the loading overlay (rendered asynchronously via an effect) actually
+  // blocks further input - a real gap since createUserWithEmailAndPassword
+  // has no idempotency key, so two near-simultaneous calls can both succeed
+  // and create two accounts for the same email.
+  #submitting = false;
 
   protected readonly registerModel = signal<RegisterForm>({
     email: '',
@@ -104,6 +110,8 @@ export class RegisterComponent {
   }
 
   async register() {
+    if (this.#submitting) return;
+    this.#submitting = true;
     try {
       this.loading.loadingOn();
       const { email, password } = this.registerForm().value();
@@ -146,6 +154,7 @@ export class RegisterComponent {
       });
     } finally {
       this.loading.loadingOff();
+      this.#submitting = false;
     }
   }
 
