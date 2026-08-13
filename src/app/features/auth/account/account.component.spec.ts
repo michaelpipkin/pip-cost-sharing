@@ -7,13 +7,19 @@ import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
 import { AccountComponent } from './account.component';
 import { UserStore } from '@store/user.store';
+import { GroupStore } from '@store/group.store';
 import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
-import { createMockUserStore, mockUser } from '@testing/test-helpers';
+import {
+  createMockGroupStore,
+  createMockUserStore,
+  mockUser,
+} from '@testing/test-helpers';
 
 describe('AccountComponent', () => {
   let fixture: ComponentFixture<AccountComponent>;
   let component: AccountComponent;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
+  let mockGroupStore: ReturnType<typeof createMockGroupStore>;
 
   const mockAuthWithUser = {
     currentUser: {
@@ -38,6 +44,7 @@ describe('AccountComponent', () => {
   async function createComponent(authValue = mockAuthWithUser): Promise<void> {
     mockUserStore = createMockUserStore();
     mockUserStore.user.set(mockUser());
+    mockGroupStore = createMockGroupStore();
 
     await TestBed.configureTestingModule({
       imports: [AccountComponent],
@@ -46,6 +53,7 @@ describe('AccountComponent', () => {
         { provide: getAuth, useValue: authValue },
         { provide: getFunctions, useValue: {} },
         { provide: UserStore, useValue: mockUserStore },
+        { provide: GroupStore, useValue: mockGroupStore },
         { provide: BreakpointObserver, useValue: mockBreakpointObserver },
       ],
     }).compileComponents();
@@ -148,6 +156,29 @@ describe('AccountComponent', () => {
         By.css('[data-testid="nav-security"]')
       );
       expect(securityLink).toBeNull();
+    });
+
+    it('should hide the Group Membership nav item when the user has not left any groups', async () => {
+      await createComponent();
+      mockUserStore.isEmailConfirmed.set(true);
+      fixture.detectChanges();
+      const link = fixture.debugElement.query(
+        By.css('[data-testid="nav-group-membership"]')
+      );
+      expect(link).toBeNull();
+    });
+
+    it('should show the Group Membership nav item when the user has left a group', async () => {
+      await createComponent();
+      mockUserStore.isEmailConfirmed.set(true);
+      mockGroupStore.allUserGroups.set([
+        { id: 'group-1', name: 'Old Group', userLeftGroup: true } as any,
+      ]);
+      fixture.detectChanges();
+      const link = fixture.debugElement.query(
+        By.css('[data-testid="nav-group-membership"]')
+      );
+      expect(link).toBeTruthy();
     });
   });
 

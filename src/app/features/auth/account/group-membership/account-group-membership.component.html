@@ -1,0 +1,45 @@
+<div class="container" data-testid="group-membership-container">
+  <h4 data-testid="group-membership-title">Group Membership</h4>
+  @if (leftUserGroups().length > 0) {
+    <form
+      class="container"
+      data-testid="group-membership-form"
+      aria-label="Group membership form"
+      (submit)="$event.preventDefault()"
+    >
+      <mat-form-field data-testid="left-group-field">
+        <mat-label>Group</mat-label>
+        <mat-select
+          [value]="selectedGroupRef()"
+          (selectionChange)="selectedGroupRef.set($event.value)"
+          docRefCompare
+          data-testid="left-group-select"
+          aria-label="Group you have left"
+        >
+          @for (group of leftUserGroups(); track group.ref) {
+            <mat-option [value]="group.ref">{{ group.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <p class="helper-text" data-testid="group-membership-hint">
+        Select a group you've left to rejoin it and regain access to its
+        expenses.
+      </p>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        [disabled]="!selectedGroup()"
+        (click)="rejoinGroup()"
+        data-testid="rejoin-group-button"
+        aria-label="Rejoin selected group"
+      >
+        Rejoin Group
+      </button>
+    </form>
+  } @else {
+    <p data-testid="group-membership-empty">
+      You haven't left any groups.
+    </p>
+  }
+</div>

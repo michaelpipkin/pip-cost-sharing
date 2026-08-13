@@ -492,6 +492,8 @@ describe('MemberService', () => {
 
       expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
         active: false,
+        leftGroup: true,
+        groupAdmin: false,
       });
     });
 
@@ -511,6 +513,20 @@ describe('MemberService', () => {
       await service.leaveGroup('group-1', mockMemberRef);
 
       expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockMemberRef);
+    });
+  });
+
+  describe('rejoinGroup', () => {
+    it('should clear leftGroup and reactivate the member', async () => {
+      const mockMemberRef = { id: 'member-1' } as any;
+      vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
+
+      await service.rejoinGroup(mockMemberRef);
+
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
+        leftGroup: false,
+        active: true,
+      });
     });
   });
 

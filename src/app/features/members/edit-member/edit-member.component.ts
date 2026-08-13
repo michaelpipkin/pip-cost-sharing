@@ -77,10 +77,7 @@ export class EditMemberComponent {
   private readonly activeMemberCount =
     this.memberStore.activeGroupMembers().length;
 
-  protected readonly activeTooltip: string =
-    this.activeMemberCount === 1 && this.member.active
-      ? 'There must be at least one active member in the group'
-      : '';
+  protected readonly activeTooltip: string = this.#computeActiveTooltip();
   protected readonly groupAdminTooltip: string = this.member.userRef?.eq(
     this.userStore.user()!.ref!
   )
@@ -99,12 +96,23 @@ export class EditMemberComponent {
     email(p.email, { message: '*Not a valid email address' });
     disabled(p.active, {
       when: () =>
-        this.activeMemberCount === 1 && !!this.editMemberModel().active,
+        !!this.member.leftGroup ||
+        (this.activeMemberCount === 1 && !!this.editMemberModel().active),
     });
     disabled(p.groupAdmin, {
       when: () => !!this.member.userRef?.eq(this.userStore.user()!.ref!),
     });
   });
+
+  #computeActiveTooltip(): string {
+    if (this.member.leftGroup) {
+      return 'This member left the group voluntarily. They can rejoin from their own account settings.';
+    }
+    if (this.activeMemberCount === 1 && this.member.active) {
+      return 'There must be at least one active member in the group';
+    }
+    return '';
+  }
 
   protected readonly hasChanges = computed(() => {
     const current = this.editMemberForm().value();
