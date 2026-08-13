@@ -8,6 +8,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import {
@@ -54,9 +55,11 @@ export class GroupService implements IGroupService {
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly platformId = inject(PLATFORM_ID);
+  protected readonly memberLinkService = inject(MemberLinkService);
 
   #unsubscribeMembers?: () => void;
   #unsubscribeGroups?: () => void;
+  #attemptedInviteLink = false;
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -104,7 +107,7 @@ export class GroupService implements IGroupService {
       this.#unsubscribeMembers?.();
       this.#unsubscribeMembers = onSnapshot(
         memberQuery,
-        (memberQuerySnap) => {
+        async (memberQuerySnap) => {
           try {
             const userGroups: {
               groupId: string;
@@ -118,6 +121,21 @@ export class GroupService implements IGroupService {
 
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
+
+              // A brand-new user's invited-member links can fail at signup if
+              // the linkInvitedMembers callable raced App Check's first token
+              // fetch (see MemberLinkService). Retry once here - if it links
+              // anything, this listener re-fires with the newly-matching
+              // member docs and the branch above runs normally instead.
+              if (!this.#attemptedInviteLink && user.email) {
+                this.#attemptedInviteLink = true;
+                const membersLinked =
+                  await this.memberLinkService.linkInvitedMembers(user.email);
+                if (membersLinked !== null && membersLinked > 0) {
+                  return;
+                }
+              }
+
               this.router.navigateByUrl(ROUTE_PATHS.ADMIN_GROUPS);
               return;
             }
@@ -416,5 +434,6 @@ export class GroupService implements IGroupService {
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
     this.groupStore.setLoadedState(false);
+    this.#attemptedInviteLink = false;
   }
 }

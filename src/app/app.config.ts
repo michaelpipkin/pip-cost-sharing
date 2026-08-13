@@ -27,16 +27,13 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { PageTitleStrategyService } from '@services/page-title-strategy.service';
 import { initializeApp } from 'firebase/app';
-import {
-  initializeAppCheck,
-  ReCaptchaEnterpriseProvider,
-} from 'firebase/app-check';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
+import { initAppCheck } from './app-check';
 import { appRoutes } from './app.routes';
-import { appCheckConfig, firebaseConfig } from './firebase.config';
+import { firebaseConfig } from './firebase.config';
 import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 
 const useEmulators = environment.useEmulators;
@@ -54,10 +51,7 @@ const app = initializeApp(firebaseConfig);
 // the live App Check backend.
 const isBrowser = typeof window !== 'undefined';
 if (isBrowser && !useEmulators) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(appCheckConfig.recaptchaSiteKey),
-    isTokenAutoRefreshEnabled: true,
-  });
+  initAppCheck(app);
 }
 
 // Initialize Firebase services

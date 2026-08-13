@@ -16,6 +16,7 @@ import { MemorizedStore } from '@store/memorized.store';
 import { HistoryStore } from '@store/history.store';
 import { SplitStore } from '@store/split.store';
 import { AnalyticsService } from '@services/analytics.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { GroupService } from './group.service';
 import { DemoModeService } from './demo-mode.service';
 
@@ -94,6 +95,9 @@ describe('UserService', () => {
     logout: vi.fn(),
   };
   const mockDemoModeService = { initializeDemoData: vi.fn() };
+  const mockMemberLinkService = {
+    linkInvitedMembers: vi.fn().mockResolvedValue(0),
+  };
   const mockAnalytics = {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
@@ -120,6 +124,7 @@ describe('UserService', () => {
         { provide: SplitStore, useValue: mockSplitStore },
         { provide: GroupService, useValue: mockGroupService },
         { provide: DemoModeService, useValue: mockDemoModeService },
+        { provide: MemberLinkService, useValue: mockMemberLinkService },
         { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     });
@@ -127,8 +132,6 @@ describe('UserService', () => {
     (svc as any).router = mockRouter;
     return svc;
   }
-
-  let linkInvitedMembersFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -138,12 +141,7 @@ describe('UserService', () => {
       exists: () => false,
     } as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
-    linkInvitedMembersFn = vi.fn().mockResolvedValue({
-      data: { membersLinked: 0 },
-    });
-    vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
-      linkInvitedMembersFn as any
-    );
+    mockMemberLinkService.linkInvitedMembers.mockResolvedValue(0);
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
     (mockAuth as any).currentUser = null;
     userSignal.set(null);
@@ -242,19 +240,13 @@ describe('UserService', () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
-      linkInvitedMembersFn.mockResolvedValueOnce({
-        data: { membersLinked: 2 },
-      });
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(2);
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
-      expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
-        mockFunctions,
-        'linkInvitedMembers'
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
+        'alice@test.com'
       );
-      expect(linkInvitedMembersFn).toHaveBeenCalledWith({
-        email: 'alice@test.com',
-      });
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'new_user_members_linked',
         { email: 'alice@test.com', membersLinked: 2 }
@@ -265,6 +257,20 @@ describe('UserService', () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
+
+      await service.createUserIfNotExists('new-user', 'alice@test.com');
+
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'new_user_members_linked',
+        expect.anything()
+      );
+    });
+
+    it('should not log an analytics event when linking was skipped (no App Check token)', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(false) as any
+      );
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
@@ -399,22 +405,40 @@ describe('UserService', () => {
 
     it('should ask the server to link unlinked member records after updating email', async () => {
       (mockAuth as any).currentUser = { uid: 'user-123' };
-      linkInvitedMembersFn.mockResolvedValueOnce({
-        data: { membersLinked: 2 },
-      });
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(2);
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
 
-      expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
-        mockFunctions,
-        'linkInvitedMembers'
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
+        'new@test.com'
       );
-      expect(linkInvitedMembersFn).toHaveBeenCalledWith({
-        email: 'new@test.com',
-      });
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'email_verified_members_linked',
         { email: 'new@test.com', membersLinked: 2 }
+      );
+    });
+
+    it('should log the event with a zero count when nothing was unlinked', async () => {
+      (mockAuth as any).currentUser = { uid: 'user-123' };
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(0);
+
+      await service.updateUserEmailAndLinkMembers('new@test.com');
+
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'email_verified_members_linked',
+        { email: 'new@test.com', membersLinked: 0 }
+      );
+    });
+
+    it('should not log an analytics event when linking was skipped (no App Check token)', async () => {
+      (mockAuth as any).currentUser = { uid: 'user-123' };
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
+
+      await service.updateUserEmailAndLinkMembers('new@test.com');
+
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'email_verified_members_linked',
+        expect.anything()
       );
     });
 
