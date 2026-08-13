@@ -73,6 +73,22 @@
             </mat-icon>
             <span matListItemTitle>Legal</span>
           </a>
+          @if (hasLeftGroups()) {
+            <a
+              mat-list-item
+              routerLink="group-membership"
+              [activated]="
+                currentUrl().includes('/auth/account/group-membership')
+              "
+              data-testid="nav-group-membership"
+              aria-label="Groups"
+            >
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">
+                groups
+              </mat-icon>
+              <span matListItemTitle>Groups</span>
+            </a>
+          }
           @if (isAdmin()) {
             <a
               mat-list-item

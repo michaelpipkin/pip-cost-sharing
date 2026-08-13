@@ -42,5 +42,12 @@ export class Group {
   memberUids: string[] = [];
   ref?: DocumentReference<Group>;
   userActiveInGroup?: boolean;
+  // True if the current user's own membership in this group has
+  // leftGroup:true (see Member.leftGroup) - i.e. they left voluntarily.
+  userLeftGroup?: boolean;
   userIsAdmin?: boolean;
+  // The current user's own member doc ref in this group, if they have one.
+  // Needed for self-service actions (e.g. rejoinGroup) that must target the
+  // user's own membership record without a separate lookup.
+  userMemberRef?: DocumentReference<Member>;
 }

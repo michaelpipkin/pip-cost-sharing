@@ -286,11 +286,23 @@ export class MemberService implements IMemberService {
     );
 
     if (memberSplit) {
-      await updateDoc(memberRef, { active: false });
+      await updateDoc(memberRef, {
+        active: false,
+        leftGroup: true,
+        groupAdmin: false,
+      });
     } else {
       await deleteDoc(memberRef);
     }
     await updateDoc(userRef, { defaultGroupRef: null });
+  }
+
+  // Self-service counterpart to leaveGroup(): the member's own action to
+  // restore access after voluntarily leaving. Deliberately not callable by
+  // an admin on someone else's behalf via the edit-member dialog - see
+  // Member.leftGroup.
+  async rejoinGroup(memberRef: DocumentReference<Member>): Promise<void> {
+    await updateDoc(memberRef, { leftGroup: false, active: true });
   }
 
   async updateAllMemberEmails(

@@ -34,6 +34,11 @@ export class Member {
   email!: string;
   active!: boolean;
   groupAdmin!: boolean;
+  // True if the member left the group voluntarily via leaveGroup() (as
+  // opposed to being deactivated by an admin). Locks the Active toggle in
+  // the edit-member dialog until the member rejoins themselves from their
+  // own account settings. Undefined/missing is treated as false.
+  leftGroup?: boolean;
   invite?: MemberInvite;
   ref?: DocumentReference<Member>;
 }

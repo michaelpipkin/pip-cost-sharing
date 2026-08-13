@@ -323,6 +323,117 @@ describe('GroupService', () => {
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
 
+    describe('auto-select and userActiveInGroup', () => {
+      function captureSnapshotCallbacks(): ((snap: any) => void)[] {
+        const callbacks: ((snap: any) => void)[] = [];
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          (_query: any, onNext: any) => {
+            callbacks.push(onNext);
+            return vi.fn();
+          }
+        );
+        return callbacks;
+      }
+
+      const user = {
+        id: 'user-1',
+        ref: { id: 'user-1' },
+        defaultGroupRef: null,
+      } as any;
+
+      beforeEach(() => {
+        // handleGroupsSnapshot reads userStore.user() directly (not the
+        // `user` param passed to getUserGroups) to resolve userRef/
+        // defaultGroupRef - without this it returns early before ever
+        // reaching auto-select.
+        userSignal.set(user);
+      });
+
+      it('does not auto-select the only "active" group when the user left it voluntarily', async () => {
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+
+        expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+        expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalled();
+      });
+
+      it('still auto-selects the only active group when the user is an active member', async () => {
+        const callbacks = captureSnapshotCallbacks();
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+          exists: () => true,
+          id: 'group-1',
+          data: () => ({ name: 'Test Group', active: true }),
+          ref: { id: 'group-1' },
+        } as any);
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: true, groupAdmin: false, leftGroup: false }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+      });
+
+      it('does not re-select the cached currentGroup if the user is no longer active in it', async () => {
+        currentGroupSignal.set({ id: 'group-1', ref: { id: 'group-1' } });
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+
+        expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+        expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalled();
+      });
+    });
+
     describe('zero-groups self-heal (App Check token race recovery)', () => {
       let membersCallback: ((snap: any) => void) | undefined;
 

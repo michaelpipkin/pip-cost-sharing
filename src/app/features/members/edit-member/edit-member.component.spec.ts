@@ -219,6 +219,54 @@ describe('EditMemberComponent', () => {
     });
   });
 
+  describe('when the member left the group voluntarily (leftGroup)', () => {
+    const leftMember = mockMember({
+      id: 'member-left',
+      displayName: 'Bob',
+      email: 'bob@example.com',
+      active: false,
+      groupAdmin: false,
+      leftGroup: true,
+      userRef: otherMemberRef,
+    });
+
+    beforeEach(async () => {
+      await createComponent(leftMember);
+    });
+
+    it('should disable the Active toggle', () => {
+      expect((component as any).editMemberForm.active().disabled()).toBe(
+        true
+      );
+    });
+
+    it('should explain why the toggle is locked', () => {
+      expect((component as any).activeTooltip).toBe(
+        'This member left the group voluntarily. They can rejoin from their own account settings.'
+      );
+    });
+  });
+
+  describe('when a member was merely deactivated by an admin (not leftGroup)', () => {
+    const deactivatedMember = mockMember({
+      id: 'member-deactivated',
+      displayName: 'Carol',
+      email: 'carol@example.com',
+      active: false,
+      groupAdmin: false,
+      leftGroup: false,
+      userRef: otherMemberRef,
+    });
+
+    beforeEach(async () => {
+      await createComponent(deactivatedMember);
+    });
+
+    it('should not show the leftGroup tooltip', () => {
+      expect((component as any).activeTooltip).toBe('');
+    });
+  });
+
   describe('when editing own member record (current user)', () => {
     beforeEach(async () => {
       await createComponent(selfMember);
