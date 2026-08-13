@@ -156,6 +156,23 @@ WebView reCAPTCHA quirk noted below, or sample noise) but worth watching
 before enforcing Firestore specifically; hold off there until it's
 explained or trending back toward 100%.
 
+**Checked 2026-08-14** (App Check console, Firestore detail view, last 7
+days Aug 6-14, 23K total requests): 98% verified / 2% unverified, and the
+2% breaks down entirely as "invalid requests" (427/23K) - "outdated
+client" and "unknown origin" are both 0. Rules out two of the three usual
+causes, narrows it to genuine failed attestations - consistent with,
+though not proof of, the Android WebView reCAPTCHA scoring risk noted
+below. Per-day breakdown (clarified: the sidebar's daily numbers are
+fractions of 1, i.e. 0.97 = 97%, not raw counts - corrected after initial
+misread) shows real day-to-day swing: Aug 12-13 was 97%/3% (matches the
+dip seen when checked earlier that day), Aug 13-14 was a clean 100%/0%.
+Bouncing between 100% and 97% day to day reads more like variability than
+a flat ~2% steady-state background rate, but still not conclusive either
+way on the Android theory. **Decision: investigate further (e.g.
+correlate with Android traffic share via Firebase Analytics, or look for
+patterns in which days spike) before enforcing Firestore** - not treating
+98% as an automatic green light given Firestore's blast radius.
+
 **Storage enforcement turned ON 2026-08-12** via console toggle - step 2
 of the plan is done.
 
@@ -279,6 +296,43 @@ Firestore-specific) - worth re-examining that dip through this lens before
 concluding it's scoring-related, since the two would call for different
 fixes (Play Integrity `CustomProvider` vs. more startup-time readiness
 gating like this one).
+
+**Checked 2026-08-14, follow-up:** confirmed the same unguarded pattern
+exists in the app's core login path, not just `linkInvitedMembers`.
+`user.service.ts` `initializeAuth()` fires via `afterNextRender` ->
+`onAuthStateChanged`, then immediately calls `createUserIfNotExists()`
+(direct Firestore `getDoc`/`setDoc`, `user.service.ts:175-199`) and
+`groupService.getUserGroups()` (another Firestore read) - neither awaits
+`appCheckTokenReady()`. This runs on every login, every platform, not
+just the invite-linking edge case. **This is now the leading hypothesis
+for the Firestore verified-rate dip**, ahead of Android-WebView scoring:
+it's a confirmed mechanism (same one that broke `linkInvitedMembers`),
+it's not Android-specific (fits a small persistent cross-platform
+percentage better), and if Firestore enforcement is turned on before this
+is fixed, this race would start actively rejecting a slice of real logins
+on every platform rather than just showing up as a metrics blip. Ruled
+out a separate theory first: the Android "still on v1.1.7" Analytics
+split does NOT explain this - `capacitor.config.ts` uses `server.url:
+'https://pipsplit.com'`, so the Android WebView always loads the live
+web bundle over the network regardless of native app version; App Check
+never needed a native app-store push and reaches all Android users
+immediately.
+
+**Fixed 2026-08-14.** `user.service.ts` `initializeAuth()` now awaits
+`appCheckTokenReady()` right before `createUserIfNotExists()` (which
+covers the `getUserGroups()` call right after it too, same as
+`linkInvitedMembers`, but a best-effort *delay* rather than a skip -
+login can't be skipped on timeout, so it proceeds regardless after the
+10s cap). `pnpm exec ng test --include='src/app/services/user.service.spec.ts'`
+passes (29/29, pre-existing suite untouched), `ng build` clean. **Not
+deployed yet** - this is a client-side (Angular) change, ships via the
+normal hosting deploy, not `firebase deploy --only functions`. Still not
+log-confirmed as *the* cause of the Firestore dip (Firestore has no
+per-request verification log the way callables do) - the plan is to
+deploy this, then watch Firestore's verified % over the next several
+days; a move back toward 99-100% would be strong retroactive
+confirmation, without conclusively ruling out the Android WebView theory
+in the same swoop.
 
 ## Also relevant, not urgent
 
