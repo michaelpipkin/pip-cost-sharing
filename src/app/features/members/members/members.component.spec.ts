@@ -437,6 +437,19 @@ describe('MembersComponent', () => {
       expect(component.canInvite(member)).toBe(false);
     });
 
+    it('still returns false (throttled) when lastSentTo and email differ only by casing', () => {
+      const member = mockMember({
+        userRef: null,
+        active: true,
+        email: 'alex@example.com',
+        invite: mockInvite({
+          lastSentTo: 'Alex@Example.com',
+          lastSentAt: mockTimestamp(Date.now() - 60 * 60 * 1000),
+        }),
+      });
+      expect(component.canInvite(member)).toBe(false);
+    });
+
     it('returns true once 24 hours have passed since the last send to the same address', () => {
       const member = mockMember({
         userRef: null,

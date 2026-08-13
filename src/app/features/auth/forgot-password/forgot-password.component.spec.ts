@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import {
@@ -8,12 +8,14 @@ import {
   createMockLoadingService,
   createMockSnackBar,
 } from '@testing/test-helpers';
+import * as authModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForgotPasswordComponent } from './forgot-password.component';
 
 describe('ForgotPasswordComponent', () => {
   let fixture: ComponentFixture<ForgotPasswordComponent>;
+  let component: ForgotPasswordComponent;
   let el: HTMLElement;
 
   beforeEach(async () => {
@@ -29,7 +31,7 @@ describe('ForgotPasswordComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ForgotPasswordComponent);
-    fixture.componentInstance;
+    component = fixture.componentInstance;
     el = fixture.nativeElement;
     await fixture.whenStable();
   });
@@ -86,6 +88,41 @@ describe('ForgotPasswordComponent', () => {
 
       const submitBtn = query('forgot-password-submit') as HTMLButtonElement;
       expect(submitBtn.disabled).toBe(false);
+    });
+  });
+
+  describe('double-submit guard', () => {
+    beforeEach(async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      const input = query('forgot-email-input') as HTMLInputElement;
+      input.value = 'test@example.com';
+      input.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+    });
+
+    it('should not fire sendPasswordResetEmail twice when called rapidly', async () => {
+      const sendSpy = vi
+        .spyOn(authModule, 'sendPasswordResetEmail')
+        .mockResolvedValue(undefined);
+      sendSpy.mockClear();
+
+      const first = component.forgotPassword();
+      const second = component.forgotPassword();
+      await Promise.all([first, second]);
+
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should allow a fresh call after the previous one finishes', async () => {
+      const sendSpy = vi
+        .spyOn(authModule, 'sendPasswordResetEmail')
+        .mockResolvedValue(undefined);
+      sendSpy.mockClear();
+
+      await component.forgotPassword();
+      await component.forgotPassword();
+
+      expect(sendSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

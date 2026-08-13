@@ -47,7 +47,14 @@ export class ForgotPasswordComponent {
     emailValidator(p.email, { message: 'Invalid email address' });
   });
 
+  // Guards against a double-click/double-tap firing forgotPassword() twice
+  // before the loading overlay (rendered asynchronously via an effect)
+  // actually blocks further input.
+  #submitting = false;
+
   async forgotPassword() {
+    if (this.#submitting) return;
+    this.#submitting = true;
     try {
       this.loading.loadingOn();
       const email = this.forgotPasswordForm().value().email;
@@ -86,6 +93,7 @@ export class ForgotPasswordComponent {
       }
     } finally {
       this.loading.loadingOff();
+      this.#submitting = false;
     }
   }
 }

@@ -57,6 +57,11 @@ export class ResetPasswordComponent {
     applyPasswordMatch(p);
   });
 
+  // Guards against a double-click/double-tap firing resetPassword() twice
+  // before the loading overlay (rendered asynchronously via an effect)
+  // actually blocks further input.
+  #submitting = false;
+
   constructor() {
     afterNextRender(async () => {
       if (!this.oobCode()) {
@@ -74,6 +79,8 @@ export class ResetPasswordComponent {
   }
 
   async resetPassword() {
+    if (this.#submitting) return;
+    this.#submitting = true;
     const password = this.resetPasswordForm().value().password;
     this.loading.loadingOn();
     await confirmPasswordReset(this.auth, this.oobCode(), password)
@@ -103,6 +110,7 @@ export class ResetPasswordComponent {
       })
       .finally(() => {
         this.loading.loadingOff();
+        this.#submitting = false;
       });
   }
 }
