@@ -26,13 +26,13 @@ export class MemberLinkService {
   // Returns the number of member records linked, or null if the call was
   // skipped because no App Check token became available in time.
   async linkInvitedMembers(email: string): Promise<number | null> {
-    const ready = await appCheckTokenReady();
-    if (!ready) {
+    const tokenResult = await appCheckTokenReady();
+    if (!tokenResult.ready) {
       this.analytics.logError(
         'Member Link Service',
         'linkInvitedMembers',
         'Skipped: App Check token unavailable',
-        email
+        `${email} (${tokenResult.reason})`
       );
       return null;
     }

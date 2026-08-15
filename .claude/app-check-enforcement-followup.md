@@ -318,21 +318,86 @@ web bundle over the network regardless of native app version; App Check
 never needed a native app-store push and reaches all Android users
 immediately.
 
-**Fixed 2026-08-14.** `user.service.ts` `initializeAuth()` now awaits
+**Fixed 2026-08-13.** `user.service.ts` `initializeAuth()` now awaits
 `appCheckTokenReady()` right before `createUserIfNotExists()` (which
 covers the `getUserGroups()` call right after it too, same as
 `linkInvitedMembers`, but a best-effort *delay* rather than a skip -
 login can't be skipped on timeout, so it proceeds regardless after the
 10s cap). `pnpm exec ng test --include='src/app/services/user.service.spec.ts'`
-passes (29/29, pre-existing suite untouched), `ng build` clean. **Not
-deployed yet** - this is a client-side (Angular) change, ships via the
-normal hosting deploy, not `firebase deploy --only functions`. Still not
-log-confirmed as *the* cause of the Firestore dip (Firestore has no
-per-request verification log the way callables do) - the plan is to
-deploy this, then watch Firestore's verified % over the next several
-days; a move back toward 99-100% would be strong retroactive
-confirmation, without conclusively ruling out the Android WebView theory
-in the same swoop.
+passes (29/29, pre-existing suite untouched), `ng build` clean.
+
+**Committed and deployed 2026-08-13.** `8e41ebd0` "Fix App Check token
+race in user service", merged to `release` via PR #664 at 15:34 -0400 -
+auto-deployed to hosting through the normal `.github/workflows/
+firebase-deploy.yml` pipeline, no manual `firebase deploy` involved.
+
+**Checked 2026-08-14** (App Check console, Firestore): **99% verified
+over the last 7 days, 100% over the last 24 hours** - the 24h window
+falls entirely after the 8/13 15:34 deploy. Strong retroactive
+confirmation the login-path token race was a real, meaningful contributor
+to the unverified band - not conclusive proof over the Android WebView
+theory (Firestore has no per-request log to confirm mechanism the way
+`linkInvitedMembers` was diagnosed), but the timing match plus the jump
+to a clean 100% is a good sign. Recommend one more day or two of
+sustained 100% before flipping Firestore enforcement, given it's the
+last and highest-blast-radius toggle.
+
+**Checked 2026-08-15:** Firestore backslid slightly to 98% today (from
+100% the prior two days). `app_errors` log showed the explanation: 2
+`Member Link Service` / `linkInvitedMembers` "Skipped: App Check token
+unavailable" entries (2 users, 08/14 4:30pm and 08/15 7:11am, each
+logged twice at the same displayed minute - exact duplication not fully
+explained, granularity of the timestamp display or a near-simultaneous
+double-fire, not investigated further). This is the 8/13 fix's own skip
+path firing exactly as designed - confirms the gate works for
+`linkInvitedMembers` (no bad request fired) - but since `user.service.ts`
+only *delays* on its own outer `appCheckTokenReady()` call rather than
+skipping (login can't be skipped), the Firestore `getDoc`/`setDoc` calls
+moments earlier in those same two cold boots almost certainly went out
+unverified too. **Conclusion: the race is real, confirmed, and
+significantly reduced by the fix, but not fully eliminated** - a 10s wait
+isn't always enough for every cold boot. Whether the remaining ~1-2 known
+occurrences/day is an acceptable floor (the original bar was ">=99%",
+not 100%, precisely to allow for explainable unverified traffic - this
+is now an explained, monitored, low-frequency edge case rather than a
+mystery) is a decision point before flipping Firestore enforcement.
+
+**Decision 2026-08-15: try to close the race further before enforcing
+Firestore.** Two levers exist - wait longer, or find out *why* it's still
+failing - and only the diagnosis tells you whether waiting longer would
+even help (a genuine reCAPTCHA rejection isn't fixed by more patience).
+Went with diagnosis first:
+
+- `appCheckTokenReady()` (`src/app/app-check.ts`) now resolves
+  `{ ready: boolean; reason: 'ready' | 'timeout' | 'error' | 'not-initialized' }`
+  instead of a bare boolean - `'timeout'` (still in flight when the
+  caller gave up) and `'error'` (`getToken()` actively rejected, e.g.
+  real reCAPTCHA scoring) previously both collapsed into the same `false`,
+  making the two failure modes indistinguishable from the error log.
+- `member-link.service.ts`'s existing skip-log now includes the reason
+  (e.g. `alice@test.com (timeout)`).
+- `user.service.ts`'s `initializeAuth()` now also logs when its own outer
+  wait doesn't resolve ready (`'User Service' / 'initializeAuth' /
+  'Proceeding without confirmed App Check token'` + reason) - this closes
+  the previous gap where the login path's own races were only inferable
+  from `linkInvitedMembers`'s downstream skips, never logged directly.
+  Behavior is unchanged (still proceeds regardless, per the "can't skip
+  login" constraint noted above) - this is diagnostics only.
+- Timeout left at 10s for now, deliberately - bumping it and changing the
+  diagnostics in the same step would make it unclear which change
+  produced any future improvement.
+- `pnpm exec ng test --include='src/app/app-check.spec.ts'
+  --include='src/app/services/member-link.service.spec.ts'
+  --include='src/app/services/user.service.spec.ts'` passes (37/37),
+  `ng build` clean. **Not committed or deployed yet.**
+
+**Next check-in:** once this ships, the error log's `error` column will
+start showing `timeout` vs `error` for both `User Service` and `Member
+Link Service` skip/proceed entries - if it's consistently `timeout`, a
+longer wait is the right next lever; if it's consistently `error`
+(especially clustered on Android user agents), that points back to the
+Android WebView reCAPTCHA-scoring theory and the `CustomProvider`/Play
+Integrity fix instead.
 
 ## Also relevant, not urgent
 
