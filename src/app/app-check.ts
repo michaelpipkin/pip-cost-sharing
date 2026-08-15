@@ -21,27 +21,43 @@ export const initAppCheck = (app: FirebaseApp): void => {
   });
 };
 
+// 'timeout' vs 'error' distinguishes a token that was still in flight when
+// the caller gave up (a startup-race symptom, fixable by waiting longer or
+// starting the fetch earlier) from one that was actively rejected (e.g.
+// reCAPTCHA scoring, fixable only by addressing attestation itself, not by
+// waiting longer) - both looked identical (plain `false`) before this
+// distinction was added, which made the two failure modes impossible to
+// tell apart from the error log alone.
+export type AppCheckTokenResult = {
+  ready: boolean;
+  reason: 'ready' | 'timeout' | 'error' | 'not-initialized';
+};
+
 // Resolves once an App Check token is available, or after timeoutMs elapses.
 // The Firebase SDK does not block enforced callable requests on App Check
 // readiness - it soft-fails and sends the request with no token if one
 // isn't available yet, which is what causes early-boot callables to get
 // rejected. Callers to an enforced callable should await this first.
 //
-// Resolves true immediately when App Check was never initialized (SSR/
-// prerender or environment.useEmulators both skip it in app.config.ts) -
-// there is no token to wait for, so the gate must not block.
+// Resolves { ready: true, reason: 'not-initialized' } immediately when App
+// Check was never initialized (SSR/prerender or environment.useEmulators
+// both skip it in app.config.ts) - there is no token to wait for, so the
+// gate must not block.
 export const appCheckTokenReady = async (
   timeoutMs = 10_000
-): Promise<boolean> => {
-  if (!appCheck) return true;
+): Promise<AppCheckTokenResult> => {
+  if (!appCheck) return { ready: true, reason: 'not-initialized' };
 
-  const tokenReady = getToken(appCheck)
-    .then(() => true)
-    .catch(() => false);
+  const tokenReady: Promise<AppCheckTokenResult> = getToken(appCheck)
+    .then((): AppCheckTokenResult => ({ ready: true, reason: 'ready' }))
+    .catch((): AppCheckTokenResult => ({ ready: false, reason: 'error' }));
 
   let timer: ReturnType<typeof setTimeout>;
-  const timedOut = new Promise<boolean>((resolve) => {
-    timer = setTimeout(() => resolve(false), timeoutMs);
+  const timedOut = new Promise<AppCheckTokenResult>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ ready: false, reason: 'timeout' }),
+      timeoutMs
+    );
   });
 
   const result = await Promise.race([tokenReady, timedOut]);

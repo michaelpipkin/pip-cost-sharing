@@ -15,10 +15,10 @@ describe('app-check', () => {
     vi.restoreAllMocks();
   });
 
-  it('resolves true immediately when App Check was never initialized (SSR/emulator)', async () => {
+  it('resolves ready with not-initialized immediately when App Check was never initialized (SSR/emulator)', async () => {
     const result = await appCheckTokenReady(50);
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ ready: true, reason: 'not-initialized' });
   });
 
   describe('after initAppCheck', () => {
@@ -26,27 +26,27 @@ describe('app-check', () => {
       initAppCheck({} as any);
     });
 
-    it('resolves true once a token becomes available', async () => {
+    it('resolves ready once a token becomes available', async () => {
       vi.spyOn(appCheckModule, 'getToken').mockResolvedValueOnce({
         token: 'abc',
       } as any);
 
       const result = await appCheckTokenReady(1000);
 
-      expect(result).toBe(true);
+      expect(result).toEqual({ ready: true, reason: 'ready' });
     });
 
-    it('resolves false when the token fetch rejects', async () => {
+    it('resolves not-ready with reason "error" when the token fetch rejects', async () => {
       vi.spyOn(appCheckModule, 'getToken').mockRejectedValueOnce(
         new Error('attestation failed')
       );
 
       const result = await appCheckTokenReady(1000);
 
-      expect(result).toBe(false);
+      expect(result).toEqual({ ready: false, reason: 'error' });
     });
 
-    it('resolves false when no token arrives before the timeout', async () => {
+    it('resolves not-ready with reason "timeout" when no token arrives before the timeout', async () => {
       vi.spyOn(appCheckModule, 'getToken').mockReturnValueOnce(
         new Promise(() => {
           // never settles - simulates a token fetch that never completes
@@ -55,7 +55,7 @@ describe('app-check', () => {
 
       const result = await appCheckTokenReady(20);
 
-      expect(result).toBe(false);
+      expect(result).toEqual({ ready: false, reason: 'timeout' });
     });
   });
 });

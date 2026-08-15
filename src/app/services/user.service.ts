@@ -107,8 +107,19 @@ export class UserService implements IUserService {
               // cold-boot race that caused linkInvitedMembers 401s (see
               // MemberLinkService) applies here too. Unlike that callable,
               // this path can't be skipped on timeout - login has to
-              // proceed regardless, so this only delays, never blocks.
-              await appCheckTokenReady();
+              // proceed regardless, so this only delays, never blocks. Log
+              // when it doesn't resolve ready so the still-uncovered early
+              // Firestore calls below are visible in the error log instead
+              // of only being inferred from MemberLinkService's own skips.
+              const tokenResult = await appCheckTokenReady();
+              if (!tokenResult.ready) {
+                this.analytics.logError(
+                  'User Service',
+                  'initializeAuth',
+                  'Proceeding without confirmed App Check token',
+                  tokenResult.reason
+                );
+              }
 
               const userData = await this.createUserIfNotExists(
                 firebaseUser.uid,
