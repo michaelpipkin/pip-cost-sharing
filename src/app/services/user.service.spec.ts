@@ -478,6 +478,24 @@ describe('UserService', () => {
     });
   });
 
+  describe('initializeAuth persistence failure', () => {
+    it('still registers the auth state listener when setPersistence rejects', async () => {
+      vi.spyOn(authModule, 'setPersistence').mockRejectedValueOnce(
+        new Error('Database is closing/hidden')
+      );
+
+      await (service as any).initializeAuth();
+
+      expect(mockAuth.onAuthStateChanged).toHaveBeenCalled();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'User Service',
+        'initializeAuth',
+        'Failed to set auth persistence',
+        'Database is closing/hidden'
+      );
+    });
+  });
+
   describe('involuntary session loss', () => {
     it('clears the store, shows a snackbar, and redirects to login when the session is lost while logged in', async () => {
       userSignal.set({ id: 'user-123' });

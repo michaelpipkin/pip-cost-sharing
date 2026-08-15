@@ -88,78 +88,12 @@ export class UserService implements IUserService {
   private async initializeAuth(): Promise<void> {
     try {
       await setPersistence(this.auth, browserLocalPersistence);
-      this.auth.onAuthStateChanged(
-        async (firebaseUser: FirebaseUser | null) => {
-          if (firebaseUser) {
-            const email = firebaseUser.email!;
-            try {
-              // Clear all demo data from stores when a real user logs in
-              this.groupStore.clearAllUserGroups();
-              this.expenseStore.clearGroupExpenses();
-              this.categoryStore.clearGroupCategories();
-              this.memberStore.clearGroupMembers();
-              this.memorizedStore.clearMemorizedExpenses();
-              this.historyStore.clearHistory();
-              this.splitStore.clearSplits();
-
-              // Best-effort wait for App Check's async first token before the
-              // earliest Firestore reads/writes of the session - the same
-              // cold-boot race that caused linkInvitedMembers 401s (see
-              // MemberLinkService) applies here too. Unlike that callable,
-              // this path can't be skipped on timeout - login has to
-              // proceed regardless, so this only delays, never blocks. Log
-              // when it doesn't resolve ready so the still-uncovered early
-              // Firestore calls below are visible in the error log instead
-              // of only being inferred from MemberLinkService's own skips.
-              const tokenResult = await appCheckTokenReady();
-              if (!tokenResult.ready) {
-                this.analytics.logError(
-                  'User Service',
-                  'initializeAuth',
-                  'Proceeding without confirmed App Check token',
-                  tokenResult.reason
-                );
-              }
-
-              const userData = await this.createUserIfNotExists(
-                firebaseUser.uid,
-                email
-              );
-              const user = new User({
-                ...userData,
-                id: firebaseUser.uid,
-              });
-              this.userStore.initUser(
-                user,
-                firebaseUser.providerData[0]?.providerId === 'google.com',
-                !!firebaseUser.emailVerified
-              );
-              await this.groupService.getUserGroups(user);
-              this.#handlingSessionExpiry = false;
-            } catch (error) {
-              this.analytics.logError(
-                'User Service',
-                'initializeAuth',
-                'Failed to initialize user',
-                error instanceof Error ? error.message : 'Unknown error'
-              );
-            }
-          } else {
-            // Firebase transitioned to a logged-out state. Distinguish an
-            // intentional logout() call from an involuntary session loss
-            // (revoked token, evicted persistence, sign-out in another tab).
-            if (
-              !this.#intentionalLogout &&
-              this.userStore.isLoggedIn() &&
-              !this.userStore.isDemoMode()
-            ) {
-              this.handleSessionExpired();
-            }
-            this.#intentionalLogout = false;
-          }
-        }
-      );
     } catch (error) {
+      // Non-fatal: auth still works without persistence set, just falls
+      // back to Firebase's default (in-memory) persistence for this
+      // session. The auth state listener below must still be registered
+      // regardless, or a persistence failure would silently prevent the
+      // app from ever picking up login state.
       this.analytics.logError(
         'User Service',
         'initializeAuth',
@@ -167,6 +101,76 @@ export class UserService implements IUserService {
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
+
+    this.auth.onAuthStateChanged(async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        const email = firebaseUser.email!;
+        try {
+          // Clear all demo data from stores when a real user logs in
+          this.groupStore.clearAllUserGroups();
+          this.expenseStore.clearGroupExpenses();
+          this.categoryStore.clearGroupCategories();
+          this.memberStore.clearGroupMembers();
+          this.memorizedStore.clearMemorizedExpenses();
+          this.historyStore.clearHistory();
+          this.splitStore.clearSplits();
+
+          // Best-effort wait for App Check's async first token before the
+          // earliest Firestore reads/writes of the session - the same
+          // cold-boot race that caused linkInvitedMembers 401s (see
+          // MemberLinkService) applies here too. Unlike that callable,
+          // this path can't be skipped on timeout - login has to
+          // proceed regardless, so this only delays, never blocks. Log
+          // when it doesn't resolve ready so the still-uncovered early
+          // Firestore calls below are visible in the error log instead
+          // of only being inferred from MemberLinkService's own skips.
+          const tokenResult = await appCheckTokenReady();
+          if (!tokenResult.ready) {
+            this.analytics.logError(
+              'User Service',
+              'initializeAuth',
+              'Proceeding without confirmed App Check token',
+              tokenResult.reason
+            );
+          }
+
+          const userData = await this.createUserIfNotExists(
+            firebaseUser.uid,
+            email
+          );
+          const user = new User({
+            ...userData,
+            id: firebaseUser.uid,
+          });
+          this.userStore.initUser(
+            user,
+            firebaseUser.providerData[0]?.providerId === 'google.com',
+            !!firebaseUser.emailVerified
+          );
+          await this.groupService.getUserGroups(user);
+          this.#handlingSessionExpiry = false;
+        } catch (error) {
+          this.analytics.logError(
+            'User Service',
+            'initializeAuth',
+            'Failed to initialize user',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+        }
+      } else {
+        // Firebase transitioned to a logged-out state. Distinguish an
+        // intentional logout() call from an involuntary session loss
+        // (revoked token, evicted persistence, sign-out in another tab).
+        if (
+          !this.#intentionalLogout &&
+          this.userStore.isLoggedIn() &&
+          !this.userStore.isDemoMode()
+        ) {
+          this.handleSessionExpired();
+        }
+        this.#intentionalLogout = false;
+      }
+    });
   }
 
   async getUserDetails(userId: string): Promise<User | null> {
