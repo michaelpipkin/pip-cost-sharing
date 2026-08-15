@@ -111,10 +111,13 @@ export class AdMobService {
         'Error while connecting to ad server',
         'No fill',
         'Internal error',
-        'Network Error',
+        'Network error',
         'Unable to obtain a JavascriptEngine',
       ];
-      if (!ignoredErrors.some((err) => msg.startsWith(err))) {
+      const lowerMsg = msg.toLowerCase();
+      if (
+        !ignoredErrors.some((err) => lowerMsg.startsWith(err.toLowerCase()))
+      ) {
         this.analytics.logError(
           'AdMob Service',
           'loadInterstitial',
