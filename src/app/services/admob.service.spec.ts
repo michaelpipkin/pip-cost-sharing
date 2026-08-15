@@ -129,6 +129,37 @@ describe('AdMobService', () => {
     });
   });
 
+  describe('loadInterstitial error filtering', () => {
+    it('does not log a known transient ad-load failure regardless of casing', async () => {
+      const service = createService();
+      (service as any).isInitialized = true;
+      vi.spyOn(AdMob, 'prepareInterstitial').mockRejectedValueOnce(
+        new Error('Network error.')
+      );
+
+      await (service as any).loadInterstitial();
+
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('logs an unrecognized ad-load failure', async () => {
+      const service = createService();
+      (service as any).isInitialized = true;
+      vi.spyOn(AdMob, 'prepareInterstitial').mockRejectedValueOnce(
+        new Error('Something unexpected')
+      );
+
+      await (service as any).loadInterstitial();
+
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'AdMob Service',
+        'loadInterstitial',
+        'Failed to load interstitial ad',
+        'Something unexpected'
+      );
+    });
+  });
+
   describe('browser mode', () => {
     it('should not subscribe to router events when not running as app', () => {
       mockRouter.events.subscribe.mockClear();
