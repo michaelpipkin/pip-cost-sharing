@@ -236,48 +236,14 @@ describe('UserService', () => {
       );
     });
 
-    it('should ask the server to link unlinked member records to the new user', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
-        makeUserSnap(false) as any
-      );
-      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(2);
-
-      await service.createUserIfNotExists('new-user', 'alice@test.com');
-
-      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
-        'alice@test.com'
-      );
-      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
-        'new_user_members_linked',
-        { email: 'alice@test.com', membersLinked: 2 }
-      );
-    });
-
-    it('should not log an analytics event when no members were linked', async () => {
+    it('should not attempt to link invited members at signup - GroupsComponent handles it on page load instead', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
 
       await service.createUserIfNotExists('new-user', 'alice@test.com');
 
-      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
-        'new_user_members_linked',
-        expect.anything()
-      );
-    });
-
-    it('should not log an analytics event when linking was skipped (no App Check token)', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
-        makeUserSnap(false) as any
-      );
-      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
-
-      await service.createUserIfNotExists('new-user', 'alice@test.com');
-
-      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
-        'new_user_members_linked',
-        expect.anything()
-      );
+      expect(mockMemberLinkService.linkInvitedMembers).not.toHaveBeenCalled();
     });
   });
 

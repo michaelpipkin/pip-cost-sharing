@@ -28,11 +28,14 @@ export class MemberLinkService {
   async linkInvitedMembers(email: string): Promise<number | null> {
     const tokenResult = await appCheckTokenReady();
     if (!tokenResult.ready) {
+      const reasonDetail = tokenResult.detail
+        ? `${tokenResult.reason}: ${tokenResult.detail}`
+        : tokenResult.reason;
       this.analytics.logError(
         'Member Link Service',
         'linkInvitedMembers',
         'Skipped: App Check token unavailable',
-        `${email} (${tokenResult.reason})`
+        `${email} (${reasonDetail})`
       );
       return null;
     }

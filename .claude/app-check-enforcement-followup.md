@@ -399,6 +399,123 @@ longer wait is the right next lever; if it's consistently `error`
 Android WebView reCAPTCHA-scoring theory and the `CustomProvider`/Play
 Integrity fix instead.
 
+**Confirmed 2026-08-17.** The reason-tagging shipped (`1f9c7b66` "Improve
+app check logging") and the answer is unambiguous: **every logged
+instance across 4 distinct signups (8/16 5:56pm, 8/17 2:16am, 8:49am,
+9:31am) is tagged `(error)` - zero `(timeout)`.** This rules out "just
+needs more patience" - `getToken()` is actively rejecting, not still in
+flight when the caller gives up, so extending the 10s wait would not
+help. Firestore's own 7-day metric (98% verified, 842/44K invalid,
+Aug 10-18) shows the same ~2% band fairly flat across the whole week per
+the sparkline, not a decaying backlog - consistent with a standing
+population of genuine failures rather than a one-time race. Each signup
+event logs `linkInvitedMembers` skip x2 (duplicate, same email, same
+displayed minute) + one `User Service` proceed - the duplication is
+reproducible across all 4 instances now but still not root-caused.
+
+**Next diagnostic step, implemented 2026-08-17 (not yet committed):**
+`error` alone doesn't say *why* `getToken()` rejected - `appCheckTokenReady()`
+now also captures the actual rejection message as `detail` (previously
+discarded in the `.catch()`), and both `MemberLinkService` and
+`UserService` include it in their logged error string (e.g.
+`alice@test.com (error: <the real Firebase/reCAPTCHA message>)`).
+`pnpm exec ng test` for `app-check.spec.ts` / `member-link.service.spec.ts`
+/ `user.service.spec.ts` passes (39/39), `ng build` clean. Once this
+ships, the next occurrences should reveal the specific failure (a
+reCAPTCHA score, a network error, a config issue) rather than just
+knowing "some rejection happened" - that specific message is what will
+confirm or rule out the Android WebView theory, or point somewhere else
+entirely.
+
+**Explicitly deferred 2026-08-17, by request:** two unrelated-looking
+errors seen in the same log check (`Admin Statistics Component /
+load_statistics / Failed to load statistics (internal)`, twice, and
+`Manage Groups Component / delete_group / Unauthenticated`) - neither
+fits the App Check `(reason)` tagging convention, so likely a separate
+issue (auth session expiry / an unhandled exception in
+`getAdminStatistics`). Not investigated as part of this thread.
+
+**Follow-up robustness work, 2026-08-17:** traced a real `error`-tagged
+occurrence end to end (user `bulus3586@gmail.com`, 8/17 8:49am) to confirm
+impact: login and all Firestore-backed app usage worked fine (Firestore
+enforcement is still off), the *only* casualty was `linkInvitedMembers`
+being skipped twice (once at signup, once via `GroupService`'s existing
+one-shot retry) - meaning a real invited user could land on an empty
+"no groups" screen with their invite never auto-linked, and no further
+retry within that session. Since App Check failures here are confirmed
+`error` (not `timeout`), an automatic retry moments later isn't reliable
+- it can hit the same rejection again.
+
+Fix: `GroupsComponent` now makes one additional `linkInvitedMembers`
+attempt every time the Groups page loads (`src/app/features/groups/
+groups/groups.component.ts`), gated only on the user's email being known
+- not on zero groups, so it also covers an invite that arrives *after*
+signup, which neither of the two existing automatic attempts cover.
+Deliberately silent (no button, no snackbar) to match the existing
+`GroupService` retry's precedent; relies on the same reactive `onSnapshot`
+listener to surface a newly-linked group with no extra plumbing needed.
+Considered and rejected: a "check first, then show an Accept Group
+Invitations button" design (would have needed a `dryRun` mode on the
+`linkInvitedMembers` callable) - dropped as unnecessary complexity once
+the simpler "just always retry on page load" version covered the same
+ground. Also considered and rejected: moving the underlying query
+client-side to cut function-invocation cost - `linkInvitedMembers` is a
+cross-tenant `collectionGroup('members')` search with no Firestore rule
+that can safely permit it from the client (same category of risk as the
+ongoing Firestore rules-hardening work), and the Firestore read costs
+are identical either way regardless of where the query runs, so there
+was no real cost to save. `pnpm exec ng test` passes (52/52 across the
+touched specs), `ng build` clean. Not committed or deployed yet - same as
+the other pending changes, waiting on you.
+
+**Follow-up simplification, 2026-08-17:** removed the two cold-boot-timed
+`linkInvitedMembers` attempts now that the Groups-page-load attempt covers
+the same ground - `UserService.createUserIfNotExists()`'s signup-time
+call, and `GroupService.getUserGroups()`'s one-shot zero-groups retry
+(`#attemptedInviteLink` field and its logout() reset also removed as
+dead code, along with `MemberLinkService`'s now-unused injection in
+`GroupService`). Traced the actual routing to confirm no coverage is
+lost: `groupGuard` (`src/app/features/auth/guards.guard.ts:26-41`)
+redirects to `ADMIN_GROUPS` from every group-scoped route
+(Expenses/Memorized/Analysis/Members/Categories) whenever no current
+group is resolved, and `getUserGroups()`'s zero-member-record branch
+still redirects there directly - between the two, any user without a
+resolvable group ends up on the Groups page regardless of whether the
+early attempts exist. The early attempts also fired at the exact
+cold-boot moment this whole investigation has shown is highest-risk for
+`error`-tagged failures, so consolidating to the later, single
+Groups-page attempt is likely *more* reliable, not just simpler - it has
+more time to run past whatever's causing `getToken()` to reject.
+
+**Analytics restored, 2026-08-17, by request:** the `new_user_members_linked`
+event was flagged as dropped above; brought back as `members_linked` (name
+generalized since the Groups-page attempt now links new *and* existing
+users, not just signups) - `GroupsComponent` logs `{ email, membersLinked }`
+whenever `linkInvitedMembers()` returns `> 0`. `pnpm exec ng test` passes
+in full (1251/1251), `ng build` clean.
+
+**Loading-state fix, 2026-08-17.** You'd made your own pass at
+`groups.component.ts`/`.html` (converting the private attempt flag to a
+signal so the template could read it, and gating the loading overlay +
+placeholder on it too) to stop a "no groups -> then a group appears"
+flash for someone about to get linked. I found the gap: the flag flipped
+`true` at *dispatch* time, not once the link attempt actually *settled*,
+so it didn't change when the loading state cleared in practice. Reworked
+into `checkingInvitedMemberLinks` (starts `true`, only cleared in a
+`finally` after `linkInvitedMembers()` resolves, or immediately in demo
+mode since there's no real account/backend to call there) - loading now
+genuinely holds until the link attempt is done, not just started. Also
+added the demo-mode skip flagged in the review (previously fired a real
+`linkInvitedMembers` call with the fake `demo@example.com` on every demo
+visit to Groups - harmless but wasteful and inconsistent with every other
+action in this component). One pre-existing test needed a fix alongside
+this (`should render the group select...` didn't set a user, which is
+unrealistic per this app's real invariants - `UserService.initializeAuth()`
+always sets `userStore.user()` before `GroupService.getUserGroups()` can
+flip `groupStore.loaded()`, so a user is always known by the time this
+gate needs to resolve). `pnpm exec ng test` passes in full (1254/1254),
+`ng build` clean. Not committed or deployed yet.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

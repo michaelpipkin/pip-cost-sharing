@@ -110,7 +110,7 @@ describe('MemberLinkService', () => {
         'Member Link Service',
         'linkInvitedMembers',
         'Skipped: App Check token unavailable',
-        'alice@test.com (error)'
+        'alice@test.com (error: no token)'
       );
     });
   });

@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   linkedSignal,
+  signal,
   Signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,6 +29,7 @@ import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -63,28 +65,76 @@ export class GroupsComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly memberLinkService = inject(MemberLinkService);
 
   readonly #user: Signal<User | null> = this.userStore.user;
   readonly #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   readonly allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
   readonly activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
 
-  protected readonly selectedGroupRef = linkedSignal<DocumentReference<Group> | null>(
-    () => this.groupStore.currentGroup()?.ref ?? null
-  );
+  protected readonly selectedGroupRef =
+    linkedSignal<DocumentReference<Group> | null>(
+      () => this.groupStore.currentGroup()?.ref ?? null
+    );
+
+  // True until the one-time invited-member link attempt has settled (or
+  // been determined unnecessary in demo mode) - gates the loading overlay
+  // below so the page never shows a "no groups" flash for a user who's
+  // about to be linked into one. Starts true (not false) precisely so the
+  // loading state holds from the very first render, before anything else
+  // has had a chance to run.
+  protected readonly checkingInvitedMemberLinks = signal(true);
+  #inviteLinkAttemptStarted = false;
 
   constructor() {
     effect(() => {
-      if (this.groupStore.loaded()) {
+      if (this.groupStore.loaded() && !this.checkingInvitedMemberLinks()) {
         this.loading.loadingOff();
       } else {
         this.loading.loadingOn();
       }
     });
 
+    effect(() => {
+      // One attempt per page load, regardless of current group count -
+      // catches not just a signup-time miss (see MemberLinkService /
+      // GroupService.getUserGroups, which already retry that case once)
+      // but also an invite that arrived after this account already had
+      // other groups, which neither of those cover. Demo mode has no
+      // real account to link and no App Check-enforced backend to call,
+      // so it's resolved immediately rather than firing a real request.
+      if (this.#inviteLinkAttemptStarted) return;
+
+      if (this.demoService.isInDemoMode()) {
+        this.#inviteLinkAttemptStarted = true;
+        this.checkingInvitedMemberLinks.set(false);
+        return;
+      }
+
+      // Read email as a tracked dependency so this waits for the user to
+      // actually be known before firing, rather than racing it.
+      const email = this.#user()?.email;
+      if (email) {
+        this.#inviteLinkAttemptStarted = true;
+        void this.linkInvitedMembersOnLoad(email);
+      }
+    });
+
     afterNextRender(() => {
       this.tourService.checkForContinueTour('groups');
     });
+  }
+
+  private async linkInvitedMembersOnLoad(email: string): Promise<void> {
+    try {
+      const membersLinked =
+        await this.memberLinkService.linkInvitedMembers(email);
+      if (membersLinked !== null && membersLinked > 0) {
+        this.analytics.logEvent('members_linked', { email, membersLinked });
+      }
+    } finally {
+      this.checkingInvitedMemberLinks.set(false);
+    }
   }
 
   addGroup(): void {

@@ -36,14 +36,30 @@ describe('app-check', () => {
       expect(result).toEqual({ ready: true, reason: 'ready' });
     });
 
-    it('resolves not-ready with reason "error" when the token fetch rejects', async () => {
+    it('resolves not-ready with reason "error" and the rejection detail when the token fetch rejects', async () => {
       vi.spyOn(appCheckModule, 'getToken').mockRejectedValueOnce(
         new Error('attestation failed')
       );
 
       const result = await appCheckTokenReady(1000);
 
-      expect(result).toEqual({ ready: false, reason: 'error' });
+      expect(result).toEqual({
+        ready: false,
+        reason: 'error',
+        detail: 'attestation failed',
+      });
+    });
+
+    it('resolves not-ready with a generic detail when the rejection is not an Error', async () => {
+      vi.spyOn(appCheckModule, 'getToken').mockRejectedValueOnce('boom');
+
+      const result = await appCheckTokenReady(1000);
+
+      expect(result).toEqual({
+        ready: false,
+        reason: 'error',
+        detail: 'Unknown error',
+      });
     });
 
     it('resolves not-ready with reason "timeout" when no token arrives before the timeout', async () => {

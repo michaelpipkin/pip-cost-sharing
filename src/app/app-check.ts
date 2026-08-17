@@ -27,10 +27,14 @@ export const initAppCheck = (app: FirebaseApp): void => {
 // reCAPTCHA scoring, fixable only by addressing attestation itself, not by
 // waiting longer) - both looked identical (plain `false`) before this
 // distinction was added, which made the two failure modes impossible to
-// tell apart from the error log alone.
+// tell apart from the error log alone. `detail` carries getToken()'s actual
+// rejection message when reason is 'error' - the specific Firebase/reCAPTCHA
+// error (e.g. a low bot score, a network failure, a misconfigured domain)
+// rather than just knowing that *some* rejection happened.
 export type AppCheckTokenResult = {
   ready: boolean;
   reason: 'ready' | 'timeout' | 'error' | 'not-initialized';
+  detail?: string;
 };
 
 // Resolves once an App Check token is available, or after timeoutMs elapses.
@@ -50,7 +54,13 @@ export const appCheckTokenReady = async (
 
   const tokenReady: Promise<AppCheckTokenResult> = getToken(appCheck)
     .then((): AppCheckTokenResult => ({ ready: true, reason: 'ready' }))
-    .catch((): AppCheckTokenResult => ({ ready: false, reason: 'error' }));
+    .catch(
+      (error: unknown): AppCheckTokenResult => ({
+        ready: false,
+        reason: 'error',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      })
+    );
 
   let timer: ReturnType<typeof setTimeout>;
   const timedOut = new Promise<AppCheckTokenResult>((resolve) => {
