@@ -1,4 +1,4 @@
-@if (!groupStore.loaded()) {
+@if (!groupStore.loaded() || checkingInvitedMemberLinks()) {
   <div class="placeholder-content" data-testid="groups-loading-container">
     <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
       groups

@@ -6,6 +6,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -17,6 +18,7 @@ import {
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMemberLinkService,
   createMockMemberStore,
   createMockSnackBar,
   createMockTourService,
@@ -38,6 +40,9 @@ describe('GroupsComponent', () => {
   let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  let mockMemberLinkService: ReturnType<typeof createMockMemberLinkService>;
+  let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
+  let mockLoadingService: ReturnType<typeof createMockLoadingService>;
 
   const testGroup = mockGroup({ name: 'Test Group' });
 
@@ -49,6 +54,9 @@ describe('GroupsComponent', () => {
     mockTourService = createMockTourService();
     mockDialog = createMockMatDialog();
     mockSnackBar = createMockSnackBar();
+    mockMemberLinkService = createMockMemberLinkService();
+    mockAnalyticsService = createMockAnalyticsService();
+    mockLoadingService = createMockLoadingService();
 
     await TestBed.configureTestingModule({
       imports: [GroupsComponent],
@@ -60,10 +68,11 @@ describe('GroupsComponent', () => {
         { provide: GroupService, useValue: mockGroupService },
         { provide: DemoService, useValue: mockDemoService },
         { provide: TourService, useValue: mockTourService },
-        { provide: LoadingService, useValue: createMockLoadingService() },
+        { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: AnalyticsService, useValue: mockAnalyticsService },
+        { provide: MemberLinkService, useValue: mockMemberLinkService },
       ],
     }).compileComponents();
 
@@ -82,8 +91,16 @@ describe('GroupsComponent', () => {
 
   describe('group select', () => {
     it('should render the group select when active groups are available', async () => {
+      // Real app invariant: UserService.initializeAuth() always sets
+      // userStore.user() before GroupService.getUserGroups() can flip
+      // groupStore.loaded() - checkingInvitedMemberLinks() only resolves
+      // once an email is known, so this must be set for the page to ever
+      // finish its loading gate.
+      mockUserStore.user.set(mockUser());
       mockGroupStore.loaded.set(true);
       mockGroupStore.allUserGroups.set([testGroup]);
+      fixture.detectChanges();
+      await fixture.whenStable();
       fixture.detectChanges();
       expect(
         fixture.nativeElement.querySelector('[data-testid="group-select"]')
@@ -144,6 +161,108 @@ describe('GroupsComponent', () => {
     it('should call tourService.startGroupsTour with force=true', () => {
       component.startTour();
       expect(mockTourService.startGroupsTour).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('invited-member linking on page load', () => {
+    it('calls linkInvitedMembers once the user email is known', async () => {
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
+        'test@example.com'
+      );
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+        1
+      );
+    });
+
+    it('does not call it again if unrelated signals change afterward', async () => {
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      mockGroupStore.allUserGroups.set([testGroup]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+        1
+      );
+    });
+
+    it('logs a members_linked event when the attempt links something', async () => {
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(2);
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockAnalyticsService.logEvent).toHaveBeenCalledWith(
+        'members_linked',
+        { email: 'test@example.com', membersLinked: 2 }
+      );
+    });
+
+    it('does not log an event when nothing was linked', async () => {
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(0);
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockAnalyticsService.logEvent).not.toHaveBeenCalled();
+    });
+
+    it('does not log an event when the attempt was skipped (no App Check token)', async () => {
+      mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockAnalyticsService.logEvent).not.toHaveBeenCalled();
+    });
+
+    it('skips the real call entirely in demo mode', async () => {
+      mockDemoService.isInDemoMode.mockReturnValue(true);
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).not.toHaveBeenCalled();
+    });
+
+    describe('loading overlay', () => {
+      it('stays on once groups have loaded while the link attempt is still pending', async () => {
+        let resolveLink!: (value: number | null) => void;
+        mockMemberLinkService.linkInvitedMembers.mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveLink = resolve;
+          })
+        );
+        mockUserStore.user.set(mockUser());
+        mockGroupStore.loaded.set(true);
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(mockLoadingService.loadingOff).not.toHaveBeenCalled();
+
+        resolveLink(0);
+        await Promise.resolve();
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      });
+
+      it('turns off immediately once groups have loaded in demo mode', async () => {
+        mockDemoService.isInDemoMode.mockReturnValue(true);
+        mockUserStore.user.set(mockUser());
+        mockGroupStore.loaded.set(true);
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      });
     });
   });
 });
