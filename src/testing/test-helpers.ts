@@ -415,7 +415,9 @@ export function createMockGroupService() {
 
 export function createMockMemberLinkService() {
   return {
-    linkInvitedMembers: vi.fn(() => Promise.resolve(0)),
+    linkInvitedMembers: vi.fn(
+      (): Promise<number | null> => Promise.resolve(0)
+    ),
   };
 }
 

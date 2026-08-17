@@ -468,6 +468,54 @@ was no real cost to save. `pnpm exec ng test` passes (52/52 across the
 touched specs), `ng build` clean. Not committed or deployed yet - same as
 the other pending changes, waiting on you.
 
+**Follow-up simplification, 2026-08-17:** removed the two cold-boot-timed
+`linkInvitedMembers` attempts now that the Groups-page-load attempt covers
+the same ground - `UserService.createUserIfNotExists()`'s signup-time
+call, and `GroupService.getUserGroups()`'s one-shot zero-groups retry
+(`#attemptedInviteLink` field and its logout() reset also removed as
+dead code, along with `MemberLinkService`'s now-unused injection in
+`GroupService`). Traced the actual routing to confirm no coverage is
+lost: `groupGuard` (`src/app/features/auth/guards.guard.ts:26-41`)
+redirects to `ADMIN_GROUPS` from every group-scoped route
+(Expenses/Memorized/Analysis/Members/Categories) whenever no current
+group is resolved, and `getUserGroups()`'s zero-member-record branch
+still redirects there directly - between the two, any user without a
+resolvable group ends up on the Groups page regardless of whether the
+early attempts exist. The early attempts also fired at the exact
+cold-boot moment this whole investigation has shown is highest-risk for
+`error`-tagged failures, so consolidating to the later, single
+Groups-page attempt is likely *more* reliable, not just simpler - it has
+more time to run past whatever's causing `getToken()` to reject.
+
+**Analytics restored, 2026-08-17, by request:** the `new_user_members_linked`
+event was flagged as dropped above; brought back as `members_linked` (name
+generalized since the Groups-page attempt now links new *and* existing
+users, not just signups) - `GroupsComponent` logs `{ email, membersLinked }`
+whenever `linkInvitedMembers()` returns `> 0`. `pnpm exec ng test` passes
+in full (1251/1251), `ng build` clean.
+
+**Loading-state fix, 2026-08-17.** You'd made your own pass at
+`groups.component.ts`/`.html` (converting the private attempt flag to a
+signal so the template could read it, and gating the loading overlay +
+placeholder on it too) to stop a "no groups -> then a group appears"
+flash for someone about to get linked. I found the gap: the flag flipped
+`true` at *dispatch* time, not once the link attempt actually *settled*,
+so it didn't change when the loading state cleared in practice. Reworked
+into `checkingInvitedMemberLinks` (starts `true`, only cleared in a
+`finally` after `linkInvitedMembers()` resolves, or immediately in demo
+mode since there's no real account/backend to call there) - loading now
+genuinely holds until the link attempt is done, not just started. Also
+added the demo-mode skip flagged in the review (previously fired a real
+`linkInvitedMembers` call with the fake `demo@example.com` on every demo
+visit to Groups - harmless but wasteful and inconsistent with every other
+action in this component). One pre-existing test needed a fix alongside
+this (`should render the group select...` didn't set a user, which is
+unrealistic per this app's real invariants - `UserService.initializeAuth()`
+always sets `userStore.user()` before `GroupService.getUserGroups()` can
+flip `groupStore.loaded()`, so a user is always known by the time this
+gate needs to resolve). `pnpm exec ng test` passes in full (1254/1254),
+`ng build` clean. Not committed or deployed yet.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

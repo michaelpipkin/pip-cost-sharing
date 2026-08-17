@@ -225,15 +225,11 @@ export class UserService implements IUserService {
       await setDoc(docRef, defaultUserData);
       const userDocRef = docRef as DocumentReference<User>; // NOSONAR
 
-      // Link any unlinked member records with this email to the new user
-      const membersLinked =
-        await this.memberLinkService.linkInvitedMembers(email);
-      if (membersLinked !== null && membersLinked > 0) {
-        this.analytics.logEvent('new_user_members_linked', {
-          email: email,
-          membersLinked,
-        });
-      }
+      // Any invited-member records for this email get linked on the
+      // Groups page's own load, not here - this runs at the exact
+      // cold-boot moment most likely to race App Check's first token
+      // fetch (see GroupsComponent), and groupGuard/getUserGroups
+      // guarantee a groupless user lands on Groups regardless.
 
       return new User({
         id: userId,
