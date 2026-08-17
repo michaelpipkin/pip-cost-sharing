@@ -413,6 +413,12 @@ export function createMockGroupService() {
   };
 }
 
+export function createMockMemberLinkService() {
+  return {
+    linkInvitedMembers: vi.fn(() => Promise.resolve(0)),
+  };
+}
+
 export function createMockCategoryService() {
   return {
     addCategory: vi.fn(),

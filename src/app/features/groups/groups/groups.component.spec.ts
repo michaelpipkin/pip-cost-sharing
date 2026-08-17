@@ -6,6 +6,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -17,6 +18,7 @@ import {
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMemberLinkService,
   createMockMemberStore,
   createMockSnackBar,
   createMockTourService,
@@ -38,6 +40,7 @@ describe('GroupsComponent', () => {
   let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  let mockMemberLinkService: ReturnType<typeof createMockMemberLinkService>;
 
   const testGroup = mockGroup({ name: 'Test Group' });
 
@@ -49,6 +52,7 @@ describe('GroupsComponent', () => {
     mockTourService = createMockTourService();
     mockDialog = createMockMatDialog();
     mockSnackBar = createMockSnackBar();
+    mockMemberLinkService = createMockMemberLinkService();
 
     await TestBed.configureTestingModule({
       imports: [GroupsComponent],
@@ -64,6 +68,7 @@ describe('GroupsComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: MemberLinkService, useValue: mockMemberLinkService },
       ],
     }).compileComponents();
 
@@ -144,6 +149,35 @@ describe('GroupsComponent', () => {
     it('should call tourService.startGroupsTour with force=true', () => {
       component.startTour();
       expect(mockTourService.startGroupsTour).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('invited-member linking on page load', () => {
+    it('calls linkInvitedMembers once the user email is known', async () => {
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
+        'test@example.com'
+      );
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+        1
+      );
+    });
+
+    it('does not call it again if unrelated signals change afterward', async () => {
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      mockGroupStore.allUserGroups.set([testGroup]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
+        1
+      );
     });
   });
 });

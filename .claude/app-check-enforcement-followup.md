@@ -435,6 +435,39 @@ fits the App Check `(reason)` tagging convention, so likely a separate
 issue (auth session expiry / an unhandled exception in
 `getAdminStatistics`). Not investigated as part of this thread.
 
+**Follow-up robustness work, 2026-08-17:** traced a real `error`-tagged
+occurrence end to end (user `bulus3586@gmail.com`, 8/17 8:49am) to confirm
+impact: login and all Firestore-backed app usage worked fine (Firestore
+enforcement is still off), the *only* casualty was `linkInvitedMembers`
+being skipped twice (once at signup, once via `GroupService`'s existing
+one-shot retry) - meaning a real invited user could land on an empty
+"no groups" screen with their invite never auto-linked, and no further
+retry within that session. Since App Check failures here are confirmed
+`error` (not `timeout`), an automatic retry moments later isn't reliable
+- it can hit the same rejection again.
+
+Fix: `GroupsComponent` now makes one additional `linkInvitedMembers`
+attempt every time the Groups page loads (`src/app/features/groups/
+groups/groups.component.ts`), gated only on the user's email being known
+- not on zero groups, so it also covers an invite that arrives *after*
+signup, which neither of the two existing automatic attempts cover.
+Deliberately silent (no button, no snackbar) to match the existing
+`GroupService` retry's precedent; relies on the same reactive `onSnapshot`
+listener to surface a newly-linked group with no extra plumbing needed.
+Considered and rejected: a "check first, then show an Accept Group
+Invitations button" design (would have needed a `dryRun` mode on the
+`linkInvitedMembers` callable) - dropped as unnecessary complexity once
+the simpler "just always retry on page load" version covered the same
+ground. Also considered and rejected: moving the underlying query
+client-side to cut function-invocation cost - `linkInvitedMembers` is a
+cross-tenant `collectionGroup('members')` search with no Firestore rule
+that can safely permit it from the client (same category of risk as the
+ongoing Firestore rules-hardening work), and the Firestore read costs
+are identical either way regardless of where the query runs, so there
+was no real cost to save. `pnpm exec ng test` passes (52/52 across the
+touched specs), `ng build` clean. Not committed or deployed yet - same as
+the other pending changes, waiting on you.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

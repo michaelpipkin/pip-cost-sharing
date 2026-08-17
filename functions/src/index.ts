@@ -695,8 +695,10 @@ export async function linkInvitedMembersInternal(
  * Callable wrapper for linkInvitedMembersInternal. Runs server-side because
  * it's a cross-tenant `collectionGroup('members')` search by a user who may
  * belong to no group yet - no Firestore rule can permit that from the
- * client. Called right after account creation and after email verification
- * (see `user.service.ts`).
+ * client. Called right after account creation, after email verification,
+ * and on every Groups page load (see `user.service.ts` / `member-link.
+ * service.ts` / `GroupsComponent`) so a pending invite gets picked up
+ * eventually even if the earlier automatic attempts all missed it.
  */
 export const linkInvitedMembers = onCall<{ email: string }>(
   callableAppCheck,

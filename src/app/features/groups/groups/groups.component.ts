@@ -28,6 +28,7 @@ import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
+import { MemberLinkService } from '@services/member-link.service';
 import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -63,6 +64,7 @@ export class GroupsComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly memberLinkService = inject(MemberLinkService);
 
   readonly #user: Signal<User | null> = this.userStore.user;
   readonly #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
@@ -73,12 +75,29 @@ export class GroupsComponent {
     () => this.groupStore.currentGroup()?.ref ?? null
   );
 
+  #attemptedInviteLinkOnLoad = false;
+
   constructor() {
     effect(() => {
       if (this.groupStore.loaded()) {
         this.loading.loadingOff();
       } else {
         this.loading.loadingOn();
+      }
+    });
+
+    effect(() => {
+      // Read email as a tracked dependency so this waits for the user to
+      // actually be known before firing, rather than racing it. One
+      // attempt per page load, regardless of current group count - catches
+      // not just a signup-time miss (see MemberLinkService /
+      // GroupService.getUserGroups, which already retry that case once)
+      // but also an invite that arrived after this account already had
+      // other groups, which neither of those cover.
+      const email = this.#user()?.email;
+      if (email && !this.#attemptedInviteLinkOnLoad) {
+        this.#attemptedInviteLinkOnLoad = true;
+        void this.memberLinkService.linkInvitedMembers(email);
       }
     });
 
