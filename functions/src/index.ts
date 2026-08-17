@@ -944,77 +944,84 @@ export function aggregateGroupStats(
   };
 }
 
-export const getAdminStatistics = onCall(callableAppCheck, async (request) => {
-  const uid = request.auth?.uid;
+export const getAdminStatistics = onCall(
+  { ...callableAppCheck, timeoutSeconds: 300 },
+  async (request) => {
+    const uid = request.auth?.uid;
 
-  if (!uid) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    // Check if user is admin
+    const isAdmin = uid === ADMIN_UID_PROD || uid === ADMIN_UID_EMU;
+    if (!isAdmin) {
+      throw new HttpsError('permission-denied', 'Admin access required');
+    }
+
+    try {
+      const thirtyDaysAgoIso = buildThirtyDaysAgoIso();
+
+      const adminUserRef = db.collection('users').doc(uid);
+      const excludedGroupIds = await getAdminExcludedGroupIds(adminUserRef);
+
+      // Fetch group docs, limited to the fields needed to filter on
+      // active/archived status, to cut payload size as the collection grows.
+      const groupsSnapshot = await db
+        .collection('groups')
+        .select('active', 'archived')
+        .get();
+      const { totalGroups, activeGroups, activeGroupRefs } = summarizeGroups(
+        groupsSnapshot,
+        excludedGroupIds
+      );
+
+      const perGroupStats = await Promise.all(
+        activeGroupRefs.map((ref) => getGroupStats(ref, thirtyDaysAgoIso))
+      );
+      const {
+        activeGroupsWithMultipleMembers,
+        activeGroupsWithExpenses,
+        totalMembers,
+        totalActiveMembers,
+        groupsWithRecentActivity,
+        expensesCreatedLast30Days,
+      } = aggregateGroupStats(perGroupStats);
+
+      // Count users via aggregation and exclude the admin's own account.
+      const usersCountSnap = await db.collection('users').count().get();
+      const totalUsers = Math.max(0, usersCountSnap.data().count - 1);
+
+      // Calculate averages
+      const avgMembersPerActiveGroup =
+        activeGroups > 0
+          ? Math.round((totalActiveMembers / activeGroups) * 100) / 100
+          : 0;
+
+      return {
+        totalGroups,
+        activeGroups,
+        activeGroupsWithMultipleMembers,
+        activeGroupsWithExpenses,
+        totalUsers,
+        totalMembers,
+        totalActiveMembers,
+        groupsWithRecentActivity,
+        expensesCreatedLast30Days,
+        avgMembersPerActiveGroup,
+        generatedAt: new Date().toISOString(),
+      };
+    } catch (error: unknown) {
+      console.error('Error getting admin statistics:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError(
+        'internal',
+        `Error getting statistics: ${errorMessage}`
+      );
+    }
   }
-
-  // Check if user is admin
-  const isAdmin = uid === ADMIN_UID_PROD || uid === ADMIN_UID_EMU;
-  if (!isAdmin) {
-    throw new HttpsError('permission-denied', 'Admin access required');
-  }
-
-  try {
-    const thirtyDaysAgoIso = buildThirtyDaysAgoIso();
-
-    const adminUserRef = db.collection('users').doc(uid);
-    const excludedGroupIds = await getAdminExcludedGroupIds(adminUserRef);
-
-    // Fetch all group docs (needed to filter on active/archived fields).
-    const groupsSnapshot = await db.collection('groups').get();
-    const { totalGroups, activeGroups, activeGroupRefs } = summarizeGroups(
-      groupsSnapshot,
-      excludedGroupIds
-    );
-
-    const perGroupStats = await Promise.all(
-      activeGroupRefs.map((ref) => getGroupStats(ref, thirtyDaysAgoIso))
-    );
-    const {
-      activeGroupsWithMultipleMembers,
-      activeGroupsWithExpenses,
-      totalMembers,
-      totalActiveMembers,
-      groupsWithRecentActivity,
-      expensesCreatedLast30Days,
-    } = aggregateGroupStats(perGroupStats);
-
-    // Count users via aggregation and exclude the admin's own account.
-    const usersCountSnap = await db.collection('users').count().get();
-    const totalUsers = Math.max(0, usersCountSnap.data().count - 1);
-
-    // Calculate averages
-    const avgMembersPerActiveGroup =
-      activeGroups > 0
-        ? Math.round((totalActiveMembers / activeGroups) * 100) / 100
-        : 0;
-
-    return {
-      totalGroups,
-      activeGroups,
-      activeGroupsWithMultipleMembers,
-      activeGroupsWithExpenses,
-      totalUsers,
-      totalMembers,
-      totalActiveMembers,
-      groupsWithRecentActivity,
-      expensesCreatedLast30Days,
-      avgMembersPerActiveGroup,
-      generatedAt: new Date().toISOString(),
-    };
-  } catch (error: unknown) {
-    console.error('Error getting admin statistics:', error);
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new HttpsError(
-      'internal',
-      `Error getting statistics: ${errorMessage}`
-    );
-  }
-});
+);
 
 // ---------------------------------------------------------------------------
 // Group membership sync trigger

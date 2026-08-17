@@ -130,7 +130,9 @@ export class UserService implements IUserService {
               'User Service',
               'initializeAuth',
               'Proceeding without confirmed App Check token',
-              tokenResult.reason
+              tokenResult.detail
+                ? `${tokenResult.reason}: ${tokenResult.detail}`
+                : tokenResult.reason
             );
           }
 

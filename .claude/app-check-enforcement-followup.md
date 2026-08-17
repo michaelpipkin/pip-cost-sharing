@@ -399,6 +399,42 @@ longer wait is the right next lever; if it's consistently `error`
 Android WebView reCAPTCHA-scoring theory and the `CustomProvider`/Play
 Integrity fix instead.
 
+**Confirmed 2026-08-17.** The reason-tagging shipped (`1f9c7b66` "Improve
+app check logging") and the answer is unambiguous: **every logged
+instance across 4 distinct signups (8/16 5:56pm, 8/17 2:16am, 8:49am,
+9:31am) is tagged `(error)` - zero `(timeout)`.** This rules out "just
+needs more patience" - `getToken()` is actively rejecting, not still in
+flight when the caller gives up, so extending the 10s wait would not
+help. Firestore's own 7-day metric (98% verified, 842/44K invalid,
+Aug 10-18) shows the same ~2% band fairly flat across the whole week per
+the sparkline, not a decaying backlog - consistent with a standing
+population of genuine failures rather than a one-time race. Each signup
+event logs `linkInvitedMembers` skip x2 (duplicate, same email, same
+displayed minute) + one `User Service` proceed - the duplication is
+reproducible across all 4 instances now but still not root-caused.
+
+**Next diagnostic step, implemented 2026-08-17 (not yet committed):**
+`error` alone doesn't say *why* `getToken()` rejected - `appCheckTokenReady()`
+now also captures the actual rejection message as `detail` (previously
+discarded in the `.catch()`), and both `MemberLinkService` and
+`UserService` include it in their logged error string (e.g.
+`alice@test.com (error: <the real Firebase/reCAPTCHA message>)`).
+`pnpm exec ng test` for `app-check.spec.ts` / `member-link.service.spec.ts`
+/ `user.service.spec.ts` passes (39/39), `ng build` clean. Once this
+ships, the next occurrences should reveal the specific failure (a
+reCAPTCHA score, a network error, a config issue) rather than just
+knowing "some rejection happened" - that specific message is what will
+confirm or rule out the Android WebView theory, or point somewhere else
+entirely.
+
+**Explicitly deferred 2026-08-17, by request:** two unrelated-looking
+errors seen in the same log check (`Admin Statistics Component /
+load_statistics / Failed to load statistics (internal)`, twice, and
+`Manage Groups Component / delete_group / Unauthenticated`) - neither
+fits the App Check `(reason)` tagging convention, so likely a separate
+issue (auth session expiry / an unhandled exception in
+`getAdminStatistics`). Not investigated as part of this thread.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable
