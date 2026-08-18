@@ -6,5 +6,6 @@ export interface AppError {
   action: string;
   message: string;
   error?: string;
+  additionalInfo?: string;
   timestamp: Timestamp;
 }
