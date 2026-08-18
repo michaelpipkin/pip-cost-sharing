@@ -553,6 +553,107 @@ dominant cause (via the `error`/`timeout` reason-tagging, then via the
 direct fix), and the fixes eliminated it entirely, not just reduced it.
 **Ready for the last console toggle - Cloud Firestore enforcement.**
 
+**Firestore enforcement turned ON 2026-08-18** via console toggle -
+step 3 (the last one) of the plan is done. All three Console toggles
+(Functions, Storage, Firestore) are now live.
+
+**Incident, 2026-08-18, shortly after enforcement:** one user's login
+sequence failed end to end (`getUserDetails` / `createUserIfNotExists` /
+`initializeAuth`, all "Missing or insufficient permissions"). Root
+cause, visible thanks to the `detail`-capture diagnostic added earlier
+today: `appCheck/throttled` - this client's App Check SDK had received an
+actual 403 from the reCAPTCHA Enterprise attestation backend at some
+point, which triggers a **client-side ~24h backoff built into the
+Firebase App Check SDK itself** (not our code, not a server-side ban) -
+during that window the SDK won't even attempt a new token fetch, so
+*every* Firestore request from that device fails once enforcement is on.
+This class of failure was always possible but had nowhere to bite before
+today, since an unverified Firestore request just silently succeeded
+pre-enforcement. **Checked via the grouped error log (8/11-8/18, by
+message): count of 1 for all four related error lines** - a single
+isolated incident, not a pattern. Conclusion: Firestore enforcement
+itself is stable; this is the same category of low-rate, unavoidable
+false-positive risk that comes with any reCAPTCHA-based bot mitigation,
+not something enforcement introduced. No rollback warranted. Worth
+continuing to watch for a few more days for recurrence or additional
+distinct users; if this stays this rare, treat it as acceptable
+background risk. Possible low-priority follow-up (not done): catch
+`appCheck/throttled` specifically client-side and show an affected user
+something more actionable than the generic "missing permissions" message.
+
+**This closes out the App Check enforcement rollout.** All three
+services (Functions, Storage, Firestore) enforced; Authentication
+deliberately deferred (see above). The cold-boot token race that drove
+most of this investigation is fixed and confirmed; the residual risk is
+now understood, small, and consistent with reCAPTCHA's normal
+false-positive rate elsewhere on the web.
+
+**Follow-up diagnostic, 2026-08-18:** the `appCheck/throttled` incident
+above was diagnosed from the error message text alone, with no way to
+confirm platform (Android WebView vs. desktop vs. iOS) - added device
+context so the next occurrence doesn't require guessing:
+
+- `AnalyticsService.logError()` (`src/app/services/analytics.service.ts`)
+  now attaches an `additionalInfo` string - `Capacitor.getPlatform()` +
+  `Capacitor.isNativePlatform()` + `navigator.userAgent` - to every
+  logged error automatically. Computed centrally so all ~57 existing
+  `logError`/`logSnapshotError` call sites benefit without any changes.
+- `logAppError` (`functions/src/index.ts`) accepts and stores the new
+  optional field; `app_errors` write rule is already `if false` (Admin
+  SDK only, per its own comment), so no Firestore rules change needed.
+- `AppError` model gets `additionalInfo?: string`.
+- The admin Error Log's detail dialog (`error-detail-dialog.component.html`)
+  shows an "Additional Info" row when present, same pattern as the
+  existing "Error" row. Deliberately *not* added to the list/table view
+  or the grouping key - grouping by full user-agent strings would split
+  otherwise-identical errors apart by device, which isn't the goal.
+  `pnpm exec ng test` passes (analytics.service.spec.ts: 6/6 covering
+  this; full suite 1259/1262, the 3 failures are pre-existing/unrelated -
+  a `yes-no-na.pipe.ts` change already in progress on disk), `ng build`
+  and `functions`' `tsc` both clean. Not committed or deployed yet.
+
+**Second incident, 2026-08-18 4:12pm** - same 4-error cluster
+(`createUserIfNotExists`/`initializeAuth`/`getUserDetails` "Missing or
+insufficient permissions" + `initializeAuth` "Proceeding without
+confirmed App Check token" / `appCheck/throttled`), ~2.6h after the
+first (1:36pm). **Countdown on this one reads ~23h:59m:58s remaining -
+a fresh 403, not the first incident's throttle window still counting
+down** (that would have ~21h left by 4:12pm, not nearly 24h). Two
+independent rejections same day changes the read from "one-off fluke"
+to "worth watching more closely" - still can't tell whether it's the
+same device hitting this twice or two different ones without the
+platform/`additionalInfo` diagnostic live, which is exactly the gap it's
+meant to close. Reinforces the case for shipping the diagnostic +
+clearer-messaging fix soon rather than treating this as fully settled.
+
+**User-facing messaging fix, 2026-08-18 (same session as the
+`additionalInfo` diagnostic above):** currently `UserService.
+initializeAuth()`'s catch block only logs - if it throws before calling
+`GroupService.getUserGroups()`, nothing ever flips `groupStore.loaded()`
+to `true`, and every page's loading gate (`LoadingService`, the same
+full-screen-overlay mechanism `GroupsComponent` uses) waits on that
+forever. A user hitting the `appCheck/throttled` scenario currently sees
+**a silently stuck loading screen with zero explanation** - worse than
+just a confusing error, a total dead end.
+
+Fix: new `UserService.handleInitializeAuthFailure()` (`src/app/services/
+user.service.ts`), called from `initializeAuth()`'s catch block -
+force-clears the loading overlay (`this.loading.loadingOff()`, newly
+injected `LoadingService`) so the user is never stuck on an unexplained
+spinner, then shows a snackbar. Message is specific when the error is
+confirmed App-Check-shaped (`error instanceof FirebaseError &&
+error.code === 'permission-denied'`, following the existing `FirebaseError`
+check pattern used elsewhere in the app) - "We couldn't verify your
+device... try again, switch networks or browsers, or contact support" -
+and a generic "something went wrong, please try again" fallback for any
+other failure type, so this doesn't leave a silently-stuck spinner for
+non-App-Check failures either. Scoped to the login flow specifically
+(`UserService.initializeAuth`), not a blanket app-wide error-messaging
+overhaul - other services' error paths are untouched. 3 new tests in
+`user.service.spec.ts` (`initializeAuth failure handling`), `pnpm exec
+ng test` passes (31/31 in that file; full suite same 1262/1265 as
+above), `ng build` clean. Not committed or deployed yet.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

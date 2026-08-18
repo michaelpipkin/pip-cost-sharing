@@ -3,6 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { LoadingService } from '@components/loading/loading.service';
+import { FirebaseError } from 'firebase/app';
 import * as firestoreModule from 'firebase/firestore';
 import * as authModule from 'firebase/auth';
 import * as functionsModule from 'firebase/functions';
@@ -104,6 +106,7 @@ describe('UserService', () => {
     logSnapshotError: vi.fn(),
   };
   const mockRouter = { navigate: vi.fn(), url: '/' };
+  const mockLoadingService = { loadingOn: vi.fn(), loadingOff: vi.fn() };
 
   function createService(): UserService {
     TestBed.configureTestingModule({
@@ -126,6 +129,7 @@ describe('UserService', () => {
         { provide: DemoModeService, useValue: mockDemoModeService },
         { provide: MemberLinkService, useValue: mockMemberLinkService },
         { provide: AnalyticsService, useValue: mockAnalytics },
+        { provide: LoadingService, useValue: mockLoadingService },
       ],
     });
     const svc = TestBed.inject(UserService);
@@ -510,6 +514,72 @@ describe('UserService', () => {
 
       expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
+    });
+  });
+
+  describe('initializeAuth failure handling', () => {
+    const firebaseUser = {
+      uid: 'user-123',
+      email: 'alice@test.com',
+      emailVerified: true,
+      providerData: [{ providerId: 'password' }],
+    };
+
+    it('clears the loading overlay and explains an App Check rejection specifically', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+        new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
+      );
+      const callback = await getAuthStateCallback(service);
+
+      await callback(firebaseUser as any);
+
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      expect(mockGroupService.getUserGroups).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: expect.stringContaining("couldn't verify your device"),
+          },
+        }
+      );
+    });
+
+    it('clears the loading overlay with a generic message for other failures', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+        new Error('network error')
+      );
+      const callback = await getAuthStateCallback(service);
+
+      await callback(firebaseUser as any);
+
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Something went wrong loading your account. Please try again.',
+          },
+        }
+      );
+    });
+
+    it('does not show the App Check message for a permission-denied error from an unrelated cause', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+        new Error('permission-denied-ish but not a FirebaseError')
+      );
+      const callback = await getAuthStateCallback(service);
+
+      await callback(firebaseUser as any);
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Something went wrong loading your account. Please try again.',
+          },
+        }
+      );
     });
   });
 });

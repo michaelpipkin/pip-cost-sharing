@@ -1128,6 +1128,16 @@ span.filename {
   text-align: right !important;
 }
 
+.cell-top {
+  vertical-align: top !important;
+  padding-top: 0.4rem !important;
+}
+
+.cell-bottom {
+  vertical-align: bottom !important;
+  padding-bottom: 0.4rem !important;
+}
+
 .number-right {
   text-align: right !important;
 }

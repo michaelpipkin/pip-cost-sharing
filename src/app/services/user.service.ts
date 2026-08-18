@@ -2,6 +2,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { afterNextRender, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
@@ -15,6 +16,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { FirebaseError } from 'firebase/app';
 import {
   browserLocalPersistence,
   User as FirebaseUser,
@@ -55,6 +57,7 @@ export class UserService implements IUserService {
   protected readonly memberLinkService = inject(MemberLinkService);
   protected readonly functions = inject(getFunctions);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly loading = inject(LoadingService);
 
   #intentionalLogout = false;
   #handlingSessionExpiry = false;
@@ -74,6 +77,27 @@ export class UserService implements IUserService {
       data: { message: 'Your session has expired. Please sign in again.' },
     });
     this.router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+  }
+
+  // When initializeAuth() throws, GroupService.getUserGroups() never runs,
+  // so nothing would otherwise clear the loading overlay or explain why
+  // the app looks stuck - the user is left staring at a spinner with no
+  // way out. A `permission-denied` here (reading/writing their own user
+  // doc, which security rules always allow the owner) almost always means
+  // App Check rejected this device's requests rather than a real rules
+  // violation - the account itself is fine, Firebase Auth succeeded, only
+  // this specific client can't currently reach Firestore.
+  private handleInitializeAuthFailure(error: unknown): void {
+    this.loading.loadingOff();
+    const isAppCheckRejection =
+      error instanceof FirebaseError && error.code === 'permission-denied';
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: {
+        message: isAppCheckRejection
+          ? "We couldn't verify your device, so your account can't load right now. This can happen on some networks or with certain privacy/incognito settings. Try again, switch networks or browsers, or contact support if it continues."
+          : 'Something went wrong loading your account. Please try again.',
+      },
+    });
   }
 
   #requireUserId(): string {
@@ -158,6 +182,7 @@ export class UserService implements IUserService {
             'Failed to initialize user',
             error instanceof Error ? error.message : 'Unknown error'
           );
+          this.handleInitializeAuthFailure(error);
         }
       } else {
         // Firebase transitioned to a logged-out state. Distinguish an

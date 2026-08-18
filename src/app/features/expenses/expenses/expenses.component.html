@@ -368,7 +368,13 @@
                   <br />
                   Paid
                 </th>
-                <td mat-cell *matCellDef="let expense" class="cell-center">
+                <td
+                  mat-cell
+                  *matCellDef="let expense"
+                  class="cell-center"
+                  [class.cell-top]="expense.hasReceipt && !expense.paid"
+                  [class.cell-bottom]="!expense.hasReceipt && expense.paid"
+                >
                   {{ expense.hasReceipt | yesNoCheck }}
                   <br />
                   {{ expense.paid | yesNoCheck }}
