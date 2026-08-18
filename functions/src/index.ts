@@ -40,7 +40,7 @@ const PLAY_STORE_URL =
 // Anti-spam window for sendGroupInvite: one invite per member per address per
 // this many ms, mirrored client-side in members.component.ts for UX only.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
 
 // Canonical form for email comparisons - Firestore has no case-insensitive
 // query operator, and email casing isn't meaningful for matching in

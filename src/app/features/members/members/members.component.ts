@@ -50,7 +50,7 @@ import { EditMemberComponent } from '../edit-member/edit-member.component';
 // functions/src/index.ts (INVITE_COOLDOWN_MS). This copy is UX only — the
 // Cloud Function re-checks the cooldown and is the real gate.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
 
 @Component({
   selector: 'app-members',
