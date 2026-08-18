@@ -1030,33 +1030,84 @@ export const getAdminStatistics = onCall(
 // ---------------------------------------------------------------------------
 
 /**
- * Denormalizes each group's member UIDs onto the group doc as `memberUids`,
- * so Firestore rules can check membership with a single get() instead of a
- * query. Recomputes from the full members subcollection on every write
- * (rather than arrayUnion/arrayRemove) so it self-heals and catches every
- * mutation path, including Admin SDK writes and userRef anonymization.
+ * Denormalizes each group's member UIDs onto the group doc across three
+ * arrays, so Firestore rules can check membership with a single get()
+ * instead of a query:
+ *  - memberUids: every member ever linked (userRef non-null), regardless of
+ *    active/left status. Backs read access, including for a member who left
+ *    the group but whose doc survives (has historical splits) - they still
+ *    need to read the group to see it in their "left groups" list and to
+ *    rejoin themselves.
+ *  - activeMemberUids: memberUids further filtered to active === true. Backs
+ *    write access - a left member must not be able to add expenses/splits
+ *    even though they can still read them.
+ *  - adminUids: activeMemberUids further filtered to groupAdmin === true.
+ *    Backs the group doc's own update rule (only an active admin may change
+ *    group settings) - rules can't query the members subcollection to
+ *    answer "is this uid an admin here" any more than they could originally
+ *    query "is this uid a member here", so this gets the same denormalized-
+ *    array treatment.
  */
+export function computeGroupMemberArrays(membersData: DocumentData[]): {
+  memberUids: string[];
+  activeMemberUids: string[];
+  adminUids: string[];
+} {
+  const memberUids: string[] = [];
+  const activeMemberUids: string[] = [];
+  const adminUids: string[] = [];
+
+  for (const data of membersData) {
+    const uid = (data['userRef'] as DocumentReference | null)?.id;
+    if (!uid) continue;
+    memberUids.push(uid);
+    if (data['active'] === true) {
+      activeMemberUids.push(uid);
+      if (data['groupAdmin'] === true) {
+        adminUids.push(uid);
+      }
+    }
+  }
+
+  return { memberUids, activeMemberUids, adminUids };
+}
+
+function sameUids(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((uid) => b.includes(uid));
+}
+
+/**
+ * Recomputes from the full members subcollection on every write (rather
+ * than arrayUnion/arrayRemove) so it self-heals and catches every mutation
+ * path, including Admin SDK writes and userRef anonymization.
+ */
+export async function syncGroupMemberUidsInternal(
+  groupId: string
+): Promise<void> {
+  const groupRef = db.collection('groups').doc(groupId);
+
+  const membersSnapshot = await groupRef.collection('members').get();
+  const { memberUids, activeMemberUids, adminUids } = computeGroupMemberArrays(
+    membersSnapshot.docs.map((doc) => doc.data())
+  );
+
+  const groupSnapshot = await groupRef.get();
+  if (!groupSnapshot.exists) return;
+
+  const current = groupSnapshot.data() ?? {};
+  const unchanged =
+    sameUids(memberUids, current['memberUids'] ?? []) &&
+    sameUids(activeMemberUids, current['activeMemberUids'] ?? []) &&
+    sameUids(adminUids, current['adminUids'] ?? []);
+  if (unchanged) return;
+
+  await groupRef.update({ memberUids, activeMemberUids, adminUids });
+}
+
 export const syncGroupMemberUids = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
-    const groupId = event.params['groupId'];
-    const groupRef = db.collection('groups').doc(groupId);
-
-    const membersSnapshot = await groupRef.collection('members').get();
-    const memberUids = membersSnapshot.docs
-      .map((doc) => (doc.data()['userRef'] as DocumentReference | null)?.id)
-      .filter((uid): uid is string => !!uid);
-
-    const groupSnapshot = await groupRef.get();
-    if (!groupSnapshot.exists) return;
-
-    const currentUids: string[] = groupSnapshot.data()?.['memberUids'] ?? [];
-    const unchanged =
-      memberUids.length === currentUids.length &&
-      memberUids.every((uid) => currentUids.includes(uid));
-    if (unchanged) return;
-
-    await groupRef.update({ memberUids });
+    await syncGroupMemberUidsInternal(event.params['groupId']);
   }
 );
 

@@ -149,6 +149,7 @@ export function createMockGroupStore() {
       loaded.set(false);
     }),
     removeGroup: vi.fn(),
+    patchGroupMembership: vi.fn(),
     resetSkipAutoSelect: vi.fn(),
   };
 }

@@ -1,5 +1,16 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  model,
+  signal,
+  Signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +27,7 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
@@ -39,8 +51,8 @@ import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
 import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
-import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
@@ -48,26 +60,15 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import {
-  afterNextRender,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  model,
-  signal,
-  Signal,
-} from '@angular/core';
-import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
-import {
-  AddExpenseOption,
-  AddExpenseOptionsDialogComponent,
-} from '../add-expense-options-dialog/add-expense-options-dialog.component';
+
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
+import {
+  AddExpenseOption,
+  AddExpenseOptionsDialogComponent,
+} from '../add-expense-options-dialog/add-expense-options-dialog.component';
 
 @Component({
   selector: 'app-expenses',
@@ -89,8 +90,8 @@ import {
     MatCardModule,
     CurrencyPipe,
     DatePipe,
-    YesNoPipe,
     YesNoNaPipe,
+    YesNoCheckPipe,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
     TextFilterDirective,
@@ -127,9 +128,13 @@ export class ExpensesComponent {
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
-  protected readonly isAdmin = computed(() => this.currentMember()?.groupAdmin ?? false);
+  protected readonly isAdmin = computed(
+    () => this.currentMember()?.groupAdmin ?? false
+  );
   protected readonly splitColumnsToDisplay = computed(() =>
-    this.isAdmin() ? ['owedBy', 'amount', 'paid', 'mark'] : ['owedBy', 'amount', 'paid']
+    this.isAdmin()
+      ? ['owedBy', 'amount', 'paid', 'mark']
+      : ['owedBy', 'amount', 'paid']
   );
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
@@ -468,7 +473,10 @@ export class ExpensesComponent {
         const amount = this.formatCurrency(split.allocatedAmount);
         splitLines.push({ text: lineText, amount, isIndented: false });
       } else if (expense.splitMethod === 'shares') {
-        const pct = split.percentage > 0 ? ` (${split.shares} shares, ${split.percentage}%)` : '';
+        const pct =
+          split.percentage > 0
+            ? ` (${split.shares} shares, ${split.percentage}%)`
+            : '';
         const lineText = `${owedBy}${paidStatus}${pct}`;
         const amount = this.formatCurrency(split.allocatedAmount);
         splitLines.push({ text: lineText, amount, isIndented: false });

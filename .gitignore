@@ -41,7 +41,7 @@ testem.log
 /typings
 *.sqlite
 *.vsidx
-src/app/firebase.config.ts
+docs/local/*
 
 # Testing
 /playwright-report/
@@ -65,6 +65,7 @@ seed-data.ts
 functions/src/.env
 functions/.env
 src/app/github.config.ts
+src/app/firebase.config.ts
 bash.exe.stackdump
 nul
 .env

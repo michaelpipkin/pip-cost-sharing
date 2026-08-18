@@ -2,7 +2,13 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
+import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
@@ -121,6 +127,7 @@ describe('GroupService', () => {
     } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
+    vi.spyOn(firestoreModule, 'deleteDoc').mockResolvedValue(undefined as any);
 
     localStorage.clear();
     currentGroupSignal.set(null);
@@ -171,26 +178,32 @@ describe('GroupService', () => {
       service = createService();
     });
 
-    it('should create group, member, and default category in a batch', async () => {
+    it('should create the group doc first, then member and default category in a batch', async () => {
       const result = await service.addGroup(
         { name: 'New Group' },
         { displayName: 'Alice', userRef: { id: 'user-1' } as any }
       );
 
-      expect(mockBatch.set).toHaveBeenCalledTimes(3); // group + member + default category
+      expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1); // group doc, awaited on its own
+      expect(mockBatch.set).toHaveBeenCalledTimes(2); // member + default category
       expect(result).toBe(mockDocRef);
     });
 
-    it('should set memberUids to the creator on the group doc', async () => {
+    it('should set memberUids, activeMemberUids, and adminUids to the creator on the group doc', async () => {
       await service.addGroup(
         { name: 'New Group' },
         { displayName: 'Alice', userRef: { id: 'user-1' } as any }
       );
 
-      const groupSetCall = mockBatch.set.mock.calls.find(
-        (call: any[]) => call[1]?.name === 'New Group'
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({
+          name: 'New Group',
+          memberUids: ['user-1'],
+          activeMemberUids: ['user-1'],
+          adminUids: ['user-1'],
+        })
       );
-      expect(groupSetCall![1]).toMatchObject({ memberUids: ['user-1'] });
     });
 
     it('should always create a category named "Default"', async () => {
@@ -207,6 +220,19 @@ describe('GroupService', () => {
         name: 'Default',
         active: true,
       });
+    });
+
+    it('should delete the group doc if creating the member/category batch fails', async () => {
+      mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
+
+      await expect(
+        service.addGroup(
+          { name: 'New Group' },
+          { displayName: 'Alice', userRef: { id: 'user-1' } as any }
+        )
+      ).rejects.toThrow('permission-denied');
+
+      expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockDocRef);
     });
   });
 
@@ -424,6 +450,98 @@ describe('GroupService', () => {
 
         expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
         expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalled();
+      });
+
+      it('self-heals and does not re-select a stale defaultGroupRef pointing at a group the user left', async () => {
+        // Regression test: defaultGroupRef stayed pointing at group-1 (still
+        // present in `groups` since memberUids keeps a left member linked
+        // for the rejoin list), but the user is no longer active in it.
+        // resolveDefaultGroupRef must null it out rather than treating
+        // "still present" as "still valid" - otherwise autoSelectGroup's
+        // `else if (defaultGroupRef)` branch silently re-selects a group the
+        // user just left.
+        const groupRef = { id: 'group-1', eq: (o: any) => o?.id === 'group-1' };
+        const leftUser = { ...user, defaultGroupRef: groupRef };
+        userSignal.set(leftUser);
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(leftUser);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: groupRef,
+            },
+          ])
+        );
+
+        expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+          leftUser.ref,
+          { defaultGroupRef: null },
+          { merge: true }
+        );
+        expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+          defaultGroupRef: null,
+        });
+        expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+      });
+
+      it('clears per-group listeners and stores when no group ends up selected', async () => {
+        // Pre-populate each store as if a group had been active before this
+        // - the assertions below prove clearCurrentGroupData() actually
+        // reset them, rather than them merely starting out empty.
+        TestBed.inject(CategoryStore).setGroupCategories([{ id: 'c1' } as any]);
+        TestBed.inject(ExpenseStore).setGroupExpenses([{ id: 'e1' } as any]);
+        TestBed.inject(MemberStore).setGroupMembers([{ id: 'm1' } as any]);
+        TestBed.inject(MemorizedStore).setMemorizedExpenses([{ id: 'z1' } as any]);
+        TestBed.inject(HistoryStore).setHistory([{ id: 'h1' } as any]);
+        TestBed.inject(SplitStore).setSplits([{ id: 's1' } as any]);
+
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+
+        // This is what closes the access loophole: leaving a group with
+        // nothing else to fall back to must tear down that group's
+        // listeners/stores, not leave its previously-fetched
+        // expenses/categories/members/etc. sitting in the signals.
+        expect(mockCategoryService.stopListening).toHaveBeenCalled();
+        expect(mockMemberService.stopListening).toHaveBeenCalled();
+        expect(mockMemorizedService.stopListening).toHaveBeenCalled();
+        expect(mockSplitService.stopListening).toHaveBeenCalled();
+        expect(mockHistoryService.stopListening).toHaveBeenCalled();
+        expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
+        expect(TestBed.inject(ExpenseStore).groupExpenses()).toEqual([]);
+        expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
+        expect(TestBed.inject(MemorizedStore).memorizedExpenses()).toEqual([]);
+        expect(TestBed.inject(HistoryStore).groupHistory()).toEqual([]);
+        expect(TestBed.inject(SplitStore).unpaidSplits()).toEqual([]);
       });
     });
 

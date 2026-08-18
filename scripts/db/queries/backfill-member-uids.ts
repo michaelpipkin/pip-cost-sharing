@@ -1,9 +1,10 @@
 import { db, writeTable } from '../lib.ts';
 /**
- * Backfills `memberUids` on every group doc from its members subcollection
- * (non-null `userRef.id` values). Mirrors the computation done by the
- * syncGroupMemberUids trigger (functions/src/index.ts) so existing groups
- * don't have to wait for a member write to get the field populated.
+ * Backfills memberUids / activeMemberUids / adminUids on every group doc
+ * from its members subcollection. Mirrors computeGroupMemberArrays in
+ * functions/src/index.ts (syncGroupMemberUids trigger) so existing groups
+ * don't have to wait for a member write to get these fields populated or
+ * corrected.
  *
  * Dry-run by default — prints what would change. Pass --apply to write.
  *
@@ -12,6 +13,34 @@ import { db, writeTable } from '../lib.ts';
  */
 
 const apply = process.argv.includes('--apply');
+
+function computeGroupMemberArrays(membersData: Record<string, any>[]): {
+  memberUids: string[];
+  activeMemberUids: string[];
+  adminUids: string[];
+} {
+  const memberUids: string[] = [];
+  const activeMemberUids: string[] = [];
+  const adminUids: string[] = [];
+
+  for (const data of membersData) {
+    const uid = data['userRef']?.id as string | undefined;
+    if (!uid) continue;
+    memberUids.push(uid);
+    if (data['active'] === true) {
+      activeMemberUids.push(uid);
+      if (data['groupAdmin'] === true) {
+        adminUids.push(uid);
+      }
+    }
+  }
+
+  return { memberUids, activeMemberUids, adminUids };
+}
+
+function sameUids(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((uid) => b.includes(uid));
+}
 
 const groupsSnap = await db.collection('groups').get();
 
@@ -23,36 +52,49 @@ if (groupsSnap.empty) {
 const changes: {
   id: string;
   name: string;
-  before: number;
-  after: number;
+  memberBefore: number;
+  memberAfter: number;
+  activeBefore: number;
+  activeAfter: number;
+  adminBefore: number;
+  adminAfter: number;
 }[] = [];
 
 for (const groupDoc of groupsSnap.docs) {
   const membersSnap = await groupDoc.ref.collection('members').get();
-  const memberUids = membersSnap.docs
-    .map((doc) => (doc.data()['userRef'] as any)?.id as string | undefined)
-    .filter((uid): uid is string => !!uid);
+  const { memberUids, activeMemberUids, adminUids } = computeGroupMemberArrays(
+    membersSnap.docs.map((d) => d.data())
+  );
 
-  const currentUids: string[] = groupDoc.data()['memberUids'] ?? [];
+  const current = groupDoc.data();
+  const currentMemberUids: string[] = current['memberUids'] ?? [];
+  const currentActiveUids: string[] = current['activeMemberUids'] ?? [];
+  const currentAdminUids: string[] = current['adminUids'] ?? [];
+
   const unchanged =
-    memberUids.length === currentUids.length &&
-    memberUids.every((uid) => currentUids.includes(uid));
+    sameUids(memberUids, currentMemberUids) &&
+    sameUids(activeMemberUids, currentActiveUids) &&
+    sameUids(adminUids, currentAdminUids);
   if (unchanged) continue;
 
   changes.push({
     id: groupDoc.id,
-    name: (groupDoc.data()['name'] as string) ?? '(unnamed)',
-    before: currentUids.length,
-    after: memberUids.length,
+    name: (current['name'] as string) ?? '(unnamed)',
+    memberBefore: currentMemberUids.length,
+    memberAfter: memberUids.length,
+    activeBefore: currentActiveUids.length,
+    activeAfter: activeMemberUids.length,
+    adminBefore: currentAdminUids.length,
+    adminAfter: adminUids.length,
   });
 
   if (apply) {
-    await groupDoc.ref.update({ memberUids });
+    await groupDoc.ref.update({ memberUids, activeMemberUids, adminUids });
   }
 }
 
 if (changes.length === 0) {
-  console.log('All groups already have correct memberUids. Nothing to do.');
+  console.log('All groups already have correct membership arrays. Nothing to do.');
   process.exit(0);
 }
 
@@ -61,20 +103,26 @@ console.log(
     ? `Updated ${changes.length} group(s):\n`
     : `${changes.length} group(s) would be updated (dry run — pass --apply to write):\n`
 );
-console.log(`${'Group Name'.padEnd(40)} ${'ID'.padEnd(30)} Before  After`);
-console.log('-'.repeat(90));
+console.log(
+  `${'Group Name'.padEnd(40)} ${'ID'.padEnd(30)} members  active  admins`
+);
+console.log('-'.repeat(100));
 for (const c of changes) {
-  console.log(
-    `${c.name.padEnd(40)} ${c.id.padEnd(30)} ${String(c.before).padEnd(7)} ${c.after}`
-  );
+  const members = `${c.memberBefore}->${c.memberAfter}`.padEnd(8);
+  const active = `${c.activeBefore}->${c.activeAfter}`.padEnd(7);
+  const admins = `${c.adminBefore}->${c.adminAfter}`;
+  console.log(`${c.name.padEnd(40)} ${c.id.padEnd(30)} ${members} ${active} ${admins}`);
 }
 
 writeTable(
-  apply ? 'memberUids Backfill — Applied' : 'memberUids Backfill — Dry Run',
+  apply
+    ? 'Membership Arrays Backfill — Applied'
+    : 'Membership Arrays Backfill — Dry Run',
   changes.map((c) => ({
     'Group Name': c.name,
     ID: c.id,
-    'Before Count': c.before,
-    'After Count': c.after,
+    'memberUids': `${c.memberBefore} -> ${c.memberAfter}`,
+    'activeMemberUids': `${c.activeBefore} -> ${c.activeAfter}`,
+    'adminUids': `${c.adminBefore} -> ${c.adminAfter}`,
   }))
 );
