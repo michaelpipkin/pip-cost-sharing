@@ -35,6 +35,20 @@ export const GroupStore = signalStore(
         .filter((group) => group.id !== groupId);
       patchState(store, { allUserGroups: updatedGroups });
     },
+    // Re-tags a group's membership flags in place (e.g. after leaveGroup()
+    // keeps the member doc for history) instead of removing it from
+    // allUserGroups - the group still exists and the user can still read
+    // it, so it should reappear as a rejoin candidate immediately rather
+    // than only after the next full getUserGroups() reload.
+    patchGroupMembership: (
+      groupId: string,
+      patch: Partial<Pick<Group, 'userActiveInGroup' | 'userLeftGroup' | 'userIsAdmin'>>
+    ) => {
+      const updatedGroups = store
+        .allUserGroups()
+        .map((group) => (group.id === groupId ? { ...group, ...patch } : group));
+      patchState(store, { allUserGroups: updatedGroups });
+    },
     setLoadedState: (loaded: boolean) => {
       patchState(store, { loaded });
     },

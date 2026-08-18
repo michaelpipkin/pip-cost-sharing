@@ -224,9 +224,25 @@ export class EditMemberComponent {
         try {
           this.loading.loadingOn();
           const memberRef = this.member.ref!;
-          await this.memberService.leaveGroup(this.data.groupId, memberRef);
+          const { deleted } = await this.memberService.leaveGroup(
+            this.data.groupId,
+            memberRef
+          );
           this.groupStore.clearCurrentGroup();
-          this.groupStore.removeGroup(this.data.groupId);
+          if (deleted) {
+            // No historical splits - the member doc is gone entirely, so
+            // there's nothing left to rejoin; drop the group from the list.
+            this.groupStore.removeGroup(this.data.groupId);
+          } else {
+            // Member doc kept (has history) - re-tag it as left rather than
+            // removing it, so it correctly appears as a rejoin candidate
+            // immediately instead of only after the next full reload.
+            this.groupStore.patchGroupMembership(this.data.groupId, {
+              userActiveInGroup: false,
+              userLeftGroup: true,
+              userIsAdmin: false,
+            });
+          }
           this.userStore.updateUser({ defaultGroupRef: null });
           localStorage.removeItem('currentGroup');
           this.snackbar.openFromComponent(CustomSnackbarComponent, {

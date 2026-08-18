@@ -331,7 +331,7 @@
                   Rcpt
                 </th>
                 <td mat-cell *matCellDef="let expense" class="cell-center">
-                  {{ expense.hasReceipt | yesNo }}
+                  {{ expense.hasReceipt | yesNoCheck }}
                 </td>
                 <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>
@@ -349,7 +349,7 @@
                   Paid
                 </th>
                 <td mat-cell *matCellDef="let expense" class="cell-center">
-                  {{ expense.paid | yesNo }}
+                  {{ expense.paid | yesNoCheck }}
                 </td>
                 <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>
@@ -369,9 +369,9 @@
                   Paid
                 </th>
                 <td mat-cell *matCellDef="let expense" class="cell-center">
-                  {{ expense.hasReceipt | yesNo }}
+                  {{ expense.hasReceipt | yesNoCheck }}
                   <br />
-                  {{ expense.paid | yesNo }}
+                  {{ expense.paid | yesNoCheck }}
                 </td>
                 <td mat-footer-cell *matFooterCellDef></td>
               </ng-container>

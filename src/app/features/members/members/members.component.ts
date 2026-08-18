@@ -39,7 +39,7 @@ import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
 import { TourService } from '@services/tour.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
-import { YesNoPipe } from '@shared/pipes/yes-no.pipe';
+import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
@@ -67,7 +67,7 @@ const INVITE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     MatTableModule,
     MatSortModule,
     MatCardModule,
-    YesNoPipe,
+    YesNoCheckPipe,
     ActiveInactivePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -126,7 +126,9 @@ export class MembersComponent {
    * actually be invited, and only for group admins.
    */
   protected readonly showInviteColumn = computed(
-    () => this.isGroupAdmin() && this.filteredMembers().some((m) => this.canInvite(m))
+    () =>
+      this.isGroupAdmin() &&
+      this.filteredMembers().some((m) => this.canInvite(m))
   );
 
   columnsToDisplay = computed<string[]>(() => {

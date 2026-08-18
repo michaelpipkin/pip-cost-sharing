@@ -488,13 +488,14 @@ describe('MemberService', () => {
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
       userSignal.set({ ref: { id: 'user-1' } });
 
-      await service.leaveGroup('group-1', mockMemberRef);
+      const result = await service.leaveGroup('group-1', mockMemberRef);
 
       expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
         active: false,
         leftGroup: true,
         groupAdmin: false,
       });
+      expect(result).toEqual({ deleted: false });
     });
 
     it('should delete the member when they have no splits', async () => {
@@ -510,9 +511,10 @@ describe('MemberService', () => {
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
       userSignal.set({ ref: { id: 'user-1' } });
 
-      await service.leaveGroup('group-1', mockMemberRef);
+      const result = await service.leaveGroup('group-1', mockMemberRef);
 
       expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockMemberRef);
+      expect(result).toEqual({ deleted: true });
     });
   });
 

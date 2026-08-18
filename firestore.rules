@@ -2,12 +2,30 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminUser() {
+      return isSignedIn() && (
+        request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2' ||
+        request.auth.uid == 'cgrizSOG69QiNquzKOA69ls8clFm'
+      );
+    }
+
+    function ownUserRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
     // Deny all client access to the mail collection.
     // The Firebase Trigger Email extension (Admin SDK) bypasses these rules,
     // so Cloud Functions can still write here. This prevents authenticated
-    // users from sending spam via the app's SMTP account.
+    // users from sending spam via the app's SMTP account. The admin Mail
+    // tab reads/deletes from the client (admin-mail.service.ts), so the
+    // admin UID gets an explicit exception, mirroring app_errors below.
     match /mail/{document} {
-      allow read, write: if false;
+      allow write: if false;
+      allow read, delete: if isAdminUser();
     }
 
     // app_errors: client writes are blocked — the logAppError Cloud Function
@@ -15,18 +33,155 @@ service cloud.firestore {
     // can read or delete (via the Error Log admin tab).
     match /app_errors/{document} {
       allow write: if false;
-      allow delete: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
-      allow read: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
+      allow read, delete: if isAdminUser();
     }
 
     // admin_config: admin-only. Cloud Functions use the Admin SDK and bypass
     // these rules; this prevents regular users from reading or modifying
     // alert configuration.
     match /admin_config/{document} {
-      allow read, write: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
+      allow read, write: if isAdminUser();
     }
 
-    match /{document=**} {
+    // groups/{groupId} and its subcollections are scoped to group members,
+    // via three arrays denormalized onto the group doc by the
+    // syncGroupMemberUids Cloud Function trigger (functions/src/index.ts) -
+    // rules can't query the members subcollection to answer "is this uid a
+    // member/active member/admin of this group", so membership is
+    // maintained server-side instead.
+    //  - memberUids: everyone ever linked here. Used ONLY for the group
+    //    doc's own read/list below - a member who left keeps just enough
+    //    access to see the group's name (for the self-service "rejoin"
+    //    dropdown, account-group-membership.component.ts) and nothing else.
+    //    A left member has NO access to any subcollection - see
+    //    activeMemberUids below.
+    //  - activeMemberUids: memberUids currently active === true. Gates BOTH
+    //    read and write on every subcollection - leaving a group revokes
+    //    all access to its data, not just write access.
+    //  - adminUids: activeMemberUids currently groupAdmin === true (group
+    //    settings updates, and admin-only subcollection actions - see below).
+    match /groups/{groupId} {
+      function group(gid) {
+        return get(/databases/$(database)/documents/groups/$(gid)).data;
+      }
+      function isActiveMember(gid) {
+        return isSignedIn() && request.auth.uid in group(gid).activeMemberUids;
+      }
+      function isGroupAdmin(gid) {
+        return isSignedIn() && request.auth.uid in group(gid).adminUids;
+      }
+
+      // This document's own read/list/create/update rules work directly
+      // off resource.data / request.resource.data - it IS the document
+      // being evaluated, so no extra get() is needed here (the helpers
+      // above are for the subcollections below, which need to look at
+      // their *parent* group doc). Deliberately the only place memberUids
+      // (rather than activeMemberUids) grants anything - see the comment
+      // above.
+      allow read: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      // Must match the where('memberUids', 'array-contains', uid) query's
+      // own filter field exactly, or Firestore rejects the query outright.
+      allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      allow create: if isSignedIn() &&
+        request.resource.data.memberUids == [request.auth.uid] &&
+        request.resource.data.activeMemberUids == [request.auth.uid] &&
+        request.resource.data.adminUids == [request.auth.uid];
+      // Clients (including admins) must never edit the membership arrays -
+      // only the syncGroupMemberUids trigger may.
+      allow update: if isGroupAdmin(groupId) &&
+        request.resource.data.memberUids == resource.data.memberUids &&
+        request.resource.data.activeMemberUids == resource.data.activeMemberUids &&
+        request.resource.data.adminUids == resource.data.adminUids;
+      // deleteGroup Cloud Function (Admin SDK) handles deletion.
+      allow delete: if false;
+
+      // Add/remove/promote-to-admin are admin-only in the UI (members.component
+      // .html's Add Member button, edit-member.component.html's groupAdmin
+      // toggle) with NO defense-in-depth in the mutating methods themselves -
+      // without this rule, any active member could directly add/remove
+      // members or self-promote to admin via the SDK, bypassing the UI
+      // entirely. Editing one's own record (display name, payment handles)
+      // is open to any member regardless of active status - see the second
+      // clause below.
+      match /members/{memberId} {
+        allow read: if isActiveMember(groupId);
+        // Safe for the very first member of a brand-new group too: addGroup()
+        // creates the group doc first (own write, awaited) and only then
+        // creates the member doc, so isGroupAdmin(groupId)'s get() always
+        // sees a group that genuinely exists by the time this runs - and the
+        // creator is already in adminUids from that same group-creation write.
+        allow create: if isGroupAdmin(groupId);
+        // The second clause covers self-service writes made *while
+        // inactive* - rejoinGroup() (flips leftGroup:false, active:true,
+        // the exact state this write is trying to escape) and
+        // updateAllMemberEmails() (syncing a display email across every
+        // group a user belongs to, active or not) - plus ordinary self-edits
+        // (e.g. payment handles) and leaveGroup()'s own self-update/delete.
+        allow update, delete: if isGroupAdmin(groupId) ||
+          resource.data.userRef == ownUserRef();
+      }
+
+      // Admin-only in the UI (categories.component.html's Add/Edit gating)
+      // with no defense-in-depth in addCategory()/EditCategoryComponent -
+      // and no legitimate non-admin write path exists (the initial "Default"
+      // category is created by addGroup()'s creator, who is always admin).
+      match /categories/{categoryId} {
+        allow read: if isActiveMember(groupId);
+        allow write: if isGroupAdmin(groupId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read, write: if isActiveMember(groupId);
+      }
+
+      // Deliberately NOT split by admin/active-member: the admin-only "mark
+      // paid/unpaid" correction (expenses.component.ts's markSplitPaidUnpaid)
+      // and the ordinary settle-up flow (split.service.ts's
+      // paySplitsBetweenMembers/settleGroup, any active member) both write
+      // the identical {paid: bool} shape to the same fields - a rule can't
+      // tell "an admin correcting" from "a member settling their own split"
+      // apart, and there's no real security boundary being crossed if a
+      // non-admin bypasses the UI to flip their own split's paid status
+      // directly, since they could reach the same state through settle-up
+      // anyway.
+      match /splits/{splitId} {
+        allow read, write: if isActiveMember(groupId);
+      }
+
+      // Unlike splits, history CAN be cleanly split: a history doc is only
+      // ever created via the legitimate settle-up flow (split.service.ts,
+      // any active member) and only ever updated/deleted via the admin-only
+      // "unpay" reversal (history.service.ts has exactly three methods -
+      // unpayHistory, unpaySingleSplitFromHistory, unpayGroupSettle - and
+      // nothing else touches an existing history doc).
+      match /history/{historyId} {
+        allow read, create: if isActiveMember(groupId);
+        allow update, delete: if isGroupAdmin(groupId);
+      }
+
+      match /memorized/{memorizedId} {
+        allow read, write: if isActiveMember(groupId);
+      }
+
+      // Server-only (Admin SDK) - deny all client access.
+      match /settleBatches/{batchId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Collection-group listener at group.service.ts's getUserGroups (the
+    // collectionGroup('members') where('userRef','==', user.ref) query).
+    // Must match that query's own filter field exactly, same
+    // query-validation reason as the groups list rule above - lets a user
+    // read only their own member row, across every group, without a
+    // cross-tenant grant.
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && resource.data.userRef == ownUserRef();
+    }
+
+    // users: deferred to a later phase (see .claude/firestore-rules-hardening.md,
+    // Phase 3) - not tightened here.
+    match /users/{userId} {
       allow read, write, delete: if request.auth != null;
     }
   }
