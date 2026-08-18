@@ -290,5 +290,49 @@ describe('EditMemberComponent', () => {
       component.leaveGroup();
       expect(dialogSpy).toHaveBeenCalled();
     });
+
+    it('should remove the group from the store when leaving deletes the member doc (no history)', async () => {
+      mockMemberService.leaveGroup.mockResolvedValue({ deleted: true });
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      let confirmCallback!: (confirm: boolean) => Promise<void>;
+      vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
+        afterClosed: () => ({
+          subscribe: (cb: (confirm: boolean) => Promise<void>) => {
+            confirmCallback = cb;
+            return { unsubscribe: vi.fn() };
+          },
+        }),
+      });
+
+      component.leaveGroup();
+      await confirmCallback(true);
+
+      expect(mockGroupStore.removeGroup).toHaveBeenCalledWith(groupRef);
+      expect(mockGroupStore.patchGroupMembership).not.toHaveBeenCalled();
+    });
+
+    it('should re-tag the group as left in the store when leaving keeps the member doc (has history)', async () => {
+      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      let confirmCallback!: (confirm: boolean) => Promise<void>;
+      vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
+        afterClosed: () => ({
+          subscribe: (cb: (confirm: boolean) => Promise<void>) => {
+            confirmCallback = cb;
+            return { unsubscribe: vi.fn() };
+          },
+        }),
+      });
+
+      component.leaveGroup();
+      await confirmCallback(true);
+
+      expect(mockGroupStore.patchGroupMembership).toHaveBeenCalledWith(groupRef, {
+        userActiveInGroup: false,
+        userLeftGroup: true,
+        userIsAdmin: false,
+      });
+      expect(mockGroupStore.removeGroup).not.toHaveBeenCalled();
+    });
   });
 });

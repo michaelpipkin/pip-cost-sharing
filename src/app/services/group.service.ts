@@ -8,7 +8,13 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
+import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import {
   collection,
@@ -51,6 +57,12 @@ export class GroupService implements IGroupService {
   protected readonly splitsService = inject(SplitService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly historyService = inject(HistoryService);
+  protected readonly categoryStore = inject(CategoryStore);
+  protected readonly expenseStore = inject(ExpenseStore);
+  protected readonly memberStore = inject(MemberStore);
+  protected readonly memorizedStore = inject(MemorizedStore);
+  protected readonly historyStore = inject(HistoryStore);
+  protected readonly splitStore = inject(SplitStore);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
@@ -249,15 +261,22 @@ export class GroupService implements IGroupService {
 
   // Self-heal: a defaultGroupRef pointing at a group the user no longer
   // belongs to (e.g. deleted out-of-band) would otherwise crash auto-select.
+  // Also self-heals a group the user voluntarily LEFT - it's still present
+  // in `groups` (memberUids keeps a left member linked for the rejoin list)
+  // but userActiveInGroup is false, and a stale defaultGroupRef must not
+  // silently re-select it in autoSelectGroup's `else if (defaultGroupRef)`
+  // branch. This can otherwise race the member-doc write's own listener
+  // firing before this user's local defaultGroupRef gets cleared elsewhere.
   private async resolveDefaultGroupRef(
     defaultGroupRef: DocumentReference<Group> | null,
     groups: Group[],
     userRef: DocumentReference<User>
   ): Promise<DocumentReference<Group> | null> {
-    if (
-      defaultGroupRef &&
-      !groups.some((g) => g.ref?.eq(defaultGroupRef))
-    ) {
+    const matchingGroup = defaultGroupRef
+      ? groups.find((g) => g.ref?.eq(defaultGroupRef))
+      : undefined;
+
+    if (defaultGroupRef && !matchingGroup?.userActiveInGroup) {
       await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
       this.userStore.updateUser({ defaultGroupRef: null });
       return null;
@@ -289,7 +308,30 @@ export class GroupService implements IGroupService {
     } else {
       this.groupStore.clearCurrentGroup();
       localStorage.removeItem('currentGroup');
+      // No group to fall back to (e.g. just left this one with nothing else
+      // active) - getGroup() normally replaces each service's listener and
+      // overwrites its store when switching TO a group, but nothing does
+      // that when switching to NO group. Without this, whatever the
+      // previous group's expenses/categories/members/etc. were stay visible
+      // in these signals indefinitely (a real access loophole once rules
+      // deny fresh reads for a left group - the UI just keeps showing
+      // data fetched before leaving).
+      this.clearCurrentGroupData();
     }
+  }
+
+  private clearCurrentGroupData(): void {
+    this.memberService.stopListening();
+    this.categoryService.stopListening();
+    this.memorizedService.stopListening();
+    this.splitsService.stopListening();
+    this.historyService.stopListening();
+    this.categoryStore.clearGroupCategories();
+    this.memberStore.clearGroupMembers();
+    this.expenseStore.clearGroupExpenses();
+    this.memorizedStore.clearMemorizedExpenses();
+    this.historyStore.clearHistory();
+    this.splitStore.clearSplits();
   }
 
   async getGroup(
@@ -480,11 +522,7 @@ export class GroupService implements IGroupService {
 
   logout(): void {
     this.stopListening();
-    this.memberService.stopListening();
-    this.categoryService.stopListening();
-    this.memorizedService.stopListening();
-    this.splitsService.stopListening();
-    this.historyService.stopListening();
+    this.clearCurrentGroupData();
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();
     this.groupStore.setLoadedState(false);

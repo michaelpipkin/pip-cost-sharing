@@ -454,6 +454,219 @@ instead of `createCustomToken()` (which needs real signing credentials
 not available in this sandbox, and was the reason the script reached for
 a fixed-UID admin path in the first place).
 
+### Refinement from local UI testing (2026-08-18)
+
+User ran the emulator-based checklist above by hand (not the scripted
+verification) and found the scripted pass had missed real gaps because it
+tested via direct SDK calls, not through the actual app UI/components.
+Findings:
+
+1. **Categories are admin-only in the UI** (`categories.component.ts`'s
+   `onRowClick`/the Add Category button), but the rule allowed any active
+   member to write. Investigated further and found this same
+   UI-only-no-defense-in-depth pattern elsewhere too - see below.
+2. Left-member access: initially assessed (wrongly - see the correction
+   below, dated the same day) as "already correct as designed" based on the
+   main Groups page already hiding left groups from the switcher
+   client-side. **This was corrected after further user clarification -
+   see "Left-member access, corrected" below.**
+3. A real, unrelated app bug, fixed separately from the rules:
+   `edit-member.component.ts`'s `leaveGroup()` handler called
+   `groupStore.removeGroup()` after a successful leave, which hard-deletes
+   the group from `allUserGroups` - but `leftUserGroups` (which gates the
+   My Account → Groups tab) is just a filter *over* `allUserGroups`, so the
+   group vanished entirely instead of reappearing as a rejoin candidate.
+   Only fixed itself on next login (full store reload). Fix:
+   `MemberService.leaveGroup()` now returns `{ deleted: boolean }`
+   (`true` when the member doc is deleted outright - no historical splits;
+   `false` when it's kept and re-tagged `active:false, leftGroup:true`),
+   and the component either calls the existing `removeGroup()` (deleted
+   case) or a new `GroupStore.patchGroupMembership()` (kept case, patches
+   `userActiveInGroup`/`userLeftGroup`/`userIsAdmin` in place instead of
+   removing the group).
+
+Investigated all four "is this really admin-only" candidates (categories,
+members, splits, history) before changing any rule, per user's explicit
+request not to guess. Findings, all confirmed by reading the actual
+mutating methods, not just the UI gating:
+
+- **categories** - admin-only in UI, zero defense-in-depth in
+  `addCategory()`/`EditCategoryComponent`, and no legitimate non-admin
+  write path exists at all (the initial "Default" category is created by
+  `addGroup()`'s creator, who is always admin). **Tightened to
+  `isGroupAdmin(groupId)`.**
+- **members** - add/remove/promote-to-admin admin-only in UI
+  (`members.component.html`'s Add Member button,
+  `edit-member.component.html`'s `groupAdmin` toggle), again zero
+  defense-in-depth. This one mattered most: the old rule
+  (`isActiveMember(groupId) || self`) let *any* active member write to
+  *any other* member's doc via the SDK - including flipping their own
+  `groupAdmin` to `true`, a real privilege-escalation path, or removing
+  someone else. **Tightened: `create` now requires `isGroupAdmin(groupId)`;
+  `update, delete` now require `isGroupAdmin(groupId) || self` (dropped the
+  "any active member" clause, kept the self-write carve-out for
+  leave/rejoin/self-edit).** Verified this doesn't break `addGroup()`'s
+  sequential-write fix - the creator is already in `adminUids` from the
+  group doc's own creation, before the member/category batch runs.
+- **history** - cleanly separable, unlike splits (below): a history doc is
+  *only* ever created via the legitimate settle-up flow
+  (`split.service.ts`'s `paySplitsBetweenMembers`/`settleGroup`, any active
+  member) and *only* ever updated/deleted via the admin-only "unpay"
+  reversal - `history.service.ts` has exactly three methods
+  (`unpayHistory`, `unpaySingleSplitFromHistory`, `unpayGroupSettle`), all
+  three admin-gated in the UI, and nothing else touches an existing
+  history doc. **Split into `create: isActiveMember(groupId)` and
+  `update, delete: isGroupAdmin(groupId)`.**
+- **splits** - investigated but left unchanged. The admin-only "mark
+  paid/unpaid" correction (`expenses.component.ts`'s
+  `markSplitPaidUnpaid()`) and the ordinary settle-up flow both call
+  `split.service.ts`'s `updateSplit()`/write the identical `{paid: bool}`
+  shape to the same fields - a rule has no way to distinguish "an admin
+  correcting" from "a member settling their own split," since both are the
+  same write. Also concluded this isn't really a security boundary: a
+  non-admin bypassing the UI to flip their own split's paid status directly
+  reaches a state they could already reach legitimately through settle-up,
+  so there's no actual exploit being left open. **Stayed
+  `isActiveMember(groupId)`.**
+- **expenses, memorized** - confirmed genuinely open to any active member
+  in the UI (no admin gating found anywhere), so left unchanged at
+  `isActiveMember(groupId)`.
+
+Implemented directly in `firestore.rules` (comments there explain each
+decision inline, same reasoning as above) and in the leave/rejoin
+reactivity fix (`member.service.ts`, `group.store.ts`,
+`edit-member.component.ts`, plus their specs). Root `ng test` suite green
+except one pre-existing, unrelated failure the user confirmed is their own
+in-progress local change (`yes-no-na.pipe.spec.ts` expects `'Yes'`/`'No'`
+but the pipe now intentionally returns `'✓'`/`''` - not touched here).
+User is verifying this refinement locally via their own running emulator
+rather than the scripted pass; not re-run here to avoid mutating their
+active session's test data.
+
+### Left-member access, corrected (2026-08-18, same day)
+
+The initial assessment above (item 2) was wrong. User's actual, explicit
+spec: **a member who voluntarily leaves a group loses all access to that
+group's data - full stop - except for the group's name**, needed only to
+show it in the self-service "rejoin" dropdown
+(`account-group-membership.component.ts`). Not "hidden from the main
+switcher but still readable" (what was implemented and verified in the
+scripted pass), and not something to be resolved by relying on the
+client-side `activeUserGroups` filter as a substitute for a real
+authorization boundary - the whole point of this phase is that client-side
+filtering isn't enforcement.
+
+**Fixed:** `memberUids` (the broad "ever linked" array) is now used
+*exclusively* for the group document's own `read`/`list` rules - the one
+piece of data (the name) a left member is allowed to see. Every
+subcollection's `read` rule was changed from `isMember(groupId)` to
+`isActiveMember(groupId)`: `members`, `categories`, `expenses`, `splits`,
+`history`, `memorized` all now require *active* membership to read, not
+just historical membership. Storage's `read`/`delete` rule for receipts
+was changed the same way (`memberUids` → `activeMemberUids`), so a left
+member can't download a receipt image either. The `isMember(gid)` helper
+function became entirely unused after this change and was removed from
+`firestore.rules`.
+
+This does **not** affect the collection-group `members` rule
+(`match /{path=**}/members/{memberId}`, own-row-only via
+`resource.data.userRef == ownUserRef()`) - that one intentionally has no
+active-status condition at all, because it's how
+`group.service.ts`'s `getUserGroups()` listener learns a member's own
+`leftGroup`/`active` flags in the first place (across every group, active
+or not). Revoking that would make it impossible to ever populate
+`userLeftGroup` for the rejoin list to filter on - the group name is still
+reachable (via the group doc's own `memberUids`-based read), just none of
+its subcollection data.
+
+Net effect: a left member can see their departed groups named in the
+rejoin dropdown and nothing else about them - no expenses, splits, history,
+categories, memorized templates, other members' info, or receipt images.
+
+### Client-side access loophole, found by user testing (2026-08-18)
+
+Even after the rules correction above, the user found the loophole was
+still reachable in the app: after leaving a group (as a test member with no
+other active groups), no new group got auto-selected, but the nav bar still
+let them click through to Expenses and see the left group's data. Root
+cause was **entirely client-side**, not a rules gap - confirmed the rules
+correctly deny a fresh read; the problem was stale local state that was
+never cleared to force a fresh read in the first place. Two distinct bugs,
+both in `group.service.ts`:
+
+1. **`resolveDefaultGroupRef()` didn't check `userActiveInGroup`.** It only
+   self-healed a `defaultGroupRef` that was completely gone from `groups`
+   (e.g. deleted out-of-band) - but a left-but-still-linked group is still
+   present in `groups` (memberUids keeps it there for the rejoin list), so
+   a stale `defaultGroupRef` pointing at it was treated as "still valid."
+   `autoSelectGroup()`'s `else if (defaultGroupRef)` branch would then
+   silently re-select the just-left group as current. (Its sibling
+   check - "keep the cached currentGroup if still present" - was already
+   correctly hardened with a `userActiveInGroup` check; this one wasn't.)
+   This can be triggered by an ordinary race: the member-doc write's own
+   listener can refire and re-run this resolution before the user's local
+   `defaultGroupRef` gets cleared by the rest of `leaveGroup()`'s handler.
+   **Fixed:** `resolveDefaultGroupRef` now nulls out the ref whenever the
+   matching group's `userActiveInGroup` isn't `true`, not just when the
+   group is entirely absent.
+2. **Nothing cleared per-group listeners/stores when no replacement group
+   gets selected.** Switching TO a valid group already self-heals fine -
+   each service's `getGroupXxx()` unsubscribes its own previous listener
+   before resubscribing, naturally overwriting stale store data. But
+   `autoSelectGroup()`'s final `else` branch (no group to fall back to)
+   only cleared `currentGroup`/`localStorage` - it never stopped
+   `memberService`/`categoryService`/`memorizedService`/`splitsService`/
+   `historyService`'s listeners, and never cleared `CategoryStore`/
+   `MemberStore`/`ExpenseStore`/`MemorizedStore`/`HistoryStore`/
+   `SplitStore`. Since `ExpenseService` fetches via one-off `getDocs()`
+   (not a listener) into `ExpenseStore`, and the other five ARE live
+   listeners, either way whatever was loaded before leaving just sat there
+   indefinitely, visible to any component reading those stores/signals -
+   this is what actually explained "I can still see group expenses."
+   **Fixed:** added `GroupService.clearCurrentGroupData()` (stops all five
+   listeners, clears all six stores) and call it from that `else` branch.
+   `logout()` was refactored to reuse it too, which as a side effect now
+   also clears the stores on logout instead of relying entirely on the next
+   login's `UserService.initializeAuth()` to do it.
+
+`GroupService` needed six new store injections
+(`CategoryStore`/`ExpenseStore`/`MemberStore`/`MemorizedStore`/
+`HistoryStore`/`SplitStore`) to call their clear methods directly, mirroring
+the pattern `UserService.initializeAuth()` already uses on login. Added two
+regression tests in `group.service.spec.ts` (stale-`defaultGroupRef`
+self-heal, and per-store/listener clearing verified by pre-populating each
+store and asserting it resets) - both in the existing
+`describe('auto-select and userActiveInGroup')` block, reusing its
+established multi-callback-capture pattern. Root `ng test` suite green
+(1256/1259 - same 3 pre-existing, unrelated `yes-no-na.pipe.spec.ts`
+failures as before).
+
+**Verified by hand 2026-08-18 (user, local emulator):** left a group with
+one other active group remaining → that one correctly auto-selected. Added
+a group, rejoined the test group, then left it again with two other active
+groups present → correctly left nothing auto-selected (ambiguous, matches
+the `activeGroups.length === 1` guard). Pasted a direct URL for an expense
+in the just-left group → redirected back to Groups (route guard holds up
+even on direct navigation, not just nav-bar clicks). Loophole confirmed
+closed.
+
+### Production backfill for activeMemberUids/adminUids (2026-08-18)
+
+Before any deploy: production only had `memberUids` populated (from the
+Phase 0 backfill) - `activeMemberUids`/`adminUids` didn't exist on any of
+the 174 existing groups, since those fields didn't exist when that backfill
+ran. Deploying the new rules before backfilling would have completely
+locked out every existing group (missing `activeMemberUids` → `isActiveMember`
+errors/denies for everyone) until the backfill caught up - new groups
+created after deploy would've been fine (`addGroup()` sets all three arrays
+directly), but all 174 existing ones would break in the gap. Since the CI
+pipeline deploys functions and rules together with no manual gap between
+them, backfilling had to happen *before* merging anything, not after.
+
+**Done 2026-08-18** - user ran `pnpm query backfill-member-uids` (dry run),
+`--apply`, then dry run again to confirm idempotence ("nothing to do"), all
+against production. Clears the way for the CI deploy.
+
 ## Phase 3 — `users` collection (deferred, tracked here so it isn't lost)
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`

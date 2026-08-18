@@ -49,18 +49,20 @@ service cloud.firestore {
     // rules can't query the members subcollection to answer "is this uid a
     // member/active member/admin of this group", so membership is
     // maintained server-side instead.
-    //  - memberUids: everyone ever linked here (read access - includes a
-    //    member who left the group but whose doc survives for history).
-    //  - activeMemberUids: memberUids currently active === true (write
-    //    access to operational data).
+    //  - memberUids: everyone ever linked here. Used ONLY for the group
+    //    doc's own read/list below - a member who left keeps just enough
+    //    access to see the group's name (for the self-service "rejoin"
+    //    dropdown, account-group-membership.component.ts) and nothing else.
+    //    A left member has NO access to any subcollection - see
+    //    activeMemberUids below.
+    //  - activeMemberUids: memberUids currently active === true. Gates BOTH
+    //    read and write on every subcollection - leaving a group revokes
+    //    all access to its data, not just write access.
     //  - adminUids: activeMemberUids currently groupAdmin === true (group
-    //    settings updates).
+    //    settings updates, and admin-only subcollection actions - see below).
     match /groups/{groupId} {
       function group(gid) {
         return get(/databases/$(database)/documents/groups/$(gid)).data;
-      }
-      function isMember(gid) {
-        return isSignedIn() && request.auth.uid in group(gid).memberUids;
       }
       function isActiveMember(gid) {
         return isSignedIn() && request.auth.uid in group(gid).activeMemberUids;
@@ -73,7 +75,9 @@ service cloud.firestore {
       // off resource.data / request.resource.data - it IS the document
       // being evaluated, so no extra get() is needed here (the helpers
       // above are for the subcollections below, which need to look at
-      // their *parent* group doc).
+      // their *parent* group doc). Deliberately the only place memberUids
+      // (rather than activeMemberUids) grants anything - see the comment
+      // above.
       allow read: if isSignedIn() && request.auth.uid in resource.data.memberUids;
       // Must match the where('memberUids', 'array-contains', uid) query's
       // own filter field exactly, or Firestore rejects the query outright.
@@ -91,48 +95,72 @@ service cloud.firestore {
       // deleteGroup Cloud Function (Admin SDK) handles deletion.
       allow delete: if false;
 
+      // Add/remove/promote-to-admin are admin-only in the UI (members.component
+      // .html's Add Member button, edit-member.component.html's groupAdmin
+      // toggle) with NO defense-in-depth in the mutating methods themselves -
+      // without this rule, any active member could directly add/remove
+      // members or self-promote to admin via the SDK, bypassing the UI
+      // entirely. Editing one's own record (display name, payment handles)
+      // is open to any member regardless of active status - see the second
+      // clause below.
       match /members/{memberId} {
-        allow read: if isMember(groupId);
+        allow read: if isActiveMember(groupId);
         // Safe for the very first member of a brand-new group too: addGroup()
         // creates the group doc first (own write, awaited) and only then
-        // creates the member doc, so isActiveMember(groupId)'s get() always
-        // sees a group that genuinely exists by the time this runs.
-        allow create: if isActiveMember(groupId);
+        // creates the member doc, so isGroupAdmin(groupId)'s get() always
+        // sees a group that genuinely exists by the time this runs - and the
+        // creator is already in adminUids from that same group-creation write.
+        allow create: if isGroupAdmin(groupId);
         // The second clause covers self-service writes made *while
         // inactive* - rejoinGroup() (flips leftGroup:false, active:true,
         // the exact state this write is trying to escape) and
         // updateAllMemberEmails() (syncing a display email across every
-        // group a user belongs to, active or not). leaveGroup()'s own
-        // self-update/self-delete is already covered by isActiveMember
-        // alone, since the caller is still active at the moment they call
-        // it - these arrays reflect pre-write state.
-        allow update, delete: if isActiveMember(groupId) ||
+        // group a user belongs to, active or not) - plus ordinary self-edits
+        // (e.g. payment handles) and leaveGroup()'s own self-update/delete.
+        allow update, delete: if isGroupAdmin(groupId) ||
           resource.data.userRef == ownUserRef();
       }
 
+      // Admin-only in the UI (categories.component.html's Add/Edit gating)
+      // with no defense-in-depth in addCategory()/EditCategoryComponent -
+      // and no legitimate non-admin write path exists (the initial "Default"
+      // category is created by addGroup()'s creator, who is always admin).
       match /categories/{categoryId} {
-        allow read: if isMember(groupId);
-        allow write: if isActiveMember(groupId);
+        allow read: if isActiveMember(groupId);
+        allow write: if isGroupAdmin(groupId);
       }
 
       match /expenses/{expenseId} {
-        allow read: if isMember(groupId);
-        allow write: if isActiveMember(groupId);
+        allow read, write: if isActiveMember(groupId);
       }
 
+      // Deliberately NOT split by admin/active-member: the admin-only "mark
+      // paid/unpaid" correction (expenses.component.ts's markSplitPaidUnpaid)
+      // and the ordinary settle-up flow (split.service.ts's
+      // paySplitsBetweenMembers/settleGroup, any active member) both write
+      // the identical {paid: bool} shape to the same fields - a rule can't
+      // tell "an admin correcting" from "a member settling their own split"
+      // apart, and there's no real security boundary being crossed if a
+      // non-admin bypasses the UI to flip their own split's paid status
+      // directly, since they could reach the same state through settle-up
+      // anyway.
       match /splits/{splitId} {
-        allow read: if isMember(groupId);
-        allow write: if isActiveMember(groupId);
+        allow read, write: if isActiveMember(groupId);
       }
 
+      // Unlike splits, history CAN be cleanly split: a history doc is only
+      // ever created via the legitimate settle-up flow (split.service.ts,
+      // any active member) and only ever updated/deleted via the admin-only
+      // "unpay" reversal (history.service.ts has exactly three methods -
+      // unpayHistory, unpaySingleSplitFromHistory, unpayGroupSettle - and
+      // nothing else touches an existing history doc).
       match /history/{historyId} {
-        allow read: if isMember(groupId);
-        allow write: if isActiveMember(groupId);
+        allow read, create: if isActiveMember(groupId);
+        allow update, delete: if isGroupAdmin(groupId);
       }
 
       match /memorized/{memorizedId} {
-        allow read: if isMember(groupId);
-        allow write: if isActiveMember(groupId);
+        allow read, write: if isActiveMember(groupId);
       }
 
       // Server-only (Admin SDK) - deny all client access.

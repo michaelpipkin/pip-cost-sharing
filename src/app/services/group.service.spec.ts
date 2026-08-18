@@ -2,7 +2,13 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { CategoryStore } from '@store/category.store';
+import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
+import { HistoryStore } from '@store/history.store';
+import { MemberStore } from '@store/member.store';
+import { MemorizedStore } from '@store/memorized.store';
+import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
@@ -444,6 +450,98 @@ describe('GroupService', () => {
 
         expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
         expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalled();
+      });
+
+      it('self-heals and does not re-select a stale defaultGroupRef pointing at a group the user left', async () => {
+        // Regression test: defaultGroupRef stayed pointing at group-1 (still
+        // present in `groups` since memberUids keeps a left member linked
+        // for the rejoin list), but the user is no longer active in it.
+        // resolveDefaultGroupRef must null it out rather than treating
+        // "still present" as "still valid" - otherwise autoSelectGroup's
+        // `else if (defaultGroupRef)` branch silently re-selects a group the
+        // user just left.
+        const groupRef = { id: 'group-1', eq: (o: any) => o?.id === 'group-1' };
+        const leftUser = { ...user, defaultGroupRef: groupRef };
+        userSignal.set(leftUser);
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(leftUser);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: groupRef,
+            },
+          ])
+        );
+
+        expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+          leftUser.ref,
+          { defaultGroupRef: null },
+          { merge: true }
+        );
+        expect(mockUserStore.updateUser).toHaveBeenCalledWith({
+          defaultGroupRef: null,
+        });
+        expect(mockGroupStore.setCurrentGroup).not.toHaveBeenCalled();
+      });
+
+      it('clears per-group listeners and stores when no group ends up selected', async () => {
+        // Pre-populate each store as if a group had been active before this
+        // - the assertions below prove clearCurrentGroupData() actually
+        // reset them, rather than them merely starting out empty.
+        TestBed.inject(CategoryStore).setGroupCategories([{ id: 'c1' } as any]);
+        TestBed.inject(ExpenseStore).setGroupExpenses([{ id: 'e1' } as any]);
+        TestBed.inject(MemberStore).setGroupMembers([{ id: 'm1' } as any]);
+        TestBed.inject(MemorizedStore).setMemorizedExpenses([{ id: 'z1' } as any]);
+        TestBed.inject(HistoryStore).setHistory([{ id: 'h1' } as any]);
+        TestBed.inject(SplitStore).setSplits([{ id: 's1' } as any]);
+
+        const callbacks = captureSnapshotCallbacks();
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: false, groupAdmin: false, leftGroup: true }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+
+        // This is what closes the access loophole: leaving a group with
+        // nothing else to fall back to must tear down that group's
+        // listeners/stores, not leave its previously-fetched
+        // expenses/categories/members/etc. sitting in the signals.
+        expect(mockCategoryService.stopListening).toHaveBeenCalled();
+        expect(mockMemberService.stopListening).toHaveBeenCalled();
+        expect(mockMemorizedService.stopListening).toHaveBeenCalled();
+        expect(mockSplitService.stopListening).toHaveBeenCalled();
+        expect(mockHistoryService.stopListening).toHaveBeenCalled();
+        expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
+        expect(TestBed.inject(ExpenseStore).groupExpenses()).toEqual([]);
+        expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
+        expect(TestBed.inject(MemorizedStore).memorizedExpenses()).toEqual([]);
+        expect(TestBed.inject(HistoryStore).groupHistory()).toEqual([]);
+        expect(TestBed.inject(SplitStore).unpaidSplits()).toEqual([]);
       });
     });
 
