@@ -1,10 +1,15 @@
 # App Check Enforcement Follow-up
 
-Status as of 2026-08-04: hCaptcha has been fully replaced with Firebase App
-Check, deployed to production, and verified working end to end. What
-remains is a **later, separate step**: turning on enforcement once metrics
-confirm real traffic isn't being misclassified. This doc is meant to be
-self-contained so a fresh session can pick this up with no other context.
+**Status as of 2026-08-18: COMPLETE.** User confirmed all three console
+toggles are flipped - Functions, Storage, and Firestore enforcement are all
+now live in production. This doc is kept for historical context (the
+investigation into the Firestore verified-rate dip and its fix are relevant
+background for anyone touching App Check-adjacent code later) but there is
+no further pending work here. [[project_firestore_rules_hardening]] Phase 2
+was paused specifically waiting on this and can now proceed.
+
+This doc is meant to be self-contained so a fresh session can pick this up
+with no other context, in case something regresses later.
 
 ## What's already done (do not redo)
 
@@ -215,9 +220,16 @@ unaffected either way.
    **DONE 2026-08-12** - enforcement turned on via console toggle after
    100%/0% verified sustained over ~2 days of real traffic. Watching
    before proceeding to step 3.
-3. **Cloud Firestore** - the big one, every screen depends on it. Do this
-   last and watch closely. Holding as of 2026-08-12: verified % dipped
-   99%->97%, investigate before flipping (see note above).
+3. **Cloud Firestore** - the big one, every screen depends on it. Held
+   from 2026-08-12 through 2026-08-18 on a verified-rate dip (99%->97%,
+   later traced to a confirmed App Check token race, fixed - see notes
+   above); confirmed 100% verified over a full clean 24h window
+   (6.1K/6.1K requests) before flipping. **DONE 2026-08-18** - user
+   confirmed via the console (App Check -> APIs -> Firestore row) that
+   enforcement is now live in production.
+
+**All three toggles are now live.** Functions (2026-08-10), Storage
+(2026-08-12), Firestore (2026-08-18). Nothing further pending in this doc.
 
 **Leave Authentication unenforced.** `login.component.ts` calls
 `FirebaseAuthentication.signInWithGoogle()` with `skipNativeAuth: false`,
@@ -528,6 +540,18 @@ and auto-deployed through the normal pipeline.
 **Checked 2026-08-18:** zero new App Check-related errors in the log,
 and no unverified Firestore requests since the 8/17 11am-12pm hour -
 waiting until after noon today to confirm a full clean 24h period.
+
+**Confirmed 2026-08-18: full clean 24h window.** App Check console,
+Firestore, last 24 hours (Aug 17-18): **100% verified, 6.1K/6.1K total**,
+0 across all three unverified categories (outdated client, unknown
+origin, invalid). Not a small sample - 6.1K requests over a full day,
+directly comparable to the ~44K/week-with-a-2-3%-band seen throughout
+this investigation. This is a definitive green light against the
+original ">=99%, explainable remainder" bar, and closes out the
+investigation: the cold-boot App Check token race was confirmed as the
+dominant cause (via the `error`/`timeout` reason-tagging, then via the
+direct fix), and the fixes eliminated it entirely, not just reduced it.
+**Ready for the last console toggle - Cloud Firestore enforcement.**
 
 ## Also relevant, not urgent
 
