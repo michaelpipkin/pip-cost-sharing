@@ -1649,8 +1649,9 @@ export const logAppError = onCall<{
   action: string;
   message: string;
   error?: string;
+  additionalInfo?: string;
 }>(async (request) => {
-  const { component, action, message, error } = request.data;
+  const { component, action, message, error, additionalInfo } = request.data;
   if (!component || !action || !message) {
     throw new HttpsError(
       'invalid-argument',
@@ -1660,6 +1661,7 @@ export const logAppError = onCall<{
 
   const params: Record<string, unknown> = { component, action, message };
   if (error !== undefined) params['error'] = error;
+  if (additionalInfo !== undefined) params['additionalInfo'] = additionalInfo;
 
   // 1. Write the document via Admin SDK (bypasses Firestore rules)
   await db.collection('app_errors').add({

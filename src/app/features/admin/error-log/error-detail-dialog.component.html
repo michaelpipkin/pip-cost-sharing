@@ -15,6 +15,11 @@
       <dd class="error-text">{{ data.error }}</dd>
     }
 
+    @if (data.additionalInfo) {
+      <dt>Additional Info</dt>
+      <dd class="error-text">{{ data.additionalInfo }}</dd>
+    }
+
     @if (isGrouped()) {
       <dt>Count</dt>
       <dd>{{ asGrouped().count }}</dd>

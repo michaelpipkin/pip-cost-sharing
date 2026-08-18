@@ -6,6 +6,6 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class YesNoCheckPipe implements PipeTransform {
   transform(value: boolean): string {
-    return value ? '✓' : '';
+    return value ? '✓' : ' ';
   }
 }
