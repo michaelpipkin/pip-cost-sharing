@@ -2,12 +2,30 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminUser() {
+      return isSignedIn() && (
+        request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2' ||
+        request.auth.uid == 'cgrizSOG69QiNquzKOA69ls8clFm'
+      );
+    }
+
+    function ownUserRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
     // Deny all client access to the mail collection.
     // The Firebase Trigger Email extension (Admin SDK) bypasses these rules,
     // so Cloud Functions can still write here. This prevents authenticated
-    // users from sending spam via the app's SMTP account.
+    // users from sending spam via the app's SMTP account. The admin Mail
+    // tab reads/deletes from the client (admin-mail.service.ts), so the
+    // admin UID gets an explicit exception, mirroring app_errors below.
     match /mail/{document} {
-      allow read, write: if false;
+      allow write: if false;
+      allow read, delete: if isAdminUser();
     }
 
     // app_errors: client writes are blocked — the logAppError Cloud Function
@@ -15,18 +33,127 @@ service cloud.firestore {
     // can read or delete (via the Error Log admin tab).
     match /app_errors/{document} {
       allow write: if false;
-      allow delete: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
-      allow read: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
+      allow read, delete: if isAdminUser();
     }
 
     // admin_config: admin-only. Cloud Functions use the Admin SDK and bypass
     // these rules; this prevents regular users from reading or modifying
     // alert configuration.
     match /admin_config/{document} {
-      allow read, write: if request.auth != null && request.auth.uid == 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
+      allow read, write: if isAdminUser();
     }
 
-    match /{document=**} {
+    // groups/{groupId} and its subcollections are scoped to group members,
+    // via three arrays denormalized onto the group doc by the
+    // syncGroupMemberUids Cloud Function trigger (functions/src/index.ts) -
+    // rules can't query the members subcollection to answer "is this uid a
+    // member/active member/admin of this group", so membership is
+    // maintained server-side instead.
+    //  - memberUids: everyone ever linked here (read access - includes a
+    //    member who left the group but whose doc survives for history).
+    //  - activeMemberUids: memberUids currently active === true (write
+    //    access to operational data).
+    //  - adminUids: activeMemberUids currently groupAdmin === true (group
+    //    settings updates).
+    match /groups/{groupId} {
+      function group(gid) {
+        return get(/databases/$(database)/documents/groups/$(gid)).data;
+      }
+      function isMember(gid) {
+        return isSignedIn() && request.auth.uid in group(gid).memberUids;
+      }
+      function isActiveMember(gid) {
+        return isSignedIn() && request.auth.uid in group(gid).activeMemberUids;
+      }
+      function isGroupAdmin(gid) {
+        return isSignedIn() && request.auth.uid in group(gid).adminUids;
+      }
+
+      // This document's own read/list/create/update rules work directly
+      // off resource.data / request.resource.data - it IS the document
+      // being evaluated, so no extra get() is needed here (the helpers
+      // above are for the subcollections below, which need to look at
+      // their *parent* group doc).
+      allow read: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      // Must match the where('memberUids', 'array-contains', uid) query's
+      // own filter field exactly, or Firestore rejects the query outright.
+      allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      allow create: if isSignedIn() &&
+        request.resource.data.memberUids == [request.auth.uid] &&
+        request.resource.data.activeMemberUids == [request.auth.uid] &&
+        request.resource.data.adminUids == [request.auth.uid];
+      // Clients (including admins) must never edit the membership arrays -
+      // only the syncGroupMemberUids trigger may.
+      allow update: if isGroupAdmin(groupId) &&
+        request.resource.data.memberUids == resource.data.memberUids &&
+        request.resource.data.activeMemberUids == resource.data.activeMemberUids &&
+        request.resource.data.adminUids == resource.data.adminUids;
+      // deleteGroup Cloud Function (Admin SDK) handles deletion.
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if isMember(groupId);
+        // Safe for the very first member of a brand-new group too: addGroup()
+        // creates the group doc first (own write, awaited) and only then
+        // creates the member doc, so isActiveMember(groupId)'s get() always
+        // sees a group that genuinely exists by the time this runs.
+        allow create: if isActiveMember(groupId);
+        // The second clause covers self-service writes made *while
+        // inactive* - rejoinGroup() (flips leftGroup:false, active:true,
+        // the exact state this write is trying to escape) and
+        // updateAllMemberEmails() (syncing a display email across every
+        // group a user belongs to, active or not). leaveGroup()'s own
+        // self-update/self-delete is already covered by isActiveMember
+        // alone, since the caller is still active at the moment they call
+        // it - these arrays reflect pre-write state.
+        allow update, delete: if isActiveMember(groupId) ||
+          resource.data.userRef == ownUserRef();
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isMember(groupId);
+        allow write: if isActiveMember(groupId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read: if isMember(groupId);
+        allow write: if isActiveMember(groupId);
+      }
+
+      match /splits/{splitId} {
+        allow read: if isMember(groupId);
+        allow write: if isActiveMember(groupId);
+      }
+
+      match /history/{historyId} {
+        allow read: if isMember(groupId);
+        allow write: if isActiveMember(groupId);
+      }
+
+      match /memorized/{memorizedId} {
+        allow read: if isMember(groupId);
+        allow write: if isActiveMember(groupId);
+      }
+
+      // Server-only (Admin SDK) - deny all client access.
+      match /settleBatches/{batchId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Collection-group listener at group.service.ts's getUserGroups (the
+    // collectionGroup('members') where('userRef','==', user.ref) query).
+    // Must match that query's own filter field exactly, same
+    // query-validation reason as the groups list rule above - lets a user
+    // read only their own member row, across every group, without a
+    // cross-tenant grant.
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && resource.data.userRef == ownUserRef();
+    }
+
+    // users: deferred to a later phase (see .claude/firestore-rules-hardening.md,
+    // Phase 3) - not tightened here.
+    match /users/{userId} {
       allow read, write, delete: if request.auth != null;
     }
   }

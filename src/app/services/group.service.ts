@@ -13,6 +13,7 @@ import { UserStore } from '@store/user.store';
 import {
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   DocumentReference,
   getDoc,
@@ -357,27 +358,54 @@ export class GroupService implements IGroupService {
     group: Partial<Group>,
     member: Partial<Member>
   ): Promise<DocumentReference<Group>> {
-    const batch = writeBatch(this.fs);
     const groupRef = doc(collection(this.fs, 'groups'));
 
-    // Set memberUids directly so the creator has rule-checked access
-    // immediately, without waiting ~1s for the syncGroupMemberUids trigger.
-    const groupWithMemberUids = { ...group, memberUids: [member.userRef!.id] };
-    batch.set(groupRef, groupWithMemberUids);
-
-    const memberRef = doc(collection(this.fs, `groups/${groupRef.id}/members`));
-    batch.set(memberRef, member);
-
-    const categoryRef = doc(
-      collection(this.fs, `groups/${groupRef.id}/categories`)
-    );
-    const category: Partial<Category> = {
-      name: 'Default',
-      active: true,
+    // Set all three membership arrays directly so the creator has
+    // rule-checked read/write/admin access immediately, without waiting
+    // ~1s for the syncGroupMemberUids trigger.
+    //
+    // The group doc is created in its own write, awaited before the member
+    // and category docs are created, rather than one atomic batch. Their
+    // create rules need isActiveMember(groupId), which get()s this group
+    // doc - and a sibling document created in the *same* batch/transaction
+    // is not visible to another document's rule evaluation via get() (that
+    // get() sees pre-commit state and denies). Splitting into two
+    // sequential steps is what lets the second write's rule check see a
+    // group that genuinely exists.
+    const creatorUid = member.userRef!.id;
+    const groupWithMemberUids = {
+      ...group,
+      memberUids: [creatorUid],
+      activeMemberUids: [creatorUid],
+      adminUids: [creatorUid],
     };
-    batch.set(categoryRef, category);
+    await setDoc(groupRef, groupWithMemberUids);
 
-    await batch.commit();
+    try {
+      const batch = writeBatch(this.fs);
+
+      const memberRef = doc(
+        collection(this.fs, `groups/${groupRef.id}/members`)
+      );
+      batch.set(memberRef, member);
+
+      const categoryRef = doc(
+        collection(this.fs, `groups/${groupRef.id}/categories`)
+      );
+      const category: Partial<Category> = {
+        name: 'Default',
+        active: true,
+      };
+      batch.set(categoryRef, category);
+
+      await batch.commit();
+    } catch (error) {
+      // Best-effort cleanup: don't leave an orphaned group with no members
+      // or default category if the second step fails.
+      await deleteDoc(groupRef).catch(() => {});
+      throw error;
+    }
+
     if (this.groupStore.currentGroup() === null) {
       this.groupStore.setCurrentGroup(
         new Group({

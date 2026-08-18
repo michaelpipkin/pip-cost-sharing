@@ -38,8 +38,13 @@ export class Group {
   decimalPlaces!: number; // Decimal precision (2 for most, 0 for JPY)
   archived: boolean = false;
   // Denormalized member UIDs, maintained server-side by syncGroupMemberUids.
-  // Clients must never write this field directly.
+  // Clients must never write these fields directly.
+  //  - memberUids: everyone ever linked (read access, even after leaving)
+  //  - activeMemberUids: memberUids currently active === true (write access)
+  //  - adminUids: activeMemberUids currently groupAdmin === true (group-doc admin actions)
   memberUids: string[] = [];
+  activeMemberUids: string[] = [];
+  adminUids: string[] = [];
   ref?: DocumentReference<Group>;
   userActiveInGroup?: boolean;
   // True if the current user's own membership in this group has

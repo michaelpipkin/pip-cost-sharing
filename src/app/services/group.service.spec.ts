@@ -121,6 +121,7 @@ describe('GroupService', () => {
     } as any);
     vi.spyOn(firestoreModule, 'getDocs').mockResolvedValue(makeSnap([]) as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
+    vi.spyOn(firestoreModule, 'deleteDoc').mockResolvedValue(undefined as any);
 
     localStorage.clear();
     currentGroupSignal.set(null);
@@ -171,26 +172,32 @@ describe('GroupService', () => {
       service = createService();
     });
 
-    it('should create group, member, and default category in a batch', async () => {
+    it('should create the group doc first, then member and default category in a batch', async () => {
       const result = await service.addGroup(
         { name: 'New Group' },
         { displayName: 'Alice', userRef: { id: 'user-1' } as any }
       );
 
-      expect(mockBatch.set).toHaveBeenCalledTimes(3); // group + member + default category
+      expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1); // group doc, awaited on its own
+      expect(mockBatch.set).toHaveBeenCalledTimes(2); // member + default category
       expect(result).toBe(mockDocRef);
     });
 
-    it('should set memberUids to the creator on the group doc', async () => {
+    it('should set memberUids, activeMemberUids, and adminUids to the creator on the group doc', async () => {
       await service.addGroup(
         { name: 'New Group' },
         { displayName: 'Alice', userRef: { id: 'user-1' } as any }
       );
 
-      const groupSetCall = mockBatch.set.mock.calls.find(
-        (call: any[]) => call[1]?.name === 'New Group'
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({
+          name: 'New Group',
+          memberUids: ['user-1'],
+          activeMemberUids: ['user-1'],
+          adminUids: ['user-1'],
+        })
       );
-      expect(groupSetCall![1]).toMatchObject({ memberUids: ['user-1'] });
     });
 
     it('should always create a category named "Default"', async () => {
@@ -207,6 +214,19 @@ describe('GroupService', () => {
         name: 'Default',
         active: true,
       });
+    });
+
+    it('should delete the group doc if creating the member/category batch fails', async () => {
+      mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
+
+      await expect(
+        service.addGroup(
+          { name: 'New Group' },
+          { displayName: 'Alice', userRef: { id: 'user-1' } as any }
+        )
+      ).rejects.toThrow('permission-denied');
+
+      expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockDocRef);
     });
   });
 
