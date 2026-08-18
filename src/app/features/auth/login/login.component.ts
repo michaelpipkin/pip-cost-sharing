@@ -86,14 +86,18 @@ export class LoginComponent {
     if (this.#submitting) return;
     this.#submitting = true;
     try {
-      this.loading.loadingOn();
+      // Shares the 'navigation' source with NavigationLoadingService so the
+      // overlay is guaranteed to clear when the post-login redirect actually
+      // completes (or fails), rather than depending on some unrelated
+      // destination component happening to clear the default source first.
+      this.loading.loadingOn('navigation');
       const { email, password } = this.loginForm().value();
       const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
       if (signInMethods.length === 1 && signInMethods[0] === 'google.com') {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Please sign in with Google' },
         });
-        this.loading.loadingOff();
+        this.loading.loadingOff('navigation');
         return;
       } else {
         await signInWithEmailAndPassword(this.auth, email, password);
@@ -106,7 +110,7 @@ export class LoginComponent {
             'Could not sign you in. Please check your email and password.',
         },
       });
-      this.loading.loadingOff();
+      this.loading.loadingOff('navigation');
     } finally {
       this.#submitting = false;
     }
@@ -116,7 +120,8 @@ export class LoginComponent {
     if (this.#submitting) return;
     this.#submitting = true;
     try {
-      this.loading.loadingOn();
+      // See emailLogin() for why this shares the 'navigation' source.
+      this.loading.loadingOn('navigation');
       if (this.isRunningAsApp()) {
         const result = await FirebaseAuthentication.signInWithGoogle();
         const credential = GoogleAuthProvider.credential(
@@ -142,7 +147,7 @@ export class LoginComponent {
             'There was a problem signing you in. Please try again or use a different sign-in method.',
         },
       });
-      this.loading.loadingOff();
+      this.loading.loadingOff('navigation');
     } finally {
       this.#submitting = false;
     }

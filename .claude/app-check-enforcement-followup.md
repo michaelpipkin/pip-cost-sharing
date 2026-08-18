@@ -514,7 +514,20 @@ unrealistic per this app's real invariants - `UserService.initializeAuth()`
 always sets `userStore.user()` before `GroupService.getUserGroups()` can
 flip `groupStore.loaded()`, so a user is always known by the time this
 gate needs to resolve). `pnpm exec ng test` passes in full (1254/1254),
-`ng build` clean. Not committed or deployed yet.
+`ng build` clean.
+
+**All of the above committed and deployed.** Confirmed via `git log`:
+`8e41ebd0` (login-race fix), `1f9c7b66` (timeout/error reason-tagging),
+`2aca6183`/`e76adc10` (Groups-page-load linking + loading-state/demo-mode
+fix), plus `ac520728` ("App Check improvements; fix stats function" -
+also fixed the previously-deferred `getAdminStatistics` "internal" error
+from the 8/17 log check, via a 300s timeout and a `.select('active',
+'archived')` projection on the groups query). All merged to `release`
+and auto-deployed through the normal pipeline.
+
+**Checked 2026-08-18:** zero new App Check-related errors in the log,
+and no unverified Firestore requests since the 8/17 11am-12pm hour -
+waiting until after noon today to confirm a full clean 24h period.
 
 ## Also relevant, not urgent
 
