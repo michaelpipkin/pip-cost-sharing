@@ -16,10 +16,23 @@ export const APP_OWNER_EMAIL = environment.appOwnerEmail;
 // and cleans up the subscription to prevent listening to future auth changes
 function waitForAuthInit(auth: Auth): Promise<User | null> {
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe(); // Clean up immediately after first callback
+    let settled = false;
+    const finish = (user: User | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      unsubscribe();
       resolve(user);
-    });
+    };
+    // Firebase Auth's persistence layer (IndexedDB) can occasionally stall
+    // during init - e.g. the browser tears down its IndexedDB connection
+    // mid-load - leaving auth state undetermined forever. Without this bound,
+    // onAuthStateChanged never fires, so every guard awaiting this promise
+    // hangs navigation indefinitely with the loading overlay stuck on.
+    // Falling back to the current (likely null) user lets navigation proceed
+    // as unauthenticated instead of hanging.
+    const timeoutId = setTimeout(() => finish(auth.currentUser), 5000);
+    const unsubscribe = onAuthStateChanged(auth, finish);
   });
 }
 
