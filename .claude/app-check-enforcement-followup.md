@@ -239,7 +239,9 @@ sign-in. Registration is already gated by email verification and
 Firebase's own rate limits, so the risk/reward isn't there yet. (If this
 ever becomes worth doing, it needs `@capacitor-firebase/app-check` with a
 Play Integrity provider on the native Android side - real scope, not a
-quick add.)
+quick add. See [[android-play-integrity-app-check.md]] - written up for
+the Firestore-token-race use case below, but the same native
+infrastructure would likely serve this too if it's ever built.)
 
 ### Rollback
 
@@ -653,6 +655,59 @@ overhaul - other services' error paths are untouched. 3 new tests in
 `user.service.spec.ts` (`initializeAuth failure handling`), `pnpm exec
 ng test` passes (31/31 in that file; full suite same 1262/1265 as
 above), `ng build` clean. Not committed or deployed yet.
+
+**Deploy resolved, 2026-08-18 evening.** The `Deploy Firebase Functions`
+CI step (PR #673, includes the `additionalInfo` diagnostic + messaging
+fix above, plus the unrelated Phase 2 rules-hardening `syncGroupMemberUids`
+refactor) failed with a bare `Error: Failed to list functions for ***`
+and no further detail even in the full raw log (`gh run view
+--log-failed`). Manually deployed the identical code via `firebase
+deploy --only functions` from the CLI - succeeded without issue -
+then retried the failed GitHub job, which also then succeeded. A clean
+manual deploy of the exact same code is strong confirmation this was a
+transient CI/infrastructure hiccup, not a real regression in either the
+diagnostic change or the rules-hardening trigger refactor (whose
+`onDocumentWritten` registration was confirmed unchanged). **Everything
+from this session (login-race fix, timeout/error reason-tagging,
+Groups-page linking + loading-state fix, `additionalInfo` diagnostic,
+and the initializeAuth messaging fix) is now live in production.**
+
+**Next step, ongoing:** watching the app_errors log for further
+`appCheck/throttled` occurrences - now that the `additionalInfo`
+diagnostic is live, the next one should show actual platform/`userAgent`
+data instead of requiring inference, finally answering whether this is
+Android WebView, incognito/private browsing, Safari iOS, or something
+else, and whether it's recurring on the same device or spreading across
+different ones.
+
+**Third incident, confirmed root cause, 2026-08-19 9:42am.** First
+occurrence with the `additionalInfo` diagnostic live -
+`platform: android, native: true, userAgent: ...; wv) AppleWebKit/537.36
+... Chrome/151... Mobile Safari/537.36` (device: TECNO CH6, Android 12).
+The `; wv)` token is Android's standard WebView marker - together with
+`native: true` this is a real user on a real (budget) device running the
+actual Capacitor app, not incognito, not Safari, not desktop. **This
+directly confirms the Android WebView reCAPTCHA-scoring theory** flagged
+as a known risk since the very start of this doc (see "Known risk to
+watch for" above), rather than leaving it as inference. Three known
+incidents now (8/18 1:36pm, 8/18 4:12pm, 8/19 9:42am) - all still
+consistent with "rare but real," not "widespread," but this is the
+first with hard evidence of mechanism. The previously-deferred fix (a
+`CustomProvider` delegating to native Play Integrity via
+`@capacitor-firebase/app-check` when `pwaDetection.isRunningAsApp()` is
+true, noted since this doc's original "Known risk" section) is no
+longer a hypothetical mitigation for a maybe-problem - it's the
+confirmed fix for a confirmed, recurring mechanism. Whether that's worth
+scoping now vs. continuing to monitor at this rate is a real decision
+point, not a foregone conclusion either way.
+
+**Decision 2026-08-19: keep monitoring for now, don't scope yet.** Full
+implementation plan written up regardless, in case that changes -
+see [[android-play-integrity-app-check.md]] for everything involved
+(architecture, Firebase/Play Console prerequisites, the one open
+technical question worth spiking before committing, and why this
+specific fix - unlike everything else this session - needs a real
+native app release to reach users, not just a web deploy).
 
 ## Also relevant, not urgent
 
