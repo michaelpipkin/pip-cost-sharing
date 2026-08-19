@@ -709,6 +709,39 @@ technical question worth spiking before committing, and why this
 specific fix - unlike everything else this session - needs a real
 native app release to reach users, not just a web deploy).
 
+**Mitigations shipped instead, 2026-08-19.** Traced exactly what a locked-out
+user experiences (Firebase Auth still works - only unenforced; but
+`UserService.initializeAuth()` throws before `userStore.initUser()` or
+`GroupService.getUserGroups()` ever run, so every Firestore-backed page is
+broken for that device all session). Confirmed via code, not assumption,
+that `/help` has no route guard, `HelpComponent` has zero dependency on
+`userStore`/`groupStore`, and the footer (which links to Help) renders
+unconditionally on every page (`FooterComponent`'s selector is literally
+`footer`, outside every `@if` in `app.component.html`) - so Help is
+reliably reachable regardless of App Check state.
+
+Found one real gap while confirming that, though: the Help page's own
+"Report an Issue" form called `notifyNewIssue`, which **was**
+App-Check-enforced - meaning the one in-app channel for asking for help
+would itself fail for exactly the users who needed it. Same reasoning as
+`logAppError` (deliberately left unenforced so an App Check outage
+doesn't blind the error-reporting channel to itself) applies here, more
+directly - **removed `enforceAppCheck` from `notifyNewIssue`**
+(`functions/src/index.ts`) with a comment explaining why, matching
+`logAppError`'s existing precedent. Same low-risk profile: hardcoded
+recipient, no auth check to bypass, nothing new an unenforced caller can
+abuse beyond emailing the admin (already true before this change).
+
+Also added a new Help Topics entry, `cant-verify-device` ("Help! It
+can't verify my device") in `src/app/services/help-content.service.ts` -
+plain-language explanation of the message, reassurance it's not an
+account problem, advice to try a different device/browser (confirmed
+reliable earlier - the throttle is client-scoped, not account-scoped),
+notes it self-resolves in ~24h, and points to the now-genuinely-working
+Report an Issue form. `pnpm exec ng test` passes (1262/1265, same 3
+pre-existing unrelated pipe failures), `functions` `tsc` and `ng build`
+both clean. Not committed or deployed yet.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable

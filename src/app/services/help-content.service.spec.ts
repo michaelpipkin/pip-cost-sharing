@@ -18,6 +18,7 @@ describe('HelpContentService', () => {
     'history',
     'history-detail',
     'split',
+    'cant-verify-device',
   ];
 
   describe('getHelpSection', () => {

@@ -2022,6 +2022,13 @@ export const sendGroupInvite = onCall<{
 // still be able to trigger this. The recipient is hardcoded server-side
 // (not client-controlled), so an unauthenticated caller can only cause a
 // mail to be sent to the admin — it cannot be abused to spam other inboxes.
+//
+// Also deliberately NOT App Check-enforced, same reasoning as logAppError:
+// this is the in-app "ask for help" channel, so enforcing it would block
+// the exact users who most need it - anyone hitting an App Check failure
+// themselves. Same low-risk profile as logAppError: hardcoded recipient,
+// no auth check to bypass, nothing here an unenforced caller can abuse
+// beyond sending the admin an email.
 // ---------------------------------------------------------------------------
 
 export const notifyNewIssue = onCall<{
@@ -2030,7 +2037,7 @@ export const notifyNewIssue = onCall<{
   title: string;
   body: string;
   reporterEmail?: string;
-}>(callableAppCheck, async (request) => {
+}>(async (request) => {
   const { number, url, title, body, reporterEmail } = request.data;
   if (!number || !url || !title) {
     throw new HttpsError(

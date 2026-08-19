@@ -166,6 +166,16 @@ export class HelpContentService {
         "Sharing a vacation rental where not everyone stays every night? From the Expenses page, click Add New Expense, then Vacation Rental, for a guided occupancy grid: enter the number of nights, add participants, and check off who stayed each night. Every night's cost is divided evenly among whoever stayed, so nights with fewer people cost each of them more. Click Apply Shares to convert the grid into a shares split you can still review and fine-tune before generating your summary.",
       ],
     },
+    {
+      id: 'cant-verify-device',
+      title: "Help! It says it can't verify my device",
+      content: [
+        "If you see a message saying we couldn't verify your device and your account won't load, this is a security check we use to confirm requests are actually coming from the real PipSplit app or website, rather than something else. It's unrelated to your account or password - there's nothing wrong with your login, and nothing about your account has changed.",
+        'This check occasionally flags a legitimate device by mistake, most often on certain mobile networks or with some Android devices. When that happens, it typically clears itself within about 24 hours, and simply trying again later usually works.',
+        "In the meantime, try a different device or browser - this check is tied to the specific device and browser you're using, not to your account, so signing in from another phone, tablet, computer, or browser should work normally while you wait.",
+        'If this keeps happening, or you just want to let us know, use the Report an Issue form below. It works for this specific problem even when the rest of the app does not.',
+      ],
+    },
   ];
 
   getHelpSection(id: string): HelpSection | undefined {
