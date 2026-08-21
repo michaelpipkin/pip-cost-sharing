@@ -22,7 +22,7 @@ export class YesNoNaPipe implements PipeTransform {
       return 'N/A';
     }
 
-    return value ? '✓' : ' ';
+    return value ? String.fromCodePoint(10004) : ' ';
   }
 
   private isDocumentReference(obj: unknown): obj is DocumentReference {

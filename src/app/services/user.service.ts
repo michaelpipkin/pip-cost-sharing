@@ -36,6 +36,12 @@ import { DemoModeService } from './demo-mode.service';
 import { GroupService } from './group.service';
 import { IUserService } from './user.service.interface';
 
+// Total attempts (initial + retries) for the login-time Firestore sequence
+// below, and the fixed delay between them - short, bounded, and only ever
+// invoked for the transient error codes checked by isTransientFirestoreError.
+const LOGIN_SEQUENCE_MAX_ATTEMPTS = 3;
+const LOGIN_SEQUENCE_RETRY_DELAY_MS = 2000;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -79,6 +85,25 @@ export class UserService implements IUserService {
     this.router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
   }
 
+  // 'unavailable' and 'deadline-exceeded' are Firestore's own codes for a
+  // transient network condition (Firestore's docs describe 'unavailable'
+  // specifically as "most likely...corrected by retrying with a backoff")
+  // - a dropped signal or a WiFi/cellular handoff lasting a few seconds,
+  // nothing to do with App Check. 'permission-denied' (an App Check
+  // rejection) is deliberately excluded - the SDK's own ~24h throttle
+  // means an immediate retry cannot possibly help, so retrying it would
+  // only delay showing the message the user actually needs to see.
+  private isTransientFirestoreError(error: unknown): boolean {
+    return (
+      error instanceof FirebaseError &&
+      (error.code === 'unavailable' || error.code === 'deadline-exceeded')
+    );
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   // When initializeAuth() throws, GroupService.getUserGroups() never runs,
   // so nothing would otherwise clear the loading overlay or explain why
   // the app looks stuck - the user is left staring at a spinner with no
@@ -109,6 +134,87 @@ export class UserService implements IUserService {
     return userId;
   }
 
+  // Retries only the transient Firestore codes (see
+  // isTransientFirestoreError) up to LOGIN_SEQUENCE_MAX_ATTEMPTS times, a
+  // fixed LOGIN_SEQUENCE_RETRY_DELAY_MS apart - short and bounded, since
+  // the user is waiting for the app to load. createUserIfNotExists() is
+  // safe to re-run on retry: it checks for an existing doc first, so a
+  // partial success on an earlier attempt (e.g. the doc got created but
+  // getUserGroups() then failed) just finds that doc on the next attempt
+  // instead of erroring on a duplicate create.
+  private async initializeUserSession(
+    firebaseUser: FirebaseUser
+  ): Promise<void> {
+    const email = firebaseUser.email!;
+
+    for (let attempt = 1; attempt <= LOGIN_SEQUENCE_MAX_ATTEMPTS; attempt++) {
+      try {
+        // Clear all demo data from stores when a real user logs in
+        this.groupStore.clearAllUserGroups();
+        this.expenseStore.clearGroupExpenses();
+        this.categoryStore.clearGroupCategories();
+        this.memberStore.clearGroupMembers();
+        this.memorizedStore.clearMemorizedExpenses();
+        this.historyStore.clearHistory();
+        this.splitStore.clearSplits();
+
+        // Best-effort wait for App Check's async first token before the
+        // earliest Firestore reads/writes of the session - the same
+        // cold-boot race that caused linkInvitedMembers 401s (see
+        // MemberLinkService) applies here too. Unlike that callable,
+        // this path can't be skipped on timeout - login has to
+        // proceed regardless, so this only delays, never blocks. Log
+        // when it doesn't resolve ready so the still-uncovered early
+        // Firestore calls below are visible in the error log instead
+        // of only being inferred from MemberLinkService's own skips.
+        const tokenResult = await appCheckTokenReady();
+        if (!tokenResult.ready) {
+          this.analytics.logError(
+            'User Service',
+            'initializeAuth',
+            'Proceeding without confirmed App Check token',
+            tokenResult.detail
+              ? `${tokenResult.reason}: ${tokenResult.detail}`
+              : tokenResult.reason
+          );
+        }
+
+        const userData = await this.createUserIfNotExists(
+          firebaseUser.uid,
+          email
+        );
+        const user = new User({
+          ...userData,
+          id: firebaseUser.uid,
+        });
+        this.userStore.initUser(
+          user,
+          firebaseUser.providerData[0]?.providerId === 'google.com',
+          !!firebaseUser.emailVerified
+        );
+        await this.groupService.getUserGroups(user);
+        this.#handlingSessionExpiry = false;
+        return;
+      } catch (error) {
+        const willRetry =
+          attempt < LOGIN_SEQUENCE_MAX_ATTEMPTS &&
+          this.isTransientFirestoreError(error);
+        if (willRetry) {
+          await this.delay(LOGIN_SEQUENCE_RETRY_DELAY_MS);
+          continue;
+        }
+        this.analytics.logError(
+          'User Service',
+          'initializeAuth',
+          'Failed to initialize user',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        this.handleInitializeAuthFailure(error);
+        return;
+      }
+    }
+  }
+
   private async initializeAuth(): Promise<void> {
     try {
       await setPersistence(this.auth, browserLocalPersistence);
@@ -128,62 +234,7 @@ export class UserService implements IUserService {
 
     this.auth.onAuthStateChanged(async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const email = firebaseUser.email!;
-        try {
-          // Clear all demo data from stores when a real user logs in
-          this.groupStore.clearAllUserGroups();
-          this.expenseStore.clearGroupExpenses();
-          this.categoryStore.clearGroupCategories();
-          this.memberStore.clearGroupMembers();
-          this.memorizedStore.clearMemorizedExpenses();
-          this.historyStore.clearHistory();
-          this.splitStore.clearSplits();
-
-          // Best-effort wait for App Check's async first token before the
-          // earliest Firestore reads/writes of the session - the same
-          // cold-boot race that caused linkInvitedMembers 401s (see
-          // MemberLinkService) applies here too. Unlike that callable,
-          // this path can't be skipped on timeout - login has to
-          // proceed regardless, so this only delays, never blocks. Log
-          // when it doesn't resolve ready so the still-uncovered early
-          // Firestore calls below are visible in the error log instead
-          // of only being inferred from MemberLinkService's own skips.
-          const tokenResult = await appCheckTokenReady();
-          if (!tokenResult.ready) {
-            this.analytics.logError(
-              'User Service',
-              'initializeAuth',
-              'Proceeding without confirmed App Check token',
-              tokenResult.detail
-                ? `${tokenResult.reason}: ${tokenResult.detail}`
-                : tokenResult.reason
-            );
-          }
-
-          const userData = await this.createUserIfNotExists(
-            firebaseUser.uid,
-            email
-          );
-          const user = new User({
-            ...userData,
-            id: firebaseUser.uid,
-          });
-          this.userStore.initUser(
-            user,
-            firebaseUser.providerData[0]?.providerId === 'google.com',
-            !!firebaseUser.emailVerified
-          );
-          await this.groupService.getUserGroups(user);
-          this.#handlingSessionExpiry = false;
-        } catch (error) {
-          this.analytics.logError(
-            'User Service',
-            'initializeAuth',
-            'Failed to initialize user',
-            error instanceof Error ? error.message : 'Unknown error'
-          );
-          this.handleInitializeAuthFailure(error);
-        }
+        await this.initializeUserSession(firebaseUser);
       } else {
         // Firebase transitioned to a logged-out state. Distinguish an
         // intentional logout() call from an involuntary session loss

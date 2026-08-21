@@ -224,12 +224,16 @@ unaffected either way.
    from 2026-08-12 through 2026-08-18 on a verified-rate dip (99%->97%,
    later traced to a confirmed App Check token race, fixed - see notes
    above); confirmed 100% verified over a full clean 24h window
-   (6.1K/6.1K requests) before flipping. **DONE 2026-08-18** - user
-   confirmed via the console (App Check -> APIs -> Firestore row) that
-   enforcement is now live in production.
+   (6.1K/6.1K requests) before flipping. **Enforced 2026-08-18, then
+   deliberately turned back OFF 2026-08-19** - see "Firestore
+   enforcement reversed" below. Currently **unenforced (Monitoring)**,
+   not a "not yet reached" pending step - a considered decision to hold
+   here for now.
 
-**All three toggles are now live.** Functions (2026-08-10), Storage
-(2026-08-12), Firestore (2026-08-18). Nothing further pending in this doc.
+**Functions and Storage remain enforced** (2026-08-10 and 2026-08-12
+respectively) - unaffected by the Firestore reversal below. Firestore is
+intentionally back to unenforced; see the reversal note for why and what
+would bring it back.
 
 **Leave Authentication unenforced.** `login.component.ts` calls
 `FirebaseAuthentication.signInWithGoogle()` with `skipNativeAuth: false`,
@@ -583,12 +587,20 @@ background risk. Possible low-priority follow-up (not done): catch
 `appCheck/throttled` specifically client-side and show an affected user
 something more actionable than the generic "missing permissions" message.
 
-**This closes out the App Check enforcement rollout.** All three
+**Update 2026-08-19: this declared the rollout "closed" one day too
+early.** Firestore enforcement was reversed the day after this was
+written - see "Firestore enforcement reversed" further below for why.
+Leaving the paragraph below as-written for the historical record of
+where things stood on 2026-08-18, but it is no longer the current state
+- **check the "Console toggles" section above for current status, not
+this paragraph.**
+
+~~This closes out the App Check enforcement rollout. All three
 services (Functions, Storage, Firestore) enforced; Authentication
 deliberately deferred (see above). The cold-boot token race that drove
 most of this investigation is fixed and confirmed; the residual risk is
 now understood, small, and consistent with reCAPTCHA's normal
-false-positive rate elsewhere on the web.
+false-positive rate elsewhere on the web.~~
 
 **Follow-up diagnostic, 2026-08-18:** the `appCheck/throttled` incident
 above was diagnosed from the error message text alone, with no way to
@@ -701,6 +713,27 @@ confirmed fix for a confirmed, recurring mechanism. Whether that's worth
 scoping now vs. continuing to monitor at this rate is a real decision
 point, not a foregone conclusion either way.
 
+**Fourth incident, 2026-08-19 11:07am - different device, undercuts the
+"outdated device" theory.** `platform: android, native: true, userAgent:
+...Android 16...24116RACCG Build/BP2A.250605.031.A3; wv)...Chrome/140...`
+- a different OEM's model-numbering pattern than the TECNO CH6, and
+**Android 16 is about as current as OS versions get**, not a lagging
+budget device. Same mechanism (`native: true`, the `; wv)` marker, same
+`appCheck/throttled` pattern) on a modern, up-to-date device rules out
+"stale WebView component on an old device" as the unifying explanation
+across incidents - two different OEMs, two very different OS ages, same
+failure. Weight of evidence shifts toward something more general about
+how reCAPTCHA Enterprise scores Android WebView traffic through this app
+specifically (thin trust profile / shared IP reputation), rather than
+device-specific staleness.
+
+Also worth noting: this is the second incident within ~1.5 hours (9:42am
+and 11:07am), for four total in roughly 24 hours of actually having
+visibility via the diagnostic - a faster cadence than "3 incidents across
+the whole investigation" suggested before the diagnostic could actually
+surface them clearly. Not yet re-raising the scope-now-vs-monitor
+decision unprompted, but this is relevant new evidence for it.
+
 **Decision 2026-08-19: keep monitoring for now, don't scope yet.** Full
 implementation plan written up regardless, in case that changes -
 see [[android-play-integrity-app-check.md]] for everything involved
@@ -741,6 +774,104 @@ notes it self-resolves in ~24h, and points to the now-genuinely-working
 Report an Issue form. `pnpm exec ng test` passes (1262/1265, same 3
 pre-existing unrelated pipe failures), `functions` `tsc` and `ng build`
 both clean. Not committed or deployed yet.
+
+## Firestore enforcement reversed, 2026-08-19
+
+**Decision: turned Firestore App Check enforcement back OFF** (console
+toggle, effective immediately), one day after turning it on. Supersedes
+the "keep monitoring, don't scope Play Integrity yet" decision directly
+above - that was the right call with the information available at the
+time; this is new information changing the tradeoff, not a reversal of
+the reasoning itself.
+
+**What changed the calculus:** app is still small and still growing -
+450 total registrations ever, only 4 active non-owner groups with
+expense activity in the last 30 days. Checked recent registration
+outcomes specifically: **3 of the last 4 new registrants have a Firebase
+Auth account but no matching Firestore `users/{uid}` document** -
+presumably 3 of the App-Check-throttled incidents logged above.
+
+**Why new registrants are hit categorically worse than returning
+users**, traced through the code: `createUserIfNotExists()` calls
+`getUserDetails()` (the `getDoc` that fails under a throttle) *before*
+`setDoc()` (the call that actually creates the user's document) ever
+runs. A returning user's document already exists, so a throttled device
+is recoverable - painful, but bounded. A brand-new registrant has no
+document yet, so the failure happens *before* one is ever created, and
+every retry on the same device repeats the same failure. This isn't
+"occasionally locked out" for that population - at the observed rate
+it's closer to "registration is broken about as often as it works,"
+which directly undermines the one thing that matters most at this stage
+of the app's life.
+
+**Weighed against the abuse-exposure discussion** earlier in this doc:
+at this size, the app has essentially no attractive target for the kind
+of automated/volumetric abuse App Check specifically defends against -
+not enough data, not enough traffic, nothing worth scripting for. The
+actual authorization boundary (hardened Firestore rules - membership-
+scoped read/write via `memberUids`/`activeMemberUids`/`adminUids`) is
+completely unaffected by this decision and remains fully in force
+regardless of App Check's Firestore toggle. What's given up is
+specifically the anti-automation/anti-volume layer and defense-in-depth
+against a future rules bug - real, but not worth the concrete, currently
+measured cost to new-user acquisition at this scale.
+
+**Functions and Storage remain enforced**, unaffected by this decision -
+the costliest/most abuse-prone surfaces (email sending, receipt OCR,
+admin stats, account/group deletion) stay protected. This was a
+deliberate middle ground, not "turn everything off."
+
+**The 3 currently-broken registrant accounts should self-heal
+automatically** the next time those people attempt to log in - with
+Firestore unenforced, `getUserDetails()` will succeed, find no document,
+and `createUserIfNotExists()` will create one normally, same as any
+other new registration. No manual data repair needed.
+
+**Revisit points, not a permanent decision:** worth reconsidering once
+the user base grows enough that the abuse-risk/reward genuinely shifts,
+or once [[android-play-integrity-app-check.md]] ships and removes the
+Android false-positive mechanism specifically - at that point
+re-enforcing Firestore would no longer cost real registrations.
+
+## Unrelated finding: login-time retry for transient Firestore errors, 2026-08-21
+
+While checking the error log for post-rollback App Check recurrence,
+found a **different, unrelated** failure: three `initializeAuth`/
+`getUserDetails`/`createUserIfNotExists` entries on 2026-08-20 1:09pm,
+all `"Failed to get document because the client is offline."` - a
+Firestore connectivity error (`unavailable`), not an App Check
+rejection. Confirmed unrelated by timestamp: no App Check-flavored entry
+logged at the same moment, and the nearest `appCheck/throttled` entries
+(8/19 3:15pm and 8/21 9:06am) don't line up with it - just an ordinary
+mobile network blip hitting the same fragile `initializeAuth` chain any
+Firestore read failure cascades through.
+
+Firestore's own docs describe `unavailable` as "most likely a transient
+condition...corrected by retrying with a backoff," so added a short,
+selective retry to `UserService.initializeUserSession()` (extracted from
+`initializeAuth()`'s `onAuthStateChanged` callback, `src/app/services/
+user.service.ts`): up to 3 total attempts, 2s apart, but **only** for
+`unavailable` and `deadline-exceeded` (Firestore's own transient codes) -
+explicitly not for `permission-denied` (an App Check rejection), since
+the SDK's own ~24h throttle means an immediate retry cannot help there,
+and retrying would only delay showing the message the user actually
+needs. `createUserIfNotExists()` is safe to re-run on retry - it checks
+for an existing doc first, so a partial success on an earlier attempt
+doesn't error on a duplicate create.
+
+4 new tests in `user.service.spec.ts` cover: retries+succeeds silently
+on `unavailable`, same for `deadline-exceeded`, gives up after max
+attempts and shows the existing generic message, and does not retry
+`permission-denied` at all. Exposed and fixed a pre-existing gap in the
+test mocks along the way (`mockUserStore` was missing `initUser` -
+no earlier test in this file had ever exercised the full login success
+path, since every prior test intentionally failed before reaching it).
+`pnpm exec ng test` passes in full (1266/1269, same 3 pre-existing
+unrelated pipe failures), `ng build` clean. **Deliberately did not run
+the functions test suite or any Playwright/emulator-dependent tooling
+this round** - user has emulators running for another project and asked
+not to touch them; nothing in this fix touches `functions/`. Not
+committed or deployed yet.
 
 ## Also relevant, not urgent
 
