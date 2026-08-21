@@ -58,6 +58,7 @@ describe('UserService', () => {
     setUser: vi.fn(),
     clearUser: vi.fn(),
     updateUser: vi.fn(),
+    initUser: vi.fn(),
     setIsDemoMode: vi.fn(),
     setIsGoogleUser: vi.fn(),
     setIsEmailConfirmed: vi.fn(),
@@ -580,6 +581,79 @@ describe('UserService', () => {
           },
         }
       );
+    });
+
+    describe('transient Firestore error retry', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('retries an "unavailable" error and succeeds silently, without showing any message', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+          new FirebaseError('unavailable', 'The service is currently unavailable.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        const resultPromise = callback(firebaseUser as any);
+        await vi.advanceTimersByTimeAsync(2000);
+        await resultPromise;
+
+        expect(firestoreModule.getDoc).toHaveBeenCalledTimes(2);
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+        expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      });
+
+      it('also retries a "deadline-exceeded" error', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+          new FirebaseError('deadline-exceeded', 'Deadline exceeded.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        const resultPromise = callback(firebaseUser as any);
+        await vi.advanceTimersByTimeAsync(2000);
+        await resultPromise;
+
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+        expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      });
+
+      it('gives up after the max attempts and shows the generic message', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValue(
+          new FirebaseError('unavailable', 'The service is currently unavailable.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        const resultPromise = callback(firebaseUser as any);
+        await vi.advanceTimersByTimeAsync(2000);
+        await vi.advanceTimersByTimeAsync(2000);
+        await resultPromise;
+
+        expect(firestoreModule.getDoc).toHaveBeenCalledTimes(3);
+        expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+          expect.anything(),
+          {
+            data: {
+              message: 'Something went wrong loading your account. Please try again.',
+            },
+          }
+        );
+      });
+
+      it('does not retry a permission-denied error', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValue(
+          new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(firebaseUser as any);
+
+        expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

@@ -833,6 +833,46 @@ or once [[android-play-integrity-app-check.md]] ships and removes the
 Android false-positive mechanism specifically - at that point
 re-enforcing Firestore would no longer cost real registrations.
 
+## Unrelated finding: login-time retry for transient Firestore errors, 2026-08-21
+
+While checking the error log for post-rollback App Check recurrence,
+found a **different, unrelated** failure: three `initializeAuth`/
+`getUserDetails`/`createUserIfNotExists` entries on 2026-08-20 1:09pm,
+all `"Failed to get document because the client is offline."` - a
+Firestore connectivity error (`unavailable`), not an App Check
+rejection. Confirmed unrelated by timestamp: no App Check-flavored entry
+logged at the same moment, and the nearest `appCheck/throttled` entries
+(8/19 3:15pm and 8/21 9:06am) don't line up with it - just an ordinary
+mobile network blip hitting the same fragile `initializeAuth` chain any
+Firestore read failure cascades through.
+
+Firestore's own docs describe `unavailable` as "most likely a transient
+condition...corrected by retrying with a backoff," so added a short,
+selective retry to `UserService.initializeUserSession()` (extracted from
+`initializeAuth()`'s `onAuthStateChanged` callback, `src/app/services/
+user.service.ts`): up to 3 total attempts, 2s apart, but **only** for
+`unavailable` and `deadline-exceeded` (Firestore's own transient codes) -
+explicitly not for `permission-denied` (an App Check rejection), since
+the SDK's own ~24h throttle means an immediate retry cannot help there,
+and retrying would only delay showing the message the user actually
+needs. `createUserIfNotExists()` is safe to re-run on retry - it checks
+for an existing doc first, so a partial success on an earlier attempt
+doesn't error on a duplicate create.
+
+4 new tests in `user.service.spec.ts` cover: retries+succeeds silently
+on `unavailable`, same for `deadline-exceeded`, gives up after max
+attempts and shows the existing generic message, and does not retry
+`permission-denied` at all. Exposed and fixed a pre-existing gap in the
+test mocks along the way (`mockUserStore` was missing `initUser` -
+no earlier test in this file had ever exercised the full login success
+path, since every prior test intentionally failed before reaching it).
+`pnpm exec ng test` passes in full (1266/1269, same 3 pre-existing
+unrelated pipe failures), `ng build` clean. **Deliberately did not run
+the functions test suite or any Playwright/emulator-dependent tooling
+this round** - user has emulators running for another project and asked
+not to touch them; nothing in this fix touches `functions/`. Not
+committed or deployed yet.
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable
