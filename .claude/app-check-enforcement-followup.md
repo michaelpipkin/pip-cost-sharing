@@ -902,6 +902,22 @@ given Firestore is currently unenforced. Logging here so a future
 recurrence has this one to compare against, same pattern as the
 Android-incident log above.
 
+**Further incident, 2026-08-25 1:33pm.** Standard `appCheck/throttled`
+cluster (`initializeAuth` "Proceeding without confirmed App Check
+token" + `linkInvitedMembers` "Skipped" for shuaibumalam556@gmail.com) -
+same known mechanism, low severity given Firestore is unenforced.
+`additionalInfo`: `platform: android, native: true, ...TECNO CH9
+Build/RP1A.200720.011; wv)...Chrome/150...` - **the third incident
+specifically on a Tecno-branded device** (first was `TECNO CH6`,
+2026-08-19). A device-manufacturer pattern (as opposed to just "Android"
+broadly) is a more specific clue than anything logged so far - Tecno has
+strong market presence in specific regions, so this could tie to the
+"shared/carrier IP reputation" theory in the causes discussion above
+(a particular manufacturer clustering hints at a particular
+region/carrier, not random Android devices generally). 3 data points
+isn't conclusive, but worth watching for further Tecno-specific
+recurrence.
+
 ## Related but separate: a second, non-App-Check cause of the same symptom
 
 2026-08-25: re-checking `orphaned-registrations` (see the "3 of the last
