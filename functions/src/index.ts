@@ -21,6 +21,7 @@ import * as nodemailer from 'nodemailer';
 import { callableAppCheck, getSmtpPassword } from './common';
 
 export { scanReceipt } from './receipt-ocr';
+export { createUserProfileOnSignUp } from './user-onboarding';
 
 initializeApp();
 
