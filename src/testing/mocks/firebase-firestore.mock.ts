@@ -54,6 +54,10 @@ export interface DocumentSnapshot<T = unknown> {
   data(): T | undefined;
 }
 
+export interface FirestoreError extends Error {
+  code: string;
+}
+
 // Opaque types — services receive these but only pass them around
 export interface CollectionReference<T = unknown> {
   id: string;
@@ -121,11 +125,18 @@ export const limit: (n: number) => QueryConstraint = vi
   .fn()
   .mockReturnValue({}) as any;
 
-export const onSnapshot: (
-  queryOrRef: any,
-  onNext: (snap: QuerySnapshot<any>) => void,
-  onError?: (error: any) => void
-) => () => void = vi.fn().mockReturnValue(vi.fn()) as any;
+export const onSnapshot: {
+  (
+    ref: DocumentReference<any>,
+    onNext: (snap: DocumentSnapshot<any>) => void,
+    onError?: (error: FirestoreError) => void
+  ): () => void;
+  (
+    queryOrRef: Query<any> | CollectionReference<any>,
+    onNext: (snap: QuerySnapshot<any>) => void,
+    onError?: (error: FirestoreError) => void
+  ): () => void;
+} = vi.fn().mockReturnValue(vi.fn()) as any;
 
 export const getDocs: (
   query: Query<any> | CollectionReference<any>

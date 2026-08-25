@@ -146,6 +146,16 @@ describe('UserService', () => {
       exists: () => false,
     } as any);
     vi.spyOn(firestoreModule, 'setDoc').mockResolvedValue(undefined as any);
+    // Default: the createUserProfileOnSignUp Cloud Function trigger has
+    // already created the doc by the time waitForServerCreatedUser()
+    // starts listening - the common case post-fix. Tests exercising the
+    // fallback-to-client-creation path override this per-test.
+    vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+      ((_ref: any, onNext: any) => {
+        onNext(makeUserSnap(true, { email: 'alice@test.com' }));
+        return vi.fn();
+      }) as any
+    );
     mockMemberLinkService.linkInvitedMembers.mockResolvedValue(0);
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
     (mockAuth as any).currentUser = null;
@@ -654,6 +664,71 @@ describe('UserService', () => {
 
         expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('server-created user profile (new account sign-up)', () => {
+    const firebaseUser = {
+      uid: 'user-123',
+      email: 'alice@test.com',
+      emailVerified: true,
+      providerData: [{ providerId: 'password' }],
+    };
+
+    it('uses the doc createUserProfileOnSignUp already created, without writing anything client-side', async () => {
+      // beforeEach's default getDoc mock (exists: false) plus its default
+      // onSnapshot mock (fires synchronously with an existing doc) together
+      // simulate the trigger having already completed by the time the
+      // client checks.
+      const callback = await getAuthStateCallback(service);
+
+      await callback(firebaseUser as any);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockUserStore.initUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-123', email: 'alice@test.com' }),
+        false,
+        true
+      );
+      expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+    });
+
+    it('falls back to client-side creation when the server trigger does not complete in time', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (() => vi.fn()) as any
+      );
+
+      const callback = await getAuthStateCallback(service);
+      const resultPromise = callback(firebaseUser as any);
+      await vi.advanceTimersByTimeAsync(8000);
+      await resultPromise;
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({ email: 'alice@test.com' })
+      );
+      expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('syncs the email field for an existing user without waiting on the server trigger', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
+      const onSnapshotSpy = vi.spyOn(firestoreModule, 'onSnapshot');
+
+      const callback = await getAuthStateCallback(service);
+      await callback(firebaseUser as any);
+
+      expect(onSnapshotSpy).not.toHaveBeenCalled();
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        { email: 'alice@test.com' },
+        { merge: true }
+      );
+      expect(mockGroupService.getUserGroups).toHaveBeenCalled();
     });
   });
 });

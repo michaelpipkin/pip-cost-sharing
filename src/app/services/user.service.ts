@@ -26,8 +26,11 @@ import {
 import {
   doc,
   DocumentReference,
+  DocumentSnapshot,
+  FirestoreError,
   getDoc,
   getFirestore,
+  onSnapshot,
   setDoc,
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -41,6 +44,11 @@ import { IUserService } from './user.service.interface';
 // invoked for the transient error codes checked by isTransientFirestoreError.
 const LOGIN_SEQUENCE_MAX_ATTEMPTS = 3;
 const LOGIN_SEQUENCE_RETRY_DELAY_MS = 2000;
+
+// How long to wait for createUserProfileOnSignUp (see
+// functions/src/user-onboarding.ts) to create a brand-new user's
+// Firestore doc before falling back to creating it client-side.
+const SERVER_USER_PROFILE_WAIT_TIMEOUT_MS = 8000;
 
 @Injectable({
   providedIn: 'root',
@@ -158,16 +166,21 @@ export class UserService implements IUserService {
         this.historyStore.clearHistory();
         this.splitStore.clearSplits();
 
-        // Best-effort wait for App Check's async first token before the
-        // earliest Firestore reads/writes of the session - the same
-        // cold-boot race that caused linkInvitedMembers 401s (see
-        // MemberLinkService) applies here too. Unlike that callable,
-        // this path can't be skipped on timeout - login has to
-        // proceed regardless, so this only delays, never blocks. Log
-        // when it doesn't resolve ready so the still-uncovered early
-        // Firestore calls below are visible in the error log instead
-        // of only being inferred from MemberLinkService's own skips.
-        const tokenResult = await appCheckTokenReady();
+        // Run the App Check readiness check and the initial user-doc
+        // read concurrently instead of gating the latter on the former.
+        // Firestore App Check enforcement is currently OFF (see
+        // .claude/app-check-enforcement-followup.md), so waiting up to
+        // appCheckTokenReady()'s 10s timeout before this Firestore read
+        // buys nothing today. tokenResult is still awaited for its
+        // diagnostic log below. WARNING: if Firestore App Check
+        // enforcement is ever re-enabled, this must go back to
+        // sequential (await appCheckTokenReady() before any Firestore
+        // call below) or the cold-boot race that broke new
+        // registrations on 2026-08-19 will return.
+        const [tokenResult, existingUser] = await Promise.all([
+          appCheckTokenReady(),
+          this.getUserDetails(firebaseUser.uid),
+        ]);
         if (!tokenResult.ready) {
           this.analytics.logError(
             'User Service',
@@ -179,10 +192,31 @@ export class UserService implements IUserService {
           );
         }
 
-        const userData = await this.createUserIfNotExists(
-          firebaseUser.uid,
-          email
-        );
+        let userData: User;
+        if (existingUser) {
+          userData = existingUser;
+          if (existingUser.email !== email) {
+            const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
+            await setDoc(docRef, { email }, { merge: true });
+            userData = new User({ ...existingUser, email });
+          }
+        } else {
+          // Brand-new account: createUserProfileOnSignUp (Cloud
+          // Function, see functions/src/user-onboarding.ts) creates the
+          // doc server-side as soon as the Auth account exists,
+          // independent of whether this tab stays open. Wait for it via
+          // a live listener rather than creating it here ourselves -
+          // client-side creation raced tab-close/backgrounding and left
+          // accounts with no profile doc (see
+          // .claude/orphaned-registrations-investigation.md). Falls
+          // back to the old client-side creation only if the trigger
+          // doesn't complete within the wait (rare - function outage or
+          // a slow cold start).
+          userData =
+            (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
+            (await this.createUserIfNotExists(firebaseUser.uid, email));
+        }
+
         const user = new User({
           ...userData,
           id: firebaseUser.uid,
@@ -247,6 +281,62 @@ export class UserService implements IUserService {
           this.handleSessionExpired();
         }
         this.#intentionalLogout = false;
+      }
+    });
+  }
+
+  // Resolves as soon as createUserProfileOnSignUp's server-side write
+  // lands (near-instant push via the listener, not polling), or null
+  // after timeoutMs if it never does. Callers fall back to creating the
+  // doc themselves on null.
+  private waitForServerCreatedUser(
+    userId: string,
+    timeoutMs = SERVER_USER_PROFILE_WAIT_TIMEOUT_MS
+  ): Promise<User | null> {
+    return new Promise((resolve) => {
+      const docRef = doc(this.fs, `users/${userId}`);
+      let settled = false;
+      let unsubscribe: () => void = () => {};
+      // Declared before the onSnapshot() call below and left possibly
+      // undefined - a mocked (or otherwise synchronous) onSnapshot could
+      // invoke onNext before returning, calling settle() before this
+      // would otherwise be assigned.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const settle = (user: User | null) => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        unsubscribe();
+        resolve(user);
+      };
+
+      unsubscribe = onSnapshot(
+        docRef,
+        (snap: DocumentSnapshot<any>) => {
+          if (snap.exists()) {
+            settle(
+              new User({
+                id: snap.id,
+                ...snap.data(),
+                ref: docRef as DocumentReference<User>, // NOSONAR
+              })
+            );
+          }
+        },
+        (error: FirestoreError) => {
+          this.analytics.logSnapshotError(
+            'User Service',
+            'waitForServerCreatedUser',
+            'Failed to listen for server-created user profile',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+          settle(null);
+        }
+      );
+
+      if (!settled) {
+        timer = setTimeout(() => settle(null), timeoutMs);
       }
     });
   }
