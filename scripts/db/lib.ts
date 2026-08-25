@@ -18,6 +18,13 @@ initializeApp({ projectId: 'pip-cost-sharing' });
 export const db = getFirestore();
 export const auth = getAuth();
 
+// Auth accounts that will never have (or need) a Firestore users doc, so
+// they're false positives in any "orphaned registration" query rather than
+// real sign-ups. play_review@google.com is the account Google Play's review
+// crawler requires for Play Store developer verification - it has no
+// in-app usage at all.
+export const NON_USER_AUTH_EMAILS = new Set(['play_review@google.com']);
+
 /** Pretty-print every document in a QuerySnapshot. */
 export function dump(snap: QuerySnapshot<DocumentData>): void {
   if (snap.empty) {
