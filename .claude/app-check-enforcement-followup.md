@@ -873,6 +873,46 @@ this round** - user has emulators running for another project and asked
 not to touch them; nothing in this fix touches `functions/`. Not
 committed or deployed yet.
 
+## New tracked category: `appCheck/recaptcha-error` on desktop web, 2026-08-21
+
+Distinct from everything else in this doc - **not** the Android WebView
+mechanism, **not** `appCheck/throttled`, **not** a Firestore-side error
+at all. `platform: web, native: false` (Windows/Chrome desktop), error
+`AppCheck: ReCAPTCHA error. (appCheck/recaptcha-error)` - the reCAPTCHA
+script/widget itself failed to complete, most commonly caused by an
+ad-blocker, privacy extension, or corporate/school network blocking
+Google's reCAPTCHA domains outright, client-side and outside anything
+we control server-side.
+
+6 occurrences, 2:41pm-2:57pm same day (16 min span) - confirmed via the
+Individual log view, all identical failure, no successes mixed in.
+Read as one person retrying/reloading repeatedly, not six different
+people: **every attempt failed the same way** (not "mostly failed, one
+succeeded"), pointing to a persistent, always-on block rather than a
+flaky connection - and even though their actual login likely succeeded
+underneath (Firestore unenforced), `appCheckTokenReady()` still has to
+wait out reCAPTCHA's failure before proceeding on every single page
+load, which is a very plausible reason to see repeated frustrated
+reloads even when the app "works" each time.
+
+First occurrence ever. Not pursuing a fix - it's a fundamentally
+different, client-side cause than anything Play Integrity or a
+server-side change could address, and doesn't permanently block anyone
+given Firestore is currently unenforced. Logging here so a future
+recurrence has this one to compare against, same pattern as the
+Android-incident log above.
+
+## Related but separate: a second, non-App-Check cause of the same symptom
+
+2026-08-25: re-checking `orphaned-registrations` (see the "3 of the last
+4 new registrants" finding above) turned up new orphaned accounts with
+**zero associated `app_errors` entries** - unlike every App-Check-caused
+case in this doc, which always produced a caught, logged error. That
+rules out App Check as the cause for these specific ones. Spun out into
+its own doc rather than continuing here, since the fix (if any) has
+nothing to do with reCAPTCHA/Play Integrity/enforcement - see
+[[orphaned-registrations-investigation.md]].
+
 ## Also relevant, not urgent
 
 - `hcaptcha-secret` in GCP Secret Manager is now unused - safe to disable
