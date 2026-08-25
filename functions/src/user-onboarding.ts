@@ -12,7 +12,10 @@ import * as functionsV1 from 'firebase-functions/v1';
 //
 // v1, not v2: Auth onCreate/onDelete triggers aren't available in
 // firebase-functions v2 yet. Mixing v1 and v2 exports from one codebase is
-// fully supported by the Firebase CLI.
+// fully supported by the Firebase CLI - but v1 triggers deploy as GCF Gen1,
+// which tops out at the Node runtime declared in functions/package.json's
+// engines.node (currently pinned to 22 for exactly this reason - Gen1
+// rejects 24). If this trigger is ever removed, that pin can go too.
 export const createUserProfileOnSignUp = functionsV1.auth
   .user()
   .onCreate(async (user) => {
