@@ -1,15 +1,19 @@
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 /**
  * Shared Firebase Admin SDK initialization for ad hoc query scripts.
  *
  * Authentication: Application Default Credentials (ADC).
  * One-time setup: run `gcloud auth application-default login`
  */
-import { initializeApp } from 'firebase-admin/app';
-import { getFirestore, type QuerySnapshot, type DocumentData } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import {
+  getFirestore,
+  type DocumentData,
+  type QuerySnapshot,
+} from 'firebase-admin/firestore';
 import { writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,6 +21,13 @@ initializeApp({ projectId: 'pip-cost-sharing' });
 
 export const db = getFirestore();
 export const auth = getAuth();
+
+// Auth accounts that will never have (or need) a Firestore users doc, so
+// they're false positives in any "orphaned registration" query rather than
+// real sign-ups. play_review@google.com is the account Google Play's review
+// crawler requires for Play Store developer verification - it has no
+// in-app usage at all.
+export const NON_USER_AUTH_EMAILS = new Set(['play_review@google.com']);
 
 /** Pretty-print every document in a QuerySnapshot. */
 export function dump(snap: QuerySnapshot<DocumentData>): void {
@@ -37,7 +48,10 @@ export function logCount(label: string, n: number): void {
  * The runner (run.ts) detects this file after the query finishes and opens it.
  * Column headers are derived from the object keys of the first row.
  */
-export function writeTable(title: string, rows: Record<string, unknown>[]): void {
+export function writeTable(
+  title: string,
+  rows: Record<string, unknown>[]
+): void {
   if (rows.length === 0) {
     console.log('\n(no results to write to HTML)');
     return;
@@ -47,10 +61,7 @@ export function writeTable(title: string, rows: Record<string, unknown>[]): void
   const now = new Date().toLocaleString();
   const headerCells = cols.map((c) => `<th>${esc(c)}</th>`).join('');
   const bodyRows = rows
-    .map(
-      (row) =>
-        `<tr>${cols.map((c) => `<td>${esc(String(row[c] ?? ''))}</td>`).join('')}</tr>`,
-    )
+    .map((row) => renderRow(row, cols))
     .join('\n      ');
 
   const html = `<!DOCTYPE html>
@@ -87,6 +98,34 @@ export function writeTable(title: string, rows: Record<string, unknown>[]): void
   writeFileSync(join(__dirname, 'results.html'), html, 'utf-8');
 }
 
+function renderRow(row: Record<string, unknown>, cols: string[]): string {
+  const cells = cols.map((c) => `<td>${esc(formatCell(row[c]))}</td>`).join('');
+  return `<tr>${cells}</tr>`;
+}
+
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (value instanceof Date) {
+    return value.toLocaleString();
+  }
+  switch (typeof value) {
+    case 'string':
+      return value;
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return value.toString();
+    default:
+      return JSON.stringify(value);
+  }
+}
+
 function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s
+    .replaceAll(/&/, '&amp;')
+    .replaceAll(/</, '&lt;')
+    .replaceAll(/>/, '&gt;')
+    .replaceAll(/"/, '&quot;');
 }

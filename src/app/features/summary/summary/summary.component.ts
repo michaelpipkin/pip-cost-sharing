@@ -35,6 +35,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
@@ -97,6 +98,7 @@ export class SummaryComponent {
   protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -661,11 +663,10 @@ export class SummaryComponent {
         'Failed to send payment request',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Something went wrong - could not send payment request',
-        },
-      });
+      this.appCheckErrorHandler.handle(
+        error,
+        'Something went wrong - could not send payment request'
+      );
     } finally {
       this.loading.loadingOff();
     }
@@ -701,11 +702,10 @@ export class SummaryComponent {
         'Failed to send group payment requests',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Something went wrong - could not send payment requests',
-        },
-      });
+      this.appCheckErrorHandler.handle(
+        error,
+        'Something went wrong - could not send payment requests'
+      );
     } finally {
       this.loading.loadingOff();
     }
