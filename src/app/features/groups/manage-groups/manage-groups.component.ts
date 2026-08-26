@@ -32,6 +32,7 @@ import {
 } from '@models/currency-config.interface';
 import { Group, ManageGroupForm } from '@models/group';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
@@ -67,6 +68,7 @@ export class ManageGroupsComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly demoService = inject(DemoService);
   protected readonly data = inject(MAT_DIALOG_DATA);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   selectedGroup = model<Group | null>(this.data.group as Group);
   supportedCurrencies = SUPPORTED_CURRENCIES;
@@ -311,21 +313,18 @@ export class ManageGroupsComponent {
           await this.groupService.deleteGroup(this.selectedGroup()!.id);
           this.dialogRef.close({ success: true, operation: 'deleted' });
         } catch (error) {
+          this.appCheckErrorHandler.handle(
+            error,
+            error instanceof Error
+              ? error.message
+              : 'Something went wrong - could not delete group'
+          );
           if (error instanceof Error) {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: error.message },
-            });
             this.analytics.logError(
               'Manage Groups Component',
               'delete_group',
               error.message
             );
-          } else {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: {
-                message: 'Something went wrong - could not delete group',
-              },
-            });
           }
         } finally {
           this.loading.loadingOff();

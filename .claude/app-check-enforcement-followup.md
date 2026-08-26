@@ -918,6 +918,65 @@ region/carrier, not random Android devices generally). 3 data points
 isn't conclusive, but worth watching for further Tecno-specific
 recurrence.
 
+**Overnight cluster, 2026-08-26 1:38am-5:37am - tightest clustering yet,
+and a stronger version of the device-pattern theory.** Three more
+`appCheck/throttled` incidents, three different users
+(oyekalej79@gmail.com 1:38am, akeemganiyuaroayomikun02@gmail.com 2:11am,
+precious.nmom21@gmail.com 5:37am), same paired signature as always
+(`linkInvitedMembers` "Skipped: App Check token unavailable" +
+`initializeAuth` "Proceeding without confirmed App Check token", both
+citing a ~24h countdown from a prior 403). On top of the already-logged
+shuaibumalam556@gmail.com incident from the previous afternoon (8/25
+1:33pm), that's 4 distinct users throttled within roughly 16 hours -
+every prior cluster in this doc was either one user retrying repeatedly
+or a couple of incidents spread across a full day; four *different*
+people within one overnight window is new.
+
+Individual-view `additionalInfo` confirmed for all four:
+- shuaibumalam556 - TECNO CH9, Android 11, Chrome/150
+- oyekalej79 - TECNO BE6, Android 11, Chrome/142
+- akeemganiyuaroayomikun02 - **Infinix X650B**, Android 9, Chrome/136
+- precious.nmom21 - TECNO PR651H, Android 11, Chrome/151
+
+The Infinix device isn't a break in the Tecno pattern - it's a
+sharper version of it. **Tecno and Infinix are both owned by Transsion
+Holdings** (along with itel), the manufacturer group with dominant
+market share specifically in Africa, especially Nigeria/West Africa.
+All 4 of the last 4 device-identified incidents (this cluster plus the
+8/19 TECNO CH6) are Transsion-family hardware - 5/5 including the
+earlier TECNO CH6 if counted together. All four emails in this cluster
+also read as Nigerian names. Reframes the leading theory from
+"Tecno/device-manufacturer" to **regional/carrier IP-reputation
+clustering (likely Nigeria or nearby)** - which was already floated as
+the shared-IP-reputation theory earlier in this doc, but is now backed
+by device-family data across 4 independent users instead of a guess
+from 1-2 data points. Not an OS-version story either (3 on Android 11,
+1 on Android 9).
+
+Still not reopening the "keep monitoring vs. scope Play Integrity"
+decision unprompted, but this is materially stronger evidence than
+what that decision was made on 2026-08-19 - worth weighing next time
+that tradeoff comes up.
+
+**Confirmed 2026-08-26: none of this cluster ended up orphaned.**
+`pnpm query orphaned-registrations` re-run the same morning returned
+**0** Auth users missing a Firestore doc - a real difference from the
+pre-8/19 pattern, where App-Check-throttled cold boots for *new*
+registrants routinely left them without a document at all (the finding
+that drove the Firestore-enforcement rollback in the first place, see
+"Firestore enforcement reversed" below). With Firestore unenforced,
+`getUserDetails()` on a throttled device still succeeds (no App Check
+rejection possible), so `createUserIfNotExists()` - or, since 2026-08-25,
+the server-side `createUserProfileOnSignUp` trigger the client waits on
+(see [[orphaned-registrations-investigation.md]]) - runs to completion
+regardless of the throttle. The throttle now only costs a device its App
+Check token (diagnostic-only while Firestore is unenforced) and, for a
+brand-new account, whatever `waitForServerCreatedUser()`'s listener
+picks up server-side - it no longer costs anyone their account working.
+Good independent confirmation that both the enforcement-reversal
+decision and the newer orphaned-registrations mitigations are holding up
+under real, currently-elevated throttle traffic, not just in theory.
+
 ## Related but separate: a second, non-App-Check cause of the same symptom
 
 2026-08-25: re-checking `orphaned-registrations` (see the "3 of the last
@@ -928,6 +987,92 @@ rules out App Check as the cause for these specific ones. Spun out into
 its own doc rather than continuing here, since the fix (if any) has
 nothing to do with reCAPTCHA/Play Integrity/enforcement - see
 [[orphaned-registrations-investigation.md]].
+
+## App Check-aware error dialog, 2026-08-26
+
+Prompted by a suggestion from Gemini (asked as a second opinion, since it
+and Firebase are both Google products) to "force a token refresh
+(`getToken(true)`)" and "catch Play Integrity binding errors to prompt
+the user to update Google Play Services." Neither applies as-is to this
+app: `appCheck/throttled` is the SDK's own client-side backoff after a
+real 403 - `forceRefresh` bypasses the cached-token shortcut, not the
+throttle guard itself, so it would not help (same reasoning already
+behind excluding `permission-denied` from the login-sequence retry
+above). And this app has never used Play Integrity - App Check here runs
+`ReCaptchaEnterpriseProvider` everywhere, including inside the Android
+WebView (see "What's already done" at the top of this doc) - so telling
+a throttled user to update Google Play Services would be actively
+misleading about the actual mechanism.
+
+What was actually useful from that conversation: the general idea of
+giving a throttled/App-Check-rejected user something actionable instead
+of a generic error. Implemented:
+
+- **`isLikelyAppCheckError()`** (`src/app/utilities/app-check-error.util.ts`) -
+  true for `FirebaseError` codes `permission-denied` (Firestore) or
+  `functions/unauthenticated` (a Functions callable). Both codes are
+  traced in this doc to real App Check incidents with no other confirmed
+  cause. `functions/unauthenticated` isn't perfectly exclusive to App
+  Check (a genuinely stale ID token could in theory produce it too), but
+  the Firebase client SDK refreshes tokens well before real expiry and
+  every occurrence actually observed here has been App Check - and the
+  guidance shown (retry, try another device/network/browser, contact
+  support) is still valid advice even on the rare miss.
+- **`AppCheckErrorHandlerService`** (`src/app/services/
+  app-check-error-handler.service.ts`) - `handle(error, fallbackMessage)`.
+  When the error looks App Check-caused, opens a dialog instead of a
+  snackbar. Otherwise falls back to a plain snackbar with the caller's
+  `fallbackMessage`, same behavior every call site had before this
+  existed.
+- **Manually verified locally before committing anything**, since real
+  `appCheck/throttled` takes a genuine 403 plus ~24h to reproduce:
+  temporarily made `AdminStatisticsService.getStatistics()` throw a fake
+  `FirebaseError('functions/unauthenticated', ...)`, ran `ng serve`, and
+  confirmed the dialog appeared on the Admin Statistics page. No
+  emulators involved - this feature touches no `functions/` code at all.
+  Reverted immediately after confirming.
+- **First pass reused the existing "can't verify your device"
+  `HelpDialogComponent`** (`sectionId: 'cant-verify-device'`, see the
+  2026-08-19 mitigations above). After seeing it live, found two real
+  problems with that: it references a "Report an Issue form below,"
+  which is only true on the actual Help page - this dialog can pop up
+  from anywhere in the app, so that line was actively wrong most of the
+  time - and it's written at Help-page length/tone, more verbose than a
+  popup should be when someone just wants to know what to do next.
+  **Replaced with a dedicated `AppCheckErrorDialogComponent`**
+  (`src/app/shared/components/app-check-error-dialog/`) - short,
+  solutions-first copy (not an account problem; try again in a few
+  minutes; switch networks/browser/device; usually self-resolves within
+  about a day), plus a "Get Help" button that closes the dialog and
+  navigates to `/help` instead of assuming the report form is already
+  visible. The full `cant-verify-device` help-content section is
+  unchanged and still serves the Help page itself (and whoever lands
+  there via "Get Help").
+- Wired into every App Check-enforced-callable call site with real
+  user-facing exposure: `UserService.handleInitializeAuthFailure()`
+  (replacing its ad hoc `permission-denied` check with the shared util),
+  `ScanReceiptComponent` (`scanReceipt`), `MembersComponent`
+  (`sendGroupInvite`), `ManageGroupsComponent` (`deleteGroup` only - its
+  edit/archive/unarchive catches are pure Firestore writes, not App
+  Check-enforced), `DeleteAccountComponent` (`deleteUserAccount`),
+  `AdminStatisticsComponent` (`getAdminStatistics`), and
+  `SummaryComponent`'s `requestPayment`/`requestAllPayments`
+  (`sendEmail`). Deliberately left out the "unpay" notification emails in
+  `HistoryDetailComponent` - those are fire-and-forget side effects after
+  an already-successful primary action, not worth the same treatment.
+  `syncAuthEmailsToUsers` has no UI call site at all (admin/manual only).
+- Every touched component's `MatDialog`/`MatSnackBar` usage funnels
+  through the same shared service now, so this is one place to adjust
+  wording or add more App Check codes later rather than N scattered
+  snackbar calls.
+- New tests: `app-check-error.util.spec.ts` (5), `app-check-error-handler
+  .service.spec.ts` (4, covering both the dialog and snackbar branches).
+  Updated `user.service.spec.ts`'s existing App-Check-rejection test to
+  assert the dialog opens instead of the old snackbar-with-specific-text
+  assertion, and added a `MatDialog` mock provider to that spec.
+  `pnpm exec ng test` passes in full (1278/1281, same 3 pre-existing
+  unrelated `yes-no-na.pipe.spec.ts` failures noted elsewhere in this
+  doc), `ng build` clean. Not committed or deployed yet.
 
 ## Also relevant, not urgent
 

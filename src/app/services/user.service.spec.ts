@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
+import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { FirebaseError } from 'firebase/app';
 import * as firestoreModule from 'firebase/firestore';
 import * as authModule from 'firebase/auth';
@@ -64,6 +66,7 @@ describe('UserService', () => {
     setIsEmailConfirmed: vi.fn(),
   };
   const mockSnackBar = { openFromComponent: vi.fn() };
+  const mockDialog = { open: vi.fn() };
   const mockGroupStore = {
     clearAllUserGroups: vi.fn(),
     currentGroup: signal<any>(null),
@@ -118,6 +121,7 @@ describe('UserService', () => {
         { provide: functionsModule.getFunctions, useValue: mockFunctions },
         { provide: Router, useValue: mockRouter },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: MatDialog, useValue: mockDialog },
         { provide: UserStore, useValue: mockUserStore },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
@@ -546,14 +550,11 @@ describe('UserService', () => {
 
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
       expect(mockGroupService.getUserGroups).not.toHaveBeenCalled();
-      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
-        expect.anything(),
-        {
-          data: {
-            message: expect.stringContaining("couldn't verify your device"),
-          },
-        }
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        { disableClose: false, maxWidth: '80vw' }
       );
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
     });
 
     it('clears the loading overlay with a generic message for other failures', async () => {

@@ -9,6 +9,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { environment } from '@env/environment';
 import { AdminStatisticsService } from '@services/admin-statistics.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { StatisticsStore } from '@store/statistics.store';
 import { getFunctions } from 'firebase/functions';
 
@@ -26,6 +27,7 @@ export class AdminStatisticsComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly functions = inject(getFunctions);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   isLocalEnvironment = signal<boolean>(!environment.production);
   isLiveData = signal<boolean>(!environment.useEmulators);
@@ -47,9 +49,7 @@ export class AdminStatisticsComponent {
       const message =
         error instanceof Error ? error.message : 'Failed to load statistics';
       this.error.set(message);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message },
-      });
+      this.appCheckErrorHandler.handle(error, message);
       this.analytics.logError(
         'Admin Statistics Component',
         'load_statistics',
