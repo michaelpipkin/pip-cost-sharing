@@ -34,6 +34,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { DemoService } from '@services/demo.service';
 import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
@@ -86,6 +87,7 @@ export class MembersComponent {
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly inviteService = inject(InviteService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   user: Signal<User | null> = this.userStore.user;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
@@ -222,14 +224,12 @@ export class MembersComponent {
           data: { message: `Invitation sent to ${member.email}` },
         });
       } catch (error) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: {
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Something went wrong - could not send invitation',
-          },
-        });
+        this.appCheckErrorHandler.handle(
+          error,
+          error instanceof Error
+            ? error.message
+            : 'Something went wrong - could not send invitation'
+        );
         if (error instanceof Error) {
           this.analytics.logError(
             'Members Component',

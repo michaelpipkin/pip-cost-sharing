@@ -1,0 +1,36 @@
+<h1 mat-dialog-title data-testid="app-check-error-dialog-title">
+  Can't Verify Your Device
+</h1>
+<mat-dialog-content data-testid="app-check-error-dialog-content">
+  <p>
+    We couldn't verify that this request is coming from PipSplit. This
+    isn't an account or password problem - your login is fine.
+  </p>
+  <p>Try this:</p>
+  <ul>
+    <li>Wait a few minutes and try again</li>
+    <li>Switch networks (Wi-Fi vs. mobile data), or try a different browser or device</li>
+    <li>If it keeps happening, it usually resolves on its own within about a day</li>
+  </ul>
+</mat-dialog-content>
+<mat-dialog-actions data-testid="app-check-error-dialog-actions">
+  <button
+    mat-raised-button
+    class="btn-secondary"
+    type="button"
+    mat-dialog-close
+    data-testid="app-check-error-dialog-close-button"
+    aria-label="Close"
+  >
+    Close
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    (click)="goToHelp()"
+    data-testid="app-check-error-dialog-help-button"
+    aria-label="Get Help"
+  >
+    Get Help
+  </button>
+</mat-dialog-actions>

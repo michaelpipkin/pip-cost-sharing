@@ -11,7 +11,7 @@
  *
  * Run: pnpm query orphaned-registrations
  */
-import { auth, db, writeTable, logCount } from '../lib.ts';
+import { auth, db, writeTable, logCount, NON_USER_AUTH_EMAILS } from '../lib.ts';
 
 const DAYS = 7;
 const cutoffMs = Date.now() - DAYS * 24 * 60 * 60 * 1000;
@@ -22,6 +22,7 @@ let pageToken: string | undefined;
 do {
   const page = await auth.listUsers(1000, pageToken);
   for (const user of page.users) {
+    if (user.email && NON_USER_AUTH_EMAILS.has(user.email)) continue;
     const createdMs = new Date(user.metadata.creationTime).getTime();
     if (createdMs >= cutoffMs) {
       recentUsers.push({

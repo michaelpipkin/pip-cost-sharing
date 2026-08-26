@@ -17,11 +17,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
-import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
@@ -31,6 +29,7 @@ import {
 } from '@features/help/help-dialog/help-dialog.component';
 import { Member } from '@models/member';
 import { ParsedReceipt } from '@models/receipt-scan';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { CameraService } from '@services/camera.service';
 import { LocaleService } from '@services/locale.service';
 import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
@@ -91,7 +90,6 @@ interface ScanLineItemRow {
 export class ScanReceiptComponent {
   protected readonly router = inject(Router);
   protected readonly dialog = inject(MatDialog);
-  protected readonly snackbar = inject(MatSnackBar);
   protected readonly loading = inject(LoadingService);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -101,6 +99,7 @@ export class ScanReceiptComponent {
   protected readonly receiptFileSelection = inject(ReceiptFileSelectionService);
   protected readonly receiptScanService = inject(ReceiptScanService);
   protected readonly receiptScanHandoff = inject(ReceiptScanHandoffService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
@@ -312,12 +311,10 @@ export class ScanReceiptComponent {
         this.#showPdfNotReadableDialog();
         return;
       }
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message:
-            'Failed to scan the receipt. You can still enter the details manually below.',
-        },
-      });
+      this.appCheckErrorHandler.handle(
+        error,
+        'Failed to scan the receipt. You can still enter the details manually below.'
+      );
       this.applyParsedReceipt({
         total: null,
         subtotal: null,

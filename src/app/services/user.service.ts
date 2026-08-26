@@ -7,6 +7,7 @@ import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { MemberLinkService } from '@services/member-link.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -72,6 +73,7 @@ export class UserService implements IUserService {
   protected readonly functions = inject(getFunctions);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly loading = inject(LoadingService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   #intentionalLogout = false;
   #handlingSessionExpiry = false;
@@ -122,15 +124,10 @@ export class UserService implements IUserService {
   // this specific client can't currently reach Firestore.
   private handleInitializeAuthFailure(error: unknown): void {
     this.loading.loadingOff();
-    const isAppCheckRejection =
-      error instanceof FirebaseError && error.code === 'permission-denied';
-    this.snackbar.openFromComponent(CustomSnackbarComponent, {
-      data: {
-        message: isAppCheckRejection
-          ? "We couldn't verify your device, so your account can't load right now. This can happen on some networks or with certain privacy/incognito settings. Try again, switch networks or browsers, or contact support if it continues."
-          : 'Something went wrong loading your account. Please try again.',
-      },
-    });
+    this.appCheckErrorHandler.handle(
+      error,
+      'Something went wrong loading your account. Please try again.'
+    );
   }
 
   #requireUserId(): string {

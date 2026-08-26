@@ -11,6 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { GroupService } from '@services/group.service';
 import { UserService } from '@services/user.service';
 import { getAuth } from 'firebase/auth';
@@ -43,6 +44,7 @@ export class DeleteAccountComponent {
   protected readonly functions = inject(getFunctions);
   protected readonly userService = inject(UserService);
   protected readonly groupService = inject(GroupService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   state = signal<DeletionState>(
     this.auth.currentUser ? 'verified' : 'unverified'
@@ -88,9 +90,10 @@ export class DeleteAccountComponent {
       }
     } catch (error: any) {
       console.error('Error deleting account:', error);
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message: `Failed to delete account: ${error.message}` },
-      });
+      this.appCheckErrorHandler.handle(
+        error,
+        `Failed to delete account: ${error.message}`
+      );
 
       this.analytics.logError(
         'Delete Account Component',
