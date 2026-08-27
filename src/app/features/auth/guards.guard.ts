@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { environment } from '@env/environment';
 import { GroupStore } from '@store/group.store';
-import { Auth, getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { Auth, getAuth, User } from 'firebase/auth';
 
 // AdSense crawler user email - this user should bypass group requirements
 const ADSENSE_CRAWLER_EMAIL = 'adsensecrawler@google.com';
@@ -13,26 +13,24 @@ export const APP_OWNER_EMAIL = environment.appOwnerEmail;
 
 // Helper function to wait for initial auth state to be determined
 // This resolves immediately once Firebase has loaded the persisted auth state
-// and cleans up the subscription to prevent listening to future auth changes
 function waitForAuthInit(auth: Auth): Promise<User | null> {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = (user: User | null) => {
+    const finish = () => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
-      unsubscribe();
-      resolve(user);
+      resolve(auth.currentUser);
     };
     // Firebase Auth's persistence layer (IndexedDB) can occasionally stall
     // during init - e.g. the browser tears down its IndexedDB connection
     // mid-load - leaving auth state undetermined forever. Without this bound,
-    // onAuthStateChanged never fires, so every guard awaiting this promise
+    // authStateReady() never resolves, so every guard awaiting this promise
     // hangs navigation indefinitely with the loading overlay stuck on.
     // Falling back to the current (likely null) user lets navigation proceed
     // as unauthenticated instead of hanging.
-    const timeoutId = setTimeout(() => finish(auth.currentUser), 5000);
-    const unsubscribe = onAuthStateChanged(auth, finish);
+    const timeoutId = setTimeout(finish, 5000);
+    auth.authStateReady().then(finish);
   });
 }
 
