@@ -57,8 +57,7 @@ Thumbs.db
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
-seed-data
-seed-data.ts
+seed-data_backup
 .firebase/hosting.*
 
 # Files with sensitive information
