@@ -8,7 +8,6 @@ overrides:
   '@babel/core': '>=7.29.6 <8'
   '@hono/node-server': '>=2.0.5 <3'
   brace-expansion: '>=2.1.4 <6'
-  deepmerge-ts: '>=8.0.0 <9'
   esbuild: '>=0.28.1 <0.29'
   fast-xml-parser: '>=5.10.1 <6'
   hono: '>=4.12.34 <5'
