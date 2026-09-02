@@ -10,14 +10,16 @@
     <dt>Message</dt>
     <dd>{{ data.message }}</dd>
 
-    @if (data.error) {
-      <dt>Error</dt>
-      <dd class="error-text">{{ data.error }}</dd>
-    }
+    @if (!isGrouped()) {
+      @if (data.error) {
+        <dt>Error</dt>
+        <dd class="error-text">{{ data.error }}</dd>
+      }
 
-    @if (data.additionalInfo) {
-      <dt>Additional Info</dt>
-      <dd class="error-text">{{ data.additionalInfo }}</dd>
+      @if (data.additionalInfo) {
+        <dt>Additional Info</dt>
+        <dd class="error-text">{{ data.additionalInfo }}</dd>
+      }
     }
 
     @if (isGrouped()) {

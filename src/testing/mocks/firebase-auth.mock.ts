@@ -27,6 +27,7 @@ export interface User {
 
 export interface Auth {
   currentUser: User | null;
+  authStateReady: () => Promise<void>;
 }
 
 export interface UserCredential {
@@ -61,9 +62,10 @@ export const browserLocalPersistence = { type: 'LOCAL' as const };
 // Mock functions
 // ──────────────────────────────────────────────
 
-export const getAuth: (app?: any) => Auth = vi
-  .fn()
-  .mockReturnValue({ currentUser: null }) as any;
+export const getAuth: (app?: any) => Auth = vi.fn().mockReturnValue({
+  currentUser: null,
+  authStateReady: vi.fn().mockResolvedValue(undefined),
+}) as any;
 
 export const onAuthStateChanged: (
   auth: Auth,

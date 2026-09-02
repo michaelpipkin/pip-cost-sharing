@@ -9,7 +9,10 @@ describe('loggedInGuard', () => {
   const mockRouter = {
     navigate: vi.fn().mockResolvedValue(true),
   };
-  const mockAuth = { currentUser: null };
+  const mockAuth = {
+    currentUser: null as Partial<authModule.User> | null,
+    authStateReady: vi.fn().mockResolvedValue(undefined),
+  };
 
   function runGuard(): Promise<boolean> {
     return TestBed.runInInjectionContext(() =>
@@ -17,17 +20,10 @@ describe('loggedInGuard', () => {
     );
   }
 
-  // waitForAuthInit resolves from the first onAuthStateChanged callback -
-  // simulate Firebase reporting the given (possibly null) user immediately.
+  // waitForAuthInit resolves once authStateReady() resolves - simulate
+  // Firebase having already loaded the given (possibly null) user.
   function mockAuthUser(user: Partial<authModule.User> | null): void {
-    vi.spyOn(authModule, 'onAuthStateChanged').mockImplementation(
-      (_auth: any, callback: any) => {
-        // Defer to a microtask so the guard's own `unsubscribe` variable is
-        // assigned before the callback (which calls unsubscribe()) fires.
-        queueMicrotask(() => callback(user));
-        return vi.fn();
-      }
-    );
+    mockAuth.currentUser = user;
   }
 
   beforeEach(() => {
