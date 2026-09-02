@@ -60,9 +60,7 @@ export function writeTable(
   const cols = Object.keys(rows[0]!);
   const now = new Date().toLocaleString();
   const headerCells = cols.map((c) => `<th>${esc(c)}</th>`).join('');
-  const bodyRows = rows
-    .map((row) => renderRow(row, cols))
-    .join('\n      ');
+  const bodyRows = rows.map((row) => renderRow(row, cols)).join('\n      ');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -124,8 +122,8 @@ function formatCell(value: unknown): string {
 
 function esc(s: string): string {
   return s
-    .replaceAll(/&/, '&amp;')
-    .replaceAll(/</, '&lt;')
-    .replaceAll(/>/, '&gt;')
-    .replaceAll(/"/, '&quot;');
+    .replaceAll(/&/g, '&amp;') //NOSONAR
+    .replaceAll(/</g, '&lt;') //NOSONAR
+    .replaceAll(/>/g, '&gt;') //NOSONAR
+    .replaceAll(/"/g, '&quot;'); //NOSONAR
 }

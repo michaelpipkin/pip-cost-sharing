@@ -5,13 +5,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "query": "node --experimental-strip-types run.ts"
+    "query": "node --experimental-strip-types run.ts",
+    "seed": "node --experimental-strip-types refresh-seed-expenses.ts",
+    "prune-expenses": "node --experimental-strip-types prune-expenses.ts"
   },
   "dependencies": {
-    "firebase-admin": "^14.0.0"
+    "firebase-admin": "^14.3.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.4.0",
     "typescript": "^6.0.3"
   }
 }

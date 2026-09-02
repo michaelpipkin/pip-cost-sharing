@@ -75,7 +75,7 @@ export class AdminErrorLogComponent {
   groupedErrors = computed<GroupedError[]>(() => {
     const map = new Map<string, GroupedError>();
     for (const e of this.errors()) {
-      const key = `${e.component}|${e.action}|${e.message}|${e.error ?? ''}`;
+      const key = `${e.component}|${e.action}|${e.message}`;
       const existing = map.get(key);
       if (existing) {
         existing.count++;
@@ -143,9 +143,10 @@ export class AdminErrorLogComponent {
 
   columnsToDisplay = computed<string[]>(() => {
     const fifth = this.groupedView() ? 'count' : 'dateTime';
-    const cols = this.isMobile()
-      ? ['component', 'action', 'message', fifth]
-      : ['component', 'action', 'message', 'error', fifth];
+    const cols =
+      this.isMobile() || this.groupedView()
+        ? ['component', 'action', 'message', fifth]
+        : ['component', 'action', 'message', 'error', fifth];
     return ['select', ...cols];
   });
 
