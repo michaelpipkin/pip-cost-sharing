@@ -6,7 +6,6 @@ import {
   FieldValue,
   getFirestore,
   QueryDocumentSnapshot,
-  QuerySnapshot,
   Timestamp,
 } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
@@ -18,18 +17,21 @@ import {
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
-import { callableAppCheck, getSmtpPassword } from './common';
+import { assertAdmin, callableAppCheck, getSmtpPassword, normalizeEmail } from './common';
 
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
+export {
+  runAdminReport,
+  repairOrphanedMembers,
+  backfillOrphanedRegistrations,
+} from './admin-reports';
 
 initializeApp();
 
 const db = getFirestore();
 const storage = getStorage();
 
-const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
-const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
 
 // Mirrors BASE_URL in src/app/services/page-title-strategy.service.ts. The two
@@ -42,13 +44,6 @@ const PLAY_STORE_URL =
 // this many ms, mirrored client-side in members.component.ts for UX only.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
-
-// Canonical form for email comparisons - Firestore has no case-insensitive
-// query operator, and email casing isn't meaningful for matching in
-// practice, so every match/lookup normalizes through this first.
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
 
 // SMTP config replicating the retired "Trigger Email from Firestore" extension.
 const SMTP_HOST = 'smtp.office365.com';
@@ -762,11 +757,8 @@ export async function tryGetAuthEmail(
 export const syncAuthEmailsToUsers = onCall(callableAppCheck, async (request) => {
   console.log('syncAuthEmailsToUsers called');
 
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  console.log('User authenticated:', request.auth.uid);
+  const uid = assertAdmin(request);
+  console.log('User authenticated:', uid);
 
   const results: SyncEmailResults = {
     synced: 0,
@@ -811,220 +803,6 @@ export const syncAuthEmailsToUsers = onCall(callableAppCheck, async (request) =>
     throw new HttpsError('internal', `Error syncing emails: ${errorMessage}`);
   }
 });
-
-/**
- * Build "YYYY-MM-DD" cutoff string for the last-30-days filter.
- * Expense dates are stored as "YYYY-MM-DD" strings, so lexicographic
- * comparison with a same-format cutoff is correct.
- */
-export function buildThirtyDaysAgoIso(): string {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  return `${thirtyDaysAgo.getFullYear()}-${String(
-    thirtyDaysAgo.getMonth() + 1
-  ).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
-}
-
-/**
- * Find every group the admin is an active member of so they can be
- * excluded from statistics (they skew the picture of other users' usage).
- */
-export async function getAdminExcludedGroupIds(
-  adminUserRef: DocumentReference
-): Promise<Set<string>> {
-  const adminMembershipsSnapshot = await db
-    .collectionGroup('members')
-    .where('userRef', '==', adminUserRef)
-    .where('active', '==', true)
-    .get();
-  return new Set<string>(
-    adminMembershipsSnapshot.docs
-      .map((m) => m.ref.parent.parent?.id)
-      .filter((id): id is string => !!id)
-  );
-}
-
-/** Tally total/active group counts and collect active group refs, excluding the admin's own groups. */
-export function summarizeGroups(
-  groupsSnapshot: QuerySnapshot,
-  excludedGroupIds: Set<string>
-): {
-  totalGroups: number;
-  activeGroups: number;
-  activeGroupRefs: DocumentReference[];
-} {
-  let totalGroups = 0;
-  let activeGroups = 0;
-  const activeGroupRefs: DocumentReference[] = [];
-
-  for (const groupDoc of groupsSnapshot.docs) {
-    if (excludedGroupIds.has(groupDoc.id)) continue;
-    totalGroups++;
-
-    const groupData = groupDoc.data();
-    if (groupData.active && !groupData.archived) {
-      activeGroups++;
-      activeGroupRefs.push(groupDoc.ref);
-    }
-  }
-
-  return { totalGroups, activeGroups, activeGroupRefs };
-}
-
-/**
- * For a single group, fire four count() aggregations concurrently —
- * no document downloads required.
- */
-export async function getGroupStats(
-  groupRef: DocumentReference,
-  thirtyDaysAgoIso: string
-): Promise<{
-  totalMembers: number;
-  activeMembers: number;
-  hasExpenses: boolean;
-  recentExpenses: number;
-}> {
-  const members = groupRef.collection('members');
-  const expenses = groupRef.collection('expenses');
-  const [
-    totalMembersSnap,
-    activeMembersSnap,
-    expenseCountSnap,
-    recentExpenseSnap,
-  ] = await Promise.all([
-    members.count().get(),
-    members.where('active', '==', true).count().get(),
-    expenses.count().get(),
-    expenses.where('date', '>=', thirtyDaysAgoIso).count().get(),
-  ]);
-  return {
-    totalMembers: totalMembersSnap.data().count,
-    activeMembers: activeMembersSnap.data().count,
-    hasExpenses: expenseCountSnap.data().count > 0,
-    recentExpenses: recentExpenseSnap.data().count,
-  };
-}
-
-/** Aggregate per-group stats into the overall admin statistics totals. */
-export function aggregateGroupStats(
-  perGroupStats: Array<{
-    totalMembers: number;
-    activeMembers: number;
-    hasExpenses: boolean;
-    recentExpenses: number;
-  }>
-): {
-  activeGroupsWithMultipleMembers: number;
-  activeGroupsWithExpenses: number;
-  totalMembers: number;
-  totalActiveMembers: number;
-  groupsWithRecentActivity: number;
-  expensesCreatedLast30Days: number;
-} {
-  let activeGroupsWithMultipleMembers = 0;
-  let activeGroupsWithExpenses = 0;
-  let totalMembers = 0;
-  let totalActiveMembers = 0;
-  let groupsWithRecentActivity = 0;
-  let expensesCreatedLast30Days = 0;
-
-  for (const g of perGroupStats) {
-    totalMembers += g.totalMembers;
-    totalActiveMembers += g.activeMembers;
-    if (g.activeMembers > 1) activeGroupsWithMultipleMembers++;
-    if (g.hasExpenses) activeGroupsWithExpenses++;
-    if (g.recentExpenses > 0) groupsWithRecentActivity++;
-    expensesCreatedLast30Days += g.recentExpenses;
-  }
-
-  return {
-    activeGroupsWithMultipleMembers,
-    activeGroupsWithExpenses,
-    totalMembers,
-    totalActiveMembers,
-    groupsWithRecentActivity,
-    expensesCreatedLast30Days,
-  };
-}
-
-export const getAdminStatistics = onCall(
-  { ...callableAppCheck, timeoutSeconds: 300 },
-  async (request) => {
-    const uid = request.auth?.uid;
-
-    if (!uid) {
-      throw new HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    // Check if user is admin
-    const isAdmin = uid === ADMIN_UID_PROD || uid === ADMIN_UID_EMU;
-    if (!isAdmin) {
-      throw new HttpsError('permission-denied', 'Admin access required');
-    }
-
-    try {
-      const thirtyDaysAgoIso = buildThirtyDaysAgoIso();
-
-      const adminUserRef = db.collection('users').doc(uid);
-      const excludedGroupIds = await getAdminExcludedGroupIds(adminUserRef);
-
-      // Fetch group docs, limited to the fields needed to filter on
-      // active/archived status, to cut payload size as the collection grows.
-      const groupsSnapshot = await db
-        .collection('groups')
-        .select('active', 'archived')
-        .get();
-      const { totalGroups, activeGroups, activeGroupRefs } = summarizeGroups(
-        groupsSnapshot,
-        excludedGroupIds
-      );
-
-      const perGroupStats = await Promise.all(
-        activeGroupRefs.map((ref) => getGroupStats(ref, thirtyDaysAgoIso))
-      );
-      const {
-        activeGroupsWithMultipleMembers,
-        activeGroupsWithExpenses,
-        totalMembers,
-        totalActiveMembers,
-        groupsWithRecentActivity,
-        expensesCreatedLast30Days,
-      } = aggregateGroupStats(perGroupStats);
-
-      // Count users via aggregation and exclude the admin's own account.
-      const usersCountSnap = await db.collection('users').count().get();
-      const totalUsers = Math.max(0, usersCountSnap.data().count - 1);
-
-      // Calculate averages
-      const avgMembersPerActiveGroup =
-        activeGroups > 0
-          ? Math.round((totalActiveMembers / activeGroups) * 100) / 100
-          : 0;
-
-      return {
-        totalGroups,
-        activeGroups,
-        activeGroupsWithMultipleMembers,
-        activeGroupsWithExpenses,
-        totalUsers,
-        totalMembers,
-        totalActiveMembers,
-        groupsWithRecentActivity,
-        expensesCreatedLast30Days,
-        avgMembersPerActiveGroup,
-        generatedAt: new Date().toISOString(),
-      };
-    } catch (error: unknown) {
-      console.error('Error getting admin statistics:', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      throw new HttpsError(
-        'internal',
-        `Error getting statistics: ${errorMessage}`
-      );
-    }
-  }
-);
 
 // ---------------------------------------------------------------------------
 // Group membership sync trigger

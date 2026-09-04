@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deriveEmailLower, normalizeEmail } from './index';
+import { normalizeEmail } from './common';
+import { deriveEmailLower } from './index';
 
 describe('normalizeEmail', () => {
   it('lowercases', () => {
