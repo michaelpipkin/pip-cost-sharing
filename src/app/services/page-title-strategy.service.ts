@@ -44,7 +44,7 @@ export class PageTitleStrategyService extends TitleStrategy {
 
     if (title !== undefined && isPlatformBrowser(this.platformId)) {
       const excludedScreens = [
-        'Admin Statistics',
+        'Admin Reports',
         'App Error Log',
         'Email Delivery Log',
       ];

@@ -1,0 +1,114 @@
+<div class="container with-table in-nav-tab">
+  <div class="page-header">
+    <div></div>
+    <h3 class="header">Admin Reports</h3>
+    <div></div>
+  </div>
+
+  <div class="filters">
+    <mat-form-field subscriptSizing="dynamic" class="report-select">
+      <mat-label>Report</mat-label>
+      <mat-select
+        [value]="selectedReport()"
+        (selectionChange)="selectedReport.set($event.value)"
+      >
+        @for (option of reportOptions; track option.id) {
+          <mat-option [value]="option.id">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <button
+      mat-raised-button
+      class="btn-primary"
+      (click)="hasResult() ? refreshReport() : loadReport()"
+    >
+      <mat-icon>{{ hasResult() ? 'refresh' : 'play_arrow' }}</mat-icon>
+      {{ hasResult() ? 'Refresh' : 'Run Report' }}
+    </button>
+
+    @if (showRepairButton() && repairableCount() > 0) {
+      <button mat-raised-button class="btn-danger" (click)="repair()">
+        <mat-icon>build</mat-icon>
+        {{ repairButtonLabel() }}
+      </button>
+    }
+  </div>
+
+  @if (error(); as errorMessage) {
+    <div class="error-container">
+      <p>{{ errorMessage }}</p>
+      <button mat-raised-button class="btn-primary" (click)="loadReport()">
+        Retry
+      </button>
+    </div>
+  }
+
+  @if (result(); as report) {
+    @if (report.summary.length > 0) {
+      <div class="stats-grid">
+        @for (section of report.summary; track section.title) {
+          <mat-card class="stat-card">
+            <mat-card-header>
+              <mat-card-title>{{ section.title }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @for (stat of section.stats; track stat.label) {
+                <div class="stat-row">
+                  <span>{{ stat.label }}:</span>
+                  <span class="stat-value">{{ stat.value }}</span>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+
+    @for (table of report.tables; track table.title) {
+      <h4 class="report-table-title">{{ table.title }}</h4>
+      @if (table.rows.length > 0) {
+        <div class="table-container mat-elevation-z8">
+          <div class="scrollable-table">
+            <table
+              mat-table
+              [dataSource]="table.rows"
+              class="static-table"
+              [class.compact-table]="isMobile()"
+            >
+              @for (col of table.columns; track col.key) {
+                <ng-container [matColumnDef]="col.key">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    [class]="col.align ? 'cell-' + col.align : ''"
+                  >
+                    {{ col.label }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let row"
+                    [class]="col.align ? 'cell-' + col.align : ''"
+                  >
+                    {{ formatCell(row[col.key]) }}
+                  </td>
+                </ng-container>
+              }
+              <tr
+                mat-header-row
+                *matHeaderRowDef="columnKeys(table); sticky: true"
+              ></tr>
+              <tr mat-row *matRowDef="let row; columns: columnKeys(table)"></tr>
+            </table>
+          </div>
+        </div>
+      } @else {
+        <p class="no-data">{{ table.emptyMessage ?? 'No data found.' }}</p>
+      }
+    }
+
+    <div class="footer-info">
+      <p>Generated: {{ report.generatedAt | date: 'medium' }}</p>
+    </div>
+  }
+</div>

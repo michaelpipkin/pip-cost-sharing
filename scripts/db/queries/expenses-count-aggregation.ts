@@ -2,8 +2,8 @@
  * Example: count expenses across all groups using collectionGroup + count().
  *
  * Also shows a filtered count — expenses in the last 30 days — using the
- * same date-string comparison pattern already used in getAdminStatistics
- * (functions/src/index.ts:762).
+ * same date-string comparison pattern used throughout
+ * functions/src/admin-reports.ts.
  *
  * Run: pnpm exec tsx examples/expenses-count-aggregation.ts
  */
