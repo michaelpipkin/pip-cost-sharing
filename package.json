@@ -2,7 +2,7 @@
   "name": "pipsplit",
   "version": "1.25.7",
   "type": "module",
-  "packageManager": "pnpm@11.24.0",
+  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "start": "ng serve --host=127.0.0.1 --port=4200",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
