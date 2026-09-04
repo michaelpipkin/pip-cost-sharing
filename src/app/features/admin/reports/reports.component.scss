@@ -1,3 +1,7 @@
+.report-select {
+  width: 220px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -27,6 +31,14 @@
   font-size: 1.1em;
 }
 
+.report-table-title {
+  margin: 2rem 0 0.5rem;
+}
+
+.table-container {
+  max-width: 97.5vw;
+}
+
 .footer-info {
   display: flex;
   flex-direction: column;
@@ -38,13 +50,4 @@
     color: var(--outline);
     font-style: italic;
   }
-}
-
-.error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-  color: var(--error);
 }
