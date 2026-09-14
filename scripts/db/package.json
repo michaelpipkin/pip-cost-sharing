@@ -10,10 +10,10 @@
     "prune-expenses": "node --experimental-strip-types prune-expenses.ts"
   },
   "dependencies": {
-    "firebase-admin": "^14.3.0"
+    "firebase-admin": "^14.4.0"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.1",
     "typescript": "^6.0.3"
   }
 }
