@@ -9,7 +9,6 @@ import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DeepLinkService } from '@services/deep-link.service';
-import { DemoService } from '@services/demo.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -17,7 +16,6 @@ import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockPwaDetectionService,
@@ -74,7 +72,6 @@ describe('AppComponent', () => {
         { provide: UserStore, useValue: createMockUserStore() },
         { provide: GroupStore, useValue: createMockGroupStore() },
         { provide: UserService, useValue: mockUserService },
-        { provide: DemoService, useValue: createMockDemoService() },
         { provide: ThemeService, useValue: mockThemeService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         {

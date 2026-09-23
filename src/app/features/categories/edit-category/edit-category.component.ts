@@ -18,7 +18,6 @@ import { LoadingService } from '@components/loading/loading.service';
 import { Category, EditCategoryForm } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 
 @Component({
   selector: 'app-edit-category',
@@ -38,7 +37,6 @@ export class EditCategoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<EditCategoryComponent>);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly demoService = inject(DemoService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -55,10 +53,6 @@ export class EditCategoryComponent {
   });
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const f = this.editCategoryForm().value();

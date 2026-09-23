@@ -35,9 +35,7 @@ describe('ExpenseService', () => {
   let mockBatch: any;
 
   const mockExpenseStore = {
-    setGroupExpenses: vi.fn(),
     setGroupHasExpenses: vi.fn(),
-    groupExpenses: signal<any[]>([]),
   };
   const mockMemberStore = {
     loaded: signal(true),

@@ -1,0 +1,97 @@
+@use '../../../styles/color-tokens.scss' as tokens;
+
+// Title centered over the screenshot; the equal side columns keep it truly
+// centered with the close button on the right
+.feature-tour-header {
+  grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+  padding-bottom: 12px;
+
+  .help-header-text {
+    grid-column: 2;
+    justify-items: center;
+    margin-left: 0;
+    text-align: center;
+  }
+
+  button {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
+// mat-dialog-content is forced to display: grid globally (styles.scss), so
+// center with grid alignment rather than flexbox
+.feature-tour-content {
+  justify-items: center;
+  row-gap: 1rem;
+  padding-top: 0;
+  // Material caps dialog content at 65vh; give the screenshot + text a bit
+  // more room so the description never has to scroll
+  max-height: 75vh;
+  // Let horizontal swipes reach the pointer handlers instead of being
+  // claimed by the browser as a pan gesture
+  touch-action: pan-y;
+  user-select: none;
+}
+
+// Fixed-height frame so the dialog doesn't jump between slides whose
+// screenshots have different aspect ratios
+.feature-tour-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: min(50vh, 480px);
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border: 1px solid tokens.color('outline-variant');
+    border-radius: 8px;
+  }
+}
+
+.feature-tour-text {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 1.1em;
+  line-height: 1.4em;
+}
+
+// Overrides the global mat-dialog-actions grid: dots on the left,
+// navigation buttons on the right
+.feature-tour-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feature-tour-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+@media (max-width: 600px) {
+  .feature-tour-image {
+    height: 40vh;
+  }
+
+  .feature-tour-text {
+    font-size: 1em;
+  }
+
+  .feature-tour-actions {
+    justify-content: center;
+  }
+
+  .slide-dots {
+    width: 100%;
+    justify-content: center;
+  }
+}

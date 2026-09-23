@@ -3,11 +3,9 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockDialogRef,
   createMockLoadingService,
   createMockSnackBar,
@@ -22,11 +20,9 @@ describe('AddMemberComponent', () => {
   let el: HTMLElement;
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockMemberService: { addMemberToGroup: ReturnType<typeof vi.fn> };
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
 
   beforeEach(async () => {
     mockDialogRef = createMockDialogRef();
-    mockDemoService = createMockDemoService();
     mockMemberService = {
       addMemberToGroup: vi.fn().mockResolvedValue(undefined),
     };
@@ -42,7 +38,6 @@ describe('AddMemberComponent', () => {
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MemberService, useValue: mockMemberService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
     }).compileComponents();
@@ -153,14 +148,6 @@ describe('AddMemberComponent', () => {
     it('should close the dialog with true on success', async () => {
       await component.onSubmit();
       expect(mockDialogRef.close).toHaveBeenCalledWith(true);
-    });
-
-    it('should block submit and show restriction message in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockMemberService.addMemberToGroup).not.toHaveBeenCalled();
     });
   });
 });

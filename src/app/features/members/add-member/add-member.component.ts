@@ -18,7 +18,6 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { AddMemberForm, Member } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 
 @Component({
@@ -38,7 +37,6 @@ export class AddMemberComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddMemberComponent>);
   protected readonly memberService = inject(MemberService);
-  protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
@@ -53,10 +51,6 @@ export class AddMemberComponent {
   });
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const val = this.addMemberForm().value();

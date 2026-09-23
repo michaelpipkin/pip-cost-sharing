@@ -11,7 +11,6 @@ export const ROUTES = {
   HELP: 'help',
   SPLIT: 'split',
   ABOUT: 'about',
-  DEMO: 'demo',
 
   // Feature modules
   ADMINISTRATION: 'administration',
@@ -72,28 +71,6 @@ export const ROUTE_PATHS = {
   HOME: `/${ROUTES.HOME}`,
 } as const;
 
-// Demo routes (mirroring the main routes structure)
-export const DEMO_ROUTE_PATHS = {
-  // Demo administration routes
-  DEMO_GROUPS: `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.GROUPS}`,
-  DEMO_MEMBERS: `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}`,
-  DEMO_CATEGORIES: `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}`,
-
-  // Demo analysis routes
-  DEMO_SUMMARY: `/${ROUTES.DEMO}/${ROUTES.ANALYSIS}/${ROUTES.SUMMARY}`,
-  DEMO_HISTORY: `/${ROUTES.DEMO}/${ROUTES.ANALYSIS}/${ROUTES.HISTORY}`,
-
-  // Demo expenses routes
-  DEMO_EXPENSES: `/${ROUTES.DEMO}/${ROUTES.EXPENSES}`,
-
-  // Demo memorized routes
-  DEMO_MEMORIZED: `/${ROUTES.DEMO}/${ROUTES.MEMORIZED}`,
-
-  // Demo other routes
-  DEMO_SPLIT: `/${ROUTES.DEMO}/${ROUTES.SPLIT}`,
-  DEMO_HELP: `/${ROUTES.DEMO}/${ROUTES.HELP}`,
-} as const;
-
 // Helper functions for dynamic routes
 export const buildExpenseEditPath = (id: string) => `/${ROUTES.EXPENSES}/${id}`;
 export const buildMemorizedEditPath = (id: string) =>
@@ -102,13 +79,3 @@ export const buildMemberEditPath = (id: string) =>
   `/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
 export const buildCategoryEditPath = (id: string) =>
   `/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;
-
-// Helper functions for demo routes
-export const buildDemoExpenseEditPath = (id: string) =>
-  `/${ROUTES.DEMO}/${ROUTES.EXPENSES}/${id}`;
-export const buildDemoMemorizedEditPath = (id: string) =>
-  `/${ROUTES.DEMO}/${ROUTES.MEMORIZED}/${id}`;
-export const buildDemoMemberEditPath = (id: string) =>
-  `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.MEMBERS}/${id}`;
-export const buildDemoCategoryEditPath = (id: string) =>
-  `/${ROUTES.DEMO}/${ROUTES.ADMINISTRATION}/${ROUTES.CATEGORIES}/${id}`;

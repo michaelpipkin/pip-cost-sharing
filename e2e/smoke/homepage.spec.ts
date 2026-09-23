@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures';
 import type { Page } from '@playwright/test';
+import { HomePage } from '../pages/home.page';
 
 /**
  * Helper function to wait for page load
@@ -50,5 +51,21 @@ test.describe('Homepage - Basic Setup Validation', () => {
 
     const authHealth = await preserveDataFirebasePage.request.get('http://localhost:9099');
     expect(authHealth.ok()).toBeTruthy();
+  });
+
+  test('should open the feature tour dialog', async ({ page }) => {
+    const homePage = new HomePage(page);
+    // Plain goto (not homePage.goto()) - background analytics requests can
+    // keep networkidle from ever settling; the assertions below auto-wait.
+    await page.goto('/');
+    await waitForPageLoad(page);
+
+    await expect(homePage.featureTourButton).toBeVisible();
+    await expect(homePage.featureTourButton).toContainText(
+      'See what PipSplit can do'
+    );
+
+    await homePage.openFeatureTour();
+    await expect(homePage.featureTourDialog).toBeVisible();
   });
 });

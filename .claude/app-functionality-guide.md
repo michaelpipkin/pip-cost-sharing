@@ -61,11 +61,6 @@ The application has three distinct user states that affect navigation:
    - Full access to all features
    - Navigation shows all main sections
 
-4. **Demo Mode**
-   - Special state for exploring the app without authentication
-   - Has its own set of demo routes with pre-populated data
-   - All navigation items prefixed with "demo"
-
 ### Navigation Structure
 
 #### Desktop Navigation (>1100px width)
@@ -83,7 +78,7 @@ The application has three distinct user states that affect navigation:
 - Members, Categories links: Visible only when a group is selected
 - Expenses, Memorized, Summary, History links: Visible only when a group is selected
 - Split link: Always visible (even when not logged in)
-- Account link: Visible only when logged in (not in demo mode)
+- Account link: Visible only when logged in
 - Login link: Visible only when not logged in
 - Logout button: Visible only when logged in
 
@@ -918,13 +913,11 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
     - All splits in the current date range are marked as `paid: true`
     - Parent expense `paid` status updated accordingly
     - One history record created per transfer row (no category breakdown / empty `splitsPaid`)
-  - Demo mode blocks this action
 
 - **Request All Payments Button** (beside the Settle Group button):
   - Sends payment request emails to all members who owe money in the Fewest Transfers table
   - Skips members who are not registered or have opted out of email notifications
   - Shows a snackbar with the count of emails sent, or "No eligible members" if none qualify
-  - Demo mode blocks this action
 
 **Copy-to-Clipboard Feature**:
 - Available on expanded detail rows in Summary (Section 1) and Expenses pages
@@ -952,7 +945,6 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] Clicking Request for a non-registered member shows "[Name] is not a registered user and cannot receive emails" snackbar
 - [ ] Clicking Request for a member who has opted out shows "[Name] has opted out of email notifications" snackbar
 - [ ] Clicking Request for an eligible member shows "Payment request email sent successfully" snackbar
-- [ ] Demo mode blocks the Request button action
 - [ ] Row expansion shows category breakdown correctly
 - [ ] Category breakdown totals match row balance
 - [ ] Clicking expanded detail copies to clipboard
@@ -975,14 +967,12 @@ This page has two sections: a member-centric view of pairwise balances, and a gr
 - [ ] Settlement creates one history record per transfer row
 - [ ] Settlement history records have empty splitsPaid (no category breakdown)
 - [ ] After settlement, both tables show empty state
-- [ ] Demo mode blocks Settle Group action with appropriate message
 - [ ] Loading overlay is shown during settlement operation
 - [ ] Request All Payments button is visible when Fewest Transfers table has rows
 - [ ] Clicking Request All Payments sends emails to all eligible members
 - [ ] Members not registered or opted out are silently skipped
 - [ ] Snackbar shows count: "Payment request(s) sent to X member(s)"
 - [ ] Snackbar shows "No eligible members to request payment from" when none qualify
-- [ ] Demo mode blocks Request All Payments with appropriate message
 
 ### History Page (`/analysis/history`)
 **Route**: `/analysis/history`
@@ -1082,7 +1072,6 @@ Shows the full breakdown of a single payment, including every split that was pai
 - [ ] Unpay Payment marks all splits as unpaid, marks expenses as unpaid, deletes history record
 - [ ] Unpay single split marks that split as unpaid, updates history record totalPaid and splitsPaid
 - [ ] Unpaying last split in record deletes the history record and navigates back
-- [ ] Demo mode blocks unpay actions
 - [ ] Help dialog shows payment detail help content
 
 ---
@@ -1096,14 +1085,16 @@ Shows the full breakdown of a single payment, including every split that was pai
 **Functionality**:
 - Landing page for the application
 - Welcome message
-- Call-to-action buttons (Login, Register, Demo)
+- Call-to-action buttons (Login, Register)
+- "See what PipSplit can do" button (`data-testid="feature-tour-button"`, visible logged in and out) opens a feature-tour dialog: a 6-slide screenshot carousel (proportional split, split methods, receipt scan, vacation rental, settle up, and more). Screenshots live in `src/assets/images/feature-tour/` and are regenerated with `pnpm screenshots:feature-tour` (see `e2e/feature-tour/feature-tour.capture.ts`)
 - Brief description of features
 - May show statistics or testimonials
 
 **Testable Behaviors**:
 - [ ] Page loads for all user states
 - [ ] Login/Register buttons navigate correctly
-- [ ] Demo button enters demo mode
+- [ ] "See what PipSplit can do" button opens the feature-tour dialog
+- [ ] Feature-tour carousel pages through all slides and closes cleanly
 - [ ] Links to Help and About work
 
 ### Help Page (`/help`)
@@ -1237,40 +1228,6 @@ A standalone quick expense calculator for splitting bills without requiring logi
 - [ ] Can be used multiple times without login
 - [ ] Does not create expenses in any group
 - [ ] Does not require or interact with user account
-
-### Demo Mode (`/demo/*`)
-**Route**: `/demo/*`
-**Guard**: `loggedInGuard` (must NOT be logged in)
-
-**Functionality**:
-- Parallel set of all main routes with demo data
-- Pre-populated with sample groups, members, expenses, memorized expenses, and history records
-- Data is loaded into in-memory stores on first visit to a demo route and cleared when leaving demo routes
-- **CRUD operations are blocked**: Any attempt to add, edit, or delete data shows a snackbar: "Data modification is disabled in demo mode" — the in-memory data is not updated
-- Allows users to explore without creating account
-- Exit demo button returns to home
-
-**Demo Routes**:
-- `/demo/groups`
-- `/demo/members`
-- `/demo/categories`
-- `/demo/expenses`
-- `/demo/memorized`
-- `/demo/summary`
-- `/demo/history`
-- `/demo/split`
-- `/demo/help`
-
-**Testable Behaviors**:
-- [ ] Demo mode accessible when not logged in
-- [ ] Demo data is pre-populated (groups, members, categories, expenses, memorized, history)
-- [ ] Read-only features work correctly with demo data (filtering, sorting, expanding rows, etc.)
-- [ ] Attempting to add, edit, or delete any data shows snackbar: "Data modification is disabled in demo mode"
-- [ ] In-memory data is unchanged after a blocked CRUD attempt
-- [ ] Exiting demo routes clears all demo data from stores
-- [ ] Re-entering demo routes re-initializes demo data
-- [ ] Exit demo returns to home
-- [ ] Cannot access demo when logged in
 
 ### Admin Pages (`/admin/*`)
 **Route**: `/admin/*`
@@ -1436,7 +1393,6 @@ The app provides three different ways to mark splits as paid, each with differen
 - Test behavior for logged-out users
 - Test behavior for logged-in users without groups
 - Test behavior for logged-in users with groups
-- Test demo mode separately
 
 ### Data Validation
 - Form validation should prevent invalid data

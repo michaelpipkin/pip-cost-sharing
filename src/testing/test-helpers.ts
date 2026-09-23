@@ -1,6 +1,5 @@
 import { computed, signal } from '@angular/core';
 import { vi } from 'vitest';
-import { Expense } from '@models/expense';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Category } from '@models/category';
@@ -200,17 +199,14 @@ export function createMockUserStore() {
   const user = signal<User | null>(null);
   const isGoogleUser = signal(false);
   const isEmailConfirmed = signal(false);
-  const isDemoMode = signal(false);
   const defaultGroupRef = signal<any>(null);
   return {
     user,
     isGoogleUser,
     isEmailConfirmed,
-    isDemoMode,
     defaultGroupRef,
     isLoggedIn: computed(() => !!user()),
     isValidUser: computed(() => isGoogleUser() || isEmailConfirmed()),
-    setUser: vi.fn((u: User) => user.set(u)),
     updateUser: vi.fn(),
     clearUser: vi.fn(() => {
       user.set(null);
@@ -222,11 +218,9 @@ export function createMockUserStore() {
       user.set(u);
       isGoogleUser.set(isGoogle);
       isEmailConfirmed.set(isEmailConf);
-      isDemoMode.set(false);
     }),
     setIsGoogleUser: vi.fn((val: boolean) => isGoogleUser.set(val)),
     setIsEmailConfirmed: vi.fn((val: boolean) => isEmailConfirmed.set(val)),
-    setIsDemoMode: vi.fn((val: boolean) => isDemoMode.set(val)),
   };
 }
 
@@ -275,22 +269,11 @@ export function createMockMemorizedStore() {
 }
 
 export function createMockExpenseStore() {
-  const groupExpenses = signal<Expense[]>([]);
   const groupHasExpenses = signal(false);
-  const loaded = signal(true);
   return {
-    groupExpenses,
     groupHasExpenses: groupHasExpenses.asReadonly(),
-    loaded,
-    unpaidGroupExpenses: computed(() => groupExpenses().filter((e) => !e.paid)),
-    setGroupExpenses: vi.fn((expenses: Expense[]) =>
-      groupExpenses.set(expenses)
-    ),
     setGroupHasExpenses: vi.fn((val: boolean) => groupHasExpenses.set(val)),
-    clearGroupExpenses: vi.fn(() => {
-      groupExpenses.set([]);
-      loaded.set(false);
-    }),
+    clearGroupExpenses: vi.fn(() => groupHasExpenses.set(false)),
   };
 }
 
@@ -342,34 +325,9 @@ export function createMockInviteService() {
   };
 }
 
-export function createMockDemoService() {
-  return {
-    isInDemoMode: vi.fn(() => false),
-    showDemoModeRestrictionMessage: vi.fn(),
-    navigateToDemo: vi.fn(),
-    navigateToDemoRoute: vi.fn(),
-  };
-}
-
 export function createMockSortingService() {
   return {
     sort: vi.fn((data: any[], _col: string, _asc: boolean) => [...data]),
-  };
-}
-
-export function createMockTourService() {
-  return {
-    checkForContinueTour: vi.fn(),
-    resetAllTours: vi.fn(),
-    startWelcomeTour: vi.fn(),
-    startGroupsTour: vi.fn(),
-    startMembersTour: vi.fn(),
-    startCategoriesTour: vi.fn(),
-    startHistoryTour: vi.fn(),
-    startMemorizedTour: vi.fn(),
-    startExpensesTour: vi.fn(),
-    startAddExpenseTour: vi.fn(),
-    startSummaryTour: vi.fn(),
   };
 }
 

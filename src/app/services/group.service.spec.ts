@@ -500,7 +500,7 @@ describe('GroupService', () => {
         // - the assertions below prove clearCurrentGroupData() actually
         // reset them, rather than them merely starting out empty.
         TestBed.inject(CategoryStore).setGroupCategories([{ id: 'c1' } as any]);
-        TestBed.inject(ExpenseStore).setGroupExpenses([{ id: 'e1' } as any]);
+        TestBed.inject(ExpenseStore).setGroupHasExpenses(true);
         TestBed.inject(MemberStore).setGroupMembers([{ id: 'm1' } as any]);
         TestBed.inject(MemorizedStore).setMemorizedExpenses([{ id: 'z1' } as any]);
         TestBed.inject(HistoryStore).setHistory([{ id: 'h1' } as any]);
@@ -537,7 +537,7 @@ describe('GroupService', () => {
         expect(mockSplitService.stopListening).toHaveBeenCalled();
         expect(mockHistoryService.stopListening).toHaveBeenCalled();
         expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
-        expect(TestBed.inject(ExpenseStore).groupExpenses()).toEqual([]);
+        expect(TestBed.inject(ExpenseStore).groupHasExpenses()).toBe(false);
         expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
         expect(TestBed.inject(MemorizedStore).memorizedExpenses()).toEqual([]);
         expect(TestBed.inject(HistoryStore).groupHistory()).toEqual([]);

@@ -34,7 +34,6 @@ import { LoadingService } from '@components/loading/loading.service';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -63,7 +62,6 @@ export class EditMemberComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
   protected readonly router = inject(Router);
-  protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -125,10 +123,6 @@ export class EditMemberComponent {
   });
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const val = this.editMemberForm().value();

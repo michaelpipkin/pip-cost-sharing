@@ -36,7 +36,6 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { appCheckTokenReady } from '../app-check';
-import { DemoModeService } from './demo-mode.service';
 import { GroupService } from './group.service';
 import { IUserService } from './user.service.interface';
 
@@ -68,7 +67,6 @@ export class UserService implements IUserService {
   protected readonly memorizedStore = inject(MemorizedStore);
   protected readonly historyStore = inject(HistoryStore);
   protected readonly splitStore = inject(SplitStore);
-  protected readonly demoModeService = inject(DemoModeService);
   protected readonly memberLinkService = inject(MemberLinkService);
   protected readonly functions = inject(getFunctions);
   protected readonly snackbar = inject(MatSnackBar);
@@ -154,7 +152,7 @@ export class UserService implements IUserService {
 
     for (let attempt = 1; attempt <= LOGIN_SEQUENCE_MAX_ATTEMPTS; attempt++) {
       try {
-        // Clear all demo data from stores when a real user logs in
+        // Clear any group data left in the stores from a previous session
         this.groupStore.clearAllUserGroups();
         this.expenseStore.clearGroupExpenses();
         this.categoryStore.clearGroupCategories();
@@ -270,11 +268,7 @@ export class UserService implements IUserService {
         // Firebase transitioned to a logged-out state. Distinguish an
         // intentional logout() call from an involuntary session loss
         // (revoked token, evicted persistence, sign-out in another tab).
-        if (
-          !this.#intentionalLogout &&
-          this.userStore.isLoggedIn() &&
-          !this.userStore.isDemoMode()
-        ) {
+        if (!this.#intentionalLogout && this.userStore.isLoggedIn()) {
           this.handleSessionExpired();
         }
         this.#intentionalLogout = false;

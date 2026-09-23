@@ -1,15 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Router } from '@angular/router';
+import { By } from '@angular/platform-browser';
 import { HomeComponent } from './home.component';
+import { FeatureTourDialogComponent } from './feature-tour-dialog/feature-tour-dialog.component';
 import { UserStore } from '@store/user.store';
 import { PwaDetectionService } from '@services/pwa-detection.service';
-import { TourService } from '@services/tour.service';
+import { AnalyticsService } from '@services/analytics.service';
 import {
   createMockUserStore,
   createMockPwaDetectionService,
-  createMockTourService,
+  createMockAnalyticsService,
+  mockUser,
 } from '@testing/test-helpers';
 
 describe('HomeComponent', () => {
@@ -17,13 +19,12 @@ describe('HomeComponent', () => {
   let component: HomeComponent;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockPwaDetection: ReturnType<typeof createMockPwaDetectionService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
-  let router: Router;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
 
   beforeEach(async () => {
     mockUserStore = createMockUserStore();
     mockPwaDetection = createMockPwaDetectionService();
-    mockTourService = createMockTourService();
+    mockAnalytics = createMockAnalyticsService();
 
     await TestBed.configureTestingModule({
       imports: [HomeComponent],
@@ -31,13 +32,12 @@ describe('HomeComponent', () => {
         provideRouter([]),
         { provide: UserStore, useValue: mockUserStore },
         { provide: PwaDetectionService, useValue: mockPwaDetection },
-        { provide: TourService, useValue: mockTourService },
+        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HomeComponent);
     component = fixture.componentInstance;
-    router = TestBed.inject(Router);
     await fixture.whenStable();
   });
 
@@ -59,17 +59,36 @@ describe('HomeComponent', () => {
     });
   });
 
-  describe('startDemoWalkthrough', () => {
-    it('should call tourService.resetAllTours', () => {
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      component.startDemoWalkthrough();
-      expect(mockTourService.resetAllTours).toHaveBeenCalled();
+  describe('feature tour', () => {
+    const tourButton = () =>
+      fixture.debugElement.query(By.css('[data-testid="feature-tour-button"]'));
+
+    it('should show the feature tour button when logged out', () => {
+      expect(tourButton()).toBeTruthy();
     });
 
-    it('should navigate to demo/split', async () => {
-      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      component.startDemoWalkthrough();
-      expect(navigateSpy).toHaveBeenCalledWith(['demo', 'split']);
+    it('should show the feature tour button when logged in', async () => {
+      mockUserStore.user.set(mockUser());
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(tourButton()).toBeTruthy();
+    });
+
+    it('should open the feature tour dialog and log analytics', () => {
+      const openSpy = vi
+        .spyOn((component as any)['dialog'], 'open')
+        .mockReturnValue({} as any);
+
+      component.openFeatureTour();
+
+      expect(openSpy).toHaveBeenCalledWith(
+        FeatureTourDialogComponent,
+        expect.objectContaining({ maxWidth: '95vw' })
+      );
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
+        'feature_tour_opened',
+        { logged_in: false }
+      );
     });
   });
 

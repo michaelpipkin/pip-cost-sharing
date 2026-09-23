@@ -1,15 +1,12 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
-  afterEveryRender,
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  ElementRef,
   inject,
   signal,
   Signal,
-  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -31,7 +28,6 @@ import {
   SerializableRentalPayload,
 } from '@models/expense';
 import { Member } from '@models/member';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemberStore } from '@store/member.store';
 import { RentalUtilsService } from '@utils/rental-utils.service';
@@ -72,7 +68,6 @@ export class RentalComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly memberStore = inject(MemberStore);
-  protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly rentalUtils = inject(RentalUtilsService);
@@ -90,7 +85,6 @@ export class RentalComponent {
    * toggling back on doesn't lose the user's setup. */
   protected readonly roomAssignments = signal<Record<string, string>>({});
 
-  inputElements = viewChildren<ElementRef>('inputElement');
 
   protected readonly totalAmountValue = computed(() =>
     this.stringUtils.toNumber(this.amount())
@@ -132,27 +126,12 @@ export class RentalComponent {
   );
 
   constructor() {
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
     afterNextRender(() => {
       this.addAllActiveMembers();
       this.#showSmallScreenNoticeIfNeeded();
     });
   }
 
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef<any>) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
-  }
 
   addAllActiveMembers(): void {
     this.members.set(
@@ -188,17 +167,11 @@ export class RentalComponent {
       })),
       ...(roomsActive ? { rooms: this.rooms() } : {}),
     };
-    const target = this.demoService.isInDemoMode()
-      ? '/demo/expenses/add'
-      : '/expenses/add';
-    this.router.navigate([target], { state: { rental: payload } });
+    this.router.navigate(['/expenses/add'], { state: { rental: payload } });
   }
 
   onCancel(): void {
-    const target = this.demoService.isInDemoMode()
-      ? '/demo/expenses'
-      : '/expenses';
-    this.router.navigate([target]);
+    this.router.navigate(['/expenses']);
   }
 
   showHelp(): void {

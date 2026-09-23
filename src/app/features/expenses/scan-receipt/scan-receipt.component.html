@@ -64,12 +64,11 @@
       </button>
     </div>
 
-    <div class="amounts-row" data-tour="scan-receipt-amounts">
+    <div class="amounts-row">
       <mat-form-field appearance="fill" floatLabel="always" class="amount-total">
         <mat-label>Total Amount</mat-label>
         <input
           matInput
-          #inputElement
           class="number-right"
           [value]="totalAmount()"
           appFormatCurrencyInput
@@ -89,7 +88,6 @@
         <mat-label>Tax</mat-label>
         <input
           matInput
-          #inputElement
           class="number-right"
           [value]="taxAmount()"
           appFormatCurrencyInput
@@ -109,7 +107,6 @@
         <mat-label>Tip</mat-label>
         <input
           matInput
-          #inputElement
           class="number-right"
           [value]="tipAmount()"
           appFormatCurrencyInput
@@ -154,7 +151,6 @@
           <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-amount">
             <input
               matInput
-              #inputElement
               class="number-right"
               [value]="item.amount"
               appFormatCurrencyInput

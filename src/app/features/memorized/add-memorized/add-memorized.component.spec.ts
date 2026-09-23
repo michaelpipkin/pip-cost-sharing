@@ -9,7 +9,6 @@ import { ExpenseSplitItemForm, MemorizedForm } from '@models/expense';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { CategoryStore } from '@store/category.store';
@@ -20,7 +19,6 @@ import {
   createMockCalculatorOverlayService,
   createMockCategoryService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
@@ -45,7 +43,6 @@ describe('AddMemorizedComponent', () => {
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let mockMemorizedService: ReturnType<typeof createMockMemorizedService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let router: Router;
 
@@ -86,7 +83,6 @@ describe('AddMemorizedComponent', () => {
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
     mockMemorizedService = createMockMemorizedService();
-    mockDemoService = createMockDemoService();
     mockLoadingService = createMockLoadingService();
 
     const testGroup = mockGroup({ currencyCode: 'USD', autoAddMembers: false });
@@ -118,7 +114,6 @@ describe('AddMemorizedComponent', () => {
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CategoryStore, useValue: mockCategoryStore },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
@@ -164,6 +159,77 @@ describe('AddMemorizedComponent', () => {
     });
 
     it('should start with empty splits array', () => {
+      expect(getModel().splits).toHaveLength(0);
+    });
+  });
+
+  describe('defaults when store data arrives after first render', () => {
+    // Simulates a browser refresh on this page: the member and category
+    // stores are still loading when the component first renders.
+    async function createWhileStoresLoading() {
+      const currentMember = mockMemberStore.currentMember();
+      mockGroupStore.currentGroup.set(
+        mockGroup({ currencyCode: 'USD', autoAddMembers: true })
+      );
+      mockMemberStore.currentMember.set(null);
+      mockMemberStore.loaded.set(false);
+      mockCategoryStore.loaded.set(false);
+      fixture = TestBed.createComponent(AddMemorizedComponent);
+      component = fixture.componentInstance;
+      await fixture.whenStable();
+      return currentMember!;
+    }
+
+    async function settle() {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+
+    it('should apply payer, member splits and sole category once the stores load', async () => {
+      const currentMember = await createWhileStoresLoading();
+      expect(getModel().paidByMember).toBeNull();
+      expect(getModel().splits).toHaveLength(0);
+      expect(getModel().category).toBeNull();
+
+      mockCategoryStore.groupCategories.set([
+        mockCategory({ id: 'cat-1', name: 'Default', active: true }),
+      ]);
+      mockCategoryStore.loaded.set(true);
+      mockMemberStore.loaded.set(true);
+      mockMemberStore.currentMember.set(currentMember);
+      await settle();
+
+      expect(getModel().paidByMember?.path).toContain('member-1');
+      // One split per active member (Charlie is inactive)
+      expect(getModel().splits).toHaveLength(2);
+      expect(getModel().category?.path).toContain('cat-1');
+    });
+
+    it('should not overwrite a payer chosen before the stores loaded', async () => {
+      const currentMember = await createWhileStoresLoading();
+      patchModel({
+        paidByMember: mockDocRef('groups/group-1/members/member-2') as any,
+      });
+
+      mockMemberStore.loaded.set(true);
+      mockMemberStore.currentMember.set(currentMember);
+      await settle();
+
+      expect(getModel().paidByMember?.path).toContain('member-2');
+    });
+
+    it('should apply each default only once', async () => {
+      const currentMember = await createWhileStoresLoading();
+      mockMemberStore.loaded.set(true);
+      mockMemberStore.currentMember.set(currentMember);
+      await settle();
+      expect(getModel().splits).toHaveLength(2);
+
+      // User removes all splits; a later store update must not re-add them
+      patchModel({ splits: [] });
+      mockMemberStore.groupMembers.set([...mockMemberStore.groupMembers()]);
+      await settle();
+
       expect(getModel().splits).toHaveLength(0);
     });
   });
@@ -219,15 +285,7 @@ describe('AddMemorizedComponent', () => {
   });
 
   describe('onSubmit', () => {
-    it('should show demo restriction in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockMemorizedService.addMemorized).not.toHaveBeenCalled();
-    });
-
-    it('should call memorizedService.addMemorized when not in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should call memorizedService.addMemorized', async () => {
       vi.spyOn(router, 'navigate').mockResolvedValue(true);
       patchModel({
         category: mockDocRef('groups/group-1/categories/cat-1'),
@@ -242,7 +300,6 @@ describe('AddMemorizedComponent', () => {
     });
 
     it('should navigate to /memorized after successful submit', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       patchFormData({ description: 'Test', amount: '50.00' });
       await component.onSubmit();

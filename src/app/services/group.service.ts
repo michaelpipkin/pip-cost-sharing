@@ -35,7 +35,6 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { CategoryService } from './category.service';
-import { DEMO_GROUP_ID } from './demo-mode.service';
 import { ExpenseService } from './expense.service';
 import { IGroupService } from './group.service.interface';
 import { HistoryService } from './history.service';
@@ -76,9 +75,11 @@ export class GroupService implements IGroupService {
       const currentGroup = localStorage.getItem('currentGroup');
       if (currentGroup !== null) {
         const group = new Group({ ...JSON.parse(currentGroup) });
-        // A leftover demo group (e.g. from a demo session that didn't clean
-        // up localStorage) should never be rehydrated as a real group.
-        if (group.id === DEMO_GROUP_ID) {
+        // Legacy demo-mode cleanup: a leftover demo group (from a demo
+        // session that didn't clean up localStorage) should never be
+        // rehydrated as a real group. Demo mode was removed in Sept 2026; this
+        // guard can be deleted once old browser sessions have aged out.
+        if (group.id === 'demo-group-123') {
           localStorage.removeItem('currentGroup');
         } else {
           // prettier-ignore

@@ -1,5 +1,4 @@
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -31,9 +30,7 @@ import {
 import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
-import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -69,8 +66,6 @@ export class CategoriesComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly demoService = inject(DemoService);
-  protected readonly tourService = inject(TourService);
 
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
@@ -108,21 +103,14 @@ export class CategoriesComponent {
         this.loading.loadingOn();
       }
     });
-    afterNextRender(() => {
-      this.tourService.checkForContinueTour('categories');
-    });
   }
 
   sortCategories(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
-    this.sortAsc.set(e.direction == 'asc');
+    this.sortAsc.set(e.direction === 'asc');
   }
 
   addCategory(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: this.currentGroup()!.id,
     };
@@ -137,10 +125,6 @@ export class CategoriesComponent {
   }
 
   onRowClick(category: Category): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     if (this.currentMember()!.groupAdmin) {
       const dialogConfig: MatDialogConfig = {
         data: {
@@ -149,7 +133,7 @@ export class CategoriesComponent {
       };
       const dialogRef = this.dialog.open(EditCategoryComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {
-        if (result.success) {
+        if (result?.success) {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: `Category ${result.operation}` },
           });
@@ -165,10 +149,5 @@ export class CategoriesComponent {
       data: { sectionId: 'categories' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    // Force start the Categories Tour (ignoring completion state)
-    this.tourService.startCategoriesTour(true);
   }
 }

@@ -1,15 +1,12 @@
 import { DecimalPipe } from '@angular/common';
 import {
-  afterEveryRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  ElementRef,
   inject,
   model,
   Signal,
   signal,
-  viewChildren,
 } from '@angular/core';
 import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -40,6 +37,7 @@ import { SplitMethodToggleComponent } from '@components/split-method-toggle/spli
 import { DateShortcutKeysDirective } from '@directives/date-plus-minus.directive';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
+import { SelectOnFocusDirective } from '@shared/directives/select-on-focus.directive';
 import {
   RentalEditDialogComponent,
   RentalEditDialogData,
@@ -64,7 +62,6 @@ import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
@@ -97,6 +94,7 @@ import { getDownloadURL, getStorage } from 'firebase/storage';
     DecimalPipe,
     CurrencyPipe,
     FormatCurrencyInputDirective,
+    SelectOnFocusDirective,
     DateShortcutKeysDirective,
     DocRefCompareDirective,
     SplitMethodToggleComponent,
@@ -115,7 +113,6 @@ export class EditExpenseComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly categoryService = inject(CategoryService);
   protected readonly cameraService = inject(CameraService);
-  protected readonly demoService = inject(DemoService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -157,7 +154,6 @@ export class EditExpenseComponent {
   receiptFile = model<File | null>(null);
   receiptUrl = model<string>(null as unknown as string);
 
-  inputElements = viewChildren<ElementRef>('inputElement');
 
   protected readonly expenseModel = signal<Pick<ExpenseForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>({
     paidByMember: this.expense().paidByMemberRef ?? null,
@@ -209,9 +205,6 @@ export class EditExpenseComponent {
   }
 
   constructor() {
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
     const expense = this.expense();
     const receiptRef = expense.receiptRef;
     if (receiptRef) {
@@ -250,18 +243,6 @@ export class EditExpenseComponent {
     this.loading.loadingOff();
   }
 
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef<any>) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
-  }
 
   #formatForInput(value: number): string {
     const rounded = this.localeService.roundToCurrency(value);
@@ -531,11 +512,6 @@ export class EditExpenseComponent {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      this.router.navigate(['/demo/expenses']);
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Confirm Action',
@@ -589,11 +565,7 @@ export class EditExpenseComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Expense updated successfully' },
           });
-          if (this.demoService.isInDemoMode()) {
-            this.router.navigate(['/demo/expenses']);
-          } else {
-            this.router.navigate(['/expenses']);
-          }
+          this.router.navigate(['/expenses']);
         } catch (error) {
           if (error instanceof Error) {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -617,11 +589,6 @@ export class EditExpenseComponent {
   }
 
   onDelete(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      this.router.navigate(['/demo/expenses']);
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: { operation: 'Delete', target: 'this expense' },
     };
@@ -635,11 +602,7 @@ export class EditExpenseComponent {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'Expense deleted' },
           });
-          if (this.demoService.isInDemoMode()) {
-            this.router.navigate(['/demo/expenses']);
-          } else {
-            this.router.navigate(['/expenses']);
-          }
+          this.router.navigate(['/expenses']);
         } catch (error) {
           if (error instanceof Error) {
             this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -663,11 +626,7 @@ export class EditExpenseComponent {
   }
 
   onCancel(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.router.navigate(['/demo/expenses']);
-    } else {
-      this.router.navigate(['/expenses']);
-    }
+    this.router.navigate(['/expenses']);
   }
 
   openCalculator(event: Event, field: 'amount' | 'allocatedAmount', index?: number): void {

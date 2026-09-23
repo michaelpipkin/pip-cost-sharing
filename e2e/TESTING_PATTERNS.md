@@ -71,7 +71,6 @@ Components use prefixed test IDs to avoid naming collisions and clarify element 
 ```typescript
 this.pageTitle = page.getByTestId('summary-page-title');
 this.helpButton = page.getByTestId('summary-help-button');
-this.tourButton = page.getByTestId('summary-tour-button');
 this.loadingMessage = page.getByTestId('loading-summary-message');
 ```
 
@@ -79,7 +78,6 @@ this.loadingMessage = page.getByTestId('loading-summary-message');
 ```typescript
 this.pageTitle = page.getByTestId('history-page-title');
 this.helpButton = page.getByTestId('history-help-button');
-this.tourButton = page.getByTestId('history-tour-button');
 this.loadingMessage = page.getByTestId('loading-history-message');
 ```
 
@@ -87,7 +85,6 @@ this.loadingMessage = page.getByTestId('loading-history-message');
 ```typescript
 this.addExpenseContainer = page.getByTestId('add-expense-container');
 this.addExpenseForm = page.getByTestId('add-expense-form');
-this.tourButton = page.getByTestId('add-expense-tour-button');
 ```
 
 ### Benefits

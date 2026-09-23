@@ -11,7 +11,6 @@ export class ExpensesPage extends BasePage {
   readonly addExpenseContainer: Locator;
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
-  readonly tourButton: Locator;
   readonly addExpenseForm: Locator;
   readonly payerSelect: Locator;
   readonly dateInput: Locator;
@@ -54,7 +53,6 @@ export class ExpensesPage extends BasePage {
     this.addExpenseContainer = page.getByTestId('add-expense-container');
     this.pageTitle = page.getByTestId('page-title');
     this.helpButton = page.getByTestId('help-button');
-    this.tourButton = page.getByTestId('add-expense-tour-button');
     this.addExpenseForm = page.getByTestId('add-expense-form');
     this.payerSelect = page.getByTestId('payer-select');
     this.dateInput = page.getByTestId('date-input');

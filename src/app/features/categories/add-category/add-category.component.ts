@@ -14,7 +14,6 @@ import { LoadingService } from '@components/loading/loading.service';
 import { Category, CategoryForm } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 
 @Component({
   selector: 'app-add-category',
@@ -33,7 +32,6 @@ export class AddCategoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddCategoryComponent>);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly demoService = inject(DemoService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly groupId: string = inject(MAT_DIALOG_DATA);
@@ -46,10 +44,6 @@ export class AddCategoryComponent {
   });
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const formValues = this.newCategoryForm().value();

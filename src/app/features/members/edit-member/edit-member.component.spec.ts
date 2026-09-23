@@ -8,14 +8,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockDialogRef,
   createMockGroupStore,
   createMockLoadingService,
@@ -40,7 +38,6 @@ describe('EditMemberComponent', () => {
     removeMemberFromGroup: ReturnType<typeof vi.fn>;
     leaveGroup: ReturnType<typeof vi.fn>;
   };
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
@@ -74,7 +71,6 @@ describe('EditMemberComponent', () => {
 
   async function createComponent(member: typeof testMember) {
     mockDialogRef = createMockDialogRef();
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
     mockUserStore = createMockUserStore();
     mockMemberStore = createMockMemberStore();
@@ -103,7 +99,6 @@ describe('EditMemberComponent', () => {
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberService, useValue: mockMemberService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
@@ -192,16 +187,6 @@ describe('EditMemberComponent', () => {
         success: true,
         operation: 'saved',
       });
-    });
-
-    it('should block submit in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).not.toHaveBeenCalled();
     });
 
     it('should open a delete confirmation dialog on removeMember', () => {

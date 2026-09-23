@@ -10,7 +10,6 @@ import { ExpenseSplitItemForm, MemorizedForm } from '@models/expense';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { CategoryStore } from '@store/category.store';
@@ -21,7 +20,6 @@ import {
   createMockCalculatorOverlayService,
   createMockCategoryService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
@@ -43,7 +41,6 @@ describe('EditMemorizedComponent', () => {
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let mockMemorizedService: ReturnType<typeof createMockMemorizedService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let router: Router;
 
@@ -99,7 +96,6 @@ describe('EditMemorizedComponent', () => {
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
     mockMemorizedService = createMockMemorizedService();
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
 
     mockMemorizedService.updateMemorized.mockResolvedValue(undefined);
@@ -132,7 +128,6 @@ describe('EditMemorizedComponent', () => {
         { provide: GroupStore, useValue: createMockGroupStore() },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CategoryStore, useValue: mockCategoryStore },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
@@ -201,15 +196,7 @@ describe('EditMemorizedComponent', () => {
   });
 
   describe('onSubmit', () => {
-    it('should show demo restriction in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockMemorizedService.updateMemorized).not.toHaveBeenCalled();
-    });
-
-    it('should call memorizedService.updateMemorized when not in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should call memorizedService.updateMemorized', async () => {
       vi.spyOn(router, 'navigate').mockResolvedValue(true);
       await component.onSubmit();
       expect(mockMemorizedService.updateMemorized).toHaveBeenCalledWith(
@@ -219,7 +206,6 @@ describe('EditMemorizedComponent', () => {
     });
 
     it('should navigate to /memorized after successful submit', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       await component.onSubmit();
       expect(navigateSpy).toHaveBeenCalledWith(['/memorized']);
@@ -227,16 +213,9 @@ describe('EditMemorizedComponent', () => {
   });
 
   describe('onDelete', () => {
-    it('should show demo restriction in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.onDelete();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should open delete dialog when not in demo mode', () => {
+    it('should open delete dialog', () => {
       // EditMemorizedComponent imports MatDialogModule which overrides the test-level mock,
       // so we spy directly on the component's injected dialog instance.
-      mockDemoService.isInDemoMode.mockReturnValue(false);
       const dialogSpy = vi
         .spyOn((component as any)['dialog'], 'open')
         .mockReturnValue({

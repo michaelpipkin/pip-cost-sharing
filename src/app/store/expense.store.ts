@@ -1,23 +1,11 @@
-import { computed } from '@angular/core';
-import { Expense } from '@models/expense';
-import {
-  patchState,
-  signalStore,
-  withComputed,
-  withMethods,
-  withState,
-} from '@ngrx/signals';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 type ExpenseState = {
-  groupExpenses: Expense[];
   groupHasExpenses: boolean;
-  loaded: boolean;
 };
 
 const initialState: ExpenseState = {
-  groupExpenses: [],
   groupHasExpenses: false,
-  loaded: false,
 };
 
 export const ExpenseStore = signalStore(
@@ -27,18 +15,8 @@ export const ExpenseStore = signalStore(
     setGroupHasExpenses: (hasExpenses: boolean) => {
       patchState(store, { groupHasExpenses: hasExpenses });
     },
-    setGroupExpenses: (expenses: Expense[]) => {
-      patchState(store, { groupExpenses: expenses, loaded: true });
-    },
     clearGroupExpenses: () => {
-      patchState(store, {
-        groupExpenses: [],
-        groupHasExpenses: false,
-        loaded: false,
-      });
+      patchState(store, { groupHasExpenses: false });
     },
-  })),
-  withComputed(({ groupExpenses: expenses }) => ({
-    unpaidGroupExpenses: computed(() => expenses().filter((e) => !e.paid)),
   }))
 );

@@ -1,13 +1,10 @@
 import {
-  afterEveryRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  ElementRef,
   inject,
   signal,
   Signal,
-  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -113,26 +110,10 @@ export class ScanReceiptComponent {
   protected readonly description = signal<string>('');
   protected readonly lineItems = signal<ScanLineItemRow[]>([]);
 
-  inputElements = viewChildren<ElementRef>('inputElement');
 
   constructor() {
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
   }
 
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef<any>) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
-  }
 
   protected readonly totalAmountValue = computed(() =>
     this.stringUtils.toNumber(this.totalAmount())

@@ -6,18 +6,14 @@ import { provideRouter } from '@angular/router';
 import { SplitExpenseForm, SplitItemForm } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
-import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import {
   createMockAnalyticsService,
   createMockCalculatorOverlayService,
-  createMockDemoService,
   createMockGroupStore,
   createMockMatDialog,
   createMockSnackBar,
-  createMockTourService,
   mockGroup,
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,8 +24,6 @@ describe('SplitComponent', () => {
   let component: SplitComponent;
   let el: HTMLElement;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
 
   function getModel(): SplitExpenseForm {
@@ -54,8 +48,6 @@ describe('SplitComponent', () => {
 
   beforeEach(async () => {
     mockGroupStore = createMockGroupStore();
-    mockDemoService = createMockDemoService();
-    mockTourService = createMockTourService();
     mockDialog = createMockMatDialog();
 
     mockGroupStore.currentGroup.set(mockGroup({ currencyCode: 'USD' }));
@@ -65,8 +57,6 @@ describe('SplitComponent', () => {
       providers: [
         provideRouter([]),
         { provide: GroupStore, useValue: mockGroupStore },
-        { provide: DemoService, useValue: mockDemoService },
-        { provide: TourService, useValue: mockTourService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: MatDialog, useValue: mockDialog },
@@ -108,10 +98,6 @@ describe('SplitComponent', () => {
 
     it('should render help button', () => {
       expect(query('split-help-button')).toBeTruthy();
-    });
-
-    it('should not show tour button when not in demo mode', () => {
-      expect(query('split-tour-button')).toBeFalsy();
     });
 
     it('should have empty splits array initially', () => {
@@ -562,102 +548,10 @@ describe('SplitComponent', () => {
     });
   });
 
-  describe('demo mode', () => {
-    beforeEach(async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await TestBed.resetTestingModule();
-
-      await TestBed.configureTestingModule({
-        imports: [SplitComponent],
-        providers: [
-          provideRouter([]),
-          { provide: GroupStore, useValue: mockGroupStore },
-          { provide: DemoService, useValue: mockDemoService },
-          { provide: TourService, useValue: mockTourService },
-          { provide: AnalyticsService, useValue: createMockAnalyticsService() },
-          { provide: MatSnackBar, useValue: createMockSnackBar() },
-          { provide: MatDialog, useValue: mockDialog },
-          {
-            provide: CalculatorOverlayService,
-            useValue: createMockCalculatorOverlayService(),
-          },
-          LocaleService,
-          DecimalPipe,
-        ],
-      }).compileComponents();
-
-      fixture = TestBed.createComponent(SplitComponent);
-      component = fixture.componentInstance;
-      el = fixture.nativeElement;
-    });
-
-    it('should populate demo data with Alice, Bob, Charlie', async () => {
-      await fixture.whenStable();
-
-      expect(getModel().splits.length).toBe(3);
-    });
-
-    it('should show tour button in demo mode', async () => {
-      await fixture.whenStable();
-
-      expect(query('split-tour-button')).toBeTruthy();
-    });
-
-    it('should start welcome tour in demo mode', async () => {
-      await fixture.whenStable();
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      expect(mockTourService.startWelcomeTour).toHaveBeenCalled();
-    });
-
-    it('restores the pristine demo data when restarting the tour after Apply Shares changed it', async () => {
-      await fixture.whenStable();
-
-      component.rentalParticipants.set([
-        { name: 'Alice', nights: [true] },
-        { name: 'Bob', nights: [true] },
-        { name: 'Charlie', nights: [true] },
-      ]);
-      component.rentalMode.set(true);
-      component.applyShares();
-      await fixture.whenStable();
-
-      expect(component.splitMethod()).toBe('shares');
-
-      component.startTour();
-      await fixture.whenStable();
-
-      expect(component.splitMethod()).toBe('amount');
-      expect(getModel().splits.map(s => s.owedBy)).toEqual([
-        'Alice',
-        'Bob',
-        'Charlie',
-      ]);
-      expect(getModel().splits[0]!.assignedAmount).toBe('12.55');
-      expect(getModel().splits[1]!.assignedAmount).toBe('13.37');
-      expect(getModel().splits[2]!.assignedAmount).toBe('14.02');
-    });
-  });
-
   describe('methods', () => {
     it('should open help dialog', () => {
       component.showHelp();
       expect(mockDialog.open).toHaveBeenCalled();
-    });
-
-    it('should delegate startTour to tourService', () => {
-      component.startTour();
-      expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
-    });
-
-    it('should exit rental mode before starting the tour, so the tour targets elements that are actually visible', () => {
-      component.rentalParticipants.set([{ name: 'Alice', nights: [true] }]);
-      component.rentalMode.set(true);
-
-      component.startTour();
-
-      expect(component.rentalMode()).toBe(false);
-      expect(mockTourService.startWelcomeTour).toHaveBeenCalledWith(true);
     });
 
     it('should reset form while preserving currency', () => {

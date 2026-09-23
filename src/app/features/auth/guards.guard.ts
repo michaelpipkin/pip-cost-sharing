@@ -110,8 +110,9 @@ export const loggedInGuard: CanActivateFn = async () => {
     const isGoogleUser = user.providerData[0]?.providerId === 'google.com';
     const isEmailConfirmed = user.emailVerified;
 
-    // Any authenticated user belongs in the real app, not demo:
-    // validated users go to expenses, unvalidated users go to account.
+    // Logged-out-only pages (login, register, password reset) have nothing
+    // to offer an authenticated user: validated users go to expenses,
+    // unvalidated users go to account.
     if (isGoogleUser || isEmailConfirmed) {
       return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
     }
