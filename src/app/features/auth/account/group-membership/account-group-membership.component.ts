@@ -18,7 +18,6 @@ import { LoadingService } from '@components/loading/loading.service';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { Group } from '@models/group';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { DocumentReference } from 'firebase/firestore';
@@ -39,7 +38,6 @@ export class AccountGroupMembershipComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberService = inject(MemberService);
-  protected readonly demoService = inject(DemoService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
@@ -56,10 +54,6 @@ export class AccountGroupMembershipComponent {
   });
 
   rejoinGroup(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const group = this.selectedGroup();
     if (!group?.userMemberRef) return;
 

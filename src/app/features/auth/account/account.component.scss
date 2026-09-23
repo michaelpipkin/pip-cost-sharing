@@ -31,12 +31,12 @@
 .account-sidebar {
   width: 10rem;
   flex-shrink: 0;
-  border-right: 1px solid var(--mat-sys-outline-variant);
+  border-right: 1px solid var(--outline-variant);
 
   .mobile & {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    border-bottom: 1px solid var(--outline-variant);
   }
 
   display: flex;

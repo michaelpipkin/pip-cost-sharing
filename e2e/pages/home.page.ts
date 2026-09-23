@@ -6,6 +6,8 @@ export class HomePage extends BasePage {
   readonly navigationToolbar: Locator;
   readonly themeToggleButton: Locator;
   readonly splitPageLink: Locator;
+  readonly featureTourButton: Locator;
+  readonly featureTourDialog: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -13,6 +15,18 @@ export class HomePage extends BasePage {
     this.navigationToolbar = this.getByTestId('main-toolbar');
     this.themeToggleButton = this.getByTestId('theme-toggle-desktop');
     this.splitPageLink = this.getByTestId('split-expense-button');
+    // "See what PipSplit can do" - opens the feature-tour screenshot
+    // carousel dialog. Visible whether logged in or out.
+    this.featureTourButton = this.getByTestId('feature-tour-button');
+    this.featureTourDialog = this.page.locator('mat-dialog-container');
+  }
+
+  /**
+   * Open the feature-tour dialog from the home page
+   */
+  async openFeatureTour() {
+    await this.featureTourButton.click();
+    await this.featureTourDialog.waitFor({ state: 'visible' });
   }
 
   /**

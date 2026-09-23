@@ -4,16 +4,13 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
-import { DemoService } from '@services/demo.service';
 import { SplitService } from '@services/split.service';
-import { TourService } from '@services/tour.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import {
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
@@ -21,7 +18,6 @@ import {
   createMockMemorizedStore,
   createMockSnackBar,
   createMockSplitService,
-  createMockTourService,
   mockDocRef,
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,8 +29,6 @@ describe('MemorizedComponent', () => {
   let mockMemorizedStore: ReturnType<typeof createMockMemorizedStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
   let router: Router;
 
   const mockBreakpointObserver = {
@@ -47,8 +41,6 @@ describe('MemorizedComponent', () => {
     mockMemorizedStore = createMockMemorizedStore();
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
-    mockDemoService = createMockDemoService();
-    mockTourService = createMockTourService();
 
     await TestBed.configureTestingModule({
       imports: [MemorizedComponent],
@@ -58,12 +50,10 @@ describe('MemorizedComponent', () => {
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CategoryStore, useValue: mockCategoryStore },
         { provide: MemorizedStore, useValue: mockMemorizedStore },
-        { provide: DemoService, useValue: mockDemoService },
         {
           provide: SplitService,
           useValue: createMockSplitService(),
         },
-        { provide: TourService, useValue: mockTourService },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: MatDialog, useValue: createMockMatDialog() },
@@ -140,14 +130,7 @@ describe('MemorizedComponent', () => {
   });
 
   describe('onRowClick', () => {
-    it('should show demo restriction when in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.onRowClick({ id: 'mem-1' } as any);
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should navigate to memorized detail when not in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should navigate to memorized detail', async () => {
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.onRowClick({ id: 'mem-1' } as any);
       expect(navigateSpy).toHaveBeenCalledWith(['/memorized', 'mem-1']);
@@ -155,14 +138,7 @@ describe('MemorizedComponent', () => {
   });
 
   describe('addExpense', () => {
-    it('should show demo restriction when in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.addExpense({ id: 'mem-1', splits: [] } as any);
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should navigate to add expense with state when not in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should navigate to add expense with state', async () => {
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       const expense = {
         id: 'mem-1',
@@ -184,13 +160,6 @@ describe('MemorizedComponent', () => {
           }),
         })
       );
-    });
-  });
-
-  describe('startTour', () => {
-    it('should call tourService.startMemorizedTour with force=true', () => {
-      component.startTour();
-      expect(mockTourService.startMemorizedTour).toHaveBeenCalledWith(true);
     });
   });
 

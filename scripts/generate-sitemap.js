@@ -70,8 +70,6 @@ function generateRobotsTxt() {
   return `# robots.txt for ${BASE_URL}
 User-agent: *
 Allow: /
-# Allow demo routes (public showcase of features)
-Allow: /demo/
 # Disallow authenticated routes
 Disallow: /administration/
 Disallow: /expenses/

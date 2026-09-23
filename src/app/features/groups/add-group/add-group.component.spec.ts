@@ -4,12 +4,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { SUPPORTED_CURRENCIES } from '@models/currency-config.interface';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockDialogRef,
   createMockGroupService,
   createMockLoadingService,
@@ -36,7 +34,6 @@ describe('AddGroupComponent', () => {
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: UserStore, useValue: mockUserStore },
         { provide: LoadingService, useValue: createMockLoadingService() },
-        { provide: DemoService, useValue: createMockDemoService() },
         { provide: GroupService, useValue: createMockGroupService() },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],

@@ -1,5 +1,4 @@
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   effect,
@@ -27,10 +26,8 @@ import {
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { MemberLinkService } from '@services/member-link.service';
-import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
@@ -60,8 +57,6 @@ export class GroupsComponent {
   protected readonly groupService = inject(GroupService);
   protected readonly loading = inject(LoadingService);
   protected readonly memberStore = inject(MemberStore);
-  protected readonly demoService = inject(DemoService);
-  protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -77,9 +72,8 @@ export class GroupsComponent {
       () => this.groupStore.currentGroup()?.ref ?? null
     );
 
-  // True until the one-time invited-member link attempt has settled (or
-  // been determined unnecessary in demo mode) - gates the loading overlay
-  // below so the page never shows a "no groups" flash for a user who's
+  // True until the one-time invited-member link attempt has settled -
+  // gates the loading overlay below so the page never shows a "no groups" flash for a user who's
   // about to be linked into one. Starts true (not false) precisely so the
   // loading state holds from the very first render, before anything else
   // has had a chance to run.
@@ -100,16 +94,8 @@ export class GroupsComponent {
       // catches not just a signup-time miss (see MemberLinkService /
       // GroupService.getUserGroups, which already retry that case once)
       // but also an invite that arrived after this account already had
-      // other groups, which neither of those cover. Demo mode has no
-      // real account to link and no App Check-enforced backend to call,
-      // so it's resolved immediately rather than firing a real request.
+      // other groups, which neither of those cover.
       if (this.#inviteLinkAttemptStarted) return;
-
-      if (this.demoService.isInDemoMode()) {
-        this.#inviteLinkAttemptStarted = true;
-        this.checkingInvitedMemberLinks.set(false);
-        return;
-      }
 
       // Read email as a tracked dependency so this waits for the user to
       // actually be known before firing, rather than racing it.
@@ -118,10 +104,6 @@ export class GroupsComponent {
         this.#inviteLinkAttemptStarted = true;
         void this.linkInvitedMembersOnLoad(email);
       }
-    });
-
-    afterNextRender(() => {
-      this.tourService.checkForContinueTour('groups');
     });
   }
 
@@ -138,43 +120,27 @@ export class GroupsComponent {
   }
 
   addGroup(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogRef = this.dialog.open(AddGroupComponent);
-    dialogRef
-      .afterClosed()
-      .subscribe(async (groupRef: DocumentReference<Group>) => {
-        if (groupRef) {
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Group added' },
-          });
-        }
-      });
+    dialogRef.afterClosed().subscribe((groupRef: DocumentReference<Group>) => {
+      if (groupRef) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Group added' },
+        });
+      }
+    });
   }
 
   async onSelectGroup(e: MatSelectChange): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      const selectedGroup = this.allUserGroups().find(
-        (g) => g.ref!.id === e.value.id
-      );
-      if (selectedGroup) {
-        this.groupStore.setCurrentGroup(selectedGroup);
-      }
-      return;
-    }
     this.loading.loadingOn();
-    const userRef = this.#user()!.ref!;
-    await this.groupService.getGroup(e.value, userRef);
-    this.loading.loadingOff();
+    try {
+      const userRef = this.#user()!.ref!;
+      await this.groupService.getGroup(e.value, userRef);
+    } finally {
+      this.loading.loadingOff();
+    }
   }
 
   manageGroups(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: { user: this.#user(), group: this.#currentGroup() },
     };
@@ -211,10 +177,5 @@ export class GroupsComponent {
       data: { sectionId: 'groups' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    // Force start the Groups Tour (ignoring completion state)
-    this.tourService.startGroupsTour(true);
   }
 }

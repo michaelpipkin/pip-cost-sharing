@@ -13,21 +13,6 @@
       <div></div>
       <h3 data-testid="summary-page-title">Summary</h3>
       <div class="help-icon" data-testid="summary-help-icon-container">
-        @if (demoService.isInDemoMode()) {
-          <mat-icon
-            data-testid="summary-tour-button"
-            matTooltip="Show Tour"
-            (click)="startTour()"
-            (keydown.enter)="startTour()"
-            (keydown.space)="startTour(); $event.preventDefault()"
-            aria-label="Start summary tour"
-            class="mr-2"
-            tabindex="0"
-            role="button"
-          >
-            tour
-          </mat-icon>
-        }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
@@ -179,7 +164,6 @@
               leastTransfers().length > 0 &&
               !smallScreen()
             "
-            data-tour="payment-flow"
           >
             <div class="scrollable-table">
               <table
@@ -221,17 +205,22 @@
                   <td mat-cell *matCellDef="let amountDue" class="actions-cell">
                     <span
                       [matTooltip]="
-                        amountDue.owedByMember.userRef
-                          ? 'Send payment request email to ' +
-                            amountDue.owedByMember.displayName
-                          : amountDue.owedByMember.displayName +
-                            ' is not associated with a registered app user and cannot receive emails'
+                        isOwedBySelf(amountDue)
+                          ? 'You cannot send a payment request email to yourself'
+                          : amountDue.owedByMember.userRef
+                            ? 'Send payment request email to ' +
+                              amountDue.owedByMember.displayName
+                            : amountDue.owedByMember.displayName +
+                              ' is not associated with a registered app user and cannot receive emails'
                       "
                     >
                       <button
                         class="btn btn-tertiary"
                         mat-mini-fab
-                        [disabled]="!amountDue.owedByMember.userRef"
+                        [disabled]="
+                          !amountDue.owedByMember.userRef ||
+                          isOwedBySelf(amountDue)
+                        "
                         (click)="
                           requestPayment(amountDue); $event.stopPropagation()
                         "
@@ -385,7 +374,6 @@
             class="table-container mat-elevation-z8"
             [class.half-height]="!smallScreen()"
             data-testid="least-transfers-table-container"
-            data-tour="least-transfers-table"
           >
             <div class="scrollable-table">
               <table
@@ -440,7 +428,6 @@
               type="button"
               (click)="settleGroupAction()"
               data-testid="settle-group-button"
-              data-tour="settle-group-button"
               aria-label="Settle group by marking all outstanding expenses as paid"
             >
               Settle Group

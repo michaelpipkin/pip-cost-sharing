@@ -1,13 +1,10 @@
 import { DecimalPipe } from '@angular/common';
 import {
-  afterEveryRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  ElementRef,
   inject,
   signal,
-  viewChildren,
 } from '@angular/core';
 import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +27,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
+import { SelectOnFocusDirective } from '@shared/directives/select-on-focus.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -42,7 +40,6 @@ import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
@@ -67,6 +64,7 @@ import { StringUtils } from '@utils/string-utils.service';
     DecimalPipe,
     CurrencyPipe,
     FormatCurrencyInputDirective,
+    SelectOnFocusDirective,
     DocRefCompareDirective,
     SplitMethodToggleComponent,
     FormField,
@@ -82,7 +80,6 @@ export class EditMemorizedComponent {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly demoService = inject(DemoService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -118,7 +115,6 @@ export class EditMemorizedComponent {
       .filter((m) => m.active || splitMemberIds.has(m.id));
   });
 
-  inputElements = viewChildren<ElementRef>('inputElement');
 
   protected readonly expenseModel = signal<Pick<MemorizedForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>({
     paidByMember: this.memorized().paidByMemberRef ?? null,
@@ -168,24 +164,9 @@ export class EditMemorizedComponent {
   }
 
   constructor() {
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
     this.loading.loadingOff();
   }
 
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef<any>) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
-  }
 
   #formatForInput(value: number): string {
     const rounded = this.localeService.roundToCurrency(value);
@@ -360,10 +341,6 @@ export class EditMemorizedComponent {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const model = this.expenseModel();
@@ -416,10 +393,6 @@ export class EditMemorizedComponent {
   }
 
   onDelete(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: { operation: 'Delete', target: 'this memorized expense' },
     };

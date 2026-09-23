@@ -5,7 +5,6 @@ export class HistoryPage extends BasePage {
   // Main page elements
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
-  readonly tourButton: Locator;
 
   // Filter elements
   readonly memberSelect: Locator;
@@ -40,7 +39,6 @@ export class HistoryPage extends BasePage {
     // Main page - History component uses prefixed testids
     this.pageTitle = page.getByTestId('history-page-title');
     this.helpButton = page.getByTestId('history-help-button');
-    this.tourButton = page.getByTestId('history-tour-button');
 
     // Filters
     this.memberSelect = page.getByTestId('member-select');

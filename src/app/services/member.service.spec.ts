@@ -37,7 +37,12 @@ describe('MemberService', () => {
   };
 
   beforeEach(() => {
-    vi.resetAllMocks();
+    // clearAllMocks, not resetAllMocks: a reset also strips the default
+    // implementations from the shared module mocks in src/testing/mocks,
+    // breaking whichever spec files run after this one in the same browser
+    // context (isolate: false). Per-test once-values here all go through
+    // vi.spyOn, which afterEach's restoreAllMocks already undoes.
+    vi.clearAllMocks();
     userSignal.set(null);
 
     vi.spyOn(firestoreModule, 'collection').mockReturnValue({} as any);

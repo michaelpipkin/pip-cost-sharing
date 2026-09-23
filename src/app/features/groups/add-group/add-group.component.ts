@@ -18,7 +18,6 @@ import { AddGroupForm, Group } from '@models/group';
 import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
 
@@ -42,7 +41,6 @@ export class AddGroupComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly dialogRef = inject(MatDialogRef<AddGroupComponent>);
   protected readonly userStore = inject(UserStore);
-  protected readonly demoService = inject(DemoService);
   protected readonly groupService = inject(GroupService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
@@ -63,10 +61,6 @@ export class AddGroupComponent {
   });
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     try {
       this.loading.loadingOn();
       const val = this.newGroupForm().value();

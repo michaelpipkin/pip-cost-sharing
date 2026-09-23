@@ -39,7 +39,10 @@ $light-tokens: (
   'table-row-hover': mat.get-theme-color(light.$light-theme, secondary, 80),
   'applied-filter': mat.get-theme-color(light.$light-theme, tertiary, 60),
   // Border colors
-  'border': #cccccc
+  'border': #cccccc,
+  // Outline colors (M3 roles: dividers, inactive indicators, subtle borders)
+  'outline': mat.get-theme-color(light.$light-theme, neutral-variant, 50),
+  'outline-variant': mat.get-theme-color(light.$light-theme, neutral-variant, 80)
 );
 
 $dark-tokens: (
@@ -74,7 +77,10 @@ $dark-tokens: (
   'table-row-hover': mat.get-theme-color(dark.$dark-theme, secondary, 30),
   'applied-filter': mat.get-theme-color(dark.$dark-theme, tertiary, 50),
   // Border colors
-  'border': #666666
+  'border': #666666,
+  // Outline colors (M3 roles: dividers, inactive indicators, subtle borders)
+  'outline': mat.get-theme-color(dark.$dark-theme, neutral-variant, 60),
+  'outline-variant': mat.get-theme-color(dark.$dark-theme, neutral-variant, 30)
 );
 
 /// Mixin to output CSS custom properties

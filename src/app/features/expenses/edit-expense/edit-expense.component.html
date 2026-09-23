@@ -110,7 +110,6 @@
           <mat-label>Total Amount</mat-label>
           <input
             matInput
-            #inputElement
             [formField]="expenseForm.amount"
             class="number-right"
             appFormatCurrencyInput
@@ -151,7 +150,6 @@
           <mat-label>Proportional Amount</mat-label>
           <input
             matInput
-            #inputElement
             [formField]="expenseForm.allocatedAmount"
             class="number-right"
             appFormatCurrencyInput
@@ -310,7 +308,7 @@
                     @if (isLastSplit(i)) {
                       <input
                         matInput
-                        #inputElement
+                        appSelectOnFocus
                         class="number-right"
                         [value]="split.percentage"
                         [readonly]="true"
@@ -319,7 +317,7 @@
                     } @else {
                       <input
                         matInput
-                        #inputElement
+                        appSelectOnFocus
                         class="number-right"
                         [value]="split.percentage ?? 0"
                         (blur)="
@@ -345,7 +343,7 @@
                       <mat-label>Shares</mat-label>
                       <input
                         matInput
-                        #inputElement
+                        appSelectOnFocus
                         class="number-right"
                         [value]="split.shares ?? 0"
                         inputmode="decimal"
@@ -375,7 +373,6 @@
                     <mat-label>Member Amount</mat-label>
                     <input
                       matInput
-                      #inputElement
                       class="number-right"
                       [value]="split.assignedAmount"
                       appFormatCurrencyInput

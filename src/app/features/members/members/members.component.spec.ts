@@ -6,16 +6,13 @@ import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { MemberInvite } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockGroupStore,
   createMockInviteService,
   createMockLoadingService,
@@ -23,7 +20,6 @@ import {
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
-  createMockTourService,
   createMockUserStore,
   mockDocRef,
   mockGroup,
@@ -60,8 +56,6 @@ describe('MembersComponent', () => {
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
   let mockInviteService: ReturnType<typeof createMockInviteService>;
@@ -81,8 +75,6 @@ describe('MembersComponent', () => {
     mockUserStore = createMockUserStore();
     mockGroupStore = createMockGroupStore();
     mockMemberStore = createMockMemberStore();
-    mockDemoService = createMockDemoService();
-    mockTourService = createMockTourService();
     mockDialog = createMockMatDialog();
     mockAnalytics = createMockAnalyticsService();
     mockInviteService = createMockInviteService();
@@ -125,8 +117,6 @@ describe('MembersComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
-        { provide: DemoService, useValue: mockDemoService },
-        { provide: TourService, useValue: mockTourService },
         { provide: AnalyticsService, useValue: mockAnalytics },
         { provide: InviteService, useValue: mockInviteService },
         {
@@ -184,10 +174,6 @@ describe('MembersComponent', () => {
 
     it('should render help button', () => {
       expect(query('members-help-button')).toBeTruthy();
-    });
-
-    it('should not show tour button when not in demo mode', () => {
-      expect(query('members-tour-button')).toBeFalsy();
     });
   });
 
@@ -251,8 +237,6 @@ describe('MembersComponent', () => {
       mockUserStore = createMockUserStore();
       mockGroupStore = createMockGroupStore();
       mockMemberStore = createMockMemberStore();
-      mockDemoService = createMockDemoService();
-      mockTourService = createMockTourService();
       mockDialog = createMockMatDialog();
       mockAnalytics = createMockAnalyticsService();
       mockInviteService = createMockInviteService();
@@ -273,8 +257,6 @@ describe('MembersComponent', () => {
           { provide: MatDialog, useValue: mockDialog },
           { provide: LoadingService, useValue: createMockLoadingService() },
           { provide: MatSnackBar, useValue: createMockSnackBar() },
-          { provide: DemoService, useValue: mockDemoService },
-          { provide: TourService, useValue: mockTourService },
           { provide: AnalyticsService, useValue: mockAnalytics },
           { provide: InviteService, useValue: mockInviteService },
           {
@@ -309,26 +291,8 @@ describe('MembersComponent', () => {
     });
   });
 
-  describe('demo mode', () => {
-    it('should block addMember and show restriction message', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.addMember();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-
-    it('should block onRowClick and show restriction message', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.onRowClick(mockMember());
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-  });
-
   describe('methods', () => {
-    it('should open add dialog when not in demo mode', () => {
+    it('should open add dialog', () => {
       component.addMember();
       expect(mockDialog.open).toHaveBeenCalled();
     });
@@ -359,11 +323,6 @@ describe('MembersComponent', () => {
     it('should open help dialog on showHelp', () => {
       component.showHelp();
       expect(mockDialog.open).toHaveBeenCalled();
-    });
-
-    it('should delegate startTour to tourService', () => {
-      component.startTour();
-      expect(mockTourService.startMembersTour).toHaveBeenCalledWith(true);
     });
 
     it('should update sort signals on sortMembers', () => {
@@ -568,14 +527,6 @@ describe('MembersComponent', () => {
         active: true,
         userRef: null,
       });
-
-    it('blocks and shows the restriction message in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.sendInvite(invitableMember());
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
 
     it('opens a confirm dialog naming the member', () => {
       component.sendInvite(invitableMember());

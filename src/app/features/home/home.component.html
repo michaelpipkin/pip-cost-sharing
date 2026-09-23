@@ -15,7 +15,7 @@
       </p>
       @if (!isLoggedIn()) {
         <p>
-          Sign up for a free account now, take a tour of the app, or try out
+          Sign up for a free account now, see what PipSplit can do, or try out
           splitting a single expense!
         </p>
       }
@@ -33,16 +33,6 @@
           Login or sign up
         </a>
         <a
-          mat-raised-button
-          class="btn-primary"
-          type="button"
-          (click)="startDemoWalkthrough()"
-          data-testid="view-demo-button"
-          aria-label="Take a tour"
-        >
-          Take a tour
-        </a>
-        <a
           matButton="elevated"
           class="btn-primary"
           type="button"
@@ -52,9 +42,16 @@
         >
           Split an expense now
         </a>
-      } @else {
-        <p>Looking for a tour? Log out first to protect your data.</p>
       }
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        (click)="openFeatureTour()"
+        data-testid="feature-tour-button"
+      >
+        See what PipSplit can do
+      </button>
     </div>
     <div class="logo" data-testid="hero-image-section">
       <img

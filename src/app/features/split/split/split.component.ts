@@ -1,7 +1,5 @@
 import { DecimalPipe } from '@angular/common';
 import {
-  afterEveryRender,
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -27,6 +25,7 @@ import { RouterLink } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
+import { SelectOnFocusDirective } from '@shared/directives/select-on-focus.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -39,9 +38,7 @@ import { RentalDetails } from '@models/expense';
 import { SplitExpenseForm, SplitItemForm } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
-import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
@@ -68,6 +65,7 @@ import {
     CurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
+    SelectOnFocusDirective,
     RouterLink,
     SplitMethodToggleComponent,
     SplitRentalGridComponent,
@@ -80,8 +78,6 @@ export class SplitComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly demoService = inject(DemoService);
-  protected readonly tourService = inject(TourService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
   protected readonly localeService = inject(LocaleService);
   protected readonly groupStore = inject(GroupStore);
@@ -124,7 +120,6 @@ export class SplitComponent {
 
   readonly totalAmountField = viewChild<ElementRef>('totalAmount');
   readonly allocatedAmountField = viewChild<ElementRef>('propAmount');
-  readonly inputElements = viewChildren<ElementRef>('inputElement');
   readonly memberAmounts = viewChildren<ElementRef>('memberAmount');
   readonly memberPercentages = viewChildren<ElementRef>('memberPercentage');
 
@@ -160,68 +155,8 @@ export class SplitComponent {
     this.localeService.setGroupCurrency('USD');
     this.localCurrencyCode.set('USD');
 
-    afterNextRender(() => {
-      if (!this.demoService.isInDemoMode()) {
-        this.localeService.setGroupCurrency(this.expenseModel().currencyCode);
-      }
-    });
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
-    afterNextRender(() => {
-      if (this.demoService.isInDemoMode()) {
-        this.populateDemoData();
-        setTimeout(() => {
-          this.tourService.startWelcomeTour();
-        }, 500);
-      }
-    });
   }
 
-  private populateDemoData(): void {
-    const demoSplits = [
-      { name: 'Alice', amount: 12.55 },
-      { name: 'Bob', amount: 13.37 },
-      { name: 'Charlie', amount: 14.02 },
-    ];
-
-    const fmt = (v: number) => this.#formatForInput(v);
-
-    // The tour's narration is hardcoded to this exact Amount-mode data, so
-    // restoring it always means Amount mode too - matters when this is
-    // re-called from startTour() after the split method was changed (e.g.
-    // by Apply Shares) rather than just on initial page load.
-    this.splitMethod.set('amount');
-    this.expenseModel.update(m => ({
-      ...m,
-      amount: fmt(65.33),
-      allocatedAmount: fmt(17.44),
-      splits: demoSplits.map(s => ({
-        owedBy: s.name,
-        assignedAmount: fmt(s.amount),
-        percentage: 0,
-        shares: 0,
-        allocatedAmount: 0,
-      })),
-    }));
-
-    setTimeout(() => {
-      this.allocateSharedAmounts();
-    }, 100);
-  }
-
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
-  }
 
   addSplit(): void {
     this.expenseModel.update(m => ({
@@ -777,25 +712,6 @@ export class SplitComponent {
       data: { sectionId: 'split' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    // The tour targets elements from the normal (non-rental) view - e.g.
-    // .total-amount-field, #split-member, the Generate Summary button -
-    // none of which render while rentalMode() is true (that section shows
-    // the occupancy grid instead). Exit rental mode first so those targets
-    // actually exist on the page.
-    this.exitRentalMode();
-    // The tour's narration is hardcoded to the original demo numbers
-    // ($65.33 total, Alice $12.55, etc. in Amount mode) - restore that
-    // pristine state so restarting the tour after playing with Vacation
-    // Rental (or anything else that changes the split method/amounts)
-    // doesn't leave the tour narrating numbers that no longer match
-    // what's on screen.
-    if (this.demoService.isInDemoMode()) {
-      this.populateDemoData();
-    }
-    this.tourService.startWelcomeTour(true);
   }
 
   #formatForInput(value: number): string {

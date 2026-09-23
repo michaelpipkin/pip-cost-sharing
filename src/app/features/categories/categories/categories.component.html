@@ -16,18 +16,6 @@
       <div></div>
       <h3 data-testid="categories-page-title">Categories</h3>
       <div class="help-icon" data-testid="categories-help-icon-container">
-        @if (demoService.isInDemoMode()) {
-          <mat-icon
-            data-testid="categories-tour-button"
-            matTooltip="Show Tour"
-            (click)="startTour()"
-            (keydown.enter)="startTour()"
-            aria-label="tour"
-            class="mr-2"
-          >
-            tour
-          </mat-icon>
-        }
         <mat-icon
           matTooltip="Help"
           (click)="showHelp()"
@@ -46,7 +34,6 @@
           class="clearable"
           subscriptSizing="dynamic"
           data-testid="category-search-field"
-          data-tour="category-search"
         >
           <mat-label>Search by name</mat-label>
           <input
@@ -75,7 +62,6 @@
           [checked]="true"
           [(ngModel)]="activeOnly"
           data-testid="active-categories-only-toggle"
-          data-tour="category-filter"
           aria-label="Show active categories only"
         >
           Active only
@@ -89,7 +75,6 @@
         [class.hidden]="!currentMember()?.groupAdmin"
         (click)="addCategory()"
         data-testid="add-category-button"
-        data-tour="add-category-button"
         aria-label="Add category"
       >
         Add Category
@@ -99,7 +84,6 @@
       <div
         class="table-container mat-elevation-z8"
         data-testid="categories-table-container"
-        data-tour="categories-table"
       >
         <div class="scrollable-table">
           <table

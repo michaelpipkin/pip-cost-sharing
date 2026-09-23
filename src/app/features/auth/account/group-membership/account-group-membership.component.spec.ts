@@ -3,12 +3,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
@@ -23,7 +21,6 @@ describe('AccountGroupMembershipComponent', () => {
   let component: AccountGroupMembershipComponent;
   let el: HTMLElement;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockMemberService: { rejoinGroup: ReturnType<typeof vi.fn> };
 
@@ -40,7 +37,6 @@ describe('AccountGroupMembershipComponent', () => {
   async function createComponent(groups: any[] = [leftGroup]) {
     mockGroupStore = createMockGroupStore();
     mockGroupStore.allUserGroups.set(groups);
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
     mockMemberService = { rejoinGroup: vi.fn().mockResolvedValue(undefined) };
 
@@ -49,7 +45,6 @@ describe('AccountGroupMembershipComponent', () => {
       providers: [
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberService, useValue: mockMemberService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: MatDialog, useValue: mockDialog },
@@ -135,16 +130,6 @@ describe('AccountGroupMembershipComponent', () => {
       await fixture.whenStable();
 
       expect(mockMemberService.rejoinGroup).not.toHaveBeenCalled();
-    });
-
-    it('should block rejoining in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component['selectedGroupRef'].set(groupRef as any);
-
-      component.rejoinGroup();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
     });
   });
 

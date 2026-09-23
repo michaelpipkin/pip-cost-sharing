@@ -1,5 +1,4 @@
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -36,18 +35,15 @@ import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
-import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
-import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
-import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import {
   HelpDialogComponent,
@@ -82,7 +78,6 @@ import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-
 })
 export class SummaryComponent {
   protected readonly router = inject(Router);
-  protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
@@ -90,12 +85,10 @@ export class SummaryComponent {
   protected readonly splitService = inject(SplitService);
   protected readonly splitStore = inject(SplitStore);
   protected readonly historyService = inject(HistoryService);
-  protected readonly tourService = inject(TourService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
@@ -348,6 +341,13 @@ export class SummaryComponent {
     this.leastTransfers().some((t) => !!t.owedByMember?.userRef)
   );
 
+  isOwedBySelf(amountDue: AmountDue): boolean {
+    const currentMemberRef = this.currentMember()?.ref;
+    return (
+      !!currentMemberRef && amountDue.owedByMemberRef.eq(currentMemberRef)
+    );
+  }
+
   constructor() {
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
@@ -366,9 +366,6 @@ export class SummaryComponent {
       .subscribe((result) => {
         this.smallScreen.set(result.matches);
       });
-    afterNextRender(() => {
-      this.tourService.checkForContinueTour('summary');
-    });
   }
 
   onExpandClick(amountDue: AmountDue): void {
@@ -385,10 +382,6 @@ export class SummaryComponent {
     owedToMemberRef: DocumentReference<Member>,
     owedByMemberRef: DocumentReference<Member>
   ): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     this.owedToMemberRef.set(owedToMemberRef);
     this.owedByMemberRef.set(owedByMemberRef);
     const splitsToPay = this.filteredSplits().filter(
@@ -469,16 +462,7 @@ export class SummaryComponent {
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
-  startTour(): void {
-    // Force start the Summary Tour (ignoring completion state)
-    this.tourService.startSummaryTour(true);
-  }
-
   async settleGroupAction(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const transfers = this.leastTransfers();
     if (transfers.length === 0) return;
     const dialogConfig: MatDialogConfig = {
@@ -521,10 +505,6 @@ export class SummaryComponent {
   }
 
   async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const summaryText = this.generateSummaryText(amountDue);
     try {
       await navigator.clipboard.writeText(summaryText);
@@ -592,10 +572,6 @@ export class SummaryComponent {
   }
 
   async copySettlementToClipboard(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const settlementText = this.generateSettlementText(this.leastTransfers());
     try {
       await navigator.clipboard.writeText(settlementText);
@@ -632,10 +608,6 @@ export class SummaryComponent {
   }
 
   async requestPayment(amountDue: AmountDue): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const owedByMember = amountDue.owedByMember!;
     try {
       this.loading.loadingOn();
@@ -673,10 +645,6 @@ export class SummaryComponent {
   }
 
   async requestAllPayments(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const transfers = this.leastTransfers().map((t) => ({
       owedByMember: t.owedByMember!,
       owedToMember: t.owedToMember!,

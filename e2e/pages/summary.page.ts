@@ -5,7 +5,6 @@ export class SummaryPage extends BasePage {
   // Main page elements
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
-  readonly tourButton: Locator;
 
   // Filter elements
   readonly memberSelect: Locator;
@@ -42,7 +41,6 @@ export class SummaryPage extends BasePage {
     // Main page
     this.pageTitle = page.getByTestId('summary-page-title');
     this.helpButton = page.getByTestId('summary-help-button');
-    this.tourButton = page.getByTestId('summary-tour-button');
 
     // Filters
     this.memberSelect = page.locator('mat-select[name="member"]');

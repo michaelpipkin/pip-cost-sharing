@@ -20,7 +20,7 @@ An option in the add-expense flow to create an expense from a photo of a receipt
 
 ### How it works (as built)
 
-1. **Entry point:** `ExpensesComponent`'s "Add New Expense" button opens `AddExpenseOptionsDialogComponent`, a small popup with three choices: "Enter Manual Expense" (→ `/expenses/add`), "Create Expense From Receipt" (→ `/expenses/scan-receipt`), and "Vacation Rental" (→ `/expenses/rental`). The standalone Vacation Rental button that used to sit next to Add New Expense on the expenses list was removed — new expense-creation methods are meant to be added to this dialog instead of accumulating more buttons on the list page. In demo mode, choosing the receipt option shows the standard demo-restriction snackbar instead of navigating — see "Demo mode" below.
+1. **Entry point:** `ExpensesComponent`'s "Add New Expense" button opens `AddExpenseOptionsDialogComponent`, a small popup with three choices: "Enter Manual Expense" (→ `/expenses/add`), "Create Expense From Receipt" (→ `/expenses/scan-receipt`), and "Vacation Rental" (→ `/expenses/rental`). The standalone Vacation Rental button that used to sit next to Add New Expense on the expenses list was removed — new expense-creation methods are meant to be added to this dialog instead of accumulating more buttons on the list page.
 2. **Photo selection:** `/expenses/scan-receipt` (`ScanReceiptComponent`) uses the exact same picker `AddExpenseComponent` already used for receipt attachments — platform-aware camera/gallery/browse-files/clipboard dialog, the one-time receipt-policy gate, 5MB size validation. This logic was extracted out of `AddExpenseComponent`'s private methods into a shared [`ReceiptFileSelectionService`](../src/app/services/receipt-file-selection.service.ts), which both components now inject — no more duplicated dialog/policy/clipboard handling.
 3. **Scanning:** once a file is picked, [`ReceiptScanService`](../src/app/services/receipt-scan.service.ts) base64-encodes it client-side (`FileReader.readAsDataURL`, stripped of its `data:` prefix) and calls the `scanReceipt` callable with `{ groupId, imageBase64 }`. No Storage upload at this stage — see the Function-side notes below for why. The `LoadingService` overlay covers the screen while this is in flight.
 4. **Review & assign:** the wizard shows the parsed total/tax/tip (all editable) plus a description field, and lists every parsed line item as an editable row (description, amount, and a member-assignment select defaulting to "Shared / No one"). Items below 70% OCR confidence get a warning icon/tooltip but stay fully editable — never silently dropped. The user can also add a missed item or remove a spurious one. Running totals show each assigned member's subtotal (from their directly-assigned items only) plus one combined "Shared Pool" total (tax + tip + any unassigned items).
@@ -30,10 +30,6 @@ An option in the add-expense flow to create an expense from a photo of a receipt
 
    **Why a handoff service instead of router state** (this was an open question during planning, now resolved by building it): `SerializableRentalPayload` already has to convert member `DocumentReference`s to plain string ids because Firestore references aren't structured-cloneable through `history.pushState`. A receipt photo compounds that with size: multi-MB `File` objects risk exceeding browsers' `pushState` payload limits. A plain in-memory singleton sidesteps both — the `File` and `DocumentReference`s travel as live object references, no serialization involved. The tradeoff (doesn't survive a page reload) is irrelevant here since it's a same-tab, same-session handoff between two adjacent screens.
 6. User reviews/adjusts on the normal Add Expense screen and submits as usual. `receiptFile` uploads exactly once, at submit time, through the existing `ExpenseService.addExpense` path (`groups/{groupId}/receipts/{expenseId}`) — unchanged. Nothing is ever written to Storage before that point, so an abandoned wizard or abandoned Add Expense screen leaves nothing behind to clean up.
-
-### Demo mode
-
-`scanReceipt` is a real (billable-compute) Cloud Function keyed to real group membership, so it can't run against demo mode's fake group. There is no `/demo/expenses/scan-receipt` route; `ExpensesComponent.onAddExpenseClick()` shows the standard demo-restriction snackbar instead of navigating when "Create Expense From Receipt" is chosen in demo mode. Manual entry and Vacation Rental remain fully explorable in demo mode as before (both are pure client-side compute).
 
 ### Resolved decisions (from planning)
 
@@ -69,7 +65,7 @@ Frontend:
 - `AddExpenseComponent.loadReceiptScanExpense()` — reads the handoff payload and prefills the form, alongside the existing `loadRentalExpense`/`loadMemorizedExpense`.
 - Shared dialog list-button styling (`.selection-options`/`.selection-button`) was promoted from `file-selection-dialog`'s component-scoped `.scss` into `src/styles.scss`, since `AddExpenseOptionsDialogComponent` uses the identical pattern.
 
-Test coverage: unit specs for the parser, all three new services, `ScanReceiptComponent`, `AddExpenseOptionsDialogComponent`, and updated specs for `ExpensesComponent`/`AddExpenseComponent` — full suite (1144 tests) green. The entry-point dialog and all three routing choices (manual/receipt-in-demo-mode/rental) were also verified live in a real headless-Chromium session against the local dev server + Firebase emulators.
+Test coverage: unit specs for the parser, all three new services, `ScanReceiptComponent`, `AddExpenseOptionsDialogComponent`, and updated specs for `ExpensesComponent`/`AddExpenseComponent` — full suite (1144 tests) green. The entry-point dialog and all three routing choices (manual/receipt/rental) were also verified live in a real headless-Chromium session against the local dev server + Firebase emulators.
 
 ### Real-receipt validation (2026-07-27)
 
@@ -122,16 +118,9 @@ Fixed in `ScanReceiptComponent.#guessDescription()`: before using the first non-
 
 Covered by two new unit tests exercising the exact failure pattern (a plain trailing-amount line item, and a grocery-style one with a trailing tax-code letter).
 
-### Help/tour content updates (2026-07-27)
+### Help content updates (2026-07-27)
 
-User flagged that `HelpContentService` and `TourService` needed to account for the new feature and the new Add Expense entry-point dialog. Most of this had actually already been done while building the feature (the `scan-receipt` help section, the `expenses` section's mention of the new dialog, the merged `expenses-add-expense` tour step) — but a check turned up two real remaining gaps:
-
-- **Stale help text:** the `scan-receipt` help section still described the pre-fix allocation behavior — "a combined Shared Pool total (tax, tip, and any unassigned items) that gets split evenly among assigned members" — which is exactly the bug fixed in "Manual click-through findings" above (tax/tip are actually split *proportionally*, not evenly, and are shown as a separate line from unassigned items). Updated to describe the current, correct two-total behavior.
-- **Tour never mentioned receipt scanning at all:** the `expenses-add-expense` Shepherd tour step (in `startExpensesTour`) described choosing between "a manual entry" and "a guided vacation rental wizard" — no mention of the receipt option added mid-feature-build. Added it, along with a "(not available in demo mode)" caveat, since that step's copy already sets the expectation that the whole add-expense flow is explorable in demo mode, which isn't true for this one path.
-
-No other gaps found: the demo routes are unaffected (no `/demo/expenses/scan-receipt` route exists, by design — see "Demo mode" above), `checkForContinueTour`'s fixed tour-name list doesn't need a `scan-receipt` entry since that page has no dedicated tour and isn't reachable from demo mode, and no other component/page had stale references to the old two-button (Add New Expense / Vacation Rental) expenses-list layout.
-
-**Follow-up:** user asked directly whether the tour actually communicated *how* the new flow works, not just that it exists. It didn't, quite — both the tour step and the `expenses` help bullet described the three options ("You'll be asked to choose how: a manual entry, a photo scan..., or...") without ever stating that a **popup** is what presents the choice, which is the actual `AddExpenseOptionsDialogComponent` mechanism. Reworded both to say "A popup will let you choose..." / "for a popup with three ways to create a new expense" so they describe the real UI, not just the outcome.
+The `scan-receipt` help section in `HelpContentService` originally described the pre-fix allocation behavior (a single "Shared Pool" split evenly) — the bug fixed in "Manual click-through findings" above. Updated to describe the current two-total behavior (unassigned items split evenly; tax/tip split *proportionally*), and the `expenses` help bullet now states that a **popup** (`AddExpenseOptionsDialogComponent`) presents the three ways to create an expense. (The in-app demo mode and Shepherd.js tour that were also updated at the time have since been removed — the home page's "See what PipSplit can do" feature-tour dialog, a screenshot carousel that includes a receipt-scan slide, replaced them.)
 
 ### PDF receipt support (2026-07-28)
 

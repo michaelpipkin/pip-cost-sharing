@@ -21,7 +21,7 @@
     split and hand it off to the expense form for you to review and save.
   </p>
 
-  <div class="flex-wrap fw-start row-gap mb-2" data-tour="rental-basic-info">
+  <div class="flex-wrap fw-start row-gap mb-2">
     <mat-form-field
       appearance="fill"
       floatLabel="always"
@@ -30,7 +30,6 @@
       <mat-label>Total Cost</mat-label>
       <input
         matInput
-        #inputElement
         class="number-right"
         [value]="amount()"
         appFormatCurrencyInput

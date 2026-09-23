@@ -3,24 +3,15 @@
     <div></div>
     <h3 data-testid="split-page-title">Split Expense</h3>
     <div class="help-icon" data-testid="split-help-icon-container">
-      @if (demoService.isInDemoMode()) {
-        <mat-icon
-          data-testid="split-tour-button"
-          matTooltip="Show Tour"
-          (click)="startTour()"
-          (keydown.enter)="startTour(); $event.preventDefault()"
-          aria-label="Start split expense tour"
-          class="mr-2"
-        >
-          tour
-        </mat-icon>
-      }
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
         (keydown.enter)="showHelp(); $event.preventDefault()"
+        (keydown.space)="showHelp(); $event.preventDefault()"
         data-testid="split-help-button"
         aria-label="Show help for splitting expenses"
+        tabindex="0"
+        role="button"
       >
         help
       </mat-icon>
@@ -68,7 +59,6 @@
             <mat-label>Total Amount</mat-label>
             <input
               matInput
-              #inputElement
               #totalAmount
               [formField]="expenseForm.amount"
               class="number-right"
@@ -110,7 +100,6 @@
             <mat-label>Proportional Amount</mat-label>
             <input
               matInput
-              #inputElement
               #propAmount
               [formField]="expenseForm.allocatedAmount"
               class="number-right"
@@ -168,7 +157,6 @@
               class="btn-primary"
               type="button"
               (click)="enterRentalMode()"
-              data-tour="vacation-rental-button"
               data-testid="vacation-rental-button"
             >
               Vacation Rental
@@ -243,7 +231,7 @@
                       @if (isLastSplit(i)) {
                         <input
                           matInput
-                          #inputElement
+                          appSelectOnFocus
                           class="number-right"
                           [value]="item.percentage ?? 0"
                           readonly
@@ -251,7 +239,7 @@
                       } @else {
                         <input
                           matInput
-                          #inputElement
+                          appSelectOnFocus
                           #memberPercentage
                           class="number-right"
                           [formField]="splitField(i).percentage"
@@ -271,7 +259,7 @@
                         <mat-label>Shares</mat-label>
                         <input
                           matInput
-                          #inputElement
+                          appSelectOnFocus
                           class="number-right"
                           [formField]="splitField(i).shares"
                           inputmode="decimal"
@@ -294,7 +282,6 @@
                       <mat-label>Member Amount</mat-label>
                       <input
                         matInput
-                        #inputElement
                         #memberAmount
                         class="number-right"
                         [formField]="splitField(i).assignedAmount"
@@ -348,7 +335,6 @@
             class="btn-secondary"
             type="submit"
             defaultButton
-            data-tour="generate-summary-button"
             [disabled]="!expenseForm().valid() || !expenseFullyAllocated()"
             (click)="onSubmit()"
           >
@@ -393,7 +379,7 @@
           mat-mini-fab
           class="btn btn-primary ms-3"
           matTooltip="Copy summary to clipboard"
-          data-tour="copy-summary-button"
+          aria-label="Copy summary to clipboard"
           (click)="copySummaryToClipboard()"
         >
           <mat-icon>content_copy</mat-icon>

@@ -15,14 +15,13 @@ import { TextZoom } from '@capacitor/text-zoom';
 import { FooterComponent } from '@components/footer/footer.component';
 import { LoadingComponent } from '@components/loading/loading.component';
 import { NavigationLoadingService } from '@components/loading/navigation-loading.service';
-import { DEMO_ROUTE_PATHS, ROUTE_PATHS } from '@constants/routes.constants';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DeepLinkService } from '@services/deep-link.service';
-import { DemoService } from '@services/demo.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -54,7 +53,6 @@ export class AppComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly userService = inject(UserService);
   protected readonly groupStore = inject(GroupStore);
-  protected readonly demoService = inject(DemoService);
   protected readonly router = inject(Router);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
@@ -69,12 +67,10 @@ export class AppComponent {
   user: Signal<User | null> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isValidUser: Signal<boolean> = this.userStore.isValidUser;
-  isInDemoMode: Signal<boolean> = this.demoService.isInDemoMode;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   // Route constants for template access
   readonly routes = ROUTE_PATHS;
-  readonly demoRoutes = DEMO_ROUTE_PATHS;
 
   constructor() {
     afterNextRender(async () => {

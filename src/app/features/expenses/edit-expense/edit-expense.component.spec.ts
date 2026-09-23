@@ -10,7 +10,6 @@ import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { CategoryStore } from '@store/category.store';
@@ -23,7 +22,6 @@ import {
   createMockCameraService,
   createMockCategoryService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockExpenseService,
   createMockGroupStore,
   createMockLoadingService,
@@ -47,7 +45,6 @@ describe('EditExpenseComponent', () => {
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let mockExpenseService: ReturnType<typeof createMockExpenseService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let router: Router;
 
@@ -109,7 +106,6 @@ describe('EditExpenseComponent', () => {
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
     mockExpenseService = createMockExpenseService();
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
 
     mockExpenseService.updateExpense.mockResolvedValue(undefined);
@@ -144,7 +140,6 @@ describe('EditExpenseComponent', () => {
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CategoryStore, useValue: mockCategoryStore },
         { provide: UserStore, useValue: createMockUserStore() },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
@@ -208,18 +203,9 @@ describe('EditExpenseComponent', () => {
   });
 
   describe('onSubmit', () => {
-    it('should show demo restriction in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      await component.onSubmit();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockExpenseService.updateExpense).not.toHaveBeenCalled();
-    });
-
-    it('should open confirmation dialog when not in demo mode', async () => {
+    it('should open confirmation dialog', async () => {
       // EditExpenseComponent imports MatDialogModule which overrides the test-level mock,
       // so we spy directly on the component's injected dialog instance.
-      mockDemoService.isInDemoMode.mockReturnValue(false);
       const dialogSpy = vi
         .spyOn((component as any)['dialog'], 'open')
         .mockReturnValue({
@@ -233,17 +219,9 @@ describe('EditExpenseComponent', () => {
   });
 
   describe('onDelete', () => {
-    it('should show demo restriction in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      component.onDelete();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should open delete dialog when not in demo mode', () => {
+    it('should open delete dialog', () => {
       // EditExpenseComponent imports MatDialogModule which overrides the test-level mock,
       // so we spy directly on the component's injected dialog instance.
-      mockDemoService.isInDemoMode.mockReturnValue(false);
       const dialogSpy = vi
         .spyOn((component as any)['dialog'], 'open')
         .mockReturnValue({
