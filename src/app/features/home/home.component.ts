@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
+import { AnalyticsService } from '@services/analytics.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
-import { TourService } from '@services/tour.service';
 import { UserStore } from '@store/user.store';
+import { FeatureTourDialogComponent } from './feature-tour-dialog/feature-tour-dialog.component';
 
 @Component({
   selector: 'app-home',
@@ -15,9 +17,9 @@ import { UserStore } from '@store/user.store';
 })
 export class HomeComponent {
   protected readonly userStore = inject(UserStore);
-  protected readonly router = inject(Router);
   protected readonly pwaDetection = inject(PwaDetectionService);
-  protected readonly tourService = inject(TourService);
+  protected readonly dialog = inject(MatDialog);
+  protected readonly analytics = inject(AnalyticsService);
 
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
 
@@ -29,10 +31,14 @@ export class HomeComponent {
     return this.pwaDetection.isRunningAsApp();
   }
 
-  startDemoWalkthrough(): void {
-    // Reset all tour completion states so the user sees the tours again
-    this.tourService.resetAllTours();
-    // Navigate to demo split page
-    this.router.navigate(['demo', 'split']);
+  openFeatureTour(): void {
+    this.analytics.logEvent('feature_tour_opened', {
+      logged_in: this.isLoggedIn(),
+    });
+    this.dialog.open(FeatureTourDialogComponent, {
+      width: '680px',
+      maxWidth: '95vw',
+      autoFocus: 'dialog',
+    });
   }
 }

@@ -40,7 +40,7 @@ describe('loggedInGuard', () => {
     vi.restoreAllMocks();
   });
 
-  it('should allow a logged-out visitor into demo', async () => {
+  it('should allow a logged-out visitor through', async () => {
     mockAuthUser(null);
 
     const result = await runGuard();
@@ -49,7 +49,7 @@ describe('loggedInGuard', () => {
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
-  it('should redirect a validated Google user to expenses instead of demo', async () => {
+  it('should redirect a validated Google user to expenses', async () => {
     mockAuthUser({
       providerData: [{ providerId: 'google.com' } as authModule.UserInfo],
       emailVerified: false,
@@ -62,7 +62,7 @@ describe('loggedInGuard', () => {
     ]);
   });
 
-  it('should redirect a validated (email-confirmed) user to expenses instead of demo', async () => {
+  it('should redirect a validated (email-confirmed) user to expenses', async () => {
     mockAuthUser({
       providerData: [{ providerId: 'password' } as authModule.UserInfo],
       emailVerified: true,
@@ -75,7 +75,7 @@ describe('loggedInGuard', () => {
     ]);
   });
 
-  it('should redirect an unverified logged-in user to account instead of demo', async () => {
+  it('should redirect an unverified logged-in user to account', async () => {
     mockAuthUser({
       providerData: [{ providerId: 'password' } as authModule.UserInfo],
       emailVerified: false,

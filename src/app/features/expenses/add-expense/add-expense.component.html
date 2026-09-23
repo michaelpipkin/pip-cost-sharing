@@ -3,24 +3,15 @@
     <div></div>
     <h3 data-testid="page-title">Add Expense</h3>
     <div class="help-icon" data-testid="help-icon-container">
-      @if (demoService.isInDemoMode()) {
-        <mat-icon
-          data-testid="add-expense-tour-button"
-          matTooltip="Show Tour"
-          (click)="startTour()"
-          (keydown.enter)="startTour()"
-          aria-label="Start add expense tour"
-          class="mr-2"
-        >
-          tour
-        </mat-icon>
-      }
       <mat-icon
         matTooltip="Help"
         (click)="showHelp()"
         (keydown.enter)="showHelp()"
+        (keydown.space)="showHelp(); $event.preventDefault()"
         data-testid="help-button"
         aria-label="Show help for adding expenses"
+        tabindex="0"
+        role="button"
       >
         help
       </mat-icon>
@@ -33,7 +24,7 @@
       aria-label="Add expense form"
       (submit)="$event.preventDefault()"
     >
-      <div class="flex-wrap fw-start" data-tour="basic-info">
+      <div class="flex-wrap fw-start">
         <mat-form-field id="paid-by-select" data-testid="payer-field">
           <mat-label>Payer</mat-label>
           <mat-select
@@ -122,7 +113,7 @@
           }
         </mat-form-field>
       </div>
-      <div class="flex-wrap fw-start" data-tour="amount-fields">
+      <div class="flex-wrap fw-start">
         <mat-form-field
           appearance="fill"
           floatLabel="always"
@@ -131,7 +122,6 @@
           <mat-label>Total Amount</mat-label>
           <input
             matInput
-            #inputElement
             [formField]="expenseForm.amount"
             class="number-right"
             appFormatCurrencyInput
@@ -172,7 +162,6 @@
           <mat-label>Proportional Amount</mat-label>
           <input
             matInput
-            #inputElement
             [formField]="expenseForm.allocatedAmount"
             class="number-right"
             appFormatCurrencyInput
@@ -253,7 +242,7 @@
           </div>
         }
       </div>
-      <div class="flex-wrap fw-start row-gap" data-tour="split-controls">
+      <div class="flex-wrap fw-start row-gap">
         <button
           mat-raised-button
           class="btn-primary"
@@ -328,10 +317,10 @@
                   >
                     <mat-label>Percentage</mat-label>
                     @if (isLastSplit(i)) {
-                      <input matInput #inputElement class="number-right"
+                      <input matInput appSelectOnFocus class="number-right"
                              [value]="split.percentage ?? 0" readonly />
                     } @else {
-                      <input matInput #inputElement class="number-right"
+                      <input matInput appSelectOnFocus class="number-right"
                              [value]="split.percentage ?? 0"
                              (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()" />
                     }
@@ -348,7 +337,7 @@
                       <mat-label>Shares</mat-label>
                       <input
                         matInput
-                        #inputElement
+                        appSelectOnFocus
                         class="number-right"
                         [value]="split.shares ?? 0"
                         inputmode="decimal"
@@ -371,7 +360,6 @@
                     <mat-label>Member Amount</mat-label>
                     <input
                       matInput
-                      #inputElement
                       class="number-right"
                       [value]="split.assignedAmount"
                       appFormatCurrencyInput

@@ -1,7 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -43,13 +42,11 @@ import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
-import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
@@ -57,7 +54,6 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { UserStore } from '@store/user.store';
 import { DocumentReference } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -105,14 +101,11 @@ import {
 export class ExpensesComponent {
   protected readonly storage = inject(getStorage);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly expenseStore = inject(ExpenseStore);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly demoService = inject(DemoService);
-  protected readonly tourService = inject(TourService);
   protected readonly expenseService = inject(ExpenseService);
   protected readonly splitService = inject(SplitService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -147,22 +140,10 @@ export class ExpensesComponent {
   sortAsc = signal<boolean>(true);
 
   constructor() {
-    // Watch for store data changes and auto-load demo expenses
+    // Clear loaded expenses when there is no longer a current group
+    // (e.g. on logout) so stale data isn't shown when a group is selected again
     effect(() => {
-      if (this.userStore.isDemoMode()) {
-        const storeExpenses = this.expenseStore.groupExpenses();
-        const storeLoaded = this.expenseStore.loaded();
-        if (
-          storeExpenses.length > 0 &&
-          storeLoaded &&
-          this.expenses().length === 0
-        ) {
-          this.expenses.set(storeExpenses);
-          this.isLoaded.set(true);
-        }
-      }
-      // Clear demo expenses when switching to real user mode
-      else if (this.expenses().length > 0 && !this.currentGroup()) {
+      if (this.expenses().length > 0 && !this.currentGroup()) {
         this.expenses.set([]);
         this.isLoaded.set(false);
       }
@@ -171,7 +152,7 @@ export class ExpensesComponent {
     // Watch for currentGroup to become available and load expenses
     effect(() => {
       const group = this.currentGroup();
-      if (group && !this.isLoaded() && !this.userStore.isDemoMode()) {
+      if (group && !this.isLoaded()) {
         this.loadExpenses();
       }
     });
@@ -210,10 +191,6 @@ export class ExpensesComponent {
           this.smallScreen.set(false);
         }
       });
-
-    afterNextRender(() => {
-      this.tourService.checkForContinueTour('expenses');
-    });
   }
 
   startDate = model<Date | null>(
@@ -266,31 +243,19 @@ export class ExpensesComponent {
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();
     try {
-      // Check if we have store data (demo mode) first
-      const storeExpenses = this.expenseStore.groupExpenses();
-      if (
-        this.userStore.isDemoMode() &&
-        storeExpenses.length > 0 &&
-        this.expenseStore.loaded()
-      ) {
-        // Use demo/store data
-        this.expenses.set(storeExpenses);
-      } else {
-        // Fall back to Firebase service
-        const expenses: Expense[] =
-          await this.expenseService.getGroupExpensesByDateRange(
-            this.currentGroup()!.id,
-            this.startDate() ?? undefined,
-            this.endDate() ?? undefined,
-            this.unpaidOnly(),
-            this.searchPayer(),
-            this.searchCategory()
-          );
-        this.expenses.set(expenses);
-        this.currentSearchCategory.set(this.searchCategory());
-        this.currentSearchPayer.set(this.searchPayer());
-        this.currentUnpaidOnly.set(this.unpaidOnly());
-      }
+      const expenses: Expense[] =
+        await this.expenseService.getGroupExpensesByDateRange(
+          this.currentGroup()!.id,
+          this.startDate() ?? undefined,
+          this.endDate() ?? undefined,
+          this.unpaidOnly(),
+          this.searchPayer(),
+          this.searchCategory()
+        );
+      this.expenses.set(expenses);
+      this.currentSearchCategory.set(this.searchCategory());
+      this.currentSearchPayer.set(this.searchPayer());
+      this.currentUnpaidOnly.set(this.unpaidOnly());
     } catch (error) {
       this.analytics.logEvent('fetch_expenses_error', {
         error: (error as Error).message,
@@ -318,38 +283,21 @@ export class ExpensesComponent {
       maxWidth: '400px',
     });
     dialogRef.afterClosed().subscribe((result: AddExpenseOption | null) => {
-      const isDemoMode = this.demoService.isInDemoMode();
-      const demoPrefix = isDemoMode ? '/demo' : '';
       if (result === 'manual') {
-        this.router.navigate([`${demoPrefix}/expenses/add`]);
+        this.router.navigate(['/expenses/add']);
       } else if (result === 'rental') {
-        this.router.navigate([`${demoPrefix}/expenses/rental`]);
+        this.router.navigate(['/expenses/rental']);
       } else if (result === 'receipt') {
-        // Scanning calls a real (billable-compute) Cloud Function keyed to a
-        // real group membership, so it's not available against a fake demo
-        // group - there's no /demo/expenses/scan-receipt route.
-        if (isDemoMode) {
-          this.demoService.showDemoModeRestrictionMessage();
-        } else {
-          this.router.navigate(['/expenses/scan-receipt']);
-        }
+        this.router.navigate(['/expenses/scan-receipt']);
       }
     });
   }
 
   onRowClick(expense: Expense): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     this.router.navigate(['/expenses', expense.id]);
   }
 
   markSplitPaidUnpaid(expense: Expense, split: Split): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Admin Correction',
@@ -380,7 +328,7 @@ export class ExpensesComponent {
           split.ref,
           changes
         );
-        this.loadExpenses();
+        await this.loadExpenses();
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: {
             message: `Split ${split.paid ? 'marked as unpaid' : 'marked as paid'}`,
@@ -403,11 +351,6 @@ export class ExpensesComponent {
       data: { sectionId: 'expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    // Force start the Expenses Tour (ignoring completion state)
-    this.tourService.startExpensesTour(true);
   }
 
   async copyExpenseSummaryToClipboard(expense: Expense): Promise<void> {

@@ -5,11 +5,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
-import { TourService } from '@services/tour.service';
 import { UserService } from '@services/user.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -19,7 +17,6 @@ import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockHistoryService,
   createMockLoadingService,
@@ -28,7 +25,6 @@ import {
   createMockSnackBar,
   createMockSplitService,
   createMockSplitStore,
-  createMockTourService,
   createMockUserStore,
   mockCategory,
   mockDocRef,
@@ -52,8 +48,6 @@ describe('SummaryComponent', () => {
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockSplitService: ReturnType<typeof createMockSplitService>;
   let mockHistoryService: ReturnType<typeof createMockHistoryService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
@@ -69,8 +63,6 @@ describe('SummaryComponent', () => {
     mockUserStore = createMockUserStore();
     mockSplitService = createMockSplitService();
     mockHistoryService = createMockHistoryService();
-    mockTourService = createMockTourService();
-    mockDemoService = createMockDemoService();
     mockAnalyticsService = createMockAnalyticsService();
     mockLoadingService = createMockLoadingService();
     mockDialog = createMockMatDialog();
@@ -155,9 +147,7 @@ describe('SummaryComponent', () => {
         { provide: SplitService, useValue: mockSplitService },
         { provide: HistoryService, useValue: mockHistoryService },
         { provide: UserService, useValue: mockUserService },
-        { provide: TourService, useValue: mockTourService },
         { provide: LocaleService, useValue: mockLocaleService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
@@ -316,6 +306,24 @@ describe('SummaryComponent', () => {
     });
   });
 
+  describe('isOwedBySelf', () => {
+    it('should be true when the current member owes the debt', () => {
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      const summary = component.summaryData();
+      const debt = { ...summary[0]!, owedByMemberRef: alice.ref!, owedToMemberRef: bob.ref! };
+
+      expect(component.isOwedBySelf(debt)).toBe(true);
+    });
+
+    it('should be false when another member owes the debt', () => {
+      const summary = component.summaryData();
+      const debt = summary[0]!;
+
+      expect(component.isOwedBySelf(debt)).toBe(false);
+    });
+  });
+
   describe('Detail breakdown', () => {
     it('should expand detail on click', () => {
       const summary = component.summaryData();
@@ -367,41 +375,15 @@ describe('SummaryComponent', () => {
       expect(mockDialog.open).toHaveBeenCalled();
     });
 
-    it('should block payment in demo mode', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-      const alice = mockMemberStore.groupMembers()[0]!;
-      const bob = mockMemberStore.groupMembers()[1]!;
-
-      await component.payExpenses(alice.ref!, bob.ref!);
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-
     // Note: Payment confirmation flow with dialog result, marking splits as paid,
     // and creating history is better tested in e2e tests.
   });
 
-  describe('Demo mode', () => {
-    it('should show tour button when in demo mode', () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-      fixture.detectChanges();
-
-      expect(mockDemoService.isInDemoMode()).toBe(true);
-    });
-
-    it('should block payment with restriction message', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-      const alice = mockMemberStore.groupMembers()[0]!;
-      const bob = mockMemberStore.groupMembers()[1]!;
-
-      await component.payExpenses(alice.ref!, bob.ref!);
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should always show help button', () => {
-      const helpButton = el.querySelector('mat-icon');
+  describe('Help', () => {
+    it('should show help button', () => {
+      const helpButton = el.querySelector(
+        '[data-testid="summary-help-button"]'
+      );
       expect(helpButton).toBeTruthy();
     });
   });

@@ -5,16 +5,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockGroupStore,
   createMockHistoryStore,
   createMockLoadingService,
@@ -22,7 +19,6 @@ import {
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
-  createMockTourService,
   mockDocRef,
   mockGroup,
   mockHistory,
@@ -39,9 +35,7 @@ describe('HistoryComponent', () => {
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockHistoryStore: ReturnType<typeof createMockHistoryStore>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
   let mockSortingService: ReturnType<typeof createMockSortingService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
@@ -52,9 +46,7 @@ describe('HistoryComponent', () => {
     mockGroupStore = createMockGroupStore();
     mockMemberStore = createMockMemberStore();
     mockHistoryStore = createMockHistoryStore();
-    mockTourService = createMockTourService();
     mockSortingService = createMockSortingService();
-    mockDemoService = createMockDemoService();
     mockAnalyticsService = createMockAnalyticsService();
     mockLoadingService = createMockLoadingService();
     mockDialog = createMockMatDialog();
@@ -121,10 +113,8 @@ describe('HistoryComponent', () => {
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: HistoryStore, useValue: mockHistoryStore },
-        { provide: TourService, useValue: mockTourService },
         { provide: SortingService, useValue: mockSortingService },
         { provide: LocaleService, useValue: mockLocaleService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
@@ -331,21 +321,6 @@ describe('HistoryComponent', () => {
       const history = mockHistory({ splitsPaid: [] });
       component.onRowClick(history);
       expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
-    });
-  });
-
-  describe('Demo mode', () => {
-    it('should show tour button when in demo mode', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-      await fixture.whenStable();
-
-      // The tour button would be visible in the template when isInDemoMode returns true
-      expect(mockDemoService.isInDemoMode()).toBe(true);
-    });
-
-    it('should always show help button', () => {
-      const helpButton = el.querySelector('mat-icon');
-      expect(helpButton).toBeTruthy();
     });
   });
 });

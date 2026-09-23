@@ -13,18 +13,6 @@
       <div></div>
       <h3 data-testid="groups-page-title">Groups</h3>
       <div class="help-icon" data-testid="groups-help-icon-container">
-        @if (demoService.isInDemoMode()) {
-          <mat-icon
-            data-testid="groups-tour-button"
-            matTooltip="Show Tour"
-            (click)="startTour()"
-            (keydown.enter)="startTour(); $event.preventDefault()"
-            aria-label="Start groups tour"
-            class="mr-2"
-          >
-            tour
-          </mat-icon>
-        }
         <mat-icon
           data-testid="groups-help-button"
           matTooltip="Help"
@@ -46,7 +34,6 @@
           <mat-form-field
             id="group-select"
             data-testid="group-select-field"
-            data-tour="groups-table"
             subscriptSizing="dynamic"
           >
             <mat-label>Select Group</mat-label>
@@ -59,7 +46,7 @@
               @for (group of activeUserGroups(); track group.ref) {
                 <mat-option
                   [value]="group.ref"
-                  [attr.data-testid]="'group-option-' + group.ref"
+                  [attr.data-testid]="'group-option-' + group.id"
                 >
                   {{ group.name }}
                 </mat-option>
@@ -72,7 +59,6 @@
     <div class="flex-wrap fw-center row-gap">
       <button
         data-testid="new-group-button"
-        data-tour="add-button"
         mat-raised-button
         class="btn-primary"
         type="button"

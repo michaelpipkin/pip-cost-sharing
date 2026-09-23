@@ -10,7 +10,6 @@ export class MembersPage extends BasePage {
   readonly addMemberButton: Locator;
   readonly membersTable: Locator;
   readonly helpButton: Locator;
-  readonly tourButton: Locator;
 
   // Add Member Dialog elements
   readonly addMemberDialog: Locator;
@@ -47,7 +46,6 @@ export class MembersPage extends BasePage {
     this.addMemberButton = page.getByTestId('add-member-button');
     this.membersTable = page.getByTestId('members-table');
     this.helpButton = page.getByTestId('members-help-button');
-    this.tourButton = page.getByTestId('members-tour-button');
 
     // Add Member Dialog elements using test IDs
     this.addMemberDialog = page.locator('mat-dialog-container');
@@ -305,11 +303,6 @@ export class MembersPage extends BasePage {
   // Other methods
   async openHelp(): Promise<void> {
     await this.helpButton.click();
-    await this.page.waitForTimeout(1000);
-  }
-
-  async startTour(): Promise<void> {
-    await this.tourButton.click();
     await this.page.waitForTimeout(1000);
   }
 }

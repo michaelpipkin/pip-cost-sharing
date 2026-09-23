@@ -8,11 +8,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import {
   createMockAnalyticsService,
   createMockCategoryService,
-  createMockDemoService,
   createMockDialogRef,
   createMockLoadingService,
   createMockMatDialog,
@@ -28,7 +26,6 @@ describe('EditCategoryComponent', () => {
   let el: HTMLElement;
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockCategoryService: ReturnType<typeof createMockCategoryService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
 
   const testCategory = mockCategory({ name: 'Food', active: true });
@@ -36,7 +33,6 @@ describe('EditCategoryComponent', () => {
   beforeEach(async () => {
     mockDialogRef = createMockDialogRef();
     mockCategoryService = createMockCategoryService();
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
 
     vi.mocked(mockCategoryService.updateCategory).mockResolvedValue(
@@ -54,7 +50,6 @@ describe('EditCategoryComponent', () => {
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: CategoryService, useValue: mockCategoryService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
@@ -143,14 +138,6 @@ describe('EditCategoryComponent', () => {
         success: true,
         operation: 'saved',
       });
-    });
-
-    it('should block submit and show restriction message in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockCategoryService.updateCategory).not.toHaveBeenCalled();
     });
   });
 

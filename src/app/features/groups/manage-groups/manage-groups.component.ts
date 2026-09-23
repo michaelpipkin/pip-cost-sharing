@@ -4,7 +4,6 @@ import {
   Component,
   computed,
   inject,
-  model,
   Signal,
   signal,
 } from '@angular/core';
@@ -33,7 +32,6 @@ import {
 import { Group, ManageGroupForm } from '@models/group';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
@@ -66,11 +64,12 @@ export class ManageGroupsComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly loading = inject(LoadingService);
-  protected readonly demoService = inject(DemoService);
   protected readonly data = inject(MAT_DIALOG_DATA);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
-  selectedGroup = model<Group | null>(this.data.group as Group);
+  protected readonly selectedGroup = signal<Group | null>(
+    (this.data.group as Group | null) ?? null
+  );
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
   protected readonly userAdminGroups: Signal<Group[]> =
@@ -121,60 +120,51 @@ export class ManageGroupsComponent {
 
   constructor() {
     this.loading.loadingOn();
-    afterNextRender(async () => {
-      await this.initializeForm();
+    afterNextRender(() => {
+      void this.initializeForm();
     });
   }
 
   private async initializeForm(): Promise<void> {
-    if (
-      this.selectedGroup() !== null &&
-      this.adminGroupIds().includes(this.selectedGroup()!.id)
-    ) {
-      const group = this.selectedGroup()!;
-      const values = {
-        groupName: group.name,
-        active: group.active ?? false,
-        autoAddMembers: group.autoAddMembers ?? false,
-        currencyCode: group.currencyCode ?? 'USD',
-      };
-      this.groupRef.set(group.ref ?? null);
-      this.editGroupModel.set(values);
-      this.lastLoadedValues.set(values);
-      this.selectedGroupHasExpenses.set(
-        await this.expenseService.checkGroupHasExpenses(group.id)
-      );
-    } else {
-      this.selectedGroup.set(null);
+    try {
+      const group = this.selectedGroup();
+      if (group && this.adminGroupIds().includes(group.id)) {
+        this.groupRef.set(group.ref ?? null);
+        await this.loadGroupValues(group);
+      } else {
+        this.selectedGroup.set(null);
+      }
+    } finally {
+      this.loading.loadingOff();
     }
-    this.loading.loadingOff();
   }
 
-  async onSelectGroup(selectedGroupRef: ManageGroupForm['groupRef']): Promise<void> {
-    this.groupRef.set(selectedGroupRef);
-    const group = this.userAdminGroups().find((g) =>
-      g.ref!.eq(selectedGroupRef!)
-    );
-    this.selectedGroup.set(group ?? null);
-
+  private async loadGroupValues(group: Group): Promise<void> {
     const values = {
-      groupName: this.selectedGroup()!.name,
-      active: this.selectedGroup()!.active ?? false,
-      autoAddMembers: this.selectedGroup()!.autoAddMembers ?? false,
-      currencyCode: this.selectedGroup()!.currencyCode ?? 'USD',
+      groupName: group.name,
+      active: group.active ?? false,
+      autoAddMembers: group.autoAddMembers ?? false,
+      currencyCode: group.currencyCode ?? 'USD',
     };
     this.editGroupModel.set(values);
     this.lastLoadedValues.set(values);
     this.selectedGroupHasExpenses.set(
-      await this.expenseService.checkGroupHasExpenses(this.selectedGroup()!.id)
+      await this.expenseService.checkGroupHasExpenses(group.id)
     );
   }
 
-  async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
+  async onSelectGroup(selectedGroupRef: ManageGroupForm['groupRef']): Promise<void> {
+    this.groupRef.set(selectedGroupRef);
+    const group = selectedGroupRef
+      ? this.userAdminGroups().find((g) => g.ref?.eq(selectedGroupRef))
+      : undefined;
+    this.selectedGroup.set(group ?? null);
+    if (group) {
+      await this.loadGroupValues(group);
     }
+  }
+
+  async onSubmit(): Promise<void> {
     const val = this.editGroupForm().value();
     const currencyConfig = getCurrencyConfig(val.currencyCode)!;
     const changes: Partial<Group> = {
@@ -211,10 +201,6 @@ export class ManageGroupsComponent {
   }
 
   archiveGroup(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         dialogTitle: 'Archive Group',
@@ -259,10 +245,6 @@ export class ManageGroupsComponent {
   }
 
   async unarchiveGroup(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     this.loading.loadingOn();
     try {
       const selectedGroupRef = this.selectedGroup()!.ref!;
@@ -293,10 +275,6 @@ export class ManageGroupsComponent {
   }
 
   deleteGroup(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         dialogTitle: 'Delete Group',

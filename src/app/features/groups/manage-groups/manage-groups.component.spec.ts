@@ -7,14 +7,12 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import {
   createMockAnalyticsService,
-  createMockDemoService,
   createMockDialogRef,
   createMockExpenseService,
   createMockExpenseStore,
@@ -34,7 +32,6 @@ describe('ManageGroupsComponent', () => {
   let el: HTMLElement;
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockGroupService: ReturnType<typeof createMockGroupService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockExpenseStore: ReturnType<typeof createMockExpenseStore>;
@@ -44,7 +41,6 @@ describe('ManageGroupsComponent', () => {
   beforeEach(async () => {
     mockDialogRef = createMockDialogRef();
     mockGroupService = createMockGroupService();
-    mockDemoService = createMockDemoService();
     mockDialog = createMockMatDialog();
     mockGroupStore = createMockGroupStore();
     mockExpenseStore = createMockExpenseStore();
@@ -65,7 +61,6 @@ describe('ManageGroupsComponent', () => {
         { provide: GroupService, useValue: mockGroupService },
         { provide: ExpenseService, useValue: createMockExpenseService() },
         { provide: ExpenseStore, useValue: mockExpenseStore },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
@@ -139,7 +134,6 @@ describe('ManageGroupsComponent', () => {
             provide: ExpenseStore,
             useValue: mockExpenseStoreWithExpenses,
           },
-          { provide: DemoService, useValue: mockDemoService },
           { provide: MatDialog, useValue: mockDialog },
           {
             provide: AnalyticsService,
@@ -177,14 +171,6 @@ describe('ManageGroupsComponent', () => {
         operation: 'saved',
       });
     });
-
-    it('should block submit in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.onSubmit();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockGroupService.updateGroup).not.toHaveBeenCalled();
-    });
   });
 
   describe('archiveGroup', () => {
@@ -200,13 +186,6 @@ describe('ManageGroupsComponent', () => {
         });
       component.archiveGroup();
       expect(dialogSpy).toHaveBeenCalled();
-    });
-
-    it('should block archive in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.archiveGroup();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
     });
   });
 
@@ -226,14 +205,6 @@ describe('ManageGroupsComponent', () => {
         operation: 'unarchived',
       });
     });
-
-    it('should block unarchive in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.unarchiveGroup();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockGroupService.updateGroup).not.toHaveBeenCalled();
-    });
   });
 
   describe('deleteGroup', () => {
@@ -249,13 +220,6 @@ describe('ManageGroupsComponent', () => {
         });
       component.deleteGroup();
       expect(dialogSpy).toHaveBeenCalled();
-    });
-
-    it('should block delete in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.deleteGroup();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
     });
   });
 });

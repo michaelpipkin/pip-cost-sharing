@@ -1,6 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -35,10 +34,8 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
-import { DemoService } from '@services/demo.service';
 import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
 import { GroupStore } from '@store/group.store';
@@ -78,8 +75,6 @@ export class MembersComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
-  protected readonly demoService = inject(DemoService);
-  protected readonly tourService = inject(TourService);
   protected readonly sorter = inject(SortingService);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
@@ -153,17 +148,12 @@ export class MembersComponent {
     this.breakpointObserver
       .observe('(max-width: 1009px)')
       .subscribe((result) => this.smallScreen.set(result.matches));
-
-    afterNextRender(() => {
-      // Check if we should auto-start the members tour
-      this.tourService.checkForContinueTour('members');
-    });
   }
 
   sortMembers(e: { active: string; direction: string }): void {
     // The mobile "Name / Email" column sorts by name.
     this.sortField.set(e.active === 'nameEmail' ? 'displayName' : e.active);
-    this.sortAsc.set(e.direction == 'asc');
+    this.sortAsc.set(e.direction === 'asc');
   }
 
   /** Whether the current user can open `member` for editing. */
@@ -198,10 +188,6 @@ export class MembersComponent {
   }
 
   sendInvite(member: Member): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       data: {
         dialogTitle: 'Send App Invitation',
@@ -245,10 +231,6 @@ export class MembersComponent {
   }
 
   addMember(): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const dialogConfig: MatDialogConfig = {
       maxWidth: '320px',
       data: {
@@ -266,10 +248,6 @@ export class MembersComponent {
   }
 
   onRowClick(member: Member): void {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     if (this.canEdit(member)) {
       const dialogConfig: MatDialogConfig = {
         maxWidth: '320px',
@@ -282,7 +260,7 @@ export class MembersComponent {
       };
       const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
       dialogRef.afterClosed().subscribe((result) => {
-        if (!!result && result.success) {
+        if (result?.success) {
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: `Member ${result.operation}` },
           });
@@ -298,10 +276,5 @@ export class MembersComponent {
       data: { sectionId: 'members' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    // Force start the Members Tour (ignoring completion state)
-    this.tourService.startMembersTour(true);
   }
 }

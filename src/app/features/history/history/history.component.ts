@@ -20,17 +20,14 @@ import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
 import { DocumentReference } from 'firebase/firestore';
 import {
-  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -72,13 +69,11 @@ export class HistoryComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly historyStore = inject(HistoryStore);
-  protected readonly tourService = inject(TourService);
   protected readonly dialog = inject(MatDialog);
   protected readonly router = inject(Router);
   protected readonly sorter = inject(SortingService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -97,44 +92,33 @@ export class HistoryComponent {
   ); // 30 days ago
   endDate = model<Date | null>(null);
 
-  filteredHistory = computed<History[]>(
-    (selectedMember = this.selectedMember()) => {
-      if (!selectedMember) return [];
-      let filteredHistory = this.history().filter((history: History) => {
-        return (
-          history.paidByMemberRef.eq(selectedMember) ||
-          history.paidToMemberRef.eq(selectedMember)
-        );
-      });
-      if (this.startDate() !== undefined && this.startDate() !== null) {
-        filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date >= this.startDate()!;
-        });
-      }
-      if (this.endDate() !== undefined && this.endDate() !== null) {
-        filteredHistory = filteredHistory.filter((history: History) => {
-          return history.date <= this.endDate()!;
-        });
-      }
-      if (filteredHistory.length > 0) {
-        filteredHistory = this.sorter.sort(
-          filteredHistory,
-          this.sortField(),
-          this.sortAsc()
-        );
-      }
-      return filteredHistory;
+  filteredHistory = computed<History[]>(() => {
+    const selectedMember = this.selectedMember();
+    if (!selectedMember) return [];
+    const startDate = this.startDate();
+    const endDate = this.endDate();
+    let filteredHistory = this.history().filter(
+      (history: History) =>
+        (history.paidByMemberRef.eq(selectedMember) ||
+          history.paidToMemberRef.eq(selectedMember)) &&
+        (!startDate || history.date >= startDate) &&
+        (!endDate || history.date <= endDate)
+    );
+    if (filteredHistory.length > 0) {
+      filteredHistory = this.sorter.sort(
+        filteredHistory,
+        this.sortField(),
+        this.sortAsc()
+      );
     }
-  );
+    return filteredHistory;
+  });
 
   columnsToDisplay = ['date', 'paidTo', 'paidBy', 'amount', 'type'];
 
   constructor() {
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
-    });
-    afterNextRender(() => {
-      this.tourService.checkForContinueTour('history');
     });
     effect(() => {
       if (this.historyStore.loaded()) {
@@ -167,9 +151,5 @@ export class HistoryComponent {
       data: { sectionId: 'history' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
-  }
-
-  startTour(): void {
-    this.tourService.startHistoryTour(true);
   }
 }

@@ -4,11 +4,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import {
   createMockAnalyticsService,
   createMockCategoryService,
-  createMockDemoService,
   createMockDialogRef,
   createMockLoadingService,
   createMockSnackBar,
@@ -28,7 +26,6 @@ describe('AddCategoryComponent', () => {
         { provide: MatDialogRef, useValue: createMockDialogRef() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
-        { provide: DemoService, useValue: createMockDemoService() },
         { provide: CategoryService, useValue: createMockCategoryService() },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],

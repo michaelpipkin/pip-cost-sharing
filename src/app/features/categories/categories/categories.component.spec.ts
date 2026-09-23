@@ -3,22 +3,18 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
-import { DemoService } from '@services/demo.service';
 import { SortingService } from '@services/sorting.service';
-import { TourService } from '@services/tour.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import {
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
-  createMockTourService,
   mockCategory,
   mockGroup,
   mockMember,
@@ -33,16 +29,12 @@ describe('CategoriesComponent', () => {
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
-  let mockTourService: ReturnType<typeof createMockTourService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
 
   beforeEach(async () => {
     mockCategoryStore = createMockCategoryStore();
     mockGroupStore = createMockGroupStore();
     mockMemberStore = createMockMemberStore();
-    mockDemoService = createMockDemoService();
-    mockTourService = createMockTourService();
     mockDialog = createMockMatDialog();
 
     mockGroupStore.currentGroup.set(mockGroup({ name: 'Test Group' }));
@@ -64,8 +56,6 @@ describe('CategoriesComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
-        { provide: DemoService, useValue: mockDemoService },
-        { provide: TourService, useValue: mockTourService },
       ],
     }).compileComponents();
 
@@ -119,10 +109,6 @@ describe('CategoriesComponent', () => {
 
     it('should render help button', () => {
       expect(query('categories-help-button')).toBeTruthy();
-    });
-
-    it('should not show tour button when not in demo mode', () => {
-      expect(query('categories-tour-button')).toBeFalsy();
     });
   });
 
@@ -179,26 +165,8 @@ describe('CategoriesComponent', () => {
     });
   });
 
-  describe('demo mode', () => {
-    it('should block addCategory and show restriction message', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.addCategory();
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-
-    it('should block onRowClick and show restriction message', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.onRowClick(mockCategory());
-
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-  });
-
   describe('methods', () => {
-    it('should open add dialog when not in demo mode', () => {
+    it('should open add dialog', () => {
       component.addCategory();
       expect(mockDialog.open).toHaveBeenCalled();
     });
@@ -217,11 +185,6 @@ describe('CategoriesComponent', () => {
     it('should open help dialog on showHelp', () => {
       component.showHelp();
       expect(mockDialog.open).toHaveBeenCalled();
-    });
-
-    it('should delegate startTour to tourService', () => {
-      component.startTour();
-      expect(mockTourService.startCategoriesTour).toHaveBeenCalledWith(true);
     });
 
     it('should update sort signals on sortCategories', () => {

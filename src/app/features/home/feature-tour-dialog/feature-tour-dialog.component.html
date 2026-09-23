@@ -1,0 +1,109 @@
+<div
+  class="help-dialog-header feature-tour-header"
+  data-testid="feature-tour-header"
+>
+  <h4
+    mat-dialog-title
+    class="help-header-text"
+    data-testid="feature-tour-title"
+    aria-live="polite"
+  >
+    {{ slide().title }}
+  </h4>
+  <button
+    matIconButton
+    type="button"
+    mat-dialog-close
+    aria-label="Close feature tour"
+    data-testid="feature-tour-close-button"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+<mat-dialog-content
+  class="feature-tour-content"
+  data-testid="feature-tour-content"
+  (pointerdown)="onPointerDown($event)"
+  (pointerup)="onPointerUp($event)"
+>
+  <picture class="feature-tour-image" data-testid="feature-tour-image">
+    <source
+      [media]="mobileImageQuery"
+      [srcset]="imagePath(slide(), 'mobile')"
+    />
+    <img
+      [src]="imagePath(slide(), 'desktop')"
+      [alt]="slide().alt"
+      draggable="false"
+    />
+  </picture>
+  <p class="feature-tour-text" data-testid="feature-tour-text">
+    {{ slide().text }}
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions class="feature-tour-actions">
+  <div class="slide-dots" role="group" aria-label="Feature slides">
+    @for (s of slides; track s.id; let i = $index) {
+      <button
+        type="button"
+        class="slide-dot"
+        [class.active]="i === currentIndex()"
+        [attr.aria-current]="i === currentIndex() ? 'step' : null"
+        [attr.aria-label]="'Slide ' + (i + 1) + ': ' + s.title"
+        [attr.data-testid]="'feature-tour-dot-' + i"
+        (click)="goTo(i)"
+      ></button>
+    }
+  </div>
+  <div class="feature-tour-buttons">
+    @if (!isFirst()) {
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="feature-tour-back-button"
+        (click)="prev()"
+      >
+        Back
+      </button>
+    }
+    @if (!isLast()) {
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        data-testid="feature-tour-next-button"
+        (click)="next()"
+      >
+        Next
+      </button>
+    } @else if (isLoggedIn()) {
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        data-testid="feature-tour-done-button"
+        (click)="finish('done')"
+      >
+        Done
+      </button>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="feature-tour-split-button"
+        (click)="finish('split')"
+      >
+        Try splitting a bill
+      </button>
+      <button
+        mat-raised-button
+        class="btn-primary"
+        type="button"
+        data-testid="feature-tour-register-button"
+        (click)="finish('register')"
+      >
+        Create a free account
+      </button>
+    }
+  </div>
+</mat-dialog-actions>

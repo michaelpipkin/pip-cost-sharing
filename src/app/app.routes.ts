@@ -1,12 +1,6 @@
 import { Routes } from '@angular/router';
 import { AboutComponent } from '@features/about/about.component';
-import {
-  adminGuard,
-  authGuard,
-  groupGuard,
-  loggedInGuard,
-} from '@features/auth/guards.guard';
-import { DemoShellComponent } from '@features/demo/demo-shell.component';
+import { adminGuard, authGuard, groupGuard } from '@features/auth/guards.guard';
 import { HelpComponent } from '@features/help/help.component';
 import { HomeComponent } from '@features/home/home.component';
 
@@ -99,13 +93,6 @@ export const appRoutes: Routes = [
     path: 'split',
     loadChildren: () =>
       import('@features/split/split.routes').then((m) => m.splitRoutes),
-  },
-  {
-    path: 'demo',
-    component: DemoShellComponent,
-    loadChildren: () =>
-      import('@features/demo/demo.routes').then((m) => m.demoRoutes),
-    canActivate: [loggedInGuard],
   },
   {
     path: 'admin',

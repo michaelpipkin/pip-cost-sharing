@@ -22,7 +22,6 @@ import { SplitStore } from '@store/split.store';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberLinkService } from '@services/member-link.service';
 import { GroupService } from './group.service';
-import { DemoModeService } from './demo-mode.service';
 
 const mockFs = {};
 const mockFunctions = {};
@@ -52,16 +51,12 @@ describe('UserService', () => {
   let service: UserService;
 
   const userSignal = signal<any>(null);
-  const isDemoModeSignal = signal<boolean>(false);
   const mockUserStore = {
     user: userSignal,
     isLoggedIn: () => !!userSignal(),
-    isDemoMode: isDemoModeSignal,
-    setUser: vi.fn(),
     clearUser: vi.fn(),
     updateUser: vi.fn(),
     initUser: vi.fn(),
-    setIsDemoMode: vi.fn(),
     setIsGoogleUser: vi.fn(),
     setIsEmailConfirmed: vi.fn(),
   };
@@ -82,7 +77,6 @@ describe('UserService', () => {
   };
   const mockExpenseStore = {
     clearGroupExpenses: vi.fn(),
-    groupExpenses: signal<any[]>([]),
   };
   const mockMemorizedStore = {
     clearMemorizedExpenses: vi.fn(),
@@ -100,7 +94,6 @@ describe('UserService', () => {
     getUserGroups: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn(),
   };
-  const mockDemoModeService = { initializeDemoData: vi.fn() };
   const mockMemberLinkService = {
     linkInvitedMembers: vi.fn().mockResolvedValue(0),
   };
@@ -131,7 +124,6 @@ describe('UserService', () => {
         { provide: HistoryStore, useValue: mockHistoryStore },
         { provide: SplitStore, useValue: mockSplitStore },
         { provide: GroupService, useValue: mockGroupService },
-        { provide: DemoModeService, useValue: mockDemoModeService },
         { provide: MemberLinkService, useValue: mockMemberLinkService },
         { provide: AnalyticsService, useValue: mockAnalytics },
         { provide: LoadingService, useValue: mockLoadingService },
@@ -164,7 +156,6 @@ describe('UserService', () => {
     mockAuth.onAuthStateChanged.mockImplementation(() => {});
     (mockAuth as any).currentUser = null;
     userSignal.set(null);
-    isDemoModeSignal.set(false);
     service = createService();
   });
 
@@ -503,17 +494,6 @@ describe('UserService', () => {
       mockUserStore.clearUser.mockClear();
       mockRouter.navigate.mockClear();
       userSignal.set(null);
-
-      await callback(null);
-
-      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
-      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
-    });
-
-    it('does not trigger session-expired handling in demo mode', async () => {
-      userSignal.set({ id: 'user-123' });
-      isDemoModeSignal.set(true);
-      const callback = await getAuthStateCallback(service);
 
       await callback(null);
 

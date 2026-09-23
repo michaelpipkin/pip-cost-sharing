@@ -65,7 +65,6 @@ export class AdMobService {
       // Skip specific routes where we don't want ads
       const excludedRoutes = [
         'home',
-        'demo/',
         'auth/',
         'expenses/',
         'memorized/',

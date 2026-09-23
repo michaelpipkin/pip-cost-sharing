@@ -7,23 +7,19 @@ import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
-import { TourService } from '@services/tour.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
   createMockCategoryService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockExpenseService,
   createMockExpenseStore,
   createMockGroupStore,
@@ -33,8 +29,6 @@ import {
   createMockSnackBar,
   createMockSortingService,
   createMockSplitService,
-  createMockTourService,
-  createMockUserStore,
   mockDocRef,
   mockGroup,
 } from '@testing/test-helpers';
@@ -49,11 +43,9 @@ import { ExpensesComponent } from './expenses.component';
 describe('ExpensesComponent', () => {
   let fixture: ComponentFixture<ExpensesComponent>;
   let component: ExpensesComponent;
-  let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockExpenseStore: ReturnType<typeof createMockExpenseStore>;
   let mockExpenseService: ReturnType<typeof createMockExpenseService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockSplitService: ReturnType<typeof createMockSplitService>;
   let router: Router;
 
@@ -64,11 +56,9 @@ describe('ExpensesComponent', () => {
   };
 
   beforeEach(async () => {
-    mockUserStore = createMockUserStore();
     mockGroupStore = createMockGroupStore();
     mockExpenseStore = createMockExpenseStore();
     mockExpenseService = createMockExpenseService();
-    mockDemoService = createMockDemoService();
     mockSplitService = createMockSplitService();
 
     const testGroup = mockGroup({ id: 'group-1', name: 'Test Group' });
@@ -80,14 +70,11 @@ describe('ExpensesComponent', () => {
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: getStorage, useValue: {} },
-        { provide: UserStore, useValue: mockUserStore },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: createMockMemberStore() },
         { provide: CategoryStore, useValue: createMockCategoryStore() },
         { provide: ExpenseStore, useValue: mockExpenseStore },
         { provide: CategoryService, useValue: createMockCategoryService() },
-        { provide: DemoService, useValue: mockDemoService },
-        { provide: TourService, useValue: createMockTourService() },
         { provide: ExpenseService, useValue: mockExpenseService },
         { provide: SplitService, useValue: mockSplitService },
         { provide: SortingService, useValue: createMockSortingService() },
@@ -116,25 +103,28 @@ describe('ExpensesComponent', () => {
   });
 
   describe('loadExpenses', () => {
-    it('should call expenseService.getGroupExpensesByDateRange when not in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should call expenseService.getGroupExpensesByDateRange', async () => {
       await component.loadExpenses();
       expect(mockExpenseService.getGroupExpensesByDateRange).toHaveBeenCalled();
     });
 
-    it('should use store data in demo mode when store has expenses', async () => {
-      // loadExpenses checks userStore.isDemoMode(), not demoService.isInDemoMode()
-      mockUserStore.isDemoMode.set(true);
-      const testExpense = { id: 'exp-1', description: 'Demo Expense' } as any;
-      mockExpenseStore.setGroupExpenses([testExpense]);
-      // Clear calls made during component initialization (effect + afterNextRender)
-      mockExpenseService.getGroupExpensesByDateRange.mockClear();
-
+    it('should set expenses from the service result', async () => {
+      const testExpense = { id: 'exp-1', description: 'Test Expense' } as any;
+      // The mock is typed Promise<never[]> (it resolves [] by default)
+      mockExpenseService.getGroupExpensesByDateRange.mockResolvedValueOnce([
+        testExpense,
+      ] as never[]);
       await component.loadExpenses();
-      expect(component.expenses()).toContain(testExpense);
-      expect(
-        mockExpenseService.getGroupExpensesByDateRange
-      ).not.toHaveBeenCalled();
+      expect(component.expenses()).toEqual([testExpense]);
+    });
+
+    it('should clear expenses when the current group becomes null', async () => {
+      component.expenses.set([{ id: 'exp-1' } as any]);
+      component.isLoaded.set(true);
+      mockGroupStore.currentGroup.set(null);
+      await fixture.whenStable();
+      expect(component.expenses()).toEqual([]);
+      expect(component.isLoaded()).toBe(false);
     });
 
     it('should mark isLoaded as true after loading', async () => {
@@ -178,18 +168,15 @@ describe('ExpensesComponent', () => {
     });
 
     it.each<{
-      isDemoMode: boolean;
       choice: AddExpenseOption;
       expectedRoute: string;
     }>([
-      { isDemoMode: true, choice: 'manual', expectedRoute: '/demo/expenses/add' },
-      { isDemoMode: false, choice: 'manual', expectedRoute: '/expenses/add' },
-      { isDemoMode: true, choice: 'rental', expectedRoute: '/demo/expenses/rental' },
-      { isDemoMode: false, choice: 'rental', expectedRoute: '/expenses/rental' },
+      { choice: 'manual', expectedRoute: '/expenses/add' },
+      { choice: 'rental', expectedRoute: '/expenses/rental' },
+      { choice: 'receipt', expectedRoute: '/expenses/scan-receipt' },
     ])(
-      'should navigate to $expectedRoute when $choice is chosen (demo mode: $isDemoMode)',
-      ({ isDemoMode, choice, expectedRoute }) => {
-        mockDemoService.isInDemoMode.mockReturnValue(isDemoMode);
+      'should navigate to $expectedRoute when $choice is chosen',
+      ({ choice, expectedRoute }) => {
         mockDialogResult(choice);
         const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
         component.onAddExpenseClick();
@@ -204,33 +191,10 @@ describe('ExpensesComponent', () => {
       expect(navigateSpy).not.toHaveBeenCalled();
     });
 
-    it('should navigate to /expenses/scan-receipt in normal mode when receipt is chosen', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
-      mockDialogResult('receipt');
-      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      component.onAddExpenseClick();
-      expect(navigateSpy).toHaveBeenCalledWith(['/expenses/scan-receipt']);
-    });
-
-    it('should show the demo restriction message instead of navigating in demo mode when receipt is chosen', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      mockDialogResult('receipt');
-      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-      component.onAddExpenseClick();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(navigateSpy).not.toHaveBeenCalled();
-    });
   });
 
   describe('onRowClick', () => {
-    it('should show demo restriction in demo mode', () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      component.onRowClick({ id: 'exp-1' } as any);
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-    });
-
-    it('should navigate to expense detail in normal mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should navigate to expense detail', () => {
       const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
       component.onRowClick({ id: 'exp-1' } as any);
       expect(navigateSpy).toHaveBeenCalledWith(['/expenses', 'exp-1']);
@@ -238,18 +202,16 @@ describe('ExpensesComponent', () => {
   });
 
   describe('markSplitPaidUnpaid', () => {
-    it('should show demo restriction in demo mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(true);
-      await component.markSplitPaidUnpaid(
-        { id: 'exp-1' } as any,
-        { paid: false } as any
-      );
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
+    it('should not update the split when the dialog is cancelled', () => {
+      const dialog = TestBed.inject(MatDialog);
+      vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(false) }),
+      } as any);
+      component.markSplitPaidUnpaid({ id: 'exp-1' } as any, { paid: false } as any);
       expect(mockSplitService.updateSplit).not.toHaveBeenCalled();
     });
 
-    it('should call splitService.updateSplit in normal mode', async () => {
-      mockDemoService.isInDemoMode.mockReturnValue(false);
+    it('should call splitService.updateSplit when confirmed', async () => {
       const dialog = TestBed.inject(MatDialog);
       vi.spyOn(dialog, 'open').mockReturnValueOnce({
         afterClosed: () => ({ subscribe: (cb: (result: any) => void) => cb(true) }),

@@ -1,15 +1,14 @@
 import { DecimalPipe } from '@angular/common';
 import {
-  afterEveryRender,
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
-  ElementRef,
+  effect,
   inject,
   signal,
   Signal,
-  viewChildren,
+  untracked,
 } from '@angular/core';
 import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,6 +30,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { SplitMethodToggleComponent } from '@components/split-method-toggle/split-method-toggle.component';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { FormatCurrencyInputDirective } from '@directives/format-currency-input.directive';
+import { SelectOnFocusDirective } from '@shared/directives/select-on-focus.directive';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -44,7 +44,6 @@ import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
-import { DemoService } from '@services/demo.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
@@ -72,6 +71,7 @@ import { getStorage } from 'firebase/storage';
     DecimalPipe,
     CurrencyPipe,
     FormatCurrencyInputDirective,
+    SelectOnFocusDirective,
     DocRefCompareDirective,
     SplitMethodToggleComponent,
     FormField,
@@ -87,7 +87,6 @@ export class AddMemorizedComponent {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
   protected readonly categoryService = inject(CategoryService);
-  protected readonly demoService = inject(DemoService);
   protected readonly memorizedService = inject(MemorizedService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -111,7 +110,8 @@ export class AddMemorizedComponent {
     () => this.currentGroup()?.autoAddMembers ?? false
   );
 
-  inputElements = viewChildren<ElementRef>('inputElement');
+
+  readonly #blankDefaultsApplied = { payer: false, splits: false, category: false };
 
   protected readonly expenseModel = signal<Pick<MemorizedForm, 'paidByMember' | 'category' | 'sharedAmount' | 'splits'>>({
     paidByMember: this.currentMember()?.ref ?? null,
@@ -153,36 +153,50 @@ export class AddMemorizedComponent {
 
   constructor() {
     this.loading.loadingOn();
-    afterEveryRender(() => {
-      this.addSelectFocus();
-    });
     afterNextRender(() => {
-      const currentMemberRef = this.currentMember()?.ref;
-      if (currentMemberRef && !this.expenseModel().paidByMember) {
-        this.expenseModel.update(m => ({ ...m, paidByMember: currentMemberRef }));
-      }
-      if (this.autoAddMembers()) {
-        this.addAllActiveGroupMembers();
-      }
-      if (this.activeCategories().length === 1) {
-        this.expenseModel.update(m => ({ ...m, category: this.activeCategories()[0]?.ref ?? null }));
-      }
       this.loading.loadingOff();
+    });
+
+    // Defaults for a blank memorized expense. Each one waits for the store
+    // data it needs rather than reading the stores once at first render, so a
+    // browser refresh on this page (stores still loading) gets them too. Each
+    // applies at most once and never overwrites a value the user already chose.
+    effect(() => {
+      const currentMember = this.currentMember();
+      const membersLoaded = this.memberStore.loaded() && !!this.currentGroup();
+      const categoriesLoaded = this.categoryStore.loaded();
+      untracked(() => this.#applyBlankFormDefaults(currentMember, membersLoaded, categoriesLoaded));
     });
   }
 
-  addSelectFocus(): void {
-    this.inputElements().forEach((elementRef: ElementRef<any>) => {
-      const input = elementRef.nativeElement as HTMLInputElement;
-      input.addEventListener('focus', function () {
-        if (this.value === '0.00') {
-          this.value = '';
-        } else {
-          this.select();
-        }
-      });
-    });
+  #applyBlankFormDefaults(
+    currentMember: Member | null,
+    membersLoaded: boolean,
+    categoriesLoaded: boolean
+  ): void {
+    const applied = this.#blankDefaultsApplied;
+    const currentMemberRef = currentMember?.ref;
+    if (!applied.payer && currentMemberRef) {
+      applied.payer = true;
+      if (!this.expenseModel().paidByMember) {
+        this.expenseModel.update(m => ({ ...m, paidByMember: currentMemberRef }));
+      }
+    }
+    if (!applied.splits && membersLoaded) {
+      applied.splits = true;
+      if (this.autoAddMembers() && this.expenseModel().splits.length === 0) {
+        this.addAllActiveGroupMembers();
+      }
+    }
+    if (!applied.category && categoriesLoaded) {
+      applied.category = true;
+      const activeCategories = this.activeCategories();
+      if (activeCategories.length === 1 && !this.expenseModel().category) {
+        this.expenseModel.update(m => ({ ...m, category: activeCategories[0]?.ref ?? null }));
+      }
+    }
   }
+
 
   #formatForInput(value: number): string {
     const rounded = this.localeService.roundToCurrency(value);
@@ -387,10 +401,6 @@ export class AddMemorizedComponent {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
     const model = this.expenseModel();
     const fd = this.expenseFormData();
     const memorized: Partial<Memorized> = {

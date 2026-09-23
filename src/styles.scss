@@ -1301,3 +1301,36 @@ a:hover {
   color: tokens.color('on-surface');
   margin-bottom: 8px;
 }
+
+/* ========================================
+   SLIDE INDICATOR DOTS
+======================================== */
+
+.slide-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slide-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: tokens.color('outline-variant');
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
+
+  &.active {
+    background-color: tokens.color('primary');
+    transform: scale(1.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid tokens.color('primary');
+    outline-offset: 2px;
+  }
+}

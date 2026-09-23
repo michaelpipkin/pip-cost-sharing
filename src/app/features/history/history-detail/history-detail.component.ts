@@ -17,7 +17,6 @@ import { History } from '@models/history';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
@@ -72,7 +71,6 @@ export class HistoryDetailComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly demoService = inject(DemoService);
   protected readonly localeService = inject(LocaleService);
   protected readonly userService = inject(UserService);
 
@@ -205,7 +203,7 @@ export class HistoryDetailComponent {
 
   sortHistory(e: { active: string; direction: string }): void {
     this.sortField.set(e.active);
-    this.sortAsc.set(e.direction == 'asc');
+    this.sortAsc.set(e.direction === 'asc');
   }
 
   goBack(): void {
@@ -225,11 +223,7 @@ export class HistoryDetailComponent {
     this.router.navigate(['/expenses', split.expenseRef.id]);
   }
 
-  async onUnpayAll(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
+  onUnpayAll(): void {
     const h = this.history()!;
     const splitCount = h.splitsPaid?.length ?? 0;
     const dialogConfig: MatDialogConfig = {
@@ -279,11 +273,7 @@ export class HistoryDetailComponent {
     });
   }
 
-  async onUnpayGroupSettle(): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
+  onUnpayGroupSettle(): void {
     const h = this.history()!;
     const batchSize = h.batchSize ?? 1;
     const dialogConfig: MatDialogConfig = {
@@ -336,11 +326,7 @@ export class HistoryDetailComponent {
     });
   }
 
-  async onUnpaySplit(split: Split): Promise<void> {
-    if (this.demoService.isInDemoMode()) {
-      this.demoService.showDemoModeRestrictionMessage();
-      return;
-    }
+  onUnpaySplit(split: Split): void {
     const h = this.history()!;
     const isLastSplit = (h.splitsPaid?.length ?? 0) === 1;
     const dialogConfig: MatDialogConfig = {

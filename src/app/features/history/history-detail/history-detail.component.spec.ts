@@ -5,7 +5,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { DemoService } from '@services/demo.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
@@ -16,7 +15,6 @@ import { MemberStore } from '@store/member.store';
 import {
   createMockAnalyticsService,
   createMockCategoryStore,
-  createMockDemoService,
   createMockGroupStore,
   createMockHistoryService,
   createMockHistoryStore,
@@ -47,7 +45,6 @@ describe('HistoryDetailComponent', () => {
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let mockHistoryService: ReturnType<typeof createMockHistoryService>;
   let mockSortingService: ReturnType<typeof createMockSortingService>;
-  let mockDemoService: ReturnType<typeof createMockDemoService>;
   let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
@@ -86,7 +83,6 @@ describe('HistoryDetailComponent', () => {
     mockCategoryStore = createMockCategoryStore();
     mockHistoryService = createMockHistoryService();
     mockSortingService = createMockSortingService();
-    mockDemoService = createMockDemoService();
     mockAnalyticsService = createMockAnalyticsService();
     mockLoadingService = createMockLoadingService();
     mockDialog = createMockMatDialog();
@@ -123,7 +119,6 @@ describe('HistoryDetailComponent', () => {
         { provide: HistoryService, useValue: mockHistoryService },
         { provide: SortingService, useValue: mockSortingService },
         { provide: LocaleService, useValue: mockLocaleService },
-        { provide: DemoService, useValue: mockDemoService },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
@@ -255,56 +250,27 @@ describe('HistoryDetailComponent', () => {
     });
   });
 
-  describe('Demo mode', () => {
-    beforeEach(() => {
-      mockDemoService.isInDemoMode = vi.fn(() => true);
-    });
-
-    it('should show restriction message and not open dialog on onUnpayAll', async () => {
-      await component.onUnpayAll();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-
-    it('should show restriction message and not open dialog on onUnpaySplit', async () => {
-      const split = mockSplit();
-      await component.onUnpaySplit(split);
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-
-    it('should show restriction message and not open dialog on onUnpayGroupSettle', async () => {
-      component.history.set(mockHistory({ batchId: 'batch-1', batchSize: 2 }));
-      await component.onUnpayGroupSettle();
-      expect(mockDemoService.showDemoModeRestrictionMessage).toHaveBeenCalled();
-      expect(mockDialog.open).not.toHaveBeenCalled();
-    });
-  });
-
   describe('Dialog interactions', () => {
-    it('should open confirm dialog on onUnpayAll when not in demo mode', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => false);
+    it('should open confirm dialog on onUnpayAll', () => {
       component.history.set(
         mockHistory({
           ...testHistory,
           splitsPaid: [mockDocRef('groups/group-1/splits/s-1')] as any,
         })
       );
-      await component.onUnpayAll();
+      component.onUnpayAll();
       expect(mockDialog.open).toHaveBeenCalled();
     });
 
-    it('should open confirm dialog on onUnpaySplit when not in demo mode', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => false);
+    it('should open confirm dialog on onUnpaySplit', () => {
       const split = mockSplit();
-      await component.onUnpaySplit(split);
+      component.onUnpaySplit(split);
       expect(mockDialog.open).toHaveBeenCalled();
     });
 
-    it('should open confirm dialog on onUnpayGroupSettle when not in demo mode', async () => {
-      mockDemoService.isInDemoMode = vi.fn(() => false);
+    it('should open confirm dialog on onUnpayGroupSettle', () => {
       component.history.set(mockHistory({ batchId: 'batch-1', batchSize: 2 }));
-      await component.onUnpayGroupSettle();
+      component.onUnpayGroupSettle();
       expect(mockDialog.open).toHaveBeenCalled();
     });
   });
