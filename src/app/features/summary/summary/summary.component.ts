@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
@@ -15,7 +16,11 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -35,6 +40,11 @@ import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
+import {
+  GUIDED_TOUR_DIALOG_CONFIG,
+  GuidedTourDialogs,
+} from '@services/guided-tour-dialogs';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
@@ -44,7 +54,7 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
-import { DocumentReference } from 'firebase/firestore';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
 import {
   HelpDialogComponent,
   HelpDialogData,
@@ -52,6 +62,16 @@ import {
 import { toIsoFormat } from '@utils/date-utils';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
+import { buildSummaryTourSteps } from './summary.tour';
+
+/** Sample balances the guided tour shows when nothing is owed. */
+interface SummaryTourSample {
+  splits: Split[];
+  /** Sample members the splits need beyond the group's real members. */
+  members: Member[];
+  /** A sample category, only when the group has none. */
+  categories: Category[];
+}
 
 @Component({
   selector: 'app-summary',
@@ -92,6 +112,8 @@ export class SummaryComponent {
   protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   members: Signal<Member[]> = this.memberStore.groupMembers;
@@ -99,6 +121,27 @@ export class SummaryComponent {
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   splits: Signal<Split[]> = this.splitStore.unpaidSplits;
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
+
+  // Sample balances the guided tour shows when nothing is owed. Held here,
+  // never in the stores (so a listener can't replace them), and cleared when
+  // the tour ends.
+  protected readonly tourSample = signal<SummaryTourSample | null>(null);
+  protected readonly displayedSplits = computed(
+    () => this.tourSample()?.splits ?? this.splits()
+  );
+  protected readonly displayedMembers = computed(() => [
+    ...this.members(),
+    ...(this.tourSample()?.members ?? []),
+  ]);
+  protected readonly displayedActiveMembers = computed(() => [
+    ...this.activeMembers(),
+    ...(this.tourSample()?.members ?? []),
+  ]);
+  protected readonly displayedCategories = computed(() => [
+    ...this.categories(),
+    ...(this.tourSample()?.categories ?? []),
+  ]);
+  readonly #tourDialogs = new GuidedTourDialogs<'settle-group'>();
 
   owedToMemberRef = signal<DocumentReference<Member>>(
     null as unknown as DocumentReference<Member>
@@ -131,63 +174,59 @@ export class SummaryComponent {
       endDate = new Date(this.endDate()!);
       endDate = new Date(endDate.setDate(endDate.getDate() + 1));
     }
-    return this.splits().filter((split: Split) => {
+    return this.displayedSplits().filter((split: Split) => {
       return split.date >= startDate && split.date < endDate;
     });
   });
 
-  summaryData = computed(
-    (
-      selectedMember: DocumentReference<Member> = this.selectedMember()!, // NOSONAR
-      splits: Split[] = this.filteredSplits()
-    ) => {
-      let summaryData: AmountDue[] = [];
-      if (splits.length > 0) {
-        const memberSplits = splits.filter((s) => {
-          return (
-            s.owedByMemberRef.eq(selectedMember) ||
-            s.paidByMemberRef.eq(selectedMember)
+  summaryData = computed(() => {
+    const selectedMember = this.selectedMember();
+    const splits = this.filteredSplits();
+    const summaryData: AmountDue[] = [];
+    if (!selectedMember || splits.length === 0) return summaryData;
+    const selected = this.#memberByRef(selectedMember);
+    const memberSplits = splits.filter(
+      (s) =>
+        s.owedByMemberRef.eq(selectedMember) ||
+        s.paidByMemberRef.eq(selectedMember)
+    );
+    this.displayedMembers()
+      .filter((m) => !m.ref!.eq(selectedMember)) // NOSONAR
+      .forEach((member) => {
+        const owedToSelected = this.localeService.roundToCurrency(
+          +memberSplits
+            .filter((m) => m.owedByMemberRef.eq(member.ref!)) // NOSONAR
+            .reduce((total, split) => total + split.allocatedAmount, 0)
+        );
+        const owedBySelected = this.localeService.roundToCurrency(
+          +memberSplits
+            .filter((m) => m.paidByMemberRef.eq(member.ref!)) // NOSONAR
+            .reduce((total, split) => total + split.allocatedAmount, 0)
+        );
+        if (owedToSelected > owedBySelected) {
+          summaryData.push(
+            new AmountDue({
+              owedByMemberRef: member.ref!,
+              owedByMember: member,
+              owedToMemberRef: selectedMember,
+              owedToMember: selected,
+              amount: owedToSelected - owedBySelected,
+            })
           );
-        });
-        this.members()
-          .filter((m) => !m.ref!.eq(selectedMember)) // NOSONAR
-          .forEach((member) => {
-            const owedToSelected = this.localeService.roundToCurrency(
-              +memberSplits
-                .filter((m) => m.owedByMemberRef.eq(member.ref!)) // NOSONAR
-                .reduce((total, split) => total + split.allocatedAmount, 0)
-            );
-            const owedBySelected = this.localeService.roundToCurrency(
-              +memberSplits
-                .filter((m) => m.paidByMemberRef.eq(member.ref!)) // NOSONAR
-                .reduce((total, split) => total + split.allocatedAmount, 0)
-            );
-            if (owedToSelected > owedBySelected) {
-              summaryData.push(
-                new AmountDue({
-                  owedByMemberRef: member.ref!,
-                  owedByMember: member,
-                  owedToMemberRef: selectedMember!,
-                  owedToMember: this.memberStore.getMemberByRef(selectedMember),
-                  amount: owedToSelected - owedBySelected,
-                })
-              );
-            } else if (owedBySelected > owedToSelected) {
-              summaryData.push(
-                new AmountDue({
-                  owedToMemberRef: member.ref!,
-                  owedToMember: member,
-                  owedByMemberRef: selectedMember!,
-                  owedByMember: this.memberStore.getMemberByRef(selectedMember),
-                  amount: owedBySelected - owedToSelected,
-                })
-              );
-            }
-          });
-      }
-      return summaryData;
-    }
-  );
+        } else if (owedBySelected > owedToSelected) {
+          summaryData.push(
+            new AmountDue({
+              owedToMemberRef: member.ref!,
+              owedToMember: member,
+              owedByMemberRef: selectedMember,
+              owedByMember: selected,
+              amount: owedBySelected - owedToSelected,
+            })
+          );
+        }
+      });
+    return summaryData;
+  });
 
   summaryMemberCount = computed(() => {
     const memberPaths = new Set<string>();
@@ -207,57 +246,43 @@ export class SummaryComponent {
     () => !this.smallScreen() || this.summaryView() === 'settlement'
   );
 
-  detailData = computed(
-    (
-      owedToMemberRef: DocumentReference<Member> = this.owedToMemberRef(),
-      owedByMemberRef: DocumentReference<Member> = this.owedByMemberRef(),
-      splits: Split[] = this.filteredSplits(),
-      categories: Category[] = this.categories()
-    ) => {
-      let detailData: AmountDue[] = [];
-      const memberSplits = splits.filter(
-        (s) =>
-          (s.owedByMemberRef.eq(owedToMemberRef) ||
-            s.paidByMemberRef.eq(owedToMemberRef)) &&
-          (s.owedByMemberRef.eq(owedByMemberRef) ||
-            s.paidByMemberRef.eq(owedByMemberRef))
+  detailData = computed(() => {
+    const owedToMemberRef = this.owedToMemberRef();
+    const owedByMemberRef = this.owedByMemberRef();
+    const detailData: AmountDue[] = [];
+    if (!owedToMemberRef || !owedByMemberRef) return detailData;
+    const memberSplits = this.filteredSplits().filter(
+      (s) =>
+        (s.owedByMemberRef.eq(owedToMemberRef) ||
+          s.paidByMemberRef.eq(owedToMemberRef)) &&
+        (s.owedByMemberRef.eq(owedByMemberRef) ||
+          s.paidByMemberRef.eq(owedByMemberRef))
+    );
+    const owedByMember = this.#memberByRef(owedByMemberRef);
+    const owedToMember = this.#memberByRef(owedToMemberRef);
+    this.displayedCategories().forEach((category) => {
+      const categorySplits = memberSplits.filter(
+        (split) => split.categoryRef.eq(category.ref!) // NOSONAR
       );
-      categories.forEach((category) => {
-        if (
-          memberSplits.some(
-            (split: Split) => split.categoryRef.eq(category.ref!) // NOSONAR
-          )
-        ) {
-          const owedToMember1 = memberSplits
-            .filter(
-              (s: Split) =>
-                s.paidByMemberRef.eq(owedToMemberRef) &&
-                s.categoryRef.eq(category.ref!) // NOSONAR
-            )
-            .reduce((total, split) => total + split.allocatedAmount, 0);
-          const owedToMember2 = memberSplits
-            .filter(
-              (s: Split) =>
-                s.paidByMemberRef.eq(owedByMemberRef) &&
-                s.categoryRef.eq(category.ref!) // NOSONAR
-            )
-            .reduce((total, split) => total + split.allocatedAmount, 0);
-          detailData.push(
-            new AmountDue({
-              categoryRef: category.ref!,
-              category: category,
-              owedByMemberRef: owedByMemberRef,
-              owedByMember: this.memberStore.getMemberByRef(owedByMemberRef),
-              owedToMemberRef: owedToMemberRef,
-              owedToMember: this.memberStore.getMemberByRef(owedToMemberRef),
-              amount: owedToMember1 - owedToMember2,
-            })
-          );
-        }
-      });
-      return detailData;
-    }
-  );
+      if (categorySplits.length === 0) return;
+      const amountFor = (payerRef: DocumentReference<Member>) =>
+        categorySplits
+          .filter((s) => s.paidByMemberRef.eq(payerRef))
+          .reduce((total, split) => total + split.allocatedAmount, 0);
+      detailData.push(
+        new AmountDue({
+          categoryRef: category.ref!,
+          category,
+          owedByMemberRef,
+          owedByMember,
+          owedToMemberRef,
+          owedToMember,
+          amount: amountFor(owedToMemberRef) - amountFor(owedByMemberRef),
+        })
+      );
+    });
+    return detailData;
+  });
 
   expandedDetail = model<AmountDue | null>(null);
 
@@ -316,9 +341,9 @@ export class SummaryComponent {
       transfers.push(
         new AmountDue({
           owedByMemberRef: owedByRef,
-          owedByMember: this.memberStore.getMemberByRef(owedByRef),
+          owedByMember: this.#memberByRef(owedByRef),
           owedToMemberRef: owedToRef,
-          owedToMember: this.memberStore.getMemberByRef(owedToRef),
+          owedToMember: this.#memberByRef(owedToRef),
           amount,
         })
       );
@@ -341,14 +366,20 @@ export class SummaryComponent {
     this.leastTransfers().some((t) => !!t.owedByMember?.userRef)
   );
 
+  /** Finds a member, including the tour's sample members. */
+  #memberByRef(ref: DocumentReference<Member>): Member | undefined {
+    return this.displayedMembers().find((m) => m.ref?.eq(ref));
+  }
+
   isOwedBySelf(amountDue: AmountDue): boolean {
     const currentMemberRef = this.currentMember()?.ref;
-    return (
-      !!currentMemberRef && amountDue.owedByMemberRef.eq(currentMemberRef)
-    );
+    return !!currentMemberRef && amountDue.owedByMemberRef.eq(currentMemberRef);
   }
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
@@ -401,8 +432,7 @@ export class SummaryComponent {
     }
     const dialogConfig: MatDialogConfig = {
       data: {
-        payToMemberName: this.members().find((m) => m.ref!.eq(owedToMemberRef))
-          ?.displayName,
+        payToMemberName: this.#memberByRef(owedToMemberRef)?.displayName,
         ...paymentMethods,
       },
     };
@@ -462,10 +492,13 @@ export class SummaryComponent {
     this.dialog.open(HelpDialogComponent, dialogConfig);
   }
 
-  async settleGroupAction(): Promise<void> {
+  settleGroupAction(
+    forTour = false
+  ): MatDialogRef<SettleGroupDialogComponent> | null {
     const transfers = this.leastTransfers();
-    if (transfers.length === 0) return;
+    if (transfers.length === 0) return null;
     const dialogConfig: MatDialogConfig = {
+      ...(forTour ? GUIDED_TOUR_DIALOG_CONFIG : {}),
       data: {
         transfers,
         settlementText: this.generateSettlementText(transfers),
@@ -502,6 +535,132 @@ export class SummaryComponent {
         }
       }
     });
+    return dialogRef;
+  }
+
+  /**
+   * Starts the guided tour. With nothing owed, sample balances between you
+   * and two other members are shown; the tour expands a row, switches the
+   * small-screen view, and opens the Settle Group confirmation, and puts
+   * everything back when it ends.
+   */
+  startTour(): void {
+    const previous = {
+      selectedMember: this.selectedMember(),
+      expandedDetail: this.expandedDetail(),
+      owedToMemberRef: this.owedToMemberRef(),
+      owedByMemberRef: this.owedByMemberRef(),
+      summaryView: this.summaryView(),
+    };
+    const me = this.currentMember();
+    if (this.splits().length === 0 && me?.ref) {
+      this.tourSample.set(this.#tourSampleData(me));
+      this.selectedMember.set(me.ref);
+    }
+    this.guidedTour.start({
+      id: 'summary',
+      steps: buildSummaryTourSteps({
+        usingSample: () => this.tourSample() !== null,
+        hasSettlement: () => this.summaryMemberCount() > 2,
+        showView: (view) => this.summaryView.set(view),
+        expandFirst: () => {
+          const first = this.summaryData()[0];
+          if (first && this.expandedDetail() !== first) {
+            this.onExpandClick(first);
+          }
+        },
+        collapse: () => this.resetDetail(),
+        openSettleGroup: () =>
+          this.#tourDialogs.open('settle-group', () =>
+            this.settleGroupAction(true)!
+          ),
+        closeDialogs: () => this.#tourDialogs.close(),
+      }),
+      onEnd: () => {
+        this.#tourDialogs.close();
+        this.tourSample.set(null);
+        this.selectedMember.set(previous.selectedMember);
+        this.owedToMemberRef.set(previous.owedToMemberRef);
+        this.owedByMemberRef.set(previous.owedByMemberRef);
+        this.expandedDetail.set(previous.expandedDetail);
+        this.summaryView.set(previous.summaryView);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  #tourSampleData(me: Member): SummaryTourSample {
+    // Use the group's real members first, then sample people as needed, so
+    // there are always three people and the settlement section shows
+    const others = this.activeMembers()
+      .filter((m) => !m.ref!.eq(me.ref!)) // NOSONAR
+      .slice(0, 2);
+    const sampleMembers = [
+      ['tour-sample-alex', 'Alex'],
+      ['tour-sample-jordan', 'Jordan'],
+    ]
+      .slice(0, 2 - others.length)
+      .map(
+        ([id, displayName]) =>
+          new Member({
+            id,
+            displayName,
+            active: true,
+            userRef: null,
+            // Built locally; the tour never reads or writes it
+            ref: doc(this.fs, `members/${id}`) as DocumentReference<Member>,
+          })
+      );
+    const [a, b] = [...others, ...sampleMembers] as [Member, Member];
+
+    const sampleCategories =
+      this.categories().length > 0
+        ? []
+        : [
+            new Category({
+              id: 'tour-sample-category',
+              name: 'Default',
+              ref: doc(
+                this.fs,
+                'categories/tour-sample-category'
+              ) as DocumentReference<Category>,
+            }),
+          ];
+    const categories = [...this.categories(), ...sampleCategories];
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+
+    const split = (
+      id: string,
+      payer: Member,
+      owedBy: Member,
+      amount: number,
+      days: number,
+      categoryIndex: number
+    ) =>
+      new Split({
+        id: `tour-sample-${id}`,
+        date: daysAgo(days),
+        categoryRef: categories[categoryIndex % categories.length]!.ref!,
+        paidByMemberRef: payer.ref!,
+        owedByMemberRef: owedBy.ref!,
+        allocatedAmount: amount,
+        paid: false,
+      });
+    // Three expenses split three ways, each paid by someone different. You
+    // net +25, so the settlement (two payments to you) differs from the
+    // individual rows, which shows what the fewest-transfers table is for.
+    return {
+      members: sampleMembers,
+      categories: sampleCategories,
+      splits: [
+        split('groceries-a', me, a, 30, 20, 0),
+        split('groceries-b', me, b, 30, 20, 0),
+        split('dinner-me', a, me, 20, 12, 1),
+        split('dinner-b', a, b, 20, 12, 1),
+        split('gas-me', b, me, 15, 5, 2),
+        split('gas-a', b, a, 15, 5, 2),
+      ],
+    };
   }
 
   async copySummaryToClipboard(amountDue: AmountDue): Promise<void> {

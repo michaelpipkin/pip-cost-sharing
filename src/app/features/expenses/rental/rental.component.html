@@ -5,10 +5,13 @@
     <div class="help-icon" data-testid="help-icon-container">
       <mat-icon
         matTooltip="Help"
-        (click)="showHelp()"
-        (keydown.enter)="showHelp()"
+        (click)="startTour()"
+        (keydown.enter)="startTour(); $event.preventDefault()"
+        (keydown.space)="startTour(); $event.preventDefault()"
         data-testid="help-button"
-        aria-label="Show help for the vacation rental wizard"
+        aria-label="Take a guided tour of the vacation rental wizard"
+        tabindex="0"
+        role="button"
       >
         help
       </mat-icon>
@@ -21,7 +24,7 @@
     split and hand it off to the expense form for you to review and save.
   </p>
 
-  <div class="flex-wrap fw-start row-gap mb-2">
+  <div class="flex-wrap fw-start row-gap mb-2" data-tour-anchor="rental-basics">
     <mat-form-field
       appearance="fill"
       floatLabel="always"
@@ -78,6 +81,7 @@
     [checked]="roomsEnabled()"
     (change)="roomsEnabled.set($event.checked)"
     data-testid="rooms-enabled-toggle"
+    data-tour-anchor="rental-rooms-toggle"
     aria-label="Rooms have different rates or are shared"
   >
     Rooms have different rates or are shared
@@ -106,7 +110,10 @@
     [(members)]="members"
   />
 
-  <div class="flex-wrap fw-start row-gap mt-3">
+  <div
+    class="flex-wrap fw-start row-gap mt-3"
+    data-tour-anchor="rental-actions"
+  >
     <button
       mat-raised-button
       class="btn-secondary"

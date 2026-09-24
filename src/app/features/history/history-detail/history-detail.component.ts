@@ -17,6 +17,7 @@ import { History } from '@models/history';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
@@ -32,6 +33,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   signal,
   Signal,
@@ -40,6 +42,7 @@ import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
+import { buildHistoryDetailTourSteps } from './history-detail.tour';
 
 @Component({
   selector: 'app-history-detail',
@@ -73,6 +76,7 @@ export class HistoryDetailComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly localeService = inject(LocaleService);
   protected readonly userService = inject(UserService);
+  protected readonly guidedTour = inject(GuidedTourService);
 
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
@@ -83,7 +87,7 @@ export class HistoryDetailComponent {
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
-  viewMode: 'summary' | 'details' = 'details';
+  viewMode = signal<'summary' | 'details'>('details');
 
   sortedPaidSplits = computed(() => {
     let splits = [...this.paidSplits()];
@@ -144,6 +148,9 @@ export class HistoryDetailComponent {
   categoryColumnsToDisplay = ['category', 'amount'];
 
   constructor() {
+    // Leaving the page mid-tour ends it (and puts back what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     afterNextRender(() => {
       const historyId = this.route.snapshot.paramMap.get('id')!;
       const foundHistory = this.historyStore
@@ -217,6 +224,27 @@ export class HistoryDetailComponent {
       data: { sectionId: 'history-detail' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  /**
+   * Starts the guided tour. It switches between the split and category
+   * views to show each, and puts the view back when it ends.
+   */
+  startTour(): void {
+    const previousView = this.viewMode();
+    this.guidedTour.start({
+      id: 'history-detail',
+      steps: buildHistoryDetailTourSteps({
+        isGroupSettle: () => this.isGroupSettle(),
+        hasBreakdown: () =>
+          !this.isGroupSettle() ||
+          (this.history()?.splitsPaid?.length ?? 0) > 0,
+        isAdmin: () => this.isAdmin(),
+        showView: (view) => this.viewMode.set(view),
+      }),
+      onEnd: () => this.viewMode.set(previousView),
+      fullHelp: () => this.showHelp(),
+    });
   }
 
   onRowClick(split: Split): void {

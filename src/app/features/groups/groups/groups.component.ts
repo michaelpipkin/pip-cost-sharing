@@ -1,6 +1,8 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
+  DestroyRef,
   effect,
   inject,
   linkedSignal,
@@ -10,7 +12,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
@@ -27,13 +33,19 @@ import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
+import {
+  GUIDED_TOUR_DIALOG_CONFIG,
+  GuidedTourDialogs,
+} from '@services/guided-tour-dialogs';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { MemberLinkService } from '@services/member-link.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { DocumentReference } from 'firebase/firestore';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
 import { AddGroupComponent } from '../add-group/add-group.component';
 import { ManageGroupsComponent } from '../manage-groups/manage-groups.component';
+import { buildGroupsTourSteps } from './groups.tour';
 
 @Component({
   selector: 'app-groups',
@@ -61,11 +73,24 @@ export class GroupsComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly memberLinkService = inject(MemberLinkService);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   readonly #user: Signal<User | null> = this.userStore.user;
   readonly #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   readonly allUserGroups: Signal<Group[]> = this.groupStore.allUserGroups;
   readonly activeUserGroups: Signal<Group[]> = this.groupStore.activeUserGroups;
+
+  // Sample groups the guided tour shows a user who has none yet. Held here,
+  // never in the store, and cleared when the tour ends.
+  protected readonly tourSample = signal<Group[] | null>(null);
+  protected readonly displayedAllGroups = computed(
+    () => this.tourSample() ?? this.allUserGroups()
+  );
+  protected readonly displayedActiveGroups = computed(
+    () => this.tourSample() ?? this.activeUserGroups()
+  );
+  readonly #tourDialogs = new GuidedTourDialogs<'add' | 'manage'>();
 
   protected readonly selectedGroupRef =
     linkedSignal<DocumentReference<Group> | null>(
@@ -81,6 +106,9 @@ export class GroupsComponent {
   #inviteLinkAttemptStarted = false;
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     effect(() => {
       if (this.groupStore.loaded() && !this.checkingInvitedMemberLinks()) {
         this.loading.loadingOff();
@@ -119,8 +147,11 @@ export class GroupsComponent {
     }
   }
 
-  addGroup(): void {
-    const dialogRef = this.dialog.open(AddGroupComponent);
+  addGroup(forTour = false): MatDialogRef<AddGroupComponent> {
+    const dialogRef = this.dialog.open(
+      AddGroupComponent,
+      forTour ? GUIDED_TOUR_DIALOG_CONFIG : undefined
+    );
     dialogRef.afterClosed().subscribe((groupRef: DocumentReference<Group>) => {
       if (groupRef) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
@@ -128,6 +159,7 @@ export class GroupsComponent {
         });
       }
     });
+    return dialogRef;
   }
 
   async onSelectGroup(e: MatSelectChange): Promise<void> {
@@ -140,9 +172,24 @@ export class GroupsComponent {
     }
   }
 
-  manageGroups(): void {
+  /**
+   * Opens Manage Groups. For the guided tour, `tour.group` picks which group
+   * it opens on, and `tour.sampleGroups` shows sample groups without the
+   * dialog reading anything from Firestore.
+   */
+  manageGroups(tour?: {
+    group: Group | null;
+    sampleGroups?: Group[];
+  }): MatDialogRef<ManageGroupsComponent> {
     const dialogConfig: MatDialogConfig = {
-      data: { user: this.#user(), group: this.#currentGroup() },
+      ...(tour ? GUIDED_TOUR_DIALOG_CONFIG : {}),
+      data: {
+        user: this.#user(),
+        group: tour ? tour.group : this.#currentGroup(),
+        tourPreview: tour?.sampleGroups
+          ? { groups: tour.sampleGroups }
+          : undefined,
+      },
     };
     const dialogRef = this.dialog.open(ManageGroupsComponent, dialogConfig);
     dialogRef
@@ -168,6 +215,78 @@ export class GroupsComponent {
           });
         }
       });
+    return dialogRef;
+  }
+
+  /**
+   * Starts the guided tour. A user with no groups sees sample groups; the
+   * tour also opens New Group and Manage Groups to walk through them, and
+   * puts everything back when it ends.
+   */
+  startTour(): void {
+    const previousSelection = this.selectedGroupRef();
+    if (this.allUserGroups().length === 0) {
+      const samples = this.#tourSampleGroups();
+      this.tourSample.set(samples);
+      this.selectedGroupRef.set(samples[0]!.ref!);
+    }
+
+    this.guidedTour.start({
+      id: 'groups',
+      steps: buildGroupsTourSteps({
+        usingSample: () => this.tourSample() !== null,
+        canManage: () =>
+          this.tourSample() !== null ||
+          this.groupStore.userAdminGroups().length > 0,
+        openAddGroup: () => this.#openTourDialog('add'),
+        openManageGroups: () => this.#openTourDialog('manage'),
+        closeDialogs: () => this.#tourDialogs.close(),
+      }),
+      onEnd: () => {
+        this.#tourDialogs.close();
+        this.tourSample.set(null);
+        this.selectedGroupRef.set(previousSelection);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  #tourSampleGroups(): Group[] {
+    const sample = (id: string, name: string) =>
+      new Group({
+        id,
+        name,
+        active: true,
+        archived: false,
+        autoAddMembers: true,
+        currencyCode: 'USD',
+        userActiveInGroup: true,
+        userIsAdmin: true,
+        // Built locally; the tour never reads or writes it
+        ref: doc(this.fs, `groups/${id}`) as DocumentReference<Group>,
+      });
+    return [
+      sample('tour-sample-beach', 'Beach Weekend'),
+      sample('tour-sample-roommates', 'Roommates'),
+    ];
+  }
+
+  #openTourDialog(kind: 'add' | 'manage'): Promise<void> {
+    return this.#tourDialogs.open(kind, () => {
+      if (kind === 'add') return this.addGroup(true);
+      const samples = this.tourSample();
+      if (samples) {
+        return this.manageGroups({ group: samples[0]!, sampleGroups: samples });
+      }
+      // Real groups: open on one the user can actually manage
+      const adminGroups = this.groupStore.userAdminGroups();
+      const current = this.#currentGroup();
+      return this.manageGroups({
+        group: adminGroups.some((g) => g.id === current?.id)
+          ? current
+          : (adminGroups[0] ?? null),
+      });
+    });
   }
 
   showHelp(): void {

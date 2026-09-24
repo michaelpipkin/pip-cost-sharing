@@ -16,9 +16,12 @@
         <mat-icon
           data-testid="groups-help-button"
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp(); $event.preventDefault()"
-          aria-label="Show help for groups"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
+          tabindex="0"
+          role="button"
+          aria-label="Take a guided tour of groups"
         >
           help
         </mat-icon>
@@ -30,10 +33,11 @@
         data-testid="select-group-form"
         (submit)="$event.preventDefault()"
       >
-        @if (activeUserGroups().length > 0) {
+        @if (displayedActiveGroups().length > 0) {
           <mat-form-field
             id="group-select"
             data-testid="group-select-field"
+            data-tour-anchor="group-select"
             subscriptSizing="dynamic"
           >
             <mat-label>Select Group</mat-label>
@@ -43,7 +47,7 @@
               (selectionChange)="onSelectGroup($event)"
               docRefCompare
             >
-              @for (group of activeUserGroups(); track group.ref) {
+              @for (group of displayedActiveGroups(); track group.ref) {
                 <mat-option
                   [value]="group.ref"
                   [attr.data-testid]="'group-option-' + group.id"
@@ -59,6 +63,7 @@
     <div class="flex-wrap fw-center row-gap">
       <button
         data-testid="new-group-button"
+        data-tour-anchor="new-group"
         mat-raised-button
         class="btn-primary"
         type="button"
@@ -66,9 +71,10 @@
       >
         New Group
       </button>
-      @if (allUserGroups().length > 0) {
+      @if (displayedAllGroups().length > 0) {
         <button
           data-testid="manage-groups-button"
+          data-tour-anchor="manage-groups"
           mat-raised-button
           class="btn-primary"
           type="button"
@@ -78,7 +84,7 @@
         </button>
       }
     </div>
-    @if (activeUserGroups().length === 0) {
+    @if (displayedActiveGroups().length === 0) {
       <mat-card
         class="mt-4 placeholder-content placeholder-card"
         data-testid="no-groups-placeholder"

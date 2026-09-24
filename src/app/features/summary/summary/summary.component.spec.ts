@@ -4,7 +4,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
@@ -33,7 +35,10 @@ import {
   mockSplit,
   mockUser,
 } from '@testing/test-helpers';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as firestoreModule from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 import { SummaryComponent } from './summary.component';
 
 describe('SummaryComponent', () => {
@@ -152,6 +157,7 @@ describe('SummaryComponent', () => {
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: getFirestore, useValue: {} },
       ],
     }).compileComponents();
 
@@ -311,7 +317,11 @@ describe('SummaryComponent', () => {
       const alice = mockMemberStore.groupMembers()[0]!;
       const bob = mockMemberStore.groupMembers()[1]!;
       const summary = component.summaryData();
-      const debt = { ...summary[0]!, owedByMemberRef: alice.ref!, owedToMemberRef: bob.ref! };
+      const debt = {
+        ...summary[0]!,
+        owedByMemberRef: alice.ref!,
+        owedToMemberRef: bob.ref!,
+      };
 
       expect(component.isOwedBySelf(debt)).toBe(true);
     });
@@ -385,6 +395,136 @@ describe('SummaryComponent', () => {
         '[data-testid="summary-help-button"]'
       );
       expect(helpButton).toBeTruthy();
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      // Sample members and categories get local refs that must compare
+      vi.spyOn(firestoreModule, 'doc').mockImplementation(
+        (_fs: unknown, path: string) => mockDocRef(path)
+      );
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    const render = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    const byTestId = (id: string) =>
+      el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const step = (id: string) => tourConfig.steps.find((s) => s.id === id)!;
+    const names = (
+      rows: { owedByMember?: any; owedToMember?: any; amount: number }[]
+    ) =>
+      rows.map(
+        (r) =>
+          `${r.owedByMember?.displayName} -> ${r.owedToMember?.displayName} ${r.amount}`
+      );
+
+    it('should start the summary tour from the help icon', () => {
+      byTestId('summary-help-button')!.click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('summary');
+    });
+
+    it('should show sample balances with the real members when nothing is owed', async () => {
+      mockSplitStore.unpaidSplits.set([]);
+      await render();
+      expect(byTestId('no-unpaid-splits-placeholder')).toBeTruthy();
+
+      component.startTour();
+      await render();
+
+      expect(byTestId('no-unpaid-splits-placeholder')).toBeNull();
+      // Bob is the group's other member; Alex fills in as the third person
+      expect(names(component.summaryData())).toEqual([
+        'Bob -> Alice 10',
+        'Alex -> Alice 15',
+      ]);
+      // The settlement nets it out differently, which is its point
+      expect(names(component.leastTransfers())).toEqual([
+        'Alex -> Alice 20',
+        'Bob -> Alice 5',
+      ]);
+      expect(step('intro').text).toContain('sample');
+      expect(step('settlement').when!()).toBe(true);
+    });
+
+    it('should show the sample from your point of view and restore after', () => {
+      const bob = mockMemberStore.groupMembers()[1]!;
+      mockSplitStore.unpaidSplits.set([]);
+      component.selectedMember.set(bob.ref!);
+      component.summaryView.set('settlement');
+
+      component.startTour();
+      expect(component.selectedMember()).toBe(
+        mockMemberStore.currentMember()!.ref
+      );
+
+      tourConfig.onEnd!('closed');
+      expect(component.selectedMember()).toBe(bob.ref);
+      expect(component.summaryView()).toBe('settlement');
+      expect(component.summaryData()).toEqual([]);
+      expect(component.leastTransfers()).toEqual([]);
+    });
+
+    it('should use the real balances when something is owed', () => {
+      component.startTour();
+
+      expect(names(component.summaryData())).toEqual(['Bob -> Alice 10']);
+      expect(step('intro').text).not.toContain('sample');
+      // Only two people, so there's no settlement section to show
+      expect(step('settlement').when!()).toBe(false);
+    });
+
+    it('should expand the first row for the breakdown and restore after', async () => {
+      component.startTour();
+
+      await runStep('breakdown');
+      expect(component.expandedDetail()).toBe(component.summaryData()[0]);
+      expect(component.detailData()).toHaveLength(1);
+
+      await runStep('table');
+      expect(component.expandedDetail()).toBeNull();
+
+      await runStep('breakdown');
+      tourConfig.onEnd!('closed');
+      expect(component.expandedDetail()).toBeNull();
+    });
+
+    it('should open the Settle Group confirmation and close it on end', async () => {
+      mockSplitStore.unpaidSplits.set([]);
+      component.startTour();
+
+      await runStep('settle-group');
+      expect(component.summaryView()).toBe('settlement');
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        SettleGroupDialogComponent,
+        expect.objectContaining({ autoFocus: false })
+      );
+
+      const ref = mockDialog.open.mock.results[0]!.value;
+      tourConfig.onEnd!('closed');
+      expect(ref.close).toHaveBeenCalled();
+      expect(component.summaryView()).toBe('individual');
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

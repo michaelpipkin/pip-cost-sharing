@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
@@ -15,7 +16,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -44,6 +49,11 @@ import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
+import {
+  GUIDED_TOUR_DIALOG_CONFIG,
+  GuidedTourDialogs,
+} from '@services/guided-tour-dialogs';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
@@ -54,7 +64,7 @@ import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
-import { DocumentReference } from 'firebase/firestore';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 import {
@@ -65,6 +75,7 @@ import {
   AddExpenseOption,
   AddExpenseOptionsDialogComponent,
 } from '../add-expense-options-dialog/add-expense-options-dialog.component';
+import { buildExpensesTourSteps } from './expenses.tour';
 
 @Component({
   selector: 'app-expenses',
@@ -115,6 +126,8 @@ export class ExpensesComponent {
   protected readonly sorter = inject(SortingService);
   protected readonly localeService = inject(LocaleService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   // Table filter service
   protected readonly expenseFilterService = inject(TableFilterService<Expense>);
@@ -131,15 +144,27 @@ export class ExpensesComponent {
   );
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
-  groupHasExpenses: Signal<boolean> = this.expenseStore.groupHasExpenses;
-
   expenses = signal<Expense[]>([]);
+  // Sample expenses the guided tour shows when there are none to list.
+  // Held here, never in the store or `expenses` (so a reload can't replace
+  // them), and cleared when the tour ends.
+  protected readonly tourSample = signal<Expense[] | null>(null);
+  protected readonly displayedExpenses = computed(
+    () => this.tourSample() ?? this.expenses()
+  );
+  groupHasExpenses: Signal<boolean> = computed(
+    () => this.tourSample() !== null || this.expenseStore.groupHasExpenses()
+  );
+  readonly #tourDialogs = new GuidedTourDialogs<'add-options'>();
   isLoaded = signal<boolean>(false);
 
   sortField = signal<string>('date');
   sortAsc = signal<boolean>(true);
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     // Clear loaded expenses when there is no longer a current group
     // (e.g. on logout) so stale data isn't shown when a group is selected again
     effect(() => {
@@ -207,7 +232,7 @@ export class ExpensesComponent {
 
   filteredExpenses = computed(() => {
     // Create a copy to avoid mutating the original signal array
-    let filteredExpenses = [...this.expenses()];
+    let filteredExpenses = [...this.displayedExpenses()];
 
     // Apply table filter directives
     const tableFilters = this.expenseFilterService.filters();
@@ -278,8 +303,11 @@ export class ExpensesComponent {
     this.sortAsc.set(e.direction == 'asc');
   }
 
-  onAddExpenseClick(): void {
+  onAddExpenseClick(
+    forTour = false
+  ): MatDialogRef<AddExpenseOptionsDialogComponent> {
     const dialogRef = this.dialog.open(AddExpenseOptionsDialogComponent, {
+      ...(forTour ? GUIDED_TOUR_DIALOG_CONFIG : {}),
       maxWidth: '400px',
     });
     dialogRef.afterClosed().subscribe((result: AddExpenseOption | null) => {
@@ -291,6 +319,123 @@ export class ExpensesComponent {
         this.router.navigate(['/expenses/scan-receipt']);
       }
     });
+    return dialogRef;
+  }
+
+  /**
+   * Starts the guided tour. With no expenses to list, a few sample expenses
+   * are shown; the tour expands one to show its splits and opens the Add New
+   * Expense options, and puts everything back when it ends.
+   */
+  startTour(): void {
+    const previousExpanded = this.expandedExpense();
+    const me = this.currentMember();
+    if (this.expenses().length === 0 && me?.ref) {
+      this.tourSample.set(this.#tourSampleExpenses(me));
+    }
+    this.guidedTour.start({
+      id: 'expenses',
+      steps: buildExpensesTourSteps({
+        usingSample: () => this.tourSample() !== null,
+        isAdmin: () => this.isAdmin(),
+        expandFirst: () =>
+          this.expandedExpense.set(this.filteredExpenses()[0] ?? null),
+        collapse: () => this.expandedExpense.set(null),
+        openAddExpenseOptions: () =>
+          this.#tourDialogs.open('add-options', () =>
+            this.onAddExpenseClick(true)
+          ),
+        closeDialogs: () => this.#tourDialogs.close(),
+      }),
+      onEnd: () => {
+        this.#tourDialogs.close();
+        this.tourSample.set(null);
+        this.expandedExpense.set(previousExpanded);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  #tourSampleExpenses(me: Member): Expense[] {
+    const sampleMember = (id: string, displayName: string) =>
+      new Member({
+        id,
+        displayName,
+        ref: doc(this.fs, `members/${id}`) as DocumentReference<Member>,
+      });
+    // Split with the group's real members when there are any
+    const others = this.members().filter((m) => m.id !== me.id);
+    const people = [
+      me,
+      ...(others.length > 0
+        ? others.slice(0, 2)
+        : [
+            sampleMember('tour-sample-alex', 'Alex'),
+            sampleMember('tour-sample-jordan', 'Jordan'),
+          ]),
+    ];
+    const categories = this.categories();
+    const category = (index: number) =>
+      categories[index % Math.max(categories.length, 1)] ??
+      new Category({ id: 'tour-sample-category', name: 'Default' });
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+
+    const expense = (
+      id: string,
+      description: string,
+      totalAmount: number,
+      payer: Member,
+      days: number,
+      categoryIndex: number,
+      paidMemberIds: string[] = []
+    ) => {
+      const cat = category(categoryIndex);
+      const payerRef = payer.ref!;
+      const each = Math.round((totalAmount / people.length) * 100) / 100;
+      return new Expense({
+        id,
+        date: daysAgo(days),
+        description,
+        totalAmount,
+        sharedAmount: totalAmount,
+        allocatedAmount: 0,
+        paid: false,
+        paidByMemberRef: payerRef,
+        paidByMember: payer,
+        categoryRef:
+          cat.ref ??
+          (doc(this.fs, `categories/${cat.id}`) as DocumentReference<Category>),
+        category: cat,
+        // Built locally; the tour never reads or writes it
+        ref: doc(this.fs, `expenses/${id}`) as DocumentReference<Expense>,
+        splits: people.map(
+          (person, i) =>
+            new Split({
+              id: `${id}-${person.id}`,
+              owedByMemberRef: person.ref!,
+              owedByMember: person,
+              paidByMemberRef: payerRef,
+              paidByMember: payer,
+              // The last split takes any rounding remainder
+              allocatedAmount:
+                i === people.length - 1
+                  ? Math.round(
+                      (totalAmount - each * (people.length - 1)) * 100
+                    ) / 100
+                  : each,
+              // The payer's own share is settled by definition
+              paid: person.id === payer.id || paidMemberIds.includes(person.id),
+            })
+        ),
+      });
+    };
+    return [
+      // Oldest first (the default sort), with one split already paid, so
+      // the expanded row shows both paid and unpaid splits
+      expense('tour-sample-gas', 'Gas', 48, me, 30, 1, [people[1]!.id]),
+      expense('tour-sample-dinner', 'Dinner out', 132.75, people[1]!, 12, 0),
+      expense('tour-sample-groceries', 'Groceries', 86.4, me, 5, 0),
+    ];
   }
 
   onRowClick(expense: Expense): void {

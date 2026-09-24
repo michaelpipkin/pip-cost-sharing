@@ -53,7 +53,9 @@ describe('MemberService', () => {
     vi.spyOn(firestoreModule, 'limit').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'documentId').mockReturnValue({} as any);
     vi.spyOn(firestoreModule, 'onSnapshot').mockReturnValue(vi.fn() as any);
-    vi.spyOn(firestoreModule, 'doc').mockReturnValue({ id: 'group-mock' } as any);
+    vi.spyOn(firestoreModule, 'doc').mockReturnValue({
+      id: 'group-mock',
+    } as any);
     vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue({
       exists: () => true,
       data: () => ({}),
@@ -80,6 +82,56 @@ describe('MemberService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('getGroupMembers', () => {
+    // Captures the listener's callback so tests can deliver snapshots
+    let deliver: (snap: any) => void;
+    const snap = (names: string[], fromCache: boolean) => ({
+      ...makeSnap(
+        names.map((name) => makeDocSnap(name, { displayName: name }))
+      ),
+      metadata: { fromCache },
+    });
+    const published = () =>
+      mockMemberStore.setGroupMembers.mock.calls.map((call: any[]) =>
+        call[0].map((m: any) => m.displayName)
+      );
+
+    beforeEach(() => {
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(((
+        _q: unknown,
+        next: (snap: any) => void
+      ) => {
+        deliver = next;
+        return vi.fn();
+      }) as any);
+      service.getGroupMembers('group-1');
+    });
+
+    it('should wait for the server instead of publishing a partial cached list', () => {
+      // After a refresh the cache holds only the current member
+      deliver(snap(['Pat'], true));
+      expect(mockMemberStore.setGroupMembers).not.toHaveBeenCalled();
+
+      deliver(snap(['Alex', 'Pat', 'Sam'], false));
+      expect(published()).toEqual([['Alex', 'Pat', 'Sam']]);
+    });
+
+    it('should publish later results as usual, cached or not', () => {
+      deliver(snap(['Pat'], false));
+      deliver(snap(['Pat', 'Sam'], true));
+      expect(published()).toEqual([['Pat'], ['Pat', 'Sam']]);
+    });
+
+    it('should wait for the server again when listening to another group', () => {
+      deliver(snap(['Pat'], false));
+      mockMemberStore.setGroupMembers.mockClear();
+
+      service.getGroupMembers('group-2');
+      deliver(snap(['Pat'], true));
+      expect(mockMemberStore.setGroupMembers).not.toHaveBeenCalled();
+    });
   });
 
   describe('addMemberToGroup', () => {

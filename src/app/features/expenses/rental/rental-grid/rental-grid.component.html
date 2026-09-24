@@ -1,6 +1,9 @@
 <div class="rental-grid" data-testid="rental-grid">
   @if (remainingMembers().length > 0) {
-    <div class="flex-wrap rental-controls-row row-gap mb-2">
+    <div
+      class="flex-wrap rental-controls-row row-gap mb-2"
+      data-tour-anchor="rental-add-members"
+    >
       <mat-form-field id="add-member-select" subscriptSizing="dynamic">
         <mat-label>Add Member</mat-label>
         <mat-select
@@ -44,7 +47,10 @@
       Add at least one member to build the occupancy grid.
     </p>
   } @else {
-    <div class="table-container rental-table-container">
+    <div
+      class="table-container rental-table-container"
+      data-tour-anchor="rental-occupancy"
+    >
       <div class="occupancy-grid" data-testid="occupancy-table">
         <table class="static-table compact-table occupancy-fixed-left">
           <thead>

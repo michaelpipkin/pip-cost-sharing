@@ -6,11 +6,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
 import { ReceiptScanPayload } from '@services/receipt-scan-handoff.service';
@@ -681,6 +683,119 @@ describe('AddExpenseComponent', () => {
       expect(model.allocatedAmount).toBe('21.40');
       expect(model.amount).toBe('82.40');
       expect(model.description).toBe('Compton Ale House');
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+
+    it('should start the add-expense tour from the help icon', () => {
+      query('help-button')!.click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('add-expense');
+      expect(tourConfig.steps.length).toBeGreaterThan(0);
+    });
+
+    it('should open the full help dialog from the tour', () => {
+      const openSpy = vi
+        .spyOn((component as any)['dialog'], 'open')
+        .mockReturnValue({} as any);
+      component.startTour();
+
+      tourConfig.fullHelp!();
+
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: { sectionId: 'add-edit-expenses' } })
+      );
+    });
+
+    it('should fill in a sample expense for the tour', async () => {
+      component.startTour();
+      await runStep('intro');
+
+      const model = getModel();
+      expect(model.description).toBe('Dinner out');
+      expect(model.amount).toBe('100.00');
+      expect(model.allocatedAmount).toBe('15.00');
+      // One split per active member (Alice, Bob), with personal amounts
+      expect(model.splits.map((s) => s.assignedAmount)).toEqual([
+        '30.00',
+        '25.00',
+      ]);
+    });
+
+    it("should not overwrite what the user already entered", async () => {
+      patchFormData({ description: 'Groceries', amount: '42.00' });
+      component.startTour();
+      await runStep('intro');
+
+      expect(getModel().description).toBe('Groceries');
+      expect(getModel().amount).toBe('42.00');
+    });
+
+    it('should switch split methods with sample percentages and shares', async () => {
+      component.startTour();
+      await runStep('intro');
+
+      await runStep('splits-percentage');
+      expect(component.splitMethod()).toBe('percentage');
+      expect(getModel().splits[0]!.percentage).toBe(40);
+
+      await runStep('splits-shares');
+      expect(component.splitMethod()).toBe('shares');
+      expect(getModel().splits.map((s) => s.shares)).toEqual([2, 1.5]);
+
+      await runStep('add-splits');
+      expect(component.splitMethod()).toBe('amount');
+    });
+
+    it('should restore the form exactly when the tour ends', async () => {
+      patchFormData({ description: 'Groceries' });
+      const model = (component as any).expenseModel();
+      const formData = (component as any).expenseFormData();
+      component.startTour();
+
+      await runStep('intro');
+      await runStep('splits-shares');
+      tourConfig.onEnd!('closed');
+
+      expect((component as any).expenseModel()).toBe(model);
+      expect((component as any).expenseFormData()).toBe(formData);
+      expect(component.splitMethod()).toBe('amount');
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
+    });
+  });
+
+  describe('receipt attachment', () => {
+    it('should remove an attached receipt', async () => {
+      component.fileName.set('receipt.pdf');
+      component.receiptFile.set(new File(['x'], 'receipt.pdf'));
+      await fixture.whenStable();
+
+      query('remove-file-button')!.click();
+      await fixture.whenStable();
+
+      expect(component.fileName()).toBe('');
+      expect(component.receiptFile()).toBeNull();
+      expect(query('attach-file-area')).toBeTruthy();
     });
   });
 });

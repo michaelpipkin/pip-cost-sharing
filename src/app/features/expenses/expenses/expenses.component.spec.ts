@@ -5,7 +5,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { Expense } from '@models/expense';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
@@ -31,7 +34,9 @@ import {
   createMockSplitService,
   mockDocRef,
   mockGroup,
+  mockMember,
 } from '@testing/test-helpers';
+import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -70,6 +75,7 @@ describe('ExpensesComponent', () => {
         provideRouter([]),
         provideNativeDateAdapter(),
         { provide: getStorage, useValue: {} },
+        { provide: getFirestore, useValue: {} },
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: createMockMemberStore() },
         { provide: CategoryStore, useValue: createMockCategoryStore() },
@@ -239,6 +245,136 @@ describe('ExpensesComponent', () => {
     it('should set sortAsc to false when direction is desc', () => {
       component.sortExpenses({ active: 'date', direction: 'desc' });
       expect(component.sortAsc()).toBe(false);
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+    let memberStore: ReturnType<typeof createMockMemberStore>;
+    const me = mockMember({
+      id: 'me',
+      displayName: 'Pat',
+      groupAdmin: true,
+      ref: mockDocRef('groups/group-1/members/me'),
+    });
+
+    beforeEach(() => {
+      memberStore = TestBed.inject(MemberStore) as unknown as ReturnType<
+        typeof createMockMemberStore
+      >;
+      memberStore.currentMember.set(me);
+      memberStore.groupMembers.set([me]);
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const step = (id: string) => tourConfig.steps.find((s) => s.id === id)!;
+
+    it('should start the expenses tour', () => {
+      component.startTour();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('expenses');
+    });
+
+    it('should show sample expenses when there are none to list', () => {
+      component.expenses.set([]);
+      component.startTour();
+
+      expect(component.groupHasExpenses()).toBe(true);
+      expect(component.filteredExpenses().map((e) => e.description)).toEqual([
+        'Gas',
+        'Dinner out',
+        'Groceries',
+      ]);
+      // With no other members, the samples are split with sample people
+      const gas = component.filteredExpenses()[0]!;
+      expect(gas.splits.map((s) => s.owedByMember!.displayName)).toEqual([
+        'Pat',
+        'Alex',
+        'Jordan',
+      ]);
+      // The payer's own share is paid, plus one other, so both states show
+      expect(gas.splits.map((s) => s.paid)).toEqual([true, true, false]);
+      expect(gas.splits.reduce((t, s) => t + s.allocatedAmount, 0)).toBeCloseTo(
+        48,
+        2
+      );
+      expect(step('intro').text).toContain('samples');
+    });
+
+    it('should keep the sample even if expenses reload during the tour', () => {
+      component.expenses.set([]);
+      component.startTour();
+      component.expenses.set([]);
+
+      expect(component.filteredExpenses()).toHaveLength(3);
+    });
+
+    it('should use the loaded expenses when there are some', () => {
+      const real = new Expense({
+        id: 'real',
+        description: 'Real',
+        date: new Date(),
+        totalAmount: 10,
+        splits: [],
+      });
+      component.expenses.set([real]);
+      component.startTour();
+
+      expect(component.filteredExpenses()).toEqual([real]);
+      expect(step('intro').text).not.toContain('samples');
+    });
+
+    it('should expand the first expense for the split steps and restore after', async () => {
+      component.expenses.set([]);
+      component.startTour();
+
+      await runStep('splits');
+      expect(component.expandedExpense()?.description).toBe('Gas');
+      await runStep('table');
+      expect(component.expandedExpense()).toBeNull();
+
+      await runStep('mark-paid');
+      tourConfig.onEnd!('closed');
+      expect(component.expandedExpense()).toBeNull();
+      expect(component.filteredExpenses()).toEqual([]);
+    });
+
+    it('should open the Add New Expense options without navigating, and close them on end', async () => {
+      const dialog = (component as any).dialog;
+      const navigate = vi.spyOn(router, 'navigate');
+      component.startTour();
+
+      await runStep('add-expense-options');
+      expect(dialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ autoFocus: false })
+      );
+
+      const ref = dialog.open.mock.results[0]!.value;
+      tourConfig.onEnd!('closed');
+      expect(ref.close).toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('should show the mark-paid step only to admins', () => {
+      component.startTour();
+      expect(step('mark-paid').when!()).toBe(true);
+
+      memberStore.currentMember.set(mockMember({ ...me, groupAdmin: false }));
+      expect(step('mark-paid').when!()).toBe(false);
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

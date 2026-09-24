@@ -222,4 +222,47 @@ describe('ManageGroupsComponent', () => {
       expect(dialogSpy).toHaveBeenCalled();
     });
   });
+  describe('guided tour preview', () => {
+    it('should list the sample groups without reading Firestore', async () => {
+      const sample = mockGroup({
+        id: 'tour-sample-beach',
+        name: 'Beach Weekend',
+        userIsAdmin: true,
+      });
+      const expenseService = createMockExpenseService();
+      mockGroupStore.allUserGroups.set([]);
+
+      await TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ManageGroupsComponent],
+        providers: [
+          {
+            provide: MAT_DIALOG_DATA,
+            useValue: { group: sample, tourPreview: { groups: [sample] } },
+          },
+          { provide: MatDialogRef, useValue: mockDialogRef },
+          { provide: MatSnackBar, useValue: createMockSnackBar() },
+          { provide: LoadingService, useValue: createMockLoadingService() },
+          { provide: GroupStore, useValue: mockGroupStore },
+          { provide: GroupService, useValue: mockGroupService },
+          { provide: ExpenseService, useValue: expenseService },
+          { provide: ExpenseStore, useValue: mockExpenseStore },
+          { provide: MatDialog, useValue: mockDialog },
+          {
+            provide: AnalyticsService,
+            useValue: createMockAnalyticsService(),
+          },
+        ],
+      }).compileComponents();
+
+      const previewFixture = TestBed.createComponent(ManageGroupsComponent);
+      await previewFixture.whenStable();
+      previewFixture.detectChanges();
+      const preview = previewFixture.componentInstance as any;
+
+      expect(preview.userAdminGroups()).toEqual([sample]);
+      expect(preview.editGroupModel().groupName).toBe('Beach Weekend');
+      expect(expenseService.checkGroupHasExpenses).not.toHaveBeenCalled();
+    });
+  });
 });

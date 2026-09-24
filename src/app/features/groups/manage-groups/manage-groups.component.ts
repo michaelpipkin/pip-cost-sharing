@@ -72,8 +72,13 @@ export class ManageGroupsComponent {
   );
   supportedCurrencies = SUPPORTED_CURRENCIES;
 
-  protected readonly userAdminGroups: Signal<Group[]> =
-    this.groupStore.userAdminGroups;
+  // Set by the guided tour to show sample groups without reading Firestore
+  readonly #tourPreview: { groups: Group[] } | undefined =
+    this.data.tourPreview;
+
+  protected readonly userAdminGroups: Signal<Group[]> = computed(
+    () => this.#tourPreview?.groups ?? this.groupStore.userAdminGroups()
+  );
   protected readonly adminGroupIds = computed(() =>
     this.userAdminGroups().map((g) => g.id)
   );
@@ -149,7 +154,9 @@ export class ManageGroupsComponent {
     this.editGroupModel.set(values);
     this.lastLoadedValues.set(values);
     this.selectedGroupHasExpenses.set(
-      await this.expenseService.checkGroupHasExpenses(group.id)
+      this.#tourPreview
+        ? false
+        : await this.expenseService.checkGroupHasExpenses(group.id)
     );
   }
 

@@ -4,8 +4,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { ParsedReceipt } from '@models/receipt-scan';
+import { AnalyticsService } from '@services/analytics.service';
 import { CameraService } from '@services/camera.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
 import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
 import { ReceiptScanHandoffService } from '@services/receipt-scan-handoff.service';
@@ -13,6 +16,7 @@ import { ReceiptScanService } from '@services/receipt-scan.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import {
+  createMockAnalyticsService,
   createMockCameraService,
   createMockGroupStore,
   createMockLoadingService,
@@ -78,6 +82,7 @@ describe('ScanReceiptComponent', () => {
         { provide: GroupStore, useValue: mockGroupStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CameraService, useValue: createMockCameraService() },
+        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: MatDialog, useValue: createMockMatDialog() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: LoadingService, useValue: createMockLoadingService() },
@@ -149,8 +154,12 @@ describe('ScanReceiptComponent', () => {
       expect((component as any).tipAmount()).toBe('0.00');
       expect((component as any).description()).toBe('Coffee Shop');
       expect((component as any).lineItems()).toHaveLength(2);
-      expect((component as any).isLowConfidence((component as any).lineItems()[1])).toBe(true);
-      expect((component as any).isLowConfidence((component as any).lineItems()[0])).toBe(false);
+      expect(
+        (component as any).isLowConfidence((component as any).lineItems()[1])
+      ).toBe(true);
+      expect(
+        (component as any).isLowConfidence((component as any).lineItems()[0])
+      ).toBe(false);
     });
 
     it('falls back to subtotal + tax + tip when no total was found', async () => {
@@ -238,7 +247,9 @@ describe('ScanReceiptComponent', () => {
       });
       const dialog = TestBed.inject(MatDialog);
       const openSpy = vi.spyOn(dialog, 'open').mockReturnValueOnce({
-        afterClosed: () => ({ subscribe: (cb: (result: unknown) => void) => cb(null) }),
+        afterClosed: () => ({
+          subscribe: (cb: (result: unknown) => void) => cb(null),
+        }),
       } as any);
 
       await (component as any).selectReceiptPhoto();
@@ -246,7 +257,9 @@ describe('ScanReceiptComponent', () => {
       expect(openSpy).toHaveBeenCalledWith(
         ConfirmDialogComponent,
         expect.objectContaining({
-          data: expect.objectContaining({ dialogTitle: 'Receipt Not Readable' }),
+          data: expect.objectContaining({
+            dialogTitle: 'Receipt Not Readable',
+          }),
         })
       );
       // Unlike a generic scan failure, this should not leave a degraded
@@ -267,7 +280,9 @@ describe('ScanReceiptComponent', () => {
       });
       const dialog = TestBed.inject(MatDialog);
       vi.spyOn(dialog, 'open').mockReturnValueOnce({
-        afterClosed: () => ({ subscribe: (cb: (result: unknown) => void) => cb(null) }),
+        afterClosed: () => ({
+          subscribe: (cb: (result: unknown) => void) => cb(null),
+        }),
       } as any);
       // pickSource is called a second time when the picker reopens.
       mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
@@ -332,7 +347,10 @@ describe('ScanReceiptComponent', () => {
 
     it('updates a field on an item', () => {
       (component as any).addItem();
-      (component as any).updateItem(0, { description: 'Latte', amount: '4.50' });
+      (component as any).updateItem(0, {
+        description: 'Latte',
+        amount: '4.50',
+      });
       expect((component as any).lineItems()[0]).toMatchObject({
         description: 'Latte',
         amount: '4.50',
@@ -345,10 +363,30 @@ describe('ScanReceiptComponent', () => {
       (component as any).taxAmount.set('1.00');
       (component as any).tipAmount.set('2.00');
       (component as any).lineItems.set([
-        { description: 'Latte', amount: '4.50', confidence: 90, assignedTo: memberAlice.ref },
-        { description: 'Bagel', amount: '3.25', confidence: 90, assignedTo: memberAlice.ref },
-        { description: 'Muffin', amount: '2.00', confidence: 90, assignedTo: memberBob.ref },
-        { description: 'Shared fries', amount: '5.00', confidence: 90, assignedTo: null },
+        {
+          description: 'Latte',
+          amount: '4.50',
+          confidence: 90,
+          assignedTo: memberAlice.ref,
+        },
+        {
+          description: 'Bagel',
+          amount: '3.25',
+          confidence: 90,
+          assignedTo: memberAlice.ref,
+        },
+        {
+          description: 'Muffin',
+          amount: '2.00',
+          confidence: 90,
+          assignedTo: memberBob.ref,
+        },
+        {
+          description: 'Shared fries',
+          amount: '5.00',
+          confidence: 90,
+          assignedTo: null,
+        },
       ]);
     });
 
@@ -396,10 +434,30 @@ describe('ScanReceiptComponent', () => {
       (component as any).tipAmount.set('2.00');
       (component as any).description.set('Coffee Shop');
       (component as any).lineItems.set([
-        { description: 'Latte', amount: '4.50', confidence: 90, assignedTo: memberAlice.ref },
-        { description: 'Extra latte', amount: '4.25', confidence: 90, assignedTo: memberAlice.ref },
-        { description: 'Muffin', amount: '2.00', confidence: 90, assignedTo: memberBob.ref },
-        { description: 'Shared fries', amount: '5.00', confidence: 90, assignedTo: null },
+        {
+          description: 'Latte',
+          amount: '4.50',
+          confidence: 90,
+          assignedTo: memberAlice.ref,
+        },
+        {
+          description: 'Extra latte',
+          amount: '4.25',
+          confidence: 90,
+          assignedTo: memberAlice.ref,
+        },
+        {
+          description: 'Muffin',
+          amount: '2.00',
+          confidence: 90,
+          assignedTo: memberBob.ref,
+        },
+        {
+          description: 'Shared fries',
+          amount: '5.00',
+          confidence: 90,
+          assignedTo: null,
+        },
       ]);
     });
 
@@ -451,5 +509,98 @@ describe('ScanReceiptComponent', () => {
     expect((component as any).fileName()).toBe('');
     expect((component as any).hasScanned()).toBe(false);
     expect((component as any).lineItems()).toEqual([]);
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      mockMemberStore.currentMember.set(memberAlice);
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const page = () => component as any;
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const step = (id: string) => tourConfig.steps.find((s) => s.id === id)!;
+
+    it('should start the receipt tour from the help icon', () => {
+      (
+        fixture.nativeElement.querySelector(
+          '[data-testid="help-button"]'
+        ) as HTMLElement
+      ).click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('scan-receipt');
+    });
+
+    it('should show a sample scan before a receipt is scanned', async () => {
+      component.startTour();
+      await runStep('select-photo');
+      expect(page().hasScanned()).toBe(false);
+
+      await runStep('items');
+      expect(page().hasScanned()).toBe(true);
+      expect(page().description()).toBe('Corner Bistro');
+      expect(
+        page()
+          .lineItems()
+          .map((i: any) => [i.description, i.assignedTo?.path ?? null])
+      ).toEqual([
+        ['Cheeseburger', memberAlice.ref!.path],
+        ['Cobb Salad', memberBob.ref!.path],
+        ['Nachos', null],
+        ['Lemonade', memberAlice.ref!.path],
+      ]);
+      expect(page().isLowConfidence(page().lineItems()[3])).toBe(true);
+      // Items, tax and tip add up to the total
+      expect(page().unassignedItemsTotal()).toBe(9.75);
+      expect(page().taxTipTotal()).toBe(11.3);
+      expect(page().totalAmountValue()).toBe(51.3);
+      // There's no real photo, so the sample can't be continued
+      expect(page().canContinue()).toBe(false);
+    });
+
+    it('should put the page back exactly when it ends', async () => {
+      const items = page().lineItems();
+      component.startTour();
+      await runStep('items');
+
+      tourConfig.onEnd!('closed');
+      expect(page().hasScanned()).toBe(false);
+      expect(page().lineItems()).toBe(items);
+      expect(page().description()).toBe('');
+      expect(page().fileName()).toBe('');
+    });
+
+    it('should use the real scan when there is one', async () => {
+      const real = [
+        {
+          description: 'Pizza',
+          amount: '20.00',
+          confidence: 99,
+          assignedTo: null,
+        },
+      ];
+      page().hasScanned.set(true);
+      page().lineItems.set(real);
+      component.startTour();
+      await runStep('items');
+
+      expect(page().lineItems()).toBe(real);
+      expect(step('select-photo').when!()).toBe(false);
+      expect(step('intro').text).not.toContain('sample');
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
+    });
   });
 });

@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
@@ -57,6 +58,7 @@ import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
 import {
   ReceiptScanHandoffService,
@@ -73,6 +75,10 @@ import { RentalUtilsService } from '@utils/rental-utils.service';
 import { SplitMethod } from '@utils/split-method';
 import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
+import {
+  buildExpenseFormTourSteps,
+  createExpenseFormTour,
+} from '../expense-form.tour';
 
 @Component({
   selector: 'app-add-expense',
@@ -119,6 +125,7 @@ export class AddExpenseComponent {
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
+  protected readonly guidedTour = inject(GuidedTourService);
   protected readonly localeService = inject(LocaleService);
 
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
@@ -189,6 +196,8 @@ export class AddExpenseComponent {
 
   constructor() {
     this.loading.loadingOn();
+    // Leaving the page mid-tour ends it (and restores the form it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
     const navigation = this.router.currentNavigation();
     const receiptScanPayload = this.receiptScanHandoff.takePayload();
     if (receiptScanPayload) {
@@ -554,24 +563,27 @@ export class AddExpenseComponent {
     return ((splits[index]!.shares ?? 0) / totalShares) * 100;
   }
 
-  getAssignedTotal = (): number =>
+  readonly assignedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(this.stringUtils.toNumber(s.assignedAmount)),
         0
       )
-    );
+    )
+  );
 
-  getAllocatedTotal = (): number =>
+  readonly allocatedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
-    );
+    )
+  );
 
-  expenseFullyAllocated = (): boolean =>
-    this.stringUtils.toNumber(this.expenseFormData().amount) === this.getAllocatedTotal();
+  readonly expenseFullyAllocated = computed(
+    () => this.stringUtils.toNumber(this.expenseFormData().amount) === this.allocatedTotal()
+  );
 
   isLastSplit(index: number): boolean {
     return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
@@ -680,6 +692,32 @@ export class AddExpenseComponent {
       data: { sectionId: 'add-edit-expenses' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  /**
+   * Starts the guided tour. The tour fills in a sample expense and switches
+   * the split method to demonstrate each step; the form is restored to exactly
+   * what the user had when the tour ends, however it ends.
+   */
+  startTour(): void {
+    const tour = createExpenseFormTour({
+      model: this.expenseModel,
+      formData: this.expenseFormData,
+      splitMethod: this.splitMethod,
+      recalculate: () => this.recalculateAllocation(),
+      formatAmount: (value) => this.#formatForInput(value),
+      toNumber: (value) => this.stringUtils.toNumber(value),
+      addAllMembers: () => this.addAllActiveGroupMembers(),
+    });
+    this.guidedTour.start({
+      id: 'add-expense',
+      steps: buildExpenseFormTourSteps('add-expense', {
+        ...tour.hooks,
+        categoryVisible: () => this.activeCategories().length > 1,
+      }),
+      onEnd: tour.restore,
+      fullHelp: () => this.showHelp(),
+    });
   }
 
   #formatForInput(value: number): string {

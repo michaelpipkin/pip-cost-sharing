@@ -33,6 +33,8 @@ import {
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
+import { GuidedTourConfig } from '@models/guided-tour';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddMemorizedComponent } from './add-memorized.component';
 
@@ -358,6 +360,63 @@ describe('AddMemorizedComponent', () => {
       expect(getModel().splits[0]!.allocatedAmount).toBe(25);
       expect(getModel().splits[1]!.allocatedAmount).toBe(25);
       expect(getModel().splits[2]!.allocatedAmount).toBe(50);
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+
+    it('should start the add-memorized tour from the help icon', () => {
+      fixture.nativeElement
+        .querySelector('[data-testid="add-memorized-help-button"]')
+        .click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('add-memorized');
+    });
+
+    it('should open the full help from the last step', () => {
+      const openSpy = vi
+        .spyOn((component as any)['dialog'], 'open')
+        .mockReturnValue({} as any);
+      component.startTour();
+
+      tourConfig.fullHelp!();
+
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: { sectionId: 'add-edit-memorized' } })
+      );
+    });
+
+    it('should fill in a sample and restore the form when the tour ends', async () => {
+      const model = (component as any).expenseModel();
+      const formData = (component as any).expenseFormData();
+      component.startTour();
+
+      await runStep('intro');
+      expect(getModel().description).toBe('Weekly groceries');
+      tourConfig.onEnd!('closed');
+
+      expect((component as any).expenseModel()).toBe(model);
+      expect((component as any).expenseFormData()).toBe(formData);
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });
