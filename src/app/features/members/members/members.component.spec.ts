@@ -4,8 +4,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { MemberInvite } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { InviteService } from '@services/invite.service';
 import { SortingService } from '@services/sorting.service';
 import { GroupStore } from '@store/group.store';
@@ -26,7 +28,7 @@ import {
   mockMember,
   mockUser,
 } from '@testing/test-helpers';
-import { Timestamp } from 'firebase/firestore';
+import { getFirestore, Timestamp } from 'firebase/firestore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MembersComponent } from './members.component';
 
@@ -119,6 +121,7 @@ describe('MembersComponent', () => {
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: AnalyticsService, useValue: mockAnalytics },
         { provide: InviteService, useValue: mockInviteService },
+        { provide: getFirestore, useValue: {} },
         {
           provide: BreakpointObserver,
           useValue: createMockBreakpointObserver(false),
@@ -259,6 +262,8 @@ describe('MembersComponent', () => {
           { provide: MatSnackBar, useValue: createMockSnackBar() },
           { provide: AnalyticsService, useValue: mockAnalytics },
           { provide: InviteService, useValue: mockInviteService },
+          { provide: getFirestore, useValue: {} },
+          { provide: getFirestore, useValue: {} },
           {
             provide: BreakpointObserver,
             useValue: createMockBreakpointObserver(true),
@@ -591,6 +596,137 @@ describe('MembersComponent', () => {
         'Failed to send group invite',
         'An invitation was already sent to this address recently.'
       );
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const render = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const step = (id: string) => tourConfig.steps.find((s) => s.id === id)!;
+    const onlyMe = () =>
+      mockMemberStore.groupMembers.set([
+        mockMember({ id: 'member-1', displayName: 'Alice', groupAdmin: true }),
+      ]);
+
+    it('should start the members tour from the help icon', () => {
+      query('members-help-button')!.click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('members');
+    });
+
+    it('should add sample members when you are the only member', async () => {
+      onlyMe();
+      await render();
+      expect(query('only-one-member-placeholder')).toBeTruthy();
+
+      component.startTour();
+      await render();
+
+      expect(component.groupMembers().map((m) => m.displayName)).toEqual([
+        'Alice',
+        'Alex',
+        'Jordan',
+        'Sam',
+      ]);
+      expect(query('only-one-member-placeholder')).toBeNull();
+      expect(query('member-filters')).toBeTruthy();
+      expect(step('intro').text).toContain('samples');
+    });
+
+    it('should include an unregistered sample so admins see the invite column', async () => {
+      onlyMe();
+      component.startTour();
+      await render();
+
+      expect(step('invite').when!()).toBe(true);
+    });
+
+    it('should use the real members when there are several', () => {
+      component.startTour();
+
+      expect(step('intro').text).not.toContain('samples');
+      expect(
+        component.groupMembers().some((m) => m.displayName === 'Alex')
+      ).toBe(false);
+    });
+
+    it('should show inactive members for the filters step and restore after', async () => {
+      component.startTour();
+      await runStep('filters');
+      expect(component.activeOnly()).toBe(false);
+
+      tourConfig.onEnd!('closed');
+      expect(component.activeOnly()).toBe(true);
+    });
+
+    it('should open Edit Member on someone else for admins', async () => {
+      component.startTour();
+      await runStep('edit-member');
+
+      const [, config] = mockDialog.open.mock.calls[0] as unknown as [
+        unknown,
+        { autoFocus: boolean; data: { member: { displayName: string } } },
+      ];
+      expect(config.data.member.displayName).toBe('Bob');
+      expect(config.autoFocus).toBe(false);
+    });
+
+    it('should open Edit Member on yourself for non-admins and skip admin steps', async () => {
+      mockMemberStore.currentMember.set(
+        mockMember({ id: 'member-2', displayName: 'Bob', groupAdmin: false })
+      );
+      component.startTour();
+
+      for (const id of [
+        'add-member',
+        'add-member-fields',
+        'edit-member-toggles',
+      ]) {
+        expect(step(id).when!(), id).toBe(false);
+      }
+      expect(step('edit-member-actions').title).toBe('Leave the group');
+
+      await runStep('edit-member');
+      const [, config] = mockDialog.open.mock.calls[0] as unknown as [
+        unknown,
+        { data: { member: { displayName: string } } },
+      ];
+      expect(config.data.member.displayName).toBe('Bob');
+    });
+
+    it('should close its dialogs and clear the sample when the tour ends', async () => {
+      onlyMe();
+      component.startTour();
+      await runStep('add-member-fields');
+      const addRef = mockDialog.open.mock.results[0]!.value;
+
+      tourConfig.onEnd!('closed');
+      await render();
+
+      expect(addRef.close).toHaveBeenCalled();
+      expect(component.groupMembers()).toHaveLength(1);
+      expect(query('only-one-member-placeholder')).toBeTruthy();
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

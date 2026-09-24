@@ -1,0 +1,34 @@
+:host {
+  display: block;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  // Blocks the page underneath (including inside the hole) while touring
+  pointer-events: auto;
+}
+
+.guided-tour-hole {
+  position: absolute;
+  border-radius: 8px;
+  // The huge spread shadow is the dimmed backdrop; the element itself is
+  // the transparent spotlight
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+  transition:
+    top 0.25s ease,
+    left 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+
+  // Centered steps: a zero-size hole in the middle keeps the whole page dimmed
+  &.no-target {
+    top: 50%;
+    left: 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guided-tour-hole {
+    transition: none;
+  }
+}

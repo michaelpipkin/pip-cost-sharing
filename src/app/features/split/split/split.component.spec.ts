@@ -4,7 +4,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { SplitExpenseForm, SplitItemForm } from '@models/split';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { LocaleService } from '@services/locale.service';
 import { GroupStore } from '@store/group.store';
@@ -321,7 +323,7 @@ describe('SplitComponent', () => {
       patchSplit(0, { assignedAmount: '25.00' });
       patchSplit(1, { assignedAmount: '35.00' });
 
-      expect(component.getAssignedTotal()).toBe(60);
+      expect(component.assignedTotal()).toBe(60);
     });
 
     it('should calculate correct allocated total', () => {
@@ -331,7 +333,7 @@ describe('SplitComponent', () => {
       patchSplit(0, { allocatedAmount: 40 });
       patchSplit(1, { allocatedAmount: 60 });
 
-      expect(component.getAllocatedTotal()).toBe(100);
+      expect(component.allocatedTotal()).toBe(100);
     });
   });
 
@@ -475,7 +477,9 @@ describe('SplitComponent', () => {
     it('should require owedBy for each split', () => {
       component.addSplit();
       patchSplit(0, { owedBy: '' });
-      const errors = (component as any).expenseForm.splits[0].owedBy().errors() as {
+      const errors = (component as any).expenseForm.splits[0]
+        .owedBy()
+        .errors() as {
         kind: string;
       }[];
       expect(errors.some((e) => e.kind === 'required')).toBe(true);
@@ -641,8 +645,8 @@ describe('SplitComponent', () => {
       expect(component.splitMethod()).toBe('shares');
       expect(component.rentalMode()).toBe(false);
 
-      const alice = getModel().splits.find(s => s.owedBy === 'Alice')!;
-      const bob = getModel().splits.find(s => s.owedBy === 'Bob')!;
+      const alice = getModel().splits.find((s) => s.owedBy === 'Alice')!;
+      const bob = getModel().splits.find((s) => s.owedBy === 'Bob')!;
       expect(alice.allocatedAmount).toBe(75);
       expect(bob.allocatedAmount).toBe(25);
     });
@@ -712,6 +716,114 @@ describe('SplitComponent', () => {
 
       component.onRentalNightCountInput('5');
       expect(component.rentalNightCount()).toBe(5);
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const names = () => getModel().splits.map((s) => s.owedBy);
+
+    it('should start the split tour from the help icon', () => {
+      query('split-help-button')!.click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('split');
+    });
+
+    it('should fill in a fully allocated sample bill when the form is empty', async () => {
+      component.startTour();
+      await runStep('intro');
+
+      expect(names()).toEqual(['Alex', 'Jordan', 'Sam']);
+      expect(getModel().amount).toBe('100.00');
+      expect(getModel().allocatedAmount).toBe('15.00');
+      expect(component.allocatedTotal()).toBe(100);
+      expect(component.expenseFullyAllocated()).toBe(true);
+    });
+
+    it('should keep what is already entered', async () => {
+      patchModel({
+        amount: '50.00',
+        splits: [
+          {
+            owedBy: 'Pat',
+            assignedAmount: '0.00',
+            percentage: 0,
+            shares: 0,
+            allocatedAmount: 0,
+          },
+        ],
+      });
+      component.startTour();
+      await runStep('intro');
+
+      expect(getModel().amount).toBe('50.00');
+      expect(names()).toEqual(['Pat']);
+    });
+
+    it('should show sample percentages and shares for those steps', async () => {
+      component.startTour();
+      await runStep('intro');
+
+      await runStep('splits-percentage');
+      expect(component.splitMethod()).toBe('percentage');
+      expect(getModel().splits.map((s) => s.percentage)).toEqual([40, 30, 30]);
+
+      await runStep('splits-shares');
+      expect(component.splitMethod()).toBe('shares');
+      expect(getModel().splits.map((s) => s.shares)).toEqual([2, 1.5, 1]);
+      expect(component.allocatedTotal()).toBe(100);
+    });
+
+    it('should open the rental grid with a sample stay', async () => {
+      component.startTour();
+      await runStep('intro');
+      await runStep('rental-grid');
+
+      expect(component.rentalMode()).toBe(true);
+      expect(component.rentalNightCount()).toBe(3);
+      expect(component.rentalParticipants().map((p) => p.nights)).toEqual([
+        [true, true, true],
+        [true, true, true],
+        [true, true, false],
+      ]);
+
+      await runStep('generate');
+      expect(component.rentalMode()).toBe(false);
+    });
+
+    it('should show the summary, then put the page back exactly when it ends', async () => {
+      const before = getModel();
+      component.startTour();
+      await runStep('intro');
+      await runStep('rental-grid');
+      await runStep('summary');
+      expect(component.submitted()).toBe(true);
+
+      tourConfig.onEnd!('closed');
+      expect(getModel()).toBe(before);
+      expect(component.submitted()).toBe(false);
+      expect(component.rentalMode()).toBe(false);
+      expect(component.rentalNightCount()).toBe(1);
+      expect(component.rentalParticipants()).toEqual([]);
+      expect(component.splitMethod()).toBe('amount');
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

@@ -36,6 +36,8 @@ import {
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
+import { GuidedTourConfig } from '@models/guided-tour';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditExpenseComponent } from './edit-expense.component';
 
@@ -271,6 +273,68 @@ describe('EditExpenseComponent', () => {
 
       expect(getModel().splits[0]!.allocatedAmount).toBe(25);
       expect(getModel().splits[1]!.allocatedAmount).toBe(75);
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+
+    it('should start the edit-expense tour from the help icon', () => {
+      fixture.nativeElement
+        .querySelector('[data-testid="edit-expense-help-button"]')
+        .click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('edit-expense');
+    });
+
+    it('should open the full help from the last step', () => {
+      const openSpy = vi
+        .spyOn((component as any)['dialog'], 'open')
+        .mockReturnValue({} as any);
+      component.startTour();
+
+      tourConfig.fullHelp!();
+
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: { sectionId: 'add-edit-expenses' } })
+      );
+    });
+
+    it('should restore the unsaved-changes state when the tour ends', async () => {
+      (component as any).modelDirty.set(false);
+      const model = (component as any).expenseModel();
+      component.startTour();
+
+      await runStep('splits-shares');
+      tourConfig.onEnd!('closed');
+
+      expect((component as any).expenseModel()).toBe(model);
+      expect((component as any).modelDirty()).toBe(false);
+    });
+
+    it('should count a split method change as an unsaved change', () => {
+      (component as any).modelDirty.set(false);
+      component.onSplitMethodChange();
+      expect((component as any).modelDirty()).toBe(true);
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

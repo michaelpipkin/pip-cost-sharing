@@ -2,7 +2,11 @@
 <form data-testid="edit-category-form" aria-label="Edit category form" (submit)="$event.preventDefault()">
   <mat-dialog-content data-testid="edit-category-content">
     <div class="content" data-testid="edit-category-fields">
-      <mat-form-field appearance="fill" data-testid="edit-category-name-field">
+      <mat-form-field
+        appearance="fill"
+        data-testid="edit-category-name-field"
+        data-tour-anchor="edit-category-name"
+      >
         <mat-label>Category name</mat-label>
         <input
           matInput
@@ -21,7 +25,11 @@
         }
       </mat-form-field>
     </div>
-    <div class="toggle" data-testid="edit-category-toggles">
+    <div
+      class="toggle"
+      data-testid="edit-category-toggles"
+      data-tour-anchor="edit-category-active"
+    >
       <mat-slide-toggle
         [formField]="editCategoryForm.active"
         data-testid="edit-category-active-toggle"
@@ -31,7 +39,10 @@
       </mat-slide-toggle>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions data-testid="edit-category-actions">
+  <mat-dialog-actions
+    data-testid="edit-category-actions"
+    data-tour-anchor="edit-category-actions"
+  >
     <button
       mat-raised-button
       class="btn-secondary"

@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   signal,
 } from '@angular/core';
@@ -48,7 +49,12 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils/allocation-utils.service';
 import { SplitMethod } from '@utils/split-method';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { StringUtils } from '@utils/string-utils.service';
+import {
+  buildExpenseFormTourSteps,
+  createExpenseFormTour,
+} from '@features/expenses/expense-form.tour';
 
 @Component({
   selector: 'app-edit-memorized',
@@ -88,6 +94,7 @@ export class EditMemorizedComponent {
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
+  protected readonly guidedTour = inject(GuidedTourService);
   protected readonly localeService = inject(LocaleService);
 
   splitMethod = signal<SplitMethod>(
@@ -164,6 +171,8 @@ export class EditMemorizedComponent {
   }
 
   constructor() {
+    // Leaving the page mid-tour ends it (and restores the form it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
     this.loading.loadingOff();
   }
 
@@ -303,6 +312,8 @@ export class EditMemorizedComponent {
   }
 
   onSplitMethodChange(): void {
+    // Switching methods is a change worth saving on its own
+    this.modelDirty.set(true);
     this.recalculateAllocation();
   }
 
@@ -317,24 +328,27 @@ export class EditMemorizedComponent {
     return ((splits[index]!.shares ?? 0) / totalShares) * 100;
   }
 
-  getAssignedTotal = (): number =>
+  readonly assignedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(this.stringUtils.toNumber(s.assignedAmount)),
         0
       )
-    );
+    )
+  );
 
-  getAllocatedTotal = (): number =>
+  readonly allocatedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
-    );
+    )
+  );
 
-  memorizedFullyAllocated = (): boolean =>
-    this.stringUtils.toNumber(this.expenseFormData().amount) === this.getAllocatedTotal();
+  readonly memorizedFullyAllocated = computed(
+    () => this.stringUtils.toNumber(this.expenseFormData().amount) === this.allocatedTotal()
+  );
 
   isLastSplit(index: number): boolean {
     return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
@@ -448,6 +462,32 @@ export class EditMemorizedComponent {
         }));
       }
       this.recalculateAllocation();
+    });
+  }
+
+  /**
+   * Starts the guided tour. The tour switches the split method to
+   * demonstrate each option; the form is restored to exactly
+   * what the user had when the tour ends, however it ends.
+   */
+  startTour(): void {
+    const tour = createExpenseFormTour({
+      model: this.expenseModel,
+      formData: this.expenseFormData,
+      splitMethod: this.splitMethod,
+      dirty: this.modelDirty,
+      recalculate: () => this.recalculateAllocation(),
+      formatAmount: (value) => this.#formatForInput(value),
+      toNumber: (value) => this.stringUtils.toNumber(value),
+    });
+    this.guidedTour.start({
+      id: 'edit-memorized',
+      steps: buildExpenseFormTourSteps('edit-memorized', {
+        ...tour.hooks,
+        categoryVisible: () => this.categories().length > 1,
+      }),
+      onEnd: tour.restore,
+      fullHelp: () => this.showHelp(),
     });
   }
 

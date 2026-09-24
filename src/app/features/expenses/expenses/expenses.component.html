@@ -6,11 +6,11 @@
       <div class="help-icon" data-testid="expenses-help-icon-container">
         <mat-icon
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp()"
-          (keydown.space)="showHelp(); $event.preventDefault()"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
           data-testid="expenses-help-button"
-          aria-label="Show help for expenses"
+          aria-label="Take a guided tour of expenses"
           tabindex="0"
           role="button"
         >
@@ -20,7 +20,11 @@
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     @if (groupHasExpenses()) {
-      <div class="filters" data-testid="expense-filters">
+      <div
+        class="filters"
+        data-testid="expense-filters"
+        data-tour-anchor="expense-filters"
+      >
         <mat-form-field class="datepicker" subscriptSizing="dynamic">
           <mat-label>Start date</mat-label>
           <input
@@ -85,7 +89,10 @@
           Unpaid only
         </mat-slide-toggle>
       </div>
-      <div class="filters placeholder-selects">
+      <div
+        class="filters placeholder-selects"
+        data-tour-anchor="expense-filter-selects"
+      >
         <mat-form-field subscriptSizing="dynamic" class="payer-select">
           @if (!!searchPayer()) {
             <mat-label>Payer</mat-label>
@@ -130,6 +137,7 @@
           matButton="elevated"
           type="button"
           class="btn-primary fetch-button"
+          data-tour-anchor="search-expenses"
           (click)="loadExpenses()"
         >
           Search Expenses
@@ -140,12 +148,13 @@
         class="btn-primary add-button"
         (click)="onAddExpenseClick()"
         data-testid="add-expense-button"
+        data-tour-anchor="add-expense"
       >
         Add New Expense
       </button>
     </div>
     @if (groupHasExpenses()) {
-      @if (expenses().length >= 200) {
+      @if (displayedExpenses().length >= 200) {
         <div class="alert alert-warning mt-3" role="alert">
           <strong>Note:</strong>
           You have reached the maximum number of expenses (200) that can be
@@ -155,8 +164,11 @@
           specific results.
         </div>
       }
-      @if (expenses().length > 0) {
-        <div class="table-container mat-elevation-z8">
+      @if (displayedExpenses().length > 0) {
+        <div
+          class="table-container mat-elevation-z8"
+          data-tour-anchor="expenses-table"
+        >
           <div class="scrollable-table">
             <table
               mat-table
@@ -397,8 +409,9 @@
                   *matCellDef="let expense"
                   [colSpan]="columnsToDisplay().length"
                 >
-                  @if (expense == expandedExpense()) {
+                  @if (expense === expandedExpense()) {
                     <div
+                      data-tour-anchor="expense-detail"
                       class="detail-table-container"
                       animate.enter="detail-expand"
                       animate.leave="detail-collapse"
@@ -475,6 +488,7 @@
                             *matHeaderCellDef
                             class="cell-center"
                             style="width: 60px"
+                            data-tour-anchor="expense-mark"
                           >
                             Mark Paid/Unpaid
                           </th>
@@ -534,6 +548,7 @@
               <tr
                 mat-header-row
                 *matHeaderRowDef="columnsToDisplay(); sticky: true"
+                data-tour-anchor="expenses-header"
               ></tr>
               <tr
                 mat-row

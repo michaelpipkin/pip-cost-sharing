@@ -10,7 +10,14 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
-import { applyEach, form, FormField, minLength, required, validate } from '@angular/forms/signals';
+import {
+  applyEach,
+  form,
+  FormField,
+  minLength,
+  required,
+  validate,
+} from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -37,6 +44,7 @@ import {
 import { RentalDetails } from '@models/expense';
 import { SplitExpenseForm, SplitItemForm } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { LocaleService } from '@services/locale.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
@@ -45,10 +53,12 @@ import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { SplitMethod } from '@utils/split-method';
+import { withSampleSplitValues } from '@features/expenses/expense-form.tour';
 import {
   SplitRentalGridComponent,
   SplitRentalRow,
 } from '../split-rental-grid/split-rental-grid.component';
+import { buildSplitTourSteps } from './split.tour';
 
 @Component({
   selector: 'app-split',
@@ -84,6 +94,7 @@ export class SplitComponent {
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly stringUtils = inject(StringUtils);
+  protected readonly guidedTour = inject(GuidedTourService);
 
   readonly supportedCurrencies = SUPPORTED_CURRENCIES;
   readonly submitted = signal<boolean>(false);
@@ -146,20 +157,18 @@ export class SplitComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
+      // Leaving the page mid-tour ends it (and puts back what it changed)
+      this.guidedTour.stop('closed');
       const currentGroup = this.groupStore.currentGroup();
-      this.localeService.setGroupCurrency(
-        currentGroup?.currencyCode ?? 'USD'
-      );
+      this.localeService.setGroupCurrency(currentGroup?.currencyCode ?? 'USD');
     });
 
     this.localeService.setGroupCurrency('USD');
     this.localCurrencyCode.set('USD');
-
   }
 
-
   addSplit(): void {
-    this.expenseModel.update(m => ({
+    this.expenseModel.update((m) => ({
       ...m,
       splits: [
         ...m.splits,
@@ -176,7 +185,7 @@ export class SplitComponent {
   }
 
   removeSplit(index: number): void {
-    this.expenseModel.update(m => ({
+    this.expenseModel.update((m) => ({
       ...m,
       splits: m.splits.filter((_, i) => i !== index),
     }));
@@ -217,14 +226,14 @@ export class SplitComponent {
     const proportionalAmount = this.stringUtils.toNumber(model.allocatedAmount);
 
     if (model.splits.length === 0) {
-      this.expenseModel.update(m => ({
+      this.expenseModel.update((m) => ({
         ...m,
         sharedAmount: totalAmount - proportionalAmount,
       }));
       return;
     }
 
-    const updatedSplits = model.splits.map(s => ({ ...s }));
+    const updatedSplits = model.splits.map((s) => ({ ...s }));
     const calcSplits: {
       owedBy: string;
       assignedAmount: number;
@@ -246,8 +255,8 @@ export class SplitComponent {
       }
     });
 
-    const splitCount = calcSplits.filter(s => s.owedBy !== '').length;
-    const splitTotal = this.getAssignedTotal();
+    const splitCount = calcSplits.filter((s) => s.owedBy !== '').length;
+    const splitTotal = this.assignedTotal();
     let evenlySharedAmount = model.sharedAmount;
     const totalSharedSplits = this.localeService.roundToCurrency(
       evenlySharedAmount + proportionalAmount + splitTotal
@@ -275,14 +284,16 @@ export class SplitComponent {
       this.adjustAllocationForRounding(calcSplits, totalAmount, allocatedTotal);
     }
 
-    calcSplits.filter(s => s.owedBy !== '').forEach(split => {
-      updatedSplits[split.origIdx] = {
-        ...updatedSplits[split.origIdx]!,
-        allocatedAmount: split.allocatedAmount,
-      };
-    });
+    calcSplits
+      .filter((s) => s.owedBy !== '')
+      .forEach((split) => {
+        updatedSplits[split.origIdx] = {
+          ...updatedSplits[split.origIdx]!,
+          allocatedAmount: split.allocatedAmount,
+        };
+      });
 
-    this.expenseModel.update(m => ({
+    this.expenseModel.update((m) => ({
       ...m,
       sharedAmount: evenlySharedAmount,
       splits: updatedSplits,
@@ -290,21 +301,25 @@ export class SplitComponent {
   }
 
   private distributeAllocations(
-    splits: { owedBy: string; assignedAmount: number; allocatedAmount: number }[],
+    splits: {
+      owedBy: string;
+      assignedAmount: number;
+      allocatedAmount: number;
+    }[],
     totalAmount: number,
     proportionalAmount: number,
     evenlySharedAmount: number,
     splitCount: number
   ): void {
-    const active = splits.filter(s => s.owedBy !== '');
-    active.forEach(split => {
+    const active = splits.filter((s) => s.owedBy !== '');
+    active.forEach((split) => {
       split.allocatedAmount =
         splitCount === 0
           ? 0
           : this.localeService.roundToCurrency(evenlySharedAmount / splitCount);
     });
     if (totalAmount === proportionalAmount) return;
-    active.forEach(split => {
+    active.forEach((split) => {
       const base = split.assignedAmount + split.allocatedAmount;
       split.allocatedAmount = this.localeService.roundToCurrency(
         base + (base / (totalAmount - proportionalAmount)) * proportionalAmount
@@ -318,7 +333,7 @@ export class SplitComponent {
 
     const result = this.allocationUtils.allocateByPercentage({
       totalAmount: this.stringUtils.toNumber(model.amount),
-      splits: model.splits.map(s => ({
+      splits: model.splits.map((s) => ({
         owedByMemberRef: s.owedBy || null,
         assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
         percentage: s.percentage ?? 0,
@@ -327,11 +342,11 @@ export class SplitComponent {
       })),
     });
 
-    const updatedSplits = model.splits.map(s => ({ ...s }));
-    result.splits.forEach(split => {
+    const updatedSplits = model.splits.map((s) => ({ ...s }));
+    result.splits.forEach((split) => {
       const name = split.owedByMemberRef;
       if (name) {
-        const idx = updatedSplits.findIndex(s => s.owedBy === name);
+        const idx = updatedSplits.findIndex((s) => s.owedBy === name);
         if (idx !== -1) {
           updatedSplits[idx] = {
             ...updatedSplits[idx]!,
@@ -342,7 +357,7 @@ export class SplitComponent {
       }
     });
 
-    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
+    this.expenseModel.update((m) => ({ ...m, splits: updatedSplits }));
   }
 
   allocateByShares(): void {
@@ -351,7 +366,7 @@ export class SplitComponent {
 
     const result = this.allocationUtils.allocateByShares({
       totalAmount: this.stringUtils.toNumber(model.amount),
-      splits: model.splits.map(s => ({
+      splits: model.splits.map((s) => ({
         owedByMemberRef: s.owedBy || null,
         assignedAmount: this.stringUtils.toNumber(s.assignedAmount),
         percentage: s.percentage ?? 0,
@@ -360,11 +375,11 @@ export class SplitComponent {
       })),
     });
 
-    const updatedSplits = model.splits.map(s => ({ ...s }));
-    result.splits.forEach(split => {
+    const updatedSplits = model.splits.map((s) => ({ ...s }));
+    result.splits.forEach((split) => {
       const name = split.owedByMemberRef;
       if (name) {
-        const idx = updatedSplits.findIndex(s => s.owedBy === name);
+        const idx = updatedSplits.findIndex((s) => s.owedBy === name);
         if (idx !== -1) {
           updatedSplits[idx] = {
             ...updatedSplits[idx]!,
@@ -375,7 +390,7 @@ export class SplitComponent {
       }
     });
 
-    this.expenseModel.update(m => ({ ...m, splits: updatedSplits }));
+    this.expenseModel.update((m) => ({ ...m, splits: updatedSplits }));
   }
 
   private adjustAllocationForRounding(
@@ -385,7 +400,7 @@ export class SplitComponent {
   ): void {
     let diff = this.localeService.roundToCurrency(totalAmount - allocatedTotal);
     const increment = this.localeService.getSmallestIncrement();
-    for (let i = 0; diff !== 0; ) {
+    for (let i = 0; diff !== 0;) {
       if (diff > 0) {
         splits[i]!.allocatedAmount += increment;
         diff = this.localeService.roundToCurrency(diff - increment);
@@ -404,7 +419,7 @@ export class SplitComponent {
     return ((splits[index]!.shares || 0) / totalShares) * 100;
   }
 
-  getAssignedTotal = (): number =>
+  readonly assignedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) =>
@@ -414,20 +429,24 @@ export class SplitComponent {
           ),
         0
       )
-    );
+    )
+  );
 
-  getAllocatedTotal = (): number =>
+  readonly allocatedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) =>
           total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
-    );
+    )
+  );
 
-  expenseFullyAllocated = (): boolean =>
-    this.stringUtils.toNumber(this.expenseModel().amount) ===
-    this.getAllocatedTotal();
+  readonly expenseFullyAllocated = computed(
+    () =>
+      this.stringUtils.toNumber(this.expenseModel().amount) ===
+      this.allocatedTotal()
+  );
 
   protected splitField(i: number) {
     return this.expenseForm.splits[i]!;
@@ -462,7 +481,7 @@ export class SplitComponent {
     const splitLines: { text: string; amount: string; isIndented: boolean }[] =
       [];
 
-    model.splits.forEach(split => {
+    model.splits.forEach((split) => {
       if (split.owedBy?.trim()) {
         if (this.splitMethod() === 'percentage') {
           splitLines.push({
@@ -481,7 +500,9 @@ export class SplitComponent {
             isIndented: false,
           });
         } else {
-          const assignedAmount = this.stringUtils.toNumber(split.assignedAmount);
+          const assignedAmount = this.stringUtils.toNumber(
+            split.assignedAmount
+          );
           const proportionalAmount = this.calculateProportionalAmount(split);
           const sharedPortionAmount = this.calculateSharedPortion(split);
 
@@ -519,7 +540,7 @@ export class SplitComponent {
     let maxMainLineLength = 0;
     let maxIndentedLineLength = 0;
 
-    splitLines.forEach(line => {
+    splitLines.forEach((line) => {
       const lineLength = line.text.length + 2 + line.amount.length;
       if (line.isIndented) {
         maxIndentedLineLength = Math.max(maxIndentedLineLength, lineLength);
@@ -532,7 +553,7 @@ export class SplitComponent {
 
     summaryText += `${'='.repeat(overallMaxLength + 1)}\n`;
 
-    splitLines.forEach(line => {
+    splitLines.forEach((line) => {
       const spacesNeeded =
         overallMaxLength - line.text.length - line.amount.length;
       const padding = ' '.repeat(spacesNeeded);
@@ -644,7 +665,9 @@ export class SplitComponent {
 
   onRentalNightCountInput(value: string): void {
     const parsed = Math.max(1, Math.round(this.stringUtils.toNumber(value)));
-    this.rentalNightCount.set(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+    this.rentalNightCount.set(
+      Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+    );
   }
 
   applyShares(): void {
@@ -655,8 +678,8 @@ export class SplitComponent {
     );
 
     const splits: SplitItemForm[] = shareResults
-      .filter(r => r.memberRef.trim())
-      .map(r => ({
+      .filter((r) => r.memberRef.trim())
+      .map((r) => ({
         owedBy: r.memberRef,
         assignedAmount: this.localeService.getFormattedZero(),
         percentage: 0,
@@ -664,7 +687,7 @@ export class SplitComponent {
         allocatedAmount: 0,
       }));
 
-    this.expenseModel.update(m => ({ ...m, splits }));
+    this.expenseModel.update((m) => ({ ...m, splits }));
     this.splitMethod.set('shares');
     this.rentalMode.set(false);
     this.allocateByShares();
@@ -673,11 +696,11 @@ export class SplitComponent {
   #rentalDetails(): RentalDetails<string> {
     return {
       nightCount: this.rentalNightCount(),
-      stays: this.rentalParticipants().map(p => ({
+      stays: this.rentalParticipants().map((p) => ({
         memberRef: p.name,
         nights: p.nights
           .map((present, i) => (present ? i : -1))
-          .filter(i => i >= 0),
+          .filter((i) => i >= 0),
       })),
     };
   }
@@ -691,10 +714,10 @@ export class SplitComponent {
     this.calculatorOverlay.openCalculator(target, (result: number) => {
       const formatted = this.#formatForInput(result);
       if (index === undefined) {
-        this.expenseModel.update(m => ({ ...m, [fieldName]: formatted }));
+        this.expenseModel.update((m) => ({ ...m, [fieldName]: formatted }));
         this.updateTotalAmount();
       } else {
-        this.expenseModel.update(m => ({
+        this.expenseModel.update((m) => ({
           ...m,
           splits: m.splits.map((s, i) =>
             i === index ? { ...s, assignedAmount: formatted } : s
@@ -703,6 +726,100 @@ export class SplitComponent {
         this.recalculateAllocation();
       }
     });
+  }
+
+  /**
+   * Starts the guided tour. With an empty form it fills in a sample bill;
+   * along the way it switches split methods, opens the rental grid, and
+   * generates the summary, and it puts the page back exactly when it ends.
+   */
+  startTour(): void {
+    const snapshot = {
+      model: this.expenseModel(),
+      splitMethod: this.splitMethod(),
+      submitted: this.submitted(),
+      rentalMode: this.rentalMode(),
+      rentalNightCount: this.rentalNightCount(),
+      rentalParticipants: this.rentalParticipants(),
+    };
+    const showForm = (method: SplitMethod) => {
+      this.submitted.set(false);
+      this.rentalMode.set(false);
+      this.splitMethod.set(method);
+      this.expenseModel.update((m) => ({
+        ...m,
+        splits: withSampleSplitValues(method, m.splits),
+      }));
+      this.recalculateAllocation();
+    };
+    this.guidedTour.start({
+      id: 'split',
+      steps: buildSplitTourSteps({
+        loadSample: () => this.#loadTourSample(),
+        showForm,
+        showRental: () => {
+          showForm('amount');
+          if (this.rentalNightCount() === 1) this.rentalNightCount.set(3);
+          this.enterRentalMode();
+          // The last person skipped the last night, so the grid shows how
+          // the nights people missed change their share
+          this.rentalParticipants.update((rows) =>
+            rows.length > 1
+              ? rows.map((row, i) =>
+                  i === rows.length - 1
+                    ? {
+                        ...row,
+                        nights: row.nights.map(
+                          (n, j) => j < row.nights.length - 1 && n
+                        ),
+                      }
+                    : row
+                )
+              : rows
+          );
+        },
+        showSummary: () => {
+          showForm('amount');
+          this.submitted.set(true);
+        },
+      }),
+      onEnd: () => {
+        this.expenseModel.set(snapshot.model);
+        this.splitMethod.set(snapshot.splitMethod);
+        this.submitted.set(snapshot.submitted);
+        this.rentalMode.set(snapshot.rentalMode);
+        this.rentalNightCount.set(snapshot.rentalNightCount);
+        this.rentalParticipants.set(snapshot.rentalParticipants);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  /** A sample dinner for three; only fills in what hasn't been entered. */
+  #loadTourSample(): void {
+    const model = this.expenseModel();
+    const hasAmount = this.stringUtils.toNumber(model.amount) !== 0;
+    const people: [string, number][] = [
+      ['Alex', 30],
+      ['Jordan', 25],
+      ['Sam', 0],
+    ];
+    this.expenseModel.update((m) => ({
+      ...m,
+      amount: hasAmount ? m.amount : this.#formatForInput(100),
+      allocatedAmount: hasAmount ? m.allocatedAmount : this.#formatForInput(15),
+      splits:
+        m.splits.length > 0
+          ? m.splits
+          : people.map(([owedBy, personal]) => ({
+              owedBy,
+              // Personal amounts only make sense with the sample total
+              assignedAmount: this.#formatForInput(hasAmount ? 0 : personal),
+              percentage: 0,
+              shares: 0,
+              allocatedAmount: 0,
+            })),
+    }));
   }
 
   showHelp(): void {

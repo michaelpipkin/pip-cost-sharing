@@ -15,11 +15,11 @@
       <div class="help-icon" data-testid="memorized-help-icon-container">
         <mat-icon
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp(); $event.preventDefault()"
-          (keydown.space)="showHelp(); $event.preventDefault()"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
           data-testid="memorized-help-button"
-          aria-label="Show help for memorized expenses"
+          aria-label="Take a guided tour of memorized expenses"
           tabindex="0"
           role="button"
         >
@@ -34,6 +34,7 @@
           id="search-field"
           subscriptSizing="dynamic"
           data-testid="memorized-search-field"
+          data-tour-anchor="memorized-search"
         >
           <mat-label>
             {{
@@ -70,6 +71,7 @@
         class="btn-primary"
         routerLink="/memorized/add"
         data-testid="memorize-new-expense-button"
+        data-tour-anchor="memorize-new"
         aria-label="Memorize new expense"
       >
         Memorize New Expense
@@ -94,7 +96,10 @@
       </mat-card>
     } @else {
       @if (filteredMemorizeds().length > 0) {
-        <div class="table-container mat-elevation-z8">
+        <div
+          class="table-container mat-elevation-z8"
+          data-tour-anchor="memorized-table"
+        >
           <div class="scrollable-table">
             <table
               mat-table
@@ -150,7 +155,12 @@
                 </td>
               </ng-container>
               <ng-container matColumnDef="create">
-                <th mat-header-cell *matHeaderCellDef class="cell-center">
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  class="cell-center"
+                  data-tour-anchor="memorized-create"
+                >
                   Create
                   <br />
                   Expense
@@ -188,8 +198,9 @@
                   *matCellDef="let expense"
                   [colSpan]="columnsToDisplay().length"
                 >
-                  @if (expense == expandedExpense()) {
+                  @if (expense === expandedExpense()) {
                     <div
+                      data-tour-anchor="memorized-detail"
                       class="detail-table-container"
                       animate.enter="detail-expand"
                       animate.leave="detail-collapse"
@@ -250,7 +261,7 @@
                 mat-row
                 *matRowDef="let expense; columns: columnsToDisplay()"
                 class="summary-row clickable-row expandable-row"
-                [class.expanded-row]="expandedExpense === expense"
+                [class.expanded-row]="expandedExpense() === expense"
                 (click)="onRowClick(expense)"
                 (keydown.enter)="onRowClick(expense)"
               ></tr>

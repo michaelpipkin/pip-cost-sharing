@@ -3,11 +3,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
-  signal,
   Signal,
+  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,12 +32,15 @@ import { Category } from '@models/category';
 import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized, SerializableMemorized } from '@models/memorized';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { SplitService } from '@services/split.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
+import { buildMemorizedTourSteps } from './memorized.tour';
 
 @Component({
   selector: 'app-memorized',
@@ -69,45 +73,48 @@ export class MemorizedComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
   categories: Signal<Category[]> = this.categoryStore.groupCategories;
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
-  memorizeds: Signal<Memorized[]> = this.memorizedStore.memorizedExpenses;
+  // Sample templates the guided tour shows a group that hasn't memorized
+  // any yet. Held here, never in the store, and cleared when the tour ends.
+  protected readonly tourSample = signal<Memorized[] | null>(null);
+  memorizeds: Signal<Memorized[]> = computed(
+    () => this.tourSample() ?? this.memorizedStore.memorizedExpenses()
+  );
   smallScreen = signal<boolean>(false);
 
   searchText = model<string>('');
   searchFocused = model<boolean>(false);
 
-  filteredMemorizeds = computed<Memorized[]>(
-    (searchText: string = this.searchText()) => {
-      let filteredMemorized = this.memorizeds().filter(
-        (memorized: Memorized) => {
-          return (
-            !searchText ||
-            memorized.description
-              .toLowerCase()
-              .includes(searchText.toLowerCase()) ||
-            this.members()
-              .find((m) => m.ref!.eq(memorized.paidByMemberRef))
-              ?.displayName.toLowerCase()
-              .includes(searchText.toLowerCase()) ||
-            this.categories()
-              .find((c) => c.ref!.eq(memorized.categoryRef))
-              ?.name.toLowerCase()
-              .includes(searchText.toLowerCase())
-          );
-        }
-      );
-      return filteredMemorized;
-    }
-  );
+  filteredMemorizeds = computed<Memorized[]>(() => {
+    const searchText = this.searchText().toLowerCase();
+    if (!searchText) return this.memorizeds();
+    return this.memorizeds().filter(
+      (memorized: Memorized) =>
+        memorized.description.toLowerCase().includes(searchText) ||
+        !!this.members()
+          .find((m) => m.ref!.eq(memorized.paidByMemberRef))
+          ?.displayName.toLowerCase()
+          .includes(searchText) ||
+        !!this.categories()
+          .find((c) => c.ref!.eq(memorized.categoryRef))
+          ?.name.toLowerCase()
+          .includes(searchText)
+    );
+  });
   expandedExpense = model<Memorized | null>(null);
 
   columnsToDisplay = signal<string[]>([]);
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     effect(() => {
       if (this.memorizedStore.loaded()) {
         this.loading.loadingOff();
@@ -184,6 +191,91 @@ export class MemorizedComponent {
     this.router.navigate(['/expenses/add'], {
       state: { expense: serializableExpense },
     });
+  }
+
+  /**
+   * Starts the guided tour. A group with no memorized expenses sees two
+   * sample templates; the tour expands one to show its splits, and puts
+   * everything back when it ends.
+   */
+  startTour(): void {
+    const previousExpanded = this.expandedExpense();
+    const me = this.currentMember();
+    if (this.memorizedStore.memorizedExpenses().length === 0 && me?.ref) {
+      this.tourSample.set(this.#tourSampleMemorized(me));
+    }
+    this.guidedTour.start({
+      id: 'memorized',
+      steps: buildMemorizedTourSteps({
+        usingSample: () => this.tourSample() !== null,
+        expandFirst: () =>
+          this.expandedExpense.set(this.filteredMemorizeds()[0] ?? null),
+        collapse: () => this.expandedExpense.set(null),
+      }),
+      onEnd: () => {
+        this.tourSample.set(null);
+        this.expandedExpense.set(previousExpanded);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  #tourSampleMemorized(me: Member): Memorized[] {
+    // Split with the group's real members when there are any
+    const sampleMember = (id: string, displayName: string) =>
+      new Member({
+        id,
+        displayName,
+        ref: doc(this.fs, `members/${id}`) as DocumentReference<Member>,
+      });
+    const others = this.members().filter((m) => m.id !== me.id);
+    const people = [
+      me,
+      ...(others.length > 0
+        ? others.slice(0, 2)
+        : [sampleMember('tour-sample-alex', 'Alex')]),
+    ];
+    const category =
+      this.categories()[0] ??
+      new Category({ id: 'tour-sample-category', name: 'Default' });
+    const categoryRef =
+      category.ref ??
+      (doc(
+        this.fs,
+        `categories/${category.id}`
+      ) as DocumentReference<Category>);
+    const template = (id: string, description: string, totalAmount: number) => {
+      const each = Math.round((totalAmount / people.length) * 100) / 100;
+      return new Memorized({
+        id,
+        description,
+        totalAmount,
+        sharedAmount: totalAmount,
+        allocatedAmount: 0,
+        splitMethod: 'amount',
+        paidByMemberRef: me.ref!,
+        paidByMember: me,
+        categoryRef,
+        category,
+        splits: people.map((person, i) => ({
+          owedByMemberRef: person.ref!,
+          owedByMember: person,
+          assignedAmount: 0,
+          // The last split takes any rounding remainder
+          allocatedAmount:
+            i === people.length - 1
+              ? Math.round((totalAmount - each * (people.length - 1)) * 100) /
+                100
+              : each,
+        })),
+        // Built locally; the tour never reads or writes it
+        ref: doc(this.fs, `memorized/${id}`) as DocumentReference<Memorized>,
+      });
+    };
+    return [
+      template('tour-sample-rent', 'Rent', 1800),
+      template('tour-sample-internet', 'Internet', 79.99),
+    ];
   }
 
   showHelp(): void {

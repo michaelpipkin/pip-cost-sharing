@@ -4,7 +4,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
@@ -286,6 +288,73 @@ describe('HistoryDetailComponent', () => {
 
       expect(writeTextMock).toHaveBeenCalled();
       expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const runStep = async (id: string) =>
+      tourConfig.steps.find((s) => s.id === id)!.beforeShow?.();
+    const step = (id: string) => tourConfig.steps.find((s) => s.id === id)!;
+
+    it('should start the payment detail tour from the help icon', () => {
+      (
+        el.querySelector(
+          '[data-testid="history-detail-help-button"]'
+        ) as HTMLElement
+      ).click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('history-detail');
+    });
+
+    it('should switch to the category view for its step and restore the view after', async () => {
+      component.viewMode.set('details');
+      component.startTour();
+
+      await runStep('categories');
+      expect(component.viewMode()).toBe('summary');
+      await runStep('splits');
+      expect(component.viewMode()).toBe('details');
+
+      await runStep('categories');
+      tourConfig.onEnd!('closed');
+      expect(component.viewMode()).toBe('details');
+    });
+
+    it('should show the unpay steps only to admins', () => {
+      component.startTour();
+      expect(step('unpay-all').when!()).toBe(true);
+
+      mockMemberStore.currentMember.set(regularMember);
+      component.startTour();
+      expect(step('unpay-all').when!()).toBe(false);
+      expect(step('unpay-split').when!()).toBe(false);
+    });
+
+    it('should skip the breakdown for a group settle recorded without splits', () => {
+      component.history.set(
+        mockHistory({ batchId: 'batch-1', splitsPaid: [] })
+      );
+      component.startTour();
+
+      expect(step('splits').when!()).toBe(false);
+      expect(step('intro').text).toContain('group settlement');
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

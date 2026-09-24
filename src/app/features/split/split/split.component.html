@@ -5,11 +5,11 @@
     <div class="help-icon" data-testid="split-help-icon-container">
       <mat-icon
         matTooltip="Help"
-        (click)="showHelp()"
-        (keydown.enter)="showHelp(); $event.preventDefault()"
-        (keydown.space)="showHelp(); $event.preventDefault()"
+        (click)="startTour()"
+        (keydown.enter)="startTour(); $event.preventDefault()"
+        (keydown.space)="startTour(); $event.preventDefault()"
         data-testid="split-help-button"
-        aria-label="Show help for splitting expenses"
+        aria-label="Take a guided tour of splitting an expense"
         tabindex="0"
         role="button"
       >
@@ -26,7 +26,11 @@
         (submit)="$event.preventDefault()"
       >
         <div class="flex-wrap">
-          <mat-form-field appearance="fill" class="currency-field mb-4">
+          <mat-form-field
+            appearance="fill"
+            class="currency-field mb-4"
+            data-tour-anchor="split-currency"
+          >
             <mat-label>Currency</mat-label>
             <mat-select
               [formField]="expenseForm.currencyCode"
@@ -55,6 +59,7 @@
             appearance="fill"
             floatLabel="always"
             class="total-amount-field"
+            data-tour-anchor="split-total"
           >
             <mat-label>Total Amount</mat-label>
             <input
@@ -85,7 +90,11 @@
             >
               <mat-icon>calculate</mat-icon>
             </button>
-            @for (error of expenseForm.amount().errors(); track error.kind; let i = $index) {
+            @for (
+              error of expenseForm.amount().errors();
+              track error.kind;
+              let i = $index
+            ) {
               <mat-error [attr.data-testid]="'amount-error-' + i">
                 {{ error.message }}
               </mat-error>
@@ -96,6 +105,7 @@
             floatLabel="always"
             class="proportional-amount-field"
             [class.hidden]="rentalMode() || splitMethod() !== 'amount'"
+            data-tour-anchor="split-proportional"
           >
             <mat-label>Proportional Amount</mat-label>
             <input
@@ -131,6 +141,7 @@
           <div
             class="mock-input"
             [class.hidden]="rentalMode() || splitMethod() !== 'amount'"
+            data-tour-anchor="split-remainder"
           >
             <span class="mock-label">Evenly Shared Remainder</span>
             <span class="mock-value-right">
@@ -145,10 +156,12 @@
               class="btn-primary"
               type="button"
               (click)="addSplit()"
+              data-tour-anchor="split-add"
             >
               Add New Split
             </button>
             <app-split-method-toggle
+              data-tour-anchor="split-method"
               [(splitMethod)]="splitMethod"
               (methodChanged)="onSplitMethodChange()"
             />
@@ -158,178 +171,182 @@
               type="button"
               (click)="enterRentalMode()"
               data-testid="vacation-rental-button"
+              data-tour-anchor="split-rental-button"
             >
               Vacation Rental
             </button>
           </div>
         } @else {
-          <div class="flex-wrap fw-start row-gap mb-2">
-            <mat-form-field
-              appearance="fill"
-              class="night-count-field no-subscript"
-              subscriptSizing="dynamic"
-            >
-              <mat-label>Number of Nights</mat-label>
-              <input
-                matInput
-                type="number"
-                min="1"
-                class="night-count-input"
-                [value]="rentalNightCount()"
-                (blur)="onRentalNightCountInput($any($event.target).value)"
-                data-testid="split-night-count-input"
-                aria-label="Number of nights"
-              />
-            </mat-form-field>
+          <div data-tour-anchor="split-rental">
+            <div class="flex-wrap fw-start row-gap mb-2">
+              <mat-form-field
+                appearance="fill"
+                class="night-count-field no-subscript"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Number of Nights</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  class="night-count-input"
+                  [value]="rentalNightCount()"
+                  (blur)="onRentalNightCountInput($any($event.target).value)"
+                  data-testid="split-night-count-input"
+                  aria-label="Number of nights"
+                />
+              </mat-form-field>
+            </div>
+            <app-split-rental-grid
+              [nightCount]="rentalNightCount()"
+              [totalAmount]="rentalTotalAmount()"
+              [(participants)]="rentalParticipants"
+            />
           </div>
-          <app-split-rental-grid
-            [nightCount]="rentalNightCount()"
-            [totalAmount]="rentalTotalAmount()"
-            [(participants)]="rentalParticipants"
-          />
         }
         @if (!rentalMode()) {
-        <div class="mt-3">
-          @for (
-            item of expenseModel().splits;
-            track $index;
-            let i = $index
-          ) {
-            <div class="flex-wrap fw-start row-gap">
-              <div class="splits-1">
-                <mat-form-field id="split-member" subscriptSizing="dynamic">
-                  <mat-label>Name</mat-label>
-                  <input
-                    matInput
-                    [formField]="splitField(i).owedBy"
-                    (blur)="updateTotalAmount()"
-                  />
-                </mat-form-field>
-                <button
-                  mat-mini-fab
-                  class="btn-danger"
-                  (click)="removeSplit(i)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
+          <div class="mt-3" data-tour-anchor="split-lines">
+            @for (item of expenseModel().splits; track $index; let i = $index) {
               <div class="flex-wrap fw-start row-gap">
-                @switch (splitMethod()) {
-                  @case ('percentage') {
-                    <mat-form-field
-                      appearance="fill"
-                      class="number-field no-subscript"
-                      [class.locked-input]="isLastSplit(i)"
-                      subscriptSizing="dynamic"
-                      [matTooltip]="
-                        isLastSplit(i)
-                          ? 'The last split percentage is automatically calculated to make the total 100%'
-                          : ''
-                      "
-                    >
-                      <mat-label>Percentage</mat-label>
-                      @if (isLastSplit(i)) {
-                        <input
-                          matInput
-                          appSelectOnFocus
-                          class="number-right"
-                          [value]="item.percentage ?? 0"
-                          readonly
-                        />
-                      } @else {
-                        <input
-                          matInput
-                          appSelectOnFocus
-                          #memberPercentage
-                          class="number-right"
-                          [formField]="splitField(i).percentage"
-                          (blur)="allocateByPercentage()"
-                        />
-                      }
-                      <span matTextSuffix>%</span>
-                    </mat-form-field>
-                  }
-                  @case ('shares') {
-                    <div class="shares-field-wrapper">
+                <div class="splits-1">
+                  <mat-form-field id="split-member" subscriptSizing="dynamic">
+                    <mat-label>Name</mat-label>
+                    <input
+                      matInput
+                      [formField]="splitField(i).owedBy"
+                      (blur)="updateTotalAmount()"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-mini-fab
+                    class="btn-danger"
+                    (click)="removeSplit(i)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+                <div class="flex-wrap fw-start row-gap">
+                  @switch (splitMethod()) {
+                    @case ('percentage') {
+                      <mat-form-field
+                        appearance="fill"
+                        class="number-field no-subscript"
+                        [class.locked-input]="isLastSplit(i)"
+                        subscriptSizing="dynamic"
+                        [matTooltip]="
+                          isLastSplit(i)
+                            ? 'The last split percentage is automatically calculated to make the total 100%'
+                            : ''
+                        "
+                      >
+                        <mat-label>Percentage</mat-label>
+                        @if (isLastSplit(i)) {
+                          <input
+                            matInput
+                            appSelectOnFocus
+                            class="number-right"
+                            [value]="item.percentage ?? 0"
+                            readonly
+                          />
+                        } @else {
+                          <input
+                            matInput
+                            appSelectOnFocus
+                            #memberPercentage
+                            class="number-right"
+                            [formField]="splitField(i).percentage"
+                            (blur)="allocateByPercentage()"
+                          />
+                        }
+                        <span matTextSuffix>%</span>
+                      </mat-form-field>
+                    }
+                    @case ('shares') {
+                      <div class="shares-field-wrapper">
+                        <mat-form-field
+                          appearance="fill"
+                          class="number-field no-subscript"
+                          subscriptSizing="dynamic"
+                        >
+                          <mat-label>Shares</mat-label>
+                          <input
+                            matInput
+                            appSelectOnFocus
+                            class="number-right"
+                            [formField]="splitField(i).shares"
+                            inputmode="decimal"
+                            (blur)="allocateByShares()"
+                          />
+                          <span matTextSuffix class="no-wrap">
+                            &nbsp;&nbsp;({{
+                              effectivePercentage(i) | number: '1.2-2'
+                            }}%)
+                          </span>
+                        </mat-form-field>
+                      </div>
+                    }
+                    @default {
                       <mat-form-field
                         appearance="fill"
                         class="number-field no-subscript"
                         subscriptSizing="dynamic"
                       >
-                        <mat-label>Shares</mat-label>
+                        <mat-label>Member Amount</mat-label>
                         <input
                           matInput
-                          appSelectOnFocus
+                          #memberAmount
                           class="number-right"
-                          [formField]="splitField(i).shares"
+                          [formField]="splitField(i).assignedAmount"
+                          appFormatCurrencyInput
+                          (blur)="allocateSharedAmounts()"
                           inputmode="decimal"
-                          (blur)="allocateByShares()"
                         />
-                        <span matTextSuffix class="no-wrap">
-                          &nbsp;&nbsp;({{
-                            effectivePercentage(i) | number: '1.2-2'
-                          }}%)
-                        </span>
+                        @if (localCurrency().symbolPosition === 'prefix') {
+                          <span matTextPrefix>
+                            {{ localCurrency().symbol }}
+                          </span>
+                        }
+                        @if (localCurrency().symbolPosition === 'suffix') {
+                          <span matTextSuffix>
+                            &nbsp;{{ localCurrency().symbol }}
+                          </span>
+                        }
+                        <button
+                          matIconSuffix
+                          mat-icon-button
+                          (click)="
+                            openCalculator($event, 'allocatedAmount', i);
+                            $event.preventDefault();
+                            $event.stopPropagation()
+                          "
+                          aria-label="Open calculator"
+                          type="button"
+                        >
+                          <mat-icon>calculate</mat-icon>
+                        </button>
                       </mat-form-field>
-                    </div>
+                    }
                   }
-                  @default {
-                    <mat-form-field
-                      appearance="fill"
-                      class="number-field no-subscript"
-                      subscriptSizing="dynamic"
-                    >
-                      <mat-label>Member Amount</mat-label>
-                      <input
-                        matInput
-                        #memberAmount
-                        class="number-right"
-                        [formField]="splitField(i).assignedAmount"
-                        appFormatCurrencyInput
-                        (blur)="allocateSharedAmounts()"
-                        inputmode="decimal"
-                      />
-                      @if (localCurrency().symbolPosition === 'prefix') {
-                        <span matTextPrefix>{{ localCurrency().symbol }}</span>
-                      }
-                      @if (localCurrency().symbolPosition === 'suffix') {
-                        <span matTextSuffix>
-                          &nbsp;{{ localCurrency().symbol }}
-                        </span>
-                      }
-                      <button
-                        matIconSuffix
-                        mat-icon-button
-                        (click)="
-                          openCalculator($event, 'allocatedAmount', i);
-                          $event.preventDefault();
-                          $event.stopPropagation()
-                        "
-                        aria-label="Open calculator"
-                        type="button"
-                      >
-                        <mat-icon>calculate</mat-icon>
-                      </button>
-                    </mat-form-field>
-                  }
-                }
-                <div class="mock-input">
-                  <span class="mock-label">Allocated Amount</span>
-                  <span class="mock-value-right">
-                    {{ item.allocatedAmount | currency }}
-                  </span>
+                  <div class="mock-input">
+                    <span class="mock-label">Allocated Amount</span>
+                    <span class="mock-value-right">
+                      {{ item.allocatedAmount | currency }}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-            @if (i < expenseModel().splits.length - 1) {
-              <hr />
+              @if (i < expenseModel().splits.length - 1) {
+                <hr />
+              }
             }
-          }
-        </div>
+          </div>
         }
       </form>
       @if (!rentalMode()) {
-        <div class="flex-wrap fw-start row-gap mt-3">
+        <div
+          class="flex-wrap fw-start row-gap mt-3"
+          data-tour-anchor="split-generate"
+        >
           <button
             mat-raised-button
             class="btn-secondary"
@@ -340,16 +357,15 @@
           >
             Generate Summary
           </button>
-          <button
-            mat-stroked-button
-            type="button"
-            [routerLink]="['/']"
-          >
+          <button mat-stroked-button type="button" [routerLink]="['/']">
             Cancel
           </button>
         </div>
       } @else {
-        <div class="flex-wrap fw-start row-gap mt-3">
+        <div
+          class="flex-wrap fw-start row-gap mt-3"
+          data-tour-anchor="split-rental-actions"
+        >
           <button
             mat-raised-button
             class="btn-secondary"
@@ -373,7 +389,7 @@
     </div>
   } @else {
     <div class="summary-container">
-      <div class="summary-header">
+      <div class="summary-header" data-tour-anchor="split-summary">
         <h4>Expense Summary</h4>
         <button
           mat-mini-fab
@@ -392,7 +408,7 @@
             {{ stringUtils.toNumber(expenseModel().amount) | currency }}
           </span>
         </div>
-        @if (splitMethod() === 'amount' && (expenseModel().sharedAmount) > 0) {
+        @if (splitMethod() === 'amount' && expenseModel().sharedAmount > 0) {
           <div class="summary-line">
             <span class="summary-label">Evenly shared amount:</span>
             <span class="summary-value">
@@ -400,20 +416,21 @@
             </span>
           </div>
         }
-        @if (splitMethod() === 'amount' && stringUtils.toNumber(expenseModel().allocatedAmount) > 0) {
+        @if (
+          splitMethod() === 'amount' &&
+          stringUtils.toNumber(expenseModel().allocatedAmount) > 0
+        ) {
           <div class="summary-line">
             <span class="summary-label">Proportional amount:</span>
             <span class="summary-value">
-              {{ stringUtils.toNumber(expenseModel().allocatedAmount) | currency }}
+              {{
+                stringUtils.toNumber(expenseModel().allocatedAmount) | currency
+              }}
             </span>
           </div>
         }
         <hr class="summary-divider" />
-        @for (
-          item of expenseModel().splits;
-          track $index;
-          let i = $index
-        ) {
+        @for (item of expenseModel().splits; track $index; let i = $index) {
           @if (item.owedBy.trim()) {
             @switch (splitMethod()) {
               @case ('percentage') {
@@ -450,7 +467,9 @@
                       <div class="summary-line breakdown-line">
                         <span class="summary-label">Personal:</span>
                         <span class="summary-value">
-                          {{ stringUtils.toNumber(item.assignedAmount) | currency }}
+                          {{
+                            stringUtils.toNumber(item.assignedAmount) | currency
+                          }}
                         </span>
                       </div>
                     }
