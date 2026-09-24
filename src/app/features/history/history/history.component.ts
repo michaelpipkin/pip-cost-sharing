@@ -21,26 +21,29 @@ import { Group } from '@models/group';
 import { History } from '@models/history';
 import { Member } from '@models/member';
 import { LocaleService } from '@services/locale.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { SortingService } from '@services/sorting.service';
 import { CurrencyPipe } from '@shared/pipes/currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
-import { DocumentReference } from 'firebase/firestore';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
-  signal,
   Signal,
+  signal,
 } from '@angular/core';
 import {
   HelpDialogComponent,
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
+import { buildHistoryTourSteps } from './history.tour';
 
 @Component({
   selector: 'app-history',
@@ -75,9 +78,16 @@ export class HistoryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly localeService = inject(LocaleService);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   members: Signal<Member[]> = this.memberStore.groupMembers;
-  history: Signal<History[]> = this.historyStore.groupHistory;
+  // Sample payments the guided tour shows a group with no history yet.
+  // Held here, never in the store, and cleared when the tour ends.
+  protected readonly tourSample = signal<History[] | null>(null);
+  history: Signal<History[]> = computed(
+    () => this.tourSample() ?? this.historyStore.groupHistory()
+  );
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
 
@@ -117,6 +127,9 @@ export class HistoryComponent {
   columnsToDisplay = ['date', 'paidTo', 'paidBy', 'amount', 'type'];
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears the sample)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     effect(() => {
       this.selectedMember.set(this.currentMember()?.ref ?? null);
     });
@@ -142,6 +155,65 @@ export class HistoryComponent {
   sortHistory(h: { active: string; direction: string }): void {
     this.sortField.set(h.active);
     this.sortAsc.set(h.direction === 'asc');
+  }
+
+  /**
+   * Starts the guided tour. A group with no payments yet sees a few sample
+   * payments to and from you, cleared when the tour ends.
+   */
+  startTour(): void {
+    const me = this.currentMember();
+    if (this.historyStore.groupHistory().length === 0 && me?.ref) {
+      this.tourSample.set(this.#tourSampleHistory(me));
+    }
+    this.guidedTour.start({
+      id: 'history',
+      steps: buildHistoryTourSteps({
+        usingSample: () => this.tourSample() !== null,
+      }),
+      onEnd: () => this.tourSample.set(null),
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  #tourSampleHistory(me: Member): History[] {
+    // Pay other real members when there are any; otherwise sample members
+    const others = this.members().filter((m) => m.id !== me.id);
+    const sampleMember = (id: string, displayName: string) =>
+      new Member({
+        id,
+        displayName,
+        ref: doc(this.fs, `members/${id}`) as DocumentReference<Member>,
+      });
+    const alex = others[0] ?? sampleMember('tour-sample-alex', 'Alex');
+    const jordan =
+      others[1] ?? others[0] ?? sampleMember('tour-sample-jordan', 'Jordan');
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+    const payment = (
+      id: string,
+      from: Member,
+      to: Member,
+      totalPaid: number,
+      days: number,
+      batchId?: string
+    ) =>
+      new History({
+        id,
+        date: daysAgo(days),
+        paidByMemberRef: from.ref!,
+        paidByMember: from,
+        paidToMemberRef: to.ref!,
+        paidToMember: to,
+        totalPaid,
+        batchId,
+        // Built locally; the tour never reads or writes it
+        ref: doc(this.fs, `history/${id}`) as DocumentReference<History>,
+      });
+    return [
+      payment('tour-sample-1', me, alex, 42.5, 3),
+      payment('tour-sample-2', jordan, me, 118.2, 10),
+      payment('tour-sample-3', me, alex, 64, 20, 'tour-sample-batch'),
+    ];
   }
 
   showHelp(): void {

@@ -5,10 +5,13 @@
     <div class="help-icon" data-testid="add-memorized-help-icon-container">
       <mat-icon
         matTooltip="Help"
-        (click)="showHelp()"
-        (keydown.enter)="showHelp(); $event.preventDefault()"
+        (click)="startTour()"
+        (keydown.enter)="startTour(); $event.preventDefault()"
+        (keydown.space)="startTour(); $event.preventDefault()"
+        tabindex="0"
+        role="button"
         data-testid="add-memorized-help-button"
-        aria-label="Show help for memorizing expenses"
+        aria-label="Take a guided tour of memorizing an expense"
       >
         help
       </mat-icon>
@@ -22,7 +25,7 @@
       (submit)="$event.preventDefault()"
     >
       <div>
-        <mat-form-field id="paid-by-select">
+        <mat-form-field data-tour-anchor="payer" id="paid-by-select">
           <mat-label>Payer</mat-label>
           <mat-select
             [value]="expenseModel().paidByMember"
@@ -41,14 +44,14 @@
         </mat-form-field>
       </div>
       <div class="flex-wrap fw-start">
-        <mat-form-field appearance="fill" id="description">
+        <mat-form-field data-tour-anchor="description" appearance="fill" id="description">
           <mat-label>Description</mat-label>
           <input matInput [formField]="expenseForm.description" />
           @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
-        <mat-form-field
+        <mat-form-field data-tour-anchor="category"
           id="category-select"
           [class.hidden]="activeCategories().length === 1"
         >
@@ -70,7 +73,7 @@
         </mat-form-field>
       </div>
       <div class="flex-wrap fw-start">
-        <mat-form-field
+        <mat-form-field data-tour-anchor="total"
           appearance="fill"
           floatLabel="always"
           class="total-amount-field"
@@ -109,7 +112,7 @@
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
-        <mat-form-field
+        <mat-form-field data-tour-anchor="proportional"
           appearance="fill"
           floatLabel="always"
           class="proportional-amount-field"
@@ -147,7 +150,7 @@
           </button>
           <mat-hint>Tax, tip, etc.</mat-hint>
         </mat-form-field>
-        <div class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
+        <div data-tour-anchor="remainder" class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
             {{ expenseModel().sharedAmount | currency }}
@@ -155,7 +158,7 @@
         </div>
       </div>
       <div class="flex-wrap fw-start row-gap">
-        <button
+        <button data-tour-anchor="add-split"
           mat-raised-button
           class="btn-primary"
           type="button"
@@ -164,7 +167,7 @@
         >
           Add New Split
         </button>
-        <button
+        <button data-tour-anchor="add-all-members"
           mat-raised-button
           class="btn-primary"
           type="button"
@@ -173,12 +176,12 @@
         >
           Add All Members
         </button>
-        <app-split-method-toggle
+        <app-split-method-toggle data-tour-anchor="split-method"
           [(splitMethod)]="splitMethod"
           (methodChanged)="onSplitMethodChange()"
         />
       </div>
-      <div class="mt-3">
+      <div class="mt-3" data-tour-anchor="splits">
         @for (split of expenseModel().splits; track $index; let i = $index) {
           <div class="flex-wrap fw-start row-gap">
             <div class="splits-1">
@@ -312,7 +315,7 @@
         }
       </div>
     </form>
-    <div class="flex-wrap fw-start row-gap mt-3">
+    <div class="flex-wrap fw-start row-gap mt-3" data-tour-anchor="save-actions">
       <button
         mat-raised-button
         class="btn-secondary"

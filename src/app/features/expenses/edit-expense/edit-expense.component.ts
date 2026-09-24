@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   model,
   Signal,
@@ -73,9 +74,14 @@ import { AllocationInput, AllocationSplit, AllocationUtilsService } from '@utils
 import { toIsoFormat } from '@utils/date-utils';
 import { RentalUtilsService } from '@utils/rental-utils.service';
 import { SplitMethod } from '@utils/split-method';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { FirebaseError } from 'firebase/app';
 import { getDownloadURL, getStorage } from 'firebase/storage';
+import {
+  buildExpenseFormTourSteps,
+  createExpenseFormTour,
+} from '../expense-form.tour';
 
 @Component({
   selector: 'app-edit-expense',
@@ -121,6 +127,7 @@ export class EditExpenseComponent {
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly rentalUtils = inject(RentalUtilsService);
   protected readonly calculatorOverlay = inject(CalculatorOverlayService);
+  protected readonly guidedTour = inject(GuidedTourService);
   protected readonly localeService = inject(LocaleService);
 
   readonly #currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
@@ -205,6 +212,8 @@ export class EditExpenseComponent {
   }
 
   constructor() {
+    // Leaving the page mid-tour ends it (and restores the form it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
     const expense = this.expense();
     const receiptRef = expense.receiptRef;
     if (receiptRef) {
@@ -474,6 +483,8 @@ export class EditExpenseComponent {
   }
 
   onSplitMethodChange(): void {
+    // Switching methods is a change worth saving on its own
+    this.modelDirty.set(true);
     this.recalculateAllocation();
   }
 
@@ -488,24 +499,27 @@ export class EditExpenseComponent {
     return ((splits[index]!.shares ?? 0) / totalShares) * 100;
   }
 
-  getAssignedTotal = (): number =>
+  readonly assignedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(this.stringUtils.toNumber(s.assignedAmount)),
         0
       )
-    );
+    )
+  );
 
-  getAllocatedTotal = (): number =>
+  readonly allocatedTotal = computed(() =>
     this.localeService.roundToCurrency(
       this.expenseModel().splits.reduce(
         (total, s) => total + this.localeService.roundToCurrency(s.allocatedAmount),
         0
       )
-    );
+    )
+  );
 
-  expenseFullyAllocated = (): boolean =>
-    this.stringUtils.toNumber(this.expenseFormData().amount) === this.getAllocatedTotal();
+  readonly expenseFullyAllocated = computed(
+    () => this.stringUtils.toNumber(this.expenseFormData().amount) === this.allocatedTotal()
+  );
 
   isLastSplit(index: number): boolean {
     return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
@@ -644,6 +658,34 @@ export class EditExpenseComponent {
         }));
       }
       this.recalculateAllocation();
+    });
+  }
+
+  /**
+   * Starts the guided tour. The tour switches the split method to
+   * demonstrate each option; the form is restored to exactly
+   * what the user had when the tour ends, however it ends.
+   */
+  startTour(): void {
+    const tour = createExpenseFormTour({
+      model: this.expenseModel,
+      formData: this.expenseFormData,
+      splitMethod: this.splitMethod,
+      dirty: this.modelDirty,
+      recalculate: () => this.recalculateAllocation(),
+      formatAmount: (value) => this.#formatForInput(value),
+      toNumber: (value) => this.stringUtils.toNumber(value),
+    });
+    this.guidedTour.start({
+      id: 'edit-expense',
+      steps: buildExpenseFormTourSteps('edit-expense', {
+        ...tour.hooks,
+        categoryVisible: () => this.categories().length > 1,
+        hasRental: () => this.hasRental(),
+        hasReceipt: () => !!this.receiptUrl(),
+      }),
+      onEnd: tour.restore,
+      fullHelp: () => this.showHelp(),
     });
   }
 

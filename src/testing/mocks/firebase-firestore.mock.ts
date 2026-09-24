@@ -40,10 +40,16 @@ export interface QueryDocumentSnapshot<T = unknown> {
   exists(): true;
 }
 
+export interface SnapshotMetadata {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+}
+
 export interface QuerySnapshot<T = unknown> {
   docs: QueryDocumentSnapshot<T>[];
   size: number;
   empty: boolean;
+  metadata: SnapshotMetadata;
   forEach(callback: (result: QueryDocumentSnapshot<T>) => void): void;
 }
 

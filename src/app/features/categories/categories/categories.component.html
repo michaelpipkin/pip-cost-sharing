@@ -18,10 +18,13 @@
       <div class="help-icon" data-testid="categories-help-icon-container">
         <mat-icon
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp()"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
+          tabindex="0"
+          role="button"
           data-testid="categories-help-button"
-          aria-label="help"
+          aria-label="Take a guided tour of categories"
         >
           help
         </mat-icon>
@@ -29,7 +32,11 @@
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     @if (categories().length > 1) {
-      <div class="filters" data-testid="category-filters">
+      <div
+        class="filters"
+        data-testid="category-filters"
+        data-tour-anchor="category-filters"
+      >
         <mat-form-field
           class="clearable"
           subscriptSizing="dynamic"
@@ -75,6 +82,7 @@
         [class.hidden]="!currentMember()?.groupAdmin"
         (click)="addCategory()"
         data-testid="add-category-button"
+        data-tour-anchor="add-category"
         aria-label="Add category"
       >
         Add Category
@@ -84,6 +92,7 @@
       <div
         class="table-container mat-elevation-z8"
         data-testid="categories-table-container"
+        data-tour-anchor="categories-table"
       >
         <div class="scrollable-table">
           <table

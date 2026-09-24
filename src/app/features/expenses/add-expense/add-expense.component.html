@@ -5,11 +5,11 @@
     <div class="help-icon" data-testid="help-icon-container">
       <mat-icon
         matTooltip="Help"
-        (click)="showHelp()"
-        (keydown.enter)="showHelp()"
-        (keydown.space)="showHelp(); $event.preventDefault()"
+        (click)="startTour()"
+        (keydown.enter)="startTour()"
+        (keydown.space)="startTour(); $event.preventDefault()"
         data-testid="help-button"
-        aria-label="Show help for adding expenses"
+        aria-label="Take a guided tour of adding an expense"
         tabindex="0"
         role="button"
       >
@@ -25,7 +25,11 @@
       (submit)="$event.preventDefault()"
     >
       <div class="flex-wrap fw-start">
-        <mat-form-field id="paid-by-select" data-testid="payer-field">
+        <mat-form-field
+          id="paid-by-select"
+          data-testid="payer-field"
+          data-tour-anchor="payer"
+        >
           <mat-label>Payer</mat-label>
           <mat-select
             [value]="expenseModel().paidByMember"
@@ -49,6 +53,7 @@
           class="datepicker-with-hint"
           subscriptSizing="dynamic"
           data-testid="date-field"
+          data-tour-anchor="date"
         >
           <mat-label>Date</mat-label>
           <input
@@ -80,6 +85,7 @@
           appearance="fill"
           id="description"
           data-testid="description-field"
+          data-tour-anchor="description"
         >
           <mat-label>Description</mat-label>
           <input
@@ -94,6 +100,7 @@
         </mat-form-field>
         <mat-form-field
           id="category-select"
+          data-tour-anchor="category"
           [class.hidden]="activeCategories().length === 1"
         >
           <mat-label>Category</mat-label>
@@ -118,6 +125,7 @@
           appearance="fill"
           floatLabel="always"
           class="total-amount-field"
+          data-tour-anchor="total"
         >
           <mat-label>Total Amount</mat-label>
           <input
@@ -157,6 +165,7 @@
           appearance="fill"
           floatLabel="always"
           class="proportional-amount-field"
+          data-tour-anchor="proportional"
           [class.hidden]="splitMethod() !== 'amount'"
         >
           <mat-label>Proportional Amount</mat-label>
@@ -194,7 +203,11 @@
             <mat-error>{{ error.message }}</mat-error>
           }
         </mat-form-field>
-        <div class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
+        <div
+          class="mock-input"
+          data-tour-anchor="remainder"
+          [class.hidden]="splitMethod() !== 'amount'"
+        >
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
             {{ expenseModel().sharedAmount | currency }}
@@ -203,10 +216,16 @@
       </div>
       <div class="mb-3">
         @if (!!fileName()) {
-          <div class="attachment" data-testid="remove-file-attachment">
+          <div
+            class="attachment"
+            data-testid="remove-file-attachment"
+            data-tour-anchor="receipt"
+          >
             <button
               mat-mini-fab
               class="btn btn-danger"
+              type="button"
+              (click)="removeFile()"
               data-testid="remove-file-button"
               aria-label="Remove attached receipt file"
             >
@@ -217,7 +236,11 @@
             </span>
           </div>
         } @else {
-          <div class="attachment" data-testid="attach-file-area">
+          <div
+            class="attachment"
+            data-testid="attach-file-area"
+            data-tour-anchor="receipt"
+          >
             <input
               type="file"
               accept=".pdf,image/*"
@@ -230,6 +253,7 @@
             <button
               mat-mini-fab
               class="btn btn-success"
+              type="button"
               (click)="openFileSelectionDialog()"
               data-testid="attach-file-button"
               aria-label="Attach receipt file"
@@ -249,6 +273,7 @@
           type="button"
           (click)="addSplit()"
           data-testid="add-split-button"
+          data-tour-anchor="add-split"
           aria-label="Add New Split"
           [disabled]="activeMembers().length === expenseModel().splits.length"
         >
@@ -260,17 +285,19 @@
           type="button"
           (click)="addAllActiveGroupMembers()"
           data-testid="add-all-members-button"
+          data-tour-anchor="add-all-members"
           aria-label="Add All Members"
           [disabled]="activeMembers().length === expenseModel().splits.length"
         >
           Add All Members
         </button>
         <app-split-method-toggle
+          data-tour-anchor="split-method"
           [(splitMethod)]="splitMethod"
           (methodChanged)="onSplitMethodChange()"
         />
       </div>
-      <div class="mt-3">
+      <div class="mt-3" data-tour-anchor="splits">
         @for (split of expenseModel().splits; track $index; let i = $index) {
           <div class="flex-wrap fw-start row-gap">
             <div class="splits-1">
@@ -410,7 +437,7 @@
         }
       </div>
     </form>
-    <div class="flex-wrap fw-start row-gap mt-3">
+    <div class="flex-wrap fw-start row-gap mt-3" data-tour-anchor="save-actions">
       <button
         mat-raised-button
         class="btn-secondary"

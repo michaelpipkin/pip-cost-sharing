@@ -15,11 +15,11 @@
       <div class="help-icon" data-testid="history-help-icon-container">
         <mat-icon
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp()"
-          (keydown.space)="showHelp(); $event.preventDefault()"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
           data-testid="history-help-button"
-          aria-label="Show help for history"
+          aria-label="Take a guided tour of history"
           tabindex="0"
           role="button"
         >
@@ -52,6 +52,7 @@
           subscriptSizing="dynamic"
           class="mb-3"
           data-testid="history-member-field"
+          data-tour-anchor="history-member"
         >
           <mat-label>Select Member</mat-label>
           <mat-select name="member" [(ngModel)]="selectedMember" docRefCompare>
@@ -63,7 +64,7 @@
           </mat-select>
         </mat-form-field>
       </div>
-      <div class="filters">
+      <div class="filters" data-tour-anchor="history-dates">
         <mat-form-field
           appearance="fill"
           class="datepicker"
@@ -126,7 +127,10 @@
         </mat-form-field>
       </div>
       @if (filteredHistory().length > 0) {
-        <div class="table-container mat-elevation-z8">
+        <div
+          class="table-container mat-elevation-z8"
+          data-tour-anchor="history-table"
+        >
           <div class="scrollable-table">
             <table
               mat-table
@@ -174,7 +178,12 @@
                 </td>
               </ng-container>
               <ng-container matColumnDef="type">
-                <th mat-header-cell *matHeaderCellDef class="cell-center">
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  class="cell-center"
+                  data-tour-anchor="history-type"
+                >
                   Type
                 </th>
                 <td mat-cell *matCellDef="let history" class="cell-center">

@@ -350,6 +350,9 @@ export function createMockMatDialog() {
   return {
     open: vi.fn(() => ({
       afterClosed: () => ({ subscribe: vi.fn() }),
+      // Opens instantly, for guided tours that wait on it
+      afterOpened: () => ({ subscribe: (next: () => void) => next() }),
+      close: vi.fn(),
     })),
   };
 }

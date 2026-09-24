@@ -87,9 +87,17 @@ export class MemberService implements IMemberService {
       orderBy('displayName')
     );
 
+    // The first result can come from Firestore's in-memory cache, which holds
+    // only the members this session has already read - after a refresh,
+    // usually just the current member (from getMemberByUserRef). Publishing
+    // that would mark the store loaded with a partial group, so wait for the
+    // server's full list; later results (cached or not) apply as usual.
+    let syncedWithServer = false;
     this.#unsubscribe = onSnapshot(
       q,
       (querySnap) => {
+        if (querySnap.metadata.fromCache && !syncedWithServer) return;
+        syncedWithServer = true;
         try {
           const groupMembers: Member[] = querySnap.docs.map(
             (doc) =>

@@ -1,6 +1,10 @@
 <h1 mat-dialog-title data-testid="add-member-title">Add Member</h1>
 <form data-testid="add-member-form" aria-label="Add member form" (submit)="$event.preventDefault()">
-  <mat-dialog-content class="content" data-testid="add-member-content">
+  <mat-dialog-content
+    class="content"
+    data-testid="add-member-content"
+    data-tour-anchor="add-member-fields"
+  >
     <mat-form-field appearance="fill" data-testid="member-name-field">
       <mat-label>Name</mat-label>
       <input

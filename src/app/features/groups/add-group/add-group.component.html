@@ -1,7 +1,7 @@
 <h1 mat-dialog-title data-testid="add-group-title">Add New Group</h1>
 <form (submit)="$event.preventDefault()">
   <mat-dialog-content class="content">
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" data-tour-anchor="add-group-name">
       <mat-label>Group name</mat-label>
       <input
         matInput
@@ -14,7 +14,7 @@
         </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" data-tour-anchor="add-group-display-name">
       <mat-label>Your name in the group</mat-label>
       <input
         matInput
@@ -27,7 +27,11 @@
         </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill" class="mb-4">
+    <mat-form-field
+      appearance="fill"
+      class="mb-4"
+      data-tour-anchor="add-group-currency"
+    >
       <mat-label>Currency</mat-label>
       <mat-select
         [formField]="newGroupForm.currencyCode"
@@ -54,7 +58,7 @@
         Cannot be changed once expenses are added to the group
       </mat-hint>
     </mat-form-field>
-    <div class="toggle">
+    <div class="toggle" data-tour-anchor="add-group-auto-add">
       <mat-slide-toggle
         [formField]="newGroupForm.autoAddMembers"
         data-testid="auto-add-members-toggle"

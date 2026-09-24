@@ -1,0 +1,68 @@
+@if (tour.step(); as step) {
+  <div class="guided-tour-card" cdkTrapFocus>
+    <div class="guided-tour-header">
+      <h4
+        id="guided-tour-title"
+        class="guided-tour-title"
+        aria-live="polite"
+        data-testid="guided-tour-title"
+      >
+        {{ step.title }}
+      </h4>
+      <button
+        matIconButton
+        type="button"
+        (click)="tour.stop('closed')"
+        aria-label="Close tour"
+        data-testid="guided-tour-close-button"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <p
+      id="guided-tour-text"
+      class="guided-tour-text"
+      data-testid="guided-tour-text"
+    >
+      {{ step.text }}
+    </p>
+    <div class="guided-tour-footer">
+      <span class="guided-tour-count" data-testid="guided-tour-count">
+        {{ tour.stepNumber() }} of {{ tour.stepCount() }}
+      </span>
+      <div class="guided-tour-buttons">
+        @if (!tour.isFirst()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="tour.prev()"
+            data-testid="guided-tour-back-button"
+          >
+            Back
+          </button>
+        }
+        @if (tour.isLast() && tour.hasFullHelp()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="tour.openFullHelp()"
+            data-testid="guided-tour-full-help-button"
+          >
+            Read full help
+          </button>
+        }
+        <!-- One button for Next/Done so keyboard focus survives the last step -->
+        <button
+          mat-raised-button
+          class="btn-primary"
+          type="button"
+          (click)="onPrimary()"
+          data-guided-tour-primary
+          data-testid="guided-tour-primary-button"
+        >
+          {{ tour.isLast() ? 'Done' : 'Next' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

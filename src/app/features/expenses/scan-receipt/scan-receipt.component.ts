@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   signal,
   Signal,
@@ -28,6 +29,7 @@ import { Member } from '@models/member';
 import { ParsedReceipt } from '@models/receipt-scan';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { CameraService } from '@services/camera.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
 import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
 import {
@@ -41,6 +43,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { StringUtils } from '@utils/string-utils.service';
 import { DocumentReference } from 'firebase/firestore';
+import { buildScanReceiptTourSteps } from './scan-receipt.tour';
 
 const LOW_CONFIDENCE_THRESHOLD = 70;
 
@@ -97,6 +100,7 @@ export class ScanReceiptComponent {
   protected readonly receiptScanService = inject(ReceiptScanService);
   protected readonly receiptScanHandoff = inject(ReceiptScanHandoffService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
+  protected readonly guidedTour = inject(GuidedTourService);
 
   activeMembers: Signal<Member[]> = this.memberStore.activeGroupMembers;
 
@@ -110,10 +114,10 @@ export class ScanReceiptComponent {
   protected readonly description = signal<string>('');
   protected readonly lineItems = signal<ScanLineItemRow[]>([]);
 
-
   constructor() {
+    // Leaving the page mid-tour ends it (and puts back what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
   }
-
 
   protected readonly totalAmountValue = computed(() =>
     this.stringUtils.toNumber(this.totalAmount())
@@ -166,7 +170,8 @@ export class ScanReceiptComponent {
   }
 
   protected async selectReceiptPhoto(): Promise<void> {
-    const accepted = await this.receiptFileSelection.ensureReceiptPolicyAccepted();
+    const accepted =
+      await this.receiptFileSelection.ensureReceiptPolicyAccepted();
     if (!accepted) return;
 
     const result = await this.receiptFileSelection.pickSource(
@@ -268,6 +273,76 @@ export class ScanReceiptComponent {
       data: { sectionId: 'scan-receipt' },
     };
     this.dialog.open(HelpDialogComponent, dialogConfig);
+  }
+
+  /**
+   * Starts the guided tour. Before a receipt is scanned it shows a sample
+   * scan (with no file, so Continue stays disabled), and it puts the page
+   * back exactly when it ends.
+   */
+  startTour(): void {
+    const snapshot = {
+      hasScanned: this.hasScanned(),
+      fileName: this.fileName(),
+      totalAmount: this.totalAmount(),
+      taxAmount: this.taxAmount(),
+      tipAmount: this.tipAmount(),
+      description: this.description(),
+      lineItems: this.lineItems(),
+    };
+    const usingSample = !this.hasScanned();
+    if (usingSample) this.#loadTourSample();
+    this.guidedTour.start({
+      id: 'scan-receipt',
+      steps: buildScanReceiptTourSteps({
+        usingSample: () => usingSample,
+        showScanned: (scanned) => {
+          if (usingSample) this.hasScanned.set(scanned);
+        },
+      }),
+      onEnd: () => {
+        this.hasScanned.set(snapshot.hasScanned);
+        this.fileName.set(snapshot.fileName);
+        this.totalAmount.set(snapshot.totalAmount);
+        this.taxAmount.set(snapshot.taxAmount);
+        this.tipAmount.set(snapshot.tipAmount);
+        this.description.set(snapshot.description);
+        this.lineItems.set(snapshot.lineItems);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  /**
+   * A sample restaurant receipt: items for you and (when the group has one)
+   * another member, a shared appetizer, and one low-confidence line.
+   */
+  #loadTourSample(): void {
+    const me = this.memberStore.currentMember()?.ref ?? null;
+    const other =
+      this.activeMembers().find((m) => me && !m.ref?.eq(me))?.ref ?? null;
+    const item = (
+      description: string,
+      amount: number,
+      assignedTo: DocumentReference<Member> | null,
+      confidence = 95
+    ): ScanLineItemRow => ({
+      description,
+      amount: this.#formatForInput(amount),
+      confidence,
+      assignedTo,
+    });
+    this.fileName.set('sample-receipt.jpg');
+    this.description.set('Corner Bistro');
+    this.totalAmount.set(this.#formatForInput(51.3));
+    this.taxAmount.set(this.#formatForInput(3.3));
+    this.tipAmount.set(this.#formatForInput(8));
+    this.lineItems.set([
+      item('Cheeseburger', 14.5, me),
+      item('Cobb Salad', 12.25, other),
+      item('Nachos', 9.75, null),
+      item('Lemonade', 3.5, me, 55),
+    ]);
   }
 
   private setSelectedFile(file: File): void {

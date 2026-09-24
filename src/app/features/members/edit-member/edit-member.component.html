@@ -5,7 +5,11 @@
   (submit)="$event.preventDefault()"
 >
   <mat-dialog-content data-testid="edit-member-content">
-    <div class="content" data-testid="edit-member-fields">
+    <div
+      class="content"
+      data-testid="edit-member-fields"
+      data-tour-anchor="edit-member-fields"
+    >
       <mat-form-field appearance="fill" data-testid="edit-member-name-field">
         <mat-label>Member name</mat-label>
         <input
@@ -55,6 +59,7 @@
       class="toggle mt-2"
       [class.hidden]="!currentMember()?.groupAdmin"
       data-testid="edit-member-toggles"
+      data-tour-anchor="edit-member-toggles"
     >
       <mat-slide-toggle
         [formField]="editMemberForm.active"
@@ -74,7 +79,10 @@
       </mat-slide-toggle>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions data-testid="edit-member-actions">
+  <mat-dialog-actions
+    data-testid="edit-member-actions"
+    data-tour-anchor="edit-member-actions"
+  >
     <button
       mat-raised-button
       class="btn-secondary"

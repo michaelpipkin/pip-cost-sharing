@@ -4,7 +4,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { GroupStore } from '@store/group.store';
@@ -24,6 +26,7 @@ import {
   mockHistory,
   mockMember,
 } from '@testing/test-helpers';
+import { getFirestore } from 'firebase/firestore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryComponent } from './history.component';
 
@@ -119,6 +122,7 @@ describe('HistoryComponent', () => {
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: getFirestore, useValue: {} },
       ],
     }).compileComponents();
 
@@ -321,6 +325,79 @@ describe('HistoryComponent', () => {
       const history = mockHistory({ splitsPaid: [] });
       component.onRowClick(history);
       expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+    });
+  });
+  describe('guided tour', () => {
+    let tourConfig: GuidedTourConfig;
+    let startSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      startSpy = vi
+        .spyOn(TestBed.inject(GuidedTourService), 'start')
+        .mockImplementation(async (config) => {
+          tourConfig = config;
+        });
+    });
+
+    const render = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    const byTestId = (id: string) =>
+      fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+
+    it('should start the history tour from the help icon', () => {
+      byTestId('history-help-button').click();
+
+      expect(startSpy).toHaveBeenCalledOnce();
+      expect(tourConfig.id).toBe('history');
+    });
+
+    it('should show sample payments to and from you when there is no history', async () => {
+      mockHistoryStore.groupHistory.set([]);
+      await render();
+      expect(byTestId('no-history-placeholder')).toBeTruthy();
+
+      component.startTour();
+      await render();
+
+      expect(byTestId('no-history-placeholder')).toBeNull();
+      // All three samples involve you, so they pass the member filter, and
+      // they're recent enough for the default 30-day range
+      expect(component.filteredHistory()).toHaveLength(3);
+      // The other side of each payment is a real member when there is one
+      const names = component
+        .filteredHistory()
+        .flatMap((h) => [
+          h.paidByMember!.displayName,
+          h.paidToMember!.displayName,
+        ]);
+      expect(names).toContain('Regular');
+      expect(component.filteredHistory().some((h) => h.batchId)).toBe(true);
+      expect(tourConfig.steps[0]!.text).toContain('samples');
+    });
+
+    it('should use the real history when there is some', () => {
+      component.startTour();
+
+      expect(component.history().map((h) => h.id)).toEqual(['h1', 'h2']);
+      expect(tourConfig.steps[0]!.text).not.toContain('samples');
+    });
+
+    it('should clear the sample when the tour ends', async () => {
+      mockHistoryStore.groupHistory.set([]);
+      component.startTour();
+      tourConfig.onEnd!('closed');
+      await render();
+
+      expect(component.history()).toEqual([]);
+      expect(byTestId('no-history-placeholder')).toBeTruthy();
+    });
+
+    it('should stop the tour when the page is destroyed', () => {
+      const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledWith('closed');
     });
   });
 });

@@ -5,10 +5,13 @@
     <div class="help-icon" data-testid="help-icon-container">
       <mat-icon
         matTooltip="Help"
-        (click)="showHelp()"
-        (keydown.enter)="showHelp()"
+        (click)="startTour()"
+        (keydown.enter)="startTour(); $event.preventDefault()"
+        (keydown.space)="startTour(); $event.preventDefault()"
         data-testid="help-button"
-        aria-label="Show help for the receipt scan wizard"
+        aria-label="Take a guided tour of creating an expense from a receipt"
+        tabindex="0"
+        role="button"
       >
         help
       </mat-icon>
@@ -25,35 +28,45 @@
   />
 
   @if (!hasScanned()) {
-    <mat-card class="mt-4 placeholder-content placeholder-card" data-testid="select-photo-placeholder">
+    <mat-card
+      class="mt-4 placeholder-content placeholder-card"
+      data-testid="select-photo-placeholder"
+    >
       <mat-icon class="placeholder-icon" fontSet="material-symbols-outlined">
         document_scanner
       </mat-icon>
       <p class="placeholder-text placeholder-card-text">
-        Select a photo of your receipt and we'll pull out the total, tax,
-        tip, and line items for you to assign.
+        Select a photo of your receipt and we'll pull out the total, tax, tip,
+        and line items for you to assign.
       </p>
       <button
         matButton="elevated"
         class="btn-primary"
         (click)="selectReceiptPhoto()"
         data-testid="select-photo-button"
+        data-tour-anchor="receipt-select"
       >
         Select Receipt Photo
       </button>
     </mat-card>
   } @else {
     <p>
-      Review the scanned amounts below, then assign each line item to
-      whoever purchased it - leave an item unassigned if it was shared.
-      Unassigned items are split evenly among assigned members; tax and tip
-      are split proportionally to what each member purchased, once you
-      continue to Add Expense.
+      Review the scanned amounts below, then assign each line item to whoever
+      purchased it - leave an item unassigned if it was shared. Unassigned items
+      are split evenly among assigned members; tax and tip are split
+      proportionally to what each member purchased, once you continue to Add
+      Expense.
     </p>
 
-    <div class="scanned-file-info" data-testid="scanned-file-info">
+    <div
+      class="scanned-file-info"
+      data-testid="scanned-file-info"
+      data-tour-anchor="receipt-file"
+    >
       <mat-icon>description</mat-icon>
-      <span class="filename" data-testid="scanned-filename">{{ fileName() }}</span>
+      <span class="filename" data-testid="scanned-filename">
+        {{ fileName() }}
+      </span>
       <button
         mat-stroked-button
         type="button"
@@ -64,8 +77,12 @@
       </button>
     </div>
 
-    <div class="amounts-row">
-      <mat-form-field appearance="fill" floatLabel="always" class="amount-total">
+    <div class="amounts-row" data-tour-anchor="receipt-amounts">
+      <mat-form-field
+        appearance="fill"
+        floatLabel="always"
+        class="amount-total"
+      >
         <mat-label>Total Amount</mat-label>
         <input
           matInput
@@ -84,7 +101,11 @@
           <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
         }
       </mat-form-field>
-      <mat-form-field appearance="fill" floatLabel="always" class="amount-small">
+      <mat-form-field
+        appearance="fill"
+        floatLabel="always"
+        class="amount-small"
+      >
         <mat-label>Tax</mat-label>
         <input
           matInput
@@ -103,7 +124,11 @@
           <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
         }
       </mat-form-field>
-      <mat-form-field appearance="fill" floatLabel="always" class="amount-small">
+      <mat-form-field
+        appearance="fill"
+        floatLabel="always"
+        class="amount-small"
+      >
         <mat-label>Tip</mat-label>
         <input
           matInput
@@ -124,7 +149,12 @@
       </mat-form-field>
     </div>
 
-    <mat-form-field appearance="fill" id="description" class="mb-2">
+    <mat-form-field
+      appearance="fill"
+      id="description"
+      class="mb-2"
+      data-tour-anchor="receipt-description"
+    >
       <mat-label>Description</mat-label>
       <input
         matInput
@@ -135,20 +165,34 @@
       />
     </mat-form-field>
 
-    <div class="line-items" data-testid="line-items-list">
+    <div
+      class="line-items"
+      data-testid="line-items-list"
+      data-tour-anchor="receipt-items"
+    >
       @for (item of lineItems(); track $index) {
         <div class="line-item-row" data-testid="line-item-row">
-          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-description">
+          <mat-form-field
+            appearance="fill"
+            subscriptSizing="dynamic"
+            class="line-item-description"
+          >
             <input
               matInput
               [value]="item.description"
-              (blur)="updateItem($index, { description: $any($event.target).value })"
+              (blur)="
+                updateItem($index, { description: $any($event.target).value })
+              "
               placeholder="Item description"
               [attr.data-testid]="'line-item-description-' + $index"
               aria-label="Line item description"
             />
           </mat-form-field>
-          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-amount">
+          <mat-form-field
+            appearance="fill"
+            subscriptSizing="dynamic"
+            class="line-item-amount"
+          >
             <input
               matInput
               class="number-right"
@@ -163,14 +207,24 @@
               <span matTextPrefix>{{ localeService.currency().symbol }}</span>
             }
             @if (localeService.currency().symbolPosition === 'suffix') {
-              <span matTextSuffix>&nbsp;{{ localeService.currency().symbol }}</span>
+              <span matTextSuffix>
+                &nbsp;{{ localeService.currency().symbol }}
+              </span>
             }
           </mat-form-field>
-          <mat-form-field appearance="fill" subscriptSizing="dynamic" class="line-item-assignee">
+          <mat-form-field
+            appearance="fill"
+            subscriptSizing="dynamic"
+            class="line-item-assignee"
+            [attr.data-tour-anchor]="$index === 0 ? 'receipt-assign' : null"
+          >
             <mat-select
               [value]="item.assignedTo"
-              (selectionChange)="updateItem($index, { assignedTo: $event.value })"
+              (selectionChange)="
+                updateItem($index, { assignedTo: $event.value })
+              "
               docRefCompare
+              placeholder="Shared / No one"
               [attr.data-testid]="'line-item-assignee-' + $index"
               aria-label="Assign this item to a member"
             >
@@ -215,7 +269,11 @@
       </button>
     </div>
 
-    <div class="flex-wrap fw-start row-gap mt-3" data-testid="running-totals">
+    <div
+      class="flex-wrap fw-start row-gap mt-3"
+      data-testid="running-totals"
+      data-tour-anchor="receipt-totals"
+    >
       @for (row of memberSubtotals(); track row.member.ref) {
         <div class="mock-input" data-testid="member-subtotal">
           <span class="mock-label">{{ row.member.displayName }}</span>
@@ -224,7 +282,9 @@
       }
       <div class="mock-input" data-testid="unassigned-items-total">
         <span class="mock-label">Unassigned Items (split evenly)</span>
-        <span class="mock-value-right">{{ unassignedItemsTotal() | currency }}</span>
+        <span class="mock-value-right">
+          {{ unassignedItemsTotal() | currency }}
+        </span>
       </div>
       <div class="mock-input" data-testid="tax-tip-total">
         <span class="mock-label">Tax + Tip (split proportionally)</span>
@@ -232,8 +292,16 @@
       </div>
     </div>
 
-    <div class="flex-wrap fw-center row-gap mt-3">
-      <button mat-stroked-button type="button" (click)="onCancel()" data-testid="cancel-button">
+    <div
+      class="flex-wrap fw-center row-gap mt-3"
+      data-tour-anchor="receipt-actions"
+    >
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="onCancel()"
+        data-testid="cancel-button"
+      >
         Cancel
       </button>
       <button

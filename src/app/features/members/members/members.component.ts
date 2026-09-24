@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   model,
@@ -12,7 +13,11 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogConfig,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -35,6 +40,11 @@ import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { InviteService } from '@services/invite.service';
+import {
+  GUIDED_TOUR_DIALOG_CONFIG,
+  GuidedTourDialogs,
+} from '@services/guided-tour-dialogs';
+import { GuidedTourService } from '@services/guided-tour.service';
 import { SortingService } from '@services/sorting.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
@@ -43,6 +53,8 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
+import { buildMembersTourSteps } from './members.tour';
+import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
 
 // Anti-spam window for invites, mirrored server-side in
 // functions/src/index.ts (INVITE_COOLDOWN_MS). This copy is UX only — the
@@ -83,10 +95,18 @@ export class MembersComponent {
   protected readonly analytics = inject(AnalyticsService);
   protected readonly inviteService = inject(InviteService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
+  protected readonly guidedTour = inject(GuidedTourService);
+  protected readonly fs = inject(getFirestore);
 
   user: Signal<User | null> = this.userStore.user;
   currentMember: Signal<Member | null> = this.memberStore.currentMember;
-  groupMembers: Signal<Member[]> = this.memberStore.groupMembers;
+  // Sample members the guided tour adds when you're the only member. Held
+  // here, never in the store, and cleared when the tour ends.
+  protected readonly tourSample = signal<Member[] | null>(null);
+  groupMembers: Signal<Member[]> = computed(
+    () => this.tourSample() ?? this.memberStore.groupMembers()
+  );
+  readonly #tourDialogs = new GuidedTourDialogs<'add' | 'edit'>();
   currentGroup: Signal<Group | null> = this.groupStore.currentGroup;
 
   sortField = signal<string>('displayName');
@@ -136,6 +156,9 @@ export class MembersComponent {
   });
 
   constructor() {
+    // Leaving the page mid-tour ends it (and clears what it changed)
+    inject(DestroyRef).onDestroy(() => this.guidedTour.stop('closed'));
+
     effect(() => {
       if (this.memberStore.loaded()) {
         this.loading.loadingOff();
@@ -230,8 +253,9 @@ export class MembersComponent {
     });
   }
 
-  addMember(): void {
+  addMember(forTour = false): MatDialogRef<AddMemberComponent> {
     const dialogConfig: MatDialogConfig = {
+      ...(forTour ? GUIDED_TOUR_DIALOG_CONFIG : {}),
       maxWidth: '320px',
       data: {
         groupId: this.currentGroup()!.id,
@@ -245,28 +269,109 @@ export class MembersComponent {
         });
       }
     });
+    return dialogRef;
   }
 
   onRowClick(member: Member): void {
     if (this.canEdit(member)) {
-      const dialogConfig: MatDialogConfig = {
-        maxWidth: '320px',
-        data: {
-          groupId: this.currentGroup()!.id,
-          userId: this.user()!.id,
-          isGroupAdmin: this.currentMember()!.groupAdmin,
-          member: member,
-        },
-      };
-      const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
-      dialogRef.afterClosed().subscribe((result) => {
-        if (result?.success) {
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: `Member ${result.operation}` },
-          });
-        }
-      });
+      this.editMember(member);
     }
+  }
+
+  editMember(
+    member: Member,
+    forTour = false
+  ): MatDialogRef<EditMemberComponent> {
+    const dialogConfig: MatDialogConfig = {
+      ...(forTour ? GUIDED_TOUR_DIALOG_CONFIG : {}),
+      maxWidth: '320px',
+      data: {
+        groupId: this.currentGroup()!.id,
+        userId: this.user()!.id,
+        isGroupAdmin: this.currentMember()!.groupAdmin,
+        member: member,
+      },
+    };
+    const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result?.success) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: `Member ${result.operation}` },
+        });
+      }
+    });
+    return dialogRef;
+  }
+
+  /**
+   * Starts the guided tour. When you're the only member, a few sample
+   * members are added; the tour also opens Add and Edit Member to walk
+   * through them, and puts everything back when it ends.
+   */
+  startTour(): void {
+    const previousActiveOnly = this.activeOnly();
+    const real = this.memberStore.groupMembers();
+    if (real.length <= 1) {
+      this.tourSample.set([...real, ...this.#tourSampleMembers()]);
+    }
+
+    this.guidedTour.start({
+      id: 'members',
+      steps: buildMembersTourSteps({
+        usingSample: () => this.tourSample() !== null,
+        isAdmin: () => this.isGroupAdmin(),
+        inviteColumnShown: () => this.showInviteColumn(),
+        showInactive: () => this.activeOnly.set(false),
+        openAddMember: () =>
+          this.#tourDialogs.open('add', () => this.addMember(true)),
+        openEditMember: () =>
+          this.#tourDialogs.open('edit', () =>
+            this.editMember(this.#tourEditTarget(), true)
+          ),
+        closeDialogs: () => this.#tourDialogs.close(),
+      }),
+      onEnd: () => {
+        this.#tourDialogs.close();
+        this.tourSample.set(null);
+        this.activeOnly.set(previousActiveOnly);
+      },
+      fullHelp: () => this.showHelp(),
+    });
+  }
+
+  /** Admins edit someone else (showing Remove); others edit themselves. */
+  #tourEditTarget(): Member {
+    const self = this.currentMember()!;
+    if (!this.isGroupAdmin()) return self;
+    return this.groupMembers().find((m) => m.id !== self.id) ?? self;
+  }
+
+  #tourSampleMembers(): Member[] {
+    const sample = (
+      id: string,
+      displayName: string,
+      options: { active?: boolean; groupAdmin?: boolean; registered?: boolean }
+    ) =>
+      new Member({
+        id,
+        displayName,
+        email: `${id.replace('tour-sample-', '')}@example.com`,
+        active: options.active ?? true,
+        groupAdmin: options.groupAdmin ?? false,
+        // Built locally; the tour never reads or writes it
+        userRef: options.registered
+          ? (doc(this.fs, `users/${id}`) as DocumentReference<User>)
+          : null,
+      });
+    return [
+      // Not registered yet, so admins see the invite envelope for them
+      sample('tour-sample-alex', 'Alex', {}),
+      sample('tour-sample-jordan', 'Jordan', {
+        groupAdmin: true,
+        registered: true,
+      }),
+      sample('tour-sample-sam', 'Sam', { active: false, registered: true }),
+    ];
   }
 
   showHelp(): void {

@@ -15,10 +15,13 @@
       <div class="help-icon" data-testid="members-help-icon-container">
         <mat-icon
           matTooltip="Help"
-          (click)="showHelp()"
-          (keydown.enter)="showHelp(); $event.preventDefault()"
+          (click)="startTour()"
+          (keydown.enter)="startTour(); $event.preventDefault()"
+          (keydown.space)="startTour(); $event.preventDefault()"
+          tabindex="0"
+          role="button"
           data-testid="members-help-button"
-          aria-label="Show help for members"
+          aria-label="Take a guided tour of members"
         >
           help
         </mat-icon>
@@ -26,7 +29,11 @@
     </div>
     <h4 data-testid="current-group-name">{{ currentGroup()?.name }}</h4>
     @if (groupMembers().length > 1) {
-      <div class="filters" data-testid="member-filters">
+      <div
+        class="filters"
+        data-testid="member-filters"
+        data-tour-anchor="member-filters"
+      >
         <mat-form-field
           class="clearable"
           subscriptSizing="dynamic"
@@ -71,6 +78,7 @@
           class="btn-primary"
           (click)="addMember()"
           data-testid="add-member-button"
+          data-tour-anchor="add-member"
           aria-label="Add member to group"
         >
           Add Member
@@ -81,6 +89,7 @@
       <div
         class="table-container mat-elevation-z8"
         data-testid="members-table-container"
+        data-tour-anchor="members-table"
       >
         <div class="scrollable-table">
           <table
@@ -131,7 +140,12 @@
               </td>
             </ng-container>
             <ng-container matColumnDef="invite">
-              <th mat-header-cell *matHeaderCellDef class="cell-center">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="cell-center"
+                data-tour-anchor="invite-column"
+              >
                 Invite
                 <br />
                 to App
