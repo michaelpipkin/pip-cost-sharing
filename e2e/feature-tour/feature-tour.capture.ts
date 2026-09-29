@@ -3,13 +3,13 @@
  * ===============================
  *
  * Generates the screenshots shown in the home page's "See what PipSplit can
- * do" feature-tour dialog (a 6-slide carousel). Each slide is captured at
+ * do" feature-tour dialog (a 7-slide carousel). Each slide is captured at
  * desktop and phone width.
  *
  * Output:
  *   src/assets/images/feature-tour/{slideId}-{desktop|mobile}.png
  *   slideIds: proportional, split-methods, receipt-scan, vacation-rental,
- *             settle-up, and-more
+ *             expenses, settle-up, and-more
  *   (existing files are overwritten; commit the regenerated PNGs)
  *
  * Prerequisites:
@@ -33,7 +33,7 @@
  *
  * Notes:
  *   - Slides 1, 2, 4 use the public /split calculator (no login).
- *   - Slides 3, 5, 6 need a signed-in user with a populated group. Setup runs
+ *   - Slides 3, 5, 6, 7 need a signed-in user with a populated group. Setup runs
  *     once per project in beforeAll, always in a desktop-sized context so
  *     the (desktop-oriented) page objects work, then each test signs in with
  *     the project's own device settings.
@@ -68,6 +68,7 @@ type SlideId =
   | 'split-methods'
   | 'receipt-scan'
   | 'vacation-rental'
+  | 'expenses'
   | 'settle-up'
   | 'and-more';
 
@@ -775,6 +776,26 @@ test.describe.serial('Feature tour - Group features', () => {
         : page.getByTestId('scanned-file-info'),
       block: isMobile(testInfo) ? 'end' : 'start',
       region: page.getByTestId('scan-receipt-container'),
+    });
+  });
+
+  test('expenses', async ({}, testInfo) => {
+    await page.goto('/expenses');
+    await expect(page.getByTestId('expenses-container')).toBeVisible();
+    await waitForLoadingOverlay(page);
+
+    // Expand the first expense so the split breakdown shows alongside the
+    // search filters above it.
+    await page.getByRole('button', { name: 'expand row' }).first().click();
+    const detail = page.locator('.detail-table-container');
+    await expect(detail).toBeVisible();
+
+    await capture(page, testInfo, 'expenses', {
+      // On a phone the filters + table + expanded row run taller than the
+      // screen - end on the expanded split detail so it's visible.
+      focus: isMobile(testInfo) ? detail : undefined,
+      block: isMobile(testInfo) ? 'center' : undefined,
+      region: page.getByTestId('expenses-container'),
     });
   });
 

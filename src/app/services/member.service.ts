@@ -11,6 +11,7 @@ import {
   deleteDoc,
   doc,
   documentId,
+  DocumentData,
   DocumentReference,
   getDoc,
   getDocs,
@@ -19,11 +20,18 @@ import {
   onSnapshot,
   orderBy,
   query,
+  QuerySnapshot,
   updateDoc,
   where,
 } from 'firebase/firestore';
 import { IMemberService } from './member.service.interface';
 import { SortingService } from './sorting.service';
+
+/**
+ * How long getGroupMembers() waits for a server-confirmed snapshot before
+ * publishing a cache-only one instead. See the comment there.
+ */
+const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
 
 @Injectable({
   providedIn: 'root',
@@ -90,34 +98,57 @@ export class MemberService implements IMemberService {
     // The first result can come from Firestore's in-memory cache, which holds
     // only the members this session has already read - after a refresh,
     // usually just the current member (from getMemberByUserRef). Publishing
-    // that would mark the store loaded with a partial group, so wait for the
-    // server's full list; later results (cached or not) apply as usual.
-    let syncedWithServer = false;
-    this.#unsubscribe = onSnapshot(
+    // that would mark the store loaded with a partial group, so the first
+    // cache-only result is held back for a server-confirmed one instead.
+    // That confirmation can be slow to arrive (observed hanging indefinitely
+    // against the emulator, on a subcollection a local write had just primed
+    // the cache for) - GROUP_MEMBERS_SYNC_TIMEOUT_MS bounds the wait, after
+    // which the held-back result is published rather than leaving the page
+    // stuck loading; a live update corrects it moments later if it was
+    // genuinely incomplete.
+    let settled = false;
+    let pending: QuerySnapshot<DocumentData> | null = null;
+    const publish = (querySnap: QuerySnapshot<DocumentData>) => {
+      try {
+        const groupMembers: Member[] = querySnap.docs.map(
+          (doc) =>
+            new Member({
+              id: doc.id,
+              ...doc.data(),
+              ref: doc.ref as DocumentReference<Member>,
+            })
+        );
+        this.memberStore.setGroupMembers(groupMembers);
+      } catch (error) {
+        this.analytics.logError(
+          'Member Service',
+          'getGroupMembers',
+          'Failed to process group members snapshot',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
+    };
+    const timeoutId = setTimeout(() => {
+      if (settled || !pending) return;
+      settled = true;
+      publish(pending);
+    }, GROUP_MEMBERS_SYNC_TIMEOUT_MS);
+
+    const unsubscribeSnapshot = onSnapshot(
       q,
       (querySnap) => {
-        if (querySnap.metadata.fromCache && !syncedWithServer) return;
-        syncedWithServer = true;
-        try {
-          const groupMembers: Member[] = querySnap.docs.map(
-            (doc) =>
-              new Member({
-                id: doc.id,
-                ...doc.data(),
-                ref: doc.ref as DocumentReference<Member>,
-              })
-          );
-          this.memberStore.setGroupMembers(groupMembers);
-        } catch (error) {
-          this.analytics.logError(
-            'Member Service',
-            'getGroupMembers',
-            'Failed to process group members snapshot',
-            error instanceof Error ? error.message : 'Unknown error'
-          );
+        if (!settled) {
+          if (querySnap.metadata.fromCache) {
+            pending = querySnap;
+            return;
+          }
+          settled = true;
+          clearTimeout(timeoutId);
         }
+        publish(querySnap);
       },
       (error) => {
+        clearTimeout(timeoutId);
         this.analytics.logSnapshotError(
           'Member Service',
           'getGroupMembers',
@@ -126,6 +157,13 @@ export class MemberService implements IMemberService {
         );
       }
     );
+    // Stopping the listener (directly, or by starting another one) must also
+    // cancel the fallback timer, or it can still fire afterwards and publish
+    // a stale snapshot to whichever group/store is current by then.
+    this.#unsubscribe = () => {
+      clearTimeout(timeoutId);
+      unsubscribeSnapshot();
+    };
   }
 
   stopListening(): void {
