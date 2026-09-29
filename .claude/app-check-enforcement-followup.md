@@ -988,6 +988,47 @@ its own doc rather than continuing here, since the fix (if any) has
 nothing to do with reCAPTCHA/Play Integrity/enforcement - see
 [[orphaned-registrations-investigation.md]].
 
+## Full error-log review, 2026-09-29
+
+Exported the whole `app_errors` collection read-only from prod via a new
+`scripts/db/queries/app-errors.ts` (`pnpm query app-errors [-- <days>]`;
+the admin Error Log UI has no export). 57 entries, 2026-08-28 through
+2026-09-23 (nothing older survives - looks like entries age out after
+~30 days).
+
+- **All 57 are `appCheck/throttled`**: 25 `User Service / initializeAuth
+  / Proceeding without confirmed App Check token` + 32 `Member Link
+  Service / linkInvitedMembers / Skipped`. Zero other error types - no
+  login failures, no `permission-denied`, no offline errors, nothing
+  from web.
+- **100% Android native app** (`platform: android, native: true`, `; wv)`),
+  21 distinct users, 23 device models.
+- **Retracting the Transsion/Tecno theory from 2026-08-26.** Across a
+  month of data it's broad Android: Samsung (incl. a Galaxy S24 on
+  Android 16), Honor, Xiaomi/Redmi, ZTE, TCL, Nokia, Vivo, Huawei, plus
+  Tecno/Infinix/itel. Transsion is about a third of entries, which just
+  mirrors this app's user base (the 70 never-throttled signups in the
+  same window have the same demographic mix), not a mechanism. Back to
+  the original read: reCAPTCHA Enterprise scoring the Android WebView,
+  full stop.
+- **Rate: 18 of 88 new signups since 8/28 (~20%) got throttled** on their
+  first session (countdowns all read ~23h59m, i.e. a fresh 403 at
+  launch). This is the concrete number for the Firestore re-enforcement /
+  Play Integrity decision: re-enforcing Firestore today would break
+  roughly 1 in 5 new users' first session.
+- **Current real-world impact is ~nil.** All 21 throttled users have a
+  Firestore `users` doc, and none has an unlinked (pending-invite) member
+  record - so no one lost an invite to the skipped `linkInvitedMembers`.
+  Checked all 88 signups since 8/28 for orphaned registrations too: 0
+  (the 2026-08-25 server-side profile-creation fix is holding).
+- **The log is now almost entirely expected noise.** Each throttled
+  session logs twice or more (the `initializeAuth` entry plus one
+  `linkInvitedMembers` skip per Groups-page visit - up to 4 for one user),
+  and the Member Link entry adds nothing the `initializeAuth` entry
+  doesn't already say. Worth considering dropping the Member Link skip
+  log when the reason is `appCheck/throttled` - not done, pending
+  decision.
+
 ## App Check-aware error dialog, 2026-08-26
 
 Prompted by a suggestion from Gemini (asked as a second opinion, since it
