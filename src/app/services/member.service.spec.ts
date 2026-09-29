@@ -99,6 +99,7 @@ describe('MemberService', () => {
       );
 
     beforeEach(() => {
+      vi.useFakeTimers();
       vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(((
         _q: unknown,
         next: (snap: any) => void
@@ -107,6 +108,10 @@ describe('MemberService', () => {
         return vi.fn();
       }) as any);
       service.getGroupMembers('group-1');
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     it('should wait for the server instead of publishing a partial cached list', () => {
@@ -130,6 +135,34 @@ describe('MemberService', () => {
 
       service.getGroupMembers('group-2');
       deliver(snap(['Pat'], true));
+      expect(mockMemberStore.setGroupMembers).not.toHaveBeenCalled();
+    });
+
+    // The server confirmation can be slow to arrive (seen hanging
+    // indefinitely against the emulator) - these cover the fallback that
+    // keeps the page from getting stuck loading forever when it does.
+    it('should publish the cached list if the server never confirms in time', () => {
+      deliver(snap(['Pat'], true));
+      expect(mockMemberStore.setGroupMembers).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(2000);
+      expect(published()).toEqual([['Pat']]);
+    });
+
+    it('should not publish twice if the server confirms just before the timeout', () => {
+      deliver(snap(['Pat'], true));
+      deliver(snap(['Alex', 'Pat'], false));
+
+      vi.advanceTimersByTime(2000);
+      expect(published()).toEqual([['Alex', 'Pat']]);
+    });
+
+    it('should not let a stale timeout publish after switching groups', () => {
+      deliver(snap(['Pat'], true));
+
+      service.getGroupMembers('group-2');
+      vi.advanceTimersByTime(2000);
+
       expect(mockMemberStore.setGroupMembers).not.toHaveBeenCalled();
     });
   });

@@ -33,6 +33,8 @@ export class Timestamp {
   toMillis = vi.fn().mockReturnValue(0);
 }
 
+export type DocumentData = Record<string, unknown>;
+
 export interface QueryDocumentSnapshot<T = unknown> {
   id: string;
   ref: DocumentReference<T>;

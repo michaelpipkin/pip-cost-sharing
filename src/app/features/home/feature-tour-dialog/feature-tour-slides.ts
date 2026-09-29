@@ -43,6 +43,12 @@ export const FEATURE_TOUR_SLIDES: readonly FeatureTourSlide[] = [
     alt: 'Vacation rental occupancy grid showing which members stayed on each night',
   },
   {
+    id: 'expenses',
+    title: 'A running history of every expense',
+    text: 'Every expense your group logs lives here, ready to search by date, payer, description, or category. Filter and sort the table to zero in on what you need, then tap a row to see the full split breakdown without leaving the page.',
+    alt: 'Expenses table with search filters above it and an expanded row showing the split breakdown',
+  },
+  {
     id: 'settle-up',
     title: 'Settle up in the fewest payments',
     text: 'See who owes whom at a glance. PipSplit calculates the fewest transfers needed to settle the whole group, and you can send payment requests or mark everything paid in one step.',
