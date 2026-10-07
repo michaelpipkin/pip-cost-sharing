@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -64,14 +65,37 @@ export class AnalyticsService {
     this.pendingSnapshotErrors.set(key, timer);
   }
 
+  // The installed native app's version, e.g. "1.2.3 (45)" - null on web or
+  // if the lookup fails. The Android shell loads the live web bundle, so
+  // this is the only way to tell which native build a user is on (it
+  // decides who a native-only fix, like Play Integrity, would reach).
+  // Cached after the first call: the version can't change mid-session.
+  #nativeAppVersion?: Promise<string | null>;
+
+  private getNativeAppVersion(): Promise<string | null> {
+    if (!Capacitor.isNativePlatform()) return Promise.resolve(null);
+    const lookup: Promise<string | null> =
+      this.#nativeAppVersion ??
+      App.getInfo()
+        .then(
+          (info: { version: string; build: string }) =>
+            `${info.version} (${info.build})`
+        )
+        .catch(() => null);
+    this.#nativeAppVersion = lookup;
+    return lookup;
+  }
+
   // Device/platform context attached to every logged error - not
   // App Check-specific, just generally useful for telling apart e.g.
   // "Android WebView" from "desktop browser" without guessing from the
   // error message alone (see 2026-08-18 App Check throttle investigation).
-  private buildAdditionalInfo(): string {
+  private async buildAdditionalInfo(): Promise<string> {
     const platform = Capacitor.getPlatform();
     const isNative = Capacitor.isNativePlatform();
-    return `platform: ${platform}, native: ${isNative}, userAgent: ${navigator.userAgent}`;
+    const appVersion = await this.getNativeAppVersion();
+    const versionInfo = appVersion ? `, appVersion: ${appVersion}` : '';
+    return `platform: ${platform}, native: ${isNative}${versionInfo}, userAgent: ${navigator.userAgent}`;
   }
 
   async logError(
@@ -82,7 +106,7 @@ export class AnalyticsService {
   ): Promise<void> {
     const params: Record<string, unknown> = { component, action, message };
     if (error !== undefined) params['error'] = error;
-    params['additionalInfo'] = this.buildAdditionalInfo();
+    params['additionalInfo'] = await this.buildAdditionalInfo();
 
     FirebaseAnalytics.logEvent({ name: 'app_error', params }).catch((e: unknown) =>
       console.error('Analytics logError (GA) failed:', e)

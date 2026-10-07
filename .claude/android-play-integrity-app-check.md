@@ -59,6 +59,17 @@ Play-Store-exclusive distribution - see the "Play Store distribution model"
 decision point below. So even if some of this app's traffic isn't from Play
 Store installs, that's not automatically a dead end for this fix.
 
+## Update 2026-10-07
+
+Rate is now measured at ~41% of new signups throttled (7/17, see
+[[app-check-enforcement-followup.md]]), so this is back on the table.
+Decided: **require `PLAY_RECOGNIZED`, sideloading not supported** (see the
+Play Store distribution decision below). Practical consequence: native test
+builds must come from Play (internal testing track) or use a Firebase debug
+token. Native app version is now logged with errors to size the adoption
+lag before committing. Also see the follow-up doc for using the web app
+itself to force old native builds to update.
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,

@@ -1029,6 +1029,62 @@ the admin Error Log UI has no export). 57 entries, 2026-08-28 through
   log when the reason is `appCheck/throttled` - not done, pending
   decision.
 
+**Correction + follow-up check, 2026-10-07: the ~20% figure above was a
+floor, not the rate.** It counted throttled signups only by email, and
+only `linkInvitedMembers` entries carry an email - an `initializeAuth`
+entry doesn't, so a user with no Member Link skip logged was invisible to
+that count. Re-did it properly for the 17 signups from 10/01-10/06 by
+also matching `initializeAuth` entries by time (+/-10 min of account
+creation): **7 of 17 (~41%) were throttled on first launch, 1 hit a
+transient "client is offline" (Hisense U71, Android 8.1; the retry
+recovered - no `Failed to initialize user` follow-up, users doc exists),
+9 were clean.** So not every user is blocked, but a large minority are,
+and it's not tied to one device/OEM (Samsung A05/A06/S-series, Xiaomi,
+Oppo, Infinix x2 all in this batch). All 17 have a Firestore users doc -
+still no orphaned registrations. Caveat: the log carries no platform for
+the clean users, so this can't separate "Android-only problem at ~41%"
+from "Android share of signups is simply high" - the throttled ones are
+100% Android native, consistent with every earlier month.
+
+### Play Integrity: revisiting, 2026-10-07
+
+With ~41% of new signups throttled, revisited
+[[android-play-integrity-app-check.md]] (device attestation). Decisions
+and findings:
+
+- **`PLAY_RECOGNIZED` required, sideloading unsupported** (user's call).
+  Consequence to remember: only Play-installed builds will attest, so
+  test native builds via a Play internal-testing track, not a sideloaded
+  APK (or register a Firebase debug token for dev builds).
+- **No "standalone/bundled app" requirement exists** - that was a
+  misremembering of the plan doc's open question about `server.url`.
+  Native plugins already work through the remote URL (native Google
+  sign-in, camera, AdMob), so that question is largely answered; the JS
+  and native App Check SDKs are separate and likely don't conflict
+  (still unverified until the spike).
+- **Native app version now logged** in `additionalInfo` (`appVersion:
+  1.2.3 (45)`, native only; `AnalyticsService`). Purpose: see which
+  native builds throttled users are on, i.e. how many a native-only fix
+  would actually reach. Reaches users immediately via the web deploy.
+  Look at it in the `app-errors` export after a week or so.
+- **Making users update:** Play Console has a "prompt users to update"
+  recovery tool (targetable by version/country/Android version; a
+  dismissible full-screen prompt on cold start) - not a hard block. The
+  Play In-App Updates "immediate" flow can block, but needs native code
+  that old builds lack. Because the shell loads the live web bundle, the
+  web app can enforce a minimum native version itself (read
+  `App.getInfo()`, show a blocking "please update" screen with a Play
+  Store link) and that works for already-installed builds with no native
+  release, provided they have `@capacitor/app` (very likely - deep links
+  use it). Not built; decide once the version data is in.
+- **Test infra fix found while verifying:** the unit-test build had
+  started failing on `DocumentReference.eq` type errors on a clean HEAD
+  (after the latest package bump) because the type augmentation in
+  `doc-ref-extensions.ts` is only imported by `main.ts`. Added
+  `src/testing/extensions-setup.ts` (imports both extension files) as
+  the first `setupFiles` entry in `angular.json`; full suite now 1440/1440,
+  `ng build` clean.
+
 ## App Check-aware error dialog, 2026-08-26
 
 Prompted by a suggestion from Gemini (asked as a second opinion, since it
