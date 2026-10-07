@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import * as authModule from 'firebase/auth';
 import * as functionsModule from 'firebase/functions';
@@ -94,6 +95,62 @@ describe('AnalyticsService', () => {
           ),
         })
       );
+    });
+
+    it('includes the native app version on native platforms', async () => {
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.spyOn(App, 'getInfo').mockResolvedValue({
+        id: 'com.pipsplit.app',
+        name: 'PipSplit',
+        build: '45',
+        version: '1.2.3',
+      });
+
+      await service.logError('Test Component', 'testAction', 'Test message');
+
+      expect(callableFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          additionalInfo: `platform: android, native: true, appVersion: 1.2.3 (45), userAgent: ${navigator.userAgent}`,
+        })
+      );
+    });
+
+    it('does not look up the app version on web', async () => {
+      const getInfoSpy = vi.spyOn(App, 'getInfo');
+
+      await service.logError('Test Component', 'testAction', 'Test message');
+
+      expect(getInfoSpy).not.toHaveBeenCalled();
+    });
+
+    it('still logs the error, minus the version, if the app version lookup fails', async () => {
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.spyOn(App, 'getInfo').mockRejectedValue(new Error('unavailable'));
+
+      await service.logError('Test Component', 'testAction', 'Test message');
+
+      expect(callableFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          additionalInfo: `platform: android, native: true, userAgent: ${navigator.userAgent}`,
+        })
+      );
+    });
+
+    it('only looks up the app version once across multiple errors', async () => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      const getInfoSpy = vi.spyOn(App, 'getInfo').mockResolvedValue({
+        id: 'com.pipsplit.app',
+        name: 'PipSplit',
+        build: '45',
+        version: '1.2.3',
+      });
+
+      await service.logError('Test Component', 'a', 'first');
+      await service.logError('Test Component', 'b', 'second');
+
+      expect(getInfoSpy).toHaveBeenCalledTimes(1);
     });
 
     it('still includes the error field alongside additionalInfo', async () => {
