@@ -17,6 +17,10 @@ import { FirebaseError } from 'firebase/app';
 const APP_CHECK_LIKELY_CODES = new Set([
   'permission-denied',
   'functions/unauthenticated',
+  // Storage words this "User is not authenticated" even for a signed-in
+  // user; a missing/invalid App Check token produces it (seen on a build
+  // that couldn't get a Play Integrity token).
+  'storage/unauthenticated',
 ]);
 
 export function isLikelyAppCheckError(error: unknown): boolean {

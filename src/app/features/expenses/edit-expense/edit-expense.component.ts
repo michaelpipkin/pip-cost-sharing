@@ -60,6 +60,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Split, SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
@@ -123,6 +124,7 @@ export class EditExpenseComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly rentalUtils = inject(RentalUtilsService);
@@ -581,19 +583,18 @@ export class EditExpenseComponent {
           });
           this.router.navigate(['/expenses']);
         } catch (error) {
+          this.appCheckErrorHandler.handle(
+            error,
+            error instanceof Error
+              ? error.message
+              : 'Something went wrong - could not edit expense'
+          );
           if (error instanceof Error) {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: error.message },
-            });
             this.analytics.logError(
               'Edit Expense Component',
               'edit_expense',
               error.message
             );
-          } else {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Something went wrong - could not edit expense' },
-            });
           }
         } finally {
           this.loading.loadingOff();

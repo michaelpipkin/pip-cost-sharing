@@ -52,6 +52,7 @@ import { Member } from '@models/member';
 import { SerializableMemorized } from '@models/memorized';
 import { SplitDto } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
@@ -121,6 +122,7 @@ export class AddExpenseComponent {
   protected readonly receiptScanHandoff = inject(ReceiptScanHandoffService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
   protected readonly stringUtils = inject(StringUtils);
   protected readonly allocationUtils = inject(AllocationUtilsService);
   protected readonly rentalUtils = inject(RentalUtilsService);
@@ -652,11 +654,14 @@ export class AddExpenseComponent {
         this.router.navigate(['/expenses']);
       }
     } catch (error) {
+      this.appCheckErrorHandler.handle(
+        error,
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong - could not save expense.'
+      );
       if (error instanceof Error) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: error.message } });
         this.analytics.logError('Add Expense Component', 'add_expense', error.message);
-      } else {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, { data: { message: 'Something went wrong - could not save expense.' } });
       }
     } finally {
       this.loading.loadingOff();

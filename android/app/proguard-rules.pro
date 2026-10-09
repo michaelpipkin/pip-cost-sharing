@@ -22,3 +22,17 @@
 
 # Ignore missing Facebook SDK classes (not using Facebook login)
 -dontwarn com.facebook.**
+
+# Capacitor reads each plugin's @CapacitorPlugin/@Permission annotations via
+# reflection at runtime (Bridge.getPermissionStates) to build the per-plugin
+# permission map. R8 was renaming those annotation classes and their element
+# methods in release builds; keep them (and all annotation attributes) as-is.
+# Suspected cause of Camera.takePhoto() crashing in release with
+# "getPermissionState(...) must not be null" (CameraPlugin.load lambda).
+-keepattributes *Annotation*,InnerClasses,Signature,EnclosingMethod
+-keep class com.getcapacitor.annotation.** { *; }
+-keep @interface com.getcapacitor.annotation.** { *; }
+
+# Readable release stack traces (retrace with the mapping.txt uploaded to
+# Play, which Play Console applies to crash reports automatically).
+-keepattributes SourceFile,LineNumberTable
