@@ -16,6 +16,14 @@ describe('isLikelyAppCheckError', () => {
     expect(isLikelyAppCheckError(error)).toBe(true);
   });
 
+  it('returns true for a Storage unauthenticated error', () => {
+    const error = new FirebaseError(
+      'storage/unauthenticated',
+      'Firebase Storage: User is not authenticated, please authenticate using Firebase Authentication and try again.'
+    );
+    expect(isLikelyAppCheckError(error)).toBe(true);
+  });
+
   it('returns false for an unrelated FirebaseError code', () => {
     const error = new FirebaseError('unavailable', 'The service is currently unavailable.');
     expect(isLikelyAppCheckError(error)).toBe(false);

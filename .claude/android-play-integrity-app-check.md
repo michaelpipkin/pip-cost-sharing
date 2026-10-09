@@ -99,6 +99,43 @@ against the real plugin or run on a device**:
   build only runs this code once the web bundle is deployed to production
   (safe: non-plugin builds ignore the new path).
 
+## Spike results, 2026-10-09 (1.3.0 (24) on the beta track, real phone)
+
+- **Play Integrity works end to end.** On the Play-installed beta build, a
+  receipt upload to Storage (App Check enforced) succeeded and no
+  throttle/Integrity errors were logged. Google's pre-launch crawler
+  (`play_review@google.com`, emulator `sdk_gphone64_arm64`) logged Play
+  Integrity error -14 (`PLAY_STORE_VERSION_OUTDATED`) ~11 times in 10
+  minutes - expected on an emulator, and it trips the error-alert email
+  after each release upload.
+- **Locally installed builds (Android Studio Run/Debug) can't get a
+  token** - not Play-installed, so `PLAY_RECOGNIZED` fails. The native SDK
+  then throttles retries ("Too many attempts."), and Storage/Functions
+  reject with `storage/unauthenticated` ("User is not authenticated" -
+  Storage's wording for a missing/invalid App Check token, even when
+  signed in). `isLikelyAppCheckError()` now includes it, and Add/Edit
+  Expense route through the shared App Check dialog handler.
+- **Unrelated crash found in the new build: `Camera.takePhoto` crashed**
+  (`NullPointerException: getPermissionState(...) must not be null`, in
+  `CameraPlugin.load`) in the **release** build only - debug build was
+  fine. Cause: R8 minification (release has `minifyEnabled true`) renamed
+  Capacitor's annotation classes (`CapacitorPlugin -> d1.b`, `Permission ->
+  d1.c` in mapping.txt), so Capacitor couldn't read the Camera plugin's
+  permission annotations and returned null states. The newer camera plugin
+  (8.2.5, pulled in by the package updates synced into this build; the
+  previous 1.2.0 (23) build had 8.2.1) does a Kotlin non-null check that
+  turns that into a crash. Fixed with keep rules in
+  `android/app/proguard-rules.pro` (keep `com.getcapacitor.annotation.**`
+  and annotation attributes; also keeps line numbers). **Verified on a
+  real phone with a release build** - camera works.
+- Not tested yet: a fresh Play-installed build with the rule fix
+  (versionCode 25), and the other Capacitor plugins' release behavior
+  generally (camera was just the first to hit this).
+- Test tips: `adb` is at `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`;
+  Android Studio Run/Debug both use the selected *build variant* (default
+  debug); running `release` locally needs a temporary
+  `signingConfig signingConfigs.debug` (don't commit it).
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,
