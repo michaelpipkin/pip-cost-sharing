@@ -213,6 +213,9 @@ importers:
       '@capacitor-firebase/analytics':
         specifier: ^8.5.2
         version: 8.5.2(@capacitor/core@8.5.2)(firebase@12.19.0)
+      '@capacitor-firebase/app-check':
+        specifier: 8.5.2
+        version: 8.5.2(@capacitor/core@8.5.2)(firebase@12.19.0)
       '@capacitor-firebase/authentication':
         specifier: ^8.5.2
         version: 8.5.2(@capacitor/core@8.5.2)(firebase@12.19.0)
@@ -631,6 +634,15 @@ packages:
 
   '@capacitor-firebase/analytics@8.5.2':
     resolution: {integrity: sha512-r+XW5o3zIq8BP5Xj+lcR9KGtORcHM3X/oZugAa7weLo6JqWmjqe6u+6ulpfFfgPAXv1aOzHVXSbEz1sRPuwCTg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+      firebase: ^12.6.0
+    peerDependenciesMeta:
+      firebase:
+        optional: true
+
+  '@capacitor-firebase/app-check@8.5.2':
+    resolution: {integrity: sha512-k9QBY8zpF/sXvXsBZ+c9+hnKJLxBglIpZxRmoDJ+tMabfQYabBvhf0CJbQEGxudOGd+/XGTnb7rVB6Zg74vyfA==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
       firebase: ^12.6.0
@@ -5023,6 +5035,12 @@ snapshots:
       '@rdlabo/capacitor-docgen': 0.4.1
 
   '@capacitor-firebase/analytics@8.5.2(@capacitor/core@8.5.2)(firebase@12.19.0)':
+    dependencies:
+      '@capacitor/core': 8.5.2
+    optionalDependencies:
+      firebase: 12.19.0
+
+  '@capacitor-firebase/app-check@8.5.2(@capacitor/core@8.5.2)(firebase@12.19.0)':
     dependencies:
       '@capacitor/core': 8.5.2
     optionalDependencies:
