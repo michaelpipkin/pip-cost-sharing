@@ -1,5 +1,9 @@
 <h1 mat-dialog-title data-testid="add-member-title">Add Member</h1>
-<form data-testid="add-member-form" aria-label="Add member form" (submit)="$event.preventDefault()">
+<form
+  data-testid="add-member-form"
+  aria-label="Add member form"
+  (submit)="$event.preventDefault()"
+>
   <mat-dialog-content
     class="content"
     data-testid="add-member-content"
@@ -13,25 +17,38 @@
         data-testid="member-name-input"
         aria-label="Member name"
       />
-      @for (error of addMemberForm.displayName().errors(); track error.kind; let i = $index) {
+      @for (
+        error of addMemberForm.displayName().errors();
+        track error.kind;
+        let i = $index
+      ) {
         <mat-error [attr.data-testid]="'member-name-error-' + i">
           {{ error.message }}
         </mat-error>
       }
     </mat-form-field>
-    <mat-form-field appearance="fill" subscriptSizing="dynamic" data-testid="member-email-field">
+    <mat-form-field
+      appearance="fill"
+      subscriptSizing="dynamic"
+      data-testid="member-email-field"
+    >
       <mat-label>Email</mat-label>
       <input
         matInput
+        type="email"
         [formField]="addMemberForm.email"
         data-testid="member-email-input"
         aria-label="Member email"
       />
       <mat-hint>
-        Optional. A member can only access and interact with this group if this matches the email
-        address they used to register for the app.
+        Optional. A member can only access and interact with this group if this
+        matches the email address they used to register for the app.
       </mat-hint>
-      @for (error of addMemberForm.email().errors(); track error.kind; let i = $index) {
+      @for (
+        error of addMemberForm.email().errors();
+        track error.kind;
+        let i = $index
+      ) {
         <mat-error [attr.data-testid]="'member-email-error-' + i">
           {{ error.message }}
         </mat-error>

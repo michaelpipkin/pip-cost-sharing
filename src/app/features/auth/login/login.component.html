@@ -24,7 +24,6 @@
             matInput
             type="email"
             [formField]="loginForm.email"
-            #emailInput
             data-testid="email-input"
             aria-label="Email address"
           />
@@ -43,7 +42,6 @@
             (keydown.enter)="
               $event.preventDefault(); loginForm().valid() && emailLogin()
             "
-            #passwordInput
             data-testid="password-input"
             aria-label="Password"
           />
