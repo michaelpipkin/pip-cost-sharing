@@ -1,14 +1,18 @@
 # Android Play Integrity for App Check — Scoping
 
-Status as of 2026-08-19: **Not started, not scheduled.** Written up on request
-after the third confirmed `appCheck/throttled` incident (see
-[[app-check-enforcement-followup.md]]) directly identified Android WebView as
-the mechanism via the new `additionalInfo` diagnostic, rather than leaving it
-as inference. This doc exists so a decision to proceed doesn't start from
-zero - it lays out what's actually involved, not just "add Play Integrity."
-Written from research (Firebase's official docs + the Capacitor plugin's
-docs), not from having built any of it - some of what's below is a plan to
-verify, not a guarantee.
+**Status as of 2026-10-09: BUILT, on the Play beta track (1.3.1 (26)),
+verified on one real phone; NOT yet rolled out to production or measured
+on real users.** See "Spike results" and "Where things stand" below for
+what's done and what's open. The rest of this doc is the original
+2026-08-19 scoping, kept for background (prerequisites, architecture,
+rationale) - written from research before anything was built, so where it
+disagrees with the spike sections, the spike sections win.
+
+Original context: written after the third confirmed `appCheck/throttled`
+incident (see [[app-check-enforcement-followup.md]]) identified Android
+WebView reCAPTCHA scoring as the mechanism via the `additionalInfo`
+diagnostic. By 2026-10-07 the measured rate was ~41% of new signups
+throttled on first launch, which is what prompted building it.
 
 ## Why this and not something else
 
@@ -128,13 +132,79 @@ against the real plugin or run on a device**:
   `android/app/proguard-rules.pro` (keep `com.getcapacitor.annotation.**`
   and annotation attributes; also keeps line numbers). **Verified on a
   real phone with a release build** - camera works.
-- Not tested yet: a fresh Play-installed build with the rule fix
-  (versionCode 25), and the other Capacitor plugins' release behavior
-  generally (camera was just the first to hit this).
+- **System bar colors stopped matching** (status + gesture bars no longer
+  `#105208`) after the same package updates (Capacitor Android 8.4.2 ->
+  8.5.2). Diffing the two Capacitor releases showed core's built-in
+  `SystemBars` plugin was reworked and now installs its own window-insets
+  handling, fighting the `@capawesome` EdgeToEdge plugin that owns the
+  inset margins and colored bar overlays. Fix: `plugins.SystemBars.
+  insetsHandling: 'disable'` in `capacitor.config.ts` (needs `cap sync`).
+  Verified on a real phone (Pixel, Android 17). Note the app also has its
+  own `SystemBarsPlugin` (registered by name "SystemBars" in
+  `MainActivity`) that collides by name with core's - worth tidying
+  someday, not touched.
+- **Lesson: the package updates that rode along with this work caused two
+  native regressions** (camera, bar colors) that no web test could catch.
+  After any `cap sync` that moves Capacitor/plugin versions, smoke-test a
+  Play-installed or locally-run **release** build: camera (both flows),
+  gallery, Google sign-in, an ad, a deep link, bar colors, and a Storage
+  upload. Compare `android/capacitor.settings.gradle` before/after a sync
+  to see which native plugin versions actually moved.
+- **Final check, 1.3.1 (26) from the beta track:** system bars correct,
+  camera works (New Expense and Create from Receipt), Google sign-in,
+  AdMob, deep links, and receipt upload all work; sign-out/sign-in
+  logged no new errors.
+- **Play Console won't accept a reused versionCode**, even for a beta
+  that was just uploaded - bump `versionCode` (and `versionName`) in
+  `android/app/build.gradle` for every upload.
 - Test tips: `adb` is at `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`;
   Android Studio Run/Debug both use the selected *build variant* (default
   debug); running `release` locally needs a temporary
   `signingConfig signingConfigs.debug` (don't commit it).
+
+## Where things stand / open items (2026-10-09)
+
+Shipped to `release` (web, live): provider selection in `app-check.ts`,
+`appCheck: <provider>` + `appVersion` in error-log `additionalInfo`, the
+shared App Check dialog (now also for `storage/unauthenticated`).
+Native (Play beta, 1.3.1 (26)): plugin, keep rules, SystemBars config.
+Console setup done: Play Integrity registered in Firebase App Check for
+`com.pipsplit.app` with `PLAY_RECOGNIZED` required (device-integrity level
+not required), app signing key SHA-256 (not the upload key), Play
+Integrity API linked to the project (daily limit 10,000).
+
+Open:
+1. **Promote beta to production** (staged rollout, watch Android vitals
+   crashes), then **measure**: after a few days compare error-log entries
+   by `appCheck: play-integrity` vs `recaptcha` and by `appVersion`. The
+   goal is a near-zero first-launch throttle rate on 1.3.x. (Query:
+   `pnpm query app-errors`.)
+2. **No reCAPTCHA fallback** when Play Integrity fails (outdated/missing
+   Play Store or Play Services - seen as error -14 on Google's emulator
+   crawler; the native SDK then throttles retries with "Too many
+   attempts."). Decide after real-user data shows how common it is.
+   The -14 case could also get its own "update the Play Store" message
+   in the App Check dialog.
+2b. **Getting users onto 1.3.x:** Play Console -> the release -> Recovery
+   tools -> **Prompt users to update** (found 2026-10-09 on the open-testing
+   release page). Pick the older versions to target (optionally narrow by
+   country / Android version); targeted users get a full-screen update
+   prompt on app open, dismissible, repeating on each cold start - a nudge,
+   not a block. Plan: use it on the *production* release once the staged
+   rollout has reached 100% with clean Android vitals. Track adoption in
+   Play Console's installs-by-app-version stats and the `appVersion` field
+   in the error log. A hard block would still need the web-app-side
+   minimum-version gate (item 3).
+3. **Firestore re-enforcement is still off the table** until most users
+   are on 1.3.x (older builds keep using reCAPTCHA and keep getting
+   throttled), likely needing a minimum-native-version prompt driven by
+   the web app (`App.getInfo()`); and re-enforcing requires reverting the
+   concurrent `appCheckTokenReady()` in `UserService.initializeUserSession()`
+   (see its WARNING comment).
+4. **Alert noise:** each release upload triggers Google's pre-launch
+   crawler (`play_review@google.com`, emulator), which logs ~10 Play
+   Integrity errors and trips the error-alert email. Expected; consider
+   ignoring that account in `logError` if it gets annoying.
 
 ## High-level architecture
 
