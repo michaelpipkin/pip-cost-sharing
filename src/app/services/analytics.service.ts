@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getAppCheckProviderName } from '../app-check';
 
 @Injectable({
   providedIn: 'root',
@@ -95,7 +96,7 @@ export class AnalyticsService {
     const isNative = Capacitor.isNativePlatform();
     const appVersion = await this.getNativeAppVersion();
     const versionInfo = appVersion ? `, appVersion: ${appVersion}` : '';
-    return `platform: ${platform}, native: ${isNative}${versionInfo}, userAgent: ${navigator.userAgent}`;
+    return `platform: ${platform}, native: ${isNative}${versionInfo}, appCheck: ${getAppCheckProviderName()}, userAgent: ${navigator.userAgent}`;
   }
 
   async logError(
