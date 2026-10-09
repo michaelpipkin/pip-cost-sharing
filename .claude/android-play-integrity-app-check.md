@@ -70,6 +70,35 @@ token. Native app version is now logged with errors to size the adoption
 lag before committing. Also see the follow-up doc for using the web app
 itself to force old native builds to update.
 
+## Spike status, 2026-10-09 (branch `play-integrity-spike`, from `dev`)
+
+JS side written and unit-tested (full suite 1446/1446), **not yet built
+against the real plugin or run on a device**:
+
+- `src/app/app-check.ts`: `initAppCheck()` now picks the provider. Android
+  **and** `Capacitor.isPluginAvailable('FirebaseAppCheck')` -> a
+  `CustomProvider` bridging `FirebaseAppCheck.getToken()` (the plugin's
+  documented "use with the Firebase JS SDK" pattern); everything else
+  (web, iOS, and Android builds that predate the plugin) -> unchanged
+  reCAPTCHA Enterprise. That `isPluginAvailable` check is what makes
+  deploying the web code *before* any native release safe. Registration is
+  still synchronous; native `initialize()` runs lazily (memoized, retried
+  after a failure) on the first token request.
+- `getAppCheckProviderName()` + `appCheck: recaptcha|play-integrity` in
+  the error log's `additionalInfo`, so post-release throttle/failure
+  entries say which provider they came from.
+- Test mocks: `@capacitor-firebase/app-check` path mapping in
+  `tsconfig.spec.json`, `CustomProvider` added to the app-check mock.
+- Plugin: `@capacitor-firebase/app-check@8.5.2` (peers: Capacitor >=8,
+  firebase ^12.6 - matches the installed analytics/auth 8.5.2 plugins).
+  Not yet installed (needs user to run pnpm).
+- Not yet decided: whether a Play Integrity failure on a device without
+  working Play Services should fall back to reCAPTCHA. Currently it does
+  not (token request just fails). Revisit after seeing real-device results.
+- **Gotcha:** the Android shell loads `https://pipsplit.com`, so a test
+  build only runs this code once the web bundle is deployed to production
+  (safe: non-plugin builds ignore the new path).
+
 ## High-level architecture
 
 **Keep `ReCaptchaEnterpriseProvider` for everything else** (web browsers,

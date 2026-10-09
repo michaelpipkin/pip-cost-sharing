@@ -64,7 +64,7 @@ describe('AnalyticsService', () => {
     it('attaches platform/native/userAgent as additionalInfo to both GA and the callable', async () => {
       await service.logError('Test Component', 'testAction', 'Test message');
 
-      const expectedInfo = `platform: web, native: false, userAgent: ${navigator.userAgent}`;
+      const expectedInfo = `platform: web, native: false, appCheck: recaptcha, userAgent: ${navigator.userAgent}`;
       expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({
         name: 'app_error',
         params: {
@@ -111,7 +111,7 @@ describe('AnalyticsService', () => {
 
       expect(callableFn).toHaveBeenCalledWith(
         expect.objectContaining({
-          additionalInfo: `platform: android, native: true, appVersion: 1.2.3 (45), userAgent: ${navigator.userAgent}`,
+          additionalInfo: `platform: android, native: true, appVersion: 1.2.3 (45), appCheck: recaptcha, userAgent: ${navigator.userAgent}`,
         })
       );
     });
@@ -133,7 +133,7 @@ describe('AnalyticsService', () => {
 
       expect(callableFn).toHaveBeenCalledWith(
         expect.objectContaining({
-          additionalInfo: `platform: android, native: true, userAgent: ${navigator.userAgent}`,
+          additionalInfo: `platform: android, native: true, appCheck: recaptcha, userAgent: ${navigator.userAgent}`,
         })
       );
     });

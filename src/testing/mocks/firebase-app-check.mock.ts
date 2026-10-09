@@ -20,6 +20,14 @@ export class ReCaptchaEnterpriseProvider {
   constructor(public siteKey: string) {}
 }
 
+export class CustomProvider {
+  constructor(
+    public customProviderOptions: {
+      getToken: () => Promise<{ token: string; expireTimeMillis: number }>;
+    }
+  ) {}
+}
+
 // ──────────────────────────────────────────────
 // Mock functions
 // ──────────────────────────────────────────────

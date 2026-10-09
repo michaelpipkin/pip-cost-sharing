@@ -1085,6 +1085,19 @@ and findings:
   the first `setupFiles` entry in `angular.json`; full suite now 1440/1440,
   `ng build` clean.
 
+**First native-version data, 2026-10-09:** 6 new entries (3 users, all
+`appCheck/throttled`, all Android) - **every one is on `appVersion: 1.2.0
+(23)`, which matches `versionName`/`versionCode` in `android/app/build.gradle`
+(i.e. the current build, assuming that is what's live on Play).** So at
+least these throttled users are not on stale native builds; the throttle is
+not an old-build artifact, and "force old versions to update" would not
+have helped them. Matching signups since 10/07: 3 of 7 throttled (~43%,
+consistent with the earlier 41%). Tiny sample - keep collecting before
+drawing conclusions about adoption lag. Also noticed the log shrank from 20
+to 9 entries between exports (everything 10/01-10/06 is gone, presumably
+cleared via the admin UI), so the 10/07 numbers above rest on the earlier
+export.
+
 ## App Check-aware error dialog, 2026-08-26
 
 Prompted by a suggestion from Gemini (asked as a second opinion, since it

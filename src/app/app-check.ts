@@ -1,6 +1,9 @@
+import { FirebaseAppCheck } from '@capacitor-firebase/app-check';
+import { Capacitor } from '@capacitor/core';
 import type { FirebaseApp } from 'firebase/app';
 import {
   AppCheck,
+  CustomProvider,
   getToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider,
@@ -8,6 +11,55 @@ import {
 import { appCheckConfig } from './firebase.config';
 
 let appCheck: AppCheck | null = null;
+let providerName: AppCheckProviderName = 'recaptcha';
+
+// Which attestation mechanism backs App Check for this session. Exposed so
+// error logs can say which one a throttled/failed session was using.
+export type AppCheckProviderName = 'recaptcha' | 'play-integrity';
+
+export const getAppCheckProviderName = (): AppCheckProviderName =>
+  providerName;
+
+// The Android shell loads the live web bundle, so installed native builds
+// that predate the @capacitor-firebase/app-check plugin will run this code
+// without the native half. isPluginAvailable() is how those builds (and
+// iOS/web) fall back to reCAPTCHA instead of calling a plugin that isn't
+// there.
+const canUsePlayIntegrity = (): boolean =>
+  Capacitor.getPlatform() === 'android' &&
+  Capacitor.isPluginAvailable('FirebaseAppCheck');
+
+// Native activation is async, but initializeAppCheck() below must register
+// synchronously (see initAppCheck). So the native side initializes lazily on
+// the first token request instead, memoized; a failed attempt is dropped so
+// the next token request retries rather than caching the rejection.
+let nativeInitialization: Promise<void> | null = null;
+
+const ensureNativeAppCheckInitialized = (): Promise<void> => {
+  nativeInitialization ??= FirebaseAppCheck.initialize({
+    isTokenAutoRefreshEnabled: true,
+  }).catch((error: unknown) => {
+    nativeInitialization = null;
+    throw error;
+  });
+  return nativeInitialization;
+};
+
+// Bridges the native plugin (Play Integrity on Android) into the Firebase JS
+// SDK so Firestore/Functions/Storage keep attaching tokens automatically,
+// exactly as with reCAPTCHA. expireTimeMillis is only reported on native
+// platforms, hence the fallback to Firebase's 1h default TTL.
+const createPlayIntegrityProvider = (): CustomProvider =>
+  new CustomProvider({
+    getToken: async () => {
+      await ensureNativeAppCheckInitialized();
+      const { token, expireTimeMillis } = await FirebaseAppCheck.getToken();
+      return {
+        token,
+        expireTimeMillis: expireTimeMillis ?? Date.now() + 60 * 60 * 1000,
+      };
+    },
+  });
 
 // Registers App Check on the given FirebaseApp and captures the instance so
 // appCheckTokenReady() below can await its first token. Call at most once,
@@ -15,8 +67,12 @@ let appCheck: AppCheck | null = null;
 // app.config.ts - initializeAppCheck must run before any other service
 // issues its first request.
 export const initAppCheck = (app: FirebaseApp): void => {
+  const usePlayIntegrity = canUsePlayIntegrity();
+  providerName = usePlayIntegrity ? 'play-integrity' : 'recaptcha';
   appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(appCheckConfig.recaptchaSiteKey),
+    provider: usePlayIntegrity
+      ? createPlayIntegrityProvider()
+      : new ReCaptchaEnterpriseProvider(appCheckConfig.recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   });
 };
@@ -82,4 +138,6 @@ export const appCheckTokenReady = async (
 // order.
 export const resetAppCheckForTesting = (): void => {
   appCheck = null;
+  providerName = 'recaptcha';
+  nativeInitialization = null;
 };
