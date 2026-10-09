@@ -1046,6 +1046,16 @@ the clean users, so this can't separate "Android-only problem at ~41%"
 from "Android share of signups is simply high" - the throttled ones are
 100% Android native, consistent with every earlier month.
 
+### Play Integrity: built, 2026-10-09 (update to the section below)
+
+The fix was built and is on the Play beta track (1.3.1 (26)); it works on
+a real device. Status, the two native regressions found along the way
+(R8/Camera, Capacitor 8.5 bar colors), and the open items (staged
+production rollout, measuring `play-integrity` vs `recaptcha` entries,
+no reCAPTCHA fallback yet) are in [[android-play-integrity-app-check.md]]
+under "Where things stand". Everything below is the pre-build decision
+trail.
+
 ### Play Integrity: revisiting, 2026-10-07
 
 With ~41% of new signups throttled, revisited
