@@ -26,6 +26,26 @@ export interface ParsedReceipt {
   rawText: string;
 }
 
+// Lines below this OCR confidence are treated as noise when deciding whether
+// an image has any text at all. Tesseract "reads" textured photos with no text
+// (carpet, a wall, a hand) as lines of stray punctuation and letters at ~0
+// confidence, whereas even a poor receipt photo has lines well above this.
+const MIN_READABLE_LINE_CONFIDENCE = 30;
+const MIN_READABLE_CHARS = 10;
+
+/**
+ * True when OCR found enough confidently-recognized alphanumeric text to be
+ * worth parsing. False for blank images and for textured photos that merely
+ * produce OCR noise - the caller reports those as "no text found" instead of
+ * handing back an empty form.
+ */
+export function hasReadableText(lines: OcrLine[]): boolean {
+  const readableChars = lines
+    .filter((line) => line.confidence >= MIN_READABLE_LINE_CONFIDENCE)
+    .reduce((sum, line) => sum + (line.text.match(/[a-z0-9]/gi)?.length ?? 0), 0);
+  return readableChars >= MIN_READABLE_CHARS;
+}
+
 // Trailing currency amount, e.g. "12.99", "$12.99", "1,234.56", "-3.00".
 // Also tolerates a trailing single-letter tax-status code with no
 // backtracking-prone adjacent \s* pair, as commonly printed on grocery
@@ -72,10 +92,10 @@ const isNoise = (text: string): boolean =>
 const TIP_SUGGESTION_RE = /^\s*\d{1,3}\s*%/;
 
 function extractAmount(text: string): number | null {
-  const match = text.match(AMOUNT_RE);
+  const match = AMOUNT_RE.exec(text);
   if (!match) return null;
   const numeric = match[1].replace(/[$,\s]/g, '');
-  const value = parseFloat(numeric);
+  const value = Number.parseFloat(numeric);
   return Number.isFinite(value) ? value : null;
 }
 

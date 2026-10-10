@@ -268,6 +268,44 @@ describe('ScanReceiptComponent', () => {
       expect((component as any).hasScanned()).toBe(false);
     });
 
+    it('shows an image-specific "Receipt Not Readable" dialog and leaves the form unscanned when the photo has no text', async () => {
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'selected',
+        file: file(),
+      });
+      mockReceiptScanService.scanReceipt.mockRejectedValueOnce({
+        code: 'functions/failed-precondition',
+        message: 'No readable text was found in this image.',
+        details: { reason: 'no-text-found' },
+      });
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = vi.spyOn(dialog, 'open').mockReturnValueOnce({
+        afterClosed: () => ({
+          subscribe: (cb: (result: unknown) => void) => cb(null),
+        }),
+      } as any);
+      mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
+        type: 'cancelled',
+      });
+
+      await (component as any).selectReceiptPhoto();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(openSpy).toHaveBeenCalledWith(
+        ConfirmDialogComponent,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dialogTitle: 'Receipt Not Readable',
+            confirmationText: expect.stringContaining('in that image'),
+          }),
+        })
+      );
+      expect((component as any).hasScanned()).toBe(false);
+      expect((component as any).receiptFile()).toBeNull();
+      // Sent back to the picker rather than left on a half-filled form.
+      expect(mockReceiptFileSelection.pickSource).toHaveBeenCalledTimes(2);
+    });
+
     it('resets and reopens the photo picker after the "Receipt Not Readable" dialog closes', async () => {
       mockReceiptFileSelection.pickSource.mockResolvedValueOnce({
         type: 'selected',

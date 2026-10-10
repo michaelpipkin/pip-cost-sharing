@@ -1,5 +1,6 @@
+import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { extractPdfLines, isPdf } from './receipt-ocr';
+import { extractPdfLines, isPdf, preprocessImage } from './receipt-ocr';
 
 // Small fixture PDFs (built with pdf-lib, captured as base64 so this test
 // doesn't need pdf-lib as a real dependency). WITH_TEXT is a receipt-like
@@ -47,5 +48,31 @@ describe('extractPdfLines', () => {
     const lines = await extractPdfLines(buffer);
 
     expect(lines).toEqual([]);
+  });
+});
+
+describe('preprocessImage', () => {
+  const solid = (width: number, height: number) =>
+    sharp({
+      create: { width, height, channels: 3, background: { r: 200, g: 200, b: 200 } },
+    })
+      .png()
+      .toBuffer();
+
+  const widthOf = async (buffer: Buffer) => (await sharp(buffer).metadata()).width;
+
+  it('enlarges a very narrow image 3x so small type survives OCR', async () => {
+    const out = await preprocessImage(await solid(294, 329));
+    expect(await widthOf(out)).toBe(294 * 3);
+  });
+
+  it('enlarges a moderately narrow image 2x', async () => {
+    const out = await preprocessImage(await solid(600, 800));
+    expect(await widthOf(out)).toBe(1200);
+  });
+
+  it('leaves a full-size photo at its original width', async () => {
+    const out = await preprocessImage(await solid(1600, 1200));
+    expect(await widthOf(out)).toBe(1600);
   });
 });
