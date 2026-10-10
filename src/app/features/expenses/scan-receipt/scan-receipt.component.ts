@@ -54,6 +54,9 @@ const LOW_CONFIDENCE_THRESHOLD = 70;
 // store/receipt header, so it doesn't get guessed as the description.
 const TRAILING_AMOUNT_RE = /\d{1,3}(?:,\d{3})*\.\d{2}(?:\s?[A-Z])?\s*$/;
 
+/** `details.reason` values scanReceipt uses for "nothing to read here". */
+type UnreadableReason = 'pdf-not-readable' | 'no-text-found';
+
 interface ScanLineItemRow {
   description: string;
   amount: string;
@@ -363,8 +366,9 @@ export class ScanReceiptComponent {
       this.applyParsedReceipt(parsed);
     } catch (error) {
       console.error('Error scanning receipt:', error);
-      if (this.#isPdfNotReadableError(error)) {
-        this.#showPdfNotReadableDialog();
+      const unreadableReason = this.#unreadableReason(error);
+      if (unreadableReason) {
+        this.#showNotReadableDialog(unreadableReason);
         return;
       }
       this.appCheckErrorHandler.handle(
@@ -385,41 +389,48 @@ export class ScanReceiptComponent {
   }
 
   /**
-   * True for the specific "this PDF has no readable text" error scanReceipt
-   * throws - see receipt-ocr.ts. Duck-typed rather than an `instanceof
+   * The "nothing readable here" reason scanReceipt throws for a PDF with no
+   * text layer or an image with no text in it - see receipt-ocr.ts - or null
+   * for any other error. Duck-typed rather than an `instanceof
    * FunctionsError` check: the SDK's exported error class doesn't resolve
    * consistently between the app build and the test build, and this is
    * robust either way since callable errors reliably carry `.details`.
    */
-  #isPdfNotReadableError(error: unknown): boolean {
+  #unreadableReason(error: unknown): UnreadableReason | null {
     if (!error || typeof error !== 'object' || !('details' in error)) {
-      return false;
+      return null;
     }
     const details = (error as { details?: unknown }).details;
-    return (
-      !!details &&
-      typeof details === 'object' &&
-      (details as { reason?: string }).reason === 'pdf-not-readable'
-    );
+    if (!details || typeof details !== 'object') return null;
+    const reason = (details as { reason?: string }).reason;
+    return reason === 'pdf-not-readable' || reason === 'no-text-found'
+      ? reason
+      : null;
   }
 
   /**
    * A PDF with no text layer (e.g. a paper receipt scanned/photographed and
    * saved as an image-only PDF) can't be read without OCR-rasterizing the
-   * page, which isn't supported - see receipt-ocr.ts for why. Rather than
-   * silently degrading to an empty form, tell the user directly and send
-   * them back to pick a photo instead.
+   * page, which isn't supported - see receipt-ocr.ts for why. An image with
+   * no text (a photo of something that isn't a receipt, or too blurry/dark to
+   * read) has nothing to parse either. Rather than silently degrading to an
+   * empty form, tell the user directly and send them back to pick a photo
+   * instead.
    */
-  #showPdfNotReadableDialog(): void {
+  #showNotReadableDialog(reason: UnreadableReason): void {
+    const confirmationText =
+      reason === 'pdf-not-readable'
+        ? "We couldn't find any readable text in this PDF. If you scanned or " +
+          'photographed the receipt and saved it as a PDF, try taking a regular ' +
+          'photo of the receipt instead.'
+        : "We couldn't find any readable text in that image. Make sure the " +
+          'receipt fills the frame, is well lit, and is in focus, then try again.';
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       disableClose: false,
       maxWidth: '400px',
       data: {
         dialogTitle: 'Receipt Not Readable',
-        confirmationText:
-          "We couldn't find any readable text in this PDF. If you scanned or " +
-          'photographed the receipt and saved it as a PDF, try taking a regular ' +
-          'photo of the receipt instead.',
+        confirmationText,
         confirmButtonText: 'Choose a Different Photo',
       },
     });

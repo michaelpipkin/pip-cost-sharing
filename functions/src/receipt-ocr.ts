@@ -4,7 +4,12 @@ import * as path from 'node:path';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
 import { callableAppCheck } from './common';
-import { OcrLine, ParsedReceipt, parseReceiptLines } from './receipt-parser';
+import {
+  hasReadableText,
+  OcrLine,
+  ParsedReceipt,
+  parseReceiptLines,
+} from './receipt-parser';
 
 // Points pdf.js at its own bundled font metrics so it doesn't warn (and
 // fall back to less accurate glyph-width guesses) for PDFs using standard,
@@ -80,35 +85,72 @@ export async function extractPdfLines(buffer: Buffer): Promise<OcrLine[]> {
   return lines;
 }
 
+// Tesseract reads small type badly: at ~300px wide, a receipt's "$" comes
+// back as "5", "s" or nothing and decimal points get dropped ("$4.00" ->
+// "$400"), which silently corrupts every amount. Enlarging narrow images
+// (screenshots, tight crops, low-res uploads) fixes it; real phone photos
+// are several thousand px wide and are never touched. 2x/3x rather than
+// "scale to a fixed width": some arbitrary in-between factors were measurably
+// worse on the same image, while 1.5x-4x was reliable.
+const MIN_OCR_WIDTH = 1000;
+const NARROW_IMAGE_WIDTH = 500;
+
+// A textured photo with no text in it (carpet, a wall, a hand) can keep
+// Tesseract busy for minutes, long past the function's own deadline. Give up
+// well before that so the caller can answer "no text found" rather than the
+// request dying with an opaque timeout.
+const OCR_TIMEOUT_MS = 45_000;
+
 /**
  * Deskew/denoise a receipt photo before handing it to Tesseract. Real-world
  * phone photos (skew, shadows, low contrast) OCR noticeably worse without
  * this — see .claude/future-ideas.md for context.
  */
-async function preprocessImage(buffer: Buffer): Promise<Buffer> {
-  return sharp(buffer)
-    .rotate() // auto-orient using EXIF, then strip it
-    .grayscale()
-    .normalize()
-    .sharpen()
-    .toFormat('png')
-    .toBuffer();
+export async function preprocessImage(buffer: Buffer): Promise<Buffer> {
+  const { width = 0, height = 0, orientation = 1 } = await sharp(buffer).metadata();
+  // EXIF orientations 5-8 are rotated a quarter turn, swapping width/height.
+  const orientedWidth = orientation >= 5 ? height : width;
+
+  let pipeline = sharp(buffer).rotate(); // auto-orient using EXIF, then strip it
+  if (orientedWidth > 0 && orientedWidth < MIN_OCR_WIDTH) {
+    const scale = orientedWidth < NARROW_IMAGE_WIDTH ? 3 : 2;
+    pipeline = pipeline.resize({
+      width: orientedWidth * scale,
+      kernel: 'lanczos3',
+    });
+  }
+  return pipeline.grayscale().normalize().sharpen().toFormat('png').toBuffer();
 }
 
 /**
  * Run OCR and return per-line text + confidence. A fresh worker is created
  * and torn down per call; Tesseract.js caches its downloaded language data
  * under the OS tmp dir, so warm function instances skip the re-download but
- * cold starts pay a one-time fetch.
+ * cold starts pay a one-time fetch. Returns no lines if recognition doesn't
+ * finish within OCR_TIMEOUT_MS (see above).
  */
 async function recognizeLines(buffer: Buffer): Promise<OcrLine[]> {
   const worker = await createWorker('eng');
+  let timer: NodeJS.Timeout | undefined;
   try {
     // The hierarchical blocks/paragraphs/lines output is opt-in - without
     // this, data.blocks is empty and every line is silently dropped.
-    const { data } = await worker.recognize(buffer, {}, { blocks: true });
+    const recognition = worker.recognize(buffer, {}, { blocks: true });
+    // Terminating the worker below rejects an abandoned recognition; nothing
+    // is awaiting it by then, so mark it handled.
+    recognition.catch(() => undefined);
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), OCR_TIMEOUT_MS);
+    });
+
+    const result = await Promise.race([recognition, timeout]);
+    if (!result) {
+      console.warn(`OCR did not finish within ${OCR_TIMEOUT_MS}ms; giving up`);
+      return [];
+    }
+
     const lines: OcrLine[] = [];
-    for (const block of data.blocks ?? []) {
+    for (const block of result.data.blocks ?? []) {
       for (const paragraph of block.paragraphs) {
         for (const line of paragraph.lines) {
           lines.push({ text: line.text, confidence: line.confidence });
@@ -117,6 +159,7 @@ async function recognizeLines(buffer: Buffer): Promise<OcrLine[]> {
     }
     return lines;
   } finally {
+    clearTimeout(timer);
     await worker.terminate();
   }
 }
@@ -196,6 +239,13 @@ export const scanReceipt = onCall<ScanReceiptRequest>(
 
       const preprocessed = await preprocessImage(buffer);
       const lines = await recognizeLines(preprocessed);
+      if (!hasReadableText(lines)) {
+        throw new HttpsError(
+          'failed-precondition',
+          'No readable text was found in this image.',
+          { reason: 'no-text-found' }
+        );
+      }
       return parseReceiptLines(lines);
     } catch (error) {
       if (error instanceof HttpsError) throw error;
