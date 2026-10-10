@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OcrLine, parseReceiptLines } from './receipt-parser';
+import { hasReadableText, OcrLine, parseReceiptLines } from './receipt-parser';
 
 function lines(...texts: string[]): OcrLine[] {
   return texts.map((text) => ({ text, confidence: 90 }));
@@ -118,5 +118,39 @@ describe('parseReceiptLines', () => {
       lines('18%   $10.98', '20%   $12.20', '25%   $15.25')
     );
     expect(result.lineItems).toEqual([]);
+  });
+});
+
+describe('hasReadableText', () => {
+  it('is true for a receipt read with normal confidence', () => {
+    expect(
+      hasReadableText(lines('COFFEE SHOP', 'Latte      4.50', 'Total      4.50'))
+    ).toBe(true);
+  });
+
+  it('is false when OCR returned no lines', () => {
+    expect(hasReadableText([])).toBe(false);
+  });
+
+  it('is false for the stray low-confidence characters OCR invents from a textured photo', () => {
+    const noise: OcrLine[] = [
+      { text: 'SE SCRE Ey IRE a', confidence: 0 },
+      { text: '. a oo', confidence: 0 },
+      { text: 'ae a Le Ce a . . .', confidence: 8 },
+      { text: 'hana ee dors a a i c', confidence: 3 },
+    ];
+    expect(hasReadableText(noise)).toBe(false);
+  });
+
+  it('is false for a handful of confident characters (too little to be a receipt)', () => {
+    expect(hasReadableText(lines('a |', '--'))).toBe(false);
+  });
+
+  it('ignores low-confidence lines when counting readable characters', () => {
+    const mixed: OcrLine[] = [
+      { text: 'Latte 4.50', confidence: 90 }, // 7 alphanumerics - not enough alone
+      { text: 'garbagegarbagegarbage', confidence: 5 },
+    ];
+    expect(hasReadableText(mixed)).toBe(false);
   });
 });
