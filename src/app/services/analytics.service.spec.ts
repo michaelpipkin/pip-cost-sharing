@@ -49,6 +49,61 @@ describe('AnalyticsService', () => {
     await expect(service.logEvent('fail_event')).resolves.toBeUndefined();
   });
 
+  describe('logAppCheckStatus', () => {
+    beforeEach(() => {
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('web');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
+    });
+
+    it('logs a ready session with provider and platform', async () => {
+      await service.logAppCheckStatus({ ready: true, reason: 'ready' });
+
+      expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({
+        name: 'app_check_status',
+        params: {
+          provider: 'recaptcha',
+          ready: 'true',
+          reason: 'ready',
+          platform: 'web',
+        },
+      });
+    });
+
+    it('includes the native app version and a truncated failure detail', async () => {
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.spyOn(App, 'getInfo').mockResolvedValue({
+        id: 'com.pipsplit.app',
+        name: 'PipSplit',
+        build: '26',
+        version: '1.3.1',
+      });
+
+      await service.logAppCheckStatus({
+        ready: false,
+        reason: 'error',
+        detail: 'x'.repeat(150),
+      });
+
+      expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({
+        name: 'app_check_status',
+        params: expect.objectContaining({
+          ready: 'false',
+          reason: 'error',
+          platform: 'android',
+          native_app_version: '1.3.1 (26)',
+          detail: 'x'.repeat(100),
+        }),
+      });
+    });
+
+    it('logs nothing when App Check was never initialized', async () => {
+      await service.logAppCheckStatus({ ready: true, reason: 'not-initialized' });
+
+      expect(FirebaseAnalytics.logEvent).not.toHaveBeenCalled();
+    });
+  });
+
   describe('logError', () => {
     let callableFn: ReturnType<typeof vi.fn>;
 

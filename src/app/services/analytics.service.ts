@@ -4,7 +4,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getAppCheckProviderName } from '../app-check';
+import { AppCheckTokenResult, getAppCheckProviderName } from '../app-check';
 
 @Injectable({
   providedIn: 'root',
@@ -85,6 +85,28 @@ export class AnalyticsService {
         .catch(() => null);
     this.#nativeAppVersion = lookup;
     return lookup;
+  }
+
+  // One event per signed-in session start, success or failure. app_errors
+  // only records failures, so on its own it can't give a failure *rate*;
+  // this supplies the denominator, broken down by provider (reCAPTCHA vs
+  // Play Integrity), platform and native build. Skipped when App Check was
+  // never initialized (emulators/SSR) - nothing to measure there.
+  async logAppCheckStatus(result: AppCheckTokenResult): Promise<void> {
+    if (result.reason === 'not-initialized') return;
+    const appVersion = await this.getNativeAppVersion();
+    const params: Record<string, unknown> = {
+      provider: getAppCheckProviderName(),
+      ready: result.ready ? 'true' : 'false',
+      reason: result.reason,
+      platform: Capacitor.getPlatform(),
+    };
+    // Not "app_version": Analytics reserves that name for its own
+    // automatically collected parameter.
+    if (appVersion) params['native_app_version'] = appVersion;
+    // Analytics caps parameter values at 100 characters.
+    if (result.detail) params['detail'] = result.detail.slice(0, 100);
+    await this.logEvent('app_check_status', params);
   }
 
   // Device/platform context attached to every logged error - not
