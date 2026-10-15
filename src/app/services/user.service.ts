@@ -150,6 +150,25 @@ export class UserService implements IUserService {
   ): Promise<void> {
     const email = firebaseUser.email!;
 
+    // Checked once per session rather than once per retry below: the
+    // result only feeds diagnostics, and a per-attempt check would
+    // double-count the app_check_status event and repeat the
+    // "proceeding without" log on every transient-error retry.
+    const tokenCheck = appCheckTokenReady().then((tokenResult) => {
+      void this.analytics.logAppCheckStatus(tokenResult);
+      if (!tokenResult.ready) {
+        this.analytics.logError(
+          'User Service',
+          'initializeAuth',
+          'Proceeding without confirmed App Check token',
+          tokenResult.detail
+            ? `${tokenResult.reason}: ${tokenResult.detail}`
+            : tokenResult.reason
+        );
+      }
+      return tokenResult;
+    });
+
     for (let attempt = 1; attempt <= LOGIN_SEQUENCE_MAX_ATTEMPTS; attempt++) {
       try {
         // Clear any group data left in the stores from a previous session
@@ -166,26 +185,16 @@ export class UserService implements IUserService {
         // Firestore App Check enforcement is currently OFF (see
         // .claude/app-check-enforcement-followup.md), so waiting up to
         // appCheckTokenReady()'s 10s timeout before this Firestore read
-        // buys nothing today. tokenResult is still awaited for its
-        // diagnostic log below. WARNING: if Firestore App Check
-        // enforcement is ever re-enabled, this must go back to
-        // sequential (await appCheckTokenReady() before any Firestore
-        // call below) or the cold-boot race that broke new
+        // buys nothing today. The check (tokenCheck, above) is still
+        // awaited here so its diagnostics finish within the session.
+        // WARNING: if Firestore App Check enforcement is ever re-enabled,
+        // this must go back to sequential (await tokenCheck before any
+        // Firestore call below) or the cold-boot race that broke new
         // registrations on 2026-08-19 will return.
-        const [tokenResult, existingUser] = await Promise.all([
-          appCheckTokenReady(),
+        const [, existingUser] = await Promise.all([
+          tokenCheck,
           this.getUserDetails(firebaseUser.uid),
         ]);
-        if (!tokenResult.ready) {
-          this.analytics.logError(
-            'User Service',
-            'initializeAuth',
-            'Proceeding without confirmed App Check token',
-            tokenResult.detail
-              ? `${tokenResult.reason}: ${tokenResult.detail}`
-              : tokenResult.reason
-          );
-        }
 
         let userData: User;
         if (existingUser) {
