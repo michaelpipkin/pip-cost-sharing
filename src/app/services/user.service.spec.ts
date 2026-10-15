@@ -101,6 +101,7 @@ describe('UserService', () => {
     logEvent: vi.fn().mockResolvedValue(undefined),
     logError: vi.fn(),
     logSnapshotError: vi.fn(),
+    logAppCheckStatus: vi.fn().mockResolvedValue(undefined),
   };
   const mockRouter = { navigate: vi.fn(), url: '/' };
   const mockLoadingService = { loadingOn: vi.fn(), loadingOff: vi.fn() };
@@ -596,6 +597,22 @@ describe('UserService', () => {
         expect(firestoreModule.getDoc).toHaveBeenCalledTimes(2);
         expect(mockGroupService.getUserGroups).toHaveBeenCalled();
         expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      });
+
+      it('reports App Check status once per session, not once per retry', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+          new FirebaseError('unavailable', 'The service is currently unavailable.')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        const resultPromise = callback(firebaseUser as any);
+        await vi.advanceTimersByTimeAsync(2000);
+        await resultPromise;
+
+        expect(mockAnalytics.logAppCheckStatus).toHaveBeenCalledTimes(1);
+        expect(mockAnalytics.logAppCheckStatus).toHaveBeenCalledWith(
+          expect.objectContaining({ ready: expect.any(Boolean) })
+        );
       });
 
       it('also retries a "deadline-exceeded" error', async () => {
