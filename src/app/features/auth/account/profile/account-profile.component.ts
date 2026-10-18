@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   model,
@@ -25,8 +26,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
 import { ProfileForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppUpdatePromptService } from '@services/app-update-prompt.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
@@ -62,6 +65,7 @@ export class AccountProfileComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appUpdatePrompt = inject(AppUpdatePromptService);
 
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
@@ -69,6 +73,7 @@ export class AccountProfileComponent {
 
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
   hidePassword = model<boolean>(true);
+  isOwner = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);
 
   protected readonly emailModel = signal<ProfileForm>({
     email: this.currentUser()?.email ?? '',
@@ -81,6 +86,12 @@ export class AccountProfileComponent {
     effect(() => {
       this.emailModel.set({ email: this.currentUser()?.email ?? '' });
     });
+  }
+
+  // Owner-only: shows the "please update" prompt exactly as outdated
+  // native builds see it, so it can be checked on the deployed app.
+  previewUpdatePrompt(): void {
+    this.appUpdatePrompt.showPrompt();
   }
 
   async verifyEmail(): Promise<void> {
