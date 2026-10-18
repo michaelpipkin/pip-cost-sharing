@@ -46,26 +46,18 @@ export class AppUpdatePromptService {
     if (Number.isNaN(build) || build >= MIN_NATIVE_BUILD) return;
 
     this.#promptedThisSession = true;
-    this.showPrompt(false, build);
+    this.#showPrompt(build);
   }
 
-  // `preview` is for the owner-only test button on the My Account page:
-  // shows exactly what an outdated build sees, regardless of this build's
-  // own version.
-  showPrompt(preview = true, build?: number): void {
-    // preview is a string: Analytics event parameters are strings/numbers,
-    // and booleans aren't reliably carried through the native plugin.
-    this.analytics.logEvent('update_prompt_shown', {
-      preview: String(preview),
-      ...(build === undefined ? {} : { native_build: build }),
-    });
+  #showPrompt(build: number): void {
+    this.analytics.logEvent('update_prompt_shown', { native_build: build });
     this.dialog
       .open(UpdatePromptDialogComponent, { disableClose: false })
       .afterClosed()
       .subscribe((update) => {
         if (update === true) {
           this.analytics.logEvent('update_prompt_accepted', {
-            preview: String(preview),
+            native_build: build,
           });
           void this.openStoreListing();
         }
