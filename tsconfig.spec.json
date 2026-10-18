@@ -32,6 +32,7 @@
       "@capacitor-firebase/app-check": [
         "./src/testing/mocks/capacitor-firebase-app-check.mock.ts"
       ],
+      "@capacitor/browser": ["./src/testing/mocks/capacitor-browser.mock.ts"],
       "@capacitor/camera": ["./src/testing/mocks/capacitor-camera.mock.ts"],
       "@capacitor/app": ["./src/testing/mocks/capacitor-app.mock.ts"],
       "@capacitor-community/admob": [
