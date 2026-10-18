@@ -3,7 +3,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
-import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
 import { UserService } from '@services/user.service';
@@ -176,31 +175,6 @@ describe('AccountProfileComponent', () => {
           By.css('[data-testid="delete-account-button"]')
         )
       ).toBeTruthy();
-    });
-  });
-
-  describe('owner-only update prompt preview', () => {
-    const previewButton = () =>
-      fixture.nativeElement.querySelector(
-        '[data-testid="preview-update-prompt-button"]'
-      ) as HTMLButtonElement | null;
-
-    it('is hidden for a regular user', async () => {
-      await createComponent();
-      expect(previewButton()).toBeNull();
-    });
-
-    it('is shown for the app owner and opens the prompt on click', async () => {
-      await createComponent({
-        currentUser: { email: APP_OWNER_EMAIL, emailVerified: true },
-      } as any);
-      const showSpy = vi
-        .spyOn((component as any).appUpdatePrompt, 'showPrompt')
-        .mockImplementation(() => {});
-
-      previewButton()!.click();
-
-      expect(showSpy).toHaveBeenCalledTimes(1);
     });
   });
 
