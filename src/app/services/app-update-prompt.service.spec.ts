@@ -69,7 +69,7 @@ describe('AppUpdatePromptService', () => {
       );
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'update_prompt_shown',
-        { preview: 'false', native_build: MIN_NATIVE_BUILD - 1 }
+        { native_build: MIN_NATIVE_BUILD - 1 }
       );
     });
 
@@ -125,29 +125,25 @@ describe('AppUpdatePromptService', () => {
     });
   });
 
-  describe('showPrompt (owner preview)', () => {
-    it('opens the dialog regardless of the current build, marked as a preview', () => {
-      service.showPrompt();
-
-      expect(mockDialog.open).toHaveBeenCalledTimes(1);
-      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
-        'update_prompt_shown',
-        { preview: 'true' }
-      );
-    });
-
+  describe('the prompt dialog', () => {
     it('opens the Play Store listing only when the user taps Update', async () => {
       const openSpy = vi.spyOn(service, 'openStoreListing').mockResolvedValue();
-      service.showPrompt();
+      setNative('android');
+      setBuild('20');
+      await service.checkOnStartup();
 
       afterClosedCallback(false);
       expect(openSpy).not.toHaveBeenCalled();
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'update_prompt_accepted',
+        expect.anything()
+      );
 
       afterClosedCallback(true);
       expect(openSpy).toHaveBeenCalledTimes(1);
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'update_prompt_accepted',
-        { preview: 'true' }
+        { native_build: 20 }
       );
     });
   });

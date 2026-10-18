@@ -200,11 +200,20 @@ Open:
    live bundle) asks native Android builds with versionCode below
    `MIN_NATIVE_BUILD` (24) to update: dismissible, once per session,
    skipped on web/iOS/builds without the `@capacitor/app` plugin. Opens the
-   Play listing via `@capacitor/browser`. Owner-only **Preview Update
-   Prompt** button on My Account -> Profile shows it regardless of build
-   (verify the Update button actually reaches the Play Store on a real
-   phone). Events: `update_prompt_shown` / `update_prompt_accepted`
-   (`preview`, `native_build`).
+   Play listing via `@capacitor/browser`. A temporary owner-only "Preview
+   Update Prompt" button on My Account -> Profile was used to test it and
+   has been removed (2026-10-18); the automatic startup check
+   (`checkOnStartup()` from `AppComponent`) is the only trigger and applies
+   to every user.
+   **Verified 2026-10-18 on a real phone (deployed app):** Update opens the
+   Play listing in the native Play Store app, after a very brief flash of
+   an in-app browser window (cosmetic; a `market://details?id=...` link
+   might avoid it - untested, not worth doing unless it bothers anyone).
+   Not yet seen in the wild: the automatic path for builds below 24 (check
+   `update_prompt_shown` events once deployed). Events:
+   `update_prompt_shown` / `update_prompt_accepted` (parameter
+   `native_build`; the earlier `preview` parameter was dropped with the
+   test button).
 2b. **Getting users onto 1.3.x:** Play Console -> the release -> Recovery
    tools -> **Prompt users to update** (found 2026-10-09 on the open-testing
    release page). Pick the older versions to target (optionally narrow by
@@ -225,6 +234,67 @@ Open:
    crawler (`play_review@google.com`, emulator), which logs ~10 Play
    Integrity errors and trips the error-alert email. Expected; consider
    ignoring that account in `logError` if it gets annoying.
+
+## GA4 data, 2026-10-18 (first read of adoption + app_check_status)
+
+(GA4 property 433803460, queried read-only; see the reference memory.)
+- **Android active users by `appVersion`** - last 28d: 1.2.0 = 473, 1.1.7 =
+  76, 1.3.1 = 46, 1.3.0 = 13 (web 189). Last 7d: 1.2.0 = 120, 1.3.1 = 36,
+  1.1.7 = 27 (web 24). So only ~20% of recent Android actives are on 1.3.x
+  right after the 100% rollout; 1.2.0 and 1.1.7 together are ~80%, which is
+  exactly the population the update prompt targets.
+- **`app_check_status`** (live since ~10/15): 13 events - reCAPTCHA /
+  Android 1.2.0 (23): 6 ready + 1 failed (error); Play Integrity / Android
+  1.3.1 (26): 4 ready, 0 failed; reCAPTCHA / web: 2 ready. Far too small to
+  conclude anything, and the count is well below what the active-user
+  numbers imply (expect tens to hundreds) - may be GA processing lag or
+  web-bundle caching in the WebView; re-check in a few days before trusting
+  it.
+- Custom dimensions provider/ready/reason/platform/native_app_version/
+  detail are registered. `native_build` (update_prompt_* events) is not.
+
+## BASELINE snapshot, 2026-10-18 (compare against this in a few days)
+
+Pulled via the Analytics MCP (property 433803460). Taken right after the
+1.3.1 (26) rollout hit 100% (set ~10/16-10/17) and BEFORE the web-side
+"please update" dialog deployed.
+
+**Android daily active users by `appVersion`** (1.2.0 = build 23, 1.1.7 =
+22, 1.3.1 = 26; 1.3.0 = betas 24/25):
+
+| date | 1.2.0 | 1.1.7 | 1.3.1 | 1.3.0 |
+|---|---|---|---|---|
+| 10/09 | 18 | 1 | 9 | 13 |
+| 10/10 | 22 | 1 | 2 | - |
+| 10/11 | 28 | 5 | 3 | - |
+| 10/12 | 19 | 3 | 2 | - |
+| 10/13 | 15 | 5 | 3 | - |
+| 10/14 | 25 | 4 | 8 | - |
+| 10/15 | 18 | 5 | 7 | - |
+| 10/16 | 15 | 3 | 9 | - |
+| 10/17 | 15 | 2 | 5 | - |
+
+7-day active users (to 10/18): 1.2.0 = 120, 1.3.1 = 36, 1.1.7 = 27,
+web = 24. 1.3.1 share of Android: ~20% by 7-day actives, ~25-33% by daily.
+Also ~15 new Android installs/day (`first_open` = 29 over 10/16-10/17).
+
+**`app_check_status` events (10/15 first seen -> 10/18, 13 events):**
+- reCAPTCHA / Android 1.2.0 (23): 6 ready + 1 failed (reason `error`) -> 1/7
+- Play Integrity / Android 1.3.1 (26): 4 ready, 0 failed -> 0/4
+- reCAPTCHA / web: 2 ready
+- Per day: 10/15 = 1, 10/16 = 7, 10/17 = 5.
+- **Coverage caveat:** 10/16-10/17 had 66 `app_initalized` events (42
+  users) and 73 `session_start`, but only 12 `app_check_status` (9 users) -
+  roughly 30% of the signed-in app loads we'd expect. Logged-out sessions
+  (29 `first_open` installs, login screen) don't emit it, which explains
+  part of the gap, not all. Treat rates as indicative only; if coverage
+  stays this low, find out why before trusting them.
+- `update_prompt_shown/accepted`: none yet (not deployed at snapshot time).
+- `app_error` GA events: 1 over 10/16-10/17 (low error volume).
+
+**What to compare next time:** share of Android DAU on 1.3.x (is the
+update prompt moving it?), 1.2.0/1.1.7 DAU trend, `update_prompt_*` counts,
+and `ready=false` rate by provider with a much larger sample.
 
 ## High-level architecture
 
