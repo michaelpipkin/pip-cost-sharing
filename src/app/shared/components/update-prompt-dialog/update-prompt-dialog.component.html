@@ -1,0 +1,28 @@
+<h1 mat-dialog-title data-testid="update-prompt-title">Update PipSplit</h1>
+<mat-dialog-content data-testid="update-prompt-content">
+  <p>
+    A newer version of PipSplit is available. Updating fixes sign-in and
+    upload problems that some people hit on older versions.
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions data-testid="update-prompt-actions">
+  <button
+    mat-raised-button
+    class="btn-secondary"
+    type="button"
+    [mat-dialog-close]="true"
+    data-testid="update-prompt-update-button"
+    aria-label="Update"
+  >
+    Update
+  </button>
+  <button
+    mat-stroked-button
+    type="button"
+    [mat-dialog-close]="false"
+    data-testid="update-prompt-later-button"
+    aria-label="Not now"
+  >
+    Not now
+  </button>
+</mat-dialog-actions>

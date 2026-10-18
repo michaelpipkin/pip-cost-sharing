@@ -175,7 +175,13 @@ Integrity API linked to the project (daily limit 10,000).
 
 Open:
 1. **Promote beta to production** (staged rollout, watch Android vitals
-   crashes), then **measure**: after a few days compare error-log entries
+   crashes). Status 2026-10-18: rollout at 20% from ~10/10, raised to 50%
+   a few days before 10/18; Functions `callable-request-verification`
+   logs (read via the Firebase MCP `functions_get_logs`) showed 0 INVALID
+   and all enforced callables VALID/VALID from 10/09 to 10/18 (the only
+   `app: MISSING` entries are the deliberately-unenforced `logAppError`
+   from failing clients). A throttled first launch on the Play build
+   (10/09 20:14 UTC) recovered within ~2 minutes. Then **measure**: after a few days compare error-log entries
    by `appCheck: play-integrity` vs `recaptcha` and by `appVersion`. The
    goal is a near-zero first-launch throttle rate on 1.3.x. (Query:
    `pnpm query app-errors`.)
@@ -185,6 +191,20 @@ Open:
    attempts."). Decide after real-user data shows how common it is.
    The -14 case could also get its own "update the Play Store" message
    in the App Check dialog.
+2a. **Web-side "please update" dialog (built 2026-10-18, not yet deployed
+   at time of writing).** Play's recovery prompt isn't offered for 1.1.7
+   (22) and older (no Recovery tab on those versions; the help page's only
+   per-version rule is that every track containing the version must have a
+   newer release - check for old Internal/Closed tracks still on 22), so
+   `AppUpdatePromptService` (web-only change; the Android shell loads the
+   live bundle) asks native Android builds with versionCode below
+   `MIN_NATIVE_BUILD` (24) to update: dismissible, once per session,
+   skipped on web/iOS/builds without the `@capacitor/app` plugin. Opens the
+   Play listing via `@capacitor/browser`. Owner-only **Preview Update
+   Prompt** button on My Account -> Profile shows it regardless of build
+   (verify the Update button actually reaches the Play Store on a real
+   phone). Events: `update_prompt_shown` / `update_prompt_accepted`
+   (`preview`, `native_build`).
 2b. **Getting users onto 1.3.x:** Play Console -> the release -> Recovery
    tools -> **Prompt users to update** (found 2026-10-09 on the open-testing
    release page). Pick the older versions to target (optionally narrow by

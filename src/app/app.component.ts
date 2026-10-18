@@ -21,6 +21,7 @@ import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppUpdatePromptService } from '@services/app-update-prompt.service';
 import { DeepLinkService } from '@services/deep-link.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
@@ -60,6 +61,7 @@ export class AppComponent {
   protected readonly adMobService = inject(AdMobService);
   protected readonly adSenseService = inject(AdSenseService);
   protected readonly deepLinkService = inject(DeepLinkService);
+  protected readonly appUpdatePrompt = inject(AppUpdatePromptService);
   protected readonly navigationLoading = inject(NavigationLoadingService);
 
   isSmallScreen = signal<boolean>(false);
@@ -77,6 +79,7 @@ export class AppComponent {
       await this.analytics.logEvent('app_initalized');
       await this.lockTextZoom();
       this.deepLinkService.initialize();
+      await this.appUpdatePrompt.checkOnStartup();
     });
 
     // Observe breakpoint changes for responsive layout
