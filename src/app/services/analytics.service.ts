@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { scrubAnalyticsParams } from '@utils/analytics-privacy.util';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { AppCheckTokenResult, getAppCheckProviderName } from '../app-check';
@@ -23,7 +24,10 @@ export class AnalyticsService {
     params?: Record<string, unknown>
   ): Promise<void> {
     try {
-      await FirebaseAnalytics.logEvent({ name, params });
+      await FirebaseAnalytics.logEvent({
+        name,
+        params: params ? scrubAnalyticsParams(params) : undefined,
+      });
     } catch (error) {
       console.error('Analytics error:', error);
     }
@@ -131,7 +135,13 @@ export class AnalyticsService {
     if (error !== undefined) params['error'] = error;
     params['additionalInfo'] = await this.buildAdditionalInfo();
 
-    FirebaseAnalytics.logEvent({ name: 'app_error', params }).catch((e: unknown) =>
+    // Only the Analytics copy is scrubbed of email addresses (see
+    // analytics-privacy.util.ts); the Firestore copy below keeps them,
+    // which is what makes them useful for matching errors to users.
+    FirebaseAnalytics.logEvent({
+      name: 'app_error',
+      params: scrubAnalyticsParams(params),
+    }).catch((e: unknown) =>
       console.error('Analytics logError (GA) failed:', e)
     );
 

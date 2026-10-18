@@ -42,6 +42,18 @@ describe('AnalyticsService', () => {
     });
   });
 
+  it('should drop an email parameter and scrub emails in string values before sending', async () => {
+    await service.logEvent('members_linked', {
+      email: 'alice@test.com',
+      note: 'linked for bob@test.com',
+      membersLinked: 2,
+    });
+    expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({
+      name: 'members_linked',
+      params: { note: 'linked for [email]', membersLinked: 2 },
+    });
+  });
+
   it('should silently swallow errors and not rethrow', async () => {
     vi.spyOn(FirebaseAnalytics, 'logEvent').mockRejectedValueOnce(
       new Error('network error')
@@ -206,6 +218,25 @@ describe('AnalyticsService', () => {
       await service.logError('Test Component', 'b', 'second');
 
       expect(getInfoSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('scrubs emails from the Analytics copy but keeps them in the Firestore copy', async () => {
+      await service.logError(
+        'Member Link Service',
+        'linkInvitedMembers',
+        'Skipped: App Check token unavailable',
+        'alice@test.com (error: throttled)'
+      );
+
+      expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({
+        name: 'app_error',
+        params: expect.objectContaining({
+          error: '[email] (error: throttled)',
+        }),
+      });
+      expect(callableFn).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'alice@test.com (error: throttled)' })
+      );
     });
 
     it('still includes the error field alongside additionalInfo', async () => {
