@@ -4,7 +4,7 @@ import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
 import { MembersPage } from '../pages/members.page';
 
-test.describe('Critical Flow: Expenses', () => {
+test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
   let membersPage: MembersPage;

@@ -6,7 +6,7 @@ import { GroupsPage } from '../pages/groups.page';
 import { MembersPage } from '../pages/members.page';
 import { SummaryPage } from '../pages/summary.page';
 
-test.describe('Critical Flow: Summary', () => {
+test.describe('Critical Flow: Summary', { tag: '@summary' }, () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
   let membersPage: MembersPage;

@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 import { GroupsPage } from '../pages/groups.page';
 
-test.describe('Groups Component Functionality', () => {
+test.describe('Groups Component Functionality', { tag: '@groups' }, () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
 

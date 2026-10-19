@@ -54,16 +54,45 @@ export function parseArgs(argv) {
   return { only, buildFunctions, command };
 }
 
-// emulators:exec takes the inner command as a single string. Arguments with
-// whitespace are wrapped in escaped quotes so they survive both the outer
-// double quotes and the shell that firebase-tools runs the string through.
-function quoteInner(args) {
+// emulators:exec takes the inner command as a single string, which
+// firebase-tools hands to a shell. Arguments with whitespace or shell
+// metacharacters (e.g. the "|" in --grep "@a|@b") must be quoted or the shell
+// splits/pipes them.
+const NEEDS_QUOTING = /[\s|&<>^%()"';$`*?]/;
+
+// Quotes each argument for the shell that runs the inner command. On Windows
+// that is cmd.exe, where a double quote inside quotes is written as "".
+// The result is the raw inner command string; buildExecPlan then escapes it
+// once more for the command line that launches firebase.
+export function quoteInner(args, platform = process.platform) {
   return args
-    .map((arg) => (/\s/.test(arg) ? `\\"${arg}\\"` : arg))
+    .map((arg) => {
+      if (!NEEDS_QUOTING.test(arg)) {
+        return arg;
+      }
+      return platform === 'win32'
+        ? `"${arg.replaceAll('"', '""')}"`
+        : `\\"${arg}\\"`;
+    })
     .join(' ');
 }
 
-export function buildExecPlan({ only, buildFunctions, command }) {
+// Wraps the inner command as the single quoted argument of the firebase call.
+// cmd.exe (which parses that call, and later the inner command) toggles its
+// quote state on every double quote and ignores backslash escapes, so a "|"
+// between \" pairs would run as a pipe. Doubling quotes ("") keeps cmd inside
+// the quoted region, and the C runtime reads "" in a quoted argument as one
+// literal quote. POSIX shells are fine with the \" form quoteInner emits.
+function quoteForFirebase(inner, platform) {
+  return platform === 'win32'
+    ? `"${inner.replaceAll('"', '""')}"`
+    : `"${inner}"`;
+}
+
+export function buildExecPlan(
+  { only, buildFunctions, command },
+  platform = process.platform
+) {
   const plan = [];
   if (buildFunctions) {
     plan.push({
@@ -82,7 +111,7 @@ export function buildExecPlan({ only, buildFunctions, command }) {
       TEST_PROJECT_ID,
       '--only',
       only.join(','),
-      `"${quoteInner(command)}"`,
+      quoteForFirebase(quoteInner(command, platform), platform),
     ],
     cwd: REPO_ROOT,
   });

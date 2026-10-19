@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 //
 // This separation ensures better test isolation and prevents authentication state conflicts.
 
-test.describe('Authentication - Setup Verification', () => {
+test.describe('Authentication - Setup Verification', { tag: '@auth' }, () => {
   test('should verify Firebase emulator connectivity', async ({ page }) => {
     // Basic connectivity test to ensure emulators are running
     // before running the more specific auth tests

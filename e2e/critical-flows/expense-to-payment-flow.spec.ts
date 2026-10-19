@@ -7,7 +7,9 @@ import { HistoryPage } from '../pages/history.page';
 import { MembersPage } from '../pages/members.page';
 import { SummaryPage } from '../pages/summary.page';
 
-test.describe('Critical Flow: Expense → Payment → History', () => {
+test.describe('Critical Flow: Expense → Payment → History', {
+  tag: ['@expenses', '@summary', '@history'],
+}, () => {
   let authPage: AuthPage;
   let groupsPage: GroupsPage;
   let membersPage: MembersPage;

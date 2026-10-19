@@ -9,7 +9,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
   await page.waitForSelector('app-root', { timeout: 10000 });
 }
 
-test.describe('Navigation - Public Routes', () => {
+test.describe('Navigation - Public Routes', { tag: '@shell' }, () => {
   test('should navigate to home page', async ({ page }) => {
     await page.goto('/');
     await waitForPageLoad(page);
@@ -56,7 +56,7 @@ test.describe('Navigation - Public Routes', () => {
   });
 });
 
-test.describe('Navigation - Route Redirects', () => {
+test.describe('Navigation - Route Redirects', { tag: '@shell' }, () => {
   test('should redirect from root to home', async ({ page }) => {
     await page.goto('/');
     await waitForPageLoad(page);
@@ -74,7 +74,7 @@ test.describe('Navigation - Route Redirects', () => {
   });
 });
 
-test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
+test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell' }, () => {
   test('should handle protected groups route when not authenticated', async ({
     page,
   }) => {

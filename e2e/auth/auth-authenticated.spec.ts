@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 // Use our fixtures for Firebase emulator integration
 
-test.describe('Authentication - Authenticated User Tests', () => {
+test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () => {
   test('should connect to Firebase emulators', async ({ page }) => {
     // Test Firebase emulator connectivity before running authenticated tests
 

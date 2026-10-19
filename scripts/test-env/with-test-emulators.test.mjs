@@ -8,6 +8,7 @@ import {
   parseArgs,
   buildExecPlan,
   findBusyPorts,
+  quoteInner,
 } from './with-test-emulators.mjs';
 
 test('parseArgs splits options from the command at --', () => {
@@ -66,15 +67,60 @@ test('buildExecPlan targets the test config and demo project', () => {
 });
 
 test('buildExecPlan quotes the inner command as one string', () => {
-  const exec = buildExecPlan({
-    only: ['auth'],
-    buildFunctions: false,
-    command: ['playwright', 'test', '--grep', '@expenses report'],
-  }).at(-1);
+  const exec = buildExecPlan(
+    {
+      only: ['auth'],
+      buildFunctions: false,
+      command: ['playwright', 'test', '--grep', '@expenses report'],
+    },
+    'linux'
+  ).at(-1);
   assert.equal(
     exec.args.at(-1),
     '"playwright test --grep \\"@expenses report\\""'
   );
+});
+
+// On Windows the string is parsed twice by cmd.exe (once for the firebase
+// call, once when emulators:exec runs the inner command), so embedded quotes
+// are doubled rather than backslash-escaped: cmd treats `\"` as a quote toggle
+// and would expose a `|` between two of them as a pipe.
+test('buildExecPlan on win32 doubles embedded quotes so cmd keeps | inside them', () => {
+  const exec = buildExecPlan(
+    {
+      only: ['auth'],
+      buildFunctions: false,
+      command: ['playwright', 'test', '--grep', '@a|@b'],
+    },
+    'win32'
+  ).at(-1);
+  assert.equal(
+    exec.args.at(-1),
+    '"playwright test --grep ""@a|@b"""'
+  );
+});
+
+test('quoteInner leaves plain arguments untouched', () => {
+  for (const platform of ['win32', 'linux']) {
+    assert.equal(
+      quoteInner(['pnpm', '--dir', 'functions', 'exec', 'a/b.spec.ts', '--x=1'], platform),
+      'pnpm --dir functions exec a/b.spec.ts --x=1'
+    );
+  }
+});
+
+test('quoteInner on win32 quotes whitespace and every cmd metacharacter', () => {
+  for (const arg of ['a b', 'a|b', 'a&b', 'a<b', 'a>b', 'a^b', 'a%b', 'a(b', 'a)b']) {
+    assert.equal(quoteInner(['x', arg], 'win32'), `x "${arg}"`, arg);
+  }
+});
+
+test('quoteInner on win32 doubles a quote inside a quoted argument', () => {
+  assert.equal(quoteInner(['x', 'say "hi"'], 'win32'), 'x "say ""hi"""');
+});
+
+test('quoteInner on posix backslash-escapes the quotes for the outer double quotes', () => {
+  assert.equal(quoteInner(['x', 'a|b', 'a b'], 'linux'), 'x \\"a|b\\" \\"a b\\"');
 });
 
 test('buildExecPlan steps run from the repo root', () => {

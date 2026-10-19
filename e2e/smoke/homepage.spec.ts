@@ -9,7 +9,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
   await page.waitForSelector('app-root', { timeout: 10000 });
 }
 
-test.describe('Homepage - Basic Setup Validation', () => {
+test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
   test('should load the homepage successfully', async ({ page }) => {
     // Navigate to the homepage
     await page.goto('/');

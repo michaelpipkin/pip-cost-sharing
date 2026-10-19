@@ -25,6 +25,7 @@
     "build:ci": "node scripts/setBuildDate.js && node scripts/updatePrivacyDate.js && ng build --configuration=production && node scripts/generate-sitemap.js",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
+    "test:area": "node scripts/test-area/test-area.mjs",
     "e2e:report": "playwright show-report",
     "e2e:install": "playwright install",
     "e2e": "node scripts/test-env/with-test-emulators.mjs --build-functions -- playwright test",

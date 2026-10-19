@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures';
 import { TEST_DATA } from '../constants';
 import { AuthPage } from '../pages/auth.page';
 
-test.describe('Authentication - Unauthenticated User Tests', () => {
+test.describe('Authentication - Unauthenticated User Tests', { tag: '@auth' }, () => {
   test('should display login form', async ({ page }) => {
     const authPage = new AuthPage(page);
     await authPage.gotoLogin();
