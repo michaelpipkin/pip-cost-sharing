@@ -10,10 +10,34 @@ import { signInAs } from '../utils/session';
 // emulator, which cold-starts each function on first use; under a busy run
 // (dev server compiling, browsers starting) it has taken 20+ s after seeding.
 const MAIL_SETTLE_TIMEOUT_MS = 60_000;
+// A rejected sign-in must surface well before signInAs's 30 s landing bound.
+// Includes the first (cold) load of the login page.
+const SIGN_IN_FAIL_FAST_MS = 15_000;
 
 /** A deep copy of ALL_DATASETS that a test can corrupt without side effects. */
 function cloneDatasets(): SeedDataset[] {
   return structuredClone(ALL_DATASETS);
+}
+
+/**
+ * Emails sendPaymentNotificationEmail writes to for the shared payments:
+ * each party whose member has an email and is linked to a user who hasn't
+ * opted out of email.
+ */
+function sharedPaymentRecipients(): string[] {
+  const members = new Map(SHARED.group.members.map((m) => [m.key, m]));
+  const users = new Map(Object.values(SHARED.users).map((u) => [u.key, u]));
+  const emails = new Set<string>();
+  for (const payment of SHARED.group.payments ?? []) {
+    for (const key of [payment.paidByKey, payment.paidToKey]) {
+      const member = members.get(key)!;
+      const user = member.userKey ? users.get(member.userKey) : undefined;
+      if (member.email && user && !user.profile?.emailOptOut) {
+        emails.add(member.email);
+      }
+    }
+  }
+  return [...emails].sort();
 }
 
 function sharedDataset(datasets: SeedDataset[]): SeedDataset {
@@ -81,17 +105,18 @@ test.describe('seed', { tag: '@infra' }, () => {
     // The shared SeedPayment (Bob -> Alice) writes a history doc, which fires
     // sendPaymentNotificationEmail -> one mail doc per linked party ->
     // sendMailQueueEmail, which must suppress delivery under demo-* projects.
+    // Scoped to the shared payment's recipients: other specs running in
+    // parallel create (and are mid-delivery on) their own mail docs.
     test.setTimeout(MAIL_SETTLE_TIMEOUT_MS + 15_000);
     const { db } = getSeedAdmin();
-    const expectedRecipients = [
-      SHARED.users.alice.email,
-      SHARED.users.bob.email,
-    ].sort();
+    const recipients = sharedPaymentRecipients();
+    expect(recipients.length).toBeGreaterThan(0);
+    const seededMail = db.collection('mail').where('to', 'in', recipients);
 
     await expect
       .poll(
         async () => {
-          const snap = await db.collection('mail').get();
+          const snap = await seededMail.get();
           const settled = snap.docs.filter((d) => {
             const state = d.get('delivery.state');
             return state !== undefined && state !== 'PROCESSING';
@@ -100,10 +125,9 @@ test.describe('seed', { tag: '@infra' }, () => {
         },
         { timeout: MAIL_SETTLE_TIMEOUT_MS }
       )
-      .toEqual(expect.arrayContaining(expectedRecipients));
+      .toEqual(expect.arrayContaining(recipients));
 
-    const mail = await db.collection('mail').get();
-    expect(mail.size).toBeGreaterThan(0);
+    const mail = await seededMail.get();
     for (const doc of mail.docs) {
       expect(doc.get('delivery.state'), `mail ${doc.id}`).toBe('SUCCESS');
       expect(doc.get('delivery.info.messageId'), `mail ${doc.id}`).toBe(
@@ -119,5 +143,15 @@ test.describe('seed', { tag: '@infra' }, () => {
     await expect(seededPage.getByTestId('current-group-name')).toHaveText(
       SHARED.group.name
     );
+  });
+
+  test('signInAs fails fast on a wrong password', async ({ seededPage }) => {
+    const wrongPassword = { ...SHARED.users.bob, password: 'not-the-password' };
+    const started = Date.now();
+    const email = wrongPassword.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(signInAs(seededPage, wrongPassword)).rejects.toThrow(
+      new RegExp(`${email}.*sign-in rejected`)
+    );
+    expect(Date.now() - started).toBeLessThan(SIGN_IN_FAIL_FAST_MS);
   });
 });
