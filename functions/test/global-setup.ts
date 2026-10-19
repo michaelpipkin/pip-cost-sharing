@@ -1,26 +1,30 @@
 /**
  * Global setup runs once before all tests.
- * Clears Auth and Firestore emulator data to ensure clean state, mirroring
- * the app's e2e global setup (../e2e/global-setup.ts).
+ * Clears Auth and Firestore data on the isolated test emulators (demo project,
+ * test ports — see scripts/test-env/config.mjs) to ensure clean state. Throws
+ * if they are unreachable, so a misconfigured run fails loudly instead of
+ * testing against stale or missing data.
  */
+const PROJECT_ID = 'demo-pipsplit-test';
+const AUTH_URL = 'http://127.0.0.1:19099';
+const FIRESTORE_URL = 'http://127.0.0.1:18080';
+
 export default async function globalSetup(): Promise<void> {
-  console.log('Clearing Firebase emulator data before running functions tests...');
+  console.log('Clearing test emulator data before running functions tests...');
 
   try {
+    await fetch(`${AUTH_URL}/emulator/v1/projects/${PROJECT_ID}/accounts`, {
+      method: 'DELETE',
+    });
     await fetch(
-      'http://localhost:9099/emulator/v1/projects/pip-cost-sharing/accounts',
-      { method: 'DELETE' }
-    );
-    await fetch(
-      'http://localhost:8080/emulator/v1/projects/pip-cost-sharing/databases/(default)/documents',
+      `${FIRESTORE_URL}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
       { method: 'DELETE' }
     );
     console.log('Emulator data cleared.');
   } catch (error) {
-    console.warn(
-      'Failed to clear emulator data — are the emulators running? Start them with `pnpm emu` from the repo root.',
-      error
+    throw new Error(
+      'Test emulators are unreachable on ports 19099/18080. Run the functions tests via `pnpm test` (it starts them through scripts/test-env/with-test-emulators.mjs).',
+      { cause: error }
     );
-    console.warn('Tests will continue but may fail or have stale data.\n');
   }
 }

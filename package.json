@@ -6,6 +6,8 @@
   "scripts": {
     "start": "ng serve --host=127.0.0.1 --port=4200",
     "kill-ports": "pnpx kill-port 4000 && pnpx kill-port 4500 && pnpx kill-port 5000 && pnpx kill-port 8080 && pnpx kill-port 9099 && pnpx kill-port 9150 && pnpx kill-port 9199",
+    "kill-test-ports": "node scripts/test-env/kill-test-ports.mjs",
+    "test:scripts": "node --test \"scripts/**/*.test.mjs\"",
     "reset-packages": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "get-indexes": "firebase firestore:indexes",
     "sync-indexes": "node scripts/updateFirestoreIndexes.js",
