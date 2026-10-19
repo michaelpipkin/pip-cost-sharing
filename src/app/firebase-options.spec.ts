@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { firebaseConfig } from './firebase.config';
 import { resolveFirebaseOptions } from './firebase-options';
 
-describe('resolveFirebaseOptions', () => {
+describe('firebase-options: resolveFirebaseOptions', () => {
   it('returns the real config when no emulator project is set', () =>
     expect(resolveFirebaseOptions(null)).toEqual(firebaseConfig));
 
