@@ -7,9 +7,12 @@
 //
 // Cross-cutting code (services, shared components, directives, pipes,
 // utilities) is listed under EVERY area whose code imports it, so running an
-// area covers the shared code it relies on. A few app-wide primitives that
-// virtually everything uses (analytics, the snackbar, app-check error
-// handling) are listed under `shell` only; feature specs mock them.
+// area covers the shared code it relies on, and touching shared code runs every
+// area that depends on it. That includes the app-wide primitives (analytics, the
+// snackbar, app-check error handling, the user service): each is spread into
+// every area whose code imports it, directly or through another service. They
+// are mocked in most feature specs, so their own specs only run via the areas
+// listed here.
 //
 // `pnpm test:area --check` fails if a unit spec, functions spec or e2e test is
 // not covered here, or if an entry here matches no spec - keep it in sync when
@@ -54,33 +57,51 @@ const RECEIPT_CAPTURE = [
   `${COMPONENTS}/receipt-dialog`,
 ];
 
+// App-wide primitives. Membership comes from the real imports, not from how
+// "central" the code feels:
+//  - ANALYTICS: imported by every feature (and by guided-tour.service) -> all 16.
+//  - SNACKBAR: every area except home and rental, which never show one.
+//  - APP_CHECK_ERRORS: the error handler (+ its dialog and util) is imported by
+//    the account-deletion, admin, expense-form, scan-receipt, groups, members and
+//    summary code, and by user.service.
+//  - USER_SERVICE: app shell, auth/account, history, summary, and
+//    receipt-dialog (so expenses and receipts).
+const ANALYTICS = [
+  `${SERVICES}/analytics.service.spec.ts`,
+  `${UTILITIES}/analytics-privacy.util.spec.ts`,
+];
+const SNACKBAR = [`${COMPONENTS}/custom-snackbar`];
+const APP_CHECK_ERRORS = [
+  `${SERVICES}/app-check-error-handler.service.spec.ts`,
+  `${COMPONENTS}/app-check-error-dialog`,
+  `${UTILITIES}/app-check-error.util.spec.ts`,
+];
+const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
+
 export const AREAS = {
   // App bootstrap, layout chrome, ads/PWA/theme plumbing and the app-wide
   // primitives described above.
   shell: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       'app/app.component.spec.ts',
       'app/app-check.spec.ts',
       'app/firebase-options.spec.ts',
       `${FEATURES}/about`,
       `${SERVICES}/admob.service.spec.ts`,
       `${SERVICES}/adsense.service.spec.ts`,
-      `${SERVICES}/analytics.service.spec.ts`,
-      `${SERVICES}/app-check-error-handler.service.spec.ts`,
       `${SERVICES}/app-update-prompt.service.spec.ts`,
       `${SERVICES}/deep-link.service.spec.ts`,
       `${SERVICES}/page-title-strategy.service.spec.ts`,
       `${SERVICES}/pwa-detection.service.spec.ts`,
       `${SERVICES}/theme.service.spec.ts`,
-      `${SERVICES}/user.service.spec.ts`,
       `${COMPONENTS}/account-menu`,
-      `${COMPONENTS}/app-check-error-dialog`,
-      `${COMPONENTS}/custom-snackbar`,
       `${COMPONENTS}/footer`,
       `${COMPONENTS}/loading`,
       `${COMPONENTS}/update-prompt-dialog`,
-      `${UTILITIES}/analytics-privacy.util.spec.ts`,
-      `${UTILITIES}/app-check-error.util.spec.ts`,
     ],
     // Mail delivery suppression applies to every email the backend sends.
     functions: ['src/mail-suppression.spec.ts'],
@@ -90,6 +111,10 @@ export const AREAS = {
   // Sign-in, registration, password flows and route guards.
   auth: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/auth/account-action`,
       `${FEATURES}/auth/auth-main`,
       `${FEATURES}/auth/forgot-password`,
@@ -101,7 +126,6 @@ export const AREAS = {
       `${SERVICES}/member.service.spec.ts`,
       `${SERVICES}/member-link.service.spec.ts`,
       `${SERVICES}/pwa-detection.service.spec.ts`,
-      `${SERVICES}/user.service.spec.ts`,
       ...CONFIRM_DIALOG,
     ],
     functions: [
@@ -114,11 +138,14 @@ export const AREAS = {
   // Signed-in user's account: profile, group memberships, account deletion.
   account: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/auth/account`,
       `${FEATURES}/auth/delete-account`,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
-      `${SERVICES}/user.service.spec.ts`,
       `${COMPONENTS}/account-menu`,
       ...CONFIRM_DIALOG,
     ],
@@ -129,6 +156,9 @@ export const AREAS = {
   // Creating/managing groups, group settings, invitations to join.
   groups: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
       `${FEATURES}/groups`,
       `${SERVICES}/expense.service.spec.ts`,
       `${SERVICES}/group.service.spec.ts`,
@@ -153,6 +183,9 @@ export const AREAS = {
   // Group members and invitations.
   members: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
       `${FEATURES}/members`,
       `${SERVICES}/invite.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
@@ -176,6 +209,8 @@ export const AREAS = {
 
   categories: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
       `${FEATURES}/categories`,
       `${SERVICES}/category.service.spec.ts`,
       ...SORTING,
@@ -191,6 +226,10 @@ export const AREAS = {
   // and receipt scanning have their own areas but the forms depend on them.
   expenses: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/expenses/add-expense`,
       `${FEATURES}/expenses/add-expense-options-dialog`,
       `${FEATURES}/expenses/edit-expense`,
@@ -225,6 +264,7 @@ export const AREAS = {
   // Rental expense entry and its room-based split grid.
   rental: {
     unit: [
+      ...ANALYTICS,
       `${FEATURES}/expenses/rental`,
       `${FEATURES}/split/split-rental-grid`,
       ...LOCALE,
@@ -242,6 +282,10 @@ export const AREAS = {
   // Receipt scanning/OCR from the app side and the OCR/parsing backend.
   receipts: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/expenses/scan-receipt`,
       `${SERVICES}/receipt-scan.service.spec.ts`,
       ...RECEIPT_CAPTURE,
@@ -258,6 +302,8 @@ export const AREAS = {
   // Memorized (recurring/template) expenses.
   memorized: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
       `${FEATURES}/memorized`,
       `${SERVICES}/category.service.spec.ts`,
       `${SERVICES}/memorized.service.spec.ts`,
@@ -278,10 +324,13 @@ export const AREAS = {
   // Balances, payments and settle-up (including the settle-up email).
   summary: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/summary`,
       `${SERVICES}/history.service.spec.ts`,
       `${SERVICES}/split.service.spec.ts`,
-      `${SERVICES}/user.service.spec.ts`,
       ...LOCALE,
       ...GUIDED_TOUR,
     ],
@@ -297,9 +346,12 @@ export const AREAS = {
   // Payment/settlement history and its detail view.
   history: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...USER_SERVICE,
       `${FEATURES}/history`,
       `${SERVICES}/history.service.spec.ts`,
-      `${SERVICES}/user.service.spec.ts`,
       ...LOCALE,
       ...SORTING,
       ...GUIDED_TOUR,
@@ -312,6 +364,8 @@ export const AREAS = {
   // The standalone split calculator.
   split: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
       `${FEATURES}/split`,
       `${SERVICES}/split.service.spec.ts`,
       ...LOCALE,
@@ -328,7 +382,11 @@ export const AREAS = {
   },
 
   home: {
-    unit: [`${FEATURES}/home`, `${SERVICES}/pwa-detection.service.spec.ts`],
+    unit: [
+      `${FEATURES}/home`,
+      `${SERVICES}/pwa-detection.service.spec.ts`,
+      ...ANALYTICS,
+    ],
     functions: [],
     tag: '@home',
   },
@@ -336,6 +394,8 @@ export const AREAS = {
   // Help dialog/page, help content and the guided-tour engine.
   help: {
     unit: [
+      ...ANALYTICS,
+      ...SNACKBAR,
       `${FEATURES}/help`,
       `${SERVICES}/help.service.spec.ts`,
       `${SERVICES}/help-content.service.spec.ts`,
@@ -347,7 +407,14 @@ export const AREAS = {
 
   // Site-admin screens (email log, reports) and their backend.
   admin: {
-    unit: [`${FEATURES}/admin`, ...CONFIRM_DIALOG, ...DELETE_DIALOG],
+    unit: [
+      `${FEATURES}/admin`,
+      ...ANALYTICS,
+      ...SNACKBAR,
+      ...APP_CHECK_ERRORS,
+      ...CONFIRM_DIALOG,
+      ...DELETE_DIALOG,
+    ],
     functions: ['src/admin-reports.spec.ts'],
     tag: '@admin',
   },

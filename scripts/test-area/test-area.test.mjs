@@ -114,6 +114,42 @@ test('buildRunPlan de-duplicates paths shared by several areas', () => {
   assert.equal(new Set(includes).size, includes.length);
 });
 
+// Cross-cutting rule: app-wide primitives run under every area that imports
+// them (membership derived from real imports; see areas.mjs).
+const covers = (name, p) =>
+  AREAS[name].unit.some((u) => p === u || p.startsWith(`${u}/`));
+const everyAreaExcept = (...skip) =>
+  Object.keys(AREAS).filter((n) => !skip.includes(n));
+
+test('the analytics service and its privacy util are covered by every area', () => {
+  for (const name of Object.keys(AREAS)) {
+    assert.ok(covers(name, 'app/services/analytics.service.spec.ts'), name);
+    assert.ok(covers(name, 'app/utilities/analytics-privacy.util.spec.ts'), name);
+  }
+});
+
+test('custom-snackbar is covered by every area except home and rental', () => {
+  for (const name of everyAreaExcept('home', 'rental')) {
+    assert.ok(
+      covers(name, 'app/shared/components/custom-snackbar/custom-snackbar.component.spec.ts'),
+      name
+    );
+  }
+});
+
+test('the app-check error handler is covered by the areas that import it', () => {
+  const spec = 'app/services/app-check-error-handler.service.spec.ts';
+  for (const name of ['shell', 'auth', 'account', 'groups', 'members', 'expenses', 'receipts', 'summary', 'history', 'admin']) {
+    assert.ok(covers(name, spec), name);
+  }
+});
+
+test('the user service is covered by the areas that import it', () => {
+  for (const name of ['shell', 'auth', 'account', 'history', 'summary', 'expenses', 'receipts']) {
+    assert.ok(covers(name, 'app/services/user.service.spec.ts'), name);
+  }
+});
+
 test('findUnassigned flags a spec under no area and an untagged e2e test', () => {
   const r = findUnassigned(
     {
