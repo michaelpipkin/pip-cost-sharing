@@ -17,7 +17,15 @@ import {
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
-import { assertAdmin, callableAppCheck, getSmtpPassword, normalizeEmail } from './common';
+import {
+  assertAdmin,
+  buildSuccessDelivery,
+  buildSuppressedDelivery,
+  callableAppCheck,
+  getSmtpPassword,
+  isDemoProject,
+  normalizeEmail,
+} from './common';
 
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
@@ -1907,6 +1915,19 @@ export const sendMailQueueEmail = onDocumentCreated(
       delivery: { state: 'PROCESSING', attempts: 1, startTime },
     });
 
+    // demo-* projects (isolated test emulators) must never send real email,
+    // but still record a SUCCESS delivery so the admin email log is realistic.
+    if (isDemoProject(process.env.GCLOUD_PROJECT)) {
+      console.log(
+        `Suppressing mail doc ${event.params['docId']}: demo project, not sending.`
+      );
+      await snap.ref.update({
+        delivery: buildSuppressedDelivery(to, startTime),
+        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+      });
+      return;
+    }
+
     try {
       const transport = await getMailTransport();
       const info = await transport.sendMail({
@@ -1919,18 +1940,12 @@ export const sendMailQueueEmail = onDocumentCreated(
       });
 
       await snap.ref.update({
-        delivery: {
-          state: 'SUCCESS',
-          attempts: 1,
-          startTime,
-          endTime: Timestamp.now(),
-          info: {
-            messageId: info.messageId ?? '',
-            accepted: info.accepted ?? [],
-            rejected: info.rejected ?? [],
-            response: info.response ?? '',
-          },
-        },
+        delivery: buildSuccessDelivery(startTime, {
+          messageId: info.messageId ?? '',
+          accepted: info.accepted ?? [],
+          rejected: info.rejected ?? [],
+          response: info.response ?? '',
+        }),
         expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
       });
     } catch (error) {
