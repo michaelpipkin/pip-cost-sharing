@@ -6,6 +6,17 @@ const FIRESTORE_URL = `http://${emulatorHost('firestore')}`;
 const AUTH_URL = `http://${emulatorHost('auth')}`;
 const PROBE_TIMEOUT_MS = 2000;
 
+// E2E_TARGET switches the shared e2e modules (constants, createTestUser, ...)
+// to the dev emulators. It is only meant for the feature-tour capture config,
+// so refuse to run the main suite if it is set in the environment.
+function assertNoDevTarget() {
+  if (process.env.E2E_TARGET !== undefined) {
+    throw new Error(
+      `E2E_TARGET is set (${process.env.E2E_TARGET}) - it is only for the feature-tour capture config; unset it before running pnpm e2e.`
+    );
+  }
+}
+
 async function assertEmulatorsRunning() {
   try {
     await fetch(`${FIRESTORE_URL}/`, {
@@ -32,6 +43,7 @@ async function clear(label: string, url: string) {
  * and Firestore, then seeds the deterministic dataset.
  */
 export default async function globalSetup() {
+  assertNoDevTarget();
   await assertEmulatorsRunning();
 
   await clear(

@@ -13,8 +13,8 @@ export default defineConfig({
   /* Run tests in files in parallel */
   fullyParallel: true,
   retries: 0,
-  /* Parallel workers enabled - tests are isolated by unique user accounts */
-  workers: 4,
+  /* 2 workers: 4 concurrent first page loads time out on the ng dev server here. Tests are isolated by unique user accounts. */
+  workers: 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -29,14 +29,14 @@ export default defineConfig({
     actionTimeout: 30000,
     navigationTimeout: 30000,
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Keep a trace for failed tests (cheaper than video with 4 workers). See https://playwright.dev/docs/trace-viewer */
+    trace: 'retain-on-failure',
 
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
 
-    /* Record video on failure */
-    video: 'retain-on-failure',
+    /* Video recording makes first page loads time out with 4 workers; traces cover failures. */
+    video: 'off',
   },
   /* Configure projects for major browsers */
   projects: [
