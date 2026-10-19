@@ -1,4 +1,5 @@
 import { TEST_PROJECT_ID, emulatorHost } from '../scripts/test-env/config.mjs';
+import { seedAll } from './seed';
 
 // Global setup always targets the isolated test emulators (never the dev
 // profile), so it can wipe them without risk to the owner's dev data.
@@ -55,5 +56,5 @@ export default async function globalSetup() {
     `${FIRESTORE_URL}/emulator/v1/projects/${TEST_PROJECT_ID}/databases/(default)/documents`
   );
 
-  // TODO(Task 6): await seedAll(); - seeds the deterministic dataset here.
+  await seedAll();
 }
