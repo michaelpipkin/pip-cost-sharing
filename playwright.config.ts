@@ -1,20 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_APP_PORT } from './scripts/test-env/config.mjs';
+
+const baseURL = `http://localhost:${E2E_APP_PORT}`;
 
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: './e2e',
-  /* Global setup - runs once before all tests to clear Firestore emulator */
+  /* Global setup - verifies the test emulators are up, resets them and seeds data */
   globalSetup: './e2e/global-setup.ts',
   /* Run tests in files in parallel */
   fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   /* Parallel workers enabled - tests are isolated by unique user accounts */
-  workers: process.env.CI ? 2 : 4,
+  workers: 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -24,11 +24,10 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:4200',
+    baseURL,
 
-    /* Faster timeouts for CI */
-    actionTimeout: process.env.CI ? 10000 : 30000,
-    navigationTimeout: process.env.CI ? 15000 : 30000,
+    actionTimeout: 30000,
+    navigationTimeout: 30000,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -68,12 +67,12 @@ export default defineConfig({
     // },
   ],
   timeout: 60 * 1000,
-  /* Run your local dev server before starting the tests */
-  /* Firebase emulators should be started manually during development */
+  /* Dev server built with the e2e configuration (test emulators, demo project).
+     The emulators themselves are started by `pnpm e2e` (with-test-emulators). */
   webServer: {
-    command: 'pnpm start',
-    url: 'http://localhost:4200',
-    reuseExistingServer: !process.env.CI,
+    command: 'pnpm exec ng serve --configuration e2e --host 127.0.0.1 --port 4300',
+    url: baseURL,
+    reuseExistingServer: true,
     timeout: 120 * 1000,
   },
 });

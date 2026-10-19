@@ -1,61 +1,11 @@
 import { Page } from '@playwright/test';
+import { TEST_CONFIG } from '../constants';
 
 /**
  * Firebase Emulator utilities for e2e testing
  */
 
-// Firebase emulator ports (default values)
-export const FIREBASE_EMULATOR_PORTS = {
-  auth: 9099,
-  firestore: 8080,
-  functions: 5001,
-  storage: 9199,
-  ui: 4000,
-} as const;
-
-/**
- * Wait for Firebase emulators to be ready
- */
-export async function waitForFirebaseEmulators(page: Page) {
-  // Wait for Firestore emulator to be ready
-  await page.waitForFunction(
-    async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:8080');
-        return response.ok;
-      } catch {
-        return false;
-      }
-    },
-    { timeout: 30000 }
-  );
-
-  // Wait for Auth emulator to be ready
-  await page.waitForFunction(
-    async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:9099');
-        return response.ok;
-      } catch {
-        return false;
-      }
-    },
-    { timeout: 30000 }
-  );
-
-  // Wait for Functions emulator to be ready
-  await page.waitForFunction(
-    async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:5001');
-        return response.ok;
-      } catch {
-        return false;
-      }
-    },
-    { timeout: 30000 }
-  );
-}
+const { projectId, emulators } = TEST_CONFIG.firebase;
 
 /**
  * Clear Firebase emulator data between tests
@@ -63,12 +13,12 @@ export async function waitForFirebaseEmulators(page: Page) {
 export async function clearFirebaseData(page: Page) {
   // Clear Firestore data
   await page.request.delete(
-    'http://127.0.0.1:8080/emulator/v1/projects/pip-cost-sharing/databases/(default)/documents'
+    `${emulators.firestore}/emulator/v1/projects/${projectId}/databases/(default)/documents`
   );
 
   // Clear Auth data
   await page.request.delete(
-    'http://127.0.0.1:9099/emulator/v1/projects/pip-cost-sharing/accounts'
+    `${emulators.auth}/emulator/v1/projects/${projectId}/accounts`
   );
 }
 
@@ -84,7 +34,7 @@ export async function createTestUser(
 ) {
   // Step 1: Create the user via the v1 Identity Toolkit signUp endpoint
   const signUpResponse = await page.request.post(
-    'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key',
+    `${emulators.auth}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
     {
       data: {
         email,
@@ -106,7 +56,7 @@ export async function createTestUser(
   // Step 2: Set emailVerified to true via the verifyUserEmail cloud function
   // (emailVerified can only be set via the Admin SDK, not the client REST API)
   const verifyResponse = await page.request.post(
-    'http://127.0.0.1:5001/pip-cost-sharing/us-central1/verifyUserEmail',
+    `${emulators.functions}/${projectId}/us-central1/verifyUserEmail`,
     {
       data: {
         data: { uid: signUpData.localId },
@@ -138,7 +88,7 @@ export async function setCustomClaims(
   claims: Record<string, any>
 ) {
   await page.request.post(
-    `http://127.0.0.1:9099/emulator/v1/projects/pip-cost-sharing/accounts/${userId}:setCustomClaims`,
+    `${emulators.auth}/emulator/v1/projects/${projectId}/accounts/${userId}:setCustomClaims`,
     {
       data: { customClaims: claims },
     }
@@ -155,7 +105,7 @@ export async function addFirestoreTestData(
   data: Record<string, any>
 ) {
   const response = await page.request.post(
-    `http://127.0.0.1:8080/v1/projects/pip-cost-sharing/databases/(default)/documents/${collection}?documentId=${documentId}`,
+    `${emulators.firestore}/v1/projects/${projectId}/databases/(default)/documents/${collection}?documentId=${documentId}`,
     {
       data: {
         fields: convertToFirestoreFields(data),
@@ -202,7 +152,11 @@ function convertToFirestoreFields(obj: any): any {
 }
 
 /**
- * Configure Firebase to use emulators in the browser context
+ * Configure Firebase to use emulators in the browser context.
+ *
+ * Kept exported only because e2e/feature-tour/feature-tour.capture.ts still
+ * imports it; it does nothing against the real app (which picks its emulators
+ * from the build environment). Plan 2 removes it.
  */
 export async function configureFirebaseEmulators(page: Page) {
   await page.addInitScript(() => {

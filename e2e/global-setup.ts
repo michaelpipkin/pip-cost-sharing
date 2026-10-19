@@ -1,36 +1,47 @@
-import { execSync } from 'node:child_process';
+import { TEST_PROJECT_ID, emulatorHost } from '../scripts/test-env/config.mjs';
+
+// Global setup always targets the isolated test emulators (never the dev
+// profile), so it can wipe them without risk to the owner's dev data.
+const FIRESTORE_URL = `http://${emulatorHost('firestore')}`;
+const AUTH_URL = `http://${emulatorHost('auth')}`;
+const PROBE_TIMEOUT_MS = 2000;
+
+async function assertEmulatorsRunning() {
+  try {
+    await fetch(`${FIRESTORE_URL}/`, {
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error(
+      'Test emulators are not running. Start e2e via `pnpm e2e` (or `pnpm test:area <area>`).'
+    );
+  }
+}
+
+async function clear(label: string, url: string) {
+  const response = await fetch(url, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to clear ${label} emulator data (${url}): ${response.status} ${await response.text()}`
+    );
+  }
+}
 
 /**
- * Global setup runs once before all tests
- * Clears Auth and Firestore emulator data to ensure clean state
+ * Runs once before all tests: verifies the test emulators are up, resets Auth
+ * and Firestore, then seeds the deterministic dataset.
  */
 export default async function globalSetup() {
-  const timestamp = new Date().toISOString();
-  console.log(
-    `\n🧹 [${timestamp}] GLOBAL SETUP RUNNING - Clearing Firebase emulator data...`
+  await assertEmulatorsRunning();
+
+  await clear(
+    'Auth',
+    `${AUTH_URL}/emulator/v1/projects/${TEST_PROJECT_ID}/accounts`
+  );
+  await clear(
+    'Firestore',
+    `${FIRESTORE_URL}/emulator/v1/projects/${TEST_PROJECT_ID}/databases/(default)/documents`
   );
 
-  try {
-    // Clear Auth emulator data
-    console.log('  - Clearing Auth data...');
-    execSync(
-      'curl -s -X DELETE "http://localhost:9099/emulator/v1/projects/pip-cost-sharing/accounts"',
-      { stdio: 'pipe' }
-    );
-
-    // Clear Firestore emulator data
-    console.log('  - Clearing Firestore data...');
-    execSync(
-      'curl -s -X DELETE "http://localhost:8080/emulator/v1/projects/pip-cost-sharing/databases/(default)/documents"',
-      { stdio: 'pipe' }
-    );
-
-    const finishTime = new Date().toISOString();
-    console.log(
-      `✅ [${finishTime}] GLOBAL SETUP COMPLETE - Firebase emulator data cleared successfully\n`
-    );
-  } catch (error) {
-    console.warn('⚠️  Failed to clear emulator data:', error);
-    console.warn('Tests will continue but may have stale data\n');
-  }
+  // TODO(Task 6): await seedAll(); - seeds the deterministic dataset here.
 }
