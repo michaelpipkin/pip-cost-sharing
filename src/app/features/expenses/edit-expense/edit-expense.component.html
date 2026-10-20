@@ -204,7 +204,12 @@
       <div class="mb-3">
         @if (!!fileName()) {
           <div data-tour-anchor="receipt" class="attachment">
-            <button mat-mini-fab class="btn btn-danger" (click)="removeFile()">
+            <button
+              type="button"
+              mat-mini-fab
+              class="btn btn-danger"
+              (click)="removeFile()"
+            >
               <mat-icon>delete</mat-icon>
             </button>
             <span class="filename">{{ fileName() }}</span>
@@ -219,6 +224,7 @@
               (change)="onFileSelected($event)"
             />
             <button
+              type="button"
               mat-mini-fab
               class="btn btn-success"
               (click)="openFileSelectionDialog()"
@@ -305,7 +311,12 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <button mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
+              <button
+                type="button"
+                mat-mini-fab
+                class="btn-danger"
+                (click)="removeSplit(i)"
+              >
                 <mat-icon>delete</mat-icon>
               </button>
             </div>

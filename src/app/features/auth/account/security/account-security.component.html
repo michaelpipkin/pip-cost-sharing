@@ -22,7 +22,7 @@
           data-testid="new-password-input"
           aria-label="Enter new password"
         />
-        <button
+        <button type="button"
           mat-icon-button
           matIconSuffix
           (click)="toggleHidePassword()"
@@ -44,7 +44,7 @@
           autocomplete="new-password"
           [formField]="passwordForm.confirmPassword"
         />
-        <button
+        <button type="button"
           mat-icon-button
           matIconSuffix
           (click)="toggleHideConfirm()"
