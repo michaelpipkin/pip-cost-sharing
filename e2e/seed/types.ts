@@ -42,6 +42,17 @@ export interface SeedMember {
   userKey?: string;
   active?: boolean;
   groupAdmin?: boolean;
+  /**
+   * Left the group voluntarily (member.service leaveGroup): written as
+   * `leftGroup: true`, so the member must also be `active: false`.
+   */
+  leftGroup?: boolean;
+  /**
+   * An invitation already sent to this (unregistered) member, as
+   * sendGroupInvite records it: written as
+   * `invite: { lastSentAt, lastSentTo: <member email>, sendCount }`.
+   */
+  invite?: { sentDaysAgo: number; sendCount: number };
 }
 
 export interface SeedCategory {
@@ -76,6 +87,57 @@ export interface SeedExpense {
   splits: SeedSplitInput[];
   /** Marks every split (and the expense) paid, without writing history. */
   paid?: boolean;
+  /**
+   * Vacation-rental occupancy, written as the expense's `rental` field.
+   * Only valid with splitMethod 'shares', whose shares the dataset author
+   * supplies (the seeder does not derive them from the occupancy).
+   */
+  rental?: SeedRental;
+  /**
+   * A stored receipt: `file` is a name under e2e/fixtures/files. Sets
+   * `receiptPath` to groups/{group}/receipts/{expense key} and uploads the
+   * file's bytes to the Storage emulator at that path.
+   */
+  receipt?: { file: string; contentType: string };
+}
+
+export interface SeedRentalStay {
+  memberKey: string;
+  /** 0-based night indices, each in [0, nightCount). */
+  nights: number[];
+  /** Must name one of the rental's `rooms`. */
+  roomId?: string;
+}
+
+export interface SeedRentalRoom {
+  id: string;
+  name: string;
+  rate: number;
+}
+
+export interface SeedRental {
+  nightCount: number;
+  stays: SeedRentalStay[];
+  rooms?: SeedRentalRoom[];
+}
+
+/**
+ * A memorized (template) expense, written to groups/{group}/memorized/{key}
+ * the way add-memorized does: splits embedded as an array, no date, paid flag
+ * or receipt. Split inputs follow the same rules as an expense's.
+ */
+export interface SeedMemorized {
+  key: string;
+  description: string;
+  categoryKey: string;
+  paidByKey: string;
+  totalAmount: number;
+  splitMethod: 'amount' | 'percentage' | 'shares';
+  /** 'amount' only: the evenly shared pool. */
+  sharedAmount?: number;
+  /** 'amount' only: the proportional pool. */
+  allocatedAmount?: number;
+  splits: SeedSplitInput[];
 }
 
 /**
@@ -105,11 +167,45 @@ export interface SeedGroup {
   members: SeedMember[];
   categories: SeedCategory[];
   expenses?: SeedExpense[];
+  memorized?: SeedMemorized[];
   payments?: SeedPayment[];
+}
+
+export const MAIL_STATES = ['PENDING', 'PROCESSING', 'SUCCESS', 'ERROR', 'RETRY'] as const;
+export type SeedMailState = (typeof MAIL_STATES)[number];
+
+/**
+ * A top-level `mail` doc (key = doc ID). Always written with a `delivery`
+ * block, so the sendMailQueueEmail trigger skips it and the state stays as
+ * seeded.
+ */
+export interface SeedMail {
+  key: string;
+  to: string;
+  subject: string;
+  state: SeedMailState;
+  /** delivery.startTime is this many minutes before the seed run. */
+  startedMinutesAgo: number;
+  /** delivery.error; defaults to a generic message for ERROR and RETRY. */
+  error?: string;
+}
+
+/** A top-level `app_errors` doc (key = doc ID), as logAppError writes it. */
+export interface SeedAppError {
+  key: string;
+  component: string;
+  action: string;
+  message: string;
+  /** timestamp is this many hours before the seed run. */
+  hoursAgo: number;
 }
 
 export interface SeedDataset {
   name: string;
   users: SeedUser[];
   groups: SeedGroup[];
+  /** Global collection: keys are unique across all datasets. */
+  mail?: SeedMail[];
+  /** Global collection: keys are unique across all datasets. */
+  appErrors?: SeedAppError[];
 }

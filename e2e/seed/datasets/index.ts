@@ -3,6 +3,7 @@ import { AUTH_DATASET } from './auth';
 import { EXPENSES_DATASET } from './expenses';
 import { GROUPS_DATASET } from './groups';
 import { HISTORY_DATASET } from './history';
+import { INFRA_DATASET } from './infra';
 import { PAYMENT_FLOW_DATASET } from './payment-flow';
 import { SHARED_DATASET } from './shared';
 import { SUMMARY_DATASET } from './summary';
@@ -16,4 +17,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   SUMMARY_DATASET,
   HISTORY_DATASET,
   PAYMENT_FLOW_DATASET,
+  INFRA_DATASET,
 ];

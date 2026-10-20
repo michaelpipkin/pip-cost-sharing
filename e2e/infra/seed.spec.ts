@@ -1,8 +1,10 @@
 import { expect, test } from '../fixtures';
 import { getSeedAdmin } from '../seed/admin';
 import { ALL_DATASETS } from '../seed/datasets';
+import { INFRA } from '../seed/datasets/infra';
 import { SHARED } from '../seed/datasets/shared';
-import type { SeedDataset, SeedExpense } from '../seed/types';
+import { storageObjectExists } from '../seed/storage';
+import type { SeedDataset, SeedExpense, SeedGroup } from '../seed/types';
 import { validateDatasets } from '../seed/validate';
 import { signInAs } from '../utils/session';
 
@@ -13,6 +15,9 @@ const MAIL_SETTLE_TIMEOUT_MS = 60_000;
 // A rejected sign-in must surface well before signInAs's 30 s landing bound.
 // Includes the first (cold) load of the login page.
 const SIGN_IN_FAIL_FAST_MS = 15_000;
+
+const INFRA_DATASET_NAME = 'infra';
+const INFRA_GROUP_PATH = `groups/${INFRA.group.key}`;
 
 /** A deep copy of ALL_DATASETS that a test can corrupt without side effects. */
 function cloneDatasets(): SeedDataset[] {
@@ -42,6 +47,18 @@ function sharedPaymentRecipients(): string[] {
 
 function findExpense(datasets: SeedDataset[], key: string): SeedExpense {
   return sharedDataset(datasets).groups[0]!.expenses!.find((e) => e.key === key)!;
+}
+
+function infraDataset(datasets: SeedDataset[]): SeedDataset {
+  return datasets.find((d) => d.name === INFRA_DATASET_NAME)!;
+}
+
+function infraGroup(datasets: SeedDataset[]): SeedGroup {
+  return infraDataset(datasets).groups[0]!;
+}
+
+function findInfraExpense(group: SeedGroup, key: string): SeedExpense {
+  return group.expenses!.find((e) => e.key === key)!;
 }
 
 function sharedDataset(datasets: SeedDataset[]): SeedDataset {
@@ -249,6 +266,249 @@ test.describe('seed', { tag: '@infra' }, () => {
         'suppressed'
       );
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Memorized, rental, receipt, member state, mail and app-error rules
+  // -------------------------------------------------------------------------
+
+  test('validateDatasets rejects memorized splits that do not reconcile to the total', () => {
+    const datasets = cloneDatasets();
+    infraGroup(datasets).memorized![0]!.splits[0]!.assignedAmount = 21; // 21 + 20 vs 40
+    expect(() => validateDatasets(datasets)).toThrow(
+      /memorized "m-lunch".*amount split adds up to 41.*total is 40/
+    );
+  });
+
+  test('validateDatasets rejects a rental on a non-shares expense', () => {
+    const datasets = cloneDatasets();
+    findInfraExpense(infraGroup(datasets), 'x-receipt').rental = {
+      nightCount: 1,
+      stays: [{ memberKey: 'ivy', nights: [0] }],
+    };
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-receipt".*rental is only valid for splitMethod 'shares' \(this is 'amount'\)/
+    );
+  });
+
+  test("validateDatasets rejects a rental stay's member who is not in the group", () => {
+    const datasets = cloneDatasets();
+    findInfraExpense(infraGroup(datasets), 'x-rental').rental!.stays[0]!.memberKey =
+      'nobody';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-rental".*rental stay.*unknown member key "nobody"/
+    );
+  });
+
+  test('validateDatasets rejects a stay night outside the rental', () => {
+    const datasets = cloneDatasets();
+    // x-rental has 3 nights (0..2); night 3 does not exist.
+    findInfraExpense(infraGroup(datasets), 'x-rental').rental!.stays[0]!.nights.push(3);
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-rental".*night 3 is outside 0\.\.2 \(nightCount 3\)/
+    );
+  });
+
+  test('validateDatasets rejects a rental night nobody attends', () => {
+    const datasets = cloneDatasets();
+    for (const stay of findInfraExpense(infraGroup(datasets), 'x-rental').rental!.stays) {
+      stay.nights = stay.nights.filter((n) => n !== 1);
+    }
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-rental".*night 1 has nobody present/
+    );
+  });
+
+  test('validateDatasets rejects a stay roomId that is not in rooms', () => {
+    const datasets = cloneDatasets();
+    findInfraExpense(infraGroup(datasets), 'x-rental').rental!.stays[0]!.roomId = 'attic';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-rental".*roomId "attic" is not in rooms/
+    );
+  });
+
+  test('validateDatasets rejects a receipt file that does not exist', () => {
+    const datasets = cloneDatasets();
+    findInfraExpense(infraGroup(datasets), 'x-receipt').receipt!.file = 'no-such-file.png';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /expense "x-receipt".*receipt file "no-such-file\.png" does not exist/
+    );
+  });
+
+  test('validateDatasets rejects a mail doc with an unknown state', () => {
+    const datasets = cloneDatasets();
+    (infraDataset(datasets).mail![0]! as { state: string }).state = 'BOUNCED';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /mail "mail-infra-error".*unknown state "BOUNCED"/
+    );
+  });
+
+  test('validateDatasets rejects leftGroup on an active member', () => {
+    const datasets = cloneDatasets();
+    infraGroup(datasets).members.find((m) => m.key === 'ivy')!.leftGroup = true;
+    expect(() => validateDatasets(datasets)).toThrow(
+      /member "ivy".*leftGroup.*requires active: false/
+    );
+  });
+
+  test('validateDatasets rejects duplicate mail keys', () => {
+    const datasets = cloneDatasets();
+    const dataset = infraDataset(datasets);
+    dataset.mail!.push({ ...dataset.mail![0]! });
+    expect(() => validateDatasets(datasets)).toThrow(
+      /duplicate mail key "mail-infra-error"/
+    );
+  });
+
+  test('validateDatasets rejects duplicate app-error keys', () => {
+    const datasets = cloneDatasets();
+    const dataset = infraDataset(datasets);
+    dataset.appErrors!.push({ ...dataset.appErrors![0]! });
+    expect(() => validateDatasets(datasets)).toThrow(
+      /duplicate app error key "err-infra-listed"/
+    );
+  });
+
+  test('a seeded memorized doc has the embedded splits', async () => {
+    const { db } = getSeedAdmin();
+    const snap = await db.doc(`${INFRA_GROUP_PATH}/memorized/m-lunch`).get();
+    expect(snap.exists).toBe(true);
+    expect(snap.get('description')).toBe('Infra memorized lunch');
+    expect(snap.get('totalAmount')).toBe(40);
+    expect(snap.get('splitMethod')).toBe('amount');
+    expect(snap.get('paidByMemberRef').path).toBe(`${INFRA_GROUP_PATH}/members/ivy`);
+    expect(snap.get('categoryRef').path).toBe(`${INFRA_GROUP_PATH}/categories/general`);
+    const splits = snap.get('splits') as Record<string, unknown>[];
+    expect(
+      splits.map((s) => ({
+        owedBy: (s['owedByMemberRef'] as { path: string }).path,
+        paidBy: (s['paidByMemberRef'] as { path: string }).path,
+        assigned: s['assignedAmount'],
+        allocated: s['allocatedAmount'],
+        percentage: s['percentage'],
+        shares: s['shares'],
+      }))
+    ).toEqual([
+      {
+        owedBy: `${INFRA_GROUP_PATH}/members/ivy`,
+        paidBy: `${INFRA_GROUP_PATH}/members/ivy`,
+        assigned: 20,
+        allocated: 20,
+        percentage: 0,
+        shares: 0,
+      },
+      {
+        owedBy: `${INFRA_GROUP_PATH}/members/jo`,
+        paidBy: `${INFRA_GROUP_PATH}/members/ivy`,
+        assigned: 20,
+        allocated: 20,
+        percentage: 0,
+        shares: 0,
+      },
+    ]);
+    // A memorized expense is a template: no date, paid flag or receipt.
+    for (const field of ['date', 'paid', 'receiptPath']) {
+      expect(snap.get(field), field).toBeUndefined();
+    }
+  });
+
+  test('the seeded rental expense stores stays with member refs', async () => {
+    const { db } = getSeedAdmin();
+    const snap = await db.doc(`${INFRA_GROUP_PATH}/expenses/x-rental`).get();
+    expect(snap.get('splitMethod')).toBe('shares');
+    const rental = snap.get('rental') as {
+      nightCount: number;
+      stays: { memberRef: { path: string }; nights: number[]; roomId?: string }[];
+      rooms: { id: string; name: string; rate: number }[];
+    };
+    expect(rental.nightCount).toBe(3);
+    expect(rental.rooms).toEqual([{ id: 'loft', name: 'Loft', rate: 1.5 }]);
+    expect(
+      rental.stays.map((s) => ({
+        member: s.memberRef.path,
+        nights: s.nights,
+        roomId: s.roomId,
+      }))
+    ).toEqual([
+      { member: `${INFRA_GROUP_PATH}/members/ivy`, nights: [0, 1, 2], roomId: undefined },
+      { member: `${INFRA_GROUP_PATH}/members/jo`, nights: [0, 1, 2], roomId: 'loft' },
+      { member: `${INFRA_GROUP_PATH}/members/lee`, nights: [1, 2], roomId: undefined },
+    ]);
+    // A plain expense carries no rental field.
+    const plain = await db.doc(`${INFRA_GROUP_PATH}/expenses/x-receipt`).get();
+    expect(plain.get('rental')).toBeUndefined();
+  });
+
+  test('the seeded receipt exists in Storage', async () => {
+    const { db } = getSeedAdmin();
+    const receiptPath = `${INFRA_GROUP_PATH}/receipts/x-receipt`;
+    const snap = await db.doc(`${INFRA_GROUP_PATH}/expenses/x-receipt`).get();
+    expect(snap.get('receiptPath')).toBe(receiptPath);
+    expect(await storageObjectExists(receiptPath)).toBe(true);
+    expect(await storageObjectExists(`${INFRA_GROUP_PATH}/receipts/x-rental`)).toBe(false);
+    const other = await db.doc(`${INFRA_GROUP_PATH}/expenses/x-rental`).get();
+    expect(other.get('receiptPath')).toBeNull();
+  });
+
+  test('left and invited members carry their state', async () => {
+    const { db } = getSeedAdmin();
+    const kit = await db.doc(`${INFRA_GROUP_PATH}/members/kit`).get();
+    expect(kit.get('leftGroup')).toBe(true);
+    expect(kit.get('active')).toBe(false);
+    const ivy = await db.doc(`${INFRA_GROUP_PATH}/members/ivy`).get();
+    expect(ivy.get('leftGroup')).toBeUndefined();
+    expect(ivy.get('invite')).toBeUndefined();
+
+    const lee = await db.doc(`${INFRA_GROUP_PATH}/members/lee`).get();
+    const invite = lee.get('invite') as {
+      lastSentAt: { toMillis(): number };
+      lastSentTo: string;
+      sendCount: number;
+    };
+    expect(invite.lastSentTo).toBe('lee@pipsplit.test');
+    expect(invite.sendCount).toBe(3);
+    const ageDays = (Date.now() - invite.lastSentAt.toMillis()) / 86_400_000;
+    expect(ageDays).toBeGreaterThan(1.9);
+    expect(ageDays).toBeLessThan(2.5);
+  });
+
+  test('seeded app errors carry a Timestamp', async () => {
+    const { db } = getSeedAdmin();
+    const seeded = INFRA.appErrors.listed;
+    const snap = await db.doc(`app_errors/${seeded.key}`).get();
+    expect(snap.get('component')).toBe(seeded.component);
+    expect(snap.get('action')).toBe(seeded.action);
+    expect(snap.get('message')).toBe(seeded.message);
+    const ageHours = (Date.now() - snap.get('timestamp').toMillis()) / 3_600_000;
+    expect(ageHours).toBeGreaterThan(seeded.hoursAgo - 0.5);
+    expect(ageHours).toBeLessThan(seeded.hoursAgo + 0.5);
+  });
+
+  test('seeded mail keeps its state: the trigger skips docs that carry a delivery block', async () => {
+    // A fixed wait would prove nothing. Instead wait until the trigger has
+    // demonstrably processed mail (the shared payment's notification reaches
+    // SUCCESS), then check the seeded docs were left as written.
+    test.setTimeout(MAIL_SETTLE_TIMEOUT_MS + 15_000);
+    const { db } = getSeedAdmin();
+    const recipients = sharedPaymentRecipients();
+    await expect
+      .poll(
+        async () => {
+          const snap = await db.collection('mail').where('to', 'in', recipients).get();
+          return snap.docs.some((d) => d.get('delivery.state') === 'SUCCESS');
+        },
+        { timeout: MAIL_SETTLE_TIMEOUT_MS }
+      )
+      .toBe(true);
+
+    for (const mail of Object.values(INFRA.mail)) {
+      const snap = await db.doc(`mail/${mail.key}`).get();
+      expect(snap.get('delivery.state'), `mail ${mail.key}`).toBe(mail.state);
+      expect(snap.get('message.subject'), `mail ${mail.key}`).toBe(mail.subject);
+    }
+    const errored = await db.doc(`mail/${INFRA.mail.error.key}`).get();
+    expect(errored.get('delivery.error')).toBe(INFRA.mail.error.error);
+    expect(errored.get('delivery.info')).toBeUndefined();
   });
 
   test('signInAs lands a seeded user on the authenticated app', async ({

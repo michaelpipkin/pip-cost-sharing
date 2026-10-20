@@ -1,9 +1,12 @@
 import type { Auth } from 'firebase-admin/auth';
-import type {
-  DocumentData,
-  DocumentReference,
-  Firestore,
+import {
+  Timestamp,
+  type DocumentData,
+  type DocumentReference,
+  type Firestore,
+  type WriteBatch,
 } from 'firebase-admin/firestore';
+import { readFile } from 'node:fs/promises';
 import {
   allocateByPercentage,
   allocateByShares,
@@ -12,23 +15,38 @@ import {
   type AllocationSplit,
   type Rounder,
 } from '../../scripts/db/allocation';
-import { ChunkedBatch } from '../../scripts/db/chunked-batch';
+import { BATCH_LIMIT } from '../../scripts/db/chunked-batch';
+import { fixtureFilePath, uploadToStorageEmulator } from './storage';
 import type {
+  SeedAppError,
   SeedDataset,
   SeedExpense,
   SeedGroup,
+  SeedMail,
   SeedMember,
+  SeedMemorized,
   SeedPayment,
+  SeedRental,
   SeedUser,
 } from './types';
 
 const PROFILE_DOC_TIMEOUT_MS = 15_000;
 const PROFILE_DOC_POLL_MS = 100;
+const MS_PER_MINUTE = 60_000;
+const MS_PER_HOUR = 3_600_000;
+const MS_PER_DAY = 86_400_000;
+
+export interface SeedBatchStat {
+  label: string;
+  writes: number;
+}
 
 export interface SeedStats {
   users: number;
   groups: number;
   docsWritten: number;
+  /** One entry per committed batch, in commit order. */
+  batches: SeedBatchStat[];
 }
 
 /**
@@ -37,6 +55,11 @@ export interface SeedStats {
  * member.service addMemberToGroup and scripts/db/refresh-seed-expenses.ts.
  * Fields the Cloud Functions triggers derive (emailLower, the group's member
  * UID arrays) are written up front, so those idempotent triggers no-op.
+ *
+ * Batches: all user profiles in one, then each group in its own batch,
+ * committed before the next group's starts, then the global mail and
+ * app_errors docs in a final one. A group's writes therefore never span
+ * batches (see GroupBatch for why that matters).
  */
 export async function writeDatasets(
   db: Firestore,
@@ -46,53 +69,86 @@ export async function writeDatasets(
   const users = datasets.flatMap((d) => d.users);
   const groups = datasets.flatMap((d) => d.groups);
   const usersByKey = new Map(users.map((u) => [u.key, u]));
-  const batch = new CountingBatch(db);
+  const batches: SeedBatchStat[] = [];
+  const commit = async (batch: GroupBatch) => {
+    await batch.commit();
+    batches.push({ label: batch.label, writes: batch.count });
+  };
 
   await createAuthUsers(db, auth, users);
+  const userBatch = new GroupBatch(db, 'users');
   for (const user of users) {
-    batch.update(db.doc(`users/${user.uid}`), userProfileFields(db, user));
+    userBatch.update(db.doc(`users/${user.uid}`), userProfileFields(db, user));
   }
-  for (const group of groups) {
-    writeGroup(db, batch, group, usersByKey);
-  }
-  await batch.commit();
+  await commit(userBatch);
 
-  return { users: users.length, groups: groups.length, docsWritten: batch.count };
+  for (const group of groups) {
+    const groupBatch = new GroupBatch(db, `group ${group.key}`);
+    const receipts = writeGroup(db, groupBatch, group, usersByKey);
+    // Objects first, so no committed expense ever points at a missing receipt.
+    await uploadReceipts(receipts);
+    await commit(groupBatch);
+  }
+
+  const globalBatch = new GroupBatch(db, 'mail and app_errors');
+  const runStart = Date.now();
+  for (const mail of datasets.flatMap((d) => d.mail ?? [])) {
+    globalBatch.set(db.doc(`mail/${mail.key}`), mailFields(mail, runStart));
+  }
+  for (const appError of datasets.flatMap((d) => d.appErrors ?? [])) {
+    globalBatch.set(db.doc(`app_errors/${appError.key}`), appErrorFields(appError, runStart));
+  }
+  await commit(globalBatch);
+
+  return {
+    users: users.length,
+    groups: groups.length,
+    docsWritten: batches.reduce((total, b) => total + b.writes, 0),
+    batches,
+  };
 }
 
-/** ChunkedBatch that also counts writes, for the seed summary line. */
-class CountingBatch extends ChunkedBatch {
+/**
+ * One Firestore batch with a write count. Never splits: the seeder commits a
+ * group's writes in a single batch, because syncGroupMemberUids recomputes the
+ * group's member arrays from the members it can read when each member write
+ * lands. If the members were committed across two batches it could see a
+ * partial set and overwrite the pre-written UID arrays non-deterministically.
+ * So a batch that outgrows the limit fails loudly instead of rolling over.
+ */
+class GroupBatch {
+  readonly label: string;
   count = 0;
+  readonly #batch: WriteBatch;
 
-  /**
-   * ChunkedBatch starts a new Firestore batch every 400 writes, which could
-   * split one group's member writes across batches. syncGroupMemberUids then
-   * could read a partial member set and overwrite the pre-written UID arrays
-   * non-deterministically. The seed fits one chunk today (~35 writes), so
-   * fail loudly rather than risk that.
-   */
+  constructor(db: Firestore, label: string) {
+    this.label = label;
+    this.#batch = db.batch();
+  }
+
   #bump(): void {
-    if (this.count >= SEED_BATCH_LIMIT) {
+    if (this.count >= BATCH_LIMIT) {
       throw new Error(
-        `Seed would exceed one batch chunk (${SEED_BATCH_LIMIT} writes); splitting a group's writes across batches races syncGroupMemberUids. Seed less data or restructure write.ts.`
+        `Seed batch "${this.label}" would exceed ${BATCH_LIMIT} writes; splitting one group's writes across batches races syncGroupMemberUids. Seed less data in this group or restructure write.ts.`
       );
     }
     this.count++;
   }
 
-  override set(ref: DocumentReference, data: DocumentData): void {
+  set(ref: DocumentReference, data: DocumentData): void {
     this.#bump();
-    super.set(ref, data);
+    this.#batch.set(ref, data);
   }
 
-  override update(ref: DocumentReference, data: DocumentData): void {
+  update(ref: DocumentReference, data: DocumentData): void {
     this.#bump();
-    super.update(ref, data);
+    this.#batch.update(ref, data);
+  }
+
+  async commit(): Promise<void> {
+    await this.#batch.commit();
   }
 }
-
-/** Matches BATCH_LIMIT in scripts/db/chunked-batch.ts (not exported). */
-const SEED_BATCH_LIMIT = 400;
 
 // ---------------------------------------------------------------------------
 // Users
@@ -150,12 +206,19 @@ interface SplitRow {
   data: DocumentData;
 }
 
+interface ReceiptUpload {
+  path: string;
+  file: string;
+  contentType: string;
+}
+
+/** Queues the group's Firestore writes on `batch`; returns the receipts to upload. */
 function writeGroup(
   db: Firestore,
-  batch: ChunkedBatch,
+  batch: GroupBatch,
   group: SeedGroup,
   usersByKey: Map<string, SeedUser>
-): void {
+): ReceiptUpload[] {
   const groupRef = db.doc(`groups/${group.key}`);
   const memberRef = (key: string) => groupRef.collection('members').doc(key);
   const categoryRef = (key: string) => groupRef.collection('categories').doc(key);
@@ -175,16 +238,7 @@ function writeGroup(
   });
 
   for (const member of group.members) {
-    const data: DocumentData = {
-      userRef: userRefOf(member),
-      displayName: member.displayName,
-      email: member.email,
-      active: member.active ?? true,
-      groupAdmin: member.groupAdmin ?? false,
-    };
-    // Omitted (not '' or null) for a blank email, matching deriveEmailLower.
-    if (member.email) data['emailLower'] = normalizeEmail(member.email);
-    batch.set(memberRef(member.key), data);
+    batch.set(memberRef(member.key), memberFields(member, userRefOf(member)));
   }
 
   for (const category of group.categories) {
@@ -197,6 +251,7 @@ function writeGroup(
   const rounder = makeRounder(group.decimalPlaces ?? 2);
   const splitsByExpense = new Map<string, SplitRow[]>();
   const expenseData = new Map<string, DocumentData>();
+  const receipts: ReceiptUpload[] = [];
 
   for (const expense of group.expenses ?? []) {
     const ref = expenseRef(expense.key);
@@ -207,7 +262,13 @@ function writeGroup(
     };
     const paidByMemberRef = memberRef(expense.paidByKey);
 
-    expenseData.set(expense.key, {
+    // Same path expense.service addExpense uploads a receipt to.
+    const receiptPath = expense.receipt ? `groups/${group.key}/receipts/${expense.key}` : null;
+    if (expense.receipt && receiptPath) {
+      receipts.push({ path: receiptPath, ...expense.receipt });
+    }
+
+    const data: DocumentData = {
       date: expense.date,
       description: expense.description,
       categoryRef: common.categoryRef,
@@ -216,9 +277,11 @@ function writeGroup(
       allocatedAmount,
       totalAmount: expense.totalAmount,
       splitMethod: expense.splitMethod,
-      receiptPath: null,
+      receiptPath,
       paid: expense.paid === true,
-    });
+    };
+    if (expense.rental) data['rental'] = rentalFields(expense.rental, memberRef);
+    expenseData.set(expense.key, data);
 
     const rows: SplitRow[] = [];
     for (const split of splits) {
@@ -257,6 +320,142 @@ function writeGroup(
   for (const { key, data } of histories) {
     batch.set(groupRef.collection('history').doc(key), data);
   }
+
+  for (const memorized of group.memorized ?? []) {
+    batch.set(
+      groupRef.collection('memorized').doc(memorized.key),
+      memorizedFields(memorized, categoryRef, memberRef, rounder)
+    );
+  }
+  return receipts;
+}
+
+function memberFields(member: SeedMember, userRef: DocumentReference | null): DocumentData {
+  const data: DocumentData = {
+    userRef,
+    displayName: member.displayName,
+    email: member.email,
+    active: member.active ?? true,
+    groupAdmin: member.groupAdmin ?? false,
+  };
+  // Omitted (not '' or null) for a blank email, matching deriveEmailLower.
+  if (member.email) data['emailLower'] = normalizeEmail(member.email);
+  // Only present when true, as leaveGroup writes it (absent means false).
+  if (member.leftGroup === true) data['leftGroup'] = true;
+  if (member.invite !== undefined) {
+    // The shape sendGroupInvite records (the client never writes it).
+    data['invite'] = {
+      lastSentAt: Timestamp.fromMillis(Date.now() - member.invite.sentDaysAgo * MS_PER_DAY),
+      lastSentTo: member.email,
+      sendCount: member.invite.sendCount,
+    };
+  }
+  return data;
+}
+
+/** The expense's `rental` field, as add-expense persists it (memberRef = member doc ref). */
+function rentalFields(
+  rental: SeedRental,
+  memberRef: (key: string) => DocumentReference
+): DocumentData {
+  return {
+    nightCount: rental.nightCount,
+    stays: rental.stays.map((stay) => ({
+      memberRef: memberRef(stay.memberKey),
+      nights: stay.nights,
+      ...(stay.roomId === undefined ? {} : { roomId: stay.roomId }),
+    })),
+    ...(rental.rooms === undefined ? {} : { rooms: rental.rooms }),
+  };
+}
+
+/**
+ * Mirrors add-memorized onSubmit: the splits are embedded as an array (all of
+ * them, including zero-amount ones), and there is no date, paid flag or
+ * receiptPath.
+ */
+function memorizedFields(
+  memorized: SeedMemorized,
+  categoryRef: (key: string) => DocumentReference,
+  memberRef: (key: string) => DocumentReference,
+  rounder: Rounder
+): DocumentData {
+  const { splits, sharedAmount, allocatedAmount } = allocateExpense(memorized, rounder);
+  const paidByMemberRef = memberRef(memorized.paidByKey);
+  return {
+    description: memorized.description,
+    categoryRef: categoryRef(memorized.categoryKey),
+    paidByMemberRef,
+    sharedAmount,
+    allocatedAmount,
+    totalAmount: memorized.totalAmount,
+    splitMethod: memorized.splitMethod,
+    splits: splits.map((split) => ({
+      assignedAmount: split.assignedAmount,
+      percentage: split.percentage,
+      shares: split.shares,
+      allocatedAmount: split.allocatedAmount,
+      paidByMemberRef,
+      owedByMemberRef: memberRef(split.owedByMemberRef as string),
+    })),
+  };
+}
+
+async function uploadReceipts(receipts: ReceiptUpload[]): Promise<void> {
+  await Promise.all(
+    receipts.map(async (receipt) => {
+      const filePath = fixtureFilePath(receipt.file);
+      if (filePath === undefined) {
+        throw new Error(`Receipt file "${receipt.file}" is not a file under e2e/fixtures/files`);
+      }
+      await uploadToStorageEmulator(receipt.path, await readFile(filePath), receipt.contentType);
+    })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Global collections (mail, app_errors)
+// ---------------------------------------------------------------------------
+
+/**
+ * A mail doc as the trigger leaves it: always with a `delivery` block, which
+ * makes sendMailQueueEmail skip the doc (it returns early when `delivery`
+ * exists), so the seeded state is never overwritten.
+ */
+function mailFields(mail: SeedMail, now: number): DocumentData {
+  const startTime = Timestamp.fromMillis(now - mail.startedMinutesAgo * MS_PER_MINUTE);
+  const finished = mail.state === 'SUCCESS' || mail.state === 'ERROR';
+  const delivery: DocumentData = {
+    state: mail.state,
+    attempts: mail.state === 'PENDING' ? 0 : 1,
+    startTime,
+  };
+  if (finished) delivery['endTime'] = startTime;
+  if (mail.state === 'ERROR' || mail.state === 'RETRY') {
+    delivery['error'] = mail.error ?? 'Seeded delivery failure';
+  }
+  if (mail.state === 'SUCCESS') {
+    delivery['info'] = {
+      messageId: 'suppressed',
+      accepted: [mail.to],
+      rejected: [],
+      response: 'suppressed: seeded',
+    };
+  }
+  return {
+    to: mail.to,
+    message: { subject: mail.subject, text: `Seeded mail: ${mail.subject}` },
+    delivery,
+  };
+}
+
+function appErrorFields(appError: SeedAppError, now: number): DocumentData {
+  return {
+    component: appError.component,
+    action: appError.action,
+    message: appError.message,
+    timestamp: Timestamp.fromMillis(now - appError.hoursAgo * MS_PER_HOUR),
+  };
 }
 
 /** Same derivation as computeGroupMemberArrays in functions/src/index.ts. */
@@ -284,7 +483,7 @@ function groupMemberArrays(
 // ---------------------------------------------------------------------------
 
 function allocateExpense(
-  expense: SeedExpense,
+  expense: SeedExpense | SeedMemorized,
   rounder: Rounder
 ): { splits: AllocationSplit[]; sharedAmount: number; allocatedAmount: number } {
   // The allocation helpers only need a truthy owedByMemberRef; the member key

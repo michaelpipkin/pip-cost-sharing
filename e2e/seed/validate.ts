@@ -1,4 +1,14 @@
-import type { SeedDataset, SeedExpense, SeedGroup, SeedUser } from './types';
+import { existsSync } from 'node:fs';
+import { fixtureFilePath } from './storage';
+import {
+  MAIL_STATES,
+  type SeedDataset,
+  type SeedExpense,
+  type SeedGroup,
+  type SeedMember,
+  type SeedMemorized,
+  type SeedUser,
+} from './types';
 
 const SEED_EMAIL_DOMAIN = '@pipsplit.test';
 
@@ -16,6 +26,10 @@ export function validateDatasets(datasets: SeedDataset[]): void {
   const groupNames = new Map<string, string>();
   const groupsByKey = new Map<string, SeedGroup>();
   const usersByKey = new Map<string, SeedUser>();
+  // mail and app_errors are global collections, so their keys (the doc IDs)
+  // must be unique across all datasets.
+  const mailKeys = new Set<string>();
+  const appErrorKeys = new Set<string>();
 
   const checkEmail = (where: string, email: string) => {
     if (!email.trim().toLowerCase().endsWith(SEED_EMAIL_DOMAIN)) {
@@ -57,6 +71,33 @@ export function validateDatasets(datasets: SeedDataset[]): void {
       }
       checkDocId(problems, where, group.key);
     }
+    for (const mail of dataset.mail ?? []) {
+      const where = `${dataset.name} mail "${mail.key}"`;
+      claim(problems, mailKeys, mail.key, `${where}: duplicate mail key "${mail.key}"`);
+      checkDocId(problems, where, mail.key);
+      checkEmail(where, mail.to);
+      if (!(MAIL_STATES as readonly string[]).includes(mail.state)) {
+        problems.push(
+          `${where}: unknown state "${mail.state}" (expected one of ${MAIL_STATES.join(', ')})`
+        );
+      }
+      if (mail.subject.trim() === '') problems.push(`${where}: subject is blank`);
+      checkNonNegative(problems, where, 'startedMinutesAgo', mail.startedMinutesAgo);
+    }
+    for (const appError of dataset.appErrors ?? []) {
+      const where = `${dataset.name} app error "${appError.key}"`;
+      claim(
+        problems,
+        appErrorKeys,
+        appError.key,
+        `${where}: duplicate app error key "${appError.key}"`
+      );
+      checkDocId(problems, where, appError.key);
+      for (const field of ['component', 'action', 'message'] as const) {
+        if (appError[field].trim() === '') problems.push(`${where}: ${field} is blank`);
+      }
+      checkNonNegative(problems, where, 'hoursAgo', appError.hoursAgo);
+    }
   }
 
   // Second pass: references can point at users/groups from any dataset.
@@ -97,6 +138,7 @@ function validateGroup(
   const memberKeys = new Set<string>();
   const categoryKeys = new Set<string>();
   const expenseKeys = new Set<string>();
+  const memorizedKeys = new Set<string>();
   const paymentKeys = new Set<string>();
   const linkedUsers = new Set<string>();
   const memberEmails = new Set<string>();
@@ -114,6 +156,7 @@ function validateGroup(
         `${at}: duplicate member email "${member.email}" (compared case-insensitively)`
       );
     }
+    validateMemberState(problems, at, member);
     if (member.userKey !== undefined) {
       const user = usersByKey.get(member.userKey);
       if (user === undefined) {
@@ -136,22 +179,36 @@ function validateGroup(
     if (!memberKeys.has(key)) problems.push(`${at}: unknown ${role} member key "${key}"`);
   };
 
+  const checkSplitPlan = (at: string, plan: SeedExpense | SeedMemorized): void => {
+    knownMember(at, 'paidBy', plan.paidByKey);
+    if (!categoryKeys.has(plan.categoryKey)) {
+      problems.push(`${at}: unknown category key "${plan.categoryKey}"`);
+    }
+    if (plan.splits.length === 0) problems.push(`${at}: has no splits`);
+    const owedBy = new Set<string>();
+    for (const split of plan.splits) {
+      knownMember(at, 'owedBy', split.owedByKey);
+      claim(problems, owedBy, split.owedByKey, `${at}: member "${split.owedByKey}" split twice`);
+    }
+    validateSplitMethod(problems, at, plan, group.decimalPlaces ?? 2);
+  };
+
   for (const expense of group.expenses ?? []) {
     const at = `${where} expense "${expense.key}"`;
     claim(problems, expenseKeys, expense.key, `${at}: duplicate expense key`);
     checkDocId(problems, at, expense.key);
     checkDate(problems, at, expense.date);
-    knownMember(at, 'paidBy', expense.paidByKey);
-    if (!categoryKeys.has(expense.categoryKey)) {
-      problems.push(`${at}: unknown category key "${expense.categoryKey}"`);
-    }
-    if (expense.splits.length === 0) problems.push(`${at}: has no splits`);
-    const owedBy = new Set<string>();
-    for (const split of expense.splits) {
-      knownMember(at, 'owedBy', split.owedByKey);
-      claim(problems, owedBy, split.owedByKey, `${at}: member "${split.owedByKey}" split twice`);
-    }
-    validateSplitMethod(problems, at, expense, group.decimalPlaces ?? 2);
+    checkSplitPlan(at, expense);
+    if (expense.rental !== undefined) validateRental(problems, at, expense, memberKeys);
+    if (expense.receipt !== undefined) validateReceipt(problems, at, expense.receipt);
+  }
+
+  for (const memorized of group.memorized ?? []) {
+    const at = `${where} memorized "${memorized.key}"`;
+    claim(problems, memorizedKeys, memorized.key, `${at}: duplicate memorized key`);
+    checkDocId(problems, at, memorized.key);
+    if (memorized.description.trim() === '') problems.push(`${at}: description is blank`);
+    checkSplitPlan(at, memorized);
   }
 
   for (const payment of group.payments ?? []) {
@@ -192,7 +249,7 @@ const SPLIT_FIELD_OF_METHOD: Record<SeedExpense['splitMethod'], (typeof SPLIT_FI
 function validateSplitMethod(
   problems: string[],
   at: string,
-  expense: SeedExpense,
+  expense: SeedExpense | SeedMemorized,
   decimalPlaces: number
 ): void {
   const method = expense.splitMethod;
@@ -243,6 +300,102 @@ function validateSplitMethod(
         );
       }
     }
+  }
+}
+
+/**
+ * Checks a rental's occupancy: it belongs on a shares expense, every stay is
+ * a group member (once), each night is a whole number in [0, nightCount),
+ * every night has somebody present, and each roomId is one of the rooms.
+ */
+function validateRental(
+  problems: string[],
+  at: string,
+  expense: SeedExpense,
+  memberKeys: Set<string>
+): void {
+  const rental = expense.rental!;
+  if (expense.splitMethod !== 'shares') {
+    problems.push(
+      `${at}: rental is only valid for splitMethod 'shares' (this is '${expense.splitMethod}')`
+    );
+  }
+  if (!Number.isInteger(rental.nightCount) || rental.nightCount < 1) {
+    problems.push(`${at}: rental nightCount must be a positive integer (got ${rental.nightCount})`);
+    return;
+  }
+
+  const roomIds = new Set<string>();
+  for (const room of rental.rooms ?? []) {
+    claim(problems, roomIds, room.id, `${at}: rental has a duplicate room id "${room.id}"`);
+    if (Number.isNaN(room.rate) || room.rate <= 0) {
+      problems.push(`${at}: rental room "${room.id}" rate must be greater than 0 (got ${room.rate})`);
+    }
+  }
+
+  const present = new Array<number>(rental.nightCount).fill(0);
+  const stayers = new Set<string>();
+  for (const stay of rental.stays) {
+    if (!memberKeys.has(stay.memberKey)) {
+      problems.push(`${at}: rental stay has unknown member key "${stay.memberKey}"`);
+    }
+    claim(
+      problems,
+      stayers,
+      stay.memberKey,
+      `${at}: rental has two stays for member "${stay.memberKey}"`
+    );
+    if (stay.roomId !== undefined && !roomIds.has(stay.roomId)) {
+      problems.push(
+        `${at}: rental stay "${stay.memberKey}" roomId "${stay.roomId}" is not in rooms`
+      );
+    }
+    for (const night of new Set(stay.nights)) {
+      if (Number.isInteger(night) && night >= 0 && night < rental.nightCount) {
+        present[night]!++;
+      } else {
+        problems.push(
+          `${at}: rental stay "${stay.memberKey}" night ${night} is outside 0..${rental.nightCount - 1} (nightCount ${rental.nightCount})`
+        );
+      }
+    }
+  }
+  present.forEach((count, night) => {
+    if (count === 0) problems.push(`${at}: rental night ${night} has nobody present`);
+  });
+}
+
+/** leftGroup and invite only make sense on certain members; see SeedMember. */
+function validateMemberState(problems: string[], at: string, member: SeedMember): void {
+  if (member.leftGroup === true && (member.active ?? true)) {
+    problems.push(`${at}: leftGroup requires active: false (leaveGroup deactivates the member)`);
+  }
+  const { invite } = member;
+  if (invite === undefined) return;
+  checkNonNegative(problems, at, 'invite.sentDaysAgo', invite.sentDaysAgo);
+  if (!Number.isInteger(invite.sendCount) || invite.sendCount < 1) {
+    problems.push(`${at}: invite.sendCount must be a positive integer (got ${invite.sendCount})`);
+  }
+  if (member.email.trim() === '') {
+    problems.push(`${at}: invite needs a member email (it is recorded as lastSentTo)`);
+  }
+}
+
+function validateReceipt(
+  problems: string[],
+  at: string,
+  receipt: NonNullable<SeedExpense['receipt']>
+): void {
+  const resolved = fixtureFilePath(receipt.file);
+  if (resolved === undefined || !existsSync(resolved)) {
+    problems.push(`${at}: receipt file "${receipt.file}" does not exist under e2e/fixtures/files`);
+  }
+  if (receipt.contentType.trim() === '') problems.push(`${at}: receipt contentType is blank`);
+}
+
+function checkNonNegative(problems: string[], where: string, field: string, value: number): void {
+  if (!(Number.isFinite(value) && value >= 0)) {
+    problems.push(`${where}: ${field} must be a number >= 0 (got ${value})`);
   }
 }
 
