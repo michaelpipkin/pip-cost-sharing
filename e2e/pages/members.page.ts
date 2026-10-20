@@ -12,6 +12,7 @@ export class MembersPage extends BasePage {
   readonly addMemberButton: Locator;
   readonly membersTable: Locator;
   readonly helpButton: Locator;
+  readonly currentGroupName: Locator;
 
   // Add Member Dialog elements
   readonly addMemberDialog: Locator;
@@ -36,7 +37,9 @@ export class MembersPage extends BasePage {
   // Confirmation dialogs: Remove opens the shared delete dialog, Leave Group
   // the shared confirm dialog.
   readonly deleteDialogTitle: Locator;
+  readonly deleteConfirmButton: Locator;
   readonly confirmDialogTitle: Locator;
+  readonly confirmButton: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
@@ -55,6 +58,7 @@ export class MembersPage extends BasePage {
     this.addMemberButton = page.getByTestId('add-member-button');
     this.membersTable = page.getByTestId('members-table');
     this.helpButton = page.getByTestId('members-help-button');
+    this.currentGroupName = page.getByTestId('current-group-name');
 
     // Add Member Dialog elements using test IDs
     this.addMemberDialog = page.locator('mat-dialog-container');
@@ -77,7 +81,9 @@ export class MembersPage extends BasePage {
     this.editMemberCancelButton = page.getByTestId('edit-member-cancel-button');
 
     this.deleteDialogTitle = page.getByTestId('delete-dialog-title');
+    this.deleteConfirmButton = page.getByTestId('delete-confirm-button');
     this.confirmDialogTitle = page.getByTestId('dialog-title');
+    this.confirmButton = page.getByTestId('confirm-button');
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
@@ -99,6 +105,24 @@ export class MembersPage extends BasePage {
     await expect(this.mainContainer).toBeVisible();
     await expect(this.pageTitle).toHaveText('Members');
     await this.waitForLoadingComplete();
+  }
+
+  /**
+   * Reloads the app (so the page reads from Firestore, not the in-memory
+   * stores), then opens Members in-app. Waits for the reload's initial
+   * navigation to settle first so no redirect can override the click (see
+   * GroupsPage.reload).
+   */
+  async reload(): Promise<void> {
+    await this.page.reload();
+    await this.waitForInitialNavigation();
+    await this.waitForLoadingComplete();
+    await this.goto();
+  }
+
+  /** A member's row; `memberId` is the member doc id (the seed key). */
+  row(memberId: string): Locator {
+    return this.page.getByTestId(`member-row-${memberId}`);
   }
 
   async verifyPageLoaded(): Promise<void> {
@@ -227,10 +251,28 @@ export class MembersPage extends BasePage {
     await expect(this.deleteDialogTitle).toBeVisible();
   }
 
+  /**
+   * Confirms the delete dialog opened by removeMember and waits for it to
+   * close. The outcome is the caller's to assert: on success the Edit dialog
+   * closes too, on a refusal it stays open with an error snackbar.
+   */
+  async confirmRemove(): Promise<void> {
+    await this.deleteConfirmButton.click();
+    await expect(this.deleteDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
+  }
+
   /** Clicks Leave Group; resolves once the confirmation dialog is showing. */
   async leaveGroup(): Promise<void> {
     await this.leaveGroupButton.click();
     await expect(this.confirmDialogTitle).toBeVisible();
+  }
+
+  /** Confirms the Leave dialog and waits for it to close. */
+  async confirmLeave(): Promise<void> {
+    await this.confirmButton.click();
+    await expect(this.confirmDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async editMember(

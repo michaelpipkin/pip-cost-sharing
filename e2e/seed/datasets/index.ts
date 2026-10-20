@@ -1,10 +1,12 @@
 import type { SeedDataset } from '../types';
 import { ACCOUNT_DATASET } from './account';
 import { AUTH_DATASET } from './auth';
+import { CATEGORIES_DATASET } from './categories';
 import { EXPENSES_DATASET } from './expenses';
 import { GROUPS_DATASET } from './groups';
 import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
+import { MEMBERS_DATASET } from './members';
 import { MEMORIZED_DATASET } from './memorized';
 import { PAYMENT_FLOW_DATASET } from './payment-flow';
 import { RECEIPTS_DATASET } from './receipts';
@@ -26,4 +28,6 @@ export const ALL_DATASETS: SeedDataset[] = [
   MEMORIZED_DATASET,
   RECEIPTS_DATASET,
   ACCOUNT_DATASET,
+  CATEGORIES_DATASET,
+  MEMBERS_DATASET,
 ];
