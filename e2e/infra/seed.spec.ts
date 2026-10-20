@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures';
 import { getSeedAdmin } from '../seed/admin';
 import { ALL_DATASETS } from '../seed/datasets';
 import { SHARED } from '../seed/datasets/shared';
-import type { SeedDataset } from '../seed/types';
+import type { SeedDataset, SeedExpense } from '../seed/types';
 import { validateDatasets } from '../seed/validate';
 import { signInAs } from '../utils/session';
 
@@ -38,6 +38,10 @@ function sharedPaymentRecipients(): string[] {
     }
   }
   return [...emails].sort();
+}
+
+function findExpense(datasets: SeedDataset[], key: string): SeedExpense {
+  return sharedDataset(datasets).groups[0]!.expenses!.find((e) => e.key === key)!;
 }
 
 function sharedDataset(datasets: SeedDataset[]): SeedDataset {
@@ -80,6 +84,106 @@ test.describe('seed', { tag: '@infra' }, () => {
     expect(() => validateDatasets(datasets)).toThrow(/owner/i);
   });
 
+  test('validateDatasets rejects an amount expense that does not add up', () => {
+    const datasets = cloneDatasets();
+    const expense = findExpense(datasets, 'e-groceries');
+    expense.splits[0]!.assignedAmount = 31; // assigned 91 vs total 90
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-groceries.*amount split adds up to 91.*total is 90/
+    );
+  });
+
+  test('validateDatasets rejects percentages that do not total 100', () => {
+    const datasets = cloneDatasets();
+    const expense = findExpense(datasets, 'e-rental');
+    expense.splits[0]!.percentage = 41; // 41 + 30 + 20 + 10 = 101
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-rental.*percentages total 101.*must be 100/
+    );
+  });
+
+  test('validateDatasets rejects a non-positive share', () => {
+    const datasets = cloneDatasets();
+    const expense = findExpense(datasets, 'e-dinner');
+    expense.splits[1]!.shares = 0;
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-dinner.*"bob".*shares must be greater than 0/
+    );
+  });
+
+  test('validateDatasets rejects split fields that do not match splitMethod', () => {
+    const datasets = cloneDatasets();
+    const expense = findExpense(datasets, 'e-groceries');
+    expense.splits[0]!.percentage = 50; // percentages on an amount expense
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-groceries.*"alice".*percentage.*not used by splitMethod 'amount'/
+    );
+  });
+
+  test('validateDatasets rejects expense-level pools on a percentage expense', () => {
+    const datasets = cloneDatasets();
+    findExpense(datasets, 'e-rental').sharedAmount = 10;
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-rental.*sharedAmount.*only valid for splitMethod 'amount'/
+    );
+  });
+
+  test('validateDatasets rejects two members sharing an email, ignoring case', () => {
+    const datasets = cloneDatasets();
+    sharedDataset(datasets).groups[0]!.members.push({
+      key: 'bob-two',
+      displayName: 'Bob Two',
+      email: 'BOB@PipSplit.test',
+    });
+    expect(() => validateDatasets(datasets)).toThrow(
+      /member "bob-two".*duplicate member email/
+    );
+  });
+
+  test('validateDatasets rejects a linked member whose email differs from its user', () => {
+    const datasets = cloneDatasets();
+    const bob = sharedDataset(datasets).groups[0]!.members.find(
+      (m) => m.key === 'bob'
+    )!;
+    bob.email = 'not-bob@pipsplit.test';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /member "bob".*does not match user "bob" email/
+    );
+  });
+
+  test('validateDatasets rejects a defaultGroupKey the user is not a member of', () => {
+    const datasets = cloneDatasets();
+    const shared = sharedDataset(datasets);
+    shared.groups.push({
+      key: 'g-other',
+      owner: 'shared',
+      name: 'Other group without bob',
+      members: [{ key: 'solo', displayName: 'Solo', email: '' }],
+      categories: [],
+    });
+    shared.users.find((u) => u.key === 'bob')!.profile = {
+      defaultGroupKey: 'g-other',
+    };
+    expect(() => validateDatasets(datasets)).toThrow(
+      /user "bob".*defaultGroupKey "g-other".*not a member/
+    );
+  });
+
+  test('validateDatasets rejects group names that differ only by case', () => {
+    const datasets = cloneDatasets();
+    const shared = sharedDataset(datasets);
+    shared.groups.push({
+      key: 'g-shouty',
+      owner: 'shared',
+      name: SHARED.group.name.toUpperCase(),
+      members: [],
+      categories: [],
+    });
+    expect(() => validateDatasets(datasets)).toThrow(
+      /group "g-shouty".*duplicate group name.*case-insensitive/
+    );
+  });
+
   test('seeded users are email-verified', async () => {
     const { auth } = getSeedAdmin();
     const user = await auth.getUserByEmail(SHARED.users.alice.email);
@@ -99,6 +203,17 @@ test.describe('seed', { tag: '@infra' }, () => {
     expect(new Set(g.get('memberUids'))).toEqual(
       new Set([alice.uid, bob.uid, carol.uid])
     );
+    // Linked members only (Dana is a placeholder with no user), and only the
+    // active ones, derived from the dataset rather than restated.
+    const uidByUserKey = new Map(
+      Object.values(SHARED.users).map((u) => [u.key, u.uid])
+    );
+    const activeLinkedUids = SHARED.group.members
+      .filter((m) => m.userKey !== undefined && (m.active ?? true))
+      .map((m) => uidByUserKey.get(m.userKey!)!);
+    expect(activeLinkedUids.length).toBeGreaterThan(0);
+    expect(new Set(g.get('activeMemberUids'))).toEqual(new Set(activeLinkedUids));
+    expect(g.get('adminUids')).toEqual([alice.uid]);
   });
 
   test('mail generated during seeding is suppressed', async () => {

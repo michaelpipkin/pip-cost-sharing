@@ -1,11 +1,15 @@
 import { TEST_PROJECT_ID, emulatorHost } from '../scripts/test-env/config.mjs';
 import { seedAll } from './seed';
+import { publishSeedToday } from './seed/dates';
 
 // Global setup always targets the isolated test emulators (never the dev
 // profile), so it can wipe them without risk to the owner's dev data.
 const FIRESTORE_URL = `http://${emulatorHost('firestore')}`;
 const AUTH_URL = `http://${emulatorHost('auth')}`;
-const PROBE_TIMEOUT_MS = 2000;
+const PROBE_TIMEOUT_MS = 5000;
+const CLEAR_TIMEOUT_MS = 5000;
+const START_HINT =
+  'Start e2e via `pnpm e2e` (or `pnpm test:area <area>`).';
 
 // E2E_TARGET switches the shared e2e modules (constants, createTestUser, ...)
 // to the dev emulators. It is only meant for the feature-tour capture config,
@@ -18,20 +22,28 @@ function assertNoDevTarget() {
   }
 }
 
-async function assertEmulatorsRunning() {
+async function probe(label: string, url: string) {
   try {
-    await fetch(`${FIRESTORE_URL}/`, {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
+    await fetch(`${url}/`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
   } catch {
     throw new Error(
-      'Test emulators are not running. Start e2e via `pnpm e2e` (or `pnpm test:area <area>`).'
+      `Test ${label} emulator is not reachable at ${url} (no answer within ${PROBE_TIMEOUT_MS} ms). ${START_HINT}`
     );
   }
 }
 
 async function clear(label: string, url: string) {
-  const response = await fetch(url, { method: 'DELETE' });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'DELETE',
+      signal: AbortSignal.timeout(CLEAR_TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error(
+      `Test ${label} emulator did not answer the clear request within ${CLEAR_TIMEOUT_MS} ms (${url}). ${START_HINT}`
+    );
+  }
   if (!response.ok) {
     throw new Error(
       `Failed to clear ${label} emulator data (${url}): ${response.status} ${await response.text()}`
@@ -40,12 +52,15 @@ async function clear(label: string, url: string) {
 }
 
 /**
- * Runs once before all tests: verifies the test emulators are up, resets Auth
- * and Firestore, then seeds the deterministic dataset.
+ * Runs once before all tests: refuses ambient E2E_TARGET / E2E_SEED_TODAY,
+ * publishes the run's seed date, verifies the test emulators are up, resets
+ * Auth and Firestore, then seeds the deterministic dataset.
  */
 export default async function globalSetup() {
   assertNoDevTarget();
-  await assertEmulatorsRunning();
+  publishSeedToday();
+  await probe('Firestore', FIRESTORE_URL);
+  await probe('Auth', AUTH_URL);
 
   await clear(
     'Auth',
