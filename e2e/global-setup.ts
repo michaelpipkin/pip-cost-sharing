@@ -1,6 +1,8 @@
 import { TEST_PROJECT_ID, emulatorHost } from '../scripts/test-env/config.mjs';
+import type { FullConfig } from '@playwright/test';
 import { seedAll } from './seed';
 import { publishSeedToday } from './seed/dates';
+import { warmUpDevServer } from './utils/warm-up';
 
 // Global setup always targets the isolated test emulators (never the dev
 // profile), so it can wipe them without risk to the owner's dev data.
@@ -54,9 +56,10 @@ async function clear(label: string, url: string) {
 /**
  * Runs once before all tests: refuses ambient E2E_TARGET / E2E_SEED_TODAY,
  * publishes the run's seed date, verifies the test emulators are up, resets
- * Auth and Firestore, then seeds the deterministic dataset.
+ * Auth and Firestore, seeds the deterministic dataset, then warms up the
+ * dev server's routes (after seeding, never alongside it).
  */
-export default async function globalSetup() {
+export default async function globalSetup(config: FullConfig) {
   assertNoDevTarget();
   publishSeedToday();
   await probe('Firestore', FIRESTORE_URL);
@@ -72,4 +75,5 @@ export default async function globalSetup() {
   );
 
   await seedAll();
+  await warmUpDevServer(config.projects[0].use.baseURL);
 }

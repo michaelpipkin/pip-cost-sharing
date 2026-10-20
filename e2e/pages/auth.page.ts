@@ -2,9 +2,11 @@ import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 import { createTestUser } from '../utils/firebase';
 
-// Generous: the first post-login navigation of a run lazy-loads route chunks
-// the ng dev server may still be compiling (observed at 5+ s).
+// The post-login navigation lazy-loads the landing route's chunks and waits
+// on Firestore listeners, so it gets more than the default expect timeout.
 const LANDING_TIMEOUT_MS = 30_000;
+// A leftover snackbar auto-dismisses after 4 s (SNACKBAR_DURATION).
+const SNACKBAR_CLEAR_TIMEOUT_MS = 10_000;
 
 export class AuthPage extends BasePage {
   readonly emailInput: Locator;
@@ -37,17 +39,13 @@ export class AuthPage extends BasePage {
 
   /**
    * Navigate to the login page. Waits only for DOMContentLoaded (the form
-   * assertions that follow do the real waiting) and allows for the cold
-   * dev server to still be compiling the first route chunks.
+   * assertions that follow do the real waiting), with the config's default
+   * timeouts: global setup warms the dev server, so a slow load is a real
+   * regression.
    */
   async gotoLogin() {
-    await super.goto('/auth/login', {
-      waitUntil: 'domcontentloaded',
-      timeout: LANDING_TIMEOUT_MS,
-    });
-    await expect(this.page.getByTestId('login-form')).toBeVisible({
-      timeout: LANDING_TIMEOUT_MS,
-    });
+    await super.goto('/auth/login', { waitUntil: 'domcontentloaded' });
+    await expect(this.page.getByTestId('login-form')).toBeVisible();
     // Fields are bound by Angular once the form renders; make sure they are
     // there before a caller starts typing.
     await expect(this.emailInput).toBeVisible();
@@ -87,7 +85,7 @@ export class AuthPage extends BasePage {
   ): Promise<void> {
     const snackbar = this.page.getByTestId('snackbar');
 
-    await expect(this.emailInput).toBeVisible({ timeout: LANDING_TIMEOUT_MS });
+    await expect(this.emailInput).toBeVisible();
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
     await expect(this.emailInput).toHaveValue(email);
@@ -96,7 +94,7 @@ export class AuthPage extends BasePage {
     await expect(
       snackbar,
       `${context}: a snackbar from an earlier action never went away`
-    ).toHaveCount(0, { timeout: LANDING_TIMEOUT_MS });
+    ).toHaveCount(0, { timeout: SNACKBAR_CLEAR_TIMEOUT_MS });
     await this.loginButton.click();
 
     const authenticated = this.page
