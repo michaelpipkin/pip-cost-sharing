@@ -24,7 +24,7 @@ pnpm e2e:local                  # alias for pnpm e2e
 pnpm e2e:report                 # open the last HTML report (no emulators needed)
 ```
 
-`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (or reuses one already running there). Global setup clears Auth and Firestore once and seeds the data set in `e2e/seed/`; tests never clear data.
+`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (it never reuses a server already on 4300; a busy port fails the run). Global setup clears Auth and Firestore once, seeds the data set in `e2e/seed/`, then signs in as a shared user and loads each main route once to warm the dev server; tests never clear data. A full run takes about 4-5 minutes (longer on a cold machine); results are in `test-results/results.json` and `playwright-report/`, overwritten by the next run.
 
 ### By area
 
@@ -52,17 +52,17 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 - Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
-- Playwright runs 2 workers; traces are kept on failure (`pnpm e2e:report`), video is off.
+- Playwright runs 2 workers (more time out on first page loads on the owner's machine; `pnpm e2e --workers 4` is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
 - Do not set `E2E_TARGET` when running the suite; global setup rejects it (it is only for the feature-tour capture config).
 
 ## Layout
 
 ```
 e2e/
-  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds
+  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, warms routes
   seed/             # shared deterministic data set (types, validate, write, datasets/)
-  fixtures/         # seededPage (clipboard permissions)
-  utils/            # session.ts (signInAs), helpers, firebase utilities
+  fixtures/         # seededPage (clipboard permissions), browserWarmUp (per worker)
+  utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts, helpers
   pages/            # page objects
   infra/            # seed health spec (@infra, runs with every area)
   auth/ smoke/ groups/ critical-flows/   # specs

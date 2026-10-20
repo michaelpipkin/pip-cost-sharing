@@ -13,6 +13,8 @@
   code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
   .meta { color: var(--muted); margin-top: 0; }
   li { margin: .25rem 0; }
+  li.done::marker { content: "±1  "; color: var(--accent); }
+  .note { color: var(--muted); font-size: .92em; }
 </style>
 </head>
 <body>
@@ -20,19 +22,20 @@
 <p class="meta">Deferred review findings from Plan 1 (branch <code>test-infrastructure</code>, 2026-10-19), triaged by the final whole-branch review. None block merge. Fold each into the plan named.</p>
 
 <h2>Plan 2 — repair existing e2e (do these first)</h2>
+<p class="note">All done on branch <code>e2e-repair</code> (2026-10-20) except the one owner item marked below. ☑ = done; the commit or task is noted after each item.</p>
 <ul>
-  <li><strong>Harden <code>validateDatasets</code> before authoring more datasets</strong> (<code>e2e/seed/validate.ts</code>): reject author errors the allocation helpers silently "fix" — amount pools ≠ total, percentages ≠ 100, shares ≤ 0, split fields not matching <code>splitMethod</code>; duplicate member emails within a group; a linked member whose email differs from its user's; a <code>defaultGroupKey</code> naming a group the user isn't in; compare group names case-insensitively.</li>
-  <li>Seed tests: also assert <code>activeMemberUids</code> and <code>adminUids</code> (only <code>memberUids</code> is checked).</li>
-  <li>Reject an ambient <code>E2E_SEED_TODAY</code> (or set it unconditionally in global setup), like <code>E2E_TARGET</code>.</li>
-  <li>Global setup: also probe Auth; give <code>clear()</code> fetches a timeout.</li>
-  <li><code>signInAs</code>: a stale snackbar visible at the moment the shell appears would be misread as a rejection (unlikely).</li>
-  <li>Once the suite is green, check order-independence once with <code>--workers 4</code> (config runs 2 workers on this machine — ruling R6a).</li>
-  <li>Investigate <code>groups-admin:157</code> (watch list in the failures doc) with a trace from a full run.</li>
-  <li>Wrapper polish (<code>scripts/test-env/with-test-emulators.mjs</code>): try/catch the win32 leak cleanup in <code>finally</code> (a netstat failure masks the exit code); avoid the DEP0190 warning (pass one command string instead of args + <code>shell: true</code>); busy-port message should say "run from the repo root".</li>
-  <li>"Single source of truth" for test ports/project is not literally true — values are repeated in <code>firebase.test.json</code>, <code>src/environments/environment.e2e.ts</code>, <code>functions/vitest.config.ts</code>, <code>functions/test/global-setup.ts</code>. Add a <code>node:test</code> asserting they all agree with <code>scripts/test-env/config.mjs</code>.</li>
-  <li>Area map vs spec §5 table: delete-account / <code>user-deletion.spec</code> are under <code>account</code> (spec: auth); guards under auth only (spec: shell); about under shell (spec: help). List under both where sensible.</li>
-  <li>Removed <code>e2e:local*</code> scripts (spec said they'd keep working) — optionally add an <code>e2e:local</code> alias; <code>cross-env</code> devDependency is now unused.</li>
-  <li>Docs: <code>pnpm e2e:install</code> installs every browser (docs say Chromium) — change the script to <code>playwright install chromium</code> or fix the wording; e2e/README code-block alignment; the skill lists <code>e2e:report</code> among wrapper variants. Fold <code>e2e/TESTING_PATTERNS.md</code>'s still-valid lessons into the skill and delete it.</li>
+  <li class="done"><strong>Harden <code>validateDatasets</code> before authoring more datasets</strong> (<code>e2e/seed/validate.ts</code>): reject author errors the allocation helpers silently "fix" — amount pools ≠ total, percentages ≠ 100, shares ≤ 0, split fields not matching <code>splitMethod</code>; duplicate member emails within a group; a linked member whose email differs from its user's; a <code>defaultGroupKey</code> naming a group the user isn't in; compare group names case-insensitively. <span class="note">— Task 1, <code>7c192ffc</code>.</span></li>
+  <li class="done">Seed tests: also assert <code>activeMemberUids</code> and <code>adminUids</code> (only <code>memberUids</code> is checked). <span class="note">— Task 1, <code>7c192ffc</code>.</span></li>
+  <li class="done">Reject an ambient <code>E2E_SEED_TODAY</code> (or set it unconditionally in global setup), like <code>E2E_TARGET</code>. <span class="note">— Task 1, <code>7c192ffc</code> (global setup throws on an ambient value and sets it itself).</span></li>
+  <li class="done">Global setup: also probe Auth; give <code>clear()</code> fetches a timeout. <span class="note">— Task 1, <code>7c192ffc</code> (5 s timeouts).</span></li>
+  <li class="done"><code>signInAs</code>: a stale snackbar visible at the moment the shell appears would be misread as a rejection (unlikely). <span class="note">— Task 3, <code>63b82d6c</code> (<code>AuthPage.submitLogin</code> waits for any earlier snackbar to clear before submitting).</span></li>
+  <li class="done">Once the suite is green, check order-independence once with <code>--workers 4</code> (config runs 2 workers on this machine — ruling R6a). <span class="note">— Task 8 close-out (see the e2e-repair Task 8 report).</span></li>
+  <li class="done">Investigate <code>groups-admin:157</code> (watch list in the failures doc) with a trace from a full run. <span class="note">— Task 4, <code>6806c630</code>: test-side race (filled before MatDialog focused its first field), fixed by waiting for focus.</span></li>
+  <li class="done">Wrapper polish (<code>scripts/test-env/with-test-emulators.mjs</code>): try/catch the win32 leak cleanup in <code>finally</code> (a netstat failure masks the exit code); avoid the DEP0190 warning (pass one command string instead of args + <code>shell: true</code>); busy-port message should say "run from the repo root". <span class="note">— Task 2, <code>7265a8d5</code>.</span></li>
+  <li class="done">"Single source of truth" for test ports/project is not literally true — values are repeated in <code>firebase.test.json</code>, <code>src/environments/environment.e2e.ts</code>, <code>functions/vitest.config.ts</code>, <code>functions/test/global-setup.ts</code>. Add a <code>node:test</code> asserting they all agree with <code>scripts/test-env/config.mjs</code>. <span class="note">— Task 2, <code>7265a8d5</code> (<code>scripts/test-env/config-agreement.test.mjs</code>).</span></li>
+  <li class="done">Area map vs spec §5 table: delete-account / <code>user-deletion.spec</code> are under <code>account</code> (spec: auth); guards under auth only (spec: shell); about under shell (spec: help). List under both where sensible. <span class="note">— Task 2, <code>7265a8d5</code>.</span></li>
+  <li class="done">Removed <code>e2e:local*</code> scripts (spec said they'd keep working) — optionally add an <code>e2e:local</code> alias; <code>cross-env</code> devDependency is now unused. <span class="note">— Task 2, <code>7265a8d5</code> (<code>e2e:local</code> alias added). <strong>Owner:</strong> the unused <code>cross-env</code> devDependency is still in <code>package.json</code>; removing it needs a lockfile update.</span></li>
+  <li class="done">Docs: <code>pnpm e2e:install</code> installs every browser (docs say Chromium) — change the script to <code>playwright install chromium</code> or fix the wording; e2e/README code-block alignment; the skill lists <code>e2e:report</code> among wrapper variants. Fold <code>e2e/TESTING_PATTERNS.md</code>'s still-valid lessons into the skill and delete it. <span class="note">— Task 2, <code>7265a8d5</code> (script, README, skill); <code>TESTING_PATTERNS.md</code> folded into the skill and deleted in the Task 8 close-out.</span></li>
 </ul>
 
 <h2>Plan 3 — new e2e coverage</h2>

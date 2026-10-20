@@ -26,7 +26,57 @@
 <body>
 
 <h1>Baseline E2E Failures (Task 9 of Plan 1)</h1>
-<p class="muted">Input to Plan 2 (repair of the legacy e2e specs). Nothing in this file has been fixed; every row is a provisional triage, not a diagnosis.</p>
+
+<div class="box">
+  <p><strong>Status: resolved by Plan 2</strong> (<code>docs/superpowers/plans/2026-10-19-e2e-repair.html</code>, branch <code>e2e-repair</code>, 2026-10-20). Every spec below was migrated onto seeded data, <code>describe.serial</code> and fixed sleeps are gone, and <code>pnpm e2e</code> passed three consecutive full runs at 2 workers and one at 4 workers (94 tests each: 93 passed, 1 expected failure pinning an app bug, 0 unexpected, 0 flaky). Commits: <code>7c192ffc</code> seed hardening, <code>7265a8d5</code> tooling, <code>63b82d6c</code> + <code>d04bc9f6</code> auth/smoke and dev-server warm-up, <code>6806c630</code> + <code>23deecee</code> + <code>8fb2d822</code> groups admin, <code>0cd1989e</code> + <code>8cb7781a</code> expenses and the redirect-race pin, <code>6df3ea27</code> summary/history, <code>dd1d64a6</code> payment flow and legacy helper removal, <code>000d7ae9</code> in-app Groups/Members navigation and the 15 s expect timeout, and the close-out commit "Close out e2e repair: docs and verification".</p>
+  <p>The rest of this file is the historical baseline, kept as it was written. Watch-list item <code>groups-admin.spec.ts:157</code> turned out to be a test-side race (filling before MatDialog moved focus to its first field), not an app bug. The baseline found no app bugs; Plan 2 found the ones listed in the next section.</p>
+</div>
+
+<h2>App bugs found during Plan 2</h2>
+<p>For the owner to decide. App code was not changed (Plan 2 allowed only <code>data-testid</code> additions). A pinned test asserts the <em>correct</em> behaviour and is marked expected-to-fail; it will fail the run once the bug is fixed, which is the cue to remove the marker.</p>
+<div class="table-wrap">
+<table>
+  <tr><th>Bug</th><th>Evidence</th><th>Pinned by</th></tr>
+  <tr>
+    <td><strong>Deep-link redirect race.</strong> Reloading (or bookmarking) an authenticated deep link such as <code>/expenses/add</code> or <code>/analysis/summary</code> right after sign-in, on a cold load, can land on <code>/expenses</code>.</td>
+    <td><code>GroupService.handleGroupsSnapshot</code> decides whether to redirect from <code>router.url</code>, which stays <code>'/'</code> until the initial navigation commits (after the lazy <code>loadChildren</code>, the async <code>authGuard</code> and <code>loadComponent</code>). When the groups snapshot arrives first, the in-flight deep link is replaced by <code>/expenses</code>. Found by the expenses spec in Task 5; confirmed against the router source in review. Task 8 measured it: 7 of 237 full loads of <code>/administration/groups</code> by a signed-in user landed on <code>/expenses</code>, every one with timing data during a ~10 s page-load stall (the stall delays the initial navigation past the groups snapshot). It also broke one <code>pnpm test:area groups</code> run before <code>GroupsPage.goto</code> went in-app. Any full load of a deep link is exposed, reloads included.</td>
+    <td><code>it.fails('KNOWN BUG: does not redirect a deep link whose initial navigation is still pending')</code> in <code>src/app/services/group.service.spec.ts</code> (deterministic unit pin; an e2e <code>test.fail()</code> would flake). The e2e suite works around it by navigating in-app after sign-in.</td>
+  </tr>
+  <tr>
+    <td><strong>History detail money format.</strong> The payment detail page shows "$25.00" where History, Summary and the copied text show "$ 25.00"; a non-USD group would get Angular's default USD symbol.</td>
+    <td><code>history-detail.component.ts:1</code> imports <code>CurrencyPipe</code> from <code>@angular/common</code> instead of <code>@shared/pipes/currency.pipe</code>. Every full run in Task 8: <code>getByTestId('payment-total')</code> expected <code>"Amount: $ 25.00"</code>, received <code>"Amount: $25.00"</code>.</td>
+    <td><code>test.fail()</code> in <code>e2e/critical-flows/history.spec.ts</code>, "should format payment detail amounts in the group currency".</td>
+  </tr>
+  <tr>
+    <td><strong>Same pipe, unchecked:</strong> <code>rental-grid.component.ts:1</code> and <code>rental-edit-dialog.component.ts:1</code> also import Angular's <code>CurrencyPipe</code> (templates use <code>| currency</code>). Likely the same inconsistency.</td>
+    <td>Import lines only; no e2e coverage of the rental screens yet.</td>
+    <td>Not pinned.</td>
+  </tr>
+  <tr>
+    <td><strong>Unconditional <code>defaultGroupRef</code> write.</strong> Every app load and every groups snapshot rewrites <code>users/{uid}.defaultGroupRef</code>, even when it is unchanged, and each write also fires the <code>syncUserEmailLower</code> trigger (<code>onDocumentWritten('users/{userId}')</code>).</td>
+    <td><code>GroupService.getGroup</code> calls <code>setDoc(userRef, { defaultGroupRef: groupRef }, { merge: true })</code> on every call (<code>group.service.ts</code> ~line 372), reached from <code>autoSelectGroup</code>. In tests this made "shared is read-only" impossible to hold literally; the shared users are seeded with the value the app writes.</td>
+    <td>Not pinned (a skip-if-unchanged fix is the owner's call; it would save one write plus one trigger per load in production).</td>
+  </tr>
+  <tr>
+    <td><strong>Group switch undone by auto-select.</strong> A group switch made right after sign-in can be reverted by the default-group auto-select still in flight, and two tabs signed in as the same user overwrite each other's selection.</td>
+    <td>Seen as a 1-in-2 flake in groups-admin ("create, select and rename a group") when two parallel tests shared a user. Fixed test-side with one owned user per test that selects groups.</td>
+    <td>Not pinned (timing-dependent).</td>
+  </tr>
+  <tr>
+    <td><strong>Stale stores after a switch.</strong> After switching groups, the previous group's members and categories stay in the stores until the new group's data arrives, so a fast reader can see the old group's lists.</td>
+    <td>Reported during the expenses repair (Task 5) from the store code path; not reproduced in isolation. Page objects wait for the new group's content.</td>
+    <td>Not pinned.</td>
+  </tr>
+  <tr>
+    <td><strong>Inert <code>defaultButton</code> attribute.</strong> 12 templates (e.g. <code>add-expense</code>, <code>add-category</code>, <code>edit-category</code>) put a <code>defaultButton</code> attribute on a button, but no directive matches it, so it does nothing.</td>
+    <td><code>grep -rn defaultButton src/app --include=*.ts</code> finds no selector.</td>
+    <td>Not pinned (no behaviour to test; remove it or add the directive).</td>
+  </tr>
+</table>
+</div>
+
+<h2>Baseline (historical)</h2>
+<p class="muted">Input to Plan 2 (repair of the legacy e2e specs). Nothing in this section was fixed when it was written; every row is a provisional triage, not a diagnosis.</p>
 
 <h2>Run summary</h2>
 <ul>
