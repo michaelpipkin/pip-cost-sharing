@@ -1,5 +1,6 @@
 import { Page, test as base } from '@playwright/test';
-import { TEST_CONFIG } from '../constants';
+import { FIRST_NAVIGATION_TIMEOUT_MS } from '../constants';
+import { AuthPage } from '../pages/auth.page';
 
 // Define types for our fixtures
 type TestFixtures = {
@@ -15,27 +16,32 @@ type WorkerFixtures = {
 
 // Extend base test with our fixtures
 export const test = base.extend<TestFixtures, WorkerFixtures>({
-  // The first navigation of each freshly launched Chromium stalls 10-30 s on
-  // this machine (measured: 11 s, 21 s, 33 s) even when the dev server is
-  // warm and answers other clients in well under a second (seen when
-  // workers start together); the worker's later contexts load in ~1 s.
+  // The first page load of each freshly launched Chromium stalls 10-33 s on
+  // this machine even when the dev server is warm (see
+  // FIRST_NAVIGATION_TIMEOUT_MS); the worker's later contexts load in 1-3 s.
   // Pay that once per worker here, with a generous bound, so it can't land
-  // on a test's own 30 s navigation timeout and hide real load regressions.
+  // on a test's own timeouts and hide real load regressions. Waits for the
+  // rendered login form (most tests' first page), not just the document: the
+  // stall can also hit the route's lazily loaded dependencies after
+  // DOMContentLoaded.
   browserWarmUp: [
     async ({ browser }, use) => {
       const context = await browser.newContext();
       try {
         const page = await context.newPage();
-        await page.goto(TEST_CONFIG.baseUrl, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120_000,
+        await new AuthPage(page).gotoLogin({
+          timeout: FIRST_NAVIGATION_TIMEOUT_MS,
         });
       } finally {
         await context.close();
       }
       await use();
     },
-    { scope: 'worker', auto: true, timeout: 150_000 },
+    {
+      scope: 'worker',
+      auto: true,
+      timeout: FIRST_NAVIGATION_TIMEOUT_MS + 30_000,
+    },
   ],
 
   seededPage: async ({ page }, use) => {

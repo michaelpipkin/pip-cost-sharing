@@ -58,6 +58,20 @@ export const TEST_CONFIG = {
   },
 } as const;
 
+/**
+ * Bound for the first page load of a freshly launched Chromium (global-setup
+ * warm-up, browserWarmUp fixture). On this machine every new browser's
+ * network stalls for ~10.5 s, sometimes two or three times in a row (worker
+ * first loads measured 12-24 s, up to 33 s), while its later loads take
+ * 1-3 s. The stall is machine-wide, not the dev server: in the stalled
+ * traces, responses from the dev server, the Firestore emulator and Google's
+ * font/ad CDNs all arrive ~10.5 s late together, and a Cloud Functions
+ * trigger's emulator call stalls 10 s at the same moment. It can land before
+ * or after DOMContentLoaded (on the lazy route's dependencies), so the bound
+ * covers the rendered login form, not just the document.
+ */
+export const FIRST_NAVIGATION_TIMEOUT_MS = 120_000;
+
 /** Inputs for the login-form validation tests (never real accounts). */
 export const TEST_DATA = {
   invalidEmail: 'invalid-email',

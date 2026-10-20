@@ -38,15 +38,16 @@ export class AuthPage extends BasePage {
    * Navigate to the login page. Waits only for DOMContentLoaded (the form
    * assertions that follow do the real waiting), with the config's default
    * timeouts: global setup warms the dev server, so a slow load is a real
-   * regression.
+   * regression. `timeout` overrides them only for a fresh browser's first
+   * page load (FIRST_NAVIGATION_TIMEOUT_MS), never inside a test.
    */
-  async gotoLogin() {
-    await super.goto('/auth/login', { waitUntil: 'domcontentloaded' });
-    await expect(this.page.getByTestId('login-form')).toBeVisible();
+  async gotoLogin({ timeout }: { timeout?: number } = {}) {
+    await super.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
+    await expect(this.page.getByTestId('login-form')).toBeVisible({ timeout });
     // Fields are bound by Angular once the form renders; make sure they are
     // there before a caller starts typing.
-    await expect(this.emailInput).toBeVisible();
-    await expect(this.passwordInput).toBeVisible();
+    await expect(this.emailInput).toBeVisible({ timeout });
+    await expect(this.passwordInput).toBeVisible({ timeout });
   }
 
   /**
