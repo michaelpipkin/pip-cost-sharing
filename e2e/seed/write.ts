@@ -30,11 +30,16 @@ import type {
   SeedUser,
 } from './types';
 
-// All users are created at once, so every createUserProfileOnSignUp trigger
-// queues on the functions emulator; with ~35 users on a cold emulator that
-// queue takes ~15 s, so the deadline scales with the user count's headroom.
-const PROFILE_DOC_TIMEOUT_MS = 60_000;
-const PROFILE_DOC_POLL_MS = 100;
+// Waiting for the profile docs is progress-based: every createUserProfileOnSignUp
+// trigger queues on the functions emulator, so the total time grows with the
+// number of users. The wait fails only when no new profile doc has appeared
+// for PROFILE_DOC_STALL_MS (a dead trigger), or after PROFILE_DOC_MAX_MS.
+// The first doc gets the longer PROFILE_DOC_FIRST_MS: on a cold emulator the
+// function workers all start at once and none has run for 15 s or more.
+const PROFILE_DOC_STALL_MS = 15_000;
+const PROFILE_DOC_FIRST_MS = 60_000;
+const PROFILE_DOC_MAX_MS = 300_000;
+const PROFILE_DOC_POLL_MS = 250;
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 86_400_000;
@@ -169,15 +174,43 @@ async function createAuthUsers(db: Firestore, auth: Auth, users: SeedUser[]): Pr
       auth.createUser({ uid: u.uid, email: u.email, password: u.password, emailVerified: true })
     )
   );
-  await Promise.all(users.map((u) => waitForProfileDoc(db.doc(`users/${u.uid}`), u)));
+  await waitForProfileDocs(db, users);
 }
 
-async function waitForProfileDoc(ref: DocumentReference, user: SeedUser): Promise<void> {
-  const deadline = Date.now() + PROFILE_DOC_TIMEOUT_MS;
-  while (!(await ref.get()).exists) {
-    if (Date.now() >= deadline) {
+/**
+ * Polls (one batched read per round) until every user's `users/{uid}` doc
+ * exists. The stall timer restarts whenever another doc appears, so a long
+ * queue of triggers is fine while a trigger that never runs fails after
+ * PROFILE_DOC_STALL_MS without progress (PROFILE_DOC_FIRST_MS before the
+ * first doc, to cover the emulator's cold start).
+ */
+async function waitForProfileDocs(db: Firestore, users: SeedUser[]): Promise<void> {
+  const refs = users.map((u) => db.doc(`users/${u.uid}`));
+  const start = Date.now();
+  let lastProgress = start;
+  let existing = 0;
+  for (;;) {
+    const snaps = await db.getAll(...refs);
+    const found = snaps.filter((snap) => snap.exists).length;
+    if (found === users.length) {
+      console.log(`[e2e seed] ${found} profile docs after ${Date.now() - start} ms`);
+      return;
+    }
+    const now = Date.now();
+    if (found > existing) {
+      existing = found;
+      lastProgress = now;
+    }
+    const stallMs = existing === 0 ? PROFILE_DOC_FIRST_MS : PROFILE_DOC_STALL_MS;
+    const stalled = now - lastProgress >= stallMs;
+    if (stalled || now - start >= PROFILE_DOC_MAX_MS) {
+      const missing = users.filter((_, i) => !snaps[i]!.exists).map((u) => `"${u.key}"`);
+      const reason = stalled
+        ? `no new profile doc for ${stallMs} ms`
+        : `still waiting after ${PROFILE_DOC_MAX_MS} ms`;
       throw new Error(
-        `Timed out after ${PROFILE_DOC_TIMEOUT_MS} ms waiting for ${ref.path} (user "${user.key}"): ` +
+        `Timed out (${reason}) waiting for users/{uid}: ${found} of ${users.length} appeared, ` +
+          `missing ${missing.join(', ')}. ` +
           'createUserProfileOnSignUp never ran - is the functions emulator up and the functions build current?'
       );
     }
