@@ -270,9 +270,6 @@ describe('GroupService', () => {
 
     it('should update the group document', async () => {
       const groupRef = { id: 'group-1' } as any;
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([]) as any
-      );
 
       await service.updateGroup(groupRef, { name: 'New Name' });
 
@@ -317,6 +314,31 @@ describe('GroupService', () => {
       await service.updateGroup(groupRef, { active: false });
 
       expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+    });
+
+    it('should treat a rename as an ordinary update, not a deactivation', async () => {
+      currentGroupSignal.set({ id: 'group-1' });
+
+      await service.updateGroup({ id: 'group-1' } as any, { name: 'Renamed' });
+
+      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+      expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+    });
+
+    // Unarchiving deliberately leaves the group inactive: an admin may want
+    // its history back without letting members add expenses again.
+    // Reactivating is a separate, explicit step.
+    it('should treat unarchiving as an ordinary update, not a deactivation', async () => {
+      const groupRef = { id: 'group-1' } as any;
+      currentGroupSignal.set({ id: 'group-1' });
+
+      await service.updateGroup(groupRef, { archived: false });
+
+      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+      expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+      expect(mockBatch.update).toHaveBeenCalledWith(groupRef, {
+        archived: false,
+      });
     });
   });
 
@@ -931,6 +953,135 @@ describe('GroupService', () => {
       expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([
         { id: 'a-category' },
       ]);
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clearing the current group stops its data listeners', () => {
+    const userRef = { id: 'user-1' } as any;
+    const listenerServices = () => [
+      mockCategoryService,
+      mockMemberService,
+      mockMemorizedService,
+      mockSplitService,
+      mockHistoryService,
+    ];
+
+    /** Loads group-1 as the current group, with data in a store. */
+    async function loadGroup(): Promise<void> {
+      vi.spyOn(firestoreModule, 'getDoc').mockImplementation(async (ref: any) =>
+        groupDocSnap(ref.id)
+      );
+      await service.getGroup(groupRef('group-1'), userRef);
+      TestBed.inject(CategoryStore).setGroupCategories([{ id: 'c1' } as any]);
+      TestBed.inject(MemberStore).setGroupMembers([{ id: 'm1' } as any]);
+      listenerServices().forEach((s) => s.stopListening.mockClear());
+    }
+
+    function expectListenersStoppedAndStoresEmpty(): void {
+      listenerServices().forEach((s) =>
+        expect(s.stopListening).toHaveBeenCalled()
+      );
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
+      expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
+      expect(currentGroupSignal()).toBeNull();
+      expect(localStorage.getItem('currentGroup')).toBeNull();
+    }
+
+    beforeEach(async () => {
+      service = createService();
+      userSignal.set({ ref: userRef, defaultGroupRef: groupRef('group-1') });
+      await loadGroup();
+    });
+
+    it('when the current group is deactivated', async () => {
+      await service.updateGroup(groupRef('group-1'), { active: false });
+
+      expectListenersStoppedAndStoresEmpty();
+      expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalledWith(true);
+    });
+
+    it('when the current group is archived', async () => {
+      await service.updateGroup(groupRef('group-1'), {
+        archived: true,
+        active: false,
+      });
+
+      expectListenersStoppedAndStoresEmpty();
+    });
+
+    it('only after the deactivation is saved', async () => {
+      mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
+
+      await expect(
+        service.updateGroup(groupRef('group-1'), { active: false })
+      ).rejects.toThrow('permission-denied');
+
+      expect(currentGroupSignal()?.id).toBe('group-1');
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
+    });
+
+    it('when the current group is deleted', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockResolvedValue({ data: { success: true } }) as any
+      );
+
+      await service.deleteGroup('group-1');
+
+      expectListenersStoppedAndStoresEmpty();
+    });
+
+    it('when the user leaves it (clearCurrentGroup)', () => {
+      service.clearCurrentGroup();
+
+      expectListenersStoppedAndStoresEmpty();
+      expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalledWith(false);
+    });
+
+    it('when the selected group no longer exists', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+        exists: () => false,
+      } as any);
+
+      await service.getGroup(groupRef('group-1'), userRef);
+
+      expectListenersStoppedAndStoresEmpty();
+    });
+
+    it('when the user is no longer a member of any group', async () => {
+      const callbacks: ((snap: any) => void)[] = [];
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          callbacks.push(onNext);
+          return vi.fn();
+        }
+      );
+
+      await service.getUserGroups({ id: 'user-1', ref: userRef } as any);
+      await callbacks[0]!(makeSnap([]));
+
+      expectListenersStoppedAndStoresEmpty();
+    });
+
+    it('and a group still loading is not selected afterwards', async () => {
+      const load = deferred<any>();
+      vi.spyOn(firestoreModule, 'getDoc').mockReturnValueOnce(load.promise);
+
+      const pick = service.getGroup(groupRef('group-2'), userRef);
+      service.clearCurrentGroup();
+      load.resolve(groupDocSnap('group-2'));
+      await pick;
+
+      expect(currentGroupSignal()).toBeNull();
+      expect(mockCategoryService.getGroupCategories).not.toHaveBeenCalledWith(
+        'group-2'
+      );
+    });
+
+    it('but not when a different group is deactivated', async () => {
+      await service.updateGroup(groupRef('group-2'), { active: false });
+
+      expect(currentGroupSignal()?.id).toBe('group-1');
       expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
     });
   });
