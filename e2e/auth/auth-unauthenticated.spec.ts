@@ -29,48 +29,29 @@ test.describe('Authentication - Unauthenticated User Tests', { tag: '@auth' }, (
     const authPage = new AuthPage(page);
     await authPage.gotoLogin();
 
-    // Try to login with invalid email
     await authPage.emailInput.fill(TEST_DATA.invalidEmail);
     await authPage.passwordInput.fill(TEST_DATA.password);
-    await authPage.loginButton.click();
+    await authPage.emailInput.blur();
 
-    // Should show some kind of validation error
-    // We'll check for either a form validation error or Firebase error
-    const hasFormError = await authPage.emailInput.evaluate(
-      (el: HTMLInputElement) => {
-        return !el.validity.valid;
-      }
+    // The signal form's email validator reports through mat-error.
+    await expect(page.getByTestId('email-error-0')).toHaveText(
+      /Invalid email address/
     );
-
-    const hasErrorMessage = await authPage.errorMessage
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasFormError || hasErrorMessage).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should show error for non-existent user login', async ({ page }) => {
     const authPage = new AuthPage(page);
     await authPage.gotoLogin();
 
-    // Try to login with valid format but non-existent user
     await authPage.emailInput.fill('nonexistent@example.com');
     await authPage.passwordInput.fill('password123');
     await authPage.loginButton.click();
 
-    // Should show some kind of error message
-    // Wait for async Firebase auth validation (standard timeout for backend operations)
-    await page.waitForTimeout(1500);
-
-    const hasErrorMessage = await authPage.errorMessage
-      .isVisible()
-      .catch(() => false);
-
-    // If no explicit error message, check if we're still on login page
-    // (successful login would redirect away)
-    const stillOnLoginPage = page.url().includes('/auth/login');
-
-    expect(hasErrorMessage || stillOnLoginPage).toBeTruthy();
+    await expect(page.getByTestId('snackbar')).toContainText(
+      'Could not sign you in'
+    );
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should navigate between login and register forms', async ({ page }) => {

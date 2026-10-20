@@ -11,11 +11,14 @@ export abstract class BasePage {
   /**
    * Navigate to a specific path
    */
-  async goto(path: string = '') {
+  async goto(
+    path: string = '',
+    options?: Parameters<Page['goto']>[1]
+  ) {
     const fullUrl = path.startsWith('http')
       ? path
       : `${TEST_CONFIG.baseUrl}${path}`;
-    await this.page.goto(fullUrl);
+    await this.page.goto(fullUrl, options);
   }
 
   /**

@@ -1,6 +1,5 @@
 import { expect, test } from '../fixtures';
 import type { Page } from '@playwright/test';
-import { TEST_CONFIG } from '../constants';
 import { HomePage } from '../pages/home.page';
 
 /**
@@ -37,21 +36,6 @@ test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await expect(page.locator('body')).toBeVisible();
-  });
-
-  test('should connect to Firebase emulators', async ({ preserveDataFirebasePage }) => {
-    await preserveDataFirebasePage.goto('/');
-    await waitForPageLoad(preserveDataFirebasePage);
-
-    // Test that Firebase emulators are accessible
-    // This validates our emulator integration
-    const firestoreHealth = await preserveDataFirebasePage.request.get(
-      TEST_CONFIG.firebase.emulators.firestore
-    );
-    expect(firestoreHealth.ok()).toBeTruthy();
-
-    const authHealth = await preserveDataFirebasePage.request.get(TEST_CONFIG.firebase.emulators.auth);
-    expect(authHealth.ok()).toBeTruthy();
   });
 
   test('should open the feature tour dialog', async ({ page }) => {

@@ -1,5 +1,4 @@
 import { expect, test } from '../fixtures';
-import { TEST_CONFIG } from '../constants';
 import type { Page } from '@playwright/test';
 
 /**
@@ -82,12 +81,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell'
     await waitForPageLoad(page);
 
     // Should redirect to login due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected members route when not authenticated', async ({
@@ -97,12 +91,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell'
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected categories route when not authenticated', async ({
@@ -112,12 +101,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell'
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected summary route when not authenticated', async ({
@@ -127,12 +111,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell'
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected history route when not authenticated', async ({
@@ -142,11 +121,6 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell'
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 });
