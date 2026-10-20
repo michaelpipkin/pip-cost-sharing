@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { TEST_CONFIG } from '../constants';
 
 export abstract class BasePage {
@@ -71,6 +71,22 @@ export abstract class BasePage {
    */
   getByPlaceholder(text: string | RegExp): Locator {
     return this.page.getByPlaceholder(text);
+  }
+
+  /**
+   * Waits until a full page load's initial navigation has committed: the
+   * routed component renders as a sibling of <router-outlet> only then.
+   * After it, the app's post-load redirect to /expenses (which only fires
+   * while the router is still on '/') can no longer happen, so in-app
+   * navigation is safe.
+   */
+  async waitForInitialNavigation() {
+    await expect(
+      this.page
+        .getByTestId('main-content')
+        .locator(':scope > :not(router-outlet)')
+        .first()
+    ).toBeVisible();
   }
 
   /**

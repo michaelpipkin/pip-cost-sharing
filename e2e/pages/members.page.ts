@@ -3,6 +3,7 @@ import { BasePage } from './base.page';
 
 export class MembersPage extends BasePage {
   // Main page elements using test IDs
+  readonly navMembersLink: Locator;
   readonly mainContainer: Locator;
   readonly pageTitle: Locator;
   readonly memberSearchInput: Locator;
@@ -44,6 +45,8 @@ export class MembersPage extends BasePage {
   constructor(page: Page) {
     super(page);
 
+    this.navMembersLink = page.getByTestId('nav-members');
+
     // Main page elements using test IDs
     this.mainContainer = page.getByTestId('members-main-container');
     this.pageTitle = page.getByTestId('members-page-title');
@@ -79,18 +82,22 @@ export class MembersPage extends BasePage {
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.locator('app-custom-snackbar');
+    this.snackbar = page.getByTestId('snackbar');
   }
 
   /**
-   * Opens Members and waits for real content: the main container replaces
-   * the "Loading members..." placeholder once the member store has loaded
-   * (the same condition that drives the page's loading overlay), then the
-   * overlay is gone. Waiting on the overlay alone could return before the
-   * page had even turned it on.
+   * Opens Members from the nav bar (signed in, with a current group: the
+   * link only shows then) and waits for real content: the main container
+   * replaces the "Loading members..." placeholder once the member store has
+   * loaded (the same condition that drives the page's loading overlay),
+   * then the overlay is gone. Waiting on the overlay alone could return
+   * before the page had even turned it on. In-app rather than a page.goto
+   * for the same reason as GroupsPage.goto (a full load of a deep link can
+   * be redirected to /expenses).
    */
   async goto(): Promise<void> {
-    await this.page.goto('/administration/members');
+    await this.navMembersLink.click();
+    await expect(this.page).toHaveURL(/\/administration\/members$/);
     await expect(this.mainContainer).toBeVisible();
     await expect(this.pageTitle).toHaveText('Members');
     await this.waitForLoadingComplete();

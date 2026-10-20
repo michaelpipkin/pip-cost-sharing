@@ -116,7 +116,7 @@ test.describe('Groups - no groups yet', { tag: '@groups' }, () => {
     await expect(groupsPage.snackbar).toHaveCount(0);
     await expectNoGroups(groupsPage);
     // Still nothing after a fresh load, so nothing was written.
-    await groupsPage.goto();
+    await groupsPage.reload();
     await expectNoGroups(groupsPage);
   });
 
@@ -227,7 +227,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
 
     // The last selection is remembered as the default across a reload (safe
     // here: no other test signs in as groups-switcher).
-    await groupsPage.goto();
+    await groupsPage.reload();
     await expect(groupsPage.groupSelect).toHaveText(switchB.name);
   });
 
@@ -326,7 +326,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
 
     await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
     // Persisted: a fresh load shows it on.
-    await groupsPage.goto();
+    await groupsPage.reload();
     await groupsPage.openManageGroupsFor(autoAdd.name);
     await expect(
       groupsPage.switchOf(groupsPage.manageAutoAddToggle)

@@ -5,6 +5,8 @@ import { BasePage } from './base.page';
 const SAVE_TIMEOUT_MS = 15_000;
 
 export class GroupsPage extends BasePage {
+  readonly navGroupsLink: Locator;
+
   // Main page elements
   readonly mainContainer: Locator;
   readonly groupSelect: Locator;
@@ -45,6 +47,8 @@ export class GroupsPage extends BasePage {
   constructor(page: Page) {
     super(page);
 
+    this.navGroupsLink = page.getByTestId('nav-groups');
+
     this.mainContainer = page.getByTestId('groups-main-container');
     this.groupSelect = page.getByTestId('group-select');
     this.newGroupButton = page.getByTestId('new-group-button');
@@ -83,14 +87,35 @@ export class GroupsPage extends BasePage {
   }
 
   /**
-   * Opens Groups and waits until the page has settled: the group list has
-   * loaded and the invited-member link check is done (the main container
-   * replaces the "Loading groups..." placeholder) and the overlay is gone.
+   * Opens Groups from the nav bar (the user must already be signed in) and
+   * waits until the page has settled: the group list has loaded and the
+   * invited-member link check is done (the main container replaces the
+   * "Loading groups..." placeholder) and the overlay is gone.
+   *
+   * In-app rather than a page.goto: a full load of a deep link can be
+   * replaced by /expenses when the user's groups load before the initial
+   * navigation commits (known app bug, pinned in
+   * src/app/services/group.service.spec.ts). A stalled page load makes that
+   * likely: in a probe, 7 of 237 deep-link loads landed on /expenses.
    */
   async goto(): Promise<void> {
-    await this.page.goto('/administration/groups');
+    await this.navGroupsLink.click();
+    await expect(this.page).toHaveURL(/\/administration\/groups$/);
     await expect(this.mainContainer).toBeVisible();
     await expect(this.loadingOverlay).toBeHidden();
+  }
+
+  /**
+   * Reloads the app (so what the page shows comes from Firestore, not from
+   * the in-memory stores), then opens Groups in-app. Waits for the reload's
+   * initial navigation to settle first: it may still be redirected to
+   * /expenses (see goto), and that redirect would override an earlier click.
+   */
+  async reload(): Promise<void> {
+    await this.page.reload();
+    await this.waitForInitialNavigation();
+    await expect(this.loadingOverlay).toBeHidden();
+    await this.goto();
   }
 
   /**
