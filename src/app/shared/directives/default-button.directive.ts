@@ -7,9 +7,9 @@ import {
   inject,
 } from '@angular/core';
 
-// Single-line input types where Enter means "submit" rather than doing
+// Single-line input types: Enter in one of these moves on rather than doing
 // something to the field itself (checkboxes, radios, files, etc. are left out).
-const ENTER_SUBMITS_INPUT_TYPES = new Set([
+const TEXT_INPUT_TYPES = new Set([
   'text',
   'search',
   'email',
@@ -24,34 +24,35 @@ const ENTER_SUBMITS_INPUT_TYPES = new Set([
   'week',
 ]);
 
-// Where Enter moves to when the form can't be saved yet: fields you type in
-// or choose from. Buttons, checkboxes and toggles are skipped - Enter on one
-// of those would press or flip it.
-const NEXT_FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]';
+// Where Enter moves to: fields you type in or choose from. Buttons,
+// checkboxes and toggles are skipped - Enter on one of those would press or
+// flip it - except this directive's own button, the last stop.
+const FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]';
 
 /**
- * Makes Enter in one of the form's single-line fields save the form by
- * clicking this button - the form's "default button".
+ * Makes Enter in the form move forward like Tab, ending on this button (the
+ * form's Save button): Enter never saves from a field, and saves only when the
+ * Save button itself has focus (the browser's normal button behaviour). On
+ * these forms a valid form is often not a finished one - splits are prefilled
+ * evenly and then adjusted - so Enter must not submit early.
  *
  * The button must belong to the form: inside it, or outside it linked by the
- * standard `form="<form id>"` attribute. The browser's own Enter-to-submit
- * isn't enough on its own: it clicks the button before the field loses focus,
- * and several fields only format their value or re-allocate the splits on
- * blur. So on Enter this blurs the field first, brings the button's disabled
- * state up to date, and clicks it only if it is still enabled.
+ * standard `form="<form id>"` attribute.
  *
- * If the form can't be saved yet, Enter moves on to the next field you can
- * type in or choose from (like Tab, but skipping buttons and toggles, and
- * disabled, read-only and hidden fields). In the last such field it stays put.
+ * Enter in a single-line field, or on a closed dropdown (Space still opens
+ * it), moves to the next field you can type in or choose from, skipping
+ * buttons, toggles and disabled, read-only and hidden fields. After the last
+ * one it moves to this button, if it's enabled once the field's blur-time
+ * work (currency formatting, split re-allocation) has run; otherwise the
+ * cursor stays put.
  *
- * Enter is left alone in text areas (new line), on buttons, selects and
- * toggles, with a modifier key held, during IME composition, and while the
- * field has an open popup such as an autocomplete list.
+ * Enter is left alone in text areas (new line), on buttons and toggles, with a
+ * modifier key held, during IME composition, and while a field's popup is
+ * open (an open dropdown or autocomplete list uses Enter to pick an option).
  *
- * On-screen keyboards: Android shows a "next field" key (->|) on form fields,
- * which moves focus itself and never sends Enter. So the form's single-line
- * fields get enterkeyhint="go" (unless they set their own), which swaps it for
- * a Go key that does send Enter - handled as above.
+ * On Android the keyboard's own "next field" key (->|) already moves focus
+ * forward without sending Enter; on the last field it shows Go/Done, which
+ * sends Enter and lands here.
  */
 @Directive({
   selector: 'button[defaultButton]',
@@ -69,29 +70,13 @@ export class DefaultButtonDirective {
       const form = this.#button.form;
       if (!form) return;
       const onKeydown = (event: KeyboardEvent) => this.#onKeydown(event, form);
-      // Fields added later (e.g. a new split row) get their hint on focus,
-      // which is when the keyboard reads it.
-      const onFocusin = (event: FocusEvent) => this.#askForGoKey(event.target);
-      form
-        .querySelectorAll('input')
-        .forEach((field) => this.#askForGoKey(field));
-      form.addEventListener('keydown', onKeydown);
-      form.addEventListener('focusin', onFocusin);
-      destroyRef.onDestroy(() => {
-        form.removeEventListener('keydown', onKeydown);
-        form.removeEventListener('focusin', onFocusin);
-      });
+      // Capture phase: a dropdown opens itself on Enter in its own handler,
+      // which runs before a bubbling listener could stop it.
+      form.addEventListener('keydown', onKeydown, true);
+      destroyRef.onDestroy(() =>
+        form.removeEventListener('keydown', onKeydown, true)
+      );
     });
-  }
-
-  #askForGoKey(field: EventTarget | null): void {
-    if (
-      field instanceof HTMLInputElement &&
-      ENTER_SUBMITS_INPUT_TYPES.has(field.type) &&
-      !field.hasAttribute('enterkeyhint')
-    ) {
-      field.setAttribute('enterkeyhint', 'go');
-    }
   }
 
   #onKeydown(event: KeyboardEvent, form: HTMLFormElement): void {
@@ -108,39 +93,52 @@ export class DefaultButtonDirective {
     }
     const field = event.target;
     if (
-      !(field instanceof HTMLInputElement) ||
-      !ENTER_SUBMITS_INPUT_TYPES.has(field.type) ||
+      !(field instanceof HTMLElement) ||
+      !this.#isField(field) ||
       field.getAttribute('aria-expanded') === 'true'
     ) {
       return;
     }
 
-    // Replaces the browser's own Enter-to-submit (see the class comment)
+    // Replaces the browser's own Enter-to-submit and a dropdown's open-on-Enter
     event.preventDefault();
+    event.stopPropagation();
+    // Run the field's blur-time work first, and bring the button's disabled
+    // state up to date, before deciding whether the button is the next stop.
     field.blur();
     this.#appRef.tick();
-    if (this.#button.disabled) {
-      this.#nextField(form, field).focus();
-    } else {
-      this.#button.click();
-    }
+    this.#nextStop(form, field).focus();
   }
 
-  /** The next field after `field` that Enter can move to, else `field`. */
-  #nextField(form: HTMLFormElement, field: HTMLInputElement): HTMLElement {
+  #isField(element: HTMLElement): boolean {
+    if (element instanceof HTMLInputElement) {
+      return TEXT_INPUT_TYPES.has(element.type);
+    }
+    return (
+      element instanceof HTMLSelectElement ||
+      element.getAttribute('role') === 'combobox'
+    );
+  }
+
+  /**
+   * The next field after `field` that Enter can move to; after the last one,
+   * this button if it's enabled; otherwise `field` itself.
+   */
+  #nextStop(form: HTMLFormElement, field: HTMLElement): HTMLElement {
     const fields = Array.from(
-      form.querySelectorAll<HTMLElement>(NEXT_FIELD_SELECTOR)
+      form.querySelectorAll<HTMLElement>(FIELD_SELECTOR)
     );
     const next = fields
       .slice(fields.indexOf(field) + 1)
       .find((candidate) => this.#canMoveTo(candidate));
-    return next ?? field;
+    if (next) return next;
+    return this.#button.disabled ? field : this.#button;
   }
 
   #canMoveTo(candidate: HTMLElement): boolean {
     if (
       candidate instanceof HTMLInputElement &&
-      !ENTER_SUBMITS_INPUT_TYPES.has(candidate.type)
+      !TEXT_INPUT_TYPES.has(candidate.type)
     ) {
       return false; // checkboxes, radios, file inputs, ...
     }

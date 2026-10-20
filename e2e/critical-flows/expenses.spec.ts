@@ -189,20 +189,36 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
       });
     });
 
-    test('should save on Enter in the amount field, after allocating the splits', async ({
+    test('should move through the fields on Enter and save only from the Save button', async ({
       page,
     }) => {
       const expensesPage = await startExpense(page);
-      const description = uniqueDescription('Enter saves');
+      const description = uniqueDescription('Enter to Save');
 
       await expensesPage.addAllMembers();
       await expensesPage.setDescription(description);
       await expensesPage.selectCategory('Food');
-      // Type the total and press Enter without leaving the field. The splits
-      // are only allocated when the field loses focus (Save stays disabled
-      // until then), so this proves Enter runs that first, then saves.
+      // The form is valid from here on, but users usually still adjust the
+      // evenly prefilled splits, so Enter only ever moves on, like Tab.
       await expensesPage.totalAmountInput.fill('75');
       await expensesPage.totalAmountInput.press('Enter');
+      await expect(expensesPage.proportionalAmountInput).toBeFocused();
+      await expensesPage.proportionalAmountInput.press('Enter');
+      for (let i = 0; i < MAIN_MEMBERS.length; i++) {
+        const memberSelect = expensesPage.splitRows.nth(i);
+        await expect(memberSelect).toBeFocused();
+        // Moves on rather than opening the dropdown
+        await memberSelect.press('Enter');
+        await expect(expensesPage.selectPanel).toBeHidden();
+        const amount = expensesPage.assignedAmountInputs.nth(i);
+        await expect(amount).toBeFocused();
+        await amount.press('Enter');
+      }
+
+      // After the last field, Enter lands on Save; only Enter there saves.
+      await expect(expensesPage.saveButton).toBeFocused();
+      await expect(page).toHaveURL(/\/expenses\/add$/);
+      await expensesPage.saveButton.press('Enter');
 
       await expect(page).toHaveURL(/\/expenses$/);
       await expect(expensesPage.snackbarWith('Expense added')).toBeVisible();
@@ -226,23 +242,6 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
       // Nothing saved; like Tab, the cursor moved on to the next field.
       await expect(expensesPage.categorySelect).toBeFocused();
       await expect(page).toHaveURL(/\/expenses\/add$/);
-    });
-
-    // Android's keyboard otherwise shows a "next field" key (->|) that never
-    // sends Enter; enterkeyhint="go" makes it a Go key that does.
-    test('should ask on-screen keyboards for a Go key, including on new split rows', async ({
-      page,
-    }) => {
-      const expensesPage = await startExpense(page);
-
-      await expect(expensesPage.totalAmountInput).toHaveAttribute(
-        'enterkeyhint',
-        'go'
-      );
-      await expensesPage.addSplit();
-      const newSplitAmount = expensesPage.assignedAmountInputs.first();
-      await newSplitAmount.focus();
-      await expect(newSplitAmount).toHaveAttribute('enterkeyhint', 'go');
     });
 
     // "should memorize expense for reuse" was removed: the add-expense form

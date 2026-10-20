@@ -71,7 +71,7 @@
   <tr>
     <td><strong>Inert <code>defaultButton</code> attribute.</strong> 12 templates (e.g. <code>add-expense</code>, <code>add-category</code>, <code>edit-category</code>) put a <code>defaultButton</code> attribute on a button, but no directive matches it, so it does nothing.</td>
     <td><code>grep -rn defaultButton src/app --include=*.ts</code> finds no selector.</td>
-    <td><strong>Fixed</strong> (branch <code>enter-saves</code>): it is now a real directive (<code>DefaultButtonDirective</code>, <code>src/app/shared/directives/default-button.directive.ts</code>) that makes Enter in a form field save the form, after blur-time formatting and split allocation have run. Save buttons outside their form are linked with the <code>form</code> attribute. Covered by the directive's spec, one test per form's component spec, and two e2e tests (Add Expense, Add Group).</td>
+    <td><strong>Fixed</strong> (branch <code>enter-saves</code>): it is now a real directive (<code>DefaultButtonDirective</code>, <code>src/app/shared/directives/default-button.directive.ts</code>). After a short-lived "Enter saves" version, the owner chose Tab-like behaviour (branch <code>enter-moves-forward</code>): Enter moves to the next field and ends on the Save button; only Enter on Save saves. Save buttons outside their form are linked with the <code>form</code> attribute; other buttons inside forms have <code>type="button"</code> (guarded by <code>scripts/lint/template-buttons.test.mjs</code>). Covered by the directive's spec, one test per form's component spec, and e2e tests on Add Expense and Add Group.</td>
   </tr>
 </table>
 </div>

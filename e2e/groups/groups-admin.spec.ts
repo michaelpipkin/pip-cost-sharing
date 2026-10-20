@@ -152,15 +152,26 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
     await groupsPage.selectGroup(groupName);
   });
 
-  test('should create a group by pressing Enter', async ({ page }) => {
+  test('should create a group by pressing Enter through to Save', async ({
+    page,
+  }) => {
     const groupsPage = await openGroupsAs(page, enterCreator);
     const groupName = uniqueGroupName('Enter');
 
     await groupsPage.openAddGroupDialog();
     await groupsPage.groupNameInput.fill(groupName);
+    await groupsPage.groupNameInput.press('Enter');
+    await expect(groupsPage.displayNameInput).toBeFocused();
     await groupsPage.displayNameInput.fill('Groups Creator');
-    // Enter in a field saves the form (Save is the default button).
+    // Enter moves on (past the currency dropdown, without opening it) and
+    // ends on Save, without saving; Enter on Save saves.
     await groupsPage.displayNameInput.press('Enter');
+    await expect(groupsPage.displayNameInput).not.toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(groupsPage.selectPanel).toBeHidden();
+    await expect(groupsPage.addGroupSaveButton).toBeFocused();
+    await expect(groupsPage.addGroupDialog).toBeVisible();
+    await groupsPage.addGroupSaveButton.press('Enter');
 
     await expect(groupsPage.addGroupDialog).toBeHidden();
     await expect(groupsPage.snackbarWith('Group added')).toBeVisible();

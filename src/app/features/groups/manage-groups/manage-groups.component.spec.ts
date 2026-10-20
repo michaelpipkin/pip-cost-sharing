@@ -25,7 +25,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManageGroupsComponent } from './manage-groups.component';
-import { expectEnterToSave } from '@testing/default-button';
+import { expectEnterEndsOnSave } from '@testing/default-button';
 
 describe('ManageGroupsComponent', () => {
   let fixture: ComponentFixture<ManageGroupsComponent>;
@@ -267,7 +267,7 @@ describe('ManageGroupsComponent', () => {
     });
   });
 
-  it("should save on Enter (Save is the form's default button)", () => {
-    expectEnterToSave(fixture);
+  it("should end the form's Enter order on Save", () => {
+    expectEnterEndsOnSave(fixture);
   });
 });

@@ -16,7 +16,7 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  * - groups-first-creator: no groups; "should create a group and make it
  *   selectable" creates their first group.
  * - groups-enter-creator: no groups; "should create a group by pressing
- *   Enter" creates their first group.
+ *   Enter through to Save" creates their first group.
  * - groups-autoadd-creator / groups-multi-creator / groups-workflow-creator:
  *   one creation test each, with a seeded default "home" group. Created
  *   groups get unique runtime names.
