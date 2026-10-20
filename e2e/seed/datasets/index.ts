@@ -6,6 +6,7 @@ import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
 import { MEMORIZED_DATASET } from './memorized';
 import { PAYMENT_FLOW_DATASET } from './payment-flow';
+import { RECEIPTS_DATASET } from './receipts';
 import { RENTAL_DATASET } from './rental';
 import { SHARED_DATASET } from './shared';
 import { SUMMARY_DATASET } from './summary';
@@ -22,4 +23,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   INFRA_DATASET,
   RENTAL_DATASET,
   MEMORIZED_DATASET,
+  RECEIPTS_DATASET,
 ];

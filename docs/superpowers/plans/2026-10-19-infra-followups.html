@@ -40,7 +40,7 @@
 
 <h2>Plan 3 — new e2e coverage</h2>
 <ul>
-  <li>Stub or cache tesseract.js language data for <code>scanReceipt</code> (spec §3).</li>
+  <li class="done">Stub or cache tesseract.js language data for <code>scanReceipt</code> (spec §3). <span class="note">— Resolved by mocking: the callable is always mocked in the browser (<code>e2e/utils/scan-receipt-mock.ts</code>, shared with feature-tour), never run for real (Task 6).</span></li>
   <li>Areas with no e2e tests still boot four emulators to run <code>@infra</code>; Windows <code>cmd</code> has an ~8k command-line limit that large multi-area <code>--include</code> lists may approach (expenses ≈ 2.3k today).</li>
   <li><em>From Plan 2's final review:</em> hoist duplicated page-object helpers into <code>BasePage</code> / <code>e2e/utils/format.ts</code> — <code>snackbarWith</code> (4 copies), <code>selectPanel</code>/<code>option</code> (3), the two differently-behaving <code>setToggle</code>s (groups vs members), the two loading-wait idioms, and <code>formatMoney</code>/<code>formatShortDate</code> (live in <code>expenses.page.ts</code>).</li>
   <li>Treat page-object methods no spec exercises yet as unverified when first used: <code>ExpensesPage.gotoList</code>/<code>gotoAddExpense</code>/<code>uploadReceipt</code>/<code>removeReceipt</code>, <code>MembersPage</code> edit/remove/leave and <code>flipToggle</code>, <code>HistoryPage.noFilteredHistoryPlaceholder</code>, <code>AuthPage.signUp</code>/<code>forgotPassword</code>. Delete the unused <code>HomePage.isAuthenticated()</code>.</li>

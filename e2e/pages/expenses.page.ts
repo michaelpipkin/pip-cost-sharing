@@ -2,6 +2,7 @@ import { expect, Locator, Page } from '@playwright/test';
 import { formatMoney, formatShortDate } from '../utils/format';
 import { BasePage } from './base.page';
 import { ExpenseForm, type SplitMethod } from './expense-form';
+import { ReceiptPicker } from './receipt-picker';
 
 export type { SplitMethod } from './expense-form';
 
@@ -73,6 +74,15 @@ export class ExpensesPage extends BasePage {
   readonly uploadPrompt: Locator;
   readonly attachedFilename: Locator;
   readonly removeFileButton: Locator;
+  /** The receipt-policy and source-picker dialogs the attach button opens. */
+  readonly picker: ReceiptPicker;
+
+  // Edit Expense receipt section
+  readonly editFileInput: Locator;
+  readonly editAttachFileButton: Locator;
+  readonly editAttachedFilename: Locator;
+  readonly editRemoveFileButton: Locator;
+  readonly viewReceiptLink: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
@@ -108,6 +118,13 @@ export class ExpensesPage extends BasePage {
     this.uploadPrompt = page.getByTestId('upload-prompt');
     this.attachedFilename = page.getByTestId('attached-filename');
     this.removeFileButton = page.getByTestId('remove-file-button');
+    this.picker = new ReceiptPicker(page);
+
+    this.editFileInput = page.getByTestId('edit-file-input');
+    this.editAttachFileButton = page.getByTestId('edit-attach-file-button');
+    this.editAttachedFilename = page.getByTestId('edit-attached-filename');
+    this.editRemoveFileButton = page.getByTestId('edit-remove-file-button');
+    this.viewReceiptLink = page.getByTestId('view-receipt-link');
 
     this.formErrors = page.locator('mat-error');
     this.calendar = page.locator('mat-calendar');
@@ -283,6 +300,17 @@ export class ExpensesPage extends BasePage {
     await expect(this.uploadPrompt).toBeVisible();
   }
 
+  /**
+   * Attaches a receipt the way a user does: the attach button, then Browse
+   * Files in the source picker (the receipt policy must already be
+   * accepted; see ReceiptPicker.acceptPolicy), and waits for the file name.
+   */
+  async attachReceiptViaPicker(filePath: string): Promise<void> {
+    await this.attachFileButton.click();
+    await this.picker.browseFiles(filePath);
+    await expect(this.attachedFilename).toBeVisible();
+  }
+
   // ---- Actions ------------------------------------------------------------
 
   /** Saves and waits for the app to return to the (loaded) Expenses list. */
@@ -314,6 +342,26 @@ export class ExpensesPage extends BasePage {
   /** The list row for the expense with this (unique) description. */
   expenseRow(description: string): Locator {
     return this.expenseRows.filter({ hasText: description });
+  }
+
+  /** The receipt cell (a check mark when the expense has a receipt) of a list row. */
+  receiptIndicator(description: string): Locator {
+    return this.expenseRow(description).getByTestId(
+      'expense-receipt-indicator'
+    );
+  }
+
+  /**
+   * Opens the Edit Expense page of the row for `description` by clicking it
+   * (what a user does) and returns the expense's document id, read from the
+   * URL: expense ids are generated, so this is how a test learns it.
+   */
+  async openExpense(description: string): Promise<string> {
+    await this.expenseRow(description).click();
+    await expect(this.page).toHaveURL(/\/expenses\/[^/]+$/);
+    await expect(this.page.getByTestId('edit-expense-container')).toBeVisible();
+    await this.waitForLoadingComplete();
+    return new URL(this.page.url()).pathname.split('/').pop()!;
   }
 
   /**
