@@ -79,7 +79,6 @@
     "@typescript-eslint/parser": "^8.71.2",
     "@vitest/coverage-v8": "^5.0.5",
     "concurrently": "^10.0.6",
-    "cross-env": "^10.1.0",
     "dependabot-agent": "^1.2.0",
     "dotenv": "^18.0.8",
     "eslint": "^10.13.0",
