@@ -29,6 +29,10 @@ import { DefaultButtonDirective } from './default-button.directive';
       <div hidden><input id="hidden" type="text" /></div>
       <div id="category" role="combobox" tabindex="0"></div>
       <textarea id="notes"></textarea>
+      <input id="search" type="text" enterkeyhint="search" />
+      @if (showAddedField()) {
+        <input id="added" type="text" />
+      }
       <input id="last" type="text" />
     </form>
     <button
@@ -45,6 +49,7 @@ import { DefaultButtonDirective } from './default-button.directive';
 })
 class HostComponent {
   readonly allocated = signal(false);
+  readonly showAddedField = signal(false);
   allocationBlocked = false;
   saves: boolean[] = [];
   calculatorClicks = 0;
@@ -181,6 +186,33 @@ describe('DefaultButtonDirective', () => {
     expect(host.saves).toEqual([]);
   });
 
+  // Android's keyboard shows a "next field" key (->|) on form fields, which
+  // moves focus without sending Enter. enterkeyhint="go" swaps it for a Go
+  // key, which does send Enter, so the directive handles it as on desktop.
+  describe('on-screen keyboard Enter key', () => {
+    const hint = (id: string) => field(id).getAttribute('enterkeyhint');
+
+    it("asks for a Go key on the form's single-line text fields", () => {
+      expect(hint('amount')).toBe('go');
+      expect(hint('last')).toBe('go');
+    });
+
+    it('leaves text areas, toggles and an explicit hint alone', () => {
+      expect(hint('notes')).toBeNull();
+      expect(hint('agree')).toBeNull();
+      expect(hint('search')).toBe('search');
+    });
+
+    it('also covers a field added later (e.g. a new split row), once it gets focus', () => {
+      host.showAddedField.set(true);
+      fixture.detectChanges();
+
+      field('added').focus();
+
+      expect(hint('added')).toBe('go');
+    });
+  });
+
   it('stops listening once destroyed', () => {
     const form = el.querySelector('form')!;
     const removeSpy = vi.spyOn(form, 'removeEventListener');
@@ -188,5 +220,6 @@ describe('DefaultButtonDirective', () => {
     fixture.destroy();
 
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('focusin', expect.any(Function));
   });
 });
