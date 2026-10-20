@@ -26,6 +26,28 @@ import { SplitService } from './split.service';
 const mockFs = {};
 const mockFunctions = {};
 const mockDocRef = { id: 'group-1', path: 'groups/group-1' };
+const serializer = new DefaultUrlSerializer();
+
+/** A group ref that supports the app's DocumentReference.eq() extension. */
+function groupRef(id: string): any {
+  return { id, path: `groups/${id}`, eq: (other: any) => other?.id === id };
+}
+
+/** A promise the test resolves by hand, to interleave async steps. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+function groupDocSnap(id: string, name = `Group ${id}`): any {
+  return {
+    exists: () => true,
+    id,
+    data: () => ({ name, active: true }),
+    ref: groupRef(id),
+  };
+}
 
 function makeSnap(docs: any[] = []) {
   return {
@@ -49,8 +71,8 @@ describe('GroupService', () => {
     currentGroup: currentGroupSignal,
     allUserGroups: allUserGroupsSignal,
     skipAutoSelect: skipAutoSelectSignal,
-    setCurrentGroup: vi.fn(),
-    clearCurrentGroup: vi.fn(),
+    setCurrentGroup: vi.fn((group: any) => currentGroupSignal.set(group)),
+    clearCurrentGroup: vi.fn(() => currentGroupSignal.set(null)),
     setAllUserGroups: vi.fn(),
     clearAllUserGroups: vi.fn(),
     setLoadedState: vi.fn(),
@@ -74,6 +96,9 @@ describe('GroupService', () => {
   const mockLoading = { loadingOff: vi.fn() };
   const mockRouter = {
     url: '/',
+    navigated: true,
+    currentNavigation: signal<any>(null),
+    serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
     navigate: vi.fn(),
     navigateByUrl: vi.fn(),
   };
@@ -553,7 +578,6 @@ describe('GroupService', () => {
         ref: { id: 'user-1' },
         defaultGroupRef: null,
       } as any;
-      const serializer = new DefaultUrlSerializer();
 
       /**
        * The router as it looks while the groups snapshot arrives: `url` is
@@ -644,32 +668,43 @@ describe('GroupService', () => {
         );
       });
 
-      // KNOWN BUG - expected to fail until fixed; flip to it() when fixed.
-      // handleGroupsSnapshot decides whether to redirect from router.url,
-      // which stays '/' until the initial navigation commits (after lazy
-      // loadChildren, the async authGuard and loadComponent). When the
-      // groups load first, a deep link still in flight is replaced by
-      // /expenses. e2e symptom: a bookmark/refresh of an authenticated page
-      // (e.g. /expenses/add, /analysis/summary) right after sign-in, on a
-      // cold load, lands on /expenses (found by e2e expenses.spec, Plan 2
-      // Task 5). The stub mirrors the real router at that moment: url '/',
-      // navigated false, currentNavigation() targeting the deep link - the
-      // signal a fix would consult to see where the user is actually going
-      // (navigated alone can't tell a cold load of a deep link from one of
-      // '/', which should still redirect - see the first test above).
-      it.fails(
-        'KNOWN BUG: does not redirect a deep link whose initial navigation is still pending',
-        async () => {
-          useRouter('/', '/analysis/summary');
+      // router.url stays '/' until the initial navigation commits (after lazy
+      // loadChildren, the async authGuard and loadComponent). When the groups
+      // load first, the redirect must judge by where the in-flight navigation
+      // is going, or a bookmark/refresh of an authenticated page (e.g.
+      // /expenses/add, /analysis/summary) lands on /expenses (found by e2e
+      // expenses.spec, Plan 2 Task 5). The stub mirrors the real router at
+      // that moment: url '/', navigated false, currentNavigation() targeting
+      // the deep link.
+      it('does not redirect a deep link whose initial navigation is still pending', async () => {
+        useRouter('/', '/analysis/summary');
 
-          await deliverOneActiveGroup();
+        await deliverOneActiveGroup();
 
-          expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
-          expect(mockRouter.navigateByUrl).not.toHaveBeenCalledWith(
-            ROUTE_PATHS.EXPENSES_ROOT
-          );
-        }
-      );
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+        expect(mockRouter.navigateByUrl).not.toHaveBeenCalledWith(
+          ROUTE_PATHS.EXPENSES_ROOT
+        );
+      });
+
+      it('still redirects when the pending navigation is going to the home page', async () => {
+        useRouter('/', '/home');
+
+        await deliverOneActiveGroup();
+
+        expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+          ROUTE_PATHS.EXPENSES_ROOT
+        );
+      });
+
+      it('lets an unverified user finish a pending email-action link', async () => {
+        useRouter('/', '/auth/account-action?mode=verifyEmail&oobCode=abc');
+        isValidUserComputed.set(false);
+
+        await service.getUserGroups(user);
+
+        expect((service as any).router.navigate).not.toHaveBeenCalled();
+      });
     });
 
     describe('zero groups', () => {
@@ -699,6 +734,204 @@ describe('GroupService', () => {
           expect.stringContaining('groups')
         );
       });
+    });
+  });
+
+  describe('group selection', () => {
+    const userRef = { id: 'user-1' } as any;
+    const user = { id: 'user-1', ref: userRef, defaultGroupRef: null } as any;
+    let callbacks: ((snap: any) => Promise<void> | void)[];
+
+    beforeEach(() => {
+      service = createService();
+      userSignal.set(user);
+      callbacks = [];
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          callbacks.push(onNext);
+          return vi.fn();
+        }
+      );
+    });
+
+    /** Registers the listeners and delivers the user's active memberships. */
+    async function listenAsMemberOf(...groupIds: string[]): Promise<void> {
+      await service.getUserGroups(user);
+      await callbacks[0]!(
+        makeSnap(
+          groupIds.map((id) => ({
+            ref: { parent: { parent: { id } } },
+            data: () => ({ active: true, groupAdmin: false, leftGroup: false }),
+          }))
+        )
+      );
+    }
+
+    /** A groups-listener snapshot of active groups (the groups listener is the last one registered). */
+    function deliverGroups(...groupIds: string[]): Promise<void> | void {
+      return callbacks.at(-1)!(
+        makeSnap(
+          groupIds.map((id) => ({
+            id,
+            data: () => ({ name: `Group ${id}`, active: true, archived: false }),
+            ref: groupRef(id),
+          }))
+        )
+      );
+    }
+
+    it('does not reload, rewrite the default or restart listeners when a snapshot re-delivers the selected group', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+        groupDocSnap('group-1')
+      );
+      await listenAsMemberOf('group-1');
+      await deliverGroups('group-1');
+      expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
+      expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1);
+      mockCategoryService.stopListening.mockClear();
+
+      // e.g. the group was renamed, or another member joined it
+      await deliverGroups('group-1');
+
+      expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
+      expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1);
+      expect(mockCategoryService.getGroupCategories).toHaveBeenCalledTimes(1);
+      expect(mockMemberService.getGroupMembers).toHaveBeenCalledTimes(1);
+      expect(mockHistoryService.getHistoryForGroup).toHaveBeenCalledTimes(1);
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
+      // The fresh group data is still published, and the user's own member
+      // record re-read (a change to it is one thing that fires this snapshot).
+      expect(mockGroupStore.setCurrentGroup).toHaveBeenCalledTimes(2);
+      expect(mockMemberService.getMemberByUserRef).toHaveBeenCalledTimes(2);
+    });
+
+    it('fully loads a group restored from localStorage the first time a snapshot delivers it', async () => {
+      currentGroupSignal.set({ id: 'group-1', ref: groupRef('group-1') });
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+        groupDocSnap('group-1')
+      );
+
+      await listenAsMemberOf('group-1');
+      await deliverGroups('group-1');
+
+      expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
+      expect(mockCategoryService.getGroupCategories).toHaveBeenCalledWith(
+        'group-1'
+      );
+    });
+
+    it('skips the defaultGroupRef write when it already points at the group', async () => {
+      userSignal.set({ ...user, defaultGroupRef: groupRef('group-1') });
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+        groupDocSnap('group-1')
+      );
+
+      await service.getGroup(groupRef('group-1'), userRef);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+    });
+
+    it('keeps a group the user picked while the default group was still loading', async () => {
+      userSignal.set({ ...user, defaultGroupRef: groupRef('group-a') });
+      const loads: Record<string, ReturnType<typeof deferred<any>>> = {
+        'group-a': deferred(),
+        'group-b': deferred(),
+      };
+      vi.spyOn(firestoreModule, 'getDoc').mockImplementation(
+        (ref: any) => loads[ref.id]!.promise
+      );
+
+      await listenAsMemberOf('group-a', 'group-b');
+      const autoSelect = deliverGroups('group-a', 'group-b');
+      await vi.waitFor(() =>
+        expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1)
+      );
+
+      const pick = service.getGroup(groupRef('group-b'), userRef);
+      loads['group-b']!.resolve(groupDocSnap('group-b'));
+      await pick;
+      loads['group-a']!.resolve(groupDocSnap('group-a'));
+      await autoSelect;
+
+      expect(currentGroupSignal()?.id).toBe('group-b');
+      expect(mockCategoryService.getGroupCategories).not.toHaveBeenCalledWith(
+        'group-a'
+      );
+      expect(firestoreModule.setDoc).not.toHaveBeenCalledWith(
+        userRef,
+        { defaultGroupRef: expect.objectContaining({ id: 'group-a' }) },
+        { merge: true }
+      );
+    });
+
+    it("does not start a competing load when a snapshot arrives while the user's pick is loading", async () => {
+      currentGroupSignal.set({ id: 'group-a', ref: groupRef('group-a') });
+      const load = deferred<any>();
+      vi.spyOn(firestoreModule, 'getDoc').mockReturnValue(load.promise);
+
+      const pick = service.getGroup(groupRef('group-b'), userRef);
+      await listenAsMemberOf('group-a', 'group-b');
+      await deliverGroups('group-a', 'group-b');
+      load.resolve(groupDocSnap('group-b'));
+      await pick;
+
+      expect(firestoreModule.getDoc).toHaveBeenCalledTimes(1);
+      expect(currentGroupSignal()?.id).toBe('group-b');
+    });
+
+    it("empties the previous group's data before showing a different group", async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockImplementation(async (ref: any) =>
+        groupDocSnap(ref.id)
+      );
+      await service.getGroup(groupRef('group-a'), userRef);
+      const categoryStore = TestBed.inject(CategoryStore);
+      const memberStore = TestBed.inject(MemberStore);
+      categoryStore.setGroupCategories([{ id: 'a-category' } as any]);
+      memberStore.setGroupMembers([{ id: 'a-member' } as any]);
+      memberStore.setCurrentMember({ id: 'a-me' } as any);
+      mockCategoryService.stopListening.mockClear();
+
+      let shownWith: any;
+      mockGroupStore.setCurrentGroup.mockImplementationOnce((group: any) => {
+        shownWith = {
+          categories: categoryStore.groupCategories(),
+          members: memberStore.groupMembers(),
+          currentMember: memberStore.currentMember(),
+          membersLoaded: memberStore.loaded(),
+        };
+        currentGroupSignal.set(group);
+      });
+      await service.getGroup(groupRef('group-b'), userRef);
+
+      expect(shownWith).toEqual({
+        categories: [],
+        members: [],
+        currentMember: null,
+        membersLoaded: false,
+      });
+      expect(mockCategoryService.stopListening).toHaveBeenCalled();
+      expect(mockCategoryService.getGroupCategories).toHaveBeenLastCalledWith(
+        'group-b'
+      );
+    });
+
+    it('keeps the loaded data when the same group is selected again', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(
+        groupDocSnap('group-a')
+      );
+      await service.getGroup(groupRef('group-a'), userRef);
+      TestBed.inject(CategoryStore).setGroupCategories([
+        { id: 'a-category' } as any,
+      ]);
+      mockCategoryService.stopListening.mockClear();
+
+      await service.getGroup(groupRef('group-a'), userRef);
+
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([
+        { id: 'a-category' },
+      ]);
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
     });
   });
 

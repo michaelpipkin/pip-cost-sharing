@@ -167,6 +167,43 @@ describe('MemberService', () => {
     });
   });
 
+  describe('getMemberByUserRef', () => {
+    const userRef = { id: 'user-1' } as any;
+    const lookup = (memberId: string) =>
+      makeSnap([makeDocSnap(memberId, { displayName: memberId })]);
+
+    it('should ignore a slower lookup for a group the user has since switched away from', async () => {
+      let finishGroupA!: (snap: any) => void;
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockReturnValueOnce(new Promise((r) => (finishGroupA = r)) as any)
+        .mockResolvedValueOnce(lookup('b-me') as any);
+
+      const groupA = service.getMemberByUserRef('group-a', userRef);
+      await service.getMemberByUserRef('group-b', userRef);
+      finishGroupA(lookup('a-me'));
+      await groupA;
+
+      expect(mockMemberStore.setCurrentMember).toHaveBeenCalledTimes(1);
+      expect(mockMemberStore.setCurrentMember.mock.calls[0]![0].id).toBe(
+        'b-me'
+      );
+    });
+
+    it('should ignore a lookup that finishes after listening stopped', async () => {
+      let finish!: (snap: any) => void;
+      vi.spyOn(firestoreModule, 'getDocs').mockReturnValueOnce(
+        new Promise((r) => (finish = r)) as any
+      );
+
+      const pending = service.getMemberByUserRef('group-a', userRef);
+      service.stopListening();
+      finish(lookup('a-me'));
+      await pending;
+
+      expect(mockMemberStore.setCurrentMember).not.toHaveBeenCalled();
+    });
+  });
+
   describe('addMemberToGroup', () => {
     it('should throw when a member with the same email already exists', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(

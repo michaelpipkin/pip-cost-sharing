@@ -34,14 +34,14 @@
 </div>
 
 <h2>App bugs found during Plan 2</h2>
-<p>For the owner to decide. App code was not changed (Plan 2 allowed only <code>data-testid</code> additions). A pinned test asserts the <em>correct</em> behaviour and is marked expected-to-fail; it will fail the run once the bug is fixed, which is the cue to remove the marker.</p>
+<p><strong>Update 2026-10-20:</strong> all but the inert <code>defaultButton</code> attribute are now fixed (see each row). Originally: for the owner to decide. App code was not changed (Plan 2 allowed only <code>data-testid</code> additions). A pinned test asserts the <em>correct</em> behaviour and is marked expected-to-fail; it will fail the run once the bug is fixed, which is the cue to remove the marker.</p>
 <div class="table-wrap">
 <table>
   <tr><th>Bug</th><th>Evidence</th><th>Pinned by</th></tr>
   <tr>
     <td><strong>Deep-link redirect race.</strong> Reloading (or bookmarking) an authenticated deep link such as <code>/expenses/add</code> or <code>/analysis/summary</code> right after sign-in, on a cold load, can land on <code>/expenses</code>.</td>
     <td><code>GroupService.handleGroupsSnapshot</code> decides whether to redirect from <code>router.url</code>, which stays <code>'/'</code> until the initial navigation commits (after the lazy <code>loadChildren</code>, the async <code>authGuard</code> and <code>loadComponent</code>). When the groups snapshot arrives first, the in-flight deep link is replaced by <code>/expenses</code>. Found by the expenses spec in Task 5; confirmed against the router source in review. Task 8 measured it: 7 of 237 full loads of <code>/administration/groups</code> by a signed-in user landed on <code>/expenses</code>, every one with timing data during a ~10 s page-load stall (the stall delays the initial navigation past the groups snapshot). It also broke one <code>pnpm test:area groups</code> run before <code>GroupsPage.goto</code> went in-app. Any full load of a deep link is exposed, reloads included.</td>
-    <td><code>it.fails('KNOWN BUG: does not redirect a deep link whose initial navigation is still pending')</code> in <code>src/app/services/group.service.spec.ts</code> (deterministic unit pin; an e2e <code>test.fail()</code> would flake). The e2e suite works around it by navigating in-app after sign-in.</td>
+    <td><strong>Fixed</strong> (branch <code>group-loading-fixes</code>, 2026-10-20): the redirect now judges by where the in-flight navigation is going (<code>GroupService.#effectiveUrl</code>); the same fix stops an unverified user's pending email-action link being sent to the account page. The <code>it.fails</code> pin is now an ordinary test. The e2e suite still navigates in-app, which remains fine.</td>
   </tr>
   <tr>
     <td><strong>History detail money format.</strong> The payment detail page shows "$25.00" where History, Summary and the copied text show "$ 25.00"; a non-USD group would get Angular's default USD symbol.</td>
@@ -56,17 +56,17 @@
   <tr>
     <td><strong>Unconditional <code>defaultGroupRef</code> write.</strong> Every app load and every groups snapshot rewrites <code>users/{uid}.defaultGroupRef</code>, even when it is unchanged, and each write also fires the <code>syncUserEmailLower</code> trigger (<code>onDocumentWritten('users/{userId}')</code>).</td>
     <td><code>GroupService.getGroup</code> calls <code>setDoc(userRef, { defaultGroupRef: groupRef }, { merge: true })</code> on every call (<code>group.service.ts</code> ~line 372), reached from <code>autoSelectGroup</code>. In tests this made "shared is read-only" impossible to hold literally; the shared users are seeded with the value the app writes.</td>
-    <td>Not pinned (a skip-if-unchanged fix is the owner's call; it would save one write plus one trigger per load in production).</td>
+    <td><strong>Fixed</strong> (branch <code>group-loading-fixes</code>). Wider than the write: every groups snapshot also re-fetched the group and restarted all seven data listeners. A snapshot that re-delivers the loaded group now only refreshes the group's data and the user's own member record, and <code>getGroup</code> writes <code>defaultGroupRef</code> only when it changes. Unit tests in <code>group.service.spec.ts</code> ("group selection").</td>
   </tr>
   <tr>
     <td><strong>Group switch undone by auto-select.</strong> A group switch made right after sign-in can be reverted by the default-group auto-select still in flight, and two tabs signed in as the same user overwrite each other's selection.</td>
     <td>Seen as a 1-in-2 flake in groups-admin ("create, select and rename a group") when two parallel tests shared a user. Fixed test-side with one owned user per test that selects groups.</td>
-    <td>Not pinned (timing-dependent).</td>
+    <td><strong>Fixed</strong> (branch <code>group-loading-fixes</code>). Every <code>getGroup</code> call is numbered; a load superseded by a newer selection drops its result, and auto-select doesn't start a competing load while one is in flight. The member and has-expenses lookups also drop late results for a group the user has left. Reproduced deterministically in unit tests.</td>
   </tr>
   <tr>
     <td><strong>Stale stores after a switch.</strong> After switching groups, the previous group's members and categories stay in the stores until the new group's data arrives, so a fast reader can see the old group's lists.</td>
     <td>Reported during the expenses repair (Task 5) from the store code path; not reproduced in isolation. Page objects wait for the new group's content.</td>
-    <td>Not pinned.</td>
+    <td><strong>Fixed</strong> (branch <code>group-loading-fixes</code>): switching to a different group empties the previous group's stores before the new group is shown. Unit test in <code>group.service.spec.ts</code>.</td>
   </tr>
   <tr>
     <td><strong>Inert <code>defaultButton</code> attribute.</strong> 12 templates (e.g. <code>add-expense</code>, <code>add-category</code>, <code>edit-category</code>) put a <code>defaultButton</code> attribute on a button, but no directive matches it, so it does nothing.</td>

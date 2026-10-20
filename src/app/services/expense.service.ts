@@ -36,6 +36,10 @@ export class ExpenseService implements IExpenseService {
   protected readonly memberStore = inject(MemberStore);
   protected readonly categoryStore = inject(CategoryStore);
 
+  // The group the latest doesGroupHaveExpenses() call is for, so a slower
+  // check for a group the user has since switched away from is dropped.
+  #hasExpensesGroupId: string | null = null;
+
   async checkGroupHasExpenses(groupId: string): Promise<boolean> {
     try {
       const q = query(
@@ -56,9 +60,10 @@ export class ExpenseService implements IExpenseService {
   }
 
   async doesGroupHaveExpenses(groupId: string): Promise<void> {
-    this.expenseStore.setGroupHasExpenses(
-      await this.checkGroupHasExpenses(groupId)
-    );
+    this.#hasExpensesGroupId = groupId;
+    const hasExpenses = await this.checkGroupHasExpenses(groupId);
+    if (this.#hasExpensesGroupId !== groupId) return;
+    this.expenseStore.setGroupHasExpenses(hasExpenses);
   }
 
   async getGroupExpensesByDateRange(
