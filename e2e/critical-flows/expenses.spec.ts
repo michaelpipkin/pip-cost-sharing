@@ -7,9 +7,10 @@ import {
   type AllocationSplit,
 } from '../../scripts/db/allocation';
 import { expect, test } from '../fixtures';
-import { ExpensesPage, formatMoney } from '../pages/expenses.page';
+import { ExpensesPage } from '../pages/expenses.page';
 import { EXPENSES } from '../seed/datasets/expenses';
 import type { SeedGroup, SeedUser } from '../seed/types';
+import { formatMoney } from '../utils/format';
 import { signInAs } from '../utils/session';
 
 // Data: e2e/seed/datasets/expenses.ts. Every test signs in as expenses-user

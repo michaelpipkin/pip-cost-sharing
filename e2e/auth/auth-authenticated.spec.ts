@@ -9,14 +9,11 @@ const user = AUTH.users.authUser;
 
 test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () => {
   test('should sign in and land on the authenticated shell', async ({ page }) => {
-    const authPage = new AuthPage(page);
-
     await signInAs(page, user);
 
     await expect(page).not.toHaveURL(/\/auth\/login/);
     await expect(page.getByTestId('logout-button-desktop')).toBeVisible();
     await expect(page.getByTestId('nav-login-desktop')).toBeHidden();
-    expect(await authPage.isLoggedIn()).toBeTruthy();
   });
 
   test('should redirect authenticated users away from login page', async ({
@@ -27,7 +24,7 @@ test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () 
     // loggedInGuard resolves asynchronously after auth initialises, so wait
     // for the redirect instead of reading the URL once.
     await page.goto('/auth/login');
-    await expect(page).not.toHaveURL(/\/auth\/login/);
+    await expect(page).toHaveURL(/\/expenses$/);
     await expect(page.getByTestId('logout-button-desktop')).toBeVisible();
   });
 
@@ -37,7 +34,7 @@ test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () 
     await signInAs(page, user);
 
     await page.goto('/auth/register');
-    await expect(page).not.toHaveURL(/\/auth\/register/);
+    await expect(page).toHaveURL(/\/expenses$/);
     await expect(page.getByTestId('logout-button-desktop')).toBeVisible();
   });
 
@@ -50,6 +47,5 @@ test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () 
     // Signed-out shell: login link back, logout button gone.
     await expect(page.getByTestId('nav-login-desktop')).toBeVisible();
     await expect(page.getByTestId('logout-button-desktop')).toBeHidden();
-    expect(await authPage.isLoggedIn()).toBeFalsy();
   });
 });

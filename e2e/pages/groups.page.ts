@@ -34,10 +34,10 @@ export class GroupsPage extends BasePage {
 
   // Generic elements
   readonly dialogErrors: Locator;
-  readonly snackbar: Locator;
-  readonly loadingOverlay: Locator;
-  /** The open mat-select panel (group select or manage-dialog select). */
-  readonly selectPanel: Locator;
+  /** The first validation message under each field. */
+  readonly groupNameError: Locator;
+  readonly displayNameError: Locator;
+  readonly manageGroupNameError: Locator;
   readonly tourTitle: Locator;
   readonly tourCloseButton: Locator;
 
@@ -76,9 +76,9 @@ export class GroupsPage extends BasePage {
     );
 
     this.dialogErrors = page.locator('mat-dialog-container mat-error');
-    this.snackbar = page.getByTestId('snackbar');
-    this.loadingOverlay = page.getByTestId('loading-spinner-container');
-    this.selectPanel = page.getByRole('listbox');
+    this.groupNameError = page.getByTestId('group-name-error-0');
+    this.displayNameError = page.getByTestId('display-name-error-0');
+    this.manageGroupNameError = page.getByTestId('manage-group-name-error-0');
     this.tourTitle = page.getByTestId('guided-tour-title');
     this.tourCloseButton = page.getByTestId('guided-tour-close-button');
   }
@@ -99,7 +99,7 @@ export class GroupsPage extends BasePage {
     await this.navGroupsLink.click();
     await expect(this.page).toHaveURL(/\/administration\/groups$/);
     await expect(this.mainContainer).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /**
@@ -111,24 +111,8 @@ export class GroupsPage extends BasePage {
   async reload(): Promise<void> {
     await this.page.reload();
     await this.waitForInitialNavigation();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
     await this.goto();
-  }
-
-  /**
-   * The snackbar showing `message`. Matched by text because an earlier
-   * snackbar can still be in the DOM (exit animation) when a new one opens.
-   */
-  snackbarWith(message: string): Locator {
-    return this.snackbar.filter({ hasText: message });
-  }
-
-  /** A group-select / manage-select option, matched on its full name. */
-  option(groupName: string): Locator {
-    return this.selectPanel.getByRole('option', {
-      name: groupName,
-      exact: true,
-    });
   }
 
   async openGroupSelect(): Promise<void> {
@@ -143,11 +127,8 @@ export class GroupsPage extends BasePage {
 
   /** Picks a group in the page's group select and waits for it to load. */
   async selectGroup(groupName: string): Promise<void> {
-    await this.openGroupSelect();
-    await this.option(groupName).click();
-    await expect(this.selectPanel).toBeHidden();
-    await expect(this.loadingOverlay).toBeHidden();
-    await expect(this.groupSelect).toHaveText(groupName);
+    await this.chooseOption(this.groupSelect, groupName);
+    await this.waitForLoadingComplete();
   }
 
   /** Asserts the group is listed in the page's group select. */
@@ -196,7 +177,7 @@ export class GroupsPage extends BasePage {
     await expect(this.displayNameInput).toHaveValue(displayName);
 
     if (autoAddMembers) {
-      await this.setToggle(this.autoAddMembersToggle, true);
+      await this.setSwitch(this.autoAddMembersToggle, true);
     }
   }
 
@@ -204,7 +185,7 @@ export class GroupsPage extends BasePage {
     await expect(this.addGroupSaveButton).toBeEnabled();
     await this.addGroupSaveButton.click();
     await expect(this.addGroupDialog).toBeHidden();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /** Creates a group and waits until it is listed in the group select. */
@@ -234,7 +215,7 @@ export class GroupsPage extends BasePage {
     await expect(this.manageGroupsDialog).toBeVisible();
     await expect(this.manageGroupsTitle).toHaveText('Manage Groups');
     await expect(this.manageGroupSelect).toBeFocused();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /**
@@ -244,13 +225,9 @@ export class GroupsPage extends BasePage {
    */
   async openManageGroupsFor(groupName: string): Promise<void> {
     await this.openManageGroupsDialog();
-    await this.manageGroupSelect.click();
-    await expect(this.selectPanel).toBeVisible();
-    await this.option(groupName).click();
-    await expect(this.selectPanel).toBeHidden();
-    await expect(this.manageGroupSelect).toHaveText(groupName);
+    await this.chooseOption(this.manageGroupSelect, groupName);
     await expect(this.manageGroupNameInput).toHaveValue(groupName);
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /** Saves Manage Groups and waits for the dialog to close. */
@@ -258,29 +235,12 @@ export class GroupsPage extends BasePage {
     await expect(this.manageGroupsSaveButton).toBeEnabled();
     await this.manageGroupsSaveButton.click();
     await expect(this.manageGroupsDialog).toBeHidden();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async cancelManageGroups(): Promise<void> {
     await this.manageGroupsCancelButton.click();
     await expect(this.manageGroupsDialog).toBeHidden();
-  }
-
-  /** The switch inside a mat-slide-toggle (it carries the checked state). */
-  switchOf(toggle: Locator): Locator {
-    return toggle.getByRole('switch');
-  }
-
-  /**
-   * Flips a mat-slide-toggle from !checked to `checked`. Not setChecked():
-   * that re-reads the state synchronously after its click, but the switch's
-   * aria-checked only updates on the app's next (zoneless) change detection.
-   */
-  async setToggle(toggle: Locator, checked: boolean): Promise<void> {
-    const control = this.switchOf(toggle);
-    await expect(control).toBeChecked({ checked: !checked });
-    await control.click();
-    await expect(control).toBeChecked({ checked });
   }
 
   /** Starts the Groups guided tour from the help icon. */

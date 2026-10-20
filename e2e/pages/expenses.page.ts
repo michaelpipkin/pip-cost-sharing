@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from '@playwright/test';
+import { formatMoney, formatShortDate } from '../utils/format';
 import { BasePage } from './base.page';
 
 export type SplitMethod = 'amount' | 'percentage' | 'shares';
@@ -17,23 +18,6 @@ export interface ExpectedExpense {
   splits: ExpectedSplit[];
   /** Shown as M/d/yyyy; defaults to not checked. */
   date?: Date;
-}
-
-/**
- * An amount as the app's currency pipe renders it for a USD group (symbol,
- * space, two decimals), e.g. "$ 33.34". The seeded groups are all USD.
- */
-export function formatMoney(amount: number): string {
-  const digits = Math.abs(amount).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `${amount < 0 ? '-' : ''}$ ${digits}`;
-}
-
-/** A date as the Expenses table (desktop) and the date input show it. */
-export function formatShortDate(date: Date): string {
-  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 }
 
 export class ExpensesPage extends BasePage {
@@ -90,10 +74,6 @@ export class ExpensesPage extends BasePage {
 
   // Generic elements
   readonly formErrors: Locator;
-  readonly snackbar: Locator;
-  readonly loadingOverlay: Locator;
-  /** The open mat-select panel. */
-  readonly selectPanel: Locator;
   readonly calendar: Locator;
   readonly confirmDeleteButton: Locator;
 
@@ -151,9 +131,6 @@ export class ExpensesPage extends BasePage {
     this.deleteSplitButtons = page.getByTestId('remove-split');
 
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.getByTestId('snackbar');
-    this.loadingOverlay = page.getByTestId('loading-spinner-container');
-    this.selectPanel = page.getByRole('listbox');
     this.calendar = page.locator('mat-calendar');
     this.confirmDeleteButton = page.getByTestId('delete-confirm-button');
   }
@@ -198,50 +175,29 @@ export class ExpensesPage extends BasePage {
     await this.manualExpenseButton.click();
     await expect(this.page).toHaveURL(/\/expenses\/add$/);
     await expect(this.addExpenseContainer).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
     await expect(this.payerSelect).toHaveText(/\S/);
   }
 
   /** Waits for the Expenses page (already navigated to) to load its list. */
   async waitForList(): Promise<void> {
     await expect(this.expensesContainer).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
-  }
-
-  /**
-   * The snackbar showing `message`. Matched by text because an earlier
-   * snackbar can still be in the DOM (exit animation) when a new one opens.
-   */
-  snackbarWith(message: string): Locator {
-    return this.snackbar.filter({ hasText: message });
+    await this.waitForLoadingComplete();
   }
 
   // ---- Form fields --------------------------------------------------------
 
-  /** A mat-select option in the open panel, matched on its full text. */
-  option(name: string): Locator {
-    return this.selectPanel.getByRole('option', { name, exact: true });
-  }
-
-  private async choose(select: Locator, name: string): Promise<void> {
-    await select.click();
-    await expect(this.selectPanel).toBeVisible();
-    await this.option(name).click();
-    await expect(this.selectPanel).toBeHidden();
-    await expect(select).toHaveText(name);
-  }
-
   async selectPayer(memberName: string): Promise<void> {
-    await this.choose(this.payerSelect, memberName);
+    await this.chooseOption(this.payerSelect, memberName);
   }
 
   async selectCategory(categoryName: string): Promise<void> {
-    await this.choose(this.categorySelect, categoryName);
+    await this.chooseOption(this.categorySelect, categoryName);
   }
 
   /** Changes split row `index`'s member. */
   async selectSplitMember(index: number, memberName: string): Promise<void> {
-    await this.choose(this.splitRows.nth(index), memberName);
+    await this.chooseOption(this.splitRows.nth(index), memberName);
   }
 
   /**
@@ -366,7 +322,7 @@ export class ExpensesPage extends BasePage {
 
   /** Asserts each split row's allocated amount, in row order. */
   async expectAllocatedAmounts(amounts: number[]): Promise<void> {
-    await expect(this.allocatedAmounts).toHaveText(amounts.map(formatMoney));
+    await expect(this.allocatedAmounts).toHaveText(amounts.map((amount) => formatMoney(amount)));
   }
 
   // ---- Receipt ------------------------------------------------------------
@@ -397,7 +353,7 @@ export class ExpensesPage extends BasePage {
     await expect(this.saveAndAddAnotherButton).toBeEnabled();
     await this.saveAndAddAnotherButton.click();
     await expect(this.snackbarWith('Expense added')).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
     await expect(this.descriptionInput).toHaveValue('');
   }
 

@@ -40,7 +40,6 @@ export class MembersPage extends BasePage {
 
   // Generic elements
   readonly formErrors: Locator;
-  readonly snackbar: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -82,7 +81,6 @@ export class MembersPage extends BasePage {
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.getByTestId('snackbar');
   }
 
   /**
@@ -128,23 +126,8 @@ export class MembersPage extends BasePage {
 
   /** Clicks a mat-slide-toggle and waits for its switch to change state. */
   private async flipToggle(toggle: Locator): Promise<void> {
-    const control = toggle.getByRole('switch');
-    const wasChecked = await control.isChecked();
-    await control.click();
-    await expect(control).toBeChecked({ checked: !wasChecked });
-  }
-
-  /**
-   * Sets a mat-slide-toggle to `checked` and waits for the state to take.
-   * Not setChecked(): it re-reads the state synchronously after clicking,
-   * before the app's (zoneless) change detection has updated aria-checked.
-   */
-  private async setToggle(toggle: Locator, checked: boolean): Promise<void> {
-    const control = toggle.getByRole('switch');
-    if ((await control.isChecked()) !== checked) {
-      await control.click();
-    }
-    await expect(control).toBeChecked({ checked });
+    const wasChecked = await this.switchOf(toggle).isChecked();
+    await this.setSwitch(toggle, !wasChecked);
   }
 
   // Add Member Dialog methods
@@ -269,11 +252,11 @@ export class MembersPage extends BasePage {
 
     // The checked state lives on the toggle's inner switch, not its host.
     if (options.active !== undefined) {
-      await this.setToggle(this.editMemberActiveToggle, options.active);
+      await this.setSwitch(this.editMemberActiveToggle, options.active);
     }
 
     if (options.groupAdmin !== undefined) {
-      await this.setToggle(this.editMemberAdminToggle, options.groupAdmin);
+      await this.setSwitch(this.editMemberAdminToggle, options.groupAdmin);
     }
 
     // Save changes

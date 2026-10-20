@@ -78,7 +78,7 @@ export class AuthPage extends BasePage {
     password: string,
     context: string = `login(${email})`
   ): Promise<void> {
-    const snackbar = this.page.getByTestId('snackbar');
+    const { snackbar } = this;
 
     await expect(this.emailInput).toBeVisible();
     await this.emailInput.fill(email);
@@ -166,46 +166,6 @@ export class AuthPage extends BasePage {
       await this.waitForLoadingComplete();
     } catch (error) {
       throw new Error(`Could not find logout button: ${error.message}`);
-    }
-  }
-
-  /**
-   * Check if user is logged in by looking for elements that are guaranteed to be visible
-   * to any logged-in user (account, logout, groups) based on the UserStore.isLoggedIn signal
-   */
-  async isLoggedIn(): Promise<boolean> {
-    try {
-      await this.waitForLoadingComplete();
-
-      // Check for elements that appear when logged out first (faster)
-      const loginButton = this.page.locator(
-        '[data-testid="nav-login-desktop"]'
-      );
-
-      // If login button is visible, user is not logged in
-      const loginVisible = await loginButton.isVisible().catch(() => false);
-      if (loginVisible) {
-        return false;
-      }
-
-      // Check for logged-in elements
-      const logoutButton = this.page.locator(
-        '[data-testid="logout-button-desktop"]'
-      );
-      const accountButton = this.page.locator(
-        '[data-testid="nav-account-desktop"]'
-      );
-
-      // Check if any of the two guaranteed logged-in elements are visible
-      const logoutVisible = await logoutButton.isVisible().catch(() => false);
-      const accountVisible = await accountButton.isVisible().catch(() => false);
-
-      // User is logged in if any of these two elements are visible
-      return logoutVisible || accountVisible;
-    } catch (error) {
-      console.log('Error checking login status:', error);
-      // If we can't determine state, assume logged out
-      return false;
     }
   }
 

@@ -4,6 +4,9 @@ import { BasePage } from './base.page';
 export class HomePage extends BasePage {
   readonly title: Locator;
   readonly navigationToolbar: Locator;
+  /** The toolbar's app title: one per breakpoint, never both at once. */
+  readonly desktopAppTitle: Locator;
+  readonly mobileAppTitle: Locator;
   readonly themeToggleButton: Locator;
   readonly splitPageLink: Locator;
   readonly featureTourButton: Locator;
@@ -13,6 +16,8 @@ export class HomePage extends BasePage {
     super(page);
     this.title = this.getByTestId('welcome-title');
     this.navigationToolbar = this.getByTestId('main-toolbar');
+    this.desktopAppTitle = this.getByTestId('app-title-desktop');
+    this.mobileAppTitle = this.getByTestId('app-title-mobile');
     this.themeToggleButton = this.getByTestId('theme-toggle-desktop');
     this.splitPageLink = this.getByTestId('split-expense-button');
     // "See what PipSplit can do" - opens the feature-tour screenshot
@@ -52,27 +57,8 @@ export class HomePage extends BasePage {
     await this.waitForLoadingComplete();
   }
 
-  /**
-   * Check if user is authenticated by looking for specific elements
-   */
-  async isAuthenticated(): Promise<boolean> {
-    try {
-      await this.getByTestId('logout-button-desktop').waitFor({
-        state: 'visible',
-        timeout: 3000,
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Check if the page is responsive on mobile
-   */
-  async checkMobileResponsiveness() {
-    await this.page.setViewportSize({ width: 375, height: 667 });
-    await this.waitForLoad();
-    // Add specific mobile checks here
+  /** Resizes the window; the toolbar re-renders for the new breakpoint. */
+  async setViewport(width: number, height: number) {
+    await this.page.setViewportSize({ width, height });
   }
 }
