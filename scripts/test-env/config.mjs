@@ -1,4 +1,5 @@
-// Single source of truth for the isolated test emulator suite. These ports and
+// Source of truth for the isolated test emulator suite (copies elsewhere are
+// checked by config-agreement.test.mjs). These ports and
 // the demo- project ID deliberately differ from firebase.json (the owner's dev
 // emulators), so test runs can never touch dev data.
 export const TEST_PROJECT_ID = 'demo-pipsplit-test';

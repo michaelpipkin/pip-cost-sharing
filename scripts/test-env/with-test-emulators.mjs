@@ -115,7 +115,13 @@ export function buildExecPlan(
     ],
     cwd: REPO_ROOT,
   });
-  return plan;
+  // Node's DEP0190 warns when spawn gets shell: true together with an args
+  // array (it only concatenates them unescaped). The args above are already
+  // quoted for the shell, so each step is spawned as one command string.
+  return plan.map((step) => ({
+    ...step,
+    commandLine: [step.cmd, ...step.args].join(' '),
+  }));
 }
 
 function isPortInUse(port, host) {
@@ -158,35 +164,71 @@ async function releaseLeakedPorts(ports) {
   if (leaked.length === 0) {
     return;
   }
-  const netstat = execFileSync('netstat', ['-ano', '-p', 'tcp'], {
-    encoding: 'utf8',
-  });
-  const pids = new Set();
-  for (const line of netstat.split(/\r?\n/)) {
-    const [, local, , state, pid] = line.trim().split(/\s+/);
-    const port = Number(local?.slice(local.lastIndexOf(':') + 1));
-    if (state === 'LISTENING' && leaked.includes(port)) {
-      pids.add(pid);
-    }
-  }
-  for (const pid of pids) {
+  // No "-p tcp": that filter lists IPv4 sockets only, but the emulators can
+  // listen on IPv6 ([::] / [::1]).
+  const netstat = execFileSync('netstat', ['-ano'], { encoding: 'utf8' });
+  for (const pid of parseListeningPids(netstat, leaked)) {
     try {
-      execFileSync('taskkill', ['/PID', pid, '/T', '/F'], { stdio: 'ignore' });
+      execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
+        stdio: 'ignore',
+      });
     } catch {
       // Already gone.
     }
   }
 }
 
-function runStep({ cmd, args, cwd }) {
+// Extracts the PIDs LISTENING on any of the given ports from `netstat -ano`
+// output. Handles IPv4 (127.0.0.1:1234) and IPv6 ([::]:1234, [::1]:1234) local
+// addresses; UDP rows and non-LISTENING states never match.
+export function parseListeningPids(netstatOutput, ports) {
+  const pids = new Set();
+  for (const line of netstatOutput.split(/\r?\n/)) {
+    const [proto, local, , state, pid] = line.trim().split(/\s+/);
+    if (proto !== 'TCP' || state !== 'LISTENING' || !local) {
+      continue;
+    }
+    const port = Number(local.slice(local.lastIndexOf(':') + 1));
+    if (ports.includes(port) && Number.isInteger(Number(pid))) {
+      pids.add(Number(pid));
+    }
+  }
+  return [...pids];
+}
+
+export function runStep({ cmd, commandLine, cwd }, spawnFn = spawn) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd, stdio: 'inherit', shell: true });
+    const child = spawnFn(commandLine, { cwd, stdio: 'inherit', shell: true });
     child.once('error', (error) => {
       console.error(`Failed to run ${cmd}: ${error.message}`);
       resolve(1);
     });
     child.once('exit', (code) => resolve(code ?? 1));
   });
+}
+
+// Runs the steps in order and returns the first non-zero code (or 0). The
+// cleanup always runs afterwards but is best-effort: a failure there is logged
+// and must never replace the run's exit code.
+export async function runPlan(
+  steps,
+  { run = runStep, cleanup = async () => {}, log = console } = {}
+) {
+  try {
+    for (const step of steps) {
+      const code = await run(step);
+      if (code !== 0) {
+        return code;
+      }
+    }
+    return 0;
+  } finally {
+    try {
+      await cleanup();
+    } catch (error) {
+      log.warn(`Test port cleanup failed (ignored): ${error.message}`);
+    }
+  }
 }
 
 async function main() {
@@ -208,22 +250,14 @@ async function main() {
   const busy = await findBusyPorts(ports);
   if (busy.length > 0) {
     console.error(
-      `Test emulator port(s) ${busy.join(', ')} in use — a previous run may have crashed. Run: pnpm kill-test-ports`
+      `Test emulator port(s) ${busy.join(', ')} in use — a previous run may have crashed. From the repo root, run: pnpm kill-test-ports`
     );
     return 1;
   }
 
-  try {
-    for (const step of buildExecPlan(opts)) {
-      const code = await runStep(step);
-      if (code !== 0) {
-        return code;
-      }
-    }
-    return 0;
-  } finally {
-    await releaseLeakedPorts(ports);
-  }
+  return runPlan(buildExecPlan(opts), {
+    cleanup: () => releaseLeakedPorts(ports),
+  });
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

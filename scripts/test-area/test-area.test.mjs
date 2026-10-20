@@ -300,3 +300,23 @@ test('summarize tabulates PASS/FAIL per step and fails if any step failed', () =
   assert.equal(exitCode, 1);
   assert.equal(summarize([{ label: 'unit', code: 0 }]).exitCode, 0);
 });
+
+// Spec §5: places a feature's tests under every area that owns part of it.
+test('account deletion is covered by auth as well as account', () => {
+  for (const name of ['auth', 'account']) {
+    assert.ok(covers(name, 'app/features/auth/delete-account/x.spec.ts'), name);
+    assert.ok(AREAS[name].functions.includes('src/user-deletion.spec.ts'), name);
+  }
+});
+
+test('route guards are covered by shell as well as auth', () => {
+  for (const name of ['shell', 'auth']) {
+    assert.ok(covers(name, 'app/features/auth/guards.guard.spec.ts'), name);
+  }
+});
+
+test('the about page is covered by help as well as shell', () => {
+  for (const name of ['help', 'shell']) {
+    assert.ok(covers(name, 'app/features/about/about.component.spec.ts'), name);
+  }
+});

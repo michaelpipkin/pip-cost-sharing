@@ -14,13 +14,14 @@ For how to write or fix specs (shared seed data, ownership rules, selectors, got
 ## Running
 
 ```bash
-pnpm e2e                      # whole suite, headless
-pnpm e2e --grep "@expenses"   # extra Playwright args are passed through
+pnpm e2e                        # whole suite, headless
+pnpm e2e --grep "@expenses"     # extra Playwright args are passed through
 pnpm e2e e2e/infra/seed.spec.ts # a single spec file
-pnpm e2e:headed               # visible browser
-pnpm e2e:ui                   # Playwright UI mode
-pnpm e2e:debug                # Playwright inspector
-pnpm e2e:report               # open the last HTML report
+pnpm e2e:headed                 # visible browser
+pnpm e2e:ui                     # Playwright UI mode
+pnpm e2e:debug                  # Playwright inspector
+pnpm e2e:local                  # alias for pnpm e2e
+pnpm e2e:report                 # open the last HTML report (no emulators needed)
 ```
 
 `pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (or reuses one already running there). Global setup clears Auth and Firestore once and seeds the data set in `e2e/seed/`; tests never clear data.
@@ -48,7 +49,7 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 
 ## Test environment
 
-- Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The single source of truth is `scripts/test-env/config.mjs`.
+- Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
 - Playwright runs 2 workers; traces are kept on failure (`pnpm e2e:report`), video is off.
