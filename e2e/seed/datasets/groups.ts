@@ -4,16 +4,19 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  * Owned by e2e/groups/groups-admin.spec.ts.
  *
  * One user per test that mutates data or selects/switches groups, so no two
- * tests that can run in parallel sign in as the same user. That matters
- * because every page load re-runs the app's autoSelectGroup and rewrites
- * users/{uid}.defaultGroupRef, so a second tab signed in as the same user
- * can undo the first tab's group selection mid-test. Read-only tests that
- * never select a group share a user.
+ * tests that can run in parallel sign in as the same user. Selecting a group
+ * saves it as the user's default (users/{uid}.defaultGroupRef), which every
+ * other tab signed in as that user picks up on its next load. (Before the
+ * 2026-10-20 group-loading fixes, every page load also rewrote it, so a
+ * second tab could undo the first tab's selection mid-test.) Read-only tests
+ * that never select a group share a user.
  *
  * - groups-empty: no groups; shared by the read-only empty-state, validation,
  *   cancel and tour tests. No test may create a group as this user.
  * - groups-first-creator: no groups; "should create a group and make it
  *   selectable" creates their first group.
+ * - groups-enter-creator: no groups; "should create a group by pressing
+ *   Enter" creates their first group.
  * - groups-autoadd-creator / groups-multi-creator / groups-workflow-creator:
  *   one creation test each, with a seeded default "home" group. Created
  *   groups get unique runtime names.
@@ -67,6 +70,7 @@ function soloGroup(
 
 const empty = seedUser('groups-empty');
 const firstCreator = seedUser('groups-first-creator');
+const enterCreator = seedUser('groups-enter-creator');
 const autoAddCreator = seedUser(
   'groups-autoadd-creator',
   'g-groups-autoadd-creator-home'
@@ -127,6 +131,7 @@ export const GROUPS = {
   users: {
     empty,
     firstCreator,
+    enterCreator,
     autoAddCreator,
     multiCreator,
     workflowCreator,

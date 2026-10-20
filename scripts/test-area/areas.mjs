@@ -46,6 +46,8 @@ const FORMAT_CURRENCY_INPUT = [
   `${DIRECTIVES}/format-currency-input.directive.spec.ts`,
 ];
 const SELECT_ON_FOCUS = [`${DIRECTIVES}/select-on-focus.directive.spec.ts`];
+// Enter-saves on the add/edit forms (the button[defaultButton] directive).
+const DEFAULT_BUTTON = [`${DIRECTIVES}/default-button.directive.spec.ts`];
 const ALLOCATION_UTILS = [`${UTILITIES}/allocation-utils.service.spec.ts`];
 const RENTAL_UTILS = [`${UTILITIES}/rental-utils.service.spec.ts`];
 const STRING_UTILS = [`${UTILITIES}/string-utils.service.spec.ts`];
@@ -171,6 +173,7 @@ export const AREAS = {
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       `${FEATURES}/groups`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/expense.service.spec.ts`,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/invite.service.spec.ts`,
@@ -199,6 +202,7 @@ export const AREAS = {
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       `${FEATURES}/members`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/invite.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
       `${SERVICES}/member-link.service.spec.ts`,
@@ -225,6 +229,7 @@ export const AREAS = {
       ...LOADING,
       ...SNACKBAR,
       `${FEATURES}/categories`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/category.service.spec.ts`,
       ...SORTING,
       ...GUIDED_TOUR,
@@ -249,6 +254,7 @@ export const AREAS = {
       `${FEATURES}/expenses/edit-expense`,
       `${FEATURES}/expenses/expense-form.tour.spec.ts`,
       `${FEATURES}/expenses/expenses`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/category.service.spec.ts`,
       `${SERVICES}/expense.service.spec.ts`,
       `${SERVICES}/memorized.service.spec.ts`,
@@ -321,6 +327,7 @@ export const AREAS = {
       ...LOADING,
       ...SNACKBAR,
       `${FEATURES}/memorized`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/category.service.spec.ts`,
       `${SERVICES}/memorized.service.spec.ts`,
       `${SERVICES}/split.service.spec.ts`,
@@ -385,6 +392,7 @@ export const AREAS = {
       ...ANALYTICS,
       ...SNACKBAR,
       `${FEATURES}/split`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/split.service.spec.ts`,
       ...LOCALE,
       ...GUIDED_TOUR,
@@ -417,6 +425,7 @@ export const AREAS = {
       ...SNACKBAR,
       `${FEATURES}/about`,
       `${FEATURES}/help`,
+      ...DEFAULT_BUTTON,
       `${SERVICES}/help.service.spec.ts`,
       `${SERVICES}/help-content.service.spec.ts`,
       ...GUIDED_TOUR,

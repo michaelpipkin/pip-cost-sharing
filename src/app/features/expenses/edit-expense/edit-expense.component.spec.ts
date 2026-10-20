@@ -40,6 +40,7 @@ import { GuidedTourConfig } from '@models/guided-tour';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditExpenseComponent } from './edit-expense.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('EditExpenseComponent', () => {
   let fixture: ComponentFixture<EditExpenseComponent>;
@@ -336,5 +337,9 @@ describe('EditExpenseComponent', () => {
       fixture.destroy();
       expect(stopSpy).toHaveBeenCalledWith('closed');
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

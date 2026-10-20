@@ -80,12 +80,14 @@ import {
   buildExpenseFormTourSteps,
   createExpenseFormTour,
 } from '../expense-form.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-add-expense',
   templateUrl: './add-expense.component.html',
   styleUrl: './add-expense.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatDialogModule,
     MatButtonModule,

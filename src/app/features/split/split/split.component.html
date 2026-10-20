@@ -351,6 +351,7 @@
             mat-raised-button
             class="btn-secondary"
             type="submit"
+            form="split-form"
             defaultButton
             [disabled]="!expenseForm().valid() || !expenseFullyAllocated()"
             (click)="onSubmit()"

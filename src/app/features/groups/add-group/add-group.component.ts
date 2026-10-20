@@ -20,12 +20,14 @@ import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-add-group',
   templateUrl: './add-group.component.html',
   styleUrl: './add-group.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatButtonModule,
     MatDialogModule,

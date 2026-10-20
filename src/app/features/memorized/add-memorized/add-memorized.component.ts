@@ -60,12 +60,14 @@ import {
   buildExpenseFormTourSteps,
   createExpenseFormTour,
 } from '@features/expenses/expense-form.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-add-memorized',
   templateUrl: './add-memorized.component.html',
   styleUrl: './add-memorized.component.scss',
   imports: [
+    DefaultButtonDirective,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,

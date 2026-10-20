@@ -20,6 +20,7 @@ import {
   HelpSection,
 } from '@services/help-content.service';
 import { HelpService } from '@services/help.service';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 interface IssueForm {
   title: string;
@@ -32,6 +33,7 @@ interface IssueForm {
   templateUrl: './help.component.html',
   styleUrl: './help.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatExpansionModule,
     MatDialogModule,
