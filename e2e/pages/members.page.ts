@@ -31,7 +31,9 @@ export class MembersPage extends BasePage {
   readonly removeMemberButton: Locator;
   readonly editMemberCancelButton: Locator;
 
-  // Confirmation dialog (remove member / leave group)
+  // Confirmation dialogs: Remove opens the shared delete dialog, Leave Group
+  // the shared confirm dialog.
+  readonly deleteDialogTitle: Locator;
   readonly confirmDialogTitle: Locator;
 
   // Generic elements
@@ -70,6 +72,7 @@ export class MembersPage extends BasePage {
     this.removeMemberButton = page.getByTestId('remove-member-button');
     this.editMemberCancelButton = page.getByTestId('edit-member-cancel-button');
 
+    this.deleteDialogTitle = page.getByTestId('delete-dialog-title');
     this.confirmDialogTitle = page.getByTestId('dialog-title');
 
     // Generic elements
@@ -217,10 +220,10 @@ export class MembersPage extends BasePage {
     await expect(this.editMemberDialog).toBeHidden();
   }
 
-  /** Clicks Remove; resolves once the confirmation dialog is showing. */
+  /** Clicks Remove; resolves once the delete confirmation dialog is showing. */
   async removeMember(): Promise<void> {
     await this.removeMemberButton.click();
-    await expect(this.confirmDialogTitle).toBeVisible();
+    await expect(this.deleteDialogTitle).toBeVisible();
   }
 
   /** Clicks Leave Group; resolves once the confirmation dialog is showing. */

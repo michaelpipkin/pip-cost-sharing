@@ -4,6 +4,13 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
 /**
  * The read-only baseline every spec may read but never write.
  *
+ * alice, bob and carol all have g-shared as their default group. That is not
+ * just convenience: signing in rewrites users/{uid}.defaultGroupRef on every
+ * load (GroupService.getGroup, via autoSelectGroup), so a shared user seeded
+ * without it would have their doc changed by the first spec (or the
+ * global-setup warm-up, which signs in as carol) to sign in. Seeding the value
+ * the app writes makes those writes content no-ops.
+ *
  * Expense and payment dates are relative to SEED_TODAY so they stay inside
  * the Expenses page's default 90-day window and History's 30-day window.
  *
@@ -54,6 +61,7 @@ const bob: SeedUser = {
   uid: 'u-bob',
   email: 'bob@pipsplit.test',
   password: PASSWORD,
+  profile: { defaultGroupKey: 'g-shared' },
 };
 
 const carol: SeedUser = {
@@ -61,6 +69,7 @@ const carol: SeedUser = {
   uid: 'u-carol',
   email: 'carol@pipsplit.test',
   password: PASSWORD,
+  profile: { defaultGroupKey: 'g-shared' },
 };
 
 const group: SeedGroup = {
