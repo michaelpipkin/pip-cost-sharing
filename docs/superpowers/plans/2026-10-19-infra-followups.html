@@ -42,6 +42,11 @@
 <ul>
   <li>Stub or cache tesseract.js language data for <code>scanReceipt</code> (spec §3).</li>
   <li>Areas with no e2e tests still boot four emulators to run <code>@infra</code>; Windows <code>cmd</code> has an ~8k command-line limit that large multi-area <code>--include</code> lists may approach (expenses ≈ 2.3k today).</li>
+  <li><em>From Plan 2's final review:</em> hoist duplicated page-object helpers into <code>BasePage</code> / <code>e2e/utils/format.ts</code> — <code>snackbarWith</code> (4 copies), <code>selectPanel</code>/<code>option</code> (3), the two differently-behaving <code>setToggle</code>s (groups vs members), the two loading-wait idioms, and <code>formatMoney</code>/<code>formatShortDate</code> (live in <code>expenses.page.ts</code>).</li>
+  <li>Treat page-object methods no spec exercises yet as unverified when first used: <code>ExpensesPage.gotoList</code>/<code>gotoAddExpense</code>/<code>uploadReceipt</code>/<code>removeReceipt</code>, <code>MembersPage</code> edit/remove/leave and <code>flipToggle</code>, <code>HistoryPage.noFilteredHistoryPlaceholder</code>, <code>AuthPage.signUp</code>/<code>forgotPassword</code>. Delete the unused <code>HomePage.isAuthenticated()</code>.</li>
+  <li><code>e2e/smoke/homepage.spec.ts</code> "should have responsive viewport" only asserts <code>body</code> is visible — give it a real assertion or delete it. Auth redirect tests could assert the real destination (<code>/expenses</code>) and drop the redundant <code>isLoggedIn()</code> checks.</li>
+  <li><code>groups-viewer</code> (groups dataset) is shared by 4 read-only tests; its safety rests on none of them ever saving or selecting a group (documented only in the dataset comment).</li>
+  <li>Cosmetic: dangling <code>waitForSelector('app-root', )</code> in the two smoke specs; group-specific error test ids are reached past the page object in <code>groups-admin.spec.ts</code>.</li>
 </ul>
 
 <h2>Plan 4 — unit / functions gaps</h2>
@@ -51,6 +56,9 @@
   <li><code>scripts/db/prune-expenses.ts</code> still has its own duplicate <code>ChunkedBatch</code> — use <code>scripts/db/chunked-batch.ts</code>; export <code>BATCH_LIMIT</code> from there instead of duplicating it as <code>SEED_BATCH_LIMIT</code> in <code>e2e/seed/write.ts</code>.</li>
   <li><code>src/app/firebase-options.ts:22</code>: unused <code>_measurementId</code> may trip <code>@typescript-eslint/no-unused-vars</code> (only <code>argsIgnorePattern</code> is set).</li>
   <li><code>test:area</code> polish: <code>--check</code> parses JSON from the first <code>{</code> in stdout (fragile); win32 <code>invocation</code> joins args unquoted; posix quoting doesn't escape embedded quotes / <code>$</code>; <code>%VAR%</code> still expands under cmd.</li>
+  <li><em>From Plan 2:</em> seed validator's percentage-total tolerance borrows the group's money <code>decimalPlaces</code> (a 0-decimal group would accept 99.6–100.4%); no automated tests for the <code>E2E_SEED_TODAY</code> ambient guard or the global-setup probe/clear timeouts; <code>findExpense</code> in <code>seed.spec.ts</code> only searches <code>groups[0]</code>.</li>
+  <li>Wrapper tests: the <code>commandLine</code> test only checks prefix/suffix; <code>config-agreement.test.mjs</code> doesn't cover hub/logging ports or app port 4300 in <code>environment.e2e.ts</code>.</li>
+  <li>Warm-up passes a possibly-undefined <code>baseURL</code> (add a guard).</li>
 </ul>
 
 <h2>Owner</h2>
