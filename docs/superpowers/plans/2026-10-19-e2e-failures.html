@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baseline E2E Failures</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; --ok:#1c7a3d; --bad:#b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; --ok:#5cc17f; --bad:#f2837c; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .3rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.8rem; }
+  code { font-size: .88em; background: var(--note); padding: 1px 4px; border-radius: 3px; overflow-wrap: anywhere; }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .muted { color: var(--muted); }
+  .ok { color: var(--ok); font-weight: 600; }
+  .bad { color: var(--bad); font-weight: 600; }
+  .num { text-align: right; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<h1>Baseline E2E Failures (Task 9 of Plan 1)</h1>
+<p class="muted">Input to Plan 2 (repair of the legacy e2e specs). Nothing in this file has been fixed; every row is a provisional triage, not a diagnosis.</p>
+
+<h2>Run summary</h2>
+<ul>
+  <li><strong>Run date:</strong> 2026-10-19 (20:10-20:19 local), branch <code>test-infrastructure</code>, command <code>pnpm e2e</code> (2 workers, Chromium, isolated emulators on the <code>demo-pipsplit-test</code> ports).</li>
+  <li><strong>Totals (90 tests):</strong> <span class="ok">45 passed</span>, <span class="bad">16 failed</span>, <strong>29 did not run</strong> (serial-mode cascades; Playwright reports them as "skipped"), 0 flaky, 0 skipped by an explicit <code>test.skip()</code> that actually executed. Playwright duration 8.3 min (about 9 min wall clock including emulator and dev-server start).</li>
+  <li><strong>Infra health:</strong> all 11 <code>@infra</code> seed tests passed. Global setup, seeding, <code>signInAs</code>, the e2e build and the emulators all worked; no failure below is an infra failure of the isolated environment.</li>
+  <li><strong>Other suites on the same commit:</strong> <code>pnpm test</code> 114 files / 1473 tests pass; <code>pnpm --dir functions test</code> 12 files / 113 tests pass; <code>pnpm test:scripts</code> 37 pass; <code>pnpm test:area --check</code> exit 0 (114 unit specs, 12 functions specs, 90 e2e tests all assigned to an area).</li>
+  <li><strong>Dev-emulator fingerprint (read-only GET of <code>groups</code> on 127.0.0.1:8080, 5 documents):</strong> before 5 documents, after 5 documents, identical response body byte for byte (ids G5L5nkg25rnJjNYdOrb2, YBJ36G93bRgq7VNtiQMO, dHsHZbpCVyrjOHD1rYWN, mEfoTuZc49K86iD3wCpp, toyVfHOs9KjyBE12IzfD). <strong>Unchanged.</strong></li>
+</ul>
+
+<div class="box">
+  <p><strong>Important for Plan 2 sizing.</strong> 29 tests did not run because an earlier test in their <code>describe.serial</code> block failed. Their real status is unknown. Fixing the root failures will let them run and may expose further stale selectors, so the 16 failures understate the repair work. The failures below fall into only five root causes, listed in "Root causes".</p>
+</div>
+
+<h2>Suspected app bugs</h2>
+<p><strong>None.</strong> Every failure traced to a concrete test-side cause (a selector or text the app no longer has) or to a timing race that passes when the test is run alone. No row has a concrete reason to blame the app.</p>
+<p class="muted">Two observations worth keeping in mind during Plan 2 (neither is a bug claim): <code>/auth/login</code> redirects an authenticated user via an async guard (<code>loggedInGuard</code> awaits auth init), so the test that asserts the redirect must wait for the URL instead of reading it once; and the Groups page deliberately hides the group select until the user has at least one group (<code>@if (displayedActiveGroups().length &gt; 0)</code> in <code>groups.component.html</code>) and shows guidance text instead.</p>
+
+<h2>Triage counts (16 failures)</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Category</th><th class="num">Count</th></tr>
+  <tr><td>Stale test (selector / flow / text changed)</td><td class="num">15</td></tr>
+  <tr><td>Feature removed</td><td class="num">0</td></tr>
+  <tr><td>Suspected app bug</td><td class="num">0</td></tr>
+  <tr><td>Infra (flake under load, passes alone)</td><td class="num">1</td></tr>
+</table>
+</div>
+
+<h2>Root causes</h2>
+<ol>
+  <li><strong>Add-expense form moved to signal forms.</strong> <code>ExpensesPage.totalAmountInput</code> is <code>input[formControlName="amount"]</code> (and <code>allocatedAmount</code>, <code>assignedAmount</code> for the other money fields). The template now binds <code>[formField]="expenseForm.amount"</code> with no <code>formControlName</code> attribute and no <code>data-testid</code> on the amount, proportional or per-split inputs. 10 failures, plus most of the 29 did-not-run tests. Fix direction: add test ids to those inputs in the template, then update the page object.</li>
+  <li><strong>Empty-state text changed.</strong> History now shows "Once payments are recorded in your group, you'll see a history of payments here..." and Summary shows "Once you have unpaid expenses in a group, you'll see a summary of who owes what here...". The page objects look for "No history found" and "No outstanding expenses found". 2 failures.</li>
+  <li><strong>Groups page for a brand-new user has no <code>group-select</code>.</strong> The legacy flow expects the select to exist before any group is created. 2 failures.</li>
+  <li><strong>Unawaited redirect.</strong> <code>auth-authenticated.spec.ts:36</code> reads <code>page.url()</code> immediately after <code>app-root</code> appears, racing the async guard. 1 failure (passed 3 of 3 when re-run alone).</li>
+  <li><strong>Flake under parallel load.</strong> <code>groups-admin.spec.ts:157</code> saw the "Your name in the group" input empty after <code>fill()</code> (passed 3 of 3 when re-run alone). 1 failure, which then cascades to 7 did-not-run tests.</li>
+</ol>
+<p class="muted">Also for Plan 2 (tolerated until then): several legacy specs and page objects still hard-code the default dev emulator ports 8080/9099 (<code>auth/auth.spec.ts</code>, <code>auth/auth-authenticated.spec.ts</code>, <code>smoke/homepage.spec.ts</code> make read-only GETs; <code>e2e/constants/index.ts</code> defines the dev-port URLs). They passed here only because the owner's dev emulators were running. Many page objects still use <code>waitForTimeout</code>, and every legacy spec uses the <code>preserveDataFirebasePage</code> alias with its own <code>createTestUser</code> instead of <code>signInAs</code> and the seeded data.</p>
+
+<h2>Failures by spec file</h2>
+
+<h3><code>e2e/auth/auth-authenticated.spec.ts</code> <span class="muted">(4 passed, 1 failed)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr>
+    <td>:36 should redirect authenticated users away from login page</td>
+    <td><code>Error: expect(received).not.toContain(expected)</code> - expected substring not "/auth/login", received "http://localhost:4300/auth/login"</td>
+    <td><strong>Stale test.</strong> URL read once, right after <code>app-root</code>, before the async <code>loggedInGuard</code> has redirected. Passed 3 of 3 when run alone; the sibling register-page test passes by timing. Needs <code>expect(page).not.toHaveURL(...)</code> style waiting.</td>
+  </tr>
+</table>
+</div>
+
+<h3><code>e2e/critical-flows/expenses.spec.ts</code> <span class="muted">(1 passed, 4 failed, 8 did not run)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr><td>:49 should create expense with single payer and multiple splits</td><td><code>TimeoutError: locator.fill: Timeout 30000ms exceeded.</code> waiting for <code>input[formControlName="amount"]</code></td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:141 should add all members at once</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:224 should handle simple proportional allocation</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:339 should auto-select single category</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+</table>
+</div>
+<p class="muted">Passed: :317 should validate required fields.</p>
+
+<h3><code>e2e/critical-flows/expense-to-payment-flow.spec.ts</code> <span class="muted">(0 passed, 4 failed, 4 did not run)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr><td>:58 should create expense, pay it, and verify in history</td><td><code>TimeoutError: locator.fill: Timeout 30000ms exceeded.</code> waiting for <code>input[formControlName="amount"]</code></td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:154 should handle payment cancellation</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:221 should filter summary by date range</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:281 should calculate net amounts correctly with mutual debts</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+</table>
+</div>
+
+<h3><code>e2e/critical-flows/history.spec.ts</code> <span class="muted">(0 passed, 1 failed, 3 did not run)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr><td>:56 should show empty state when no history</td><td><code>Error: expect(locator).toBeVisible() failed</code> - <code>getByText('No history found')</code>, element(s) not found</td><td><strong>Stale test</strong> (root cause 2). Page snapshot shows the new guidance paragraph "Once payments are recorded in your group...".</td></tr>
+</table>
+</div>
+
+<h3><code>e2e/critical-flows/summary.spec.ts</code> <span class="muted">(0 passed, 3 failed, 7 did not run)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr><td>:53 should show empty state when no unpaid splits</td><td><code>Error: expect(locator).toBeVisible() failed</code> - <code>getByText('No outstanding expenses found')</code>, element(s) not found</td><td><strong>Stale test</strong> (root cause 2). Page snapshot shows "Once you have unpaid expenses in a group...".</td></tr>
+  <tr><td>:146 should filter summary by member</td><td><code>TimeoutError: locator.fill: Timeout 30000ms exceeded.</code> waiting for <code>input[formControlName="amount"]</code></td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+  <tr><td>:220 should calculate net amounts correctly</td><td>same as above</td><td><strong>Stale test</strong> (root cause 1)</td></tr>
+</table>
+</div>
+
+<h3><code>e2e/groups/groups-admin.spec.ts</code> <span class="muted">(7 passed, 3 failed, 7 did not run)</span></h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
+  <tr><td>:43 should load groups page and display main elements</td><td><code>Error: expect(locator).toBeVisible() failed</code> - <code>getByTestId('group-select')</code>, element(s) not found</td><td><strong>Stale test</strong> (root cause 3). A user with no groups sees the guidance text and "New Group" button; the select is not rendered.</td></tr>
+  <tr><td>:98 should cancel create group dialog</td><td>same locator, asserted after the dialog closes</td><td><strong>Stale test</strong> (root cause 3)</td></tr>
+  <tr><td>:157 should create first group</td><td><code>Error: expect(locator).toHaveValue(expected) failed</code> - <code>getByTestId('display-name-input')</code> expected "Groups Admin Tester", received ""</td><td><strong>Infra</strong> (flake). Passed 3 of 3 when this test was re-run alone, and the identical <code>createGroup</code> call succeeds in the expenses specs, so no stable cause was found. Nothing in <code>AddGroupComponent</code> resets the field. Worth a closer look in Plan 2 if it recurs; not claimed as an app bug.</td></tr>
+</table>
+</div>
+<p class="muted">Passed: :48, :56, :74, :114, :133, :235, :257.</p>
+
+<h3>Files with no failures</h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Spec file</th><th class="num">Passed</th></tr>
+  <tr><td><code>e2e/infra/seed.spec.ts</code> (@infra)</td><td class="num">11 / 11</td></tr>
+  <tr><td><code>e2e/auth/auth-unauthenticated.spec.ts</code></td><td class="num">5 / 5</td></tr>
+  <tr><td><code>e2e/auth/auth.spec.ts</code></td><td class="num">1 / 1</td></tr>
+  <tr><td><code>e2e/smoke/homepage.spec.ts</code></td><td class="num">4 / 4</td></tr>
+  <tr><td><code>e2e/smoke/navigation.spec.ts</code></td><td class="num">12 / 12</td></tr>
+</table>
+</div>
+
+<h2>Tests that did not run (29)</h2>
+<p>Each is in a <code>test.describe.serial</code> block after a failed test, so Playwright skipped it. Triage is unknown until the cascade root is repaired. Root test in brackets.</p>
+<div class="table-wrap">
+<table>
+  <tr><th>Spec</th><th>Did-not-run tests (line numbers)</th><th>Cascade root</th></tr>
+  <tr><td><code>critical-flows/expense-to-payment-flow.spec.ts</code> (4)</td><td>:126 copy payment history to clipboard, :141 handle multiple categories in payment history, :186 payment with payment method selection, :261 summary detail breakdown by category</td><td>:58 (for :126, :141), :154 (for :186), :221 (for :261)</td></tr>
+  <tr><td><code>critical-flows/expenses.spec.ts</code> (8)</td><td>:78 save and add another, :97 memorize expense, :116 cancel expense creation, :173 remove splits dynamically, :194 toggle percentage mode, :261 complex proportional allocation, :364 validate zero amount, :381 handle date selection</td><td>:49 (for :78, :97, :116), :141 (for :173, :194), :224 (for :261), :339 (for :364, :381)</td></tr>
+  <tr><td><code>critical-flows/history.spec.ts</code> (3)</td><td>:74 display payment history after payment, :119 copy history to clipboard, :134 delete payment record with confirmation</td><td>:56</td></tr>
+  <tr><td><code>critical-flows/summary.spec.ts</code> (7)</td><td>:74 who-owes-whom summary, :91 expand/collapse detail rows, :106 category breakdown, :116 copy summary to clipboard, :131 open payment dialog, :177 filter by date range, :191 clear filters</td><td>:53 (for :74-:131), :146 (for :177, :191)</td></tr>
+  <tr><td><code>groups/groups-admin.spec.ts</code> (7)</td><td>:165 create second group, :172 switch between groups, :179 open manage groups dialog, :185 edit group name, :198 toggle group active status, :211 toggle auto-add members, :224 open help dialog</td><td>:157 (a flake; these would likely have run on a clean pass)</td></tr>
+</table>
+</div>
+
+<h2>Skipped tests</h2>
+<p>The three conditional skips in the legacy specs (<code>if (!TEST_CONFIG.supportsClipboard) { test.skip(); }</code>) never executed in this run, because all three tests are in the did-not-run set above:</p>
+<ul>
+  <li><code>critical-flows/expense-to-payment-flow.spec.ts:126</code> should copy payment history to clipboard (skip call at line 129)</li>
+  <li><code>critical-flows/history.spec.ts:119</code> should copy history to clipboard (skip call at line 122)</li>
+  <li><code>critical-flows/summary.spec.ts:116</code> should copy summary to clipboard (skip call at line 119)</li>
+</ul>
+<p>Playwright's own "skipped" count (29) is these three plus the other 26 cascades. There are no <code>test.fixme</code> or unconditional <code>test.skip</code> in <code>e2e/</code>.</p>
+
+<h2>Reproducing</h2>
+<ul>
+  <li>Full run: <code>pnpm e2e</code>. Results: <code>test-results/results.json</code>, HTML report <code>playwright-report/</code> (<code>pnpm e2e:report</code>), traces and screenshots kept for failures. These are git-ignored output, not committed.</li>
+  <li>Single-test re-runs used for the two flake checks: <code>pnpm e2e e2e/groups --grep "create first group" --repeat-each 3</code> and <code>pnpm e2e e2e/auth/auth-authenticated.spec.ts --grep "away from login" --repeat-each 3</code> (both 3 of 3 passed).</li>
+  <li>After the run the Firestore emulator printed a Java <code>NullPointerException</code> in the rules runtime during shutdown (also seen after <code>pnpm --dir functions test</code>, which exits 0). It is shutdown noise from SIGINT, not a test failure.</li>
+</ul>
+
+</body>
+</html>
