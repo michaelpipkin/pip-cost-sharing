@@ -1,277 +1,317 @@
+import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { AuthPage } from '../pages/auth.page';
 import { GroupsPage } from '../pages/groups.page';
+import { GROUPS } from '../seed/datasets/groups';
+import type { SeedUser } from '../seed/types';
+import { signInAs } from '../utils/session';
 
-test.describe('Groups Component Functionality', { tag: '@groups' }, () => {
-  let authPage: AuthPage;
-  let groupsPage: GroupsPage;
+// Data: e2e/seed/datasets/groups.ts. groups-empty is read-only (no test may
+// create a group as them); groups-creator creates groups with unique names
+// and asserts only on its own; groups-manager owns one group per mutating
+// test plus the read-only "Groups – Switch A/B". Every test signs in itself.
+const { empty, creator, manager } = GROUPS.users;
+const { rename, active, autoAdd, switchA, switchB } = GROUPS.groups;
 
-  // Unique user per test run (enables parallel execution)
-  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
-  let testUser: { email: string; password: string; displayName: string };
+function uniqueGroupName(label: string): string {
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return `Groups – ${label} ${suffix}`;
+}
 
-  // Create the user once before all tests
-  test.beforeAll(async ({ browser }) => {
-    // Generate unique email for this test run
-    testUser = {
-      email: `groups-admin-${Date.now()}@test.com`,
-      password: 'password123',
-      displayName: 'Groups Admin Tester',
-    };
+async function openGroupsAs(page: Page, user: SeedUser): Promise<GroupsPage> {
+  await signInAs(page, user);
+  const groupsPage = new GroupsPage(page);
+  await groupsPage.goto();
+  return groupsPage;
+}
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    const { createTestUser } = await import('../utils/firebase');
-    await createTestUser(page, testUser.email, testUser.password);
-    await context.close();
+/** The page still shows a user with no groups (nothing was saved). */
+async function expectNoGroups(groupsPage: GroupsPage): Promise<void> {
+  await expect(groupsPage.noGroupsPlaceholder).toBeVisible();
+  await expect(groupsPage.groupSelect).toHaveCount(0);
+  await expect(groupsPage.manageGroupsButton).toHaveCount(0);
+}
+
+test.describe('Groups - no groups yet', { tag: '@groups' }, () => {
+  test('should show guidance and the New Group button', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, empty);
+
+    await expect(groupsPage.noGroupsPlaceholderText).toContainText(
+      'Click "New Group" to create your first group!'
+    );
+    await expect(groupsPage.newGroupButton).toBeVisible();
+    await expect(groupsPage.newGroupButton).toHaveText('New Group');
+    await expect(groupsPage.helpButton).toBeVisible();
+    // The select only renders once the user has an active group.
+    await expectNoGroups(groupsPage);
   });
 
-  test.beforeEach(async ({ preserveDataFirebasePage }) => {
-    authPage = new AuthPage(preserveDataFirebasePage);
-    groupsPage = new GroupsPage(preserveDataFirebasePage);
+  test('should validate required fields in create group form', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, empty);
+    await groupsPage.openAddGroupDialog();
 
-    // Login unique test user (already created in beforeAll)
-    await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
+    await expect(groupsPage.addGroupSaveButton).toBeDisabled();
 
-    // Verify logged in
-    const isLoggedIn = await authPage.isLoggedIn();
-    expect(isLoggedIn).toBe(true);
+    await groupsPage.groupNameInput.fill('Groups – Never Saved');
+    await expect(groupsPage.groupNameInput).toHaveValue('Groups – Never Saved');
+    await expect(groupsPage.addGroupSaveButton).toBeDisabled();
+
+    await groupsPage.displayNameInput.fill('Groups Empty');
+    await expect(groupsPage.displayNameInput).toHaveValue('Groups Empty');
+    await expect(groupsPage.addGroupSaveButton).toBeEnabled();
+
+    await groupsPage.cancelAddGroup();
+    await expectNoGroups(groupsPage);
   });
 
-  // Independent tests - can run in parallel
-  test.describe('Page Loading and Basic Display', () => {
-    test('should load groups page and display main elements', async () => {
-      await groupsPage.goto();
-      await groupsPage.verifyPageState();
-    });
+  test('should show validation errors for empty required fields', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, empty);
+    await groupsPage.openAddGroupDialog();
 
-    test('should show loading state initially', async () => {
-      await groupsPage.goto();
-      await groupsPage.waitForGroupsToLoad();
-    });
+    await groupsPage.groupNameInput.focus();
+    await groupsPage.groupNameInput.blur();
+    await groupsPage.displayNameInput.focus();
+    await groupsPage.displayNameInput.blur();
+
+    await expect(
+      groupsPage.dialogErrors.filter({ hasText: '*Required' })
+    ).toHaveCount(2);
+    await expect(groupsPage.page.getByTestId('group-name-error-0')).toHaveText(
+      '*Required'
+    );
+    await expect(
+      groupsPage.page.getByTestId('display-name-error-0')
+    ).toHaveText('*Required');
+    await expect(groupsPage.addGroupSaveButton).toBeDisabled();
+
+    await groupsPage.cancelAddGroup();
+    await expectNoGroups(groupsPage);
   });
 
-  // Form validation tests - independent, no data dependencies
-  test.describe('Form Validation', () => {
-    test('should validate required fields in create group form', async () => {
-      await groupsPage.goto();
-      await groupsPage.openAddGroupDialog();
+  test('should cancel create group dialog without saving', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, empty);
+    await groupsPage.openAddGroupDialog();
+    await groupsPage.fillAddGroupForm('Groups – Cancelled', 'Groups Empty');
 
-      // Try to submit without filling required fields
-      await groupsPage.verifySaveButtonDisabled('add');
+    await groupsPage.cancelAddGroup();
 
-      // Fill only group name, display name should still be required
-      await groupsPage.groupNameInput.fill('Test Group');
-      await groupsPage.verifySaveButtonDisabled('add');
-
-      // Fill display name, now should be valid
-      await groupsPage.displayNameInput.fill(testUser.displayName);
-      await expect(groupsPage.addGroupSaveButton).toBeEnabled();
-
-      await groupsPage.cancelAddGroup();
-    });
-
-    test('should show validation errors for empty required fields', async () => {
-      await groupsPage.goto();
-      await groupsPage.openAddGroupDialog();
-
-      // Focus on the group name field and then blur to trigger validation
-      await groupsPage.groupNameInput.focus();
-      await groupsPage.groupNameInput.blur();
-
-      // Focus on the display name field and then blur to trigger validation
-      await groupsPage.displayNameInput.focus();
-      await groupsPage.displayNameInput.blur();
-
-      // Now validation errors should be visible - we expect 2 "*Required" errors
-      // Note: mat-error is correct - Material form validation errors don't have MDC variant
-      await expect(
-        groupsPage.page.locator('mat-error').filter({ hasText: '*Required' })
-      ).toHaveCount(2);
-
-      // The save button should still be disabled
-      await expect(groupsPage.addGroupSaveButton).toBeDisabled();
-
-      await groupsPage.cancelAddGroup();
-    });
-
-    test('should cancel create group dialog', async () => {
-      await groupsPage.goto();
-      await groupsPage.openAddGroupDialog();
-
-      // Fill some data
-      await groupsPage.groupNameInput.fill('Test Group');
-      await groupsPage.displayNameInput.fill(testUser.displayName);
-
-      // Cancel dialog
-      await groupsPage.cancelAddGroup();
-
-      // The dialog should be closed and we should be back to the main page
-      await expect(groupsPage.addGroupDialog).toBeHidden();
-      await expect(groupsPage.groupSelect).toBeVisible();
-    });
-
-    test('should validate required fields in manage groups form', async () => {
-      await groupsPage.goto();
-      // Create a temporary group for this validation test
-      const groupName = `Validation Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName);
-
-      await groupsPage.openManageGroupsDialog();
-
-      // Clear the group name (should be required)
-      await groupsPage.manageGroupNameInput.clear();
-      await groupsPage.verifySaveButtonDisabled('manage');
-
-      // Fill it back
-      await groupsPage.manageGroupNameInput.fill('Valid Name');
-      await expect(groupsPage.manageGroupsSaveButton).toBeEnabled();
-
-      await groupsPage.cancelManageGroups();
-    });
-
-    test('should cancel manage groups dialog', async () => {
-      await groupsPage.goto();
-      // Create a temporary group for this validation test
-      const groupName = `Cancel Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName);
-
-      await groupsPage.openManageGroupsDialog();
-
-      // Make some changes
-      await groupsPage.manageGroupNameInput.fill('Changed Name');
-
-      // Cancel dialog
-      await groupsPage.cancelManageGroups();
-
-      // Changes should not be saved - no snackbar should appear
-      await expect(groupsPage.snackbar).not.toBeVisible();
-    });
+    await expect(groupsPage.addGroupDialog).toBeHidden();
+    await expect(groupsPage.snackbar).toHaveCount(0);
+    await expectNoGroups(groupsPage);
+    // Still nothing after a fresh load, so nothing was written.
+    await groupsPage.goto();
+    await expectNoGroups(groupsPage);
   });
 
-  // Main workflow - tests run in order and share data
-  test.describe.serial('Group Workflow', () => {
-    let firstGroupName: string;
-    let secondGroupName: string;
+  test('should start the groups tour from the help icon', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, empty);
 
-    test('should create first group', async () => {
-      await groupsPage.goto();
-      firstGroupName = `Test Group ${Date.now()}`;
-      await groupsPage.createGroup(firstGroupName, testUser.displayName);
-      // Verify the group appears in the dropdown
-      await groupsPage.verifyGroupInList(firstGroupName);
-    });
+    await groupsPage.openHelp();
+    await expect(groupsPage.tourTitle).toHaveText('Groups');
+    await expect(page.getByTestId('guided-tour-text')).toContainText(
+      'the tour shows two samples'
+    );
 
-    test('should create second group with auto-add members enabled', async () => {
-      await groupsPage.goto();
-      secondGroupName = `Auto-Add Group ${Date.now()}`;
-      await groupsPage.createGroup(secondGroupName, testUser.displayName, true);
-      await groupsPage.verifyGroupInList(secondGroupName);
-    });
+    await groupsPage.tourCloseButton.click();
+    await expect(groupsPage.tourTitle).toBeHidden();
+    // The tour's sample groups are gone again.
+    await expectNoGroups(groupsPage);
+  });
+});
 
-    test('should switch between groups', async () => {
-      await groupsPage.goto();
-      // Switch between the groups created in previous tests
-      await groupsPage.selectGroup(firstGroupName);
-      await groupsPage.selectGroup(secondGroupName);
-    });
+test.describe('Groups - creating groups', { tag: '@groups' }, () => {
+  test('should create a group and make it selectable', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, creator);
+    const groupName = uniqueGroupName('Created');
 
-    test('should open manage groups dialog when user has admin groups', async () => {
-      await groupsPage.goto();
-      // User is already admin from previous tests
-      await groupsPage.openManageGroupsDialog();
-    });
+    await groupsPage.openAddGroupDialog();
+    await groupsPage.fillAddGroupForm(groupName, 'Groups Creator');
+    await groupsPage.submitAddGroupForm();
+    // The snackbar only lasts 4 s, so check it before anything slower.
+    await expect(groupsPage.snackbarWith('Group added')).toBeVisible();
 
-    test('should edit group name', async () => {
-      await groupsPage.goto();
-
-      // Select the first group and edit its name
-      await groupsPage.selectGroup(firstGroupName);
-      const newName = `${firstGroupName} Updated`;
-      await groupsPage.editGroup(newName);
-
-      // Verify the group appears with new name
-      await groupsPage.verifyGroupInList(newName);
-      firstGroupName = newName; // Update for subsequent tests
-    });
-
-    test('should toggle group active status', async () => {
-      await groupsPage.goto();
-
-      // Use the first group (already selected from previous test)
-      await groupsPage.selectGroup(firstGroupName);
-
-      // Toggle the active status and verify it changes
-      const { wasToggled } = await groupsPage.toggleActiveStatus();
-
-      // Verify that the toggle actually worked (form detected a change)
-      expect(wasToggled).toBe(true);
-    });
-
-    test('should toggle auto-add members setting', async () => {
-      await groupsPage.goto();
-
-      // Use the second group (which was created with auto-add enabled)
-      await groupsPage.selectGroup(secondGroupName);
-
-      // Toggle the auto-add members setting and verify it changes
-      const { wasToggled } = await groupsPage.toggleAutoAddMembers();
-
-      // Verify that the toggle actually worked (form detected a change)
-      expect(wasToggled).toBe(true);
-    });
-
-    test('should open help dialog', async () => {
-      await groupsPage.goto();
-      await groupsPage.openHelp();
-
-      // Note: The actual help dialog testing would be done in a separate test file
-      // This just verifies the help button is clickable
-    });
+    await groupsPage.verifyGroupInList(groupName);
+    await groupsPage.selectGroup(groupName);
   });
 
-  // Complex integration scenarios - serial, building on workflow state
-  test.describe.serial('Integration Scenarios', () => {
-    test('should create multiple groups and manage them', async () => {
-      await groupsPage.goto();
-      // Create multiple groups
-      const group1 = `Multi Group 1 ${Date.now()}`;
-      const group2 = `Multi Group 2 ${Date.now()}`;
+  test('should create a group with auto-add members enabled', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, creator);
+    const groupName = uniqueGroupName('Auto-Add');
 
-      await groupsPage.createGroup(group1, testUser.displayName);
-      await groupsPage.createGroup(group2, testUser.displayName, true); // With auto-add
+    await groupsPage.createGroup(groupName, 'Groups Creator', true);
 
-      // Verify both groups exist
-      await groupsPage.verifyGroupInList(group1);
-      await groupsPage.verifyGroupInList(group2);
+    await groupsPage.openManageGroupsFor(groupName);
+    await expect(
+      groupsPage.switchOf(groupsPage.manageAutoAddToggle)
+    ).toBeChecked();
+    await expect(
+      groupsPage.switchOf(groupsPage.manageActiveToggle)
+    ).toBeChecked();
+    await groupsPage.cancelManageGroups();
+  });
 
-      // Select both groups to verify switching works
-      await groupsPage.selectGroup(group1);
-      await groupsPage.selectGroup(group2);
+  test('should create two groups and switch between them', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, creator);
+    const first = uniqueGroupName('Multi 1');
+    const second = uniqueGroupName('Multi 2');
 
-      // Edit one of the groups
-      await groupsPage.editGroup(`${group1} Updated`);
-      await groupsPage.verifyGroupInList(`${group1} Updated`);
-    });
+    await groupsPage.createGroup(first, 'Groups Creator');
+    await groupsPage.createGroup(second, 'Groups Creator', true);
 
-    test('should handle workflow from group creation to selection', async () => {
-      await groupsPage.goto();
+    await groupsPage.selectGroup(first);
+    await groupsPage.selectGroup(second);
+    await groupsPage.selectGroup(first);
+  });
 
-      // Create another group for this workflow test
-      const groupName = `Workflow Group ${Date.now()}`;
+  test('should create, select and rename a group', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, creator);
+    const groupName = uniqueGroupName('Workflow');
+    const renamed = `${groupName} Updated`;
 
-      // Create a group
-      await groupsPage.createGroup(groupName, testUser.displayName);
+    await groupsPage.createGroup(groupName, 'Groups Creator');
+    await groupsPage.selectGroup(groupName);
 
-      // Select the group
-      await groupsPage.selectGroup(groupName);
+    await groupsPage.openManageGroupsFor(groupName);
+    await groupsPage.manageGroupNameInput.fill(renamed);
+    await expect(groupsPage.manageGroupNameInput).toHaveValue(renamed);
+    await groupsPage.saveManageGroups();
 
-      // Edit the group
-      const updatedName = `${groupName} Updated`;
-      await groupsPage.editGroup(updatedName);
+    await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
+    await expect(groupsPage.groupSelect).toHaveText(renamed);
+    await groupsPage.verifyGroupInList(renamed);
+  });
+});
 
-      // Verify final state
-      await groupsPage.verifyGroupInList(updatedName);
-    });
+test.describe('Groups - managing groups', { tag: '@groups' }, () => {
+  test('should show the group select and Manage Groups for a group admin', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+
+    await expect(groupsPage.groupSelect).toBeVisible();
+    await expect(groupsPage.manageGroupsButton).toBeVisible();
+    await expect(groupsPage.newGroupButton).toBeVisible();
+    await expect(groupsPage.noGroupsPlaceholder).toHaveCount(0);
+    await groupsPage.verifyGroupInList(switchA.name);
+    await groupsPage.verifyGroupInList(switchB.name);
+  });
+
+  test('should switch between groups', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+
+    // selectGroup asserts the select then shows the chosen group. No reload
+    // check: every manager test's page load rewrites the user's default
+    // group, so the persisted value races the parallel tests.
+    await groupsPage.selectGroup(switchB.name);
+    await groupsPage.selectGroup(switchA.name);
+    await groupsPage.selectGroup(switchB.name);
+  });
+
+  test('should open manage groups dialog listing the admin groups', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+
+    await groupsPage.openManageGroupsDialog();
+    await groupsPage.manageGroupSelect.click();
+    await expect(groupsPage.option(switchA.name)).toBeVisible();
+    await expect(groupsPage.option(switchB.name)).toBeVisible();
+    await groupsPage.closeSelectPanel();
+    await groupsPage.cancelManageGroups();
+  });
+
+  test('should validate required fields in manage groups form', async ({
+    page,
+  }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+    await groupsPage.openManageGroupsFor(switchA.name);
+
+    // Nothing changed yet.
+    await expect(groupsPage.manageGroupsSaveButton).toBeDisabled();
+
+    await groupsPage.manageGroupNameInput.clear();
+    await groupsPage.manageGroupNameInput.blur();
+    await expect(
+      groupsPage.page.getByTestId('manage-group-name-error-0')
+    ).toHaveText('*Required');
+    await expect(groupsPage.manageGroupsSaveButton).toBeDisabled();
+
+    await groupsPage.manageGroupNameInput.fill('Groups – Valid Name');
+    await expect(groupsPage.manageGroupsSaveButton).toBeEnabled();
+
+    await groupsPage.cancelManageGroups();
+  });
+
+  test('should cancel manage groups dialog without saving', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+    await groupsPage.openManageGroupsFor(switchB.name);
+
+    await groupsPage.manageGroupNameInput.fill('Groups – Changed Name');
+    await expect(groupsPage.manageGroupsSaveButton).toBeEnabled();
+    await groupsPage.cancelManageGroups();
+
+    await expect(groupsPage.snackbar).toHaveCount(0);
+    // Reopening shows the stored name, not the cancelled edit.
+    await groupsPage.openManageGroupsFor(switchB.name);
+    await groupsPage.cancelManageGroups();
+    await groupsPage.verifyGroupInList(switchB.name);
+  });
+
+  test('should edit group name', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+    const newName = uniqueGroupName('Renamed');
+
+    await groupsPage.openManageGroupsFor(rename.name);
+    await groupsPage.manageGroupNameInput.fill(newName);
+    await expect(groupsPage.manageGroupNameInput).toHaveValue(newName);
+    await groupsPage.saveManageGroups();
+
+    await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
+    await groupsPage.verifyGroupInList(newName);
+    await groupsPage.verifyGroupNotInList(rename.name);
+  });
+
+  test('should toggle group active status', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+
+    await groupsPage.openManageGroupsFor(active.name);
+    await expect(groupsPage.switchOf(groupsPage.manageActiveToggle)).toBeChecked();
+    await groupsPage.setToggle(groupsPage.manageActiveToggle, false);
+    await groupsPage.saveManageGroups();
+
+    await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
+    // Inactive groups drop out of the page's group select...
+    await groupsPage.verifyGroupNotInList(active.name);
+    // ...but stay manageable, now inactive.
+    await groupsPage.openManageGroupsFor(active.name);
+    await expect(
+      groupsPage.switchOf(groupsPage.manageActiveToggle)
+    ).not.toBeChecked();
+    await groupsPage.cancelManageGroups();
+  });
+
+  test('should toggle auto-add members setting', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, manager);
+
+    await groupsPage.openManageGroupsFor(autoAdd.name);
+    await expect(
+      groupsPage.switchOf(groupsPage.manageAutoAddToggle)
+    ).not.toBeChecked();
+    await groupsPage.setToggle(groupsPage.manageAutoAddToggle, true);
+    await groupsPage.saveManageGroups();
+
+    await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
+    // Persisted: a fresh load shows it on.
+    await groupsPage.goto();
+    await groupsPage.openManageGroupsFor(autoAdd.name);
+    await expect(
+      groupsPage.switchOf(groupsPage.manageAutoAddToggle)
+    ).toBeChecked();
+    await groupsPage.cancelManageGroups();
   });
 });

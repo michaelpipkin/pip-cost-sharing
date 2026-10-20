@@ -31,6 +31,9 @@ export class MembersPage extends BasePage {
   readonly removeMemberButton: Locator;
   readonly editMemberCancelButton: Locator;
 
+  // Confirmation dialog (remove member / leave group)
+  readonly confirmDialogTitle: Locator;
+
   // Generic elements
   readonly formErrors: Locator;
   readonly snackbar: Locator;
@@ -67,6 +70,8 @@ export class MembersPage extends BasePage {
     this.removeMemberButton = page.getByTestId('remove-member-button');
     this.editMemberCancelButton = page.getByTestId('edit-member-cancel-button');
 
+    this.confirmDialogTitle = page.getByTestId('dialog-title');
+
     // Generic elements
     this.formErrors = page.locator('mat-error');
     this.snackbar = page.locator('app-custom-snackbar');
@@ -89,24 +94,50 @@ export class MembersPage extends BasePage {
     await this.memberSearchInput.fill(searchText);
     await this.memberSearchInput.blur();
     await expect(this.memberSearchInput).toHaveValue(searchText);
-    await this.page.waitForTimeout(500);
   }
 
   async clearSearch(): Promise<void> {
     await this.clearSearchButton.click();
-    await this.page.waitForTimeout(300);
+    await expect(this.memberSearchInput).toHaveValue('');
   }
 
   async toggleActiveOnly(): Promise<void> {
-    await this.activeOnlyToggle.click();
-    await this.page.waitForTimeout(500);
+    await this.flipToggle(this.activeOnlyToggle);
+  }
+
+  /** Clicks a mat-slide-toggle and waits for its switch to change state. */
+  private async flipToggle(toggle: Locator): Promise<void> {
+    const control = toggle.getByRole('switch');
+    const wasChecked = await control.isChecked();
+    await control.click();
+    await expect(control).toBeChecked({ checked: !wasChecked });
+  }
+
+  /**
+   * Sets a mat-slide-toggle to `checked` and waits for the state to take.
+   * Not setChecked(): it re-reads the state synchronously after clicking,
+   * before the app's (zoneless) change detection has updated aria-checked.
+   */
+  private async setToggle(toggle: Locator, checked: boolean): Promise<void> {
+    const control = toggle.getByRole('switch');
+    if ((await control.isChecked()) !== checked) {
+      await control.click();
+    }
+    await expect(control).toBeChecked({ checked });
   }
 
   // Add Member Dialog methods
+  /**
+   * MatDialog moves focus to its first field only after its open animation;
+   * filling before then can type into the wrong input (see
+   * GroupsPage.openAddGroupDialog). The focused name input is the ready
+   * signal.
+   */
   async openAddMemberDialog(): Promise<void> {
     await this.addMemberButton.click();
     await expect(this.addMemberDialog).toBeVisible();
     await expect(this.addMemberTitle).toHaveText('Add Member');
+    await expect(this.memberNameInput).toBeFocused();
     await this.waitForLoadingComplete();
   }
 
@@ -146,6 +177,8 @@ export class MembersPage extends BasePage {
     await memberRow.click();
     await expect(this.editMemberDialog).toBeVisible();
     await expect(this.editMemberTitle).toHaveText('Edit Member');
+    // Dialog ready (initial focus moved); see openAddMemberDialog.
+    await expect(this.editMemberNameInput).toBeFocused();
     await this.waitForLoadingComplete();
   }
 
@@ -163,19 +196,14 @@ export class MembersPage extends BasePage {
       await this.editMemberEmailInput.blur();
       await expect(this.editMemberEmailInput).toHaveValue(email);
     }
-
-    // Wait for form to update
-    await this.page.waitForTimeout(500);
   }
 
   async toggleMemberActive(): Promise<void> {
-    await this.editMemberActiveToggle.click();
-    await this.page.waitForTimeout(500);
+    await this.flipToggle(this.editMemberActiveToggle);
   }
 
   async toggleMemberAdmin(): Promise<void> {
-    await this.editMemberAdminToggle.click();
-    await this.page.waitForTimeout(500);
+    await this.flipToggle(this.editMemberAdminToggle);
   }
 
   async submitEditMemberForm(): Promise<void> {
@@ -189,16 +217,16 @@ export class MembersPage extends BasePage {
     await expect(this.editMemberDialog).toBeHidden();
   }
 
+  /** Clicks Remove; resolves once the confirmation dialog is showing. */
   async removeMember(): Promise<void> {
     await this.removeMemberButton.click();
-    // Wait for any confirmation dialogs or processing
-    await this.page.waitForTimeout(1000);
+    await expect(this.confirmDialogTitle).toBeVisible();
   }
 
+  /** Clicks Leave Group; resolves once the confirmation dialog is showing. */
   async leaveGroup(): Promise<void> {
     await this.leaveGroupButton.click();
-    // Wait for any confirmation dialogs or processing
-    await this.page.waitForTimeout(1000);
+    await expect(this.confirmDialogTitle).toBeVisible();
   }
 
   async editMember(
@@ -210,36 +238,22 @@ export class MembersPage extends BasePage {
       groupAdmin?: boolean;
     }
   ): Promise<void> {
+    // The edit form is populated from the member when the dialog is built.
     await this.clickMemberRow(memberId);
-
-    // Wait for form to populate
-    await this.page.waitForTimeout(1000);
 
     // Make changes
     if (options.name !== undefined || options.email !== undefined) {
       await this.fillEditMemberForm(options.name, options.email);
     }
 
+    // The checked state lives on the toggle's inner switch, not its host.
     if (options.active !== undefined) {
-      const isChecked =
-        (await this.editMemberActiveToggle.getAttribute('aria-checked')) ===
-        'true';
-      if (isChecked !== options.active) {
-        await this.toggleMemberActive();
-      }
+      await this.setToggle(this.editMemberActiveToggle, options.active);
     }
 
     if (options.groupAdmin !== undefined) {
-      const isChecked =
-        (await this.editMemberAdminToggle.getAttribute('aria-checked')) ===
-        'true';
-      if (isChecked !== options.groupAdmin) {
-        await this.toggleMemberAdmin();
-      }
+      await this.setToggle(this.editMemberAdminToggle, options.groupAdmin);
     }
-
-    // Wait for form state to update
-    await this.page.waitForTimeout(1000);
 
     // Save changes
     await expect(this.editMemberSaveButton).toBeEnabled();
@@ -248,18 +262,6 @@ export class MembersPage extends BasePage {
 
   // Verification methods
   async verifyMemberInTable(memberName: string): Promise<void> {
-    // Wait for any dialogs to be hidden
-    await this.page.waitForTimeout(1000);
-
-    // Try to dismiss any overlay/backdrop that might be present
-    const backdrop = this.page.locator('.cdk-overlay-backdrop');
-    const isBackdropVisible = await backdrop.isVisible().catch(() => false);
-    if (isBackdropVisible) {
-      await backdrop.click({ force: true });
-      await this.page.waitForTimeout(500);
-    }
-
-    // Verify member appears in the table
     const memberCell = this.membersTable
       .locator('td')
       .filter({ hasText: memberName });
@@ -284,25 +286,17 @@ export class MembersPage extends BasePage {
   }
 
   async verifyValidationErrors(expectedErrors: string[]): Promise<void> {
-    // Wait a moment for validation to trigger after blur
-    await this.page.waitForTimeout(500);
-
-    for (const error of expectedErrors) {
-      // Look for mat-error elements specifically
-      const errorLocator = this.page
-        .locator('mat-error')
-        .filter({ hasText: error });
-      await expect(errorLocator.first()).toBeVisible();
-
-      // Optionally verify the expected count if we want to be more specific
-      const count = await errorLocator.count();
-      expect(count).toBeGreaterThan(0);
-    }
+    await Promise.all(
+      expectedErrors.map((error) =>
+        expect(this.formErrors.filter({ hasText: error }).first()).toBeVisible()
+      )
+    );
   }
 
   // Other methods
+  /** Starts the Members guided tour from the help icon. */
   async openHelp(): Promise<void> {
     await this.helpButton.click();
-    await this.page.waitForTimeout(1000);
+    await expect(this.page.getByTestId('guided-tour-title')).toBeVisible();
   }
 }
