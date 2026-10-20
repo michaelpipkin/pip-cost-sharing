@@ -1,5 +1,6 @@
 import type { SeedDataset } from '../types';
 import { AUTH_DATASET } from './auth';
+import { EXPENSES_DATASET } from './expenses';
 import { GROUPS_DATASET } from './groups';
 import { SHARED_DATASET } from './shared';
 
@@ -8,4 +9,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   SHARED_DATASET,
   AUTH_DATASET,
   GROUPS_DATASET,
+  EXPENSES_DATASET,
 ];

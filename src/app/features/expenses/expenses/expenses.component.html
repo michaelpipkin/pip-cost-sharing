@@ -391,7 +391,7 @@
                 <td mat-cell *matCellDef="let expense" class="cell-center">
                   <!-- S7927 false positive: icon-only button, no visible text label — prettier-ignore keeps NOSONAR on the correct line -->
                   <!-- prettier-ignore -->
-                  <button mat-icon-button aria-label="expand row" (click)="onExpandClick(expense); $event.stopPropagation()"> <!-- //NOSONAR -->
+                  <button mat-icon-button aria-label="expand row" data-testid="expand-expense-button" (click)="onExpandClick(expense); $event.stopPropagation()"> <!-- //NOSONAR -->
                     @if (expandedExpense() === expense) {
                       <mat-icon aria-hidden="true">keyboard_arrow_up</mat-icon>
                     } @else {
@@ -412,6 +412,7 @@
                   @if (expense === expandedExpense()) {
                     <div
                       data-tour-anchor="expense-detail"
+                      data-testid="expense-detail"
                       class="detail-table-container"
                       animate.enter="detail-expand"
                       animate.leave="detail-collapse"
@@ -539,6 +540,7 @@
                             let split;
                             columns: splitColumnsToDisplay()
                           "
+                          data-testid="expense-split-row"
                         ></tr>
                       </table>
                     </div>
@@ -554,6 +556,7 @@
                 mat-row
                 *matRowDef="let expense; columns: columnsToDisplay()"
                 class="summary-row clickable-row expandable-row"
+                data-testid="expense-row"
                 [class.expanded-row]="expandedExpense() === expense"
                 tabindex="0"
                 (click)="onRowClick(expense)"

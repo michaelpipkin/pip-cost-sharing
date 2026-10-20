@@ -108,6 +108,7 @@
             [value]="expenseModel().category"
             (selectionChange)="expenseModel.update(m => ({...m, category: $event.value}))"
             docRefCompare
+            data-testid="category-select"
           >
             @for (category of activeCategories(); track category.ref) {
               <mat-option [value]="category.ref">
@@ -135,6 +136,7 @@
             appFormatCurrencyInput
             (blur)="updateTotalAmount()"
             inputmode="decimal"
+            data-testid="total-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
@@ -176,6 +178,7 @@
             appFormatCurrencyInput
             (blur)="allocateSharedAmounts()"
             inputmode="decimal"
+            data-testid="proportional-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
@@ -209,7 +212,7 @@
           [class.hidden]="splitMethod() !== 'amount'"
         >
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value-right">
+          <span class="mock-value-right" data-testid="shared-remainder-amount">
             {{ expenseModel().sharedAmount | currency }}
           </span>
         </div>
@@ -307,6 +310,7 @@
                   [value]="split.owedByMemberRef"
                   (selectionChange)="updateSplit(i, 'owedByMemberRef', $event.value); allocateSharedAmounts()"
                   docRefCompare
+                  data-testid="split-member-select"
                 >
                   @for (
                     member of availableMembersForSplit(i);
@@ -345,11 +349,13 @@
                     <mat-label>Percentage</mat-label>
                     @if (isLastSplit(i)) {
                       <input matInput appSelectOnFocus class="number-right"
-                             [value]="split.percentage ?? 0" readonly />
+                             [value]="split.percentage ?? 0" readonly
+                             data-testid="split-percentage-input" />
                     } @else {
                       <input matInput appSelectOnFocus class="number-right"
                              [value]="split.percentage ?? 0"
-                             (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()" />
+                             (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()"
+                             data-testid="split-percentage-input" />
                     }
                     <span matTextSuffix>%</span>
                   </mat-form-field>
@@ -369,6 +375,7 @@
                         [value]="split.shares ?? 0"
                         inputmode="decimal"
                         (blur)="updateSplit(i, 'shares', +$any($event.target).value || 0); allocateByShares()"
+                        data-testid="split-shares-input"
                       />
                       <span matTextSuffix class="no-wrap">
                         &nbsp;&nbsp;({{
@@ -392,6 +399,7 @@
                       appFormatCurrencyInput
                       (blur)="updateSplit(i, 'assignedAmount', $any($event.target).value); allocateSharedAmounts()"
                       inputmode="decimal"
+                      data-testid="split-assigned-amount-input"
                     />
                     @if (localeService.currency().symbolPosition === 'prefix') {
                       <span matTextPrefix>
