@@ -5,16 +5,17 @@ import { DefaultButtonDirective } from './default-button.directive';
 
 /**
  * A form whose Save button sits outside it (linked by the form attribute), the
- * way the expense pages lay theirs out. The amount field re-allocates on blur
+ * way the expense pages lay theirs out. The last field re-allocates on blur
  * and Save stays disabled until it has, so a test can tell whether Enter ran
- * the blur-time work before saving. Between the amount and the category
- * dropdown sit things Enter's move to the next field must skip.
+ * the blur-time work before moving to Save. Between the amount and the
+ * category dropdown sit things Enter must skip. The dropdown opens itself on
+ * Enter (as mat-select does) unless the directive stops it.
  */
 @Component({
   imports: [DefaultButtonDirective],
   template: `
     <form id="test-form" (submit)="$event.preventDefault()">
-      <input id="amount" type="text" (blur)="allocate()" />
+      <input id="amount" type="text" />
       <input id="agree" type="checkbox" />
       <button
         id="calculator"
@@ -27,13 +28,14 @@ import { DefaultButtonDirective } from './default-button.directive';
       <input id="read-only" type="text" readonly />
       <input id="untabbable" type="text" tabindex="-1" />
       <div hidden><input id="hidden" type="text" /></div>
-      <div id="category" role="combobox" tabindex="0"></div>
+      <div
+        id="category"
+        role="combobox"
+        tabindex="0"
+        (keydown.enter)="dropdownOpens = dropdownOpens + 1"
+      ></div>
       <textarea id="notes"></textarea>
-      <input id="search" type="text" enterkeyhint="search" />
-      @if (showAddedField()) {
-        <input id="added" type="text" />
-      }
-      <input id="last" type="text" />
+      <input id="last" type="text" (blur)="allocate()" />
     </form>
     <button
       id="save"
@@ -41,7 +43,7 @@ import { DefaultButtonDirective } from './default-button.directive';
       form="test-form"
       defaultButton
       [disabled]="!allocated()"
-      (click)="saves.push(allocated())"
+      (click)="saves = saves + 1"
     >
       Save
     </button>
@@ -49,10 +51,10 @@ import { DefaultButtonDirective } from './default-button.directive';
 })
 class HostComponent {
   readonly allocated = signal(false);
-  readonly showAddedField = signal(false);
   allocationBlocked = false;
-  saves: boolean[] = [];
+  saves = 0;
   calculatorClicks = 0;
+  dropdownOpens = 0;
 
   allocate(): void {
     if (!this.allocationBlocked) this.allocated.set(true);
@@ -98,58 +100,66 @@ describe('DefaultButtonDirective', () => {
     return event;
   }
 
-  it('saves on Enter in a text field, after the blur-time work has run', () => {
+  /** A form that could be saved right now. */
+  function makeSaveable(): void {
+    host.allocated.set(true);
+    fixture.detectChanges();
+  }
+
+  it('moves to the next field like Tab, and never saves from a field, even when the form could be saved', () => {
+    makeSaveable();
+
     const event = pressEnter(field('amount'));
 
-    expect(host.saves).toEqual([true]);
+    expect(host.saves).toBe(0);
     expect(event.defaultPrevented).toBe(true);
-  });
-
-  it('moves to the next field you can type in or choose from when Save is still disabled, like Tab', () => {
-    host.allocationBlocked = true;
-
-    pressEnter(field('amount'));
-
-    expect(host.saves).toEqual([]);
     // Past the checkbox, the button and the disabled, read-only, untabbable
     // and hidden fields, to the dropdown.
     expect(document.activeElement).toBe(field('category'));
   });
 
-  it('moves on to a text area too', () => {
-    host.allocationBlocked = true;
-    field('category').setAttribute('aria-disabled', 'true');
+  it('moves on from a closed dropdown instead of opening it', () => {
+    pressEnter(field('category'));
 
-    pressEnter(field('amount'));
-
+    expect(host.dropdownOpens).toBe(0);
     expect(document.activeElement).toBe(field('notes'));
   });
 
-  it('stays in the last field when there is no next one', () => {
+  it('leaves Enter to an open dropdown, which uses it to pick an option', () => {
+    field('category').setAttribute('aria-expanded', 'true');
+
+    pressEnter(field('category'));
+
+    expect(host.dropdownOpens).toBe(1);
+    expect(document.activeElement).toBe(field('category'));
+  });
+
+  it('moves from the last field to Save once its blur-time work has enabled Save', () => {
     pressEnter(field('last'));
 
-    expect(host.saves).toEqual([]);
+    expect(document.activeElement).toBe(field('save'));
+    expect(host.saves).toBe(0);
+  });
+
+  it('stays in the last field when Save is still disabled after it', () => {
+    host.allocationBlocked = true;
+
+    pressEnter(field('last'));
+
     expect(document.activeElement).toBe(field('last'));
+    expect(host.saves).toBe(0);
   });
 
   it('leaves Enter alone in a textarea (new line)', () => {
-    host.allocated.set(true);
-    fixture.detectChanges();
-
     const event = pressEnter(field('notes'));
 
-    expect(host.saves).toEqual([]);
     expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(field('notes'));
   });
 
-  it('leaves Enter alone on other buttons and toggles in the form', () => {
-    host.allocated.set(true);
-    fixture.detectChanges();
-
-    pressEnter(field('calculator'));
-    pressEnter(field('agree'));
-
-    expect(host.saves).toEqual([]);
+  it('leaves Enter alone on buttons and toggles in the form', () => {
+    expect(pressEnter(field('calculator')).defaultPrevented).toBe(false);
+    expect(pressEnter(field('agree')).defaultPrevented).toBe(false);
   });
 
   it.each([
@@ -159,58 +169,26 @@ describe('DefaultButtonDirective', () => {
     ['Cmd', { metaKey: true }],
     ['an IME composition', { isComposing: true }],
   ])('leaves Enter alone with %s', (_label, init) => {
-    host.allocated.set(true);
-    fixture.detectChanges();
+    const event = pressEnter(field('amount'), init);
 
-    pressEnter(field('amount'), init);
-
-    expect(host.saves).toEqual([]);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(field('amount'));
   });
 
-  it('leaves Enter alone when the field shows an open popup (e.g. autocomplete)', () => {
-    host.allocated.set(true);
-    fixture.detectChanges();
+  it('leaves Enter alone when a text field shows an open popup (e.g. autocomplete)', () => {
     field('amount').setAttribute('aria-expanded', 'true');
 
-    pressEnter(field('amount'));
+    const event = pressEnter(field('amount'));
 
-    expect(host.saves).toEqual([]);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(field('amount'));
   });
 
   it('ignores other keys', () => {
-    host.allocated.set(true);
-    fixture.detectChanges();
+    const event = pressEnter(field('amount'), { key: 'a' });
 
-    pressEnter(field('amount'), { key: 'a' });
-
-    expect(host.saves).toEqual([]);
-  });
-
-  // Android's keyboard shows a "next field" key (->|) on form fields, which
-  // moves focus without sending Enter. enterkeyhint="go" swaps it for a Go
-  // key, which does send Enter, so the directive handles it as on desktop.
-  describe('on-screen keyboard Enter key', () => {
-    const hint = (id: string) => field(id).getAttribute('enterkeyhint');
-
-    it("asks for a Go key on the form's single-line text fields", () => {
-      expect(hint('amount')).toBe('go');
-      expect(hint('last')).toBe('go');
-    });
-
-    it('leaves text areas, toggles and an explicit hint alone', () => {
-      expect(hint('notes')).toBeNull();
-      expect(hint('agree')).toBeNull();
-      expect(hint('search')).toBe('search');
-    });
-
-    it('also covers a field added later (e.g. a new split row), once it gets focus', () => {
-      host.showAddedField.set(true);
-      fixture.detectChanges();
-
-      field('added').focus();
-
-      expect(hint('added')).toBe('go');
-    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(field('amount'));
   });
 
   it('stops listening once destroyed', () => {
@@ -219,7 +197,10 @@ describe('DefaultButtonDirective', () => {
 
     fixture.destroy();
 
-    expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('focusin', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith(
+      'keydown',
+      expect.any(Function),
+      true
+    );
   });
 });

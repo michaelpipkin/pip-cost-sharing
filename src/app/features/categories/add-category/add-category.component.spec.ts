@@ -13,7 +13,7 @@ import {
 } from '@testing/test-helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AddCategoryComponent } from './add-category.component';
-import { expectEnterToSave } from '@testing/default-button';
+import { expectEnterEndsOnSave } from '@testing/default-button';
 
 describe('AddCategoryComponent', () => {
   let fixture: ComponentFixture<AddCategoryComponent>;
@@ -83,7 +83,7 @@ describe('AddCategoryComponent', () => {
     });
   });
 
-  it("should save on Enter (Save is the form's default button)", () => {
-    expectEnterToSave(fixture);
+  it("should end the form's Enter order on Save", () => {
+    expectEnterEndsOnSave(fixture);
   });
 });

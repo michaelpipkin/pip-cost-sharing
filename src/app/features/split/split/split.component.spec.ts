@@ -20,7 +20,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SplitComponent } from './split.component';
-import { expectEnterToSave } from '@testing/default-button';
+import { expectEnterEndsOnSave } from '@testing/default-button';
 
 describe('SplitComponent', () => {
   let fixture: ComponentFixture<SplitComponent>;
@@ -828,7 +828,7 @@ describe('SplitComponent', () => {
     });
   });
 
-  it("should save on Enter (Save is the form's default button)", () => {
-    expectEnterToSave(fixture);
+  it("should end the form's Enter order on Save", () => {
+    expectEnterEndsOnSave(fixture);
   });
 });

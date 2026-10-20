@@ -45,7 +45,7 @@ import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddExpenseComponent } from './add-expense.component';
-import { expectEnterToSave } from '@testing/default-button';
+import { expectEnterEndsOnSave } from '@testing/default-button';
 
 describe('AddExpenseComponent', () => {
   let fixture: ComponentFixture<AddExpenseComponent>;
@@ -800,7 +800,7 @@ describe('AddExpenseComponent', () => {
     });
   });
 
-  it("should save on Enter (Save is the form's default button)", () => {
-    expectEnterToSave(fixture);
+  it("should end the form's Enter order on Save", () => {
+    expectEnterEndsOnSave(fixture);
   });
 });
