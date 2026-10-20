@@ -5,12 +5,26 @@ import { GROUPS } from '../seed/datasets/groups';
 import type { SeedUser } from '../seed/types';
 import { signInAs } from '../utils/session';
 
-// Data: e2e/seed/datasets/groups.ts. groups-empty is read-only (no test may
-// create a group as them); groups-creator creates groups with unique names
-// and asserts only on its own; groups-manager owns one group per mutating
-// test plus the read-only "Groups – Switch A/B". Every test signs in itself.
-const { empty, creator, manager } = GROUPS.users;
-const { rename, active, autoAdd, switchA, switchB } = GROUPS.groups;
+// Data: e2e/seed/datasets/groups.ts. Every test that mutates data or selects
+// a group signs in as its own user, because each page load rewrites the
+// user's default group and would undo a parallel tab's selection. Read-only
+// tests share groups-empty (no groups; no test may create one as them) or
+// groups-viewer ("Groups – View A/B"). Created groups get unique names.
+// Every test signs in itself.
+const {
+  empty,
+  firstCreator,
+  autoAddCreator,
+  multiCreator,
+  workflowCreator,
+  viewer,
+  switcher,
+  renamer,
+  activator,
+  autoAdder,
+} = GROUPS.users;
+const { viewA, viewB, switchA, switchB, rename, active, autoAdd } =
+  GROUPS.groups;
 
 function uniqueGroupName(label: string): string {
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -124,7 +138,7 @@ test.describe('Groups - no groups yet', { tag: '@groups' }, () => {
 
 test.describe('Groups - creating groups', { tag: '@groups' }, () => {
   test('should create a group and make it selectable', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, creator);
+    const groupsPage = await openGroupsAs(page, firstCreator);
     const groupName = uniqueGroupName('Created');
 
     await groupsPage.openAddGroupDialog();
@@ -140,7 +154,7 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
   test('should create a group with auto-add members enabled', async ({
     page,
   }) => {
-    const groupsPage = await openGroupsAs(page, creator);
+    const groupsPage = await openGroupsAs(page, autoAddCreator);
     const groupName = uniqueGroupName('Auto-Add');
 
     await groupsPage.createGroup(groupName, 'Groups Creator', true);
@@ -156,7 +170,7 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
   });
 
   test('should create two groups and switch between them', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, creator);
+    const groupsPage = await openGroupsAs(page, multiCreator);
     const first = uniqueGroupName('Multi 1');
     const second = uniqueGroupName('Multi 2');
 
@@ -169,7 +183,7 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
   });
 
   test('should create, select and rename a group', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, creator);
+    const groupsPage = await openGroupsAs(page, workflowCreator);
     const groupName = uniqueGroupName('Workflow');
     const renamed = `${groupName} Updated`;
 
@@ -191,36 +205,41 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   test('should show the group select and Manage Groups for a group admin', async ({
     page,
   }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, viewer);
 
     await expect(groupsPage.groupSelect).toBeVisible();
     await expect(groupsPage.manageGroupsButton).toBeVisible();
     await expect(groupsPage.newGroupButton).toBeVisible();
     await expect(groupsPage.noGroupsPlaceholder).toHaveCount(0);
-    await groupsPage.verifyGroupInList(switchA.name);
-    await groupsPage.verifyGroupInList(switchB.name);
+    await groupsPage.verifyGroupInList(viewA.name);
+    await groupsPage.verifyGroupInList(viewB.name);
   });
 
   test('should switch between groups', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, switcher);
 
-    // selectGroup asserts the select then shows the chosen group. No reload
-    // check: every manager test's page load rewrites the user's default
-    // group, so the persisted value races the parallel tests.
+    // Seeded default is Switch A; selectGroup asserts the select then shows
+    // the chosen group.
+    await expect(groupsPage.groupSelect).toHaveText(switchA.name);
     await groupsPage.selectGroup(switchB.name);
     await groupsPage.selectGroup(switchA.name);
     await groupsPage.selectGroup(switchB.name);
+
+    // The last selection is remembered as the default across a reload (safe
+    // here: no other test signs in as groups-switcher).
+    await groupsPage.goto();
+    await expect(groupsPage.groupSelect).toHaveText(switchB.name);
   });
 
   test('should open manage groups dialog listing the admin groups', async ({
     page,
   }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, viewer);
 
     await groupsPage.openManageGroupsDialog();
     await groupsPage.manageGroupSelect.click();
-    await expect(groupsPage.option(switchA.name)).toBeVisible();
-    await expect(groupsPage.option(switchB.name)).toBeVisible();
+    await expect(groupsPage.option(viewA.name)).toBeVisible();
+    await expect(groupsPage.option(viewB.name)).toBeVisible();
     await groupsPage.closeSelectPanel();
     await groupsPage.cancelManageGroups();
   });
@@ -228,8 +247,8 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   test('should validate required fields in manage groups form', async ({
     page,
   }) => {
-    const groupsPage = await openGroupsAs(page, manager);
-    await groupsPage.openManageGroupsFor(switchA.name);
+    const groupsPage = await openGroupsAs(page, viewer);
+    await groupsPage.openManageGroupsFor(viewA.name);
 
     // Nothing changed yet.
     await expect(groupsPage.manageGroupsSaveButton).toBeDisabled();
@@ -248,8 +267,8 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   });
 
   test('should cancel manage groups dialog without saving', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, manager);
-    await groupsPage.openManageGroupsFor(switchB.name);
+    const groupsPage = await openGroupsAs(page, viewer);
+    await groupsPage.openManageGroupsFor(viewB.name);
 
     await groupsPage.manageGroupNameInput.fill('Groups – Changed Name');
     await expect(groupsPage.manageGroupsSaveButton).toBeEnabled();
@@ -257,13 +276,13 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
 
     await expect(groupsPage.snackbar).toHaveCount(0);
     // Reopening shows the stored name, not the cancelled edit.
-    await groupsPage.openManageGroupsFor(switchB.name);
+    await groupsPage.openManageGroupsFor(viewB.name);
     await groupsPage.cancelManageGroups();
-    await groupsPage.verifyGroupInList(switchB.name);
+    await groupsPage.verifyGroupInList(viewB.name);
   });
 
   test('should edit group name', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, renamer);
     const newName = uniqueGroupName('Renamed');
 
     await groupsPage.openManageGroupsFor(rename.name);
@@ -277,7 +296,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   });
 
   test('should toggle group active status', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, activator);
 
     await groupsPage.openManageGroupsFor(active.name);
     await expect(groupsPage.switchOf(groupsPage.manageActiveToggle)).toBeChecked();
@@ -296,7 +315,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   });
 
   test('should toggle auto-add members setting', async ({ page }) => {
-    const groupsPage = await openGroupsAs(page, manager);
+    const groupsPage = await openGroupsAs(page, autoAdder);
 
     await groupsPage.openManageGroupsFor(autoAdd.name);
     await expect(

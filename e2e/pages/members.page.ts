@@ -3,6 +3,7 @@ import { BasePage } from './base.page';
 
 export class MembersPage extends BasePage {
   // Main page elements using test IDs
+  readonly mainContainer: Locator;
   readonly pageTitle: Locator;
   readonly memberSearchInput: Locator;
   readonly clearSearchButton: Locator;
@@ -44,6 +45,7 @@ export class MembersPage extends BasePage {
     super(page);
 
     // Main page elements using test IDs
+    this.mainContainer = page.getByTestId('members-main-container');
     this.pageTitle = page.getByTestId('members-page-title');
     this.memberSearchInput = page.getByTestId('member-search-input');
     this.clearSearchButton = page.getByTestId('clear-member-search-button');
@@ -80,8 +82,17 @@ export class MembersPage extends BasePage {
     this.snackbar = page.locator('app-custom-snackbar');
   }
 
+  /**
+   * Opens Members and waits for real content: the main container replaces
+   * the "Loading members..." placeholder once the member store has loaded
+   * (the same condition that drives the page's loading overlay), then the
+   * overlay is gone. Waiting on the overlay alone could return before the
+   * page had even turned it on.
+   */
   async goto(): Promise<void> {
     await this.page.goto('/administration/members');
+    await expect(this.mainContainer).toBeVisible();
+    await expect(this.pageTitle).toHaveText('Members');
     await this.waitForLoadingComplete();
   }
 
