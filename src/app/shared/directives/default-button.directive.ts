@@ -47,6 +47,11 @@ const NEXT_FIELD_SELECTOR = 'input, textarea, select, [role="combobox"]';
  * Enter is left alone in text areas (new line), on buttons, selects and
  * toggles, with a modifier key held, during IME composition, and while the
  * field has an open popup such as an autocomplete list.
+ *
+ * On-screen keyboards: Android shows a "next field" key (->|) on form fields,
+ * which moves focus itself and never sends Enter. So the form's single-line
+ * fields get enterkeyhint="go" (unless they set their own), which swaps it for
+ * a Go key that does send Enter - handled as above.
  */
 @Directive({
   selector: 'button[defaultButton]',
@@ -64,11 +69,29 @@ export class DefaultButtonDirective {
       const form = this.#button.form;
       if (!form) return;
       const onKeydown = (event: KeyboardEvent) => this.#onKeydown(event, form);
+      // Fields added later (e.g. a new split row) get their hint on focus,
+      // which is when the keyboard reads it.
+      const onFocusin = (event: FocusEvent) => this.#askForGoKey(event.target);
+      form
+        .querySelectorAll('input')
+        .forEach((field) => this.#askForGoKey(field));
       form.addEventListener('keydown', onKeydown);
-      destroyRef.onDestroy(() =>
-        form.removeEventListener('keydown', onKeydown)
-      );
+      form.addEventListener('focusin', onFocusin);
+      destroyRef.onDestroy(() => {
+        form.removeEventListener('keydown', onKeydown);
+        form.removeEventListener('focusin', onFocusin);
+      });
     });
+  }
+
+  #askForGoKey(field: EventTarget | null): void {
+    if (
+      field instanceof HTMLInputElement &&
+      ENTER_SUBMITS_INPUT_TYPES.has(field.type) &&
+      !field.hasAttribute('enterkeyhint')
+    ) {
+      field.setAttribute('enterkeyhint', 'go');
+    }
   }
 
   #onKeydown(event: KeyboardEvent, form: HTMLFormElement): void {
