@@ -34,7 +34,7 @@ import { Member } from '@models/member';
 import { Memorized, SerializableMemorized } from '@models/memorized';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { SplitService } from '@services/split.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -57,7 +57,7 @@ import { buildMemorizedTourSteps } from './memorized.tour';
     MatTableModule,
     MatInputModule,
     MatCardModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     RouterLink,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

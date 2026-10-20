@@ -29,7 +29,7 @@
 
 <div class="box">
   <p><strong>Status: resolved by Plan 2</strong> (<code>docs/superpowers/plans/2026-10-19-e2e-repair.html</code>, branch <code>e2e-repair</code>, 2026-10-20). Every spec below was migrated onto seeded data, <code>describe.serial</code> and fixed sleeps are gone, and <code>pnpm e2e</code> passed three consecutive full runs at 2 workers and one at 4 workers (94 tests each: 93 passed, 1 expected failure pinning an app bug, 0 unexpected, 0 flaky). Commits: <code>7c192ffc</code> seed hardening, <code>7265a8d5</code> tooling, <code>63b82d6c</code> + <code>d04bc9f6</code> auth/smoke and dev-server warm-up, <code>6806c630</code> + <code>23deecee</code> + <code>8fb2d822</code> groups admin, <code>0cd1989e</code> + <code>8cb7781a</code> expenses and the redirect-race pin, <code>6df3ea27</code> summary/history, <code>dd1d64a6</code> payment flow and legacy helper removal, <code>000d7ae9</code> in-app Groups/Members navigation and the 15 s expect timeout, and the close-out commit "Close out e2e repair: docs and verification".</p>
-  <p><strong>Two owner decisions are pending.</strong> (a) Accept the 2-worker default as the definition of done: the Plan 2 spec (section 7) asked for 4 workers, but 4 concurrent first page loads time out on the ng dev server on this machine; three of the four verification runs were at 2 workers and one at 4. (b) Explicitly defer or fix the pinned history-detail <code>CurrencyPipe</code> bug (see the App bugs table below): the spec (section 6b) counts its expected failure as green only once the owner defers it.</p>
+  <p><strong>Owner decisions (2026-10-20).</strong> (a) <strong>Accepted:</strong> 2 workers is the definition of done. The Plan 2 spec (section 7) asked for 4, but 4 concurrent first page loads time out on the ng dev server on this machine; three of the four verification runs were at 2 workers and one at 4. (b) <strong>Fixed:</strong> the history-detail <code>CurrencyPipe</code> bug, on branch <code>group-currency-pipe</code>. The app pipe was renamed to <code>GroupCurrencyPipe</code> / <code>| groupCurrency</code>, so a template can no longer silently get Angular's pipe, and <code>eslint.config.mjs</code> now rejects importing <code>CurrencyPipe</code> from <code>@angular/common</code>. The expected failure is gone; the suite has no pinned e2e failures.</p>
   <p>The rest of this file is the historical baseline, kept as it was written. Watch-list item <code>groups-admin.spec.ts:157</code> turned out to be a test-side race (filling before MatDialog moved focus to its first field), not an app bug. The baseline found no app bugs; Plan 2 found the ones listed in the next section.</p>
 </div>
 
@@ -46,12 +46,12 @@
   <tr>
     <td><strong>History detail money format.</strong> The payment detail page shows "$25.00" where History, Summary and the copied text show "$ 25.00"; a non-USD group would get Angular's default USD symbol.</td>
     <td><code>history-detail.component.ts:1</code> imports <code>CurrencyPipe</code> from <code>@angular/common</code> instead of <code>@shared/pipes/currency.pipe</code>. Every full run in Task 8: <code>getByTestId('payment-total')</code> expected <code>"Amount: $ 25.00"</code>, received <code>"Amount: $25.00"</code>.</td>
-    <td><code>test.fail()</code> in <code>e2e/critical-flows/history.spec.ts</code>, "should format payment detail amounts in the group currency".</td>
+    <td><strong>Fixed</strong> (branch <code>group-currency-pipe</code>). Now asserted for real by "should display payment history and its detail" in <code>e2e/critical-flows/history.spec.ts</code>, plus a unit test in <code>history-detail.component.spec.ts</code>.</td>
   </tr>
   <tr>
-    <td><strong>Same pipe, unchecked:</strong> <code>rental-grid.component.ts:1</code> and <code>rental-edit-dialog.component.ts:1</code> also import Angular's <code>CurrencyPipe</code> (templates use <code>| currency</code>). Likely the same inconsistency.</td>
-    <td>Import lines only; no e2e coverage of the rental screens yet.</td>
-    <td>Not pinned.</td>
+    <td><strong>Same pipe in rental:</strong> <code>rental-grid.component.ts:1</code> and <code>rental-edit-dialog.component.ts:1</code> also imported Angular's <code>CurrencyPipe</code> (templates use <code>| currency</code>).</td>
+    <td>Import lines; no e2e coverage of the rental screens yet.</td>
+    <td><strong>Fixed</strong> with the history detail. Checked by <code>rental-edit-dialog.component.spec.ts</code> (a euro group's total and grid amounts).</td>
   </tr>
   <tr>
     <td><strong>Unconditional <code>defaultGroupRef</code> write.</strong> Every app load and every groups snapshot rewrites <code>users/{uid}.defaultGroupRef</code>, even when it is unchanged, and each write also fires the <code>syncUserEmailLower</code> trigger (<code>onDocumentWritten('users/{userId}')</code>).</td>

@@ -23,7 +23,7 @@ import { Member } from '@models/member';
 import { LocaleService } from '@services/locale.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { SortingService } from '@services/sorting.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
@@ -62,7 +62,7 @@ import { buildHistoryTourSteps } from './history.tour';
     MatInputModule,
     MatDatepickerModule,
     MatCardModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DatePipe,
     DocRefCompareDirective,
   ],

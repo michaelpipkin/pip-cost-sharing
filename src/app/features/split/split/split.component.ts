@@ -47,7 +47,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { LocaleService } from '@services/locale.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { RentalUtilsService } from '@utils/rental-utils.service';
@@ -72,7 +72,7 @@ import { buildSplitTourSteps } from './split.tour';
     MatInputModule,
     MatTooltipModule,
     MatIconModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,

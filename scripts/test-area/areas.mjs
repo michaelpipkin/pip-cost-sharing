@@ -30,10 +30,11 @@ const UTILITIES = 'app/utilities';
 // ---------------------------------------------------------------------------
 
 // Currency/number formatting. The currency-config spec covers the model that
-// locale.service builds on.
+// locale.service builds on; the groupCurrency pipe is how templates use it.
 const LOCALE = [
   `${SERVICES}/locale.service.spec.ts`,
   'app/models/currency-config.spec.ts',
+  `${PIPES}/group-currency.pipe.spec.ts`,
 ];
 const GUIDED_TOUR = [`${SERVICES}/guided-tour.service.spec.ts`];
 const SORTING = [`${SERVICES}/sorting.service.spec.ts`];

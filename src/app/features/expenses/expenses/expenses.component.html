@@ -311,7 +311,7 @@
                   *matCellDef="let expense"
                   class="cell-right amount-cell"
                 >
-                  {{ expense.totalAmount | currency }}
+                  {{ expense.totalAmount | groupCurrency }}
                 </td>
                 <td
                   mat-footer-cell
@@ -319,7 +319,7 @@
                   class="cell-right"
                   [colSpan]="this.smallScreen() ? 3 : 5"
                 >
-                  Total:&nbsp;&nbsp;{{ expenseTotal() | currency }}
+                  Total:&nbsp;&nbsp;{{ expenseTotal() | groupCurrency }}
                 </td>
               </ng-container>
               <ng-container matColumnDef="receipt">
@@ -459,7 +459,7 @@
                             *matCellDef="let split"
                             class="cell-right"
                           >
-                            {{ split.allocatedAmount | currency }}
+                            {{ split.allocatedAmount | groupCurrency }}
                           </td>
                         </ng-container>
                         <ng-container matColumnDef="paid">

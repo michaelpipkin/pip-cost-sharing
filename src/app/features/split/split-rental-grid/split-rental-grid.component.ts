@@ -15,7 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RentalDetails } from '@models/expense';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import {
   AllocationSplit,
   AllocationUtilsService,
@@ -48,7 +48,7 @@ export interface SplitRentalRow {
     MatButtonModule,
     MatIconModule,
     MatCheckboxModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

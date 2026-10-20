@@ -113,7 +113,7 @@
                   {{ shareFor(row.name) | number: '1.2-2' }}
                 </td>
                 <td class="cell-right" data-testid="participant-amount">
-                  {{ amountFor(row.name) | currency }}
+                  {{ amountFor(row.name) | groupCurrency }}
                 </td>
                 <td class="cell-center">
                   <button
@@ -136,7 +136,7 @@
                 {{ totalShares() | number: '1.2-2' }}
               </td>
               <td class="cell-right no-wrap" data-testid="total-amount">
-                {{ totalPreviewAmount() | currency }}
+                {{ totalPreviewAmount() | groupCurrency }}
               </td>
               <td></td>
             </tr>

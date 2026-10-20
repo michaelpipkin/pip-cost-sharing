@@ -85,24 +85,6 @@ test.describe('Critical Flow: History', { tag: '@history' }, () => {
     await historyPage.openDetail(0);
     await historyPage.expectDetail(BOB_TO_ALICE);
     await historyPage.expectPaidSplits([SNACK_RUN_SPLIT]);
-  });
-
-  // APP BUG: history-detail.component imports CurrencyPipe from
-  // @angular/common instead of the app's @shared/pipes/currency.pipe, so the
-  // payment detail page formats money as Angular's default USD ("$25.00")
-  // instead of the group's currency format that History, Summary and the
-  // copied text use ("$ 25.00"). In a non-USD group it shows the wrong
-  // currency symbol. Remove test.fail() once the detail page uses the app
-  // pipe.
-  test('should format payment detail amounts in the group currency', async ({
-    page,
-  }) => {
-    test.fail();
-    const historyPage = await openHistory(page);
-    await historyPage.expectPayments([BOB_TO_ALICE]);
-
-    await historyPage.openDetail(0);
-    await historyPage.expectPaidSplits([SNACK_RUN_SPLIT]);
     await historyPage.expectDetailAmounts(BOB_TO_ALICE.amount, [25]);
   });
 

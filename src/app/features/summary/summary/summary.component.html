@@ -212,7 +212,7 @@
                     class="cell-right amount-cell"
                     data-testid="summary-amount"
                   >
-                    {{ amountDue.amount | currency }}
+                    {{ amountDue.amount | groupCurrency }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="actions">
@@ -337,7 +337,7 @@
                               class="cell-right amount-cell"
                               data-testid="summary-detail-amount"
                             >
-                              {{ lineItem.amount | currency }}
+                              {{ lineItem.amount | groupCurrency }}
                             </td>
                           </ng-container>
                           <tr
@@ -448,7 +448,7 @@
                     *matCellDef="let transfer"
                     class="cell-right amount-cell"
                   >
-                    {{ transfer.amount | currency }}
+                    {{ transfer.amount | groupCurrency }}
                   </td>
                 </ng-container>
                 <tr

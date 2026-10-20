@@ -5,11 +5,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { AmountDue } from '@models/amount-due';
 import { AnalyticsService } from '@services/analytics.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 
 @Component({
   selector: 'app-settle-group-dialog',
-  imports: [MatDialogModule, MatButtonModule, CurrencyPipe],
+  imports: [MatDialogModule, MatButtonModule, GroupCurrencyPipe],
   templateUrl: './settle-group-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

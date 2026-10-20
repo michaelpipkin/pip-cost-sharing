@@ -213,7 +213,7 @@
         >
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right" data-testid="shared-remainder-amount">
-            {{ expenseModel().sharedAmount | currency }}
+            {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
       </div>
@@ -434,7 +434,7 @@
                   aria-label="Allocated amount"
                   data-testid="allocated-amount"
                 >
-                  {{ split.allocatedAmount | currency }}
+                  {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
             </div>

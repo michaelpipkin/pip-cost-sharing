@@ -21,6 +21,19 @@ export default [
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-deprecated': 'warn',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@angular/common',
+              importNames: ['CurrencyPipe'],
+              message:
+                "Angular's CurrencyPipe defaults to USD and ignores the group's currency. Use GroupCurrencyPipe (@shared/pipes/group-currency.pipe) and `| groupCurrency`.",
+            },
+          ],
+        },
+      ],
     },
   },
 ];

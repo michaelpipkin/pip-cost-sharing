@@ -197,7 +197,7 @@
                   class="cell-right amount-cell"
                   data-testid="history-amount"
                 >
-                  {{ history.totalPaid | currency }}
+                  {{ history.totalPaid | groupCurrency }}
                 </td>
               </ng-container>
               <ng-container matColumnDef="type">

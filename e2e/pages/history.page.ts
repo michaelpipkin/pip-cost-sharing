@@ -168,9 +168,7 @@ export class HistoryPage extends BasePage {
 
   /**
    * Asserts the open detail page's payer, payee and date. Amounts are
-   * asserted separately (expectDetailAmounts): the detail page formats them
-   * with Angular's CurrencyPipe rather than the app's, a known bug pinned in
-   * history.spec.ts.
+   * asserted by expectDetailAmounts, once the paid splits have loaded.
    */
   async expectDetail(expected: ExpectedPayment): Promise<void> {
     await expect(this.paidByName).toHaveText(`Paid By: ${expected.paidBy}`);

@@ -277,18 +277,20 @@
       @for (row of memberSubtotals(); track row.member.ref) {
         <div class="mock-input" data-testid="member-subtotal">
           <span class="mock-label">{{ row.member.displayName }}</span>
-          <span class="mock-value-right">{{ row.amount | currency }}</span>
+          <span class="mock-value-right">{{ row.amount | groupCurrency }}</span>
         </div>
       }
       <div class="mock-input" data-testid="unassigned-items-total">
         <span class="mock-label">Unassigned Items (split evenly)</span>
         <span class="mock-value-right">
-          {{ unassignedItemsTotal() | currency }}
+          {{ unassignedItemsTotal() | groupCurrency }}
         </span>
       </div>
       <div class="mock-input" data-testid="tax-tip-total">
         <span class="mock-label">Tax + Tip (split proportionally)</span>
-        <span class="mock-value-right">{{ taxTipTotal() | currency }}</span>
+        <span class="mock-value-right">
+          {{ taxTipTotal() | groupCurrency }}
+        </span>
       </div>
     </div>
 

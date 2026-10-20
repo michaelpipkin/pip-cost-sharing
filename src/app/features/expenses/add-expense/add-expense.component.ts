@@ -65,7 +65,7 @@ import {
   ReceiptScanHandoffService,
   ReceiptScanPayload,
 } from '@services/receipt-scan-handoff.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -96,7 +96,7 @@ import {
     MatTooltipModule,
     MatDatepickerModule,
     MatIconModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,
