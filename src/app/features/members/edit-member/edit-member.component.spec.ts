@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -27,6 +28,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditMemberComponent } from './edit-member.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('EditMemberComponent', () => {
   let fixture: ComponentFixture<EditMemberComponent>;
@@ -42,6 +44,7 @@ describe('EditMemberComponent', () => {
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
+  let mockGroupService: { clearCurrentGroup: ReturnType<typeof vi.fn> };
 
   const userRef = mockDocRef('users/user-1');
   const testUser = mockUser({ id: 'user-1', ref: userRef });
@@ -75,6 +78,7 @@ describe('EditMemberComponent', () => {
     mockUserStore = createMockUserStore();
     mockMemberStore = createMockMemberStore();
     mockGroupStore = createMockGroupStore();
+    mockGroupService = { clearCurrentGroup: vi.fn() };
     mockMemberService = {
       updateMemberWithUserMatching: vi.fn().mockResolvedValue(undefined),
       removeMemberFromGroup: vi.fn().mockResolvedValue(undefined),
@@ -98,6 +102,7 @@ describe('EditMemberComponent', () => {
         { provide: UserStore, useValue: mockUserStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: GroupStore, useValue: mockGroupStore },
+        { provide: GroupService, useValue: mockGroupService },
         { provide: MemberService, useValue: mockMemberService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
@@ -296,6 +301,25 @@ describe('EditMemberComponent', () => {
       expect(mockGroupStore.patchGroupMembership).not.toHaveBeenCalled();
     });
 
+    it("should stop the left group's data listeners, not just unselect it", async () => {
+      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      let confirmCallback!: (confirm: boolean) => Promise<void>;
+      vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
+        afterClosed: () => ({
+          subscribe: (cb: (confirm: boolean) => Promise<void>) => {
+            confirmCallback = cb;
+            return { unsubscribe: vi.fn() };
+          },
+        }),
+      });
+
+      component.leaveGroup();
+      await confirmCallback(true);
+
+      expect(mockGroupService.clearCurrentGroup).toHaveBeenCalledOnce();
+    });
+
     it('should re-tag the group as left in the store when leaving keeps the member doc (has history)', async () => {
       mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
       vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
@@ -319,5 +343,10 @@ describe('EditMemberComponent', () => {
       });
       expect(mockGroupStore.removeGroup).not.toHaveBeenCalled();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", async () => {
+    await createComponent(testMember);
+    expectEnterToSave(fixture);
   });
 });

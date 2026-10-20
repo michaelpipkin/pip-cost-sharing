@@ -66,7 +66,7 @@ import { CameraService } from '@services/camera.service';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -83,12 +83,14 @@ import {
   buildExpenseFormTourSteps,
   createExpenseFormTour,
 } from '../expense-form.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-edit-expense',
   templateUrl: './edit-expense.component.html',
   styleUrl: './edit-expense.component.scss',
   imports: [
+    DefaultButtonDirective,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -99,7 +101,7 @@ import {
     MatDatepickerModule,
     MatIconModule,
     DecimalPipe,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,
     DateShortcutKeysDirective,

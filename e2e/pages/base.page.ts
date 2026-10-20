@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { TEST_CONFIG } from '../constants';
 
 export abstract class BasePage {
@@ -11,11 +11,14 @@ export abstract class BasePage {
   /**
    * Navigate to a specific path
    */
-  async goto(path: string = '') {
+  async goto(
+    path: string = '',
+    options?: Parameters<Page['goto']>[1]
+  ) {
     const fullUrl = path.startsWith('http')
       ? path
       : `${TEST_CONFIG.baseUrl}${path}`;
-    await this.page.goto(fullUrl);
+    await this.page.goto(fullUrl, options);
   }
 
   /**
@@ -71,25 +74,30 @@ export abstract class BasePage {
   }
 
   /**
-   * Wait for loading spinner to appear
+   * Waits until a full page load's initial navigation has committed: the
+   * routed component renders as a sibling of <router-outlet> only then.
+   * After it, the app's post-load redirect to /expenses (which only fires
+   * while the router is still on '/') can no longer happen, so in-app
+   * navigation is safe.
    */
-  async waitForLoading(options?: { timeout?: number }) {
-    await this.page
-      .locator('[data-testid="loading-spinner-container"]')
-      .waitFor({ state: 'visible', ...options });
+  async waitForInitialNavigation() {
+    await expect(
+      this.page
+        .getByTestId('main-content')
+        .locator(':scope > :not(router-outlet)')
+        .first()
+    ).toBeVisible();
   }
 
   /**
-   * Wait for loading spinner to disappear (most common use case)
+   * Waits until the LoadingService overlay is gone. The overlay exists only
+   * while loading is on, so this returns at once when nothing is loading:
+   * callers that start a load must first wait for something the load is for
+   * (a dialog closing, a URL), not on the overlay appearing.
    */
   async waitForLoadingComplete() {
-    try {
-      await this.waitForLoading({ timeout: 1000 });
-    } catch {
-      // Ignore timeout error if spinner doesn't appear - we just want to ensure it's not visible before proceeding
-    }
     await this.page
-      .locator('[data-testid="loading-spinner-container"]')
+      .getByTestId('loading-spinner-container')
       .waitFor({ state: 'hidden' });
   }
 }

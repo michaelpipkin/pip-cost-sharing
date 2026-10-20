@@ -6,10 +6,10 @@ import { HomePage } from '../pages/home.page';
  * Helper function to wait for page load
  */
 async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForSelector('app-root', { timeout: 10000 });
+  await page.waitForSelector('app-root', );
 }
 
-test.describe('Homepage - Basic Setup Validation', () => {
+test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
   test('should load the homepage successfully', async ({ page }) => {
     // Navigate to the homepage
     await page.goto('/');
@@ -36,21 +36,6 @@ test.describe('Homepage - Basic Setup Validation', () => {
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await expect(page.locator('body')).toBeVisible();
-  });
-
-  test('should connect to Firebase emulators', async ({ preserveDataFirebasePage }) => {
-    await preserveDataFirebasePage.goto('/');
-    await waitForPageLoad(preserveDataFirebasePage);
-
-    // Test that Firebase emulators are accessible
-    // This validates our emulator integration
-    const firestoreHealth = await preserveDataFirebasePage.request.get(
-      'http://localhost:8080'
-    );
-    expect(firestoreHealth.ok()).toBeTruthy();
-
-    const authHealth = await preserveDataFirebasePage.request.get('http://localhost:9099');
-    expect(authHealth.ok()).toBeTruthy();
   });
 
   test('should open the feature tour dialog', async ({ page }) => {

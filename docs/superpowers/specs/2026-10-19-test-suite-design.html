@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Suite Overhaul — Design</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 16px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.8rem; margin-bottom: .2rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.5rem; }
+  .meta { color: var(--muted); margin-top: 0; }
+  code { font-size: .92em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; font-size: .94rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .call { color: var(--accent); font-weight: 600; font-size: .85em; }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Test Suite Overhaul — Design</h1>
+<p class="meta">pip-cost-sharing · 2026-10-19 · Status: draft for approval</p>
+
+<p>Tags: <span class="call">[my call]</span> marks decisions Claude made that the owner has not explicitly confirmed. Everything else was decided in conversation with the owner.</p>
+
+<h2>1. Intent</h2>
+<p>The owner makes small, targeted changes to the app and wants to run the unit and e2e tests <em>for the area they touched</em> and trust the result: a pass means that area still works, a failure means the change broke something — not that a test went stale.</p>
+<p>Today that trust doesn't exist for e2e. The unit suite is healthy (1,471 tests / 113 files, all passing, ~14&nbsp;s), but the e2e suite (~79 Playwright tests, 10 spec files) was written in Feb 2026 and ~790 commits have landed since. 15 of the 124 <code>data-testid</code>s the e2e code references no longer exist in the app. Several features have never had e2e coverage.</p>
+<p>The owner's stated failure mode for the future: the suite goes stale again if a major update is done without updating the tests. The process changes in §7 exist to prevent that.</p>
+
+<h2>2. Goals, non-goals, anti-goals</h2>
+<h3>Goals</h3>
+<ol>
+  <li><strong>Repair</strong> the existing e2e suite so it passes against the current app.</li>
+  <li><strong>Add e2e coverage</strong> for features that never had any: rental expenses, memorized expenses, the split page, account settings, group invites, receipt scanning, guided tours, admin pages (and categories/members if not adequately covered by the existing groups spec).</li>
+  <li><strong>Fill unit-test gaps</strong>, prioritising substantive untested code (list in §6).</li>
+  <li><strong>Per-area test runs</strong>: one command, owner names the area, runs that area's unit and e2e tests.</li>
+  <li><strong>A shared, deterministic e2e data set</strong> built once at suite start, designed so no test's writes can break another test.</li>
+  <li><strong>Keep it from drifting</strong>: a CLAUDE.md rule and an e2e section in the <code>pip-angular-testing</code> skill.</li>
+</ol>
+<h3>Non-goals</h3>
+<ul>
+  <li>No CI integration. Tests are run locally only; the deploy workflow is not changed.</li>
+  <li>No automatic "which files changed in git" area detection. The owner names the area explicitly (so it works as a sanity check with a clean tree).</li>
+  <li>No mobile-viewport or non-Chromium projects (they stay commented out in <code>playwright.config.ts</code>).</li>
+  <li>No numeric coverage threshold is enforced. <span class="call">[my call]</span></li>
+</ul>
+<h3>Anti-goals (would make this a failure even if every test is green)</h3>
+<ul>
+  <li><strong>Tests bent to match bugs.</strong> If a failure looks like a real app bug, the builder stops and reports it to the owner; it is never "fixed" by changing the assertion to match broken behaviour.</li>
+  <li><strong>Flaky tests.</strong> A test that sometimes fails destroys the trust this work is buying.</li>
+  <li><strong>Order-dependent tests.</strong> Any test must pass whether its area is run alone, with the full suite, or with 4 parallel workers.</li>
+  <li><strong>Reintroducing per-test emulator wipes</strong> (the original parallel-worker problem; see §4).</li>
+</ul>
+
+<h2>3. Constraints</h2>
+<ul>
+  <li><strong>Package installs and network downloads are done by the owner</strong>, never by Claude (TLS interception breaks them in this environment). Known pending: <code>pnpm exec playwright install chromium</code> (Playwright 1.64.1 needs Chromium build 1248; only 1243 is installed — this alone made every e2e test fail in 2&nbsp;ms) and <code>pnpm add -D @vitest/coverage-v8</code> (for coverage reports). If the design needs a new dependency (e.g. <code>firebase-admin</code> at the repo root), list it and hand off.</li>
+  <li><strong>E2E runs on its own, isolated emulators (owner decision).</strong> The owner runs several projects' emulators on the default ports and uses <code>pnpm emu:data</code> for manual development. E2E must never touch those. Playwright starts a dedicated emulator suite on <strong>non-default ports</strong> under a <strong><code>demo-*</code> project ID</strong> (so nothing can ever reach a real project), plus a dev server built with an Angular configuration that points at those ports, and shuts them down afterwards. Consequences:
+    <ul>
+      <li>The dev emulators can stay running during e2e; e2e never wipes the owner's dev data.</li>
+      <li>No owner confirmation is needed before e2e runs, which is what makes the CLAUDE.md "run the area's tests before done" rule workable.</li>
+      <li>The functions emulator must load this project's functions under the demo project ID; the functions build must be current before a run (the e2e start-up should build or verify it).</li>
+      <li>The dev server for e2e uses its own port too, so it doesn't collide with a manually running <code>pnpm start</code> on 4200.</li>
+      <li>Ad-hoc probes of the <em>default</em> ports (dev emulators) still require the owner's go-ahead.</li>
+    </ul>
+  </li>
+  <li><strong>Any Admin SDK code must set <code>FIRESTORE_EMULATOR_HOST</code>, <code>FIREBASE_AUTH_EMULATOR_HOST</code> and <code>FIREBASE_STORAGE_EMULATOR_HOST</code> before <code>initializeApp</code></strong> — a missed one once hit production Auth. <code>scripts/db/emulator-lib.ts</code> currently sets only the Firestore one.</li>
+  <li>Unit tests follow the existing <code>pip-angular-testing</code> skill (no <code>vi.mock</code>, path-aliased Firebase mocks, never <code>vi.resetAllMocks</code>, etc.).</li>
+  <li>Project conventions from CLAUDE.md apply to any app code touched (signals, <code>protected readonly</code> inject, no rxjs, <code>@if</code>/<code>@for</code>, pnpm).</li>
+  <li><strong>E2E tests must never send real email or depend on external downloads.</strong> Today, under the functions emulator, <code>getSmtpPassword()</code> (<code>functions/src/common.ts</code>) returns the real <code>SMTP_PASSWORD</code> from <code>functions/.env</code>, so the mail-queue sender delivers <em>real</em> email via Office 365 as <code>admin@pipsplit.com</code> — any e2e run that triggers invites, payment notifications or the mail queue sends real messages (to fake addresses, which bounce). This must be neutralised for e2e <strong>before any e2e run that exercises those flows</strong>; the builder picks a mechanism that affects e2e only (e.g. an env flag the emulator honours to log instead of send). Receipt scanning runs tesseract.js inside <code>scanReceipt</code> (<code>functions/src/receipt-ocr.ts</code>); its language-data download is the external dependency to stub or cache.</li>
+</ul>
+
+<h2>4. E2E test data: the shared data set (owner decision)</h2>
+<div class="box">
+<p><strong>History.</strong> Running with multiple workers, tests that cleared emulator data before/after themselves wiped data out from under tests running in other workers. The fix was: clear the emulators <strong>once</strong> at suite start and <strong>never delete</strong> during the run. The first half exists today (<code>e2e/global-setup.ts</code> clears once; all specs use the non-clearing <code>preserveDataFirebasePage</code> fixture). The intended second half — a complete shared data set loaded up front — was never implemented; instead each spec creates a timestamped user in <code>beforeAll</code> and builds groups/members through the UI.</p>
+</div>
+
+<h3>Design</h3>
+<ol>
+  <li><strong>Global setup</strong> runs against the isolated e2e emulators only (§3). It clears Auth + Firestore (+ Storage if receipt data is seeded) once — or starts them empty — then builds one <strong>deterministic</strong> data set — fixed names and amounts, no randomness — so tests can assert exact values.</li>
+  <li><strong>Users</strong> are created through the Auth emulator with <code>emailVerified: true</code> directly, so e2e no longer depends on the <code>verifyUserEmail</code> function. Tests sign in as a seeded user.</li>
+  <li><strong>Data ownership</strong> — the core rule for "a change in one test can't break a later test":
+    <ul>
+      <li><strong>Read-only data</strong>: shared groups (with members, categories, expenses, payment history, rental data) that tests may read but <em>never write</em>.</li>
+      <li><strong>Owned data</strong>: every test that mutates data gets its own seeded group (or user, if it mutates user-level state such as account preferences), named for the test (e.g. "History – delete payment"). Nothing else reads it.</li>
+      <li><strong>Created-at-runtime data</strong>: tests that create new entities (new group, new member) use unique names, as today.</li>
+      <li>Assertions are scoped to the test's own group/user so stray data elsewhere can't affect them.</li>
+    </ul>
+  </li>
+  <li><strong>Function triggers</strong> fire on seeded writes (<code>createUserProfileOnSignUp</code>, <code>syncGroupMemberUids</code>, <code>linkInvitedMembers</code>, <code>sendPaymentNotificationEmail</code>, email-lower syncs, …). The seeder must either wait for trigger side effects to settle before tests start, or write in a way that avoids/duplicates them deliberately. In particular, creating an Auth user triggers user-profile creation — the seeder must not race it.</li>
+  <li><strong>Reuse</strong> from <code>scripts/db/</code>: the emulator safety guard pattern and the ported allocation math in <code>emulator-lib.ts</code>, the <code>ChunkedBatch</code> writer and the "mark paid + write history the way the app does" logic in <code>refresh-seed-expenses.ts</code>. Not reused: its random expense generation. Shared helpers may be extracted so both the seed scripts and e2e use them.</li>
+  <li><strong>Remove the trap</strong>: delete the <code>cleanFirebase</code> and <code>firebasePage</code> fixtures (per-test wipes; unused, but the README tells new tests to use them) and fix the README.</li>
+</ol>
+
+<h2>5. Areas and the per-area command</h2>
+<p>The owner names an area; one command runs that area's unit tests and e2e tests. <span class="call">[my call]</span> on the exact names and shape below.</p>
+<p>Command: <code>pnpm test:area &lt;area&gt; [&lt;area&gt; …]</code>, plus <code>--unit</code> / <code>--e2e</code> to run only one half. Full-suite commands (<code>pnpm test</code>, <code>pnpm e2e:local</code>) keep working.</p>
+<p>Mechanism: a single area map (one file) lists, per area, the app source folders whose unit specs belong to it, the <strong>Cloud Functions specs</strong> (<code>functions/src/*.spec.ts</code>, run with the functions package's own Vitest) that belong to it, and the Playwright tag. E2E tests are tagged with Playwright's <code>tag</code> option (e.g. <code>@expenses</code>); app unit tests are selected by path (<code>ng test --include</code>); functions specs by file. A unit spec, functions spec or e2e test that matches no area should be detectable (so new code doesn't silently fall outside every area). Functions are in scope throughout (owner decision): their specs run with their area, count toward gap-filling (§6d), and fall under the CLAUDE.md rule.</p>
+
+<table>
+  <tr><th>Area</th><th>Covers</th></tr>
+  <tr><td>shell</td><td>App shell, routing/redirects, guards, account menu, footer, loading overlay, ads</td></tr>
+  <tr><td>auth</td><td>Login, register, forgot/reset password, account actions, delete account</td></tr>
+  <tr><td>account</td><td>Account pages: security, payments, preferences, legal</td></tr>
+  <tr><td>groups</td><td>Groups, manage groups, group invites</td></tr>
+  <tr><td>members</td><td>Members list, add/edit member</td></tr>
+  <tr><td>categories</td><td>Categories list, add/edit category</td></tr>
+  <tr><td>expenses</td><td>Expenses list, add/edit expense, add-expense options dialog</td></tr>
+  <tr><td>rental</td><td>Rental expense grid and edit dialog</td></tr>
+  <tr><td>receipts</td><td>Receipt scanning and receipt dialog</td></tr>
+  <tr><td>memorized</td><td>Memorized expenses list, add/edit</td></tr>
+  <tr><td>summary</td><td>Summary, payment dialog, settle-group dialog</td></tr>
+  <tr><td>history</td><td>Payment history and detail</td></tr>
+  <tr><td>split</td><td>Public split tool, including split rental grid</td></tr>
+  <tr><td>home</td><td>Home page and feature-tour carousel</td></tr>
+  <tr><td>help</td><td>Help, guided tours, about</td></tr>
+  <tr><td>admin</td><td>Admin shell, email log, error log, reports</td></tr>
+</table>
+<p>Shared services, stores, directives and utilities are assigned to the area that primarily uses them; genuinely cross-cutting code (e.g. table filter directives, locale/allocation utilities) is listed under every area that depends on it, so touching it runs all of them. The builder decides the exact folder assignments.</p>
+
+<h2>6. Work breakdown</h2>
+<h3>6a. Infrastructure first</h3>
+<ul>
+  <li>Owner installs the Chromium build and coverage package (§3).</li>
+  <li>Neutralise real email sending for e2e (§3) — before any e2e run that touches invites, payments or the mail queue.</li>
+  <li>Isolated e2e emulator suite + e2e dev-server configuration (§3).</li>
+  <li>Shared data set + seeder in global setup (§4); fixture cleanup.</li>
+  <li>Area map, tags, <code>test:area</code> script (§5).</li>
+</ul>
+<h3>6b. Repair existing e2e specs</h3>
+<p>Run the suite (after the browser install) to get the real failure list — no meaningful run has happened yet. Triage each failure:</p>
+<ul>
+  <li><strong>Stale test</strong> (selector, flow or text changed) → fix the test.</li>
+  <li><strong>Feature removed</strong> → delete the test.</li>
+  <li><strong>Looks like an app bug</strong> → report to the owner with evidence; don't change the assertion.</li>
+</ul>
+<p><strong>Bug handling</strong> <span class="call">[my call]</span>: work on other areas continues; suspected bugs are batched and reported at the end of each area's repair rather than one interruption per bug. Until the owner decides, the test asserts the <em>correct</em> behaviour and is marked <code>test.fail()</code> with a comment describing the bug — it stays visible in every run and flips to an "unexpected pass" the moment the bug is fixed, which is the signal to remove the marker. "Full suite green" in §7 counts expected failures as green only when the owner has explicitly deferred that bug.</p>
+<p>Move existing specs onto the shared data set as they're repaired (replacing build-it-through-the-UI setup where the UI flow isn't what the test is about). Re-evaluate the 3 currently skipped tests. Replace any <code>waitForTimeout</code> with condition waits.</p>
+<h3>6c. New e2e coverage</h3>
+<p>For each new area, cover the main happy paths and the integration points unit tests can't reach (Firestore round-trips, dialogs, navigation, function calls). Follow the existing pragmatic philosophy: critical paths, not every edge case. <span class="call">[my call]</span></p>
+<h3>6d. Unit-test gaps</h3>
+<p>61 of 173 app source files have no spec. Priority (substantive logic, roughly by size): <code>features/admin/error-log</code>, <code>shared/directives/filters/*</code> (base, select, toggle, text, date-range), <code>services/calculator-overlay.service</code>, <code>features/expenses/rental/rental-grid</code> and <code>rental-edit-dialog</code>, <code>features/auth/account/{security,payments,preferences,legal}</code>, <code>services/admin-error-log</code> / <code>admin-mail</code> / <code>admin-reports</code>, <code>shared/components/loading/navigation-loading.service</code>, stores with logic (<code>group</code>, <code>user</code>, <code>member</code>, <code>category</code>), <code>date-plus-minus</code> directive, guided-tour card/spotlight. Skip pure interfaces, type files and trivial one-liners. <strong>Cloud Functions</strong> are also in scope: <code>functions/src</code> has 11 specs covering parts of <code>index.ts</code>, <code>admin-reports</code>, <code>receipt-ocr</code>, <code>receipt-parser</code>, <code>user-onboarding</code>, <code>common</code>; the builder audits which exported functions in <code>index.ts</code> (invites, member linking, group/account deletion, mail queue, email syncs, scheduled cleanup) lack tests and fills the substantive gaps. Once the coverage package is installed, use the coverage report to find untested branches inside files that <em>do</em> have specs. <span class="call">[my call]</span> on ordering and the skip list.</p>
+<h3>6e. Keep it current</h3>
+<ul>
+  <li><strong>CLAUDE.md rule</strong> (owner approved): whenever a feature is changed, update or add that area's unit and e2e tests in the same task, and run <code>pnpm test:area &lt;area&gt;</code> before calling the task done.</li>
+  <li><strong>E2E section in <code>~/.claude/skills/pip-angular-testing/SKILL.md</code></strong> (owner decision: add to the existing skill, not a new one). Contents: the parallel-worker/data-wipe history and the shared-data ownership rules; the still-valid lessons from <code>e2e/TESTING_PATTERNS.md</code> (MDC selectors, test-id conventions, LoadingService waits, clipboard permissions, date inputs, avoiding fixed sleeps); emulator-ownership and env-var safety; how to run by area; new lessons learned during this work. Update the skill's description so it also triggers on Playwright/e2e work.</li>
+  <li><strong>Docs</strong>: the skill becomes the source of truth for e2e patterns. <code>e2e/TESTING_PATTERNS.md</code> is retired (or reduced to a pointer) and <code>e2e/README.md</code> is trimmed to accurate how-to-run instructions (it currently references scripts that don't exist, e.g. <code>pnpm e2e</code>, <code>pnpm test:full</code>, and claims multi-browser runs). <span class="call">[my call]</span></li>
+</ul>
+
+<h2>7. Definition of done</h2>
+<ul>
+  <li>Full unit suite passes.</li>
+  <li>Full e2e suite passes with 4 workers, <strong>three consecutive runs</strong> with no failures (flakiness check). <span class="call">[my call]</span></li>
+  <li>Every area passes when run alone via <code>pnpm test:area &lt;area&gt;</code>.</li>
+  <li>Every app bug found has been reported to the owner (and either fixed with their go-ahead or explicitly deferred).</li>
+  <li>CLAUDE.md rule and skill e2e section in place; README accurate.</li>
+</ul>
+
+<h2>8. Left to the builder</h2>
+<ul>
+  <li>Isolated emulator mechanics: exact ports, <code>demo-*</code> project ID name, how Playwright starts/stops them (e.g. <code>webServer</code> entries or global setup/teardown), the Angular e2e configuration/environment, and how the functions build is ensured.</li>
+  <li>Seeder implementation: Admin SDK vs. emulator REST APIs, file location, how to wait for triggers. (If Admin SDK at the root needs <code>firebase-admin</code> as a root devDependency, hand the install to the owner.)</li>
+  <li>Exact contents of the shared data set, as long as it satisfies the ownership rules and gives each area what it needs.</li>
+  <li>Page-object structure (extend the existing POM; add page objects for new areas).</li>
+  <li>How to stub external calls (receipt OCR, email) in e2e.</li>
+  <li>Exact folder→area assignments and the <code>test:area</code> script's implementation language.</li>
+  <li>Ordering of work within each phase.</li>
+</ul>
+
+</body>
+</html>

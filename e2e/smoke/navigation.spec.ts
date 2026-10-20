@@ -1,15 +1,14 @@
 import { expect, test } from '../fixtures';
-import { TEST_CONFIG } from '../constants';
 import type { Page } from '@playwright/test';
 
 /**
  * Helper function to wait for page load
  */
 async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForSelector('app-root', { timeout: 10000 });
+  await page.waitForSelector('app-root', );
 }
 
-test.describe('Navigation - Public Routes', () => {
+test.describe('Navigation - Public Routes', { tag: '@shell' }, () => {
   test('should navigate to home page', async ({ page }) => {
     await page.goto('/');
     await waitForPageLoad(page);
@@ -56,7 +55,7 @@ test.describe('Navigation - Public Routes', () => {
   });
 });
 
-test.describe('Navigation - Route Redirects', () => {
+test.describe('Navigation - Route Redirects', { tag: '@shell' }, () => {
   test('should redirect from root to home', async ({ page }) => {
     await page.goto('/');
     await waitForPageLoad(page);
@@ -74,7 +73,7 @@ test.describe('Navigation - Route Redirects', () => {
   });
 });
 
-test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
+test.describe('Navigation - Protected Routes (Unauthenticated)', { tag: '@shell' }, () => {
   test('should handle protected groups route when not authenticated', async ({
     page,
   }) => {
@@ -82,12 +81,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     await waitForPageLoad(page);
 
     // Should redirect to login due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected members route when not authenticated', async ({
@@ -97,12 +91,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected categories route when not authenticated', async ({
@@ -112,12 +101,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected summary route when not authenticated', async ({
@@ -127,12 +111,7 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 
   test('should handle protected history route when not authenticated', async ({
@@ -142,11 +121,6 @@ test.describe('Navigation - Protected Routes (Unauthenticated)', () => {
     await waitForPageLoad(page);
 
     // Should redirect due to authGuard + groupGuard
-    const currentUrl = page.url();
-    const isRedirected =
-      currentUrl.includes('/auth/login') ||
-      currentUrl === `${TEST_CONFIG.baseUrl}/`;
-
-    expect(isRedirected).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login/);
   });
 });

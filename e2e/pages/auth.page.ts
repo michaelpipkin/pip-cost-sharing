@@ -1,7 +1,9 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { TEST_DATA } from '../constants';
-import { createTestUser } from '../utils/firebase';
+
+// The post-login navigation lazy-loads the landing route's chunks and waits
+// on Firestore listeners, so it gets more than the default expect timeout.
+const LANDING_TIMEOUT_MS = 30_000;
 
 export class AuthPage extends BasePage {
   readonly emailInput: Locator;
@@ -33,17 +35,18 @@ export class AuthPage extends BasePage {
   }
 
   /**
-   * Navigate to login page
+   * Navigate to the login page. Waits only for DOMContentLoaded (the form
+   * assertions that follow do the real waiting), with the config's default
+   * timeouts: global setup warms the dev server, so a slow load is a real
+   * regression.
    */
   async gotoLogin() {
-    await super.goto('/auth/login');
-    // Wait for the login form to be visible (no need for networkidle wait)
-    await this.page.waitForSelector('[data-testid="login-form"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-    // Give Angular time to initialize
-    await this.page.waitForTimeout(500);
+    await super.goto('/auth/login', { waitUntil: 'domcontentloaded' });
+    await expect(this.page.getByTestId('login-form')).toBeVisible();
+    // Fields are bound by Angular once the form renders; make sure they are
+    // there before a caller starts typing.
+    await expect(this.emailInput).toBeVisible();
+    await expect(this.passwordInput).toBeVisible();
   }
 
   /**
@@ -56,55 +59,69 @@ export class AuthPage extends BasePage {
     await this.page.waitForLoadState('domcontentloaded');
 
     // Wait for register form email input (has different testid than login page)
-    await this.page
-      .getByTestId('register-email-input')
-      .waitFor({ state: 'visible', timeout: 10000 });
+    await expect(this.page.getByTestId('register-email-input')).toBeVisible();
   }
 
   /**
-   * Login with email and password
+   * Fills and submits the login form (already on screen), then waits until
+   * the app has landed: the authenticated shell (desktop logout button) is
+   * showing, the post-login redirect has left /auth/login, and the loading
+   * overlay is gone. Shared by login() and signInAs().
+   *
+   * A rejected sign-in surfaces the login snackbar, which fails this
+   * immediately with `context` and the snackbar's message. Any snackbar from
+   * an earlier action is waited out first so it can't be mistaken for a
+   * rejection of this submit.
    */
-  async login(email: string, password: string) {
-    // Wait for the form to be fully loaded
-    await this.page.waitForSelector('[data-testid="login-form"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
+  async submitLogin(
+    email: string,
+    password: string,
+    context: string = `login(${email})`
+  ): Promise<void> {
+    const snackbar = this.page.getByTestId('snackbar');
 
-    // Fill the form fields
+    await expect(this.emailInput).toBeVisible();
     await this.emailInput.fill(email);
-    await this.emailInput.blur();
-    await expect(this.emailInput).toHaveValue(email);
-
     await this.passwordInput.fill(password);
-    await this.passwordInput.blur();
+    await expect(this.emailInput).toHaveValue(email);
     await expect(this.passwordInput).toHaveValue(password);
-
-    // Wait for the button to be enabled (form validation)
-    await this.loginButton.waitFor({ state: 'visible', timeout: 5000 });
-
-    // Check if the button is enabled before clicking
-    const isDisabled = await this.loginButton.isDisabled();
-    if (isDisabled) {
-      throw new Error('Login button is disabled - form may be invalid');
-    }
-
-    // Click the button
+    await expect(this.loginButton).toBeEnabled();
+    // A leftover snackbar auto-dismisses after 4 s (SNACKBAR_DURATION).
+    await expect(
+      snackbar,
+      `${context}: a snackbar from an earlier action never went away`
+    ).toHaveCount(0);
     await this.loginButton.click();
 
-    // Wait for successful login (navigation to groups page or removal of login form)
-    await Promise.race([
-      this.page.waitForURL('**/groups', { timeout: 10000 }),
-      this.page.waitForSelector('[data-testid="logout-button-desktop"]', {
-        state: 'visible',
-        timeout: 10000,
-      }),
-    ]).catch(() => {
-      console.log('Login may have failed - no navigation detected');
-    });
+    const authenticated = this.page
+      .getByTestId('logout-button-desktop')
+      .filter({ visible: true });
+    await expect(
+      authenticated.or(snackbar).first(),
+      `${context}: neither the authenticated shell nor a login error appeared`
+    ).toBeVisible({ timeout: LANDING_TIMEOUT_MS });
+    // No snackbar existed before the submit, so any now is this attempt's.
+    if ((await snackbar.count()) > 0) {
+      const message = (await snackbar.first().innerText()).split('\n')[0];
+      throw new Error(`${context}: sign-in rejected - "${message}"`);
+    }
 
-    // Give time for auth state to settle
-    await this.page.waitForTimeout(1000);
+    await expect(
+      this.page,
+      `${context}: never redirected away from login`
+    ).not.toHaveURL(/\/auth\/login/, { timeout: LANDING_TIMEOUT_MS });
+    await expect(
+      this.page.getByTestId('loading-spinner-container'),
+      `${context}: loading overlay never cleared`
+    ).toBeHidden({ timeout: LANDING_TIMEOUT_MS });
+  }
+
+  /**
+   * Login with email and password (on the login page). Throws if the
+   * sign-in is rejected.
+   */
+  async login(email: string, password: string) {
+    await this.submitLogin(email, password);
   }
 
   /**
@@ -131,120 +148,6 @@ export class AuthPage extends BasePage {
   }
 
   /**
-   * Create a test user in Firebase Auth emulator and login
-   */
-  async createAndLoginTestUser(
-    email: string = TEST_DATA.testUsers.regularUser.email,
-    password: string = TEST_DATA.testUsers.regularUser.password,
-    useUniqueUser: boolean = true
-  ) {
-    let finalEmail = email;
-    let finalPassword = password;
-
-    // Generate unique user if requested to avoid conflicts
-    if (useUniqueUser) {
-      const uniqueUser = TEST_DATA.generateUniqueUser();
-      finalEmail = uniqueUser.email;
-      finalPassword = uniqueUser.password;
-    }
-
-    try {
-      // Try to create user in Firebase Auth emulator
-      await createTestUser(this.page, finalEmail, finalPassword);
-    } catch (error) {
-      // If user already exists, that's fine - we'll just try to login
-      console.log(
-        `User ${finalEmail} may already exist, attempting login anyway`
-      );
-    }
-
-    // Navigate to login page and login
-    await this.gotoLogin();
-    await this.login(finalEmail, finalPassword);
-  }
-
-  /**
-   * Login or create a test user with specific credentials.
-   * This method tries to login first, and only creates the user if login fails.
-   * Useful for test specs that want to reuse the same user across multiple tests.
-   *
-   * @param email - Email address for the user
-   * @param password - Password for the user
-   */
-  async loginOrCreateTestUser(
-    email: string,
-    password: string,
-    options?: { assumeNew?: boolean }
-  ) {
-    // If we know the user is new (e.g., timestamp-based email), skip the login attempt
-    if (options?.assumeNew) {
-      try {
-        // Create the user in Firebase Auth emulator
-        await createTestUser(this.page, email, password);
-
-        // Navigate to login page and login
-        await this.gotoLogin();
-        await this.waitForLoadingComplete();
-        await this.login(email, password);
-        await this.waitForLoadingComplete();
-
-        // Verify login succeeded
-        const loggedIn = await this.isLoggedIn();
-        if (!loggedIn) {
-          throw new Error(
-            `Created user ${email} but login failed - check Firebase Auth emulator`
-          );
-        }
-        return;
-      } catch (createError) {
-        throw new Error(
-          `Failed to create and login new user ${email}: ${createError.message}`
-        );
-      }
-    }
-
-    // Navigate to login page
-    await this.gotoLogin();
-    await this.waitForLoadingComplete();
-
-    // Try to login first (user may already exist from previous test)
-    await this.login(email, password);
-    await this.waitForLoadingComplete();
-
-    // Check if login was successful
-    const loggedIn = await this.isLoggedIn();
-
-    if (loggedIn) {
-      // Login succeeded - user already exists
-      return;
-    }
-
-    // Login failed, user doesn't exist yet - create and try again
-    try {
-      // Create the user in Firebase Auth emulator
-      await createTestUser(this.page, email, password);
-
-      // Navigate back to login page and try again
-      await this.gotoLogin();
-      await this.waitForLoadingComplete();
-      await this.login(email, password);
-      await this.waitForLoadingComplete();
-
-      // Verify login succeeded this time
-      const finalLoginStatus = await this.isLoggedIn();
-      if (!finalLoginStatus) {
-        throw new Error(
-          `Created user ${email} but login still failed - check Firebase Auth emulator`
-        );
-      }
-    } catch (createError) {
-      throw new Error(
-        `Failed to create and login user ${email}: ${createError.message}`
-      );
-    }
-  }
-
-  /**
    * Logout (if logout functionality exists)
    */
   async logout() {
@@ -254,7 +157,7 @@ export class AuthPage extends BasePage {
     );
 
     try {
-      await logoutButton.waitFor({ state: 'visible', timeout: 5000 });
+      await logoutButton.waitFor({ state: 'visible' });
 
       // Use force click to bypass any overlay issues
       await logoutButton.click({ force: true });

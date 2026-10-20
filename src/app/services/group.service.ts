@@ -70,6 +70,16 @@ export class GroupService implements IGroupService {
   #unsubscribeMembers?: () => void;
   #unsubscribeGroups?: () => void;
 
+  // Group selection state (see getGroup and autoSelectGroup):
+  //  - #selectionSeq: bumped by every getGroup() call. A call whose number is
+  //    no longer the latest was superseded (the user picked another group, or
+  //    the selection was cleared) and must not touch the stores.
+  //  - #pendingGroupId: the group a getGroup() call is still loading.
+  //  - #loadedGroupId: the group whose data listeners are running.
+  #selectionSeq = 0;
+  #pendingGroupId: string | null = null;
+  #loadedGroupId: string | null = null;
+
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       const currentGroup = localStorage.getItem('currentGroup');
@@ -98,7 +108,7 @@ export class GroupService implements IGroupService {
     // Auth guards will handle redirecting to account page if needed
     if (!this.userStore.isValidUser()) {
       // Don't redirect if on account-action page - let verification complete first
-      const currentUrl = this.router.url;
+      const currentUrl = this.#effectiveUrl();
       if (
         !currentUrl.includes('/auth/account-action') &&
         !currentUrl.includes('/auth/register')
@@ -136,6 +146,7 @@ export class GroupService implements IGroupService {
 
             if (userGroups.length === 0) {
               this.groupStore.setAllUserGroups([]);
+              this.clearCurrentGroup();
               // Any invited-member records for this email get linked on the
               // Groups page's own load (see GroupsComponent), not retried
               // here - that fires later in the session, past the cold-boot
@@ -243,7 +254,7 @@ export class GroupService implements IGroupService {
 
     // Handle auto-navigation for bookmarked/direct home page visits
     // Login/register pages are handled by loggedInGuard
-    const currentUrl = this.router.url;
+    const currentUrl = this.#effectiveUrl();
     const isRedirectPage =
       currentUrl === '/home' ||
       currentUrl === '/' ||
@@ -258,6 +269,17 @@ export class GroupService implements IGroupService {
         this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       }
     }
+  }
+
+  // Where the user is: router.url, or - while a navigation is in flight -
+  // where they are going. On a cold load router.url stays '/' until the first
+  // navigation commits (after lazy routes and the async auth guard), so a
+  // deep link would otherwise look like a visit to the home page.
+  #effectiveUrl(): string {
+    const pending = this.router.currentNavigation();
+    return pending
+      ? this.router.serializeUrl(pending.finalUrl ?? pending.extractedUrl)
+      : this.router.url;
   }
 
   // Self-heal: a defaultGroupRef pointing at a group the user no longer
@@ -295,33 +317,83 @@ export class GroupService implements IGroupService {
     // (active:false on their own member doc, but still userRef-linked so
     // the group otherwise "matches") must never be auto-selected back in.
     const activeGroups = groups.filter((g) => g.active && g.userActiveInGroup);
+
+    // A group still loading (e.g. one the user just picked) decides the
+    // selection; starting another load here would race it and could undo the
+    // user's choice. Unless the user has lost access to it in the meantime.
+    const pendingGroup = groups.find((g) => g.id === this.#pendingGroupId);
+    if (pendingGroup?.userActiveInGroup) return;
+
     const currentGroup = this.groupStore.currentGroup();
     const freshCurrentGroup = currentGroup?.ref
       ? groups.find((g) => g.id === currentGroup.id)
       : undefined;
 
     if (freshCurrentGroup?.ref && freshCurrentGroup.userActiveInGroup) {
-      await this.getGroup(freshCurrentGroup.ref, userRef);
+      if (freshCurrentGroup.id === this.#loadedGroupId) {
+        this.#refreshCurrentGroup(freshCurrentGroup, userRef);
+      } else {
+        // e.g. restored from localStorage on app load: nothing loaded yet
+        await this.getGroup(freshCurrentGroup.ref, userRef);
+      }
     } else if (defaultGroupRef) {
       await this.getGroup(defaultGroupRef, userRef);
     } else if (activeGroups.length === 1 && activeGroups[0]?.ref) {
       await this.getGroup(activeGroups[0].ref, userRef);
     } else {
-      this.groupStore.clearCurrentGroup();
-      localStorage.removeItem('currentGroup');
       // No group to fall back to (e.g. just left this one with nothing else
-      // active) - getGroup() normally replaces each service's listener and
-      // overwrites its store when switching TO a group, but nothing does
-      // that when switching to NO group. Without this, whatever the
-      // previous group's expenses/categories/members/etc. were stay visible
-      // in these signals indefinitely (a real access loophole once rules
-      // deny fresh reads for a left group - the UI just keeps showing
-      // data fetched before leaving).
-      this.clearCurrentGroupData();
+      // active). Without stopping the listeners and emptying the stores,
+      // whatever the previous group's expenses/categories/members/etc. were
+      // stay visible in these signals indefinitely (a real access loophole
+      // once rules deny fresh reads for a left group - the UI just keeps
+      // showing data fetched before leaving).
+      this.clearCurrentGroup();
     }
   }
 
+  // A snapshot re-delivered the group that is already loaded (e.g. it was
+  // renamed, or someone joined it). Publish its fresh data and re-read the
+  // user's own member record - a change to that also fires the snapshot -
+  // without re-fetching the group, rewriting the user's default or
+  // restarting every data listener.
+  #refreshCurrentGroup(group: Group, userRef: DocumentReference<User>): void {
+    const current = new Group({ ...group });
+    // Membership flags describe the user, not the group; getGroup() doesn't
+    // put them on the current group either.
+    delete current.userActiveInGroup;
+    delete current.userLeftGroup;
+    delete current.userIsAdmin;
+    delete current.userMemberRef;
+    this.groupStore.setCurrentGroup(current);
+    localStorage.setItem('currentGroup', JSON.stringify(current));
+    this.memberService.getMemberByUserRef(group.id, userRef);
+  }
+
+  /**
+   * Leaves the app with no current group: cancels any group still loading,
+   * stops every per-group data listener and empties the per-group stores, so
+   * nothing keeps reading (or showing) a group that is no longer selected.
+   * Selecting a group later starts fresh listeners.
+   *
+   * @param skipAutoSelect true stops the next groups snapshot from
+   *   immediately auto-selecting a replacement (deactivate, archive, delete).
+   */
+  clearCurrentGroup(skipAutoSelect = false): void {
+    this.#cancelPendingSelection();
+    this.groupStore.clearCurrentGroup(skipAutoSelect);
+    localStorage.removeItem('currentGroup');
+    this.clearCurrentGroupData();
+  }
+
+  // Makes any in-flight getGroup() call stale, so it can't select its group
+  // after the selection was cleared.
+  #cancelPendingSelection(): void {
+    this.#selectionSeq++;
+    this.#pendingGroupId = null;
+  }
+
   private clearCurrentGroupData(): void {
+    this.#loadedGroupId = null;
     this.memberService.stopListening();
     this.categoryService.stopListening();
     this.memorizedService.stopListening();
@@ -339,13 +411,18 @@ export class GroupService implements IGroupService {
     groupRef: DocumentReference<Group>,
     userRef: DocumentReference<User>
   ): Promise<void> {
+    const seq = ++this.#selectionSeq;
+    const isSuperseded = () => seq !== this.#selectionSeq;
+    this.#pendingGroupId = groupRef.id;
     try {
       const docSnap = await getDoc(groupRef);
+      // Another selection started (or the selection was cleared) while this
+      // one was loading: the newer one wins.
+      if (isSuperseded()) return;
 
       if (!docSnap.exists()) {
         // Group was deleted out-of-band; clear selection and any stale default.
-        this.groupStore.clearCurrentGroup();
-        localStorage.removeItem('currentGroup');
+        this.clearCurrentGroup();
         if (this.userStore.user()?.defaultGroupRef?.eq(groupRef)) {
           await setDoc(userRef, { defaultGroupRef: null }, { merge: true });
           this.userStore.updateUser({ defaultGroupRef: null });
@@ -365,20 +442,19 @@ export class GroupService implements IGroupService {
         ref: docSnap.ref as DocumentReference<Group>, // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
       });
 
+      // Switching groups: empty the previous group's data first, so no page
+      // shows the new group alongside the old group's members, categories
+      // and so on while the new group's data loads.
+      if (this.#loadedGroupId !== group.id) {
+        this.clearCurrentGroupData();
+      }
       this.groupStore.setCurrentGroup(group);
       this.groupStore.resetSkipAutoSelect();
       localStorage.setItem('currentGroup', JSON.stringify(group));
 
-      await setDoc(
-        userRef,
-        {
-          defaultGroupRef: groupRef,
-        },
-        { merge: true }
-      );
-      this.userStore.updateUser({ defaultGroupRef: groupRef });
-
       // Initialize group-related data
+      this.#loadedGroupId = group.id;
+      this.#pendingGroupId = null;
       this.categoryService.getGroupCategories(groupRef.id);
       this.memberService.getGroupMembers(groupRef.id);
       this.memberService.getMemberByUserRef(groupRef.id, userRef);
@@ -386,6 +462,13 @@ export class GroupService implements IGroupService {
       this.memorizedService.getMemorizedExpensesForGroup(groupRef.id);
       this.splitsService.getUnpaidSplitsForGroup(groupRef.id);
       this.historyService.getHistoryForGroup(groupRef.id);
+
+      // Remember the selection for the next visit - only when it changed.
+      // Each write also fires the syncUserEmailLower trigger.
+      if (!this.userStore.user()?.defaultGroupRef?.eq(groupRef)) {
+        await setDoc(userRef, { defaultGroupRef: groupRef }, { merge: true });
+        this.userStore.updateUser({ defaultGroupRef: groupRef });
+      }
     } catch (error) {
       this.analytics.logError(
         'Group Service',
@@ -394,6 +477,8 @@ export class GroupService implements IGroupService {
         error instanceof Error ? error.message : 'Unknown error'
       );
       throw error;
+    } finally {
+      if (!isSuperseded()) this.#pendingGroupId = null;
     }
   }
 
@@ -468,8 +553,13 @@ export class GroupService implements IGroupService {
     const batch = writeBatch(this.fs);
     batch.update(groupRef, changes);
 
+    // Only an explicit deactivate or archive counts. A change that leaves
+    // `active` out (a rename, or unarchiving - which deliberately keeps the
+    // group inactive until an admin reactivates it) is an ordinary update.
+    const deactivating = changes.active === false || changes.archived === true;
+
     // If deactivating or archiving the group, clear it as default for all users
-    if (!changes.active || changes.archived) {
+    if (deactivating) {
       const usersRef = collection(this.fs, 'users');
       const usersQuery = query(
         usersRef,
@@ -479,16 +569,15 @@ export class GroupService implements IGroupService {
       users.forEach((u) => {
         batch.update(u.ref, { defaultGroupRef: null });
       });
-
-      // Clear current group if it's the one being deactivated or archived
-      if (this.groupStore.currentGroup()?.id === groupRef.id) {
-        this.groupStore.clearCurrentGroup(true);
-        this.userStore.updateUser({ defaultGroupRef: null });
-        localStorage.removeItem('currentGroup');
-      }
     }
 
     await batch.commit();
+
+    // Unselect it if it's the current group - only once the change is saved
+    if (deactivating && this.groupStore.currentGroup()?.id === groupRef.id) {
+      this.clearCurrentGroup(true);
+      this.userStore.updateUser({ defaultGroupRef: null });
+    }
   }
 
   async deleteGroup(groupId: string): Promise<void> {
@@ -505,9 +594,8 @@ export class GroupService implements IGroupService {
 
     // Clear current group if it was the deleted one
     if (this.groupStore.currentGroup()?.id === groupId) {
-      this.groupStore.clearCurrentGroup(true);
+      this.clearCurrentGroup(true);
       this.userStore.updateUser({ defaultGroupRef: null });
-      localStorage.removeItem('currentGroup');
     }
 
     // Remove from the store
@@ -523,6 +611,7 @@ export class GroupService implements IGroupService {
 
   logout(): void {
     this.stopListening();
+    this.#cancelPendingSelection();
     this.clearCurrentGroupData();
     localStorage.removeItem('currentGroup');
     this.groupStore.clearAllUserGroups();

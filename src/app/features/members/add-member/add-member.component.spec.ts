@@ -13,6 +13,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddMemberComponent } from './add-member.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('AddMemberComponent', () => {
   let fixture: ComponentFixture<AddMemberComponent>;
@@ -149,5 +150,9 @@ describe('AddMemberComponent', () => {
       await component.onSubmit();
       expect(mockDialogRef.close).toHaveBeenCalledWith(true);
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

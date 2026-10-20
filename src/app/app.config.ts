@@ -33,13 +33,15 @@ import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { initAppCheck } from './app-check';
 import { appRoutes } from './app.routes';
-import { firebaseConfig } from './firebase.config';
+import { resolveFirebaseOptions } from './firebase-options';
 import { CustomDateAdapter } from './utilities/custom-date-adapter.service';
 
 const useEmulators = environment.useEmulators;
 
 // Initialize Firebase app
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(
+  resolveFirebaseOptions(environment.emulators.projectId)
+);
 
 // This module also executes during SSR/prerender (app.config.server.ts merges
 // appConfig, and angular.json uses outputMode: "static"), where neither
@@ -62,10 +64,11 @@ const functions = getFunctions(app);
 
 // Connect to emulators if in development mode
 if (useEmulators) {
-  connectAuthEmulator(auth, 'http://localhost:9099');
-  connectFirestoreEmulator(firestore, 'localhost', 8080);
-  connectStorageEmulator(storage, 'localhost', 9199);
-  connectFunctionsEmulator(functions, 'localhost', 5001);
+  const ports = environment.emulators;
+  connectAuthEmulator(auth, `http://localhost:${ports.auth}`);
+  connectFirestoreEmulator(firestore, 'localhost', ports.firestore);
+  connectStorageEmulator(storage, 'localhost', ports.storage);
+  connectFunctionsEmulator(functions, 'localhost', ports.functions);
 }
 
 export const appConfig: ApplicationConfig = {

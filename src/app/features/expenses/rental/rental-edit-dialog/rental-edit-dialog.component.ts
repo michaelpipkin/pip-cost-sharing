@@ -1,4 +1,3 @@
-import { CurrencyPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -17,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RentalDetails, RentalRoom } from '@models/expense';
 import { Member } from '@models/member';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import {
@@ -55,7 +55,7 @@ export interface RentalEditDialogResult {
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     RentalGridComponent,
     RentalRoomsComponent,
   ],

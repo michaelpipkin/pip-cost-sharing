@@ -47,7 +47,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { LocaleService } from '@services/locale.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { RentalUtilsService } from '@utils/rental-utils.service';
@@ -59,10 +59,12 @@ import {
   SplitRentalRow,
 } from '../split-rental-grid/split-rental-grid.component';
 import { buildSplitTourSteps } from './split.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-split',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatTableModule,
     MatButtonModule,
@@ -72,7 +74,7 @@ import { buildSplitTourSteps } from './split.tour';
     MatInputModule,
     MatTooltipModule,
     MatIconModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,

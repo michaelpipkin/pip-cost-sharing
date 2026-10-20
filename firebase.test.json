@@ -1,0 +1,15 @@
+{
+  "emulators": {
+    "auth": { "port": 19099 },
+    "functions": { "port": 15001 },
+    "firestore": { "port": 18080, "websocketPort": 19150, "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+    "storage": { "port": 19199 },
+    "hub": { "port": 14400 },
+    "logging": { "port": 14500 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  },
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "storage": { "rules": "storage.rules" },
+  "functions": [{ "source": "functions", "codebase": "default", "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"] }]
+}

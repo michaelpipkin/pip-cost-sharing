@@ -25,6 +25,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManageGroupsComponent } from './manage-groups.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('ManageGroupsComponent', () => {
   let fixture: ComponentFixture<ManageGroupsComponent>;
@@ -264,5 +265,9 @@ describe('ManageGroupsComponent', () => {
       expect(preview.editGroupModel().groupName).toBe('Beach Weekend');
       expect(expenseService.checkGroupHasExpenses).not.toHaveBeenCalled();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

@@ -65,7 +65,7 @@ import {
   ReceiptScanHandoffService,
   ReceiptScanPayload,
 } from '@services/receipt-scan-handoff.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -80,12 +80,14 @@ import {
   buildExpenseFormTourSteps,
   createExpenseFormTour,
 } from '../expense-form.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-add-expense',
   templateUrl: './add-expense.component.html',
   styleUrl: './add-expense.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatDialogModule,
     MatButtonModule,
@@ -96,7 +98,7 @@ import {
     MatTooltipModule,
     MatDatepickerModule,
     MatIconModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,

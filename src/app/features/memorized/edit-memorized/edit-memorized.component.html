@@ -153,7 +153,7 @@
         <div data-tour-anchor="remainder" class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
-            {{ expenseModel().sharedAmount | currency }}
+            {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
       </div>
@@ -197,7 +197,7 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <button mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
+              <button type="button" mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -305,7 +305,7 @@
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
                 <span class="mock-value-right">
-                  {{ split.allocatedAmount | currency }}
+                  {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
             </div>
@@ -321,6 +321,7 @@
         mat-raised-button
         class="btn-secondary"
         type="submit"
+        form="expense-form"
         defaultButton
         [disabled]="
           !expenseForm().valid() ||

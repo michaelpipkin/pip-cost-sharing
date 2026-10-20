@@ -36,6 +36,7 @@ import { GuidedTourConfig } from '@models/guided-tour';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditMemorizedComponent } from './edit-memorized.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('EditMemorizedComponent', () => {
   let fixture: ComponentFixture<EditMemorizedComponent>;
@@ -330,5 +331,9 @@ describe('EditMemorizedComponent', () => {
       fixture.destroy();
       expect(stopSpy).toHaveBeenCalledWith('closed');
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });
