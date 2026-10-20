@@ -169,6 +169,8 @@
                   <button
                     mat-icon-button
                     (click)="addExpense(expense); $event.stopPropagation()"
+                    aria-label="Create expense from memorized"
+                    data-testid="memorized-create-expense-button"
                   >
                     <mat-icon>add</mat-icon>
                   </button>
@@ -182,6 +184,7 @@
                   <button
                     mat-icon-button
                     aria-label="expand row"
+                    data-testid="memorized-expand-button"
                     (click)="onExpandClick(expense); $event.stopPropagation()"
                   >
                     @if (expandedExpense() === expense) {
@@ -246,6 +249,7 @@
                         <tr
                           mat-row
                           *matRowDef="let split; columns: splitColumnsToDisplay"
+                          data-testid="memorized-split-row"
                         ></tr>
                       </table>
                     </div>
@@ -262,6 +266,7 @@
                 *matRowDef="let expense; columns: columnsToDisplay()"
                 class="summary-row clickable-row expandable-row"
                 [class.expanded-row]="expandedExpense() === expense"
+                data-testid="memorized-row"
                 (click)="onRowClick(expense)"
                 (keydown.enter)="onRowClick(expense)"
               ></tr>
@@ -279,7 +284,7 @@
           </div>
         </div>
       } @else {
-        <div class="placeholder-content">
+        <div class="placeholder-content" data-testid="memorized-no-results">
           <mat-icon
             class="placeholder-icon"
             fontSet="material-symbols-outlined"

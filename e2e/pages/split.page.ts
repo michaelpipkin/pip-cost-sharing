@@ -1,7 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { formatMoney } from '../utils/format';
 import { BasePage } from './base.page';
-import type { SplitMethod } from './expenses.page';
+import { SplitMethodToggle, type SplitMethod } from './expense-form';
 
 /**
  * The public Split Expense calculator (/split): signed out, no Firestore.
@@ -13,6 +13,8 @@ export class SplitPage extends BasePage {
   readonly proportionalAmountInput: Locator;
   readonly sharedRemainder: Locator;
   readonly addSplitButton: Locator;
+  /** The shared split-method toggle (same one the expense forms use). */
+  readonly split: SplitMethodToggle;
   readonly splitMethodToggles: Record<SplitMethod, Locator>;
   readonly vacationRentalButton: Locator;
 
@@ -53,11 +55,8 @@ export class SplitPage extends BasePage {
     );
     this.sharedRemainder = page.getByTestId('split-shared-remainder');
     this.addSplitButton = page.getByTestId('split-add-split-button');
-    this.splitMethodToggles = {
-      amount: page.getByTestId('split-by-amount-toggle'),
-      percentage: page.getByTestId('split-by-percentage-toggle'),
-      shares: page.getByTestId('split-by-shares-toggle'),
-    };
+    this.split = new SplitMethodToggle(page);
+    this.splitMethodToggles = this.split.toggles;
     this.vacationRentalButton = page.getByTestId('vacation-rental-button');
 
     this.nameInputs = page.getByTestId('split-name-input');
@@ -160,10 +159,7 @@ export class SplitPage extends BasePage {
   }
 
   async setMethod(method: SplitMethod): Promise<void> {
-    // A single-select mat-button-toggle renders its button as role=radio.
-    const radio = this.splitMethodToggles[method].getByRole('radio');
-    await radio.click();
-    await expect(radio).toBeChecked();
+    await this.split.select(method);
   }
 
   /** Asserts the value of every input in `inputs`, in row order. */

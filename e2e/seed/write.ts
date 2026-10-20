@@ -30,7 +30,10 @@ import type {
   SeedUser,
 } from './types';
 
-const PROFILE_DOC_TIMEOUT_MS = 15_000;
+// All users are created at once, so every createUserProfileOnSignUp trigger
+// queues on the functions emulator; with ~35 users on a cold emulator that
+// queue takes ~15 s, so the deadline scales with the user count's headroom.
+const PROFILE_DOC_TIMEOUT_MS = 60_000;
 const PROFILE_DOC_POLL_MS = 100;
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;

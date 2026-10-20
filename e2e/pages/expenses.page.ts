@@ -1,8 +1,9 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { formatMoney, formatShortDate } from '../utils/format';
 import { BasePage } from './base.page';
+import { ExpenseForm, type SplitMethod } from './expense-form';
 
-export type SplitMethod = 'amount' | 'percentage' | 'shares';
+export type { SplitMethod } from './expense-form';
 
 /** One split as the Expenses page's detail table shows it. */
 export interface ExpectedSplit {
@@ -36,14 +37,18 @@ export class ExpensesPage extends BasePage {
   readonly expenseDetail: Locator;
   readonly expenseSplitRows: Locator;
 
-  // Add Expense form
+  // Add Expense form. The form's fields, split rows and actions live in
+  // ExpenseForm (shared with the memorized forms); the members below
+  // delegate to it so specs keep using them directly.
+  readonly form: ExpenseForm;
   readonly addExpenseContainer: Locator;
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
   readonly addExpenseForm: Locator;
-  readonly payerSelect: Locator;
   readonly dateInput: Locator;
   readonly datePickerToggle: Locator;
+  readonly saveAndAddAnotherButton: Locator;
+  readonly payerSelect: Locator;
   readonly descriptionInput: Locator;
   readonly categorySelect: Locator;
   readonly totalAmountInput: Locator;
@@ -53,17 +58,7 @@ export class ExpensesPage extends BasePage {
   readonly addSplitButton: Locator;
   readonly addAllMembersButton: Locator;
   readonly saveButton: Locator;
-  readonly saveAndAddAnotherButton: Locator;
   readonly cancelButton: Locator;
-
-  // Receipt attachment
-  readonly fileInput: Locator;
-  readonly attachFileButton: Locator;
-  readonly uploadPrompt: Locator;
-  readonly attachedFilename: Locator;
-  readonly removeFileButton: Locator;
-
-  // Split rows: each locator has one match per split, in row order (.nth(i)).
   /** The per-split member selects - one per split, so also the split count. */
   readonly splitRows: Locator;
   readonly assignedAmountInputs: Locator;
@@ -71,6 +66,13 @@ export class ExpensesPage extends BasePage {
   readonly sharesInputs: Locator;
   readonly allocatedAmounts: Locator;
   readonly deleteSplitButtons: Locator;
+
+  // Receipt attachment
+  readonly fileInput: Locator;
+  readonly attachFileButton: Locator;
+  readonly uploadPrompt: Locator;
+  readonly attachedFilename: Locator;
+  readonly removeFileButton: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
@@ -91,31 +93,15 @@ export class ExpensesPage extends BasePage {
     this.expenseSplitRows = this.expenseDetail.getByTestId('expense-split-row');
 
     this.addExpenseContainer = page.getByTestId('add-expense-container');
+    this.form = new ExpenseForm(page, this.addExpenseContainer);
     this.pageTitle = page.getByTestId('page-title');
     this.helpButton = page.getByTestId('help-button');
     this.addExpenseForm = page.getByTestId('add-expense-form');
-    this.payerSelect = page.getByTestId('payer-select');
     this.dateInput = page.getByTestId('date-input');
     this.datePickerToggle = page.getByTestId('date-picker-toggle');
-    this.descriptionInput = page.getByTestId('description-input');
-    this.categorySelect = page.getByTestId('category-select');
-    this.totalAmountInput = page.getByTestId('total-amount-input');
-    this.proportionalAmountInput = page.getByTestId(
-      'proportional-amount-input'
-    );
-    this.sharedRemainderAmount = page.getByTestId('shared-remainder-amount');
-    this.splitMethodToggles = {
-      amount: page.getByTestId('split-by-amount-toggle'),
-      percentage: page.getByTestId('split-by-percentage-toggle'),
-      shares: page.getByTestId('split-by-shares-toggle'),
-    };
-    this.addSplitButton = page.getByTestId('add-split-button');
-    this.addAllMembersButton = page.getByTestId('add-all-members-button');
-    this.saveButton = page.getByTestId('save-button');
     this.saveAndAddAnotherButton = page.getByTestId(
       'save-and-add-another-button'
     );
-    this.cancelButton = page.getByTestId('cancel-button');
 
     this.fileInput = page.getByTestId('file-input');
     this.attachFileButton = page.getByTestId('attach-file-button');
@@ -123,16 +109,28 @@ export class ExpensesPage extends BasePage {
     this.attachedFilename = page.getByTestId('attached-filename');
     this.removeFileButton = page.getByTestId('remove-file-button');
 
-    this.splitRows = page.getByTestId('split-member-select');
-    this.assignedAmountInputs = page.getByTestId('split-assigned-amount-input');
-    this.percentageInputs = page.getByTestId('split-percentage-input');
-    this.sharesInputs = page.getByTestId('split-shares-input');
-    this.allocatedAmounts = page.getByTestId('allocated-amount');
-    this.deleteSplitButtons = page.getByTestId('remove-split');
-
     this.formErrors = page.locator('mat-error');
     this.calendar = page.locator('mat-calendar');
     this.confirmDeleteButton = page.getByTestId('delete-confirm-button');
+
+    const form = this.form;
+    this.payerSelect = form.payerSelect;
+    this.descriptionInput = form.descriptionInput;
+    this.categorySelect = form.categorySelect;
+    this.totalAmountInput = form.totalAmountInput;
+    this.proportionalAmountInput = form.proportionalAmountInput;
+    this.sharedRemainderAmount = form.sharedRemainderAmount;
+    this.splitMethodToggles = form.splitMethodToggles;
+    this.addSplitButton = form.addSplitButton;
+    this.addAllMembersButton = form.addAllMembersButton;
+    this.saveButton = form.saveButton;
+    this.cancelButton = form.cancelButton;
+    this.splitRows = form.splitRows;
+    this.assignedAmountInputs = form.assignedAmountInputs;
+    this.percentageInputs = form.percentageInputs;
+    this.sharesInputs = form.sharesInputs;
+    this.allocatedAmounts = form.allocatedAmounts;
+    this.deleteSplitButtons = form.deleteSplitButtons;
   }
 
   // ---- Navigation ---------------------------------------------------------
@@ -185,63 +183,41 @@ export class ExpensesPage extends BasePage {
     await this.waitForLoadingComplete();
   }
 
-  // ---- Form fields --------------------------------------------------------
+  // ---- Form fields and splits (delegating to ExpenseForm) ------------------
 
   async selectPayer(memberName: string): Promise<void> {
-    await this.chooseOption(this.payerSelect, memberName);
+    await this.form.selectPayer(memberName);
   }
 
   async selectCategory(categoryName: string): Promise<void> {
-    await this.chooseOption(this.categorySelect, categoryName);
+    await this.form.selectCategory(categoryName);
   }
 
   /** Changes split row `index`'s member. */
   async selectSplitMember(index: number, memberName: string): Promise<void> {
-    await this.chooseOption(this.splitRows.nth(index), memberName);
-  }
-
-  /**
-   * Types an amount into a currency input and blurs it (which runs the
-   * form's re-allocation); the input then shows it formatted to cents.
-   */
-  private async fillCurrency(input: Locator, amount: number): Promise<void> {
-    await input.fill(amount.toString());
-    await input.blur();
-    await expect(input).toHaveValue(amount.toFixed(2));
+    await this.form.selectSplitMember(index, memberName);
   }
 
   async setDescription(description: string): Promise<void> {
-    await this.descriptionInput.fill(description);
-    await this.descriptionInput.blur();
-    await expect(this.descriptionInput).toHaveValue(description);
+    await this.form.setDescription(description);
   }
 
   async setTotalAmount(amount: number): Promise<void> {
-    await this.fillCurrency(this.totalAmountInput, amount);
+    await this.form.setTotalAmount(amount);
   }
 
   async setProportionalAmount(amount: number): Promise<void> {
-    await this.fillCurrency(this.proportionalAmountInput, amount);
+    await this.form.setProportionalAmount(amount);
   }
 
-  /**
-   * Fills description, category (when given; a one-category group selects
-   * its category itself), total and, when given, the proportional amount.
-   */
+  /** See ExpenseForm.fillExpenseForm. */
   async fillExpenseForm(data: {
     description: string;
     amount: number;
     category?: string;
     proportionalAmount?: number;
   }): Promise<void> {
-    await this.setDescription(data.description);
-    if (data.category !== undefined) {
-      await this.selectCategory(data.category);
-    }
-    await this.setTotalAmount(data.amount);
-    if (data.proportionalAmount !== undefined) {
-      await this.setProportionalAmount(data.proportionalAmount);
-    }
+    await this.form.fillExpenseForm(data);
   }
 
   /** Picks a day of the month currently shown in the date picker. */
@@ -258,71 +234,40 @@ export class ExpensesPage extends BasePage {
     await expect(this.dateInput).toHaveValue(formatShortDate(date));
   }
 
-  // ---- Splits -------------------------------------------------------------
-
-  /**
-   * Adds one split row. The form fills it with the first member not yet in a
-   * split; pass `member` to change that, and `amount` to set its member
-   * amount (amount split method).
-   */
+  /** See ExpenseForm.addSplit. */
   async addSplit(member?: string, amount?: number): Promise<void> {
-    const count = await this.splitRows.count();
-    await this.addSplitButton.click();
-    await expect(this.splitRows).toHaveCount(count + 1);
-    if (member !== undefined) {
-      await this.selectSplitMember(count, member);
-    }
-    if (amount !== undefined) {
-      await this.updateSplitAmount(count, amount);
-    }
+    await this.form.addSplit(member, amount);
   }
 
-  /**
-   * Adds a split for every active member not already in one. Waits until it
-   * has: both add buttons disable once every member has a split.
-   */
   async addAllMembers(): Promise<void> {
-    await this.addAllMembersButton.click();
-    await expect(this.addAllMembersButton).toBeDisabled();
+    await this.form.addAllMembers();
   }
 
   async removeSplit(index: number): Promise<void> {
-    const count = await this.splitRows.count();
-    await this.deleteSplitButtons.nth(index).click();
-    await expect(this.splitRows).toHaveCount(count - 1);
+    await this.form.removeSplit(index);
   }
 
   /** Sets split row `index`'s member amount (amount split method). */
   async updateSplitAmount(index: number, amount: number): Promise<void> {
-    const input = this.assignedAmountInputs.nth(index);
-    await input.fill(amount.toString());
-    await input.blur();
+    await this.form.updateSplitAmount(index, amount);
   }
 
   /** Sets split row `index`'s percentage (not the last row: it's computed). */
   async setSplitPercentage(index: number, percentage: number): Promise<void> {
-    const input = this.percentageInputs.nth(index);
-    await input.fill(percentage.toString());
-    await input.blur();
+    await this.form.setSplitPercentage(index, percentage);
   }
 
   async setSplitShares(index: number, shares: number): Promise<void> {
-    const input = this.sharesInputs.nth(index);
-    await input.fill(shares.toString());
-    await input.blur();
+    await this.form.setSplitShares(index, shares);
   }
 
-  /** Switches the split method and waits for that method's split inputs. */
   async setSplitMethod(method: SplitMethod): Promise<void> {
-    // A single-select mat-button-toggle renders its button as role=radio.
-    const toggle = this.splitMethodToggles[method].getByRole('radio');
-    await toggle.click();
-    await expect(toggle).toBeChecked();
+    await this.form.setSplitMethod(method);
   }
 
   /** Asserts each split row's allocated amount, in row order. */
   async expectAllocatedAmounts(amounts: number[]): Promise<void> {
-    await expect(this.allocatedAmounts).toHaveText(amounts.map((amount) => formatMoney(amount)));
+    await this.form.expectAllocatedAmounts(amounts);
   }
 
   // ---- Receipt ------------------------------------------------------------
