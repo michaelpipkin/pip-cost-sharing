@@ -126,6 +126,36 @@ export class AuthPage extends BasePage {
   }
 
   /**
+   * Fills and submits the registration form (already on screen), then waits
+   * for the "Check Your Email" confirmation. The new account is signed in but
+   * unverified until its emailed link is followed (see
+   * verifyEmailViaEmulator). Creates a real Auth user: only the invite
+   * registration journey does that in the suite.
+   */
+  async register(email: string, password: string): Promise<void> {
+    const fields: [string, string][] = [
+      ['register-email-input', email],
+      ['register-password-input', password],
+      ['register-confirm-password-input', password],
+    ];
+    for (const [testId, value] of fields) {
+      const input = this.page.getByTestId(testId);
+      await input.fill(value);
+      await input.blur();
+      await expect(input).toHaveValue(value);
+    }
+    const submit = this.page
+      .getByTestId('register-form')
+      .getByRole('button', { name: 'Register' });
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    await expect(
+      this.page.getByTestId('register-confirmation-card')
+    ).toBeVisible();
+    await this.waitForLoadingComplete();
+  }
+
+  /**
    * Sign up with email and password
    */
   async signUp(email: string, password: string, confirmPassword?: string) {

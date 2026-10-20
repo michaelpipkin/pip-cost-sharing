@@ -13,6 +13,8 @@ export class MembersPage extends BasePage {
   readonly membersTable: Locator;
   readonly helpButton: Locator;
   readonly currentGroupName: Locator;
+  /** The Invite column header: admins only, and only while a listed member can be invited. */
+  readonly inviteColumnHeader: Locator;
 
   // Add Member Dialog elements
   readonly addMemberDialog: Locator;
@@ -59,6 +61,7 @@ export class MembersPage extends BasePage {
     this.membersTable = page.getByTestId('members-table');
     this.helpButton = page.getByTestId('members-help-button');
     this.currentGroupName = page.getByTestId('current-group-name');
+    this.inviteColumnHeader = page.getByTestId('invite-column-header');
 
     // Add Member Dialog elements using test IDs
     this.addMemberDialog = page.locator('mat-dialog-container');
@@ -123,6 +126,24 @@ export class MembersPage extends BasePage {
   /** A member's row; `memberId` is the member doc id (the seed key). */
   row(memberId: string): Locator {
     return this.page.getByTestId(`member-row-${memberId}`);
+  }
+
+  /** A member's invite (envelope) button; `memberId` is the member doc id. */
+  inviteButton(memberId: string): Locator {
+    return this.page.getByTestId(`invite-member-button-${memberId}`);
+  }
+
+  /**
+   * Clicks a member's envelope and confirms the Send App Invitation dialog,
+   * then waits for the dialog to close and the loading overlay to clear. The
+   * outcome (snackbar, envelope gone) is the caller's to assert.
+   */
+  async sendInvite(memberId: string): Promise<void> {
+    await this.inviteButton(memberId).click();
+    await expect(this.confirmDialogTitle).toHaveText('Send App Invitation');
+    await this.confirmButton.click();
+    await expect(this.confirmDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async verifyPageLoaded(): Promise<void> {
