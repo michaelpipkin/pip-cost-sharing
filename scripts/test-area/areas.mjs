@@ -66,6 +66,9 @@ const RECEIPT_CAPTURE = [
 //    summary code, and by user.service.
 //  - USER_SERVICE: app shell, auth/account, history, summary, and
 //    receipt-dialog (so expenses and receipts).
+//  - LOADING (LoadingService + loading component): every area except rental,
+//    split and home. footer and theme.service stay shell-only: nothing outside
+//    app.component imports them (the `footer` hits in expenses are mat-footer).
 const ANALYTICS = [
   `${SERVICES}/analytics.service.spec.ts`,
   `${UTILITIES}/analytics-privacy.util.spec.ts`,
@@ -77,6 +80,7 @@ const APP_CHECK_ERRORS = [
   `${UTILITIES}/app-check-error.util.spec.ts`,
 ];
 const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
+const LOADING = [`${COMPONENTS}/loading`];
 
 export const AREAS = {
   // App bootstrap, layout chrome, ads/PWA/theme plumbing and the app-wide
@@ -84,6 +88,7 @@ export const AREAS = {
   shell: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -100,7 +105,6 @@ export const AREAS = {
       `${SERVICES}/theme.service.spec.ts`,
       `${COMPONENTS}/account-menu`,
       `${COMPONENTS}/footer`,
-      `${COMPONENTS}/loading`,
       `${COMPONENTS}/update-prompt-dialog`,
     ],
     // Mail delivery suppression applies to every email the backend sends.
@@ -112,6 +116,7 @@ export const AREAS = {
   auth: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -139,6 +144,7 @@ export const AREAS = {
   account: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -157,6 +163,7 @@ export const AREAS = {
   groups: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       `${FEATURES}/groups`,
@@ -184,6 +191,7 @@ export const AREAS = {
   members: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       `${FEATURES}/members`,
@@ -210,6 +218,7 @@ export const AREAS = {
   categories: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       `${FEATURES}/categories`,
       `${SERVICES}/category.service.spec.ts`,
@@ -227,6 +236,7 @@ export const AREAS = {
   expenses: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -283,6 +293,7 @@ export const AREAS = {
   receipts: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -303,6 +314,7 @@ export const AREAS = {
   memorized: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       `${FEATURES}/memorized`,
       `${SERVICES}/category.service.spec.ts`,
@@ -325,6 +337,7 @@ export const AREAS = {
   summary: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -347,6 +360,7 @@ export const AREAS = {
   history: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
@@ -395,6 +409,7 @@ export const AREAS = {
   help: {
     unit: [
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       `${FEATURES}/help`,
       `${SERVICES}/help.service.spec.ts`,
@@ -410,6 +425,7 @@ export const AREAS = {
     unit: [
       `${FEATURES}/admin`,
       ...ANALYTICS,
+      ...LOADING,
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       ...CONFIRM_DIALOG,

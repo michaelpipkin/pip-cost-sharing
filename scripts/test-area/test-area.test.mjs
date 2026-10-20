@@ -144,6 +144,21 @@ test('the app-check error handler is covered by the areas that import it', () =>
   }
 });
 
+test('the loading component/service is covered by every area except rental, split and home', () => {
+  for (const name of everyAreaExcept('rental', 'split', 'home')) {
+    assert.ok(
+      covers(name, 'app/shared/components/loading/loading.component.spec.ts'),
+      name
+    );
+  }
+  for (const name of ['rental', 'split', 'home']) {
+    assert.ok(
+      !covers(name, 'app/shared/components/loading/loading.component.spec.ts'),
+      name
+    );
+  }
+});
+
 test('the user service is covered by the areas that import it', () => {
   for (const name of ['shell', 'auth', 'account', 'history', 'summary', 'expenses', 'receipts']) {
     assert.ok(covers(name, 'app/services/user.service.spec.ts'), name);
