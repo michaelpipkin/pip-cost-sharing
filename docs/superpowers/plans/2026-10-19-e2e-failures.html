@@ -42,8 +42,14 @@
 </div>
 
 <h2>Suspected app bugs</h2>
-<p><strong>None.</strong> Every failure traced to a concrete test-side cause (a selector or text the app no longer has) or to a timing race that passes when the test is run alone. No row has a concrete reason to blame the app.</p>
+<p><strong>None.</strong> Fifteen failures traced to a concrete test-side cause (a selector or text the app no longer has, or an unawaited redirect). The sixteenth is unresolved and sits on the Watch list below. No row has a concrete reason to blame the app yet.</p>
 <p class="muted">Two observations worth keeping in mind during Plan 2 (neither is a bug claim): <code>/auth/login</code> redirects an authenticated user via an async guard (<code>loggedInGuard</code> awaits auth init), so the test that asserts the redirect must wait for the URL instead of reading it once; and the Groups page deliberately hides the group select until the user has at least one group (<code>@if (displayedActiveGroups().length &gt; 0)</code> in <code>groups.component.html</code>) and shows guidance text instead.</p>
+
+<h3>Watch list (unresolved, not claimed as a bug)</h3>
+<ul>
+  <li><strong><code>groups/groups-admin.spec.ts:157</code> should create first group - unresolved, needs trace inspection.</strong> After <code>fill()</code> + <code>blur()</code>, <code>getByTestId('display-name-input')</code> still read "" for the whole 5 s <code>toHaveValue</code> window. That is not an ordinary timing race: the value was gone, or never took, for five seconds. It passed 3 of 3 in a solo re-run, which is thin evidence either way. The failed run's trace was deleted by my later solo re-runs (Playwright clears <code>test-results/</code> at the start of each run), so it must be reproduced: re-run the full suite (<code>pnpm e2e</code>, 2 workers) and open <code>trace.zip</code> for this test via <code>pnpm e2e:report</code>. Hypotheses to check: (a) the signal-forms <code>[formField]</code> directive wrote the model value '' back to the DOM after <code>fill()</code> (a hydration race right after the dialog opens); (b) the dialog re-rendered. The input id in the call log was <code>mat-input-1</code>, which argues against a re-created dialog but not against a re-render. <strong>It gates 7 did-not-run tests</strong> (the rest of the Group Workflow block). If it turns out to be a real model-reset race in <code>AddGroupComponent</code>, it moves to the suspected-app-bugs list.</li>
+  <li><code>auth/auth-authenticated.spec.ts:36</code> is filed as a stale test (unawaited async redirect), but its race evidence is also only 3 solo re-runs that passed. The explanation fits the code (<code>loggedInGuard</code> awaits auth init; the test reads the URL once), but it was not proven from a trace.</li>
+</ul>
 
 <h2>Triage counts (16 failures)</h2>
 <div class="table-wrap">
@@ -52,17 +58,33 @@
   <tr><td>Stale test (selector / flow / text changed)</td><td class="num">15</td></tr>
   <tr><td>Feature removed</td><td class="num">0</td></tr>
   <tr><td>Suspected app bug</td><td class="num">0</td></tr>
-  <tr><td>Infra (flake under load, passes alone)</td><td class="num">1</td></tr>
+  <tr><td>Infra</td><td class="num">0</td></tr>
+  <tr><td>Unresolved (needs trace inspection; see Watch list)</td><td class="num">1</td></tr>
 </table>
 </div>
 
 <h2>Root causes</h2>
 <ol>
-  <li><strong>Add-expense form moved to signal forms.</strong> <code>ExpensesPage.totalAmountInput</code> is <code>input[formControlName="amount"]</code> (and <code>allocatedAmount</code>, <code>assignedAmount</code> for the other money fields). The template now binds <code>[formField]="expenseForm.amount"</code> with no <code>formControlName</code> attribute and no <code>data-testid</code> on the amount, proportional or per-split inputs. 10 failures, plus most of the 29 did-not-run tests. Fix direction: add test ids to those inputs in the template, then update the page object.</li>
-  <li><strong>Empty-state text changed.</strong> History now shows "Once payments are recorded in your group, you'll see a history of payments here..." and Summary shows "Once you have unpaid expenses in a group, you'll see a summary of who owes what here...". The page objects look for "No history found" and "No outstanding expenses found". 2 failures.</li>
+  <li><strong>Add-expense form moved to signal forms, and the page object is stale well beyond the amount input.</strong> 10 failures at the amount field, plus most of the 29 did-not-run tests. <code>e2e/pages/expenses.page.ts</code> depends on these selectors, none of which match the current <code>add-expense.component.html</code> (verified by grep over <code>src/app</code>):
+  <ul>
+    <li><code>input[formControlName="amount"]</code>, <code>input[formControlName="allocatedAmount"]</code>, <code>input[formControlName="assignedAmount"]</code> and <code>div[formArrayName="splits"] &gt; div</code>: the template binds <code>[formField]="expenseForm.amount"</code> etc. with no <code>formControlName</code>/<code>formArrayName</code> and no testid on the total or proportional inputs (the per-split proportional amount cell has <code>data-testid="allocated-amount"</code>).</li>
+    <li><code>mat-select[formControlName="owedByMemberRef"]</code> (<code>splitRows</code>): the split member select now uses <code>[value]</code> + <code>(selectionChange)</code>, with no testid; the surrounding <code>mat-form-field</code> has <code>id="split-member"</code>.</li>
+    <li><code>split-by-percentage-button</code>: now <code>app-split-method-toggle</code> with <code>split-by-amount-toggle</code>, <code>split-by-percentage-toggle</code> and <code>split-by-shares-toggle</code> (a three-way toggle, not a single percentage button).</li>
+    <li><code>receipt-preview</code>, <code>remove-receipt-button</code> and the generic <code>input[type="file"]</code> flow: the form now has an attach-file area with <code>attach-file-area</code>, <code>file-input</code>, <code>attach-file-button</code>, <code>upload-prompt</code>, <code>attached-filename</code>, <code>remove-file-attachment</code> and <code>remove-file-button</code>. No <code>receipt-preview</code> equivalent was found.</li>
+    <li><code>memorize-button</code>: no such element anywhere in <code>src/app</code> (see the investigation note below).</li>
+    <li><code>confirm-delete</code> (<code>confirmDeleteButton</code> in the expenses page object): the shared delete dialog uses <code>data-testid="delete-confirm-button"</code> (<code>delete-dialog.component.html</code>); the history page object already uses that id.</li>
+  </ul>
+  Fix direction: add testids to the total, proportional, per-split member and per-split amount inputs in the template, then rewrite the page object against the ids above instead of guessing at DOM structure.
+  <p><strong>Needs investigation: feature may have moved or changed, not just a selector.</strong></p>
+  <ul>
+    <li><code>expenses.spec.ts:97</code> "should memorize expense for reuse" (did not run). The add-expense form has no memorize button. Memorizing now lives on its own page: <code>/memorized/add</code> ("Memorize Expense", <code>add-memorized.component</code>, route <code>MEMORIZED_ADD</code>), plus <code>edit-memorized</code>; the add-expense form only reacts to a <code>memorizedExpense()</code> signal when opened from a memorized item (it then hides "Save &amp; Add Another"). The current test wraps its assertions in <code>if (memorizeVisible)</code>, so it would <em>pass vacuously</em> with the button gone. Plan 2 should treat it as a rewrite onto the Memorized feature, not a selector fix. I did not trace whether a user can still start from an existing expense to create a memorized one; if that path exists, it is not on the add-expense form.</li>
+    <li><code>expenses.spec.ts:194</code> "should toggle percentage mode" (did not run). Percentage entry still exists (<code>@case ('percentage')</code> in the splits template, with percentage inputs and an effective-percentage readout), but it is selected through the three-way <code>split-by-percentage-toggle</code> and there is now also a "shares" mode. Likely a selector/flow update plus coverage for the new mode, but confirm behaviour (auto-calculated last percentage, totals to 100%) against the component before trusting the old assertions.</li>
+  </ul>
+</li>
+  <li><strong>Empty-state text changed.</strong> History now shows "Once payments are recorded in your group, you'll see a history of payments here..." and Summary shows "Once you have unpaid expenses in a group, you'll see a summary of who owes what here...". The page objects look for "No history found" and "No outstanding expenses found". 2 failures. Stable replacements already exist, so match on testids instead of text: <code>no-history-placeholder-text</code> (<code>history.component.html</code>) and <code>no-unpaid-splits-placeholder-text</code> (container <code>no-unpaid-splits-placeholder</code>, <code>summary.component.html</code>). A text match is also ambiguous because "No history found" still appears in <code>history.component.html</code> as a different placeholder branch.</li>
   <li><strong>Groups page for a brand-new user has no <code>group-select</code>.</strong> The legacy flow expects the select to exist before any group is created. 2 failures.</li>
-  <li><strong>Unawaited redirect.</strong> <code>auth-authenticated.spec.ts:36</code> reads <code>page.url()</code> immediately after <code>app-root</code> appears, racing the async guard. 1 failure (passed 3 of 3 when re-run alone).</li>
-  <li><strong>Flake under parallel load.</strong> <code>groups-admin.spec.ts:157</code> saw the "Your name in the group" input empty after <code>fill()</code> (passed 3 of 3 when re-run alone). 1 failure, which then cascades to 7 did-not-run tests.</li>
+  <li><strong>Unawaited redirect.</strong> <code>auth-authenticated.spec.ts:36</code> reads <code>page.url()</code> immediately after <code>app-root</code> appears, racing the async guard. 1 failure (passed 3 of 3 when re-run alone; that is the only evidence, no trace inspection).</li>
+  <li><strong>Unresolved: display-name input empty after fill.</strong> <code>groups-admin.spec.ts:157</code> saw the "Your name in the group" input empty for the whole assertion window after <code>fill()</code>. See the Watch list. 1 failure, which gates 7 did-not-run tests.</li>
 </ol>
 <p class="muted">Also for Plan 2 (tolerated until then): several legacy specs and page objects still hard-code the default dev emulator ports 8080/9099 (<code>auth/auth.spec.ts</code>, <code>auth/auth-authenticated.spec.ts</code>, <code>smoke/homepage.spec.ts</code> make read-only GETs; <code>e2e/constants/index.ts</code> defines the dev-port URLs). They passed here only because the owner's dev emulators were running. Many page objects still use <code>waitForTimeout</code>, and every legacy spec uses the <code>preserveDataFirebasePage</code> alias with its own <code>createTestUser</code> instead of <code>signInAs</code> and the seeded data.</p>
 
@@ -75,7 +97,7 @@
   <tr>
     <td>:36 should redirect authenticated users away from login page</td>
     <td><code>Error: expect(received).not.toContain(expected)</code> - expected substring not "/auth/login", received "http://localhost:4300/auth/login"</td>
-    <td><strong>Stale test.</strong> URL read once, right after <code>app-root</code>, before the async <code>loggedInGuard</code> has redirected. Passed 3 of 3 when run alone; the sibling register-page test passes by timing. Needs <code>expect(page).not.toHaveURL(...)</code> style waiting.</td>
+    <td><strong>Stale test.</strong> URL read once, right after <code>app-root</code>, before the async <code>loggedInGuard</code> has redirected. Passed 3 of 3 when run alone (only evidence; see Watch list); the sibling register-page test passes by timing. Needs <code>expect(page).not.toHaveURL(...)</code> style waiting.</td>
   </tr>
 </table>
 </div>
@@ -127,7 +149,7 @@
   <tr><th>Test</th><th>First error line</th><th>Provisional triage</th></tr>
   <tr><td>:43 should load groups page and display main elements</td><td><code>Error: expect(locator).toBeVisible() failed</code> - <code>getByTestId('group-select')</code>, element(s) not found</td><td><strong>Stale test</strong> (root cause 3). A user with no groups sees the guidance text and "New Group" button; the select is not rendered.</td></tr>
   <tr><td>:98 should cancel create group dialog</td><td>same locator, asserted after the dialog closes</td><td><strong>Stale test</strong> (root cause 3)</td></tr>
-  <tr><td>:157 should create first group</td><td><code>Error: expect(locator).toHaveValue(expected) failed</code> - <code>getByTestId('display-name-input')</code> expected "Groups Admin Tester", received ""</td><td><strong>Infra</strong> (flake). Passed 3 of 3 when this test was re-run alone, and the identical <code>createGroup</code> call succeeds in the expenses specs, so no stable cause was found. Nothing in <code>AddGroupComponent</code> resets the field. Worth a closer look in Plan 2 if it recurs; not claimed as an app bug.</td></tr>
+  <tr><td>:157 should create first group</td><td><code>Error: expect(locator).toHaveValue(expected) failed</code> - <code>getByTestId('display-name-input')</code> expected "Groups Admin Tester", received ""</td><td><strong>Unresolved - needs trace inspection</strong> (Watch list). Solo re-run passed 3 of 3, but the field stayed empty for the full 5 s window, so a plain timing race is not a sufficient explanation. Hypotheses: <code>[formField]</code> wrote '' back to the DOM after <code>fill()</code>, or the dialog re-rendered. Gates 7 did-not-run tests.</td></tr>
 </table>
 </div>
 <p class="muted">Passed: :48, :56, :74, :114, :133, :235, :257.</p>
@@ -145,6 +167,7 @@
 </div>
 
 <h2>Tests that did not run (29)</h2>
+<p class="muted">How the serial blocks nest in <code>summary.spec.ts</code>: it has three sibling <code>describe.serial</code> blocks, "Summary Features" (:53-:131), "Filtering" (:146-:191) and "Net Calculations" (:220). A failure only skips later tests in its own block, so :53 (empty-state text) skips :74-:131, while :146 and :220 are the first test of their blocks and fail independently on the amount selector (:146 then skips :177 and :191). <code>expense-to-payment-flow.spec.ts</code> and <code>expenses.spec.ts</code> are structured the same way.</p>
 <p>Each is in a <code>test.describe.serial</code> block after a failed test, so Playwright skipped it. Triage is unknown until the cascade root is repaired. Root test in brackets.</p>
 <div class="table-wrap">
 <table>
@@ -153,7 +176,7 @@
   <tr><td><code>critical-flows/expenses.spec.ts</code> (8)</td><td>:78 save and add another, :97 memorize expense, :116 cancel expense creation, :173 remove splits dynamically, :194 toggle percentage mode, :261 complex proportional allocation, :364 validate zero amount, :381 handle date selection</td><td>:49 (for :78, :97, :116), :141 (for :173, :194), :224 (for :261), :339 (for :364, :381)</td></tr>
   <tr><td><code>critical-flows/history.spec.ts</code> (3)</td><td>:74 display payment history after payment, :119 copy history to clipboard, :134 delete payment record with confirmation</td><td>:56</td></tr>
   <tr><td><code>critical-flows/summary.spec.ts</code> (7)</td><td>:74 who-owes-whom summary, :91 expand/collapse detail rows, :106 category breakdown, :116 copy summary to clipboard, :131 open payment dialog, :177 filter by date range, :191 clear filters</td><td>:53 (for :74-:131), :146 (for :177, :191)</td></tr>
-  <tr><td><code>groups/groups-admin.spec.ts</code> (7)</td><td>:165 create second group, :172 switch between groups, :179 open manage groups dialog, :185 edit group name, :198 toggle group active status, :211 toggle auto-add members, :224 open help dialog</td><td>:157 (a flake; these would likely have run on a clean pass)</td></tr>
+  <tr><td><code>groups/groups-admin.spec.ts</code> (7)</td><td>:165 create second group, :172 switch between groups, :179 open manage groups dialog, :185 edit group name, :198 toggle group active status, :211 toggle auto-add members, :224 open help dialog</td><td>:157 (unresolved; see Watch list)</td></tr>
 </table>
 </div>
 
@@ -169,7 +192,7 @@
 <h2>Reproducing</h2>
 <ul>
   <li>Full run: <code>pnpm e2e</code>. Results: <code>test-results/results.json</code>, HTML report <code>playwright-report/</code> (<code>pnpm e2e:report</code>), traces and screenshots kept for failures. These are git-ignored output, not committed.</li>
-  <li>Single-test re-runs used for the two flake checks: <code>pnpm e2e e2e/groups --grep "create first group" --repeat-each 3</code> and <code>pnpm e2e e2e/auth/auth-authenticated.spec.ts --grep "away from login" --repeat-each 3</code> (both 3 of 3 passed).</li>
+  <li>Single-test re-runs used for the two repeat checks (3 runs each, thin evidence): <code>pnpm e2e e2e/groups --grep "create first group" --repeat-each 3</code> and <code>pnpm e2e e2e/auth/auth-authenticated.spec.ts --grep "away from login" --repeat-each 3</code> (both 3 of 3 passed).</li>
   <li>After the run the Firestore emulator printed a Java <code>NullPointerException</code> in the rules runtime during shutdown (also seen after <code>pnpm --dir functions test</code>, which exits 0). It is shutdown noise from SIGINT, not a test failure.</li>
 </ul>
 
