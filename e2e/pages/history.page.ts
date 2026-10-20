@@ -1,185 +1,279 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
+import { formatMoney, formatShortDate } from './expenses.page';
+
+/** A payment as the History table (and the payment detail page) shows it. */
+export interface ExpectedPayment {
+  date: Date;
+  paidBy: string;
+  paidTo: string;
+  amount: number;
+}
+
+/** One paid split as the payment detail page's split table shows it. */
+export interface ExpectedPaidSplit {
+  date: Date;
+  category: string;
+}
 
 export class HistoryPage extends BasePage {
-  // Main page elements
+  readonly navHistoryLink: Locator;
+
+  // History list
+  readonly mainContainer: Locator;
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
-
-  // Filter elements
+  readonly currentGroupName: Locator;
+  /** The group has no payments at all. */
+  readonly noHistoryPlaceholder: Locator;
+  /** The group has payments, but none for the member / dates selected. */
+  readonly noFilteredHistoryPlaceholder: Locator;
   readonly memberSelect: Locator;
   readonly startDateInput: Locator;
   readonly endDateInput: Locator;
-  readonly clearFiltersButton: Locator;
 
-  // Table elements
-  readonly historyTable: Locator;
+  // History table: each column locator has one match per row, in order.
   readonly historyRows: Locator;
-  readonly noDataMessage: Locator;
-  readonly sortHeaders: Locator;
+  readonly dateCells: Locator;
+  readonly paidToCells: Locator;
+  readonly paidByCells: Locator;
+  readonly amountCells: Locator;
 
-  // Detail elements
-  readonly expandButtons: Locator;
-  readonly detailRows: Locator;
+  // Payment detail page
+  readonly detailContainer: Locator;
+  readonly detailTitle: Locator;
+  readonly backButton: Locator;
+  readonly paidByName: Locator;
+  readonly paidToName: Locator;
+  readonly paymentDate: Locator;
+  readonly paymentTotal: Locator;
+  readonly copyButton: Locator;
+  readonly unpayAllButton: Locator;
+  readonly splitRows: Locator;
 
-  // Action buttons
-  readonly deleteButtons: Locator;
+  // Confirm dialog (Unpay Payment)
+  readonly confirmDialog: Locator;
+  readonly confirmDialogText: Locator;
+  readonly confirmButton: Locator;
+  readonly cancelButton: Locator;
 
-  // Delete confirmation dialog
-  readonly deleteDialog: Locator;
-  readonly confirmDeleteButton: Locator;
-  readonly cancelDeleteButton: Locator;
-
-  // Generic elements
+  // Generic
   readonly snackbar: Locator;
+  readonly loadingOverlay: Locator;
 
   constructor(page: Page) {
     super(page);
 
-    // Main page - History component uses prefixed testids
+    this.navHistoryLink = page.getByTestId('nav-history');
+
+    this.mainContainer = page.getByTestId('history-main-container');
     this.pageTitle = page.getByTestId('history-page-title');
     this.helpButton = page.getByTestId('history-help-button');
-
-    // Filters
+    this.currentGroupName = this.mainContainer.getByTestId('current-group-name');
+    this.noHistoryPlaceholder = page.getByTestId('no-history-placeholder-text');
+    this.noFilteredHistoryPlaceholder = page.getByTestId(
+      'no-filtered-history-placeholder-text'
+    );
     this.memberSelect = page.getByTestId('member-select');
     this.startDateInput = page.getByTestId('start-date-input');
     this.endDateInput = page.getByTestId('end-date-input');
-    this.clearFiltersButton = page.getByTestId('clear-filters-button');
 
-    // Table - no data-testid, uses Material classes
-    this.historyTable = page.locator('table.mat-mdc-table');
-    this.historyRows = page.locator('table.mat-mdc-table tbody tr.mat-mdc-row');
-    this.noDataMessage = page.getByText('No history found');
-    this.sortHeaders = page.locator('th[mat-sort-header]');
+    this.historyRows = page.getByTestId('history-row');
+    this.dateCells = this.historyRows.getByTestId('history-date');
+    this.paidToCells = this.historyRows.getByTestId('history-paid-to');
+    this.paidByCells = this.historyRows.getByTestId('history-paid-by');
+    this.amountCells = this.historyRows.getByTestId('history-amount');
 
-    // Detail - History rows are clickable to expand/collapse (no separate buttons)
-    this.expandButtons = page.locator(
-      'table.mat-mdc-table tbody tr.mat-mdc-row'
-    );
-    this.detailRows = page.locator('tr.mat-mdc-row.detail-row');
+    this.detailContainer = page.getByTestId('history-detail-container');
+    this.detailTitle = page.getByTestId('history-detail-page-title');
+    this.backButton = this.detailContainer.getByTestId('back-button');
+    this.paidByName = page.getByTestId('paid-by-name');
+    this.paidToName = page.getByTestId('paid-to-name');
+    this.paymentDate = page.getByTestId('payment-date');
+    this.paymentTotal = page.getByTestId('payment-total');
+    this.copyButton = this.detailContainer.getByTestId('copy-button');
+    this.unpayAllButton = page.getByTestId('unpay-all-button');
+    this.splitRows = page.getByTestId('history-split-row');
 
-    // Actions
-    this.deleteButtons = page.getByTestId('delete-button');
+    this.confirmDialog = page.locator('mat-dialog-container');
+    this.confirmDialogText = this.confirmDialog.getByTestId('confirmation-text');
+    this.confirmButton = this.confirmDialog.getByTestId('confirm-button');
+    this.cancelButton = this.confirmDialog.getByTestId('cancel-button');
 
-    // Delete dialog
-    this.deleteDialog = page.locator('mat-dialog-container');
-    this.confirmDeleteButton = page.getByTestId('delete-confirm-button');
-    this.cancelDeleteButton = page.getByTestId('delete-cancel-button');
-
-    // Generic
-    this.snackbar = page.locator('app-custom-snackbar');
+    this.snackbar = page.getByTestId('snackbar');
+    this.loadingOverlay = page.getByTestId('loading-spinner-container');
   }
 
+  // ---- Navigation ---------------------------------------------------------
+
+  /**
+   * Opens History from the nav bar (the user must already be signed in) and
+   * waits until it has loaded. In-app rather than a page.goto: a full load
+   * of a deep link right after sign-in can be redirected to /expenses (see
+   * ExpensesPage.gotoList).
+   */
   async goto(): Promise<void> {
-    await this.page.goto('/history');
-    await this.waitForLoadingComplete();
+    await this.navHistoryLink.click();
+    await expect(this.page).toHaveURL(/\/analysis\/history$/);
+    await this.verifyPageLoaded();
   }
 
-  async filterByMember(memberName: string): Promise<void> {
-    await this.memberSelect.click();
-    await this.page.locator(`mat-option:has-text("${memberName}")`).click();
-    await this.page.waitForTimeout(500);
-  }
-
-  async filterByDateRange(startDate?: Date, endDate?: Date): Promise<void> {
-    if (startDate) {
-      const dateString = startDate.toLocaleDateString();
-      await this.startDateInput.fill(dateString);
-      await this.startDateInput.blur();
-      await expect(this.startDateInput).toHaveValue(dateString);
-    }
-    if (endDate) {
-      const dateString = endDate.toLocaleDateString();
-      await this.endDateInput.fill(dateString);
-      await this.endDateInput.blur();
-      await expect(this.endDateInput).toHaveValue(dateString);
-    }
-    await this.page.waitForTimeout(500);
-  }
-
-  async clearFilters(): Promise<void> {
-    await this.clearFiltersButton.click();
-    await this.page.waitForTimeout(500);
-  }
-
-  async sortBy(columnName: string): Promise<void> {
-    const header = this.sortHeaders.filter({ hasText: columnName });
-    await header.click();
-    await this.page.waitForTimeout(300);
-  }
-
-  async expandDetail(rowIndex: number): Promise<void> {
-    // Wait for the table to be fully loaded with data rows
-    await expect(this.historyRows.first()).toBeVisible();
-
-    // Get the specific row and ensure it's visible and stable
-    const row = this.expandButtons.nth(rowIndex);
-    await expect(row).toBeVisible();
-
-    // Scroll the row into view to ensure it's clickable
-    await row.scrollIntoViewIfNeeded();
-
-    // Wait a moment for any animations/transitions to complete
-    await this.page.waitForTimeout(200);
-
-    // Click the row
-    await row.click();
-    await this.page.waitForTimeout(300);
-  }
-
-  async deleteHistory(
-    rowIndex: number,
-    confirm: boolean = true
-  ): Promise<void> {
-    await this.deleteButtons.nth(rowIndex).click();
-    await expect(this.deleteDialog).toBeVisible();
-
-    if (confirm) {
-      await this.confirmDeleteButton.click();
-      await expect(this.deleteDialog).toBeHidden();
-      await this.waitForLoadingComplete();
-    } else {
-      await this.cancelDeleteButton.click();
-      await expect(this.deleteDialog).toBeHidden();
-    }
-  }
-
-  async copyToClipboard(rowIndex: number): Promise<void> {
-    // First expand the detail row if not already expanded
-    await this.expandDetail(rowIndex);
-    // Click on the detail row to copy to clipboard
-    await this.detailRows.nth(rowIndex).click();
-    await this.page.waitForTimeout(500);
-  }
-
+  /** History (already navigated to) has loaded and the overlay is gone. */
   async verifyPageLoaded(): Promise<void> {
     await expect(this.pageTitle).toBeVisible();
     await expect(this.helpButton).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
-  async verifyHistoryCount(expectedCount: number): Promise<void> {
-    const count = await this.historyRows.count();
-    expect(count).toBe(expectedCount);
+  /**
+   * The snackbar showing `message`. Matched by text because an earlier
+   * snackbar can still be in the DOM (exit animation) when a new one opens.
+   */
+  snackbarWith(message: string): Locator {
+    return this.snackbar.filter({ hasText: message });
   }
 
-  async verifyEmptyState(): Promise<void> {
-    await expect(this.noDataMessage).toBeVisible();
+  // ---- History list -------------------------------------------------------
+
+  /** Asserts the table shows exactly these payments, in order. */
+  async expectPayments(expected: ExpectedPayment[]): Promise<void> {
+    await expect(this.historyRows).toHaveCount(expected.length);
+    await expect(this.dateCells).toHaveText(
+      expected.map((p) => formatShortDate(p.date))
+    );
+    await expect(this.paidToCells).toHaveText(expected.map((p) => p.paidTo));
+    await expect(this.paidByCells).toHaveText(expected.map((p) => p.paidBy));
+    await expect(this.amountCells).toHaveText(
+      expected.map((p) => formatMoney(p.amount))
+    );
   }
 
+  /** Row `rowIndex`'s cells, as text. */
   async getHistoryRecord(rowIndex: number): Promise<{
     paidBy: string;
     paidTo: string;
     amount: string;
     date: string;
   }> {
-    const row = this.historyRows.nth(rowIndex);
-    const cells = row.locator('td');
-
+    const text = async (cells: Locator) =>
+      ((await cells.nth(rowIndex).textContent()) ?? '').trim();
     return {
-      date: (await cells.nth(0).textContent()) || '',
-      paidTo: (await cells.nth(1).textContent()) || '',
-      paidBy: (await cells.nth(2).textContent()) || '',
-      amount: (await cells.nth(3).textContent()) || '',
+      date: await text(this.dateCells),
+      paidTo: await text(this.paidToCells),
+      paidBy: await text(this.paidByCells),
+      amount: await text(this.amountCells),
     };
+  }
+
+  /** The group has no payments. */
+  async verifyEmptyState(): Promise<void> {
+    await expect(this.noHistoryPlaceholder).toBeVisible();
+  }
+
+  // ---- Payment detail -----------------------------------------------------
+
+  /**
+   * Clicks row `rowIndex`, which opens that payment's detail page, and waits
+   * for it (and its paid splits) to load.
+   */
+  async openDetail(rowIndex: number): Promise<void> {
+    await this.historyRows.nth(rowIndex).click();
+    await expect(this.page).toHaveURL(/\/analysis\/history\/[^/]+$/);
+    await expect(this.detailTitle).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
+  }
+
+  /**
+   * Asserts the open detail page's payer, payee and date. Amounts are
+   * asserted separately (expectDetailAmounts): the detail page formats them
+   * with Angular's CurrencyPipe rather than the app's, a known bug pinned in
+   * history.spec.ts.
+   */
+  async expectDetail(expected: ExpectedPayment): Promise<void> {
+    await expect(this.paidByName).toHaveText(`Paid By: ${expected.paidBy}`);
+    await expect(this.paidToName).toHaveText(`Paid To: ${expected.paidTo}`);
+    await expect(this.paymentDate).toHaveText(
+      `Date: ${formatShortDate(expected.date)}`
+    );
+  }
+
+  /**
+   * Asserts the open detail page's split table (Split Details view), in
+   * order, without amounts (see expectDetail).
+   */
+  async expectPaidSplits(expected: ExpectedPaidSplit[]): Promise<void> {
+    await expect(this.splitRows).toHaveCount(expected.length);
+    await expect(this.splitRows.getByTestId('split-date')).toHaveText(
+      expected.map((s) => formatShortDate(s.date))
+    );
+    await expect(this.splitRows.getByTestId('split-category')).toHaveText(
+      expected.map((s) => s.category)
+    );
+  }
+
+  /**
+   * Asserts the open detail page's total and split amounts, formatted the
+   * way the rest of the app shows money in this (USD) group.
+   */
+  async expectDetailAmounts(
+    total: number,
+    splitAmounts: number[]
+  ): Promise<void> {
+    await expect(this.paymentTotal).toHaveText(
+      `Amount: ${formatMoney(total)}`
+    );
+    await expect(this.splitRows.getByTestId('split-amount')).toHaveText(
+      splitAmounts.map(formatMoney)
+    );
+  }
+
+  /** Back to the History list (from the detail page). */
+  async backToList(): Promise<void> {
+    await this.backButton.click();
+    await expect(this.page).toHaveURL(/\/analysis\/history$/);
+    await this.verifyPageLoaded();
+  }
+
+  /**
+   * On the open detail page: copies the payment summary. Its category
+   * breakdown comes from the paid splits, so wait for those first.
+   */
+  async copyDetailToClipboard(): Promise<void> {
+    await this.copyButton.click();
+    await expect(
+      this.snackbarWith('Payment summary copied to clipboard')
+    ).toBeVisible();
+  }
+
+  /** Opens row `rowIndex`'s detail page and copies its payment summary. */
+  async copyToClipboard(rowIndex: number): Promise<void> {
+    await this.openDetail(rowIndex);
+    await this.copyDetailToClipboard();
+  }
+
+  /**
+   * On the open detail page (as a group admin): Unpay Payment, which asks
+   * for confirmation. Confirming (confirmButton) marks the payment's splits
+   * unpaid, deletes the history record and returns to the History list;
+   * cancelButton keeps it.
+   */
+  async openUnpayDialog(): Promise<void> {
+    await this.unpayAllButton.click();
+    await expect(this.confirmDialogText).toBeVisible();
+  }
+
+  // ---- Legacy -------------------------------------------------------------
+  // Kept only so e2e/critical-flows/expense-to-payment-flow.spec.ts compiles
+  // until it is repaired (Plan 2 Task 7). History rows no longer expand: they
+  // open the payment detail page (openDetail / splitRows).
+
+  /** @deprecated Use openDetail; see the Legacy note above. */
+  async expandDetail(rowIndex: number): Promise<void> {
+    await this.openDetail(rowIndex);
+  }
+
+  /** @deprecated Use splitRows; see the Legacy note above. */
+  get detailRows(): Locator {
+    return this.splitRows;
   }
 }

@@ -55,7 +55,12 @@
           data-tour-anchor="history-member"
         >
           <mat-label>Select Member</mat-label>
-          <mat-select name="member" [(ngModel)]="selectedMember" docRefCompare>
+          <mat-select
+            name="member"
+            [(ngModel)]="selectedMember"
+            docRefCompare
+            data-testid="member-select"
+          >
             @for (member of members(); track member.ref) {
               <mat-option [value]="member.ref">
                 {{ member.displayName }}
@@ -75,6 +80,7 @@
             matInput
             [matDatepicker]="startDatepicker"
             [(ngModel)]="startDate"
+            data-testid="start-date-input"
           />
           @if (!startDate()) {
             <mat-datepicker-toggle
@@ -89,6 +95,7 @@
               aria-label="Clear"
               (click)="startDate.set(null)"
               [matTooltip]="'Clear'"
+              data-testid="clear-start-date-button"
             >
               <mat-icon>close</mat-icon>
             </button>
@@ -105,6 +112,7 @@
             matInput
             [matDatepicker]="endDatePicker"
             [(ngModel)]="endDate"
+            data-testid="end-date-input"
           />
           @if (!endDate()) {
             <mat-datepicker-toggle
@@ -119,6 +127,7 @@
               aria-label="Clear"
               (click)="endDate.set(null)"
               [matTooltip]="'Clear'"
+              data-testid="clear-end-date-button"
             >
               <mat-icon>close</mat-icon>
             </button>
@@ -145,7 +154,12 @@
               </ng-container>
               <ng-container matColumnDef="date">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-                <td mat-cell *matCellDef="let history" class="no-wrap">
+                <td
+                  mat-cell
+                  *matCellDef="let history"
+                  class="no-wrap"
+                  data-testid="history-date"
+                >
                   {{ history.date | date: 'M/d/yyyy' }}
                 </td>
               </ng-container>
@@ -153,7 +167,11 @@
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>
                   Paid To
                 </th>
-                <td mat-cell *matCellDef="let history">
+                <td
+                  mat-cell
+                  *matCellDef="let history"
+                  data-testid="history-paid-to"
+                >
                   {{ history.paidToMember.displayName }}
                 </td>
               </ng-container>
@@ -161,7 +179,11 @@
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>
                   Paid By
                 </th>
-                <td mat-cell *matCellDef="let history">
+                <td
+                  mat-cell
+                  *matCellDef="let history"
+                  data-testid="history-paid-by"
+                >
                   {{ history.paidByMember.displayName }}
                 </td>
               </ng-container>
@@ -173,6 +195,7 @@
                   mat-cell
                   *matCellDef="let history"
                   class="cell-right amount-cell"
+                  data-testid="history-amount"
                 >
                   {{ history.totalPaid | currency }}
                 </td>
@@ -202,6 +225,7 @@
                 mat-row
                 *matRowDef="let history; columns: columnsToDisplay"
                 class="summary-row clickable-row"
+                data-testid="history-row"
                 tabindex="0"
                 (click)="onRowClick(history)"
                 (keydown.enter)="onRowClick(history)"
@@ -223,7 +247,12 @@
           >
             receipt_long
           </mat-icon>
-          <p class="placeholder-text">No history found</p>
+          <p
+            class="placeholder-text"
+            data-testid="no-filtered-history-placeholder-text"
+          >
+            No history found
+          </p>
         </div>
       }
     }

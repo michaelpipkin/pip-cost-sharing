@@ -161,7 +161,12 @@
             >
               <ng-container matColumnDef="date">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-                <td mat-cell *matCellDef="let split" class="no-wrap">
+                <td
+                  mat-cell
+                  *matCellDef="let split"
+                  class="no-wrap"
+                  data-testid="split-date"
+                >
                   {{ split.date | date: 'M/d/yyyy' }}
                 </td>
               </ng-container>
@@ -169,7 +174,11 @@
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>
                   Category
                 </th>
-                <td mat-cell *matCellDef="let split">
+                <td
+                  mat-cell
+                  *matCellDef="let split"
+                  data-testid="split-category"
+                >
                   {{ split.category?.name ?? 'Unknown' }}
                 </td>
               </ng-container>
@@ -181,6 +190,7 @@
                   mat-cell
                   *matCellDef="let split"
                   class="cell-right amount-cell"
+                  data-testid="split-amount"
                 >
                   {{ getSplitDirectedAmount(split) | currency }}
                 </td>
@@ -225,6 +235,7 @@
                 mat-row
                 *matRowDef="let split; columns: splitsColumnsToDisplay()"
                 class="clickable-row"
+                data-testid="history-split-row"
                 tabindex="0"
                 (click)="onRowClick(split)"
                 (keydown.enter)="onRowClick(split)"

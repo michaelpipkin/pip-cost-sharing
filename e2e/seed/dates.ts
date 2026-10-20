@@ -39,10 +39,19 @@ export function publishSeedToday(): void {
  * date strings for anything else.
  */
 export function seedDaysAgo(days: number): string {
+  return toIsoDate(seedDateDaysAgo(days));
+}
+
+/**
+ * SEED_TODAY minus `days` as a local-midnight Date (how the app parses a
+ * stored YYYY-MM-DD), for typing into date filters or formatting the way
+ * the UI shows a seeded date.
+ */
+export function seedDateDaysAgo(days: number): Date {
   const [year, month, day] = SEED_TODAY.split('-').map(Number) as [
     number,
     number,
     number,
   ];
-  return toIsoDate(new Date(year, month - 1, day - days));
+  return new Date(year, month - 1, day - days);
 }

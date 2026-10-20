@@ -1,163 +1,288 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
+import { formatMoney, formatShortDate } from './expenses.page';
+
+/** One who-owes-whom row of the Summary table. */
+export interface ExpectedBalance {
+  owedBy: string;
+  owedTo: string;
+  amount: number;
+}
+
+/** One category line of an expanded Summary row. */
+export interface ExpectedCategoryLine {
+  category: string;
+  amount: number;
+}
 
 export class SummaryPage extends BasePage {
-  // Main page elements
+  readonly navSummaryLink: Locator;
+
+  // Page
+  readonly mainContainer: Locator;
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
+  readonly currentGroupName: Locator;
+  /** The group has no unpaid splits at all. */
+  readonly noUnpaidSplitsPlaceholder: Locator;
+  /** The group has unpaid splits, but none for the member / dates selected. */
+  readonly noMemberSplitsPlaceholder: Locator;
 
-  // Filter elements
+  // Filters
   readonly memberSelect: Locator;
   readonly startDateInput: Locator;
   readonly endDateInput: Locator;
-  readonly clearFiltersButton: Locator;
+  readonly clearStartDateButton: Locator;
+  readonly clearEndDateButton: Locator;
 
-  // Summary table elements
-  readonly summaryTable: Locator;
+  // Who-owes-whom table: each column locator has one match per row, in order.
   readonly summaryRows: Locator;
-  readonly noDataMessage: Locator;
-
-  // Detail elements
-  readonly expandButtons: Locator;
-  readonly detailRows: Locator;
-
-  // Action buttons
+  readonly owedByCells: Locator;
+  readonly owedToCells: Locator;
+  readonly amountCells: Locator;
   readonly payButtons: Locator;
 
-  // Payment dialog elements
+  // Expanded detail. One row is expanded at a time, but a row collapsed by
+  // expanding another keeps its detail in the DOM until its leave animation
+  // ends, so scope to a row with rowDetail() rather than using `detail`.
+  /** Every detail in the DOM (for counting). */
+  readonly detail: Locator;
+  /** Category lines of every detail in the DOM. */
+  readonly detailRows: Locator;
+
+  // Payment dialog
   readonly paymentDialog: Locator;
   readonly paymentDialogTitle: Locator;
-  readonly paymentMethodSelect: Locator;
-  readonly paymentAmountInput: Locator;
+  /** Shown when the payee has saved payment IDs. */
+  readonly paymentInstructions: Locator;
+  /** One per saved payment ID (Venmo, PayPal, CashApp, Zelle). */
+  readonly paymentMethods: Locator;
+  /** Shown instead when the payee has none. */
+  readonly noPaymentMethodsMessage: Locator;
   readonly paymentSaveButton: Locator;
   readonly paymentCancelButton: Locator;
 
-  // Generic elements
+  // Generic
   readonly snackbar: Locator;
+  readonly loadingOverlay: Locator;
+  /** The open mat-select panel. */
+  readonly selectPanel: Locator;
 
   constructor(page: Page) {
     super(page);
 
-    // Main page
+    this.navSummaryLink = page.getByTestId('nav-summary');
+
+    this.mainContainer = page.getByTestId('summary-main-container');
     this.pageTitle = page.getByTestId('summary-page-title');
     this.helpButton = page.getByTestId('summary-help-button');
-
-    // Filters
-    this.memberSelect = page.locator('mat-select[name="member"]');
-    // Date inputs don't have testids - use label-based selectors
-    this.startDateInput = page.getByLabel('Start date');
-    this.endDateInput = page.getByLabel('End date');
-    this.clearFiltersButton = page.getByTestId('clear-filters-button');
-
-    // Summary table - no data-testid on table, use Material classes
-    // Angular Material renders mat-table directive as .mat-mdc-table class
-    this.summaryTable = page.locator('table.mat-mdc-table');
-    this.summaryRows = page.locator(
-      'table.mat-mdc-table tbody tr.mat-mdc-row.summary-row'
+    this.currentGroupName = this.mainContainer.getByTestId('current-group-name');
+    this.noUnpaidSplitsPlaceholder = page.getByTestId(
+      'no-unpaid-splits-placeholder-text'
     );
-    this.noDataMessage = page.getByText('No outstanding expenses found');
+    this.noMemberSplitsPlaceholder = page.getByTestId(
+      'no-member-splits-placeholder-text'
+    );
 
-    // Detail - Summary rows are clickable to expand/collapse (no separate buttons)
-    this.expandButtons = page.locator('tr.mat-mdc-row.summary-row');
-    this.detailRows = page.locator('tr.mat-mdc-row.detail-row');
+    this.memberSelect = page.getByTestId('member-select');
+    this.startDateInput = page.getByTestId('start-date-input');
+    this.endDateInput = page.getByTestId('end-date-input');
+    this.clearStartDateButton = page.getByTestId('clear-start-date-button');
+    this.clearEndDateButton = page.getByTestId('clear-end-date-button');
 
-    // Actions - Pay button has mat-icon "paid" inside
-    this.payButtons = page.locator('button:has(mat-icon:text("paid"))');
+    this.summaryRows = page.getByTestId('summary-row');
+    this.owedByCells = this.summaryRows.getByTestId('summary-owed-by');
+    this.owedToCells = this.summaryRows.getByTestId('summary-owed-to');
+    this.amountCells = this.summaryRows.getByTestId('summary-amount');
+    this.payButtons = this.summaryRows.getByTestId('pay-expenses-button');
 
-    // Payment dialog
+    this.detail = page.getByTestId('summary-detail');
+    this.detailRows = this.detail.getByTestId('summary-detail-row');
+
     this.paymentDialog = page.locator('mat-dialog-container');
     this.paymentDialogTitle = page.getByTestId('payment-dialog-title');
-    this.paymentMethodSelect = page.getByTestId('payment-method-select');
-    this.paymentAmountInput = page.getByTestId('payment-amount-input');
+    this.paymentInstructions = page.getByTestId('payment-instructions');
+    this.paymentMethods = page
+      .getByTestId('payment-methods-list')
+      .getByRole('listitem');
+    this.noPaymentMethodsMessage = page.getByTestId(
+      'no-payment-methods-message'
+    );
     this.paymentSaveButton = page.getByTestId('submit-payment-button');
     this.paymentCancelButton = page.getByTestId('cancel-payment-button');
 
-    // Generic
-    this.snackbar = page.locator('app-custom-snackbar');
+    this.snackbar = page.getByTestId('snackbar');
+    this.loadingOverlay = page.getByTestId('loading-spinner-container');
+    this.selectPanel = page.getByRole('listbox');
+
+    // Legacy, see below.
+    this.paymentMethodSelect = page.getByTestId('payment-method-select');
   }
 
+  // ---- Navigation ---------------------------------------------------------
+
+  /**
+   * Opens Summary from the nav bar (the user must already be signed in) and
+   * waits until it has loaded its splits. In-app rather than a page.goto:
+   * a full load of a deep link right after sign-in can be redirected to
+   * /expenses (see ExpensesPage.gotoList).
+   */
   async goto(): Promise<void> {
-    await this.page.goto('/summary');
-    await this.waitForLoadingComplete();
+    await this.navSummaryLink.click();
+    await expect(this.page).toHaveURL(/\/analysis\/summary$/);
+    await this.verifyPageLoaded();
   }
 
+  /** Summary (already navigated to) has loaded and the overlay is gone. */
+  async verifyPageLoaded(): Promise<void> {
+    await expect(this.pageTitle).toBeVisible();
+    await expect(this.helpButton).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
+  }
+
+  /**
+   * The snackbar showing `message`. Matched by text because an earlier
+   * snackbar can still be in the DOM (exit animation) when a new one opens.
+   */
+  snackbarWith(message: string): Locator {
+    return this.snackbar.filter({ hasText: message });
+  }
+
+  // ---- Filters ------------------------------------------------------------
+
+  /** Picks the member whose balances the table shows (default: you). */
   async filterByMember(memberName: string): Promise<void> {
     await this.memberSelect.click();
-    await this.page.locator(`mat-option:has-text("${memberName}")`).click();
-    await this.page.waitForTimeout(500);
+    await expect(this.selectPanel).toBeVisible();
+    await this.selectPanel
+      .getByRole('option', { name: memberName, exact: true })
+      .click();
+    await expect(this.selectPanel).toBeHidden();
+    await expect(this.memberSelect).toHaveText(memberName);
   }
 
+  /** Types the given start and/or end date (inclusive) and blurs each. */
   async filterByDateRange(startDate?: Date, endDate?: Date): Promise<void> {
     if (startDate) {
-      const dateString = startDate.toLocaleDateString();
-      await this.startDateInput.fill(dateString);
-      await this.startDateInput.blur();
-      await expect(this.startDateInput).toHaveValue(dateString);
+      await this.fillDate(this.startDateInput, startDate);
     }
     if (endDate) {
-      const dateString = endDate.toLocaleDateString();
-      await this.endDateInput.fill(dateString);
-      await this.endDateInput.blur();
-      await expect(this.endDateInput).toHaveValue(dateString);
+      await this.fillDate(this.endDateInput, endDate);
     }
-    await this.page.waitForTimeout(500);
   }
 
+  private async fillDate(input: Locator, date: Date): Promise<void> {
+    const text = formatShortDate(date);
+    await input.fill(text);
+    await input.blur();
+    await expect(input).toHaveValue(text);
+  }
+
+  /**
+   * Clears whichever date filters are set: a set date shows a clear button
+   * in place of its datepicker toggle.
+   */
   async clearFilters(): Promise<void> {
-    // Each date input has its own clear button (aria-label="Clear")
-    // that only appears when there's a value
-    const clearButtons = this.page.locator('button[aria-label="Clear"]');
-    const count = await clearButtons.count();
-
-    // Click all visible clear buttons (from right to left to avoid index shifts)
-    for (let i = count - 1; i >= 0; i--) {
-      await clearButtons.nth(i).click();
-      await this.page.waitForTimeout(200);
+    if ((await this.startDateInput.inputValue()) !== '') {
+      await this.clearStartDateButton.click();
+      await expect(this.startDateInput).toHaveValue('');
     }
-
-    await this.page.waitForTimeout(300);
+    if ((await this.endDateInput.inputValue()) !== '') {
+      await this.clearEndDateButton.click();
+      await expect(this.endDateInput).toHaveValue('');
+    }
   }
 
+  // ---- Table --------------------------------------------------------------
+
+  /**
+   * Asserts the table shows exactly these who-owes-whom rows, in order (the
+   * app lists them by the other member's display name).
+   */
+  async expectBalances(expected: ExpectedBalance[]): Promise<void> {
+    await expect(this.summaryRows).toHaveCount(expected.length);
+    await expect(this.owedByCells).toHaveText(expected.map((b) => b.owedBy));
+    await expect(this.owedToCells).toHaveText(expected.map((b) => b.owedTo));
+    await expect(this.amountCells).toHaveText(
+      expected.map((b) => formatMoney(b.amount))
+    );
+  }
+
+  /** The row where `owedBy` owes `owedTo`. */
+  balanceRow(owedBy: string, owedTo: string): Locator {
+    const cell = (testId: string, name: string) =>
+      this.page
+        .getByTestId(testId)
+        .and(this.page.getByRole('cell', { name, exact: true }));
+    return this.summaryRows
+      .filter({ has: cell('summary-owed-by', owedBy) })
+      .filter({ has: cell('summary-owed-to', owedTo) });
+  }
+
+  /**
+   * Row `rowIndex`'s expanded detail (each summary row is followed by its
+   * own detail row, empty unless expanded).
+   */
+  rowDetail(rowIndex: number): Locator {
+    return this.page
+      .getByTestId('summary-expanded-row')
+      .nth(rowIndex)
+      .getByTestId('summary-detail');
+  }
+
+  /** Clicks row `rowIndex` (expands it, or collapses it if expanded). */
   async expandDetail(rowIndex: number): Promise<void> {
-    await this.expandButtons.nth(rowIndex).click();
-    await this.page.waitForTimeout(300);
+    await this.summaryRows.nth(rowIndex).click();
   }
 
+  /**
+   * Asserts row `rowIndex`'s expanded detail shows exactly these category
+   * lines, in order (by category name).
+   */
+  async expectCategoryLines(
+    rowIndex: number,
+    expected: ExpectedCategoryLine[]
+  ): Promise<void> {
+    const detail = this.rowDetail(rowIndex);
+    await expect(detail).toBeVisible();
+    const lines = detail.getByTestId('summary-detail-row');
+    await expect(lines).toHaveCount(expected.length);
+    await expect(lines.getByTestId('summary-detail-category')).toHaveText(
+      expected.map((l) => l.category)
+    );
+    await expect(lines.getByTestId('summary-detail-amount')).toHaveText(
+      expected.map((l) => formatMoney(l.amount))
+    );
+  }
+
+  /** Row `rowIndex`'s amount cell text. */
   async getNetAmount(rowIndex: number): Promise<string> {
-    const row = this.summaryRows.nth(rowIndex);
-    const amountCell = row.locator('td').nth(2); // Assuming amount is in 3rd column
-    return (await amountCell.textContent()) || '';
+    return (await this.amountCells.nth(rowIndex).textContent()) ?? '';
   }
 
+  /** Expands row `rowIndex` and copies its summary (waits for the snackbar). */
+  async copyToClipboard(rowIndex: number): Promise<void> {
+    await this.expandDetail(rowIndex);
+    await this.rowDetail(rowIndex).getByTestId('copy-summary-button').click();
+    await expect(
+      this.snackbarWith('Summary copied to clipboard')
+    ).toBeVisible();
+  }
+
+  // ---- Payment dialog -----------------------------------------------------
+
+  /** Clicks row `rowIndex`'s Pay button and waits for the payment dialog. */
   async openPaymentDialog(rowIndex: number): Promise<void> {
     await this.payButtons.nth(rowIndex).click();
-    await this.page.waitForTimeout(500);
-    await expect(this.paymentDialog).toBeVisible();
-    await this.waitForLoadingComplete();
+    await expect(this.paymentDialogTitle).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
-  async fillPaymentForm(data: {
-    paymentMethod?: string;
-    amount?: number;
-  }): Promise<void> {
-    if (data.paymentMethod) {
-      await this.paymentMethodSelect.click();
-      await this.page
-        .locator(`mat-option:has-text("${data.paymentMethod}")`)
-        .click();
-    }
-
-    if (data.amount) {
-      await this.paymentAmountInput.fill(data.amount.toString());
-      await this.paymentAmountInput.blur();
-      await expect(this.paymentAmountInput).toHaveValue(data.amount.toString());
-    }
-  }
-
+  /** Records the payment (marks the pair's splits paid). */
   async submitPayment(): Promise<void> {
     await this.paymentSaveButton.click();
     await expect(this.paymentDialog).toBeHidden();
-    await this.waitForLoadingComplete();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
   async cancelPayment(): Promise<void> {
@@ -165,28 +290,30 @@ export class SummaryPage extends BasePage {
     await expect(this.paymentDialog).toBeHidden();
   }
 
-  async copyToClipboard(rowIndex: number): Promise<void> {
-    // First expand the detail row if not already expanded
-    await this.expandDetail(rowIndex);
-    // Click on the detail content to copy to clipboard
-    const detailContent = this.detailRows
-      .nth(rowIndex)
-      .locator('.detail-table-container');
-    await detailContent.click();
-    await this.page.waitForTimeout(500);
-  }
+  // ---- Empty states -------------------------------------------------------
 
-  async verifyPageLoaded(): Promise<void> {
-    await expect(this.pageTitle).toBeVisible();
-    await expect(this.helpButton).toBeVisible();
-  }
-
-  async verifySummaryCount(expectedCount: number): Promise<void> {
-    const count = await this.summaryRows.count();
-    expect(count).toBe(expectedCount);
-  }
-
+  /** The group has no unpaid splits. */
   async verifyEmptyState(): Promise<void> {
-    await expect(this.noDataMessage).toBeVisible();
+    await expect(this.noUnpaidSplitsPlaceholder).toBeVisible();
+  }
+
+  // ---- Legacy -------------------------------------------------------------
+  // Kept only so e2e/critical-flows/expense-to-payment-flow.spec.ts compiles
+  // until it is repaired (Plan 2 Task 7). The payment dialog has no payment
+  // method select or amount input: it only lists the payee's payment IDs.
+
+  /** @deprecated No such element; see the Legacy note above. */
+  readonly paymentMethodSelect: Locator;
+
+  /** @deprecated The payment dialog has no form; see the Legacy note above. */
+  fillPaymentForm(_data: {
+    paymentMethod?: string;
+    amount?: number;
+  }): Promise<void> {
+    return Promise.reject(
+      new Error(
+        'SummaryPage.fillPaymentForm: the payment dialog has no payment method or amount fields'
+      )
+    );
   }
 }
