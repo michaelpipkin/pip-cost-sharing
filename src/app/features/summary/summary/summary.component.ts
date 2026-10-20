@@ -49,7 +49,7 @@ import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -90,7 +90,7 @@ interface SummaryTourSample {
     MatTooltipModule,
     MatTableModule,
     MatCardModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DocRefCompareDirective,
     DateShortcutKeysDirective,
   ],

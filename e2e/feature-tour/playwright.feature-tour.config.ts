@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
+// Point the shared e2e modules (constants, utils/firebase) at the dev emulators
+// and the 4200 dev server instead of the isolated test suite.
+process.env.E2E_TARGET = 'dev';
+
 // Repo root (two levels up from e2e/feature-tour/) - the webServer command
 // must run there, since Playwright otherwise spawns it from this file's dir.
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));

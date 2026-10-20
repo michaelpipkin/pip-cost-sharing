@@ -1,4 +1,5 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { CallableOptions, CallableRequest } from 'firebase-functions/v2/https';
 
@@ -49,6 +50,55 @@ export const ADMIN_TEST_EMAILS_LOWER = new Set([
   'blkordis@gmail.com',
   'pip668@yahoo.com',
 ]);
+
+// Firebase demo-* projects (the isolated test emulators run under
+// demo-pipsplit-test) must never deliver real email. Callers pass
+// process.env.GCLOUD_PROJECT explicitly - a default parameter would also
+// swallow an explicit `undefined` and fall back to the env var.
+export function isDemoProject(projectId: string | undefined): boolean {
+  return projectId?.startsWith('demo-') ?? false;
+}
+
+// Shape of the SUCCESS `delivery` object written to a `mail` doc, which
+// src/app/models/mail.ts and the admin email-log UI read.
+export interface MailDelivery {
+  state: 'SUCCESS';
+  attempts: number;
+  startTime: Timestamp;
+  endTime: Timestamp;
+  info: {
+    messageId: string;
+    accepted: string[];
+    rejected: string[];
+    response: string;
+  };
+}
+
+export function buildSuccessDelivery(
+  startTime: Timestamp,
+  info: MailDelivery['info']
+): MailDelivery {
+  return {
+    state: 'SUCCESS',
+    attempts: 1,
+    startTime,
+    endTime: Timestamp.now(),
+    info,
+  };
+}
+
+// Realistic SUCCESS delivery for a message that was deliberately not sent.
+export function buildSuppressedDelivery(
+  to: string | string[],
+  startTime: Timestamp
+): MailDelivery {
+  return buildSuccessDelivery(startTime, {
+    messageId: 'suppressed',
+    accepted: Array.isArray(to) ? to : [to],
+    rejected: [],
+    response: 'suppressed: demo project',
+  });
+}
 
 export const getSmtpPassword = async () => {
   if (process.env.FUNCTIONS_EMULATOR === 'true') {

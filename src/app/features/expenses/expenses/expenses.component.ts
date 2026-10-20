@@ -57,7 +57,7 @@ import { GuidedTourService } from '@services/guided-tour.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
 import { YesNoNaPipe } from '@shared/pipes/yes-no-na.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -95,7 +95,7 @@ import { buildExpensesTourSteps } from './expenses.tour';
     MatInputModule,
     MatDatepickerModule,
     MatCardModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DatePipe,
     YesNoNaPipe,
     YesNoCheckPipe,

@@ -47,7 +47,7 @@ import { CalculatorOverlayService } from '@services/calculator-overlay.service';
 import { CategoryService } from '@services/category.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -75,7 +75,7 @@ import {
     MatTooltipModule,
     MatIconModule,
     DecimalPipe,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     FormatCurrencyInputDirective,
     SelectOnFocusDirective,
     DocRefCompareDirective,

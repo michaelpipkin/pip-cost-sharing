@@ -34,6 +34,13 @@ describe('AnalyticsService', () => {
     });
   });
 
+  it('should not call FirebaseAnalytics on emulator builds (GA disabled)', async () => {
+    (service as any).gaEnabled = false;
+    await service.logEvent('test_event');
+    await service.logScreenView('home');
+    expect(FirebaseAnalytics.logEvent).not.toHaveBeenCalled();
+  });
+
   it('should call FirebaseAnalytics.logEvent with no params when omitted', async () => {
     await service.logEvent('simple_event');
     expect(FirebaseAnalytics.logEvent).toHaveBeenCalledWith({

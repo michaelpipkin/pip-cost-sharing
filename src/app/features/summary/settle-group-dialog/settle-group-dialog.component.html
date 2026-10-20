@@ -16,7 +16,7 @@
       <li>
         {{ transfer.owedByMember?.displayName }} pays
         {{ transfer.owedToMember?.displayName }}
-        {{ transfer.amount | currency }}
+        {{ transfer.amount | groupCurrency }}
       </li>
     }
   </ul>

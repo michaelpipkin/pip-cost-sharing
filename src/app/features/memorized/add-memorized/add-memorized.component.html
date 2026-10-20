@@ -153,7 +153,7 @@
         <div data-tour-anchor="remainder" class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
           <span class="mock-label">Evenly Shared Remainder</span>
           <span class="mock-value-right">
-            {{ expenseModel().sharedAmount | currency }}
+            {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
       </div>
@@ -304,7 +304,7 @@
                   aria-label="Allocated amount"
                   data-testid="allocated-amount"
                 >
-                  {{ split.allocatedAmount | currency }}
+                  {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
             </div>

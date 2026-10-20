@@ -38,7 +38,7 @@ import {
   ReceiptScanSplit,
 } from '@services/receipt-scan-handoff.service';
 import { ReceiptScanService } from '@services/receipt-scan.service';
-import { CurrencyPipe } from '@shared/pipes/currency.pipe';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { StringUtils } from '@utils/string-utils.service';
@@ -86,7 +86,7 @@ interface ScanLineItemRow {
     MatTooltipModule,
     DocRefCompareDirective,
     FormatCurrencyInputDirective,
-    CurrencyPipe,
+    GroupCurrencyPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

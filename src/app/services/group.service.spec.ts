@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { DefaultUrlSerializer, UrlTree } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { ROUTE_PATHS } from '@constants/routes.constants';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -543,6 +545,131 @@ describe('GroupService', () => {
         expect(TestBed.inject(HistoryStore).groupHistory()).toEqual([]);
         expect(TestBed.inject(SplitStore).unpaidSplits()).toEqual([]);
       });
+    });
+
+    describe('post-load redirect to Expenses', () => {
+      const user = {
+        id: 'user-1',
+        ref: { id: 'user-1' },
+        defaultGroupRef: null,
+      } as any;
+      const serializer = new DefaultUrlSerializer();
+
+      /**
+       * The router as it looks while the groups snapshot arrives: `url` is
+       * the committed URL, and `pendingUrl` (if any) is where the in-flight
+       * navigation is going. Real Router during a cold load of a deep link:
+       * url '/', navigated false, currentNavigation() targeting the link.
+       */
+      function useRouter(url: string, pendingUrl: string | null): void {
+        const pending =
+          pendingUrl === null
+            ? null
+            : {
+                id: 1,
+                initialUrl: serializer.parse(pendingUrl),
+                extractedUrl: serializer.parse(pendingUrl),
+                trigger: 'imperative',
+                extras: {},
+                previousNavigation: null,
+              };
+        (service as any).router = {
+          ...mockRouter,
+          url,
+          navigated: pending === null,
+          currentNavigation: signal(pending),
+          serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
+        };
+      }
+
+      /** Delivers one active group, which auto-select then selects. */
+      async function deliverOneActiveGroup(): Promise<void> {
+        const callbacks: ((snap: any) => void)[] = [];
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          (_query: any, onNext: any) => {
+            callbacks.push(onNext);
+            return vi.fn();
+          }
+        );
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+          exists: () => true,
+          id: 'group-1',
+          data: () => ({ name: 'Test Group', active: true }),
+          ref: { id: 'group-1' },
+        } as any);
+
+        await service.getUserGroups(user);
+        await callbacks[0]!(
+          makeSnap([
+            {
+              ref: { parent: { parent: { id: 'group-1' } } },
+              data: () => ({ active: true, groupAdmin: false, leftGroup: false }),
+            },
+          ])
+        );
+        await callbacks[1]!(
+          makeSnap([
+            {
+              id: 'group-1',
+              data: () => ({ name: 'Test Group', active: true, archived: false }),
+              ref: { id: 'group-1' },
+            },
+          ])
+        );
+      }
+
+      beforeEach(() => {
+        userSignal.set(user);
+      });
+
+      it('redirects to Expenses when the app landed on the home page', async () => {
+        useRouter('/', null);
+
+        await deliverOneActiveGroup();
+
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+        expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+          ROUTE_PATHS.EXPENSES_ROOT
+        );
+      });
+
+      it('does not redirect once a deep link has been activated', async () => {
+        useRouter('/analysis/summary', null);
+
+        await deliverOneActiveGroup();
+
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+        expect(mockRouter.navigateByUrl).not.toHaveBeenCalledWith(
+          ROUTE_PATHS.EXPENSES_ROOT
+        );
+      });
+
+      // KNOWN BUG - expected to fail until fixed; flip to it() when fixed.
+      // handleGroupsSnapshot decides whether to redirect from router.url,
+      // which stays '/' until the initial navigation commits (after lazy
+      // loadChildren, the async authGuard and loadComponent). When the
+      // groups load first, a deep link still in flight is replaced by
+      // /expenses. e2e symptom: a bookmark/refresh of an authenticated page
+      // (e.g. /expenses/add, /analysis/summary) right after sign-in, on a
+      // cold load, lands on /expenses (found by e2e expenses.spec, Plan 2
+      // Task 5). The stub mirrors the real router at that moment: url '/',
+      // navigated false, currentNavigation() targeting the deep link - the
+      // signal a fix would consult to see where the user is actually going
+      // (navigated alone can't tell a cold load of a deep link from one of
+      // '/', which should still redirect - see the first test above).
+      it.fails(
+        'KNOWN BUG: does not redirect a deep link whose initial navigation is still pending',
+        async () => {
+          useRouter('/', '/analysis/summary');
+
+          await deliverOneActiveGroup();
+
+          expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+          expect(mockRouter.navigateByUrl).not.toHaveBeenCalledWith(
+            ROUTE_PATHS.EXPENSES_ROOT
+          );
+        }
+      );
     });
 
     describe('zero groups', () => {

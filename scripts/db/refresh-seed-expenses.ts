@@ -34,6 +34,7 @@ import {
   todayIso,
   type AllocationSplit,
 } from './emulator-lib.ts';
+import { ChunkedBatch } from './chunked-batch.ts';
 import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
 
 const SPLIT_METHODS = ['amount', 'percentage', 'shares'] as const;
@@ -70,37 +71,6 @@ interface MemberRow {
 
 interface CategoryRow {
   ref: DocumentReference;
-}
-
-// Firestore batches cap at 500 writes; stay comfortably under that.
-const BATCH_LIMIT = 400;
-
-class ChunkedBatch {
-  #batches: FirebaseFirestore.WriteBatch[] = [db.batch()];
-  #count = 0;
-
-  #current(): FirebaseFirestore.WriteBatch {
-    if (this.#count >= BATCH_LIMIT) {
-      this.#batches.push(db.batch());
-      this.#count = 0;
-    }
-    this.#count++;
-    return this.#batches[this.#batches.length - 1]!;
-  }
-
-  set(ref: DocumentReference, data: FirebaseFirestore.DocumentData): void {
-    this.#current().set(ref, data);
-  }
-
-  update(ref: DocumentReference, data: FirebaseFirestore.DocumentData): void {
-    this.#current().update(ref, data);
-  }
-
-  async commit(): Promise<void> {
-    for (const batch of this.#batches) {
-      await batch.commit();
-    }
-  }
 }
 
 async function retireUnpaidExpenses(
@@ -364,7 +334,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const batch = new ChunkedBatch();
+    const batch = new ChunkedBatch(db);
     const { round } = makeRounder(decimalPlaces);
     const { expensesRetired, historyDocsWritten } = await retireUnpaidExpenses(
       groupRef,

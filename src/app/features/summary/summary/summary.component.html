@@ -60,6 +60,7 @@
             [(ngModel)]="selectedMember"
             (selectionChange)="resetDetail()"
             docRefCompare
+            data-testid="member-select"
           >
             @for (member of displayedActiveMembers(); track member.ref) {
               <mat-option [value]="member.ref">
@@ -81,6 +82,7 @@
             [(ngModel)]="startDate"
             [matDatepicker]="startDatepicker"
             appDateShortcutKeys
+            data-testid="start-date-input"
           />
           @if (!startDate()) {
             <mat-datepicker-toggle
@@ -95,6 +97,7 @@
               aria-label="Clear"
               (click)="startDate.set(null)"
               [matTooltip]="'Clear'"
+              data-testid="clear-start-date-button"
             >
               <mat-icon>close</mat-icon>
             </button>
@@ -112,6 +115,7 @@
             [(ngModel)]="endDate"
             [matDatepicker]="endDatePicker"
             appDateShortcutKeys
+            data-testid="end-date-input"
           />
           @if (!endDate()) {
             <mat-datepicker-toggle
@@ -126,6 +130,7 @@
               aria-label="Clear"
               (click)="endDate.set(null)"
               [matTooltip]="'Clear'"
+              data-testid="clear-end-date-button"
             >
               <mat-icon>close</mat-icon>
             </button>
@@ -179,13 +184,21 @@
                   ['owedBy', 'owedTo', 'amount', 'actions'];
                 <ng-container matColumnDef="owedBy">
                   <th mat-header-cell *matHeaderCellDef>Owed By</th>
-                  <td mat-cell *matCellDef="let amountDue">
+                  <td
+                    mat-cell
+                    *matCellDef="let amountDue"
+                    data-testid="summary-owed-by"
+                  >
                     {{ amountDue.owedByMember.displayName }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="owedTo">
                   <th mat-header-cell *matHeaderCellDef>Owed To</th>
-                  <td mat-cell *matCellDef="let amountDue">
+                  <td
+                    mat-cell
+                    *matCellDef="let amountDue"
+                    data-testid="summary-owed-to"
+                  >
                     {{ amountDue.owedToMember.displayName }}
                   </td>
                 </ng-container>
@@ -197,8 +210,9 @@
                     mat-cell
                     *matCellDef="let amountDue"
                     class="cell-right amount-cell"
+                    data-testid="summary-amount"
                   >
-                    {{ amountDue.amount | currency }}
+                    {{ amountDue.amount | groupCurrency }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="actions">
@@ -238,6 +252,7 @@
                           requestPayment(amountDue); $event.stopPropagation()
                         "
                         aria-label="Send payment request email"
+                        data-testid="request-payment-button"
                       >
                         <mat-icon>forward_to_inbox</mat-icon>
                       </button>
@@ -259,6 +274,7 @@
                         amountDue.owedByMember.displayName
                       "
                       aria-label="Pay expenses"
+                      data-testid="pay-expenses-button"
                     >
                       <mat-icon>attach_money</mat-icon>
                     </button>
@@ -274,6 +290,7 @@
                       <div
                         class="detail-table-container"
                         data-tour-anchor="summary-detail"
+                        data-testid="summary-detail"
                         animate.enter="detail-expand"
                         animate.leave="detail-collapse"
                       >
@@ -286,6 +303,7 @@
                           "
                           matTooltip="Copy summary to clipboard"
                           aria-label="Copy summary to clipboard"
+                          data-testid="copy-summary-button"
                         >
                           <mat-icon>content_copy</mat-icon>
                         </button>
@@ -297,7 +315,11 @@
                           @let detailColumnsToDisplay = ['category', 'amount'];
                           <ng-container matColumnDef="category">
                             <th mat-header-cell *matHeaderCellDef>Category</th>
-                            <td mat-cell *matCellDef="let lineItem">
+                            <td
+                              mat-cell
+                              *matCellDef="let lineItem"
+                              data-testid="summary-detail-category"
+                            >
                               {{ lineItem.category.name }}
                             </td>
                           </ng-container>
@@ -313,8 +335,9 @@
                               mat-cell
                               *matCellDef="let lineItem"
                               class="cell-right amount-cell"
+                              data-testid="summary-detail-amount"
                             >
-                              {{ lineItem.amount | currency }}
+                              {{ lineItem.amount | groupCurrency }}
                             </td>
                           </ng-container>
                           <tr
@@ -327,6 +350,7 @@
                               let lineItem;
                               columns: detailColumnsToDisplay
                             "
+                            data-testid="summary-detail-row"
                           ></tr>
                         </table>
                       </div>
@@ -341,6 +365,7 @@
                   mat-row
                   *matRowDef="let amountDue; columns: summaryColumnsToDisplay"
                   class="summary-row clickable-row expandable-row"
+                  data-testid="summary-row"
                   [class.clickable-row]="displayedCategories().length > 1"
                   tabindex="0"
                   (click)="onExpandClick(amountDue)"
@@ -353,6 +378,7 @@
                   mat-row
                   *matRowDef="let lineItem; columns: ['expandedDetail']"
                   class="detail-row"
+                  data-testid="summary-expanded-row"
                 ></tr>
                 <tr class="mat-row" *matNoDataRow>
                   <td
@@ -373,7 +399,10 @@
             >
               check_circle
             </mat-icon>
-            <p class="placeholder-text">
+            <p
+              class="placeholder-text"
+              data-testid="no-member-splits-placeholder-text"
+            >
               No outstanding expenses found for selected member.
             </p>
           </div>
@@ -419,7 +448,7 @@
                     *matCellDef="let transfer"
                     class="cell-right amount-cell"
                   >
-                    {{ transfer.amount | currency }}
+                    {{ transfer.amount | groupCurrency }}
                   </td>
                 </ng-container>
                 <tr

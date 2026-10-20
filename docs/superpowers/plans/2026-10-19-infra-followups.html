@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Infra Follow-ups</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin-bottom: .2rem; }
+  h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  .meta { color: var(--muted); margin-top: 0; }
+  li { margin: .25rem 0; }
+  li.done::marker { content: "\2611  "; color: var(--accent); }
+  .note { color: var(--muted); font-size: .92em; }
+</style>
+</head>
+<body>
+<h1>Test Infrastructure — Follow-ups</h1>
+<p class="meta">Deferred review findings from Plan 1 (branch <code>test-infrastructure</code>, 2026-10-19), triaged by the final whole-branch review. None block merge. Fold each into the plan named.</p>
+
+<h2>Plan 2 — repair existing e2e (do these first)</h2>
+<p class="note">All done on branch <code>e2e-repair</code> (2026-10-20) except the one owner item marked below. ☑ = done; the commit or task is noted after each item.</p>
+<ul>
+  <li class="done"><strong>Harden <code>validateDatasets</code> before authoring more datasets</strong> (<code>e2e/seed/validate.ts</code>): reject author errors the allocation helpers silently "fix" — amount pools ≠ total, percentages ≠ 100, shares ≤ 0, split fields not matching <code>splitMethod</code>; duplicate member emails within a group; a linked member whose email differs from its user's; a <code>defaultGroupKey</code> naming a group the user isn't in; compare group names case-insensitively. <span class="note">— Task 1, <code>7c192ffc</code>.</span></li>
+  <li class="done">Seed tests: also assert <code>activeMemberUids</code> and <code>adminUids</code> (only <code>memberUids</code> is checked). <span class="note">— Task 1, <code>7c192ffc</code>.</span></li>
+  <li class="done">Reject an ambient <code>E2E_SEED_TODAY</code> (or set it unconditionally in global setup), like <code>E2E_TARGET</code>. <span class="note">— Task 1, <code>7c192ffc</code> (global setup throws on an ambient value and sets it itself).</span></li>
+  <li class="done">Global setup: also probe Auth; give <code>clear()</code> fetches a timeout. <span class="note">— Task 1, <code>7c192ffc</code> (5 s timeouts).</span></li>
+  <li class="done"><code>signInAs</code>: a stale snackbar visible at the moment the shell appears would be misread as a rejection (unlikely). <span class="note">— Task 3, <code>63b82d6c</code> (<code>AuthPage.submitLogin</code> waits for any earlier snackbar to clear before submitting).</span></li>
+  <li class="done">Once the suite is green, check order-independence once with <code>--workers 4</code> (config runs 2 workers on this machine — ruling R6a). <span class="note">— Task 8 close-out (see the e2e-repair Task 8 report).</span></li>
+  <li class="done">Investigate <code>groups-admin:157</code> (watch list in the failures doc) with a trace from a full run. <span class="note">— Task 4, <code>6806c630</code>: test-side race (filled before MatDialog focused its first field), fixed by waiting for focus.</span></li>
+  <li class="done">Wrapper polish (<code>scripts/test-env/with-test-emulators.mjs</code>): try/catch the win32 leak cleanup in <code>finally</code> (a netstat failure masks the exit code); avoid the DEP0190 warning (pass one command string instead of args + <code>shell: true</code>); busy-port message should say "run from the repo root". <span class="note">— Task 2, <code>7265a8d5</code>.</span></li>
+  <li class="done">"Single source of truth" for test ports/project is not literally true — values are repeated in <code>firebase.test.json</code>, <code>src/environments/environment.e2e.ts</code>, <code>functions/vitest.config.ts</code>, <code>functions/test/global-setup.ts</code>. Add a <code>node:test</code> asserting they all agree with <code>scripts/test-env/config.mjs</code>. <span class="note">— Task 2, <code>7265a8d5</code> (<code>scripts/test-env/config-agreement.test.mjs</code>).</span></li>
+  <li class="done">Area map vs spec §5 table: delete-account / <code>user-deletion.spec</code> are under <code>account</code> (spec: auth); guards under auth only (spec: shell); about under shell (spec: help). List under both where sensible. <span class="note">— Task 2, <code>7265a8d5</code>.</span></li>
+  <li class="done">Removed <code>e2e:local*</code> scripts (spec said they'd keep working) — optionally add an <code>e2e:local</code> alias; <code>cross-env</code> devDependency is now unused. <span class="note">— Task 2, <code>7265a8d5</code> (<code>e2e:local</code> alias added). <strong>Owner:</strong> the unused <code>cross-env</code> devDependency is still in <code>package.json</code>; removing it needs a lockfile update.</span></li>
+  <li class="done">Docs: <code>pnpm e2e:install</code> installs every browser (docs say Chromium) — change the script to <code>playwright install chromium</code> or fix the wording; e2e/README code-block alignment; the skill lists <code>e2e:report</code> among wrapper variants. Fold <code>e2e/TESTING_PATTERNS.md</code>'s still-valid lessons into the skill and delete it. <span class="note">— Task 2, <code>7265a8d5</code> (script, README, skill); <code>TESTING_PATTERNS.md</code> folded into the skill and deleted in the Task 8 close-out.</span></li>
+</ul>
+
+<h2>Plan 3 — new e2e coverage</h2>
+<ul>
+  <li>Stub or cache tesseract.js language data for <code>scanReceipt</code> (spec §3).</li>
+  <li>Areas with no e2e tests still boot four emulators to run <code>@infra</code>; Windows <code>cmd</code> has an ~8k command-line limit that large multi-area <code>--include</code> lists may approach (expenses ≈ 2.3k today).</li>
+  <li><em>From Plan 2's final review:</em> hoist duplicated page-object helpers into <code>BasePage</code> / <code>e2e/utils/format.ts</code> — <code>snackbarWith</code> (4 copies), <code>selectPanel</code>/<code>option</code> (3), the two differently-behaving <code>setToggle</code>s (groups vs members), the two loading-wait idioms, and <code>formatMoney</code>/<code>formatShortDate</code> (live in <code>expenses.page.ts</code>).</li>
+  <li>Treat page-object methods no spec exercises yet as unverified when first used: <code>ExpensesPage.gotoList</code>/<code>gotoAddExpense</code>/<code>uploadReceipt</code>/<code>removeReceipt</code>, <code>MembersPage</code> edit/remove/leave and <code>flipToggle</code>, <code>HistoryPage.noFilteredHistoryPlaceholder</code>, <code>AuthPage.signUp</code>/<code>forgotPassword</code>. Delete the unused <code>HomePage.isAuthenticated()</code>.</li>
+  <li><code>e2e/smoke/homepage.spec.ts</code> "should have responsive viewport" only asserts <code>body</code> is visible — give it a real assertion or delete it. Auth redirect tests could assert the real destination (<code>/expenses</code>) and drop the redundant <code>isLoggedIn()</code> checks.</li>
+  <li><code>groups-viewer</code> (groups dataset) is shared by 4 read-only tests; its safety rests on none of them ever saving or selecting a group (documented only in the dataset comment).</li>
+  <li>Cosmetic: dangling <code>waitForSelector('app-root', )</code> in the two smoke specs; group-specific error test ids are reached past the page object in <code>groups-admin.spec.ts</code>.</li>
+</ul>
+
+<h2>Plan 4 — unit / functions gaps</h2>
+<ul>
+  <li><code>findBusyPorts</code>: no negative test; the netstat parsing in the win32 cleanup is untested (extract as a pure function). <code>netstat -p tcp</code> misses IPv6-only listeners.</li>
+  <li>Mail suppression: the suppression <code>update</code> sits outside try/catch; add a test pinning <code>startsWith</code> semantics (e.g. <code>'my-demo-x'</code> → false).</li>
+  <li><code>scripts/db/prune-expenses.ts</code> still has its own duplicate <code>ChunkedBatch</code> — use <code>scripts/db/chunked-batch.ts</code>; export <code>BATCH_LIMIT</code> from there instead of duplicating it as <code>SEED_BATCH_LIMIT</code> in <code>e2e/seed/write.ts</code>.</li>
+  <li><code>src/app/firebase-options.ts:22</code>: unused <code>_measurementId</code> may trip <code>@typescript-eslint/no-unused-vars</code> (only <code>argsIgnorePattern</code> is set).</li>
+  <li><code>test:area</code> polish: <code>--check</code> parses JSON from the first <code>{</code> in stdout (fragile); win32 <code>invocation</code> joins args unquoted; posix quoting doesn't escape embedded quotes / <code>$</code>; <code>%VAR%</code> still expands under cmd.</li>
+  <li><em>From Plan 2:</em> seed validator's percentage-total tolerance borrows the group's money <code>decimalPlaces</code> (a 0-decimal group would accept 99.6–100.4%); no automated tests for the <code>E2E_SEED_TODAY</code> ambient guard or the global-setup probe/clear timeouts; <code>findExpense</code> in <code>seed.spec.ts</code> only searches <code>groups[0]</code>.</li>
+  <li>Wrapper tests: the <code>commandLine</code> test only checks prefix/suffix; <code>config-agreement.test.mjs</code> doesn't cover hub/logging ports or app port 4300 in <code>environment.e2e.ts</code>.</li>
+  <li>Warm-up passes a possibly-undefined <code>baseURL</code> (add a guard).</li>
+</ul>
+
+<h2>Owner</h2>
+<ul>
+  <li><code>.claude/settings.local.json</code> still has an allow rule for the removed <code>pnpm e2e:local:*</code> scripts.</li>
+</ul>
+</body>
+</html>

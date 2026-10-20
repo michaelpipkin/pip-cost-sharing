@@ -2,14 +2,18 @@ import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class GroupsPage extends BasePage {
-  // Main page elements using test IDs
+  readonly navGroupsLink: Locator;
+
+  // Main page elements
+  readonly mainContainer: Locator;
   readonly groupSelect: Locator;
-  readonly groupSelectOptions: Locator;
   readonly newGroupButton: Locator;
   readonly manageGroupsButton: Locator;
   readonly helpButton: Locator;
+  readonly noGroupsPlaceholder: Locator;
+  readonly noGroupsPlaceholderText: Locator;
 
-  // Add Group Dialog elements
+  // Add Group dialog
   readonly addGroupDialog: Locator;
   readonly addGroupTitle: Locator;
   readonly groupNameInput: Locator;
@@ -18,11 +22,7 @@ export class GroupsPage extends BasePage {
   readonly addGroupSaveButton: Locator;
   readonly addGroupCancelButton: Locator;
 
-  // Generic elements
-  readonly formErrors: Locator;
-  readonly snackbar: Locator;
-
-  // Manage Groups Dialog elements
+  // Manage Groups dialog
   readonly manageGroupsDialog: Locator;
   readonly manageGroupsTitle: Locator;
   readonly manageGroupSelect: Locator;
@@ -32,17 +32,30 @@ export class GroupsPage extends BasePage {
   readonly manageGroupsSaveButton: Locator;
   readonly manageGroupsCancelButton: Locator;
 
+  // Generic elements
+  readonly dialogErrors: Locator;
+  readonly snackbar: Locator;
+  readonly loadingOverlay: Locator;
+  /** The open mat-select panel (group select or manage-dialog select). */
+  readonly selectPanel: Locator;
+  readonly tourTitle: Locator;
+  readonly tourCloseButton: Locator;
+
   constructor(page: Page) {
     super(page);
 
-    // Main page elements using test IDs
+    this.navGroupsLink = page.getByTestId('nav-groups');
+
+    this.mainContainer = page.getByTestId('groups-main-container');
     this.groupSelect = page.getByTestId('group-select');
-    this.groupSelectOptions = page.locator('mat-option');
     this.newGroupButton = page.getByTestId('new-group-button');
     this.manageGroupsButton = page.getByTestId('manage-groups-button');
     this.helpButton = page.getByTestId('groups-help-button');
+    this.noGroupsPlaceholder = page.getByTestId('no-groups-placeholder');
+    this.noGroupsPlaceholderText = page.getByTestId(
+      'no-groups-placeholder-text'
+    );
 
-    // Add Group Dialog elements using test IDs
     this.addGroupDialog = page.locator('mat-dialog-container');
     this.addGroupTitle = page.getByTestId('add-group-title');
     this.groupNameInput = page.getByTestId('group-name-input');
@@ -51,7 +64,6 @@ export class GroupsPage extends BasePage {
     this.addGroupSaveButton = page.getByTestId('add-group-save-button');
     this.addGroupCancelButton = page.getByTestId('add-group-cancel-button');
 
-    // Manage Groups Dialog elements using test IDs
     this.manageGroupsDialog = page.locator('mat-dialog-container');
     this.manageGroupsTitle = page.getByTestId('manage-groups-title');
     this.manageGroupSelect = page.getByTestId('manage-group-select');
@@ -63,31 +75,111 @@ export class GroupsPage extends BasePage {
       'manage-groups-cancel-button'
     );
 
-    // Generic elements
-    this.formErrors = page.locator('mat-error');
-    this.snackbar = page.locator('app-custom-snackbar');
+    this.dialogErrors = page.locator('mat-dialog-container mat-error');
+    this.snackbar = page.getByTestId('snackbar');
+    this.loadingOverlay = page.getByTestId('loading-spinner-container');
+    this.selectPanel = page.getByRole('listbox');
+    this.tourTitle = page.getByTestId('guided-tour-title');
+    this.tourCloseButton = page.getByTestId('guided-tour-close-button');
   }
 
+  /**
+   * Opens Groups from the nav bar (the user must already be signed in) and
+   * waits until the page has settled: the group list has loaded and the
+   * invited-member link check is done (the main container replaces the
+   * "Loading groups..." placeholder) and the overlay is gone.
+   *
+   * In-app rather than a page.goto: a full load of a deep link can be
+   * replaced by /expenses when the user's groups load before the initial
+   * navigation commits (known app bug, pinned in
+   * src/app/services/group.service.spec.ts). A stalled page load makes that
+   * likely: in a probe, 7 of 237 deep-link loads landed on /expenses.
+   */
   async goto(): Promise<void> {
-    await this.page.goto('/administration/groups');
-    await this.waitForLoadingComplete();
+    await this.navGroupsLink.click();
+    await expect(this.page).toHaveURL(/\/administration\/groups$/);
+    await expect(this.mainContainer).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
-  async selectGroup(groupName: string): Promise<void> {
+  /**
+   * Reloads the app (so what the page shows comes from Firestore, not from
+   * the in-memory stores), then opens Groups in-app. Waits for the reload's
+   * initial navigation to settle first: it may still be redirected to
+   * /expenses (see goto), and that redirect would override an earlier click.
+   */
+  async reload(): Promise<void> {
+    await this.page.reload();
+    await this.waitForInitialNavigation();
+    await expect(this.loadingOverlay).toBeHidden();
+    await this.goto();
+  }
+
+  /**
+   * The snackbar showing `message`. Matched by text because an earlier
+   * snackbar can still be in the DOM (exit animation) when a new one opens.
+   */
+  snackbarWith(message: string): Locator {
+    return this.snackbar.filter({ hasText: message });
+  }
+
+  /** A group-select / manage-select option, matched on its full name. */
+  option(groupName: string): Locator {
+    return this.selectPanel.getByRole('option', {
+      name: groupName,
+      exact: true,
+    });
+  }
+
+  async openGroupSelect(): Promise<void> {
     await this.groupSelect.click();
-    await this.page.waitForTimeout(500); // Wait for dropdown animation
-    await this.groupSelectOptions.first().waitFor({ state: 'visible' });
-    const targetOption = this.groupSelectOptions.filter({ hasText: groupName });
-    await expect(targetOption).toBeVisible();
-    await targetOption.click();
-    // Wait for group to load after selection
-    await this.waitForLoadingComplete();
+    await expect(this.selectPanel).toBeVisible();
   }
 
+  async closeSelectPanel(): Promise<void> {
+    await this.page.keyboard.press('Escape');
+    await expect(this.selectPanel).toBeHidden();
+  }
+
+  /** Picks a group in the page's group select and waits for it to load. */
+  async selectGroup(groupName: string): Promise<void> {
+    await this.openGroupSelect();
+    await this.option(groupName).click();
+    await expect(this.selectPanel).toBeHidden();
+    await expect(this.loadingOverlay).toBeHidden();
+    await expect(this.groupSelect).toHaveText(groupName);
+  }
+
+  /** Asserts the group is listed in the page's group select. */
+  async verifyGroupInList(groupName: string): Promise<void> {
+    await this.openGroupSelect();
+    await expect(this.option(groupName)).toBeVisible();
+    await this.closeSelectPanel();
+  }
+
+  /** Asserts the group is not listed (e.g. it was deactivated). */
+  async verifyGroupNotInList(groupName: string): Promise<void> {
+    await this.openGroupSelect();
+    await expect(this.selectPanel.getByRole('option').first()).toBeVisible();
+    await expect(this.option(groupName)).toHaveCount(0);
+    await this.closeSelectPanel();
+  }
+
+  /**
+   * Opens New Group and waits until the dialog has finished opening.
+   *
+   * MatDialog (delayFocusTrap) moves focus to its first tabbable field only
+   * after the ~150 ms open animation and a render. fill() is two steps
+   * (select+focus, then a separate insertText into whatever is focused), so
+   * filling before that focus move can type into the group-name input
+   * instead - the baseline "display-name-input stayed empty" failure. The
+   * group-name input being focused is the "dialog ready" signal.
+   */
   async openAddGroupDialog(): Promise<void> {
     await this.newGroupButton.click();
     await expect(this.addGroupDialog).toBeVisible();
     await expect(this.addGroupTitle).toHaveText('Add New Group');
+    await expect(this.groupNameInput).toBeFocused();
   }
 
   async fillAddGroupForm(
@@ -104,16 +196,18 @@ export class GroupsPage extends BasePage {
     await expect(this.displayNameInput).toHaveValue(displayName);
 
     if (autoAddMembers) {
-      await this.autoAddMembersToggle.click();
+      await this.setToggle(this.autoAddMembersToggle, true);
     }
   }
 
   async submitAddGroupForm(): Promise<void> {
+    await expect(this.addGroupSaveButton).toBeEnabled();
     await this.addGroupSaveButton.click();
-    await this.waitForLoadingComplete();
     await expect(this.addGroupDialog).toBeHidden();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
+  /** Creates a group and waits until it is listed in the group select. */
   async createGroup(
     groupName: string,
     displayName: string,
@@ -122,47 +216,7 @@ export class GroupsPage extends BasePage {
     await this.openAddGroupDialog();
     await this.fillAddGroupForm(groupName, displayName, autoAddMembers);
     await this.submitAddGroupForm();
-    await this.waitForLoadingComplete();
-
-    // Verify the group was created and appears in the select
     await this.verifyGroupInList(groupName);
-  }
-
-  async verifyGroupInList(groupName: string): Promise<void> {
-    await this.groupSelect.click({ force: true });
-    await this.page.waitForTimeout(500); // Wait for dropdown animation
-    const groupOption = this.groupSelectOptions.filter({ hasText: groupName });
-    await expect(groupOption).toBeVisible();
-
-    // Close the dropdown by clicking the select again
-    await this.groupSelect.click({ force: true });
-    await this.page.waitForTimeout(1000);
-  }
-
-  async verifyPageLoaded(): Promise<void> {
-    await expect(this.groupSelect).toBeVisible();
-    await expect(this.newGroupButton).toBeVisible();
-    // manageGroupsButton is only visible when the user has groups
-    await expect(this.helpButton).toBeVisible();
-  }
-
-  async verifyPageState(): Promise<void> {
-    await this.verifyPageLoaded();
-  }
-
-  async waitForGroupsToLoad(): Promise<void> {
-    await this.waitForLoadingComplete();
-  }
-
-  async verifySaveButtonDisabled(dialogType: 'add' | 'manage'): Promise<void> {
-    switch (dialogType) {
-      case 'add':
-        await expect(this.addGroupSaveButton).toBeDisabled();
-        break;
-      case 'manage':
-        await expect(this.manageGroupsSaveButton).toBeDisabled();
-        break;
-    }
   }
 
   async cancelAddGroup(): Promise<void> {
@@ -170,33 +224,41 @@ export class GroupsPage extends BasePage {
     await expect(this.addGroupDialog).toBeHidden();
   }
 
-  async verifyValidationErrors(expectedErrors: string[]): Promise<void> {
-    // Wait a moment for validation to trigger after blur
-    await this.page.waitForTimeout(500);
-
-    for (const error of expectedErrors) {
-      // Look for mat-error elements specifically - use .first() to handle multiple matches
-      const errorLocator = this.page
-        .locator('mat-error')
-        .filter({ hasText: error });
-      await expect(errorLocator.first()).toBeVisible();
-
-      // Optionally verify the expected count if we want to be more specific
-      const count = await errorLocator.count();
-      expect(count).toBeGreaterThan(0);
-    }
-  }
-
+  /**
+   * Opens Manage Groups and waits for it to be ready: the dialog has moved
+   * initial focus to its group select (see openAddGroupDialog for why that
+   * matters) and the overlay it shows while loading the group is gone.
+   */
   async openManageGroupsDialog(): Promise<void> {
     await this.manageGroupsButton.click();
     await expect(this.manageGroupsDialog).toBeVisible();
     await expect(this.manageGroupsTitle).toHaveText('Manage Groups');
-    await this.waitForLoadingComplete();
+    await expect(this.manageGroupSelect).toBeFocused();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
-  async openHelp(): Promise<void> {
-    await this.helpButton.click();
-    await this.waitForLoadingComplete();
+  /**
+   * Opens Manage Groups on the named group. The form is ready once the name
+   * input shows that group's name; until then the dialog may still be showing
+   * whichever group was current.
+   */
+  async openManageGroupsFor(groupName: string): Promise<void> {
+    await this.openManageGroupsDialog();
+    await this.manageGroupSelect.click();
+    await expect(this.selectPanel).toBeVisible();
+    await this.option(groupName).click();
+    await expect(this.selectPanel).toBeHidden();
+    await expect(this.manageGroupSelect).toHaveText(groupName);
+    await expect(this.manageGroupNameInput).toHaveValue(groupName);
+    await expect(this.loadingOverlay).toBeHidden();
+  }
+
+  /** Saves Manage Groups and waits for the dialog to close. */
+  async saveManageGroups(): Promise<void> {
+    await expect(this.manageGroupsSaveButton).toBeEnabled();
+    await this.manageGroupsSaveButton.click();
+    await expect(this.manageGroupsDialog).toBeHidden();
+    await expect(this.loadingOverlay).toBeHidden();
   }
 
   async cancelManageGroups(): Promise<void> {
@@ -204,136 +266,26 @@ export class GroupsPage extends BasePage {
     await expect(this.manageGroupsDialog).toBeHidden();
   }
 
-  async editGroup(
-    newGroupName?: string,
-    active?: boolean,
-    autoAdd?: boolean
-  ): Promise<void> {
-    await this.openManageGroupsDialog();
-
-    await this.waitForLoadingComplete();
-    // await this.page.waitForTimeout(500); // Ensure any initial loading is complete
-
-    // Verify save button is initially disabled (no changes made yet)
-    await expect(this.manageGroupsSaveButton).toBeDisabled();
-
-    // Make changes to trigger form dirty state
-    if (newGroupName !== undefined) {
-      await this.manageGroupNameInput.clear();
-      await this.manageGroupNameInput.fill(newGroupName);
-      await this.manageGroupNameInput.blur();
-      await expect(this.manageGroupNameInput).toHaveValue(newGroupName);
-    }
-
-    if (active !== undefined) {
-      // Check current state and toggle if needed (Material UI slide toggle)
-      const isChecked =
-        (await this.manageActiveToggle.getAttribute('aria-checked')) === 'true';
-      if (isChecked !== active) {
-        await this.manageActiveToggle.click();
-        // Wait a bit for the toggle to update
-        await this.page.waitForTimeout(500);
-      }
-    }
-
-    if (autoAdd !== undefined) {
-      // Check current state and toggle if needed (Material UI slide toggle)
-      const isChecked =
-        (await this.manageAutoAddToggle.getAttribute('aria-checked')) ===
-        'true';
-      if (isChecked !== autoAdd) {
-        await this.manageAutoAddToggle.click();
-      }
-    }
-
-    // Wait for form state to update after changes
-    await this.page.waitForTimeout(500);
-
-    // Only try to save if we made any changes
-    if (
-      newGroupName !== undefined ||
-      active !== undefined ||
-      autoAdd !== undefined
-    ) {
-      // Save changes
-      await expect(this.manageGroupsSaveButton).toBeEnabled();
-      await this.manageGroupsSaveButton.click();
-      await this.waitForLoadingComplete();
-      await expect(this.manageGroupsDialog).toBeHidden();
-    } else {
-      // No changes were made, just close the dialog
-      await this.cancelManageGroups();
-    }
+  /** The switch inside a mat-slide-toggle (it carries the checked state). */
+  switchOf(toggle: Locator): Locator {
+    return toggle.getByRole('switch');
   }
 
-  async toggleActiveStatus(): Promise<{ wasToggled: boolean }> {
-    await this.openManageGroupsDialog();
-
-    await this.waitForLoadingComplete();
-
-    // Verify save button is initially disabled (no changes made yet)
-    await expect(this.manageGroupsSaveButton).toBeDisabled();
-
-    // Click the toggle to change it
-    await this.manageActiveToggle.click();
-
-    // Wait for form state to update after changes
-    await this.page.waitForTimeout(500);
-
-    // If the toggle worked, the save button should now be enabled
-    let wasToggled = false;
-    try {
-      await expect(this.manageGroupsSaveButton).toBeEnabled({ timeout: 2000 });
-      wasToggled = true;
-    } catch {
-      wasToggled = false;
-    }
-
-    if (wasToggled) {
-      // Save changes
-      await this.manageGroupsSaveButton.click();
-      await this.waitForLoadingComplete();
-      await expect(this.manageGroupsDialog).toBeHidden();
-    } else {
-      // Cancel if no change was detected
-      await this.cancelManageGroups();
-    }
-
-    return { wasToggled };
+  /**
+   * Flips a mat-slide-toggle from !checked to `checked`. Not setChecked():
+   * that re-reads the state synchronously after its click, but the switch's
+   * aria-checked only updates on the app's next (zoneless) change detection.
+   */
+  async setToggle(toggle: Locator, checked: boolean): Promise<void> {
+    const control = this.switchOf(toggle);
+    await expect(control).toBeChecked({ checked: !checked });
+    await control.click();
+    await expect(control).toBeChecked({ checked });
   }
 
-  async toggleAutoAddMembers(): Promise<{ wasToggled: boolean }> {
-    await this.openManageGroupsDialog();
-
-    await this.waitForLoadingComplete();
-    // Verify save button is initially disabled (no changes made yet)
-    await expect(this.manageGroupsSaveButton).toBeDisabled();
-
-    // Click the auto-add toggle to change it
-    await this.manageAutoAddToggle.click();
-
-    // Wait for form state to update after changes
-    await this.page.waitForTimeout(500);
-
-    // If the toggle worked, the save button should now be enabled
-    let wasToggled = false;
-    try {
-      await expect(this.manageGroupsSaveButton).toBeEnabled({ timeout: 2000 });
-      wasToggled = true;
-    } catch {
-      wasToggled = false;
-    }
-
-    if (wasToggled) {
-      // Save changes
-      await this.manageGroupsSaveButton.click();
-      await this.waitForLoadingComplete();
-      await expect(this.manageGroupsDialog).toBeHidden();
-    } else {
-      // Cancel if no change was detected
-      await this.cancelManageGroups();
-    }
-
-    return { wasToggled };
+  /** Starts the Groups guided tour from the help icon. */
+  async openHelp(): Promise<void> {
+    await this.helpButton.click();
+    await expect(this.tourTitle).toBeVisible();
   }
 }

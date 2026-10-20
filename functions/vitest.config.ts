@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * Tests run against the real Firebase emulators (Auth/Firestore/Storage),
- * same as the app's e2e suite. Start them first via `pnpm emu` from the repo
- * root, then run `pnpm test` from this folder.
+ * Tests run against the real Firebase emulators (Auth/Firestore/Storage), in
+ * the isolated test suite (firebase.test.json, project demo-pipsplit-test, test
+ * ports). `pnpm test` starts and stops them via
+ * scripts/test-env/with-test-emulators.mjs; the owner's dev emulators on the
+ * default ports are never touched.
  */
 export default defineConfig({
   test: {
@@ -16,16 +18,16 @@ export default defineConfig({
     // against the shared emulator state.
     fileParallelism: false,
     env: {
-      GCLOUD_PROJECT: 'pip-cost-sharing',
-      GOOGLE_CLOUD_PROJECT: 'pip-cost-sharing',
+      GCLOUD_PROJECT: 'demo-pipsplit-test',
+      GOOGLE_CLOUD_PROJECT: 'demo-pipsplit-test',
       FUNCTIONS_EMULATOR: 'true',
-      FIRESTORE_EMULATOR_HOST: 'localhost:8080',
-      FIREBASE_AUTH_EMULATOR_HOST: 'localhost:9099',
-      FIREBASE_STORAGE_EMULATOR_HOST: 'localhost:9199',
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:18080',
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:19099',
+      FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:19199',
       // Admin SDK needs this to resolve the default bucket for storage.bucket()
       // with no args, since there's no Cloud Functions runtime to supply it.
       FIREBASE_CONFIG:
-        '{"projectId":"pip-cost-sharing","storageBucket":"pip-cost-sharing.appspot.com"}',
+        '{"projectId":"demo-pipsplit-test","storageBucket":"demo-pipsplit-test.appspot.com"}',
     },
   },
 });

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E2E Repair Plan</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .3rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--note); padding: 10px 12px; overflow-x: auto; border-radius: 4px; font-size: .86em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .step { margin: .35rem 0; }
+  .step::before { content: "☐ "; color: var(--accent); }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+</style>
+</head>
+<body>
+
+<h1>E2E Repair — Implementation Plan (Plan 2 of 4)</h1>
+
+<div class="box">
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: use <code>superpowers:subagent-driven-development</code> (recommended) or <code>superpowers:executing-plans</code>. Steps marked ☐ are checkboxes. Load the <code>pip-angular-testing</code> skill first — its "E2E (Playwright)" section is binding (rules, seed data, signInAs, running).</p>
+</div>
+
+<p><strong>Goal:</strong> Every existing e2e spec passes against the current app, independently and in parallel, on the shared seeded data — so a red e2e run means a real regression.</p>
+<p><strong>Architecture:</strong> Each legacy spec is migrated off "create a user and build a group through the UI in <code>beforeAll</code>, then chain state through <code>describe.serial</code>" onto seeded datasets it owns plus read-only <code>SHARED</code> data, with <code>signInAs</code>. Stale selectors are replaced by <code>data-testid</code>s (added to app templates where missing). Page objects lose their fixed sleeps.</p>
+<p><strong>Tech stack:</strong> Playwright 1.64, Angular 22 (signal forms), Firebase emulators via <code>pnpm e2e</code>, the Plan 1 seeder (<code>e2e/seed/</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-10-19-test-suite-design.html</code> (§2 anti-goals, §4 data, §6b triage, §7 done).</p>
+<p><strong>Inputs:</strong> <code>docs/superpowers/plans/2026-10-19-e2e-failures.html</code> (baseline triage — read the section for your spec before starting), <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code> (Plan 2 section).</p>
+<p><strong>Branch:</strong> <code>e2e-repair</code>, created from <code>test-infrastructure</code> (Plan 1 is not merged yet).</p>
+
+<h2>Global Constraints</h2>
+<ul>
+  <li>All rules in the skill's E2E section apply: never clear data; <code>shared</code> is read-only; mutate only data your spec owns; unique runtime names; scope every assertion to your own data; tag every describe; isolated emulators only; no <code>waitForTimeout</code>; no mail to shared users.</li>
+  <li><strong>No order dependence.</strong> No <code>test.describe.serial</code> and no state carried between tests (module-level variables set in one test and read in another). A multi-step user journey is one test. Every spec passes when run alone (<code>pnpm e2e &lt;file&gt;</code>), and every single test passes when run alone (<code>--grep</code>).</li>
+  <li><strong>No conditional assertions.</strong> No <code>if (await x.isVisible()) { expect… }</code> — a test either asserts the element or doesn't involve it. (The baseline found a memorize test passing vacuously this way.)</li>
+  <li><strong>Triage per spec §6b:</strong> stale test → fix the test; feature removed/moved → delete the test (record where coverage now belongs); looks like an app bug → keep the assertion of the <em>correct</em> behaviour, mark it <code>test.fail()</code> with a comment describing the bug, and list it in the task report with evidence. Never change an assertion to match broken behaviour.</li>
+  <li><strong>Feature-tour must keep working.</strong> <code>e2e/feature-tour/feature-tour.capture.ts</code> uses <code>AuthPage.gotoLogin</code>, <code>AuthPage.login</code>, <code>GroupsPage.goto</code>, <code>GroupsPage.createGroup</code>, <code>GroupsPage.selectGroup</code>, <code>MembersPage.goto</code>, <code>MembersPage.addMember</code> and <code>../fixtures</code>. Keep those methods' signatures and behaviour (removing sleeps is fine). <code>pnpm exec playwright test -c e2e/feature-tour/playwright.feature-tour.config.ts --list</code> must still list 14 tests. Never run it (it targets the dev emulators).</li>
+  <li>App template changes are limited to adding <code>data-testid</code> attributes (and, for a confirmed app bug, only with the owner's go-ahead). Test IDs follow the existing kebab-case style.</li>
+  <li>New seeded emails end in <code>@pipsplit.test</code>; new group names are unique across all datasets and start with the spec's area (e.g. <code>"Groups – Manage A"</code>).</li>
+  <li>Never touch the default emulator ports. No <code>pnpm install</code>/<code>add</code>/downloads. Commit messages end with <code>[no-deploy]</code> (testid-only template changes included) and the Co-Authored-By trailer.</li>
+  <li>After each task: <code>pnpm test:area &lt;areas touched&gt;</code> passes (unit + functions + e2e for those areas), <code>cd e2e &amp;&amp; pnpm exec tsc --noEmit -p .</code> is clean, <code>pnpm test:area --check</code> exits 0.</li>
+</ul>
+
+<h2>Review Focus</h2>
+<ol>
+  <li><strong>Running one test alone.</strong> A test that only passed because an earlier test created its data. Pinned in every spec task by: run each repaired file alone, then <code>pnpm e2e &lt;file&gt; --grep "&lt;one test title&gt;"</code> for the last test in the file.</li>
+  <li><strong>Parallel neighbours.</strong> Two workers running specs that touch the same group or recipient. Pinned by the ownership table below (no group owned by two specs) and Task 8's full runs at 2 and once at 4 workers.</li>
+  <li><strong>Vacuous passes.</strong> Assertions guarded by visibility checks, or tests whose setup silently skips. Pinned by Task 7's grep gate: zero matches of <code>if \(await .*\.isVisible\(</code> in <code>e2e/</code> outside <code>feature-tour/</code>.</li>
+  <li><strong>Cold start.</strong> The first test in a worker hits a still-compiling dev server or cold functions. Pinned by running each repaired file alone twice (each run starts cold).</li>
+  <li><strong>Feature-tour breakage.</strong> Page-object edits change a method feature-tour relies on. Pinned by the <code>--list</code> + <code>tsc</code> check in Tasks 3, 4 and 7.</li>
+</ol>
+
+<h2>Dataset ownership</h2>
+<p>Each spec task adds one dataset file and registers it in <code>ALL_DATASETS</code>. Handles are exported constants the spec imports. Read-only reuse of <code>SHARED</code> is preferred wherever a test doesn't mutate.</p>
+<table>
+  <tr><th>Dataset file</th><th>Owner</th><th>Contents (minimum)</th></tr>
+  <tr><td><code>datasets/auth.ts</code></td><td><code>spec:e2e/auth/auth-authenticated.spec.ts</code></td><td>User <code>auth-user@pipsplit.test</code>, member of one group "Auth – Home" (so sign-in lands on a normal shell).</td></tr>
+  <tr><td><code>datasets/groups.ts</code></td><td><code>spec:e2e/groups/groups-admin.spec.ts</code></td><td>User <code>groups-empty@</code> (no groups; read-only — no test may create a group as this user); user <code>groups-creator@</code> (no seeded groups; creation tests use unique names); user <code>groups-manager@</code> admin of three groups "Groups – Rename", "Groups – Active", "Groups – AutoAdd" (one per mutating test) plus "Groups – Switch A/B" (read-only).</td></tr>
+  <tr><td><code>datasets/expenses.ts</code></td><td><code>spec:e2e/critical-flows/expenses.spec.ts</code></td><td>User <code>expenses-user@</code>; group "Expenses – Main" (3 members incl. the user, 2+ categories); group "Expenses – One Category" (1 category). Tests add expenses with unique descriptions.</td></tr>
+  <tr><td><code>datasets/summary.ts</code></td><td><code>spec:e2e/critical-flows/summary.spec.ts</code></td><td>User <code>summary-user@</code> in group "Summary – Empty" (members, no expenses). All other summary tests read <code>SHARED</code> as alice.</td></tr>
+  <tr><td><code>datasets/history.ts</code></td><td><code>spec:e2e/critical-flows/history.spec.ts</code></td><td>User <code>history-user@</code>; group "History – Empty" (no payments); group "History – Delete" with one seeded payment between two owned members (the delete test's target). Display/copy tests read <code>SHARED</code>'s Bob → Alice payment.</td></tr>
+  <tr><td><code>datasets/payment-flow.ts</code></td><td><code>spec:e2e/critical-flows/expense-to-payment-flow.spec.ts</code></td><td>User <code>flow-user@</code> plus owned linked members (so payment mail goes to owned recipients); one group per mutating test: "Flow – Pay", "Flow – Method", "Flow – Mutual"; read-only "Flow – Cancel".</td></tr>
+</table>
+
+<!-- ===================================================================== -->
+<h2>Task 1: Seed hardening (before more datasets exist)</h2>
+<p><strong>Files:</strong> <code>e2e/seed/validate.ts</code>, <code>e2e/seed/dates.ts</code>, <code>e2e/global-setup.ts</code>, <code>e2e/infra/seed.spec.ts</code>.</p>
+<p class="step"><strong>Failing tests first</strong> in <code>seed.spec.ts</code> (<code>@infra</code>), one per new rule, each cloning <code>SHARED</code> data with one defect and asserting <code>validateDatasets</code> throws a message naming the problem: amount-method expense whose assigned + shared + allocated ≠ total; percentage-method expense whose percentages ≠ 100; shares-method expense with a share ≤ 0; an expense whose split fields don't match its <code>splitMethod</code> (e.g. percentages on an amount expense); two members in one group with the same email (case-insensitive); a linked member (<code>userKey</code>) whose email differs from that user's email; a <code>defaultGroupKey</code> naming a group the user isn't a member of; two groups whose names differ only by case.</p>
+<p class="step">Add to the existing UID-array test: <code>activeMemberUids</code> equals the active linked members' uids and <code>adminUids</code> equals <code>[alice.uid]</code>.</p>
+<p class="step">Implement the validator rules. <code>dates.ts</code>: global setup sets <code>E2E_SEED_TODAY</code> unconditionally; if it is already set when global setup starts, throw (same pattern and message style as the <code>E2E_TARGET</code> guard). Global setup also probes Auth (<code>127.0.0.1:19099</code>) and gives every probe/clear <code>fetch</code> a 5 s timeout with the existing "start via pnpm e2e" guidance.</p>
+<p class="step">Run <code>pnpm e2e --grep @infra</code> twice — all pass. Commit <code>Harden seed validation and global setup [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 2: Tooling polish</h2>
+<p><strong>Files:</strong> <code>scripts/test-env/with-test-emulators.mjs</code> (+ test), new <code>scripts/test-env/config-agreement.test.mjs</code>, <code>scripts/test-area/areas.mjs</code> (+ test), <code>package.json</code>, <code>e2e/README.md</code>, skill.</p>
+<p class="step">Wrapper: the win32 leak cleanup in <code>finally</code> becomes best-effort (try/catch, never replaces the exit code — add a test with an injected failing cleanup); extract the netstat parsing into a pure exported <code>parseListeningPids(netstatOutput: string, ports: number[]) → number[]</code> covering IPv4 and IPv6 (<code>[::]</code>/<code>[::1]</code>) lines, with tests, and drop <code>-p tcp</code>; add a <code>findBusyPorts</code> free-port test; remove the DEP0190 warning (one command string with <code>shell: true</code>, quoting via <code>quoteInner</code>); busy-port message says "from the repo root".</p>
+<p class="step"><code>config-agreement.test.mjs</code>: assert <code>firebase.test.json</code> ports, <code>src/environments/environment.e2e.ts</code> (<code>emulators</code> block + project ID, read as text), <code>functions/vitest.config.ts</code> env and <code>functions/test/global-setup.ts</code> URLs all equal <code>scripts/test-env/config.mjs</code>. Then reword "single source of truth" in the README/skill to "source of truth, checked by <code>config-agreement.test.mjs</code>".</p>
+<p class="step">Area map vs spec §5: also list <code>features/auth/delete-account</code> and <code>user-deletion.spec.ts</code> under <code>auth</code>; route guards under <code>shell</code>; <code>features/about</code> under <code>help</code> (keep existing entries; add, don't move). Update tests.</p>
+<p class="step"><code>package.json</code>: <code>e2e:install</code> → <code>playwright install chromium</code>; add <code>"e2e:local": "pnpm e2e"</code> (spec §6 said it keeps working). Leave the now-unused <code>cross-env</code> devDependency in place (removing it needs a lockfile update, which is the owner's) and list it in the report. Fix the README code-block alignment and the skill's listing of <code>e2e:report</code> as a wrapper variant.</p>
+<p class="step"><code>pnpm test:scripts</code>, <code>pnpm test:area --check</code> pass. Commit <code>Polish test tooling [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 3: Auth and smoke specs (<code>@auth</code>, <code>@home</code>, <code>@shell</code>)</h2>
+<p><strong>Files:</strong> <code>e2e/auth/*.spec.ts</code>, <code>e2e/smoke/*.spec.ts</code>, <code>e2e/pages/auth.page.ts</code>, <code>base.page.ts</code>, <code>home.page.ts</code>, new <code>e2e/seed/datasets/auth.ts</code>.</p>
+<p class="step">Delete <code>auth/auth.spec.ts</code> and the homepage test "should connect to Firebase emulators": both probe emulator HTTP endpoints, which <code>@infra</code> now covers properly (feature-not-app-behaviour; record in the report).</p>
+<p class="step"><code>auth-authenticated.spec.ts</code>: sign in with <code>signInAs</code> as the auth dataset user (no <code>createTestUser</code>); redirect tests use <code>await expect(page).not.toHaveURL(/\/auth\/login/)</code> (and register) instead of reading <code>page.url()</code> once — fixes baseline <code>:36</code>; logout asserts the signed-out shell.</p>
+<p class="step"><code>AuthPage.login()</code>: remove the two <code>waitForTimeout</code>s and the swallowed race — wait for the authenticated shell OR the login-error snackbar like <code>signInAs</code> (reuse its logic; don't duplicate it: have <code>signInAs</code> and <code>login</code> share one helper). Keep the signature. In that shared helper, only treat the snackbar as a rejection if it appeared after submit (e.g. wait for any pre-existing snackbar to be hidden before submitting) — the follow-ups doc's stale-snackbar item. <code>createAndLoginTestUser</code> / <code>loginOrCreateTestUser</code>: delete if no remaining caller (grep, feature-tour included).</p>
+<p class="step">Smoke + unauthenticated specs: should already pass; only remove sleeps/vacuous guards you find and switch any <code>preserveDataFirebasePage</code> to <code>page</code>/<code>seededPage</code>.</p>
+<p class="step">Run each file alone twice, then <code>pnpm test:area auth home shell</code>; feature-tour <code>--list</code> = 14; e2e tsc clean. Commit <code>Repair auth and smoke e2e specs [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 4: Groups admin spec (<code>@groups</code>)</h2>
+<p><strong>Files:</strong> <code>e2e/groups/groups-admin.spec.ts</code>, <code>e2e/pages/groups.page.ts</code>, <code>e2e/pages/members.page.ts</code>, new <code>e2e/seed/datasets/groups.ts</code>.</p>
+<p class="step"><strong>Investigate the watch-list item first</strong> (use <code>superpowers:systematic-debugging</code>): reproduce "should create first group" (<code>display-name-input</code> empty after <code>fill</code>) with the full current spec at 2 workers, open its trace, and determine whether the signal-forms <code>[formField]</code> binding overwrites the filled value (app bug → <code>test.fail()</code> + report) or the test fills before the dialog's form is ready (test fix: wait for the input to be editable/stable, then fill and assert). Record the evidence in the report either way.</p>
+<p class="step">Rewrite onto the groups dataset: empty-state tests as <code>groups-empty</code> assert the guidance text and "New Group" button (testids; no <code>group-select</code> expected — baseline <code>:43</code>, <code>:98</code>); validation/cancel tests as <code>groups-empty</code> must not save; creation tests as <code>groups-creator</code> with unique names and assert the new group becomes selectable; manage/edit/active/auto-add tests as <code>groups-manager</code>, each on its own seeded group; switch test reads "Switch A/B". Remove <code>describe.serial</code>; each test signs in and navigates itself.</p>
+<p class="step">Page objects: remove all <code>waitForTimeout</code> from <code>groups.page.ts</code> and <code>members.page.ts</code>, keeping the feature-tour methods' signatures/behaviour.</p>
+<p class="step">Run the file alone twice + the last test alone; <code>pnpm test:area groups members</code>; feature-tour <code>--list</code>; tsc. Commit <code>Repair groups admin e2e spec [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 5: Expenses spec (<code>@expenses</code>)</h2>
+<p><strong>Files:</strong> <code>src/app/features/expenses/add-expense/add-expense.component.html</code> (and <code>edit-expense</code> if it shares the form markup), <code>e2e/critical-flows/expenses.spec.ts</code>, <code>e2e/pages/expenses.page.ts</code>, new <code>e2e/seed/datasets/expenses.ts</code>.</p>
+<p class="step">Add test IDs to the add-expense form: <code>total-amount-input</code>, <code>proportional-amount-input</code>, and per split row <code>split-member-select</code> and <code>split-assigned-amount-input</code> (rows identified by position via <code>.nth(i)</code> on those testids). Reuse existing ids: <code>split-by-amount-toggle</code> / <code>split-by-percentage-toggle</code> / <code>split-by-shares-toggle</code>, <code>attach-file-*</code>, <code>remove-file-button</code>, <code>delete-confirm-button</code>, <code>save-button</code>. Run the add-expense/edit-expense unit specs.</p>
+<p class="step">Rewrite <code>expenses.page.ts</code> against test IDs only (see the failures doc, root cause 1, for every stale selector and its replacement); no sleeps.</p>
+<p class="step">Delete "should memorize expense for reuse" — memorizing moved to <code>/memorized/add</code>; coverage belongs to Plan 3's <code>@memorized</code> area (say so in a one-line comment where the test was and in the report). Replace "should toggle percentage mode" with one test per split method (amount, percentage, shares) asserting the allocated amounts for fixed inputs — read <code>add-expense</code>'s allocation behaviour (last percentage auto-fills to 100, shares proportional) before writing expected values, and compute them with <code>scripts/db/allocation.ts</code> rather than by hand.</p>
+<p class="step">Each remaining test signs in as <code>expenses-user</code>, uses "Expenses – Main" (or "One Category" for auto-select), creates expenses with unique descriptions, and asserts the saved expense row and its splits on the Expenses page. Remove <code>describe.serial</code>.</p>
+<p class="step">Run alone twice + last test alone; <code>pnpm test:area expenses</code>; tsc. Commit <code>Repair expenses e2e spec; add form test ids [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 6: Summary and history specs (<code>@summary</code>, <code>@history</code>)</h2>
+<p><strong>Files:</strong> <code>e2e/critical-flows/summary.spec.ts</code>, <code>history.spec.ts</code>, <code>e2e/pages/summary.page.ts</code>, <code>history.page.ts</code>, new <code>datasets/summary.ts</code>, <code>datasets/history.ts</code>.</p>
+<p class="step">Empty states: assert <code>no-unpaid-splits-placeholder-text</code> / <code>no-history-placeholder-text</code> (testids, not text) for the owned empty groups.</p>
+<p class="step">Summary read-only tests sign in as <code>SHARED.users.alice</code> on "Shared – Beach House" and assert the exact pairwise balances documented in <code>datasets/shared.ts</code> (who-owes-whom, expand/collapse, category breakdown, member filter, date filter, clear filters, copy to clipboard — assert clipboard text, payment dialog opens with the right payer/payee/amount and is cancelled). Remove the <code>supportsClipboard</code> conditional skips (always true).</p>
+<p class="step">History: display + copy read <code>SHARED</code>'s Bob → Alice payment; delete-with-confirmation runs as <code>history-user</code> on "History – Delete" and asserts the payment is gone after confirming (and still there after cancelling — a separate seeded payment, or cancel-then-confirm in one test).</p>
+<p class="step">Page objects: no sleeps. Remove <code>describe.serial</code>. Run each file alone twice + last test alone; <code>pnpm test:area summary history</code>; tsc. Commit <code>Repair summary and history e2e specs [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 7: Expense → payment flow spec + cleanup gate</h2>
+<p><strong>Files:</strong> <code>e2e/critical-flows/expense-to-payment-flow.spec.ts</code>, new <code>datasets/payment-flow.ts</code>, <code>e2e/fixtures/index.ts</code>, <code>e2e/utils/firebase.ts</code>, any page object still sleeping.</p>
+<p class="step">Rewrite as independent journeys on the payment-flow dataset: "create expense → pay → appears in history and leaves summary" on "Flow – Pay"; payment cancellation on "Flow – Cancel" (nothing recorded); payment-method selection on "Flow – Method" (recorded payment shows the method); mutual-debts netting on "Flow – Mutual" with seeded expenses in both directions (assert the netted summary line). Copy-history and multiple-categories tests either fold into those journeys or read <code>SHARED</code>. Payment mail must go only to this dataset's users.</p>
+<p class="step">Cleanup: delete the <code>preserveDataFirebasePage</code> alias (all specs now use <code>page</code>/<code>seededPage</code>); delete <code>createTestUser</code> / <code>setCustomClaims</code> / <code>addFirestoreTestData</code> from <code>e2e/utils/firebase.ts</code> if unused (keep <code>configureFirebaseEmulators</code> for feature-tour); remove <code>TEST_CONFIG.supportsClipboard</code> if unused.</p>
+<p class="step"><strong>Gates</strong> (all zero outside <code>e2e/feature-tour/</code>): <code>grep -rn "waitForTimeout" e2e</code>; <code>grep -rn "describe.serial" e2e</code>; <code>grep -rnE "if \(await .*\.isVisible\(" e2e</code>; <code>grep -rn "preserveDataFirebasePage\|createTestUser" e2e</code>.</p>
+<p class="step">Run the file alone twice; <code>pnpm test:area expenses summary history</code>; feature-tour <code>--list</code>; tsc. Commit <code>Repair payment flow e2e spec; remove legacy helpers [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 8: Docs, full verification, close-out</h2>
+<p class="step">Fold the still-valid lessons from <code>e2e/TESTING_PATTERNS.md</code> into the skill's E2E section (MDC selectors, test-id naming, LoadingService waits, date inputs, expandable rows, clipboard) — validate each against the current code first; drop what's obsolete — then delete <code>TESTING_PATTERNS.md</code>.</p>
+<p class="step">Remove rule 3a ("legacy e2e failures…") from the skill and the matching sentence from <code>CLAUDE.md</code>. Add a status banner to <code>docs/superpowers/plans/2026-10-19-e2e-failures.html</code> ("Resolved by Plan 2 — see commits …") and tick the Plan 2 items in <code>2026-10-19-infra-followups.html</code>.</p>
+<p class="step"><strong>Definition of done (spec §7, ruling R6a):</strong> <code>pnpm e2e</code> passes <strong>three consecutive runs</strong> at the configured 2 workers with zero failures and zero flaky; one additional run with <code>--workers 4</code> is recorded (pass, or each failure explained as cold-start load, not order dependence); <code>pnpm test</code>, <code>pnpm --dir functions test</code>, <code>pnpm test:scripts</code>, <code>pnpm test:area --check</code> pass; every area touched passes alone via <code>pnpm test:area &lt;area&gt;</code>.</p>
+<p class="step">Report: counts per run, every <code>test.fail()</code> bug with evidence (for the owner to decide), every deleted test and where its coverage belongs. Commit <code>Close out e2e repair: docs and verification [no-deploy]</code>.</p>
+
+</body>
+</html>

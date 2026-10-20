@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
@@ -22,6 +22,7 @@ import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { UserService } from '@services/user.service';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
@@ -56,7 +57,7 @@ import { buildHistoryDetailTourSteps } from './history-detail.tour';
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
