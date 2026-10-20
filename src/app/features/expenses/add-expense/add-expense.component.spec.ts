@@ -45,6 +45,7 @@ import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddExpenseComponent } from './add-expense.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('AddExpenseComponent', () => {
   let fixture: ComponentFixture<AddExpenseComponent>;
@@ -797,5 +798,9 @@ describe('AddExpenseComponent', () => {
       expect(component.receiptFile()).toBeNull();
       expect(query('attach-file-area')).toBeTruthy();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

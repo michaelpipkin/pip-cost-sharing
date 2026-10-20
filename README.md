@@ -30,32 +30,17 @@ Run `ng build` to build the project. The build artifacts will be stored in the `
 
 ## Running unit tests
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Run `pnpm test` to execute the unit tests (Vitest via `@angular/build:unit-test`).
 
 ## Running end-to-end tests
 
-This project uses Playwright for end-to-end testing with Firebase emulator integration. The testing setup supports two environments:
+End-to-end tests use Playwright against an isolated Firebase emulator suite (project `demo-pipsplit-test`, non-default ports) that the commands below start, seed and stop for you:
 
-### Local Development Environment
-- Uses `localhost:4200`
-- App Check is skipped whenever `environment.useEmulators` is true, so no reCAPTCHA/App Check setup is needed locally
-- Run tests: `pnpm e2e` or `pnpm e2e:local`
-- Run with UI: `pnpm e2e:headed` or `pnpm e2e:local:headed`
+- `pnpm e2e` - run the suite headless (also `pnpm e2e:headed`, `pnpm e2e:ui`, `pnpm e2e:debug`)
+- `pnpm test:area <area...> [--unit|--e2e]` - run one product area's unit, functions and e2e tests; `pnpm test:area --check` verifies every test is assigned to an area
+- `pnpm e2e:report` - view the last report; `pnpm e2e:install` - install Playwright's browser (after Playwright upgrades)
 
-### CI/CD Environment
-- Uses `localhost:4200`
-- Automatically starts Angular dev server
-- Run tests: `pnpm e2e:ci`
-- Run with UI: `pnpm e2e:ci:headed`
-
-### Other Testing Commands
-- `pnpm e2e:debug` - Run tests in debug mode
-- `pnpm e2e:ui` - Run tests in Playwright UI mode
-- `pnpm e2e:report` - View test reports
-- `pnpm e2e:install` - Install Playwright browsers
-
-### Firebase Emulator Integration
-Tests automatically start and configure Firebase emulators. For tests requiring authentication, use the `firebasePage` fixture which includes Firebase emulator configuration.
+See [e2e/README.md](e2e/README.md) for prerequisites (including Java for the Firestore emulator) and details.
 
 ## Further help
 

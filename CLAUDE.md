@@ -17,3 +17,6 @@
 
 - Building the project
   When in the project root, we simply use 'ng build' to build the project. After making changes to any code in the functions folder, we have to move to the functions directory and run 'pnpm run build' in order to build the functions before testing them.
+
+- Testing
+  Whenever a feature is changed, update or add that area's unit, Cloud Functions and e2e tests in the same task, then run `pnpm test:area <area>` and report the result before calling the task done. The areas live in `scripts/test-area/areas.mjs`; unit and Cloud Functions specs are listed in that file, e2e tests are assigned by tagging their describe with the area's `@tag`, and shared source code is covered by spreading its folder into every area that imports it; `pnpm test:area --check` must pass. E2E and functions tests run only on the isolated test emulators (project `demo-pipsplit-test`, non-default ports) via `pnpm e2e` / `pnpm test:area` / `pnpm --dir functions test` - never against the default emulator ports, and never with per-test data clears. For e2e patterns, the shared seed data and its ownership rules, load the `pip-angular-testing` skill.

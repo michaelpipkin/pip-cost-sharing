@@ -1,4 +1,4 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -19,6 +19,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DocRefCompareDirective } from '@directives/doc-ref-compare.directive';
 import { RentalDetails, RentalRoom } from '@models/expense';
 import { Member } from '@models/member';
+import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import {
   AllocationSplit,
   AllocationUtilsService,
@@ -37,7 +38,7 @@ export interface RentalMemberRow {
  * Reusable members x nights occupancy grid for vacation rental expenses.
  * Hosted both by the add-flow wizard (RentalComponent) and the edit-flow
  * dialog (RentalEditDialogComponent). Owns member add/remove and
- * per-night presence, and computes a live shares + dollar preview via
+ * per-night presence, and computes a live shares + amount preview via
  * RentalUtilsService and the existing AllocationUtilsService.
  */
 @Component({
@@ -54,7 +55,7 @@ export interface RentalMemberRow {
     MatCheckboxModule,
     MatTooltipModule,
     DocRefCompareDirective,
-    CurrencyPipe,
+    GroupCurrencyPipe,
     DecimalPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

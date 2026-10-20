@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { environment } from '@env/environment';
 import { scrubAnalyticsParams } from '@utils/analytics-privacy.util';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -14,6 +15,13 @@ export class AnalyticsService {
   protected readonly auth = inject(getAuth);
   protected readonly fns = inject(getFunctions);
 
+  // False on emulator builds (e.g. the e2e config's demo project): the web
+  // Analytics SDK would otherwise call the real Firebase Installations and
+  // Google Analytics endpoints with the real app credentials. Omitting
+  // measurementId in resolveFirebaseOptions is not enough - the SDK still
+  // fetches its config by appId/apiKey.
+  protected gaEnabled = environment.emulators.projectId === null;
+
   private readonly pendingSnapshotErrors = new Map<
     string,
     ReturnType<typeof setTimeout>
@@ -23,6 +31,7 @@ export class AnalyticsService {
     name: string,
     params?: Record<string, unknown>
   ): Promise<void> {
+    if (!this.gaEnabled) return;
     try {
       await FirebaseAnalytics.logEvent({
         name,
@@ -34,6 +43,7 @@ export class AnalyticsService {
   }
 
   async logScreenView(screenName: string): Promise<void> {
+    if (!this.gaEnabled) return;
     try {
       await FirebaseAnalytics.logEvent({
         name: 'screen_view',
@@ -138,12 +148,14 @@ export class AnalyticsService {
     // Only the Analytics copy is scrubbed of email addresses (see
     // analytics-privacy.util.ts); the Firestore copy below keeps them,
     // which is what makes them useful for matching errors to users.
-    FirebaseAnalytics.logEvent({
-      name: 'app_error',
-      params: scrubAnalyticsParams(params),
-    }).catch((e: unknown) =>
-      console.error('Analytics logError (GA) failed:', e)
-    );
+    if (this.gaEnabled) {
+      FirebaseAnalytics.logEvent({
+        name: 'app_error',
+        params: scrubAnalyticsParams(params),
+      }).catch((e: unknown) =>
+        console.error('Analytics logError (GA) failed:', e)
+      );
+    }
 
     httpsCallable(this.fns, 'logAppError')(params).catch((e: unknown) =>
       console.error('Analytics logError (Firestore) failed:', e)

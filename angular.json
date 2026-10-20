@@ -96,6 +96,18 @@
               "extractLicenses": false,
               "sourceMap": true,
               "namedChunks": true
+            },
+            "e2e": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.e2e.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -108,6 +120,9 @@
             },
             "development": {
               "buildTarget": "pip-cost-sharing:build:development"
+            },
+            "e2e": {
+              "buildTarget": "pip-cost-sharing:build:e2e"
             }
           },
           "defaultConfiguration": "development"

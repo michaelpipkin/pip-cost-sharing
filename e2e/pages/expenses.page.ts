@@ -1,13 +1,58 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
-export class ExpensesPage extends BasePage {
-  // List page elements
-  readonly addExpenseButton: Locator;
-  readonly expensesTable: Locator;
-  readonly filterInput: Locator;
+export type SplitMethod = 'amount' | 'percentage' | 'shares';
 
-  // Add Expense form elements
+/** One split as the Expenses page's detail table shows it. */
+export interface ExpectedSplit {
+  member: string;
+  amount: number;
+}
+
+/** A saved expense as its Expenses page row (and expanded detail) shows it. */
+export interface ExpectedExpense {
+  payer: string;
+  category: string;
+  total: number;
+  splits: ExpectedSplit[];
+  /** Shown as M/d/yyyy; defaults to not checked. */
+  date?: Date;
+}
+
+/**
+ * An amount as the app's currency pipe renders it for a USD group (symbol,
+ * space, two decimals), e.g. "$ 33.34". The seeded groups are all USD.
+ */
+export function formatMoney(amount: number): string {
+  const digits = Math.abs(amount).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${amount < 0 ? '-' : ''}$ ${digits}`;
+}
+
+/** A date as the Expenses table (desktop) and the date input show it. */
+export function formatShortDate(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
+
+export class ExpensesPage extends BasePage {
+  readonly navExpensesLink: Locator;
+
+  // Expenses list page
+  readonly expensesContainer: Locator;
+  /** The current group's name, shown above the list. */
+  readonly currentGroupName: Locator;
+  readonly addExpenseButton: Locator;
+  /** "Enter Manual Expense" in the Add New Expense options dialog. */
+  readonly manualExpenseButton: Locator;
+  /** One per expense (not the expanded-detail rows). */
+  readonly expenseRows: Locator;
+  /** The expanded expense's split table (one expense is expanded at a time). */
+  readonly expenseDetail: Locator;
+  readonly expenseSplitRows: Locator;
+
+  // Add Expense form
   readonly addExpenseContainer: Locator;
   readonly pageTitle: Locator;
   readonly helpButton: Locator;
@@ -19,37 +64,52 @@ export class ExpensesPage extends BasePage {
   readonly categorySelect: Locator;
   readonly totalAmountInput: Locator;
   readonly proportionalAmountInput: Locator;
-  readonly calculatorButton: Locator;
-  readonly percentageToggle: Locator;
+  readonly sharedRemainderAmount: Locator;
+  readonly splitMethodToggles: Record<SplitMethod, Locator>;
   readonly addSplitButton: Locator;
   readonly addAllMembersButton: Locator;
   readonly saveButton: Locator;
   readonly saveAndAddAnotherButton: Locator;
   readonly cancelButton: Locator;
-  readonly memorizeButton: Locator;
-  readonly receiptInput: Locator;
-  readonly receiptPreview: Locator;
-  readonly removeReceiptButton: Locator;
 
-  // Split elements (dynamic)
+  // Receipt attachment
+  readonly fileInput: Locator;
+  readonly attachFileButton: Locator;
+  readonly uploadPrompt: Locator;
+  readonly attachedFilename: Locator;
+  readonly removeFileButton: Locator;
+
+  // Split rows: each locator has one match per split, in row order (.nth(i)).
+  /** The per-split member selects - one per split, so also the split count. */
   readonly splitRows: Locator;
+  readonly assignedAmountInputs: Locator;
+  readonly percentageInputs: Locator;
+  readonly sharesInputs: Locator;
+  readonly allocatedAmounts: Locator;
   readonly deleteSplitButtons: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
   readonly snackbar: Locator;
-  readonly deleteDialog: Locator;
+  readonly loadingOverlay: Locator;
+  /** The open mat-select panel. */
+  readonly selectPanel: Locator;
+  readonly calendar: Locator;
   readonly confirmDeleteButton: Locator;
 
   constructor(page: Page) {
     super(page);
 
-    // List page
-    this.addExpenseButton = page.getByTestId('add-expense-button');
-    this.expensesTable = page.getByTestId('expenses-table');
-    this.filterInput = page.getByTestId('filter-input');
+    this.navExpensesLink = page.getByTestId('nav-expenses');
 
-    // Add Expense form
+    this.expensesContainer = page.getByTestId('expenses-container');
+    this.currentGroupName = page.getByTestId('current-group-name');
+    this.addExpenseButton = page.getByTestId('add-expense-button');
+    this.manualExpenseButton = page.getByTestId('manual-expense-button');
+    this.expenseRows = page.getByTestId('expense-row');
+    this.expenseDetail = page.getByTestId('expense-detail');
+    this.expenseSplitRows = this.expenseDetail.getByTestId('expense-split-row');
+
     this.addExpenseContainer = page.getByTestId('add-expense-container');
     this.pageTitle = page.getByTestId('page-title');
     this.helpButton = page.getByTestId('help-button');
@@ -58,233 +118,335 @@ export class ExpensesPage extends BasePage {
     this.dateInput = page.getByTestId('date-input');
     this.datePickerToggle = page.getByTestId('date-picker-toggle');
     this.descriptionInput = page.getByTestId('description-input');
-    this.categorySelect = page.locator('#category-select mat-select');
-    this.totalAmountInput = page.locator('input[formControlName="amount"]');
-    this.proportionalAmountInput = page.locator(
-      'input[formControlName="allocatedAmount"]'
+    this.categorySelect = page.getByTestId('category-select');
+    this.totalAmountInput = page.getByTestId('total-amount-input');
+    this.proportionalAmountInput = page.getByTestId(
+      'proportional-amount-input'
     );
-    this.calculatorButton = page
-      .locator('button[aria-label="Open calculator"]')
-      .first();
-    this.percentageToggle = page.getByTestId('split-by-percentage-button');
+    this.sharedRemainderAmount = page.getByTestId('shared-remainder-amount');
+    this.splitMethodToggles = {
+      amount: page.getByTestId('split-by-amount-toggle'),
+      percentage: page.getByTestId('split-by-percentage-toggle'),
+      shares: page.getByTestId('split-by-shares-toggle'),
+    };
     this.addSplitButton = page.getByTestId('add-split-button');
     this.addAllMembersButton = page.getByTestId('add-all-members-button');
-    this.saveButton = page
-      .getByTestId('save-button')
-      .filter({ hasText: 'Save' });
+    this.saveButton = page.getByTestId('save-button');
     this.saveAndAddAnotherButton = page.getByTestId(
       'save-and-add-another-button'
     );
     this.cancelButton = page.getByTestId('cancel-button');
-    this.memorizeButton = page.getByTestId('memorize-button');
-    this.receiptInput = page.locator('input[type="file"]');
-    this.receiptPreview = page.getByTestId('receipt-preview');
-    this.removeReceiptButton = page.getByTestId('remove-receipt-button');
 
-    // Split elements - count mat-selects with formControlName="owedByMemberRef"
-    // since there's exactly one per split
-    this.splitRows = page.locator(
-      'mat-select[formControlName="owedByMemberRef"]'
-    );
+    this.fileInput = page.getByTestId('file-input');
+    this.attachFileButton = page.getByTestId('attach-file-button');
+    this.uploadPrompt = page.getByTestId('upload-prompt');
+    this.attachedFilename = page.getByTestId('attached-filename');
+    this.removeFileButton = page.getByTestId('remove-file-button');
+
+    this.splitRows = page.getByTestId('split-member-select');
+    this.assignedAmountInputs = page.getByTestId('split-assigned-amount-input');
+    this.percentageInputs = page.getByTestId('split-percentage-input');
+    this.sharesInputs = page.getByTestId('split-shares-input');
+    this.allocatedAmounts = page.getByTestId('allocated-amount');
     this.deleteSplitButtons = page.getByTestId('remove-split');
 
-    // Generic
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.locator('app-custom-snackbar');
-    this.deleteDialog = page.locator('mat-dialog-container');
-    this.confirmDeleteButton = page.getByTestId('confirm-delete');
+    this.snackbar = page.getByTestId('snackbar');
+    this.loadingOverlay = page.getByTestId('loading-spinner-container');
+    this.selectPanel = page.getByRole('listbox');
+    this.calendar = page.locator('mat-calendar');
+    this.confirmDeleteButton = page.getByTestId('delete-confirm-button');
   }
 
+  // ---- Navigation ---------------------------------------------------------
+
+  /**
+   * Loads Expenses with a full page load and waits for the current group's
+   * list. A full load is only safe for /expenses itself, so other expense
+   * pages are reached in-app: once the user's groups load,
+   * GroupService.handleGroupsSnapshot redirects to /expenses whenever router.url is
+   * '/' - and router.url stays '/' until the initial navigation commits, so
+   * a deep link whose lazy route is still loading (a cold page load) gets
+   * replaced by /expenses.
+   */
   async gotoList(): Promise<void> {
     await this.page.goto('/expenses');
-    await this.waitForLoadingComplete();
+    await this.waitForList();
   }
 
+  /** Opens Expenses from the nav bar (no reload) and waits for its list. */
+  async navigateToList(): Promise<void> {
+    await this.navExpensesLink.click();
+    await expect(this.page).toHaveURL(/\/expenses$/);
+    await this.waitForList();
+  }
+
+  /**
+   * Opens Add Expense for the current group the way a user does (Expenses,
+   * Add New Expense, Enter Manual Expense) and waits until the form has its
+   * group data: the payer select shows the signed-in member (the default
+   * payer, applied once the member has loaded) and the overlay is gone.
+   */
   async gotoAddExpense(): Promise<void> {
-    await this.page.goto('/expenses/add');
-    await this.waitForLoadingComplete();
+    await this.gotoList();
+    await this.openAddExpense();
   }
 
+  /** From the Expenses list: Add New Expense, then Enter Manual Expense. */
+  async openAddExpense(): Promise<void> {
+    await this.addExpenseButton.click();
+    await this.manualExpenseButton.click();
+    await expect(this.page).toHaveURL(/\/expenses\/add$/);
+    await expect(this.addExpenseContainer).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
+    await expect(this.payerSelect).toHaveText(/\S/);
+  }
+
+  /** Waits for the Expenses page (already navigated to) to load its list. */
+  async waitForList(): Promise<void> {
+    await expect(this.expensesContainer).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
+  }
+
+  /**
+   * The snackbar showing `message`. Matched by text because an earlier
+   * snackbar can still be in the DOM (exit animation) when a new one opens.
+   */
+  snackbarWith(message: string): Locator {
+    return this.snackbar.filter({ hasText: message });
+  }
+
+  // ---- Form fields --------------------------------------------------------
+
+  /** A mat-select option in the open panel, matched on its full text. */
+  option(name: string): Locator {
+    return this.selectPanel.getByRole('option', { name, exact: true });
+  }
+
+  private async choose(select: Locator, name: string): Promise<void> {
+    await select.click();
+    await expect(this.selectPanel).toBeVisible();
+    await this.option(name).click();
+    await expect(this.selectPanel).toBeHidden();
+    await expect(select).toHaveText(name);
+  }
+
+  async selectPayer(memberName: string): Promise<void> {
+    await this.choose(this.payerSelect, memberName);
+  }
+
+  async selectCategory(categoryName: string): Promise<void> {
+    await this.choose(this.categorySelect, categoryName);
+  }
+
+  /** Changes split row `index`'s member. */
+  async selectSplitMember(index: number, memberName: string): Promise<void> {
+    await this.choose(this.splitRows.nth(index), memberName);
+  }
+
+  /**
+   * Types an amount into a currency input and blurs it (which runs the
+   * form's re-allocation); the input then shows it formatted to cents.
+   */
+  private async fillCurrency(input: Locator, amount: number): Promise<void> {
+    await input.fill(amount.toString());
+    await input.blur();
+    await expect(input).toHaveValue(amount.toFixed(2));
+  }
+
+  async setDescription(description: string): Promise<void> {
+    await this.descriptionInput.fill(description);
+    await this.descriptionInput.blur();
+    await expect(this.descriptionInput).toHaveValue(description);
+  }
+
+  async setTotalAmount(amount: number): Promise<void> {
+    await this.fillCurrency(this.totalAmountInput, amount);
+  }
+
+  async setProportionalAmount(amount: number): Promise<void> {
+    await this.fillCurrency(this.proportionalAmountInput, amount);
+  }
+
+  /**
+   * Fills description, category (when given; a one-category group selects
+   * its category itself), total and, when given, the proportional amount.
+   */
   async fillExpenseForm(data: {
     description: string;
     amount: number;
+    category?: string;
     proportionalAmount?: number;
   }): Promise<void> {
-    // Fill description
-    await this.descriptionInput.fill(data.description);
-    await this.descriptionInput.blur();
-    await expect(this.descriptionInput).toHaveValue(data.description);
-
-    // Fill total amount
-    await this.totalAmountInput.fill(data.amount.toString());
-    await this.totalAmountInput.blur();
-    await expect(this.totalAmountInput).toHaveValue(data.amount.toString());
-
-    // Handle proportional amount (only if explicitly provided by test)
-    // Proportional amount should always be LESS than total amount
-    const proportionalVisible = await this.proportionalAmountInput
-      .isVisible()
-      .catch(() => false);
-    if (proportionalVisible && data.proportionalAmount !== undefined) {
-      // Test explicitly set it - use that value
-      await this.proportionalAmountInput.fill(
-        data.proportionalAmount.toString()
-      );
-      await this.proportionalAmountInput.blur();
-      await expect(this.proportionalAmountInput).toHaveValue(
-        data.proportionalAmount.toString()
-      );
+    await this.setDescription(data.description);
+    if (data.category !== undefined) {
+      await this.selectCategory(data.category);
     }
-    // Otherwise leave proportional amount at its default (usually 0)
-
-    // Wait for form to update
-    await this.page.waitForTimeout(500);
+    await this.setTotalAmount(data.amount);
+    if (data.proportionalAmount !== undefined) {
+      await this.setProportionalAmount(data.proportionalAmount);
+    }
   }
 
-  async addSplit(member: string, amount?: number): Promise<void> {
-    // Wait for any loading spinners to disappear before clicking addSplit
-    const loadingSpinner = this.page.locator(
-      '[data-testid="loading-spinner-container"]'
-    );
-    const isSpinnerVisible = await loadingSpinner
-      .isVisible()
-      .catch(() => false);
-    if (isSpinnerVisible) {
-      await loadingSpinner.waitFor({ state: 'hidden', timeout: 10000 });
-    }
+  /** Picks a day of the month currently shown in the date picker. */
+  async pickDate(date: Date): Promise<void> {
+    await this.datePickerToggle.click();
+    await expect(this.calendar).toBeVisible();
+    const label = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    await this.calendar.getByRole('button', { name: label, exact: true }).click();
+    await expect(this.calendar).toBeHidden();
+    await expect(this.dateInput).toHaveValue(formatShortDate(date));
+  }
 
+  // ---- Splits -------------------------------------------------------------
+
+  /**
+   * Adds one split row. The form fills it with the first member not yet in a
+   * split; pass `member` to change that, and `amount` to set its member
+   * amount (amount split method).
+   */
+  async addSplit(member?: string, amount?: number): Promise<void> {
+    const count = await this.splitRows.count();
     await this.addSplitButton.click();
-    await this.page.waitForTimeout(300);
-
-    // Get the last split row (this.splitRows are the mat-select elements themselves)
-    const splitCount = await this.splitRows.count();
-    const lastSplitSelect = this.splitRows.nth(splitCount - 1);
-
-    // Wait for the mat-select to be ready for interaction
-    await lastSplitSelect.waitFor({ state: 'visible', timeout: 5000 });
-    await this.page.waitForTimeout(500);
-
-    // Click the mat-select to open the dropdown
-    await lastSplitSelect.click();
-
-    // Wait for the Material overlay panel to appear
-    await this.page
-      .locator('.cdk-overlay-pane')
-      .waitFor({ state: 'visible', timeout: 5000 });
-
-    // Now find and click the option within the overlay
-    const option = this.page
-      .locator('.cdk-overlay-pane mat-option')
-      .filter({ hasText: member });
-    await option.waitFor({ state: 'visible', timeout: 5000 });
-    await option.click();
-
-    // Wait for the dropdown to close
-    await this.page
-      .locator('.cdk-overlay-pane')
-      .waitFor({ state: 'hidden', timeout: 5000 })
-      .catch(() => {});
-
-    // Fill amount if provided - need to find the amount input in the parent row
-    if (amount !== undefined) {
-      // Get the parent formGroup container and find the amount input within it
-      const splitRow = this.page
-        .locator('div[formArrayName="splits"] > div')
-        .nth(splitCount - 1);
-      const amountInput = splitRow.locator(
-        'input[formControlName="assignedAmount"]'
-      );
-      await amountInput.fill(amount.toString());
-      await amountInput.blur();
-      await expect(amountInput).toHaveValue(amount.toString());
+    await expect(this.splitRows).toHaveCount(count + 1);
+    if (member !== undefined) {
+      await this.selectSplitMember(count, member);
     }
-
-    await this.page.waitForTimeout(300);
+    if (amount !== undefined) {
+      await this.updateSplitAmount(count, amount);
+    }
   }
 
+  /**
+   * Adds a split for every active member not already in one. Waits until it
+   * has: both add buttons disable once every member has a split.
+   */
   async addAllMembers(): Promise<void> {
     await this.addAllMembersButton.click();
-    await this.page.waitForTimeout(500);
+    await expect(this.addAllMembersButton).toBeDisabled();
   }
 
   async removeSplit(index: number): Promise<void> {
+    const count = await this.splitRows.count();
     await this.deleteSplitButtons.nth(index).click();
-    await this.page.waitForTimeout(300);
+    await expect(this.splitRows).toHaveCount(count - 1);
   }
 
+  /** Sets split row `index`'s member amount (amount split method). */
   async updateSplitAmount(index: number, amount: number): Promise<void> {
-    const splitRow = this.page
-      .locator('div[formArrayName="splits"] > div')
-      .nth(index);
-    const amountInput = splitRow.locator(
-      'input[formControlName="assignedAmount"]'
-    );
-    await amountInput.fill(amount.toString());
-    await amountInput.blur();
-    await expect(amountInput).toHaveValue(amount.toString());
-    await this.page.waitForTimeout(500);
+    const input = this.assignedAmountInputs.nth(index);
+    await input.fill(amount.toString());
+    await input.blur();
   }
 
+  /** Sets split row `index`'s percentage (not the last row: it's computed). */
+  async setSplitPercentage(index: number, percentage: number): Promise<void> {
+    const input = this.percentageInputs.nth(index);
+    await input.fill(percentage.toString());
+    await input.blur();
+  }
+
+  async setSplitShares(index: number, shares: number): Promise<void> {
+    const input = this.sharesInputs.nth(index);
+    await input.fill(shares.toString());
+    await input.blur();
+  }
+
+  /** Switches the split method and waits for that method's split inputs. */
+  async setSplitMethod(method: SplitMethod): Promise<void> {
+    // A single-select mat-button-toggle renders its button as role=radio.
+    const toggle = this.splitMethodToggles[method].getByRole('radio');
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+  }
+
+  /** Asserts each split row's allocated amount, in row order. */
+  async expectAllocatedAmounts(amounts: number[]): Promise<void> {
+    await expect(this.allocatedAmounts).toHaveText(amounts.map(formatMoney));
+  }
+
+  // ---- Receipt ------------------------------------------------------------
+
+  /** Attaches a receipt through the form's file input (skips the picker). */
   async uploadReceipt(filePath: string): Promise<void> {
-    await this.receiptInput.setInputFiles(filePath);
-    await this.page.waitForTimeout(500);
+    await this.fileInput.setInputFiles(filePath);
+    await expect(this.attachedFilename).toBeVisible();
   }
 
   async removeReceipt(): Promise<void> {
-    await this.removeReceiptButton.click();
+    await this.removeFileButton.click();
+    await expect(this.uploadPrompt).toBeVisible();
   }
 
-  async togglePercentageMode(): Promise<void> {
-    await this.percentageToggle.click();
-    await this.page.waitForTimeout(300);
-  }
+  // ---- Actions ------------------------------------------------------------
 
+  /** Saves and waits for the app to return to the (loaded) Expenses list. */
   async saveExpense(): Promise<void> {
-    // Wait for the save button to be visible and enabled
-    await this.saveButton.waitFor({ state: 'visible', timeout: 5000 });
-
-    // Scroll button into view
-    await this.saveButton.scrollIntoViewIfNeeded();
-
-    // Wait for Angular to validate the allocation and enable the button
-    await this.page.waitForTimeout(2000);
-
-    // Check if button is enabled
-    const isDisabled = await this.saveButton.isDisabled();
-    if (isDisabled) {
-      throw new Error(
-        'Save button is disabled - form may be invalid or not fully allocated'
-      );
-    }
-
-    // Click the save button
+    await expect(this.saveButton).toBeEnabled();
     await this.saveButton.click();
-
-    // Wait for navigation or success message
-    await this.waitForLoadingComplete();
+    await expect(this.page).toHaveURL(/\/expenses$/);
+    await this.waitForList();
   }
 
+  /** Saves with "Save & Add Another" and waits for the form to reset. */
   async saveAndAddAnother(): Promise<void> {
+    await expect(this.saveAndAddAnotherButton).toBeEnabled();
     await this.saveAndAddAnotherButton.click();
-    await this.waitForLoadingComplete();
-    // Wait for form to reset
-    await this.page.waitForTimeout(1000);
+    await expect(this.snackbarWith('Expense added')).toBeVisible();
+    await expect(this.loadingOverlay).toBeHidden();
+    await expect(this.descriptionInput).toHaveValue('');
   }
 
-  async memorizeExpense(): Promise<void> {
-    await this.memorizeButton.click();
-    await this.waitForLoadingComplete();
-  }
-
+  /** Cancels and waits for the (loaded) Expenses list. */
   async cancelExpense(): Promise<void> {
     await this.cancelButton.click();
+    await expect(this.page).toHaveURL(/\/expenses$/);
+    await this.waitForList();
   }
 
-  async verifySaveButtonDisabled(): Promise<boolean> {
-    return await this.saveButton.isDisabled();
+  // ---- Expenses list ------------------------------------------------------
+
+  /** The list row for the expense with this (unique) description. */
+  expenseRow(description: string): Locator {
+    return this.expenseRows.filter({ hasText: description });
   }
 
-  async verifySaveButtonEnabled(): Promise<boolean> {
-    return await this.saveButton.isEnabled();
+  /**
+   * Asserts the Expenses list (already open) shows exactly one row for
+   * `description` with the expected payer, category, total and date, then
+   * expands it and asserts exactly the expected splits.
+   */
+  async expectSavedExpense(
+    description: string,
+    expected: ExpectedExpense
+  ): Promise<void> {
+    const row = this.expenseRow(description);
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText(expected.payer);
+    await expect(row).toContainText(expected.category);
+    await expect(row).toContainText(formatMoney(expected.total));
+    if (expected.date !== undefined) {
+      await expect(row).toContainText(formatShortDate(expected.date));
+    }
+
+    await row.getByTestId('expand-expense-button').click();
+    await expect(this.expenseDetail).toBeVisible();
+    await expect(this.expenseSplitRows).toHaveCount(expected.splits.length);
+    await Promise.all(
+      expected.splits.map((split) =>
+        expect(
+          this.expenseSplitRows.filter({
+            has: this.page.getByRole('cell', {
+              name: split.member,
+              exact: true,
+            }),
+          })
+        ).toContainText(formatMoney(split.amount))
+      )
+    );
   }
 }

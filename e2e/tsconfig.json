@@ -3,8 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "lib": ["ES2022", "dom"],
-    "outDir": "../test-results",
-    "rootDir": ".",
+    "noEmit": true,
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -25,6 +24,12 @@
       "@app/*": ["../src/app/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.js"],
+  "include": [
+    "**/*.ts",
+    "**/*.js",
+    "../scripts/test-env/*.mjs",
+    "../scripts/db/allocation.ts",
+    "../scripts/db/chunked-batch.ts"
+  ],
   "exclude": ["../node_modules", "../dist"]
 }

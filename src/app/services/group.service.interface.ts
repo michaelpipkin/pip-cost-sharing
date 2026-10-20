@@ -14,5 +14,6 @@ export interface IGroupService {
     groupRef: DocumentReference<Group>,
     changes: Partial<Group>
   ): Promise<any>;
+  clearCurrentGroup(skipAutoSelect?: boolean): void;
   logout(): void;
 }

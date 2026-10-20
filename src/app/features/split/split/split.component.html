@@ -145,7 +145,7 @@
           >
             <span class="mock-label">Evenly Shared Remainder</span>
             <span class="mock-value-right">
-              {{ expenseModel().sharedAmount | currency }}
+              {{ expenseModel().sharedAmount | groupCurrency }}
             </span>
           </div>
         </div>
@@ -218,6 +218,7 @@
                     />
                   </mat-form-field>
                   <button
+                    type="button"
                     mat-mini-fab
                     class="btn-danger"
                     (click)="removeSplit(i)"
@@ -330,7 +331,7 @@
                   <div class="mock-input">
                     <span class="mock-label">Allocated Amount</span>
                     <span class="mock-value-right">
-                      {{ item.allocatedAmount | currency }}
+                      {{ item.allocatedAmount | groupCurrency }}
                     </span>
                   </div>
                 </div>
@@ -351,6 +352,7 @@
             mat-raised-button
             class="btn-secondary"
             type="submit"
+            form="split-form"
             defaultButton
             [disabled]="!expenseForm().valid() || !expenseFullyAllocated()"
             (click)="onSubmit()"
@@ -405,14 +407,14 @@
         <div class="summary-line">
           <span class="summary-label">Total:</span>
           <span class="summary-value">
-            {{ stringUtils.toNumber(expenseModel().amount) | currency }}
+            {{ stringUtils.toNumber(expenseModel().amount) | groupCurrency }}
           </span>
         </div>
         @if (splitMethod() === 'amount' && expenseModel().sharedAmount > 0) {
           <div class="summary-line">
             <span class="summary-label">Evenly shared amount:</span>
             <span class="summary-value">
-              {{ expenseModel().sharedAmount | currency }}
+              {{ expenseModel().sharedAmount | groupCurrency }}
             </span>
           </div>
         }
@@ -424,7 +426,8 @@
             <span class="summary-label">Proportional amount:</span>
             <span class="summary-value">
               {{
-                stringUtils.toNumber(expenseModel().allocatedAmount) | currency
+                stringUtils.toNumber(expenseModel().allocatedAmount)
+                  | groupCurrency
               }}
             </span>
           </div>
@@ -439,7 +442,7 @@
                     {{ item.owedBy }} ({{ item.percentage ?? 0 }}%):
                   </span>
                   <span class="summary-value">
-                    {{ item.allocatedAmount | currency }}
+                    {{ item.allocatedAmount | groupCurrency }}
                   </span>
                 </div>
               }
@@ -450,7 +453,7 @@
                     {{ effectivePercentage(i) | number: '1.2-2' }}%):
                   </span>
                   <span class="summary-value">
-                    {{ item.allocatedAmount | currency }}
+                    {{ item.allocatedAmount | groupCurrency }}
                   </span>
                 </div>
               }
@@ -459,7 +462,7 @@
                   <div class="summary-line person-name">
                     <span class="summary-label">{{ item.owedBy }}:</span>
                     <span class="summary-value">
-                      {{ item.allocatedAmount | currency }}
+                      {{ item.allocatedAmount | groupCurrency }}
                     </span>
                   </div>
                   <div class="summary-breakdown">
@@ -468,7 +471,8 @@
                         <span class="summary-label">Personal:</span>
                         <span class="summary-value">
                           {{
-                            stringUtils.toNumber(item.assignedAmount) | currency
+                            stringUtils.toNumber(item.assignedAmount)
+                              | groupCurrency
                           }}
                         </span>
                       </div>
@@ -477,7 +481,7 @@
                       <div class="summary-line breakdown-line">
                         <span class="summary-label">Shared:</span>
                         <span class="summary-value">
-                          {{ calculateSharedPortion(item) | currency }}
+                          {{ calculateSharedPortion(item) | groupCurrency }}
                         </span>
                       </div>
                     }
@@ -487,7 +491,9 @@
                           Proportional (tax, tip, etc.):
                         </span>
                         <span class="summary-value">
-                          {{ calculateProportionalAmount(item) | currency }}
+                          {{
+                            calculateProportionalAmount(item) | groupCurrency
+                          }}
                         </span>
                       </div>
                     }

@@ -157,6 +157,18 @@ describe('HistoryDetailComponent', () => {
       const backButton = el.querySelector('[data-testid="back-button"]');
       expect(backButton).toBeTruthy();
     });
+
+    it("should format the payment total in the group's currency", () => {
+      mockLocaleService.formatCurrency.mockImplementation(
+        (amount: number) => `€ ${amount.toFixed(2).replace('.', ',')}`
+      );
+      // A fresh record re-renders the OnPush view so the pipe runs again
+      component.history.set({ ...testHistory });
+      fixture.detectChanges();
+      expect(
+        el.querySelector('[data-testid="payment-total"]')?.textContent
+      ).toContain('€ 50,00');
+    });
   });
 
   describe('Computed signals', () => {

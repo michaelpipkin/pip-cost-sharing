@@ -1,74 +1,49 @@
-import { test as base } from '@playwright/test';
-import {
-  clearFirebaseData,
-  configureFirebaseEmulators,
-  waitForFirebaseEmulators,
-} from '../utils/firebase';
+import { Page, test as base } from '@playwright/test';
+import { TEST_CONFIG } from '../constants';
 
 // Define types for our fixtures
 type TestFixtures = {
-  // Clean Firebase state for each test (requires running emulators) - CLEARS ALL DATA
-  cleanFirebase: void;
-  // Page with Firebase emulators configured but preserves existing data
-  firebasePage: any; // Using any to match Page type
-  // Page with Firebase emulators configured that preserves seed data
-  preserveDataFirebasePage: any;
+  // Page with clipboard permissions. The test emulators are already running
+  // and seeded by global setup (started via `pnpm e2e`), so no probes here.
+  seededPage: Page;
+};
+
+type WorkerFixtures = {
+  // Absorbs a fresh browser's slow first navigation; see the fixture below.
+  browserWarmUp: void;
 };
 
 // Extend base test with our fixtures
-export const test = base.extend<TestFixtures>({
-  // Firebase emulator setup and cleanup
-  cleanFirebase: async ({ page }, use) => {
-    try {
-      // Check if emulators are running first
-      await waitForFirebaseEmulators(page);
-
-      // Clear any existing data
-      await clearFirebaseData(page);
-
-      // Configure the page to use emulators
-      await configureFirebaseEmulators(page);
-
+export const test = base.extend<TestFixtures, WorkerFixtures>({
+  // The first navigation of each freshly launched Chromium stalls 10-30 s on
+  // this machine (measured: 11 s, 21 s, 33 s) even when the dev server is
+  // warm and answers other clients in well under a second (seen when
+  // workers start together); the worker's later contexts load in ~1 s.
+  // Pay that once per worker here, with a generous bound, so it can't land
+  // on a test's own 30 s navigation timeout and hide real load regressions.
+  browserWarmUp: [
+    async ({ browser }, use) => {
+      const context = await browser.newContext();
+      try {
+        const page = await context.newPage();
+        await page.goto(TEST_CONFIG.baseUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 120_000,
+        });
+      } finally {
+        await context.close();
+      }
       await use();
+    },
+    { scope: 'worker', auto: true, timeout: 150_000 },
+  ],
 
-      // Cleanup after test
-      await clearFirebaseData(page);
-    } catch (error) {
-      throw new Error(
-        `Firebase emulators not running. Please start them manually with: pnpm emu:data\n` +
-          `Original error: ${error.message}`
-      );
-    }
-  },
-
-  // Page with Firebase emulators pre-configured
-  firebasePage: async ({ page, cleanFirebase }, use) => {
+  seededPage: async ({ page }, use) => {
     // Grant clipboard permissions for copy-to-clipboard tests
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page
+      .context()
+      .grantPermissions(['clipboard-read', 'clipboard-write']);
     await use(page);
-  },
-
-  // Page with Firebase emulators configured but preserves existing seed data
-  preserveDataFirebasePage: async ({ page }, use) => {
-    try {
-      // Check if emulators are running first
-      await waitForFirebaseEmulators(page);
-
-      // Configure the page to use emulators (but don't clear existing data)
-      await configureFirebaseEmulators(page);
-
-      // Grant clipboard permissions for copy-to-clipboard tests
-      await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-
-      await use(page);
-
-      // Don't clear data after test - preserve seed data
-    } catch (error) {
-      throw new Error(
-        `Firebase emulators not running. Please start them manually with: pnpm emu:data\n` +
-          `Original error: ${error.message}`
-      );
-    }
   },
 });
 

@@ -11,8 +11,8 @@
     "start": "pnpm shell",
     "deploy-functions": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "node ../scripts/test-env/with-test-emulators.mjs --only auth,firestore,storage -- pnpm --dir functions exec vitest run",
+    "test:watch": "node ../scripts/test-env/with-test-emulators.mjs --only auth,firestore,storage -- pnpm --dir functions exec vitest"
   },
   "engines": {
     "node": "22"

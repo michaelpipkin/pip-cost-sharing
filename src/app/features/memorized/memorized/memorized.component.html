@@ -151,7 +151,7 @@
                   *matCellDef="let expense"
                   class="cell-right amount-cell"
                 >
-                  {{ expense.totalAmount | currency }}
+                  {{ expense.totalAmount | groupCurrency }}
                 </td>
               </ng-container>
               <ng-container matColumnDef="create">
@@ -236,7 +236,7 @@
                             *matCellDef="let split"
                             class="cell-right"
                           >
-                            {{ split.allocatedAmount | currency }}
+                            {{ split.allocatedAmount | groupCurrency }}
                           </td>
                         </ng-container>
                         <tr

@@ -124,6 +124,21 @@ describe('ExpenseService', () => {
 
       await expect(service.doesGroupHaveExpenses('group-1')).resolves.toBeUndefined();
     });
+
+    it('should ignore a slower check for a group the user has since switched away from', async () => {
+      let finishGroupA!: (snap: any) => void;
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockReturnValueOnce(new Promise((r) => (finishGroupA = r)) as any)
+        .mockResolvedValueOnce(makeSnap([]) as any);
+
+      const groupA = service.doesGroupHaveExpenses('group-a');
+      await service.doesGroupHaveExpenses('group-b');
+      finishGroupA(makeSnap([makeExpenseDoc('exp-1', {})]));
+      await groupA;
+
+      expect(mockExpenseStore.setGroupHasExpenses).toHaveBeenCalledTimes(1);
+      expect(mockExpenseStore.setGroupHasExpenses).toHaveBeenCalledWith(false);
+    });
   });
 
   describe('addExpense', () => {

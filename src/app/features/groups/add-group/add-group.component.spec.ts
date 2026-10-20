@@ -17,6 +17,7 @@ import {
 } from '@testing/test-helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AddGroupComponent } from './add-group.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('AddGroupComponent', () => {
   let fixture: ComponentFixture<AddGroupComponent>;
@@ -125,5 +126,9 @@ describe('AddGroupComponent', () => {
       fixture.detectChanges();
       expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

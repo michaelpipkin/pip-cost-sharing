@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Infrastructure Plan</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .3rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.8rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--note); padding: 10px 12px; overflow-x: auto; border-radius: 4px; font-size: .86em; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .step { margin: .35rem 0; }
+  .step::before { content: "☐ "; color: var(--accent); }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  .files li, .ifc li { margin: .15rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+</style>
+</head>
+<body>
+
+<h1>Test Infrastructure — Implementation Plan (Plan 1 of 4)</h1>
+
+<div class="box">
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: use <code>superpowers:subagent-driven-development</code> (recommended) or <code>superpowers:executing-plans</code> to implement this plan task by task. Steps marked ☐ are checkboxes for tracking. Also load the <code>pip-angular-testing</code> skill before touching any spec.</p>
+</div>
+
+<p><strong>Goal:</strong> Build isolated, deterministic test infrastructure — dedicated emulators, a shared seeded data set, per-area test runs — and finish with the first meaningful e2e run, whose failure list becomes Plan 2.</p>
+<p><strong>Architecture:</strong> A single source of truth for test ports and a <code>demo-*</code> project ID drives a wrapper around <code>firebase emulators:exec</code>. E2E runs an Angular <code>e2e</code> build configuration against those emulators; Playwright's global setup seeds a declarative, validated data set through the Admin SDK. An area map ties app unit specs, functions specs and Playwright tags together behind <code>pnpm test:area</code>.</p>
+<p><strong>Tech stack:</strong> Angular 22 (<code>@angular/build:unit-test</code>, Vitest), Playwright 1.64, Firebase CLI emulators, <code>firebase-admin</code> 14, Node 24 (<code>node:test</code> for script tests).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-10-19-test-suite-design.html</code> — read it first.</p>
+<p><strong>Later plans</strong> (written after this one lands): Plan 2 repairs the existing e2e specs from the failure list Task 9 produces; Plan 3 adds e2e coverage for new areas (including stubbing or caching tesseract.js's language-data download for <code>scanReceipt</code>, per spec §3); Plan 4 fills unit-test gaps (app + functions).</p>
+
+<h2>Global Constraints</h2>
+<ul>
+  <li><strong>Never touch the default emulator ports</strong> (4000, 4400, 4500, 5000, 5001, 8080, 9099, 9150, 9199) — the owner's dev emulators, or another project's, may be running there. Every test command in this plan uses the test ports below.</li>
+  <li><strong>Never run <code>pnpm install</code>/<code>pnpm add</code> or any network download</strong>; hand those to the owner and wait.</li>
+  <li><strong>Any Admin SDK init sets <code>FIRESTORE_EMULATOR_HOST</code>, <code>FIREBASE_AUTH_EMULATOR_HOST</code>, <code>FIREBASE_STORAGE_EMULATOR_HOST</code> before <code>initializeApp</code></strong>, and refuses to run unless the project ID starts with <code>demo-</code>.</li>
+  <li>Test project ID: <code>demo-pipsplit-test</code>. Storage bucket: <code>demo-pipsplit-test.appspot.com</code>.</li>
+  <li>Test ports: auth <code>19099</code>, firestore <code>18080</code>, firestore websocket <code>19150</code>, storage <code>19199</code>, functions <code>15001</code>, hub <code>14400</code>, logging <code>14500</code>, UI disabled. E2E dev server: <code>4300</code>.</li>
+  <li>All seeded email addresses use the reserved <code>.test</code> TLD (<code>@pipsplit.test</code>) so nothing can ever be delivered.</li>
+  <li>No CI changes. <code>e2e/feature-tour/</code> (screenshot capture) deliberately uses the dev emulators and port 4200 — leave it untouched.</li>
+  <li>App code follows CLAUDE.md conventions (signals, <code>protected readonly</code> inject, no rxjs, pnpm). Commit messages end with <code>[no-deploy]</code> when no app behaviour changes, plus the <code>Co-Authored-By</code> trailer.</li>
+  <li>Never use <code>vi.resetAllMocks()</code>; never <code>waitForTimeout</code> in new e2e code.</li>
+</ul>
+
+<h2>Review Focus</h2>
+<ol>
+  <li><strong>Dev emulators running at the same time.</strong> A test run while the owner's dev emulators are up on the default ports must leave them untouched. Pinned by Task 1 step "concurrency check" and re-checked in Task 9.</li>
+  <li><strong>A previous run crashed and left a test port occupied.</strong> The wrapper must fail within seconds, naming the busy port and pointing at <code>pnpm kill-test-ports</code>, not hang or half-start. Pinned by Task 1 test <code>findBusyPorts reports a listening port</code>.</li>
+  <li><strong>Someone runs <code>pnpm exec playwright test</code> directly, without the wrapper.</strong> Global setup must fail immediately with "start e2e via pnpm e2e", not time out test by test. Pinned by Task 4 step "unwrapped run".</li>
+  <li><strong>The functions build is broken or stale.</strong> <code>--build-functions</code> must abort before starting emulators and show the <code>tsc</code> errors. Pinned by Task 1 test <code>buildExecPlan puts the functions build first</code> and step "broken build".</li>
+  <li><strong>The sign-up trigger overwrites seeded profile fields.</strong> <code>createUserProfileOnSignUp</code> merges default profile values; a seeded <code>venmoId</code> must survive. Pinned by Task 6 test <code>seeded profile fields survive the sign-up trigger</code>.</li>
+</ol>
+
+<h2>File Structure</h2>
+<table>
+  <tr><th>Path</th><th>Responsibility</th></tr>
+  <tr><td><code>scripts/test-env/config.mjs</code></td><td>Single source of truth: project ID, bucket, ports, e2e app port. Imported by everything below.</td></tr>
+  <tr><td><code>scripts/test-env/with-test-emulators.mjs</code></td><td>Wrapper: port check → optional functions build → <code>firebase emulators:exec</code> → exit code.</td></tr>
+  <tr><td><code>scripts/test-env/kill-test-ports.mjs</code></td><td>Frees the test ports after a crashed run.</td></tr>
+  <tr><td><code>firebase.test.json</code></td><td>Emulator config for the test suite (test ports, same rules/indexes/functions source).</td></tr>
+  <tr><td><code>functions/src/common.ts</code>, <code>functions/src/index.ts</code></td><td>Demo-project mail suppression.</td></tr>
+  <tr><td><code>src/environments/environment.e2e.ts</code>, <code>src/app/firebase.config.ts</code>, <code>src/app/app.config.ts</code>, <code>angular.json</code></td><td>Angular <code>e2e</code> configuration pointing at the test emulators.</td></tr>
+  <tr><td><code>scripts/db/allocation.ts</code>, <code>scripts/db/chunked-batch.ts</code></td><td>Side-effect-free helpers extracted from the dev seed scripts so e2e can reuse them.</td></tr>
+  <tr><td><code>e2e/seed/*</code></td><td>Seeder: admin init, dataset types, validation, writer, datasets.</td></tr>
+  <tr><td><code>e2e/utils/session.ts</code></td><td><code>signInAs</code> helper for seeded users.</td></tr>
+  <tr><td><code>scripts/test-area/areas.mjs</code>, <code>scripts/test-area/test-area.mjs</code></td><td>Area map and the <code>pnpm test:area</code> runner (incl. <code>--check</code>).</td></tr>
+</table>
+
+<!-- ===================================================================== -->
+<h2>Task 0: Owner hand-off — root <code>firebase-admin</code></h2>
+<p class="step">Ask the owner to run <code>pnpm add -Dw firebase-admin@^14.5.0</code> at the repo root (<code>-w</code>: the repo is a pnpm workspace; every root install handed to the owner needs it) (needed by the e2e seeder; it currently exists only in <code>functions/</code> and <code>scripts/db/</code>). Wait for confirmation. Tasks 1–5 don't need it, so they may proceed meanwhile; Task 6 may not.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 1: Isolated test emulators + functions tests moved onto them</h2>
+<p><strong>Files:</strong></p>
+<ul class="files">
+  <li>Create: <code>scripts/test-env/config.mjs</code>, <code>scripts/test-env/with-test-emulators.mjs</code>, <code>scripts/test-env/with-test-emulators.test.mjs</code>, <code>scripts/test-env/kill-test-ports.mjs</code>, <code>firebase.test.json</code></li>
+  <li>Modify: <code>package.json</code> (scripts), <code>functions/package.json</code> (<code>test</code>, <code>test:watch</code>), <code>functions/vitest.config.ts</code> (env block), <code>functions/test/global-setup.ts</code> (URLs)</li>
+</ul>
+<p><strong>Interfaces — Produces:</strong></p>
+<ul class="ifc">
+  <li><code>config.mjs</code>: <code>export const TEST_PROJECT_ID = 'demo-pipsplit-test'</code>; <code>TEST_STORAGE_BUCKET = 'demo-pipsplit-test.appspot.com'</code>; <code>TEST_PORTS = { auth: 19099, firestore: 18080, firestoreWebsocket: 19150, storage: 19199, functions: 15001, hub: 14400, logging: 14500 }</code>; <code>E2E_APP_PORT = 4300</code>; <code>emulatorHost(name) → '127.0.0.1:&lt;port&gt;'</code>.</li>
+  <li><code>with-test-emulators.mjs</code> CLI: <code>node scripts/test-env/with-test-emulators.mjs [--only auth,firestore,storage,functions] [--build-functions] -- &lt;command…&gt;</code>. Default <code>--only</code> is all four. Exits with the inner command's exit code.</li>
+  <li>Exported pure helpers: <code>parseArgs(argv: string[]) → { only: string[], buildFunctions: boolean, command: string[] }</code>; <code>buildExecPlan(opts) → Array&lt;{ cmd: string, args: string[] }&gt;</code>; <code>async findBusyPorts(ports: number[]) → number[]</code>.</li>
+  <li>Root scripts: <code>"kill-test-ports": "node scripts/test-env/kill-test-ports.mjs"</code>, <code>"test:scripts": "node --test scripts/"</code>.</li>
+</ul>
+
+<p class="step"><strong>Write the failing tests</strong> in <code>scripts/test-env/with-test-emulators.test.mjs</code> (<code>node:test</code> + <code>node:assert/strict</code>):</p>
+<pre><code>test('parseArgs splits options from the command at --', () =&gt; {
+  assert.deepEqual(parseArgs(['--only', 'auth,firestore', '--', 'vitest', 'run']),
+    { only: ['auth', 'firestore'], buildFunctions: false, command: ['vitest', 'run'] });
+});
+test('parseArgs defaults to all four emulators', () =&gt; {
+  assert.deepEqual(parseArgs(['--', 'x']).only, ['auth', 'firestore', 'storage', 'functions']);
+});
+test('parseArgs rejects a missing command', () =&gt; {
+  assert.throws(() =&gt; parseArgs(['--only', 'auth']), /command/);
+});
+test('buildExecPlan puts the functions build first', () =&gt; {
+  const plan = buildExecPlan({ only: ['functions'], buildFunctions: true, command: ['playwright', 'test'] });
+  assert.equal(plan.length, 2);
+  assert.deepEqual(plan[0].args.slice(-2), ['run', 'build']);       // pnpm --dir functions run build
+});
+test('buildExecPlan targets the test config and demo project', () =&gt; {
+  const exec = buildExecPlan({ only: ['auth'], buildFunctions: false, command: ['vitest', 'run'] }).at(-1);
+  assert.ok(exec.args.includes('emulators:exec'));
+  assert.deepEqual(exec.args.slice(exec.args.indexOf('--config'), exec.args.indexOf('--config') + 2), ['--config', 'firebase.test.json']);
+  assert.deepEqual(exec.args.slice(exec.args.indexOf('--project'), exec.args.indexOf('--project') + 2), ['--project', 'demo-pipsplit-test']);
+  assert.ok(exec.args.includes('auth'));
+});
+test('findBusyPorts reports a listening port', async () =&gt; {
+  const server = net.createServer().listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const port = server.address().port;
+  assert.deepEqual(await findBusyPorts([port]), [port]);
+  server.close();
+});</code></pre>
+<p class="step">Run <code>node --test scripts/test-env/</code> — expect FAIL (module not found).</p>
+<p class="step">Implement <code>config.mjs</code> and <code>with-test-emulators.mjs</code>. Main flow (guarded by <code>import.meta.url === pathToFileURL(process.argv[1]).href</code>): <code>findBusyPorts</code> over every port in <code>TEST_PORTS</code> for the selected emulators plus hub/logging → if any busy, print <code>Test emulator port(s) N in use — a previous run may have crashed. Run: pnpm kill-test-ports</code> and exit 1; then run each plan step with <code>spawn(..., { stdio: 'inherit', shell: true })</code>, stopping at the first non-zero exit. The inner command is passed to <code>emulators:exec</code> as one double-quoted string (Windows <code>cmd</code> quoting — verify an argument containing <code>@</code> and spaces survives, e.g. <code>--grep "@expenses"</code>).</p>
+<p class="step">Create <code>firebase.test.json</code>:</p>
+<pre><code>{
+  "emulators": {
+    "auth": { "port": 19099 },
+    "functions": { "port": 15001 },
+    "firestore": { "port": 18080, "websocketPort": 19150, "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+    "storage": { "port": 19199 },
+    "hub": { "port": 14400 },
+    "logging": { "port": 14500 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  },
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "storage": { "rules": "storage.rules" },
+  "functions": [{ "source": "functions", "codebase": "default", "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"] }]
+}</code></pre>
+<p class="step">Implement <code>kill-test-ports.mjs</code> (same approach as the root <code>kill-ports</code> script, over the test ports only, via <code>pnpx kill-port</code>).</p>
+<p class="step">Run <code>node --test scripts/test-env/</code> — expect PASS.</p>
+<p class="step">Move functions tests onto the test emulators: <code>functions/package.json</code> <code>"test": "node ../scripts/test-env/with-test-emulators.mjs --only auth,firestore,storage -- pnpm --dir functions exec vitest run"</code> (and <code>test:watch</code> likewise ending in <code>vitest</code>). The wrapper always spawns every step with <code>cwd</code> = the repo root (resolved from its own location via <code>new URL('../..', import.meta.url)</code>), so <code>firebase.test.json</code> and the inner command's paths are root-relative no matter where it's invoked from; add a test that <code>buildExecPlan</code> steps carry that <code>cwd</code>. In <code>vitest.config.ts</code> replace the env values with <code>demo-pipsplit-test</code>, the test ports, and <code>FIREBASE_CONFIG='{"projectId":"demo-pipsplit-test","storageBucket":"demo-pipsplit-test.appspot.com"}'</code>; update the comment (no longer "start them first via pnpm emu"). In <code>test/global-setup.ts</code> use ports 19099/18080 and the demo project ID, and make it <strong>throw</strong> (not warn) if the emulators are unreachable.</p>
+<p class="step"><strong>Run</strong> <code>cd functions &amp;&amp; pnpm test</code> — expect all 11 spec files to pass. The functions emulator is deliberately not started for these specs (they import code directly). If a spec fails because it relied on a trigger firing, stop and report it rather than adding <code>functions</code> to <code>--only</code> silently.</p>
+<p class="step"><strong>Concurrency check (Review Focus 1):</strong> with the owner's dev emulators running (ask first; they are often up), record <code>curl -s http://127.0.0.1:8080/emulator/v1/projects/pip-cost-sharing/databases/(default)/documents</code> doc count — <em>this one read of the default port is allowed only with the owner's go-ahead</em> — run <code>pnpm --dir functions test</code>, and confirm the count is unchanged.</p>
+<p class="step"><strong>Broken build (Review Focus 4):</strong> introduce a temporary type error in <code>functions/src/common.ts</code>, run <code>node scripts/test-env/with-test-emulators.mjs --build-functions -- node -e "0"</code>, confirm it exits non-zero with tsc output and no emulator starts; revert.</p>
+<p class="step">Commit: <code>Add isolated test emulators; run functions tests on them [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 2: Suppress real email in demo projects</h2>
+<p><strong>Files:</strong> Modify <code>functions/src/common.ts</code>, <code>functions/src/index.ts</code> (<code>sendMailQueueEmail</code>, ~line 1883). Create <code>functions/src/mail-suppression.spec.ts</code>.</p>
+<p><strong>Interfaces — Produces:</strong> in <code>common.ts</code>: <code>isDemoProject(projectId: string | undefined = process.env.GCLOUD_PROJECT): boolean</code>; <code>buildSuppressedDelivery(to: string | string[], startTime: Timestamp): MailDelivery</code> returning the same <code>delivery</code> shape the SUCCESS branch writes, with <code>info.messageId = 'suppressed'</code>, <code>info.accepted</code> = recipients as an array, <code>info.rejected = []</code>, <code>info.response = 'suppressed: demo project'</code>. (Define <code>MailDelivery</code> locally if no type exists.)</p>
+<p class="step">Write failing tests:</p>
+<pre><code>it('treats demo-* project IDs as demo', () =&gt; expect(isDemoProject('demo-pipsplit-test')).toBe(true));
+it('treats the real project as not demo', () =&gt; expect(isDemoProject('pip-cost-sharing')).toBe(false));
+it('treats a missing project ID as not demo', () =&gt; expect(isDemoProject(undefined)).toBe(false));
+it('builds a SUCCESS delivery listing every recipient', () =&gt; {
+  const d = buildSuppressedDelivery(['a@pipsplit.test', 'b@pipsplit.test'], Timestamp.now());
+  expect(d.state).toBe('SUCCESS');
+  expect(d.info.accepted).toEqual(['a@pipsplit.test', 'b@pipsplit.test']);
+  expect(d.info.response).toBe('suppressed: demo project');
+});
+it('wraps a single recipient in an array', () =&gt;
+  expect(buildSuppressedDelivery('a@pipsplit.test', Timestamp.now()).info.accepted).toEqual(['a@pipsplit.test']));</code></pre>
+<p class="step">Run <code>cd functions &amp;&amp; pnpm test</code> — expect the new file to FAIL.</p>
+<p class="step">Implement both helpers; in <code>sendMailQueueEmail</code>, after the PROCESSING update and before <code>getMailTransport()</code>, if <code>isDemoProject()</code> then <code>console.log</code> the suppression, write <code>{ delivery: buildSuppressedDelivery(to, startTime), expireAt: … }</code> exactly like the SUCCESS branch, and return. Dev emulators (<code>pip-cost-sharing</code>) and production are unchanged.</p>
+<p class="step">Run <code>cd functions &amp;&amp; pnpm test</code> and <code>cd functions &amp;&amp; pnpm run build</code> — expect PASS / clean build.</p>
+<p class="step">Commit: <code>Suppress mail delivery in demo emulator projects</code> (functions change — no <code>[no-deploy]</code>; it deploys as a no-op in prod).</p>
+
+<!-- ===================================================================== -->
+<h2>Task 3: Angular <code>e2e</code> build configuration</h2>
+<p><strong>Files:</strong> Create <code>src/environments/environment.e2e.ts</code>, <code>src/app/firebase.config.spec.ts</code>. Modify <code>src/environments/environment.ts</code>, <code>environment.prod.ts</code>, <code>src/app/firebase.config.ts</code>, <code>src/app/app.config.ts:40-69</code>, <code>angular.json</code>.</p>
+<p><strong>Interfaces — Produces:</strong></p>
+<ul class="ifc">
+  <li>Every environment gains <code>emulators: { projectId: string | null; auth: number; firestore: number; storage: number; functions: number }</code>. <code>environment.ts</code>: <code>projectId: null</code>, ports 9099/8080/9199/5001 (today's behaviour). <code>environment.prod.ts</code>: same shape (unused). <code>environment.e2e.ts</code>: copy of <code>environment.ts</code> with <code>useEmulators: true</code>, <code>appOwnerEmail: 'admin@pipsplit.test'</code>, <code>projectId: 'demo-pipsplit-test'</code>, ports 19099/18080/19199/15001.</li>
+  <li><code>firebase.config.ts</code>: <code>resolveFirebaseOptions(projectId: string | null): FirebaseOptions</code> — returns <code>firebaseConfig</code> unchanged for <code>null</code>; otherwise overrides <code>projectId</code> and sets <code>storageBucket</code> to <code>`${projectId}.appspot.com`</code>.</li>
+  <li><code>angular.json</code>: <code>build.configurations.e2e</code> = the <code>development</code> options + <code>fileReplacements</code> <code>environment.ts → environment.e2e.ts</code>; <code>serve.configurations.e2e.buildTarget = "pip-cost-sharing:build:e2e"</code>.</li>
+</ul>
+<p class="step">Write failing tests in <code>firebase.config.spec.ts</code>:</p>
+<pre><code>it('returns the real config when no emulator project is set', () =&gt;
+  expect(resolveFirebaseOptions(null)).toEqual(firebaseConfig));
+it('swaps in the demo project and its bucket', () =&gt; {
+  const o = resolveFirebaseOptions('demo-pipsplit-test');
+  expect(o.projectId).toBe('demo-pipsplit-test');
+  expect(o.storageBucket).toBe('demo-pipsplit-test.appspot.com');
+  expect(o.apiKey).toBe(firebaseConfig.apiKey);
+});</code></pre>
+<p class="step">Run <code>pnpm test -- --include app/firebase.config.spec.ts</code> — expect FAIL.</p>
+<p class="step">Implement; in <code>app.config.ts</code> call <code>initializeApp(resolveFirebaseOptions(environment.emulators.projectId))</code> and connect each emulator using <code>environment.emulators.&lt;service&gt;</code> ports (host stays <code>localhost</code>).</p>
+<p class="step">Run <code>pnpm test</code> — expect all 1,471+ tests PASS. Run <code>ng build --configuration e2e</code> and <code>ng build</code> — expect success. Run <code>grep -rn "9099\|8080\|9199\|5001" src/app --include=*.ts</code> excluding specs — expect no hits.</p>
+<p class="step">Commit: <code>Add e2e Angular configuration targeting test emulators [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 4: Playwright wiring onto the test environment</h2>
+<p><strong>Files:</strong> Modify <code>playwright.config.ts</code>, <code>e2e/global-setup.ts</code>, <code>e2e/constants/index.ts</code>, <code>e2e/utils/firebase.ts</code>, <code>e2e/fixtures/index.ts</code>, <code>e2e/tsconfig.json</code> (drop <code>rootDir</code>/<code>outDir</code>, add <code>"noEmit": true</code>, include <code>../scripts/test-env/*.mjs</code> and <code>../scripts/db/allocation.ts</code>, <code>../scripts/db/chunked-batch.ts</code> — e2e imports from outside its folder from here on), <code>package.json</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul class="ifc">
+  <li>Consumes: <code>scripts/test-env/config.mjs</code> (Task 1).</li>
+  <li>Produces: <code>TEST_CONFIG.baseUrl = 'http://localhost:4300'</code>; <code>TEST_CONFIG.firebase</code> derived from <code>config.mjs</code> (no literal ports anywhere else in <code>e2e/</code> except <code>feature-tour/</code>); <code>e2e/global-setup.ts</code> exports default <code>globalSetup()</code> that (a) probes <code>http://127.0.0.1:18080/</code> and throws <code>Test emulators are not running. Start e2e via `pnpm e2e` (or `pnpm test:area &lt;area&gt;`).</code> if unreachable, (b) clears Auth + Firestore on the test ports only, (c) calls <code>seedAll()</code> (added in Task 6; leave a clearly marked call site).</li>
+  <li>Fixtures: delete <code>cleanFirebase</code> and <code>firebasePage</code>. Add <code>seededPage</code> (grants <code>clipboard-read</code>/<code>clipboard-write</code>, no emulator probes). Keep <code>preserveDataFirebasePage</code> as an alias of <code>seededPage</code> with a comment that Plan 2 removes it once specs are migrated. Remove <code>configureFirebaseEmulators</code> and <code>waitForFirebaseEmulators</code> (no-ops / broken against the real app).</li>
+  <li>Root scripts — replace every <code>e2e:ci*</code> / <code>e2e:local*</code> script with: <code>"e2e": "node scripts/test-env/with-test-emulators.mjs --build-functions -- playwright test"</code>, <code>"e2e:headed"</code> (…<code>playwright test --headed</code>), <code>"e2e:ui"</code> (<code>--ui</code>), <code>"e2e:debug"</code> (<code>--debug</code>). Keep <code>e2e:report</code>, <code>e2e:install</code>, <code>screenshots:feature-tour</code>.</li>
+  <li><code>playwright.config.ts</code>: <code>baseURL</code> from config; <code>webServer.command = 'pnpm exec ng serve --configuration e2e --host 127.0.0.1 --port 4300'</code>, <code>url: 'http://localhost:4300'</code>, <code>reuseExistingServer: true</code>; drop the <code>process.env.CI</code> branches (no CI) keeping the local values; <code>retries: 0</code>; <code>workers: 4</code>.</li>
+</ul>
+<p class="step"><code>createTestUser</code> in <code>e2e/utils/firebase.ts</code> stays (existing specs use it until Plan 2) but targets the test ports and project ID.</p>
+<p class="step"><strong>Run</strong> <code>pnpm e2e e2e/smoke/homepage.spec.ts</code>. Expected: emulators start on test ports, dev server on 4300, browser launches, tests execute (pass or fail on content — not on "Executable doesn't exist", connection refused, or project mismatch). Check the app in the browser is using the demo project: the Auth emulator's <code>http://127.0.0.1:19099/emulator/v1/projects/demo-pipsplit-test/accounts</code> lists any user the tests created.</p>
+<p class="step"><strong>Unwrapped run (Review Focus 3):</strong> with no test emulators running, <code>pnpm exec playwright test e2e/smoke/homepage.spec.ts</code> must fail in global setup within a few seconds with the message above.</p>
+<p class="step">Commit: <code>Point Playwright at isolated test emulators [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 5: Extract reusable seed helpers from <code>scripts/db</code></h2>
+<p><strong>Files:</strong> Create <code>scripts/db/allocation.ts</code>, <code>scripts/db/chunked-batch.ts</code>. Modify <code>scripts/db/emulator-lib.ts</code>, <code>scripts/db/refresh-seed-expenses.ts</code>.</p>
+<p><strong>Interfaces — Produces:</strong> <code>allocation.ts</code> (no imports with side effects, no <code>firebase-admin</code> runtime import): <code>Rounder</code>, <code>makeRounder</code>, <code>AllocationSplit</code>, <code>AllocationInput</code>, <code>allocateSharedAmounts</code>, <code>allocateByPercentage</code>, <code>allocateByShares</code> — moved verbatim. <code>chunked-batch.ts</code>: <code>class ChunkedBatch { constructor(db: Firestore); set(ref, data); update(ref, data); commit(): Promise&lt;void&gt; }</code> with <code>BATCH_LIMIT = 400</code>. <code>emulator-lib.ts</code> re-exports the allocation API so existing imports keep working; <code>refresh-seed-expenses.ts</code> uses the extracted <code>ChunkedBatch</code>.</p>
+<p class="step">Move the code (pure refactor — no behaviour change).</p>
+<p class="step">Run <code>cd scripts/db &amp;&amp; pnpm exec tsc --noEmit</code> — expect clean. Do <strong>not</strong> run the seed/prune scripts (they target the dev emulators).</p>
+<p class="step">Commit: <code>Extract allocation and batch helpers from seed scripts [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 6: The shared, deterministic e2e data set</h2>
+<p><strong>Requires Task 0.</strong></p>
+<p><strong>Files:</strong> Create <code>e2e/seed/admin.ts</code>, <code>e2e/seed/types.ts</code>, <code>e2e/seed/validate.ts</code>, <code>e2e/seed/write.ts</code>, <code>e2e/seed/index.ts</code>, <code>e2e/seed/datasets/index.ts</code>, <code>e2e/seed/datasets/shared.ts</code>, <code>e2e/utils/session.ts</code>, <code>e2e/infra/seed.spec.ts</code>. Modify <code>e2e/global-setup.ts</code>.</p>
+<p><strong>Interfaces — Produces</strong> (Plans 2–3 add datasets against these types):</p>
+<pre><code>// types.ts — every key is also the Firestore document ID, so tests can build URLs/refs without a manifest.
+type Owner = 'shared' | `spec:${string}`;        // 'shared' = read-only for everyone; 'spec:e2e/history/history.spec.ts' = only that spec may read/write it
+interface SeedUser   { key: string; uid: string; email: string; password: string; profile?: { venmoId?; paypalId?; cashAppId?; zelleId?; language?; receiptPolicy?; emailOptOut?; defaultGroupKey? } }
+interface SeedMember { key: string; displayName: string; email: string; userKey?: string; active?: boolean; groupAdmin?: boolean }
+interface SeedCategory { key: string; name: string; active?: boolean }
+interface SeedSplitInput { owedByKey: string; assignedAmount?: number; percentage?: number; shares?: number }
+interface SeedExpense { key: string; date: string /* YYYY-MM-DD */; description: string; categoryKey: string; paidByKey: string; totalAmount: number;
+                        splitMethod: 'amount' | 'percentage' | 'shares'; sharedAmount?: number; allocatedAmount?: number; splits: SeedSplitInput[]; paid?: boolean }
+interface SeedPayment { key: string; date: string; paidByKey: string; paidToKey: string; expenseKeys: string[] }   // marks those expenses' splits between the pair paid + writes history
+interface SeedGroup  { key: string; owner: Owner; name: string; active?: boolean; autoAddMembers?: boolean; currencyCode?: string; currencySymbol?: string; decimalPlaces?: number;
+                       members: SeedMember[]; categories: SeedCategory[]; expenses?: SeedExpense[]; payments?: SeedPayment[] }
+interface SeedDataset { name: string; users: SeedUser[]; groups: SeedGroup[] }
+
+// validate.ts
+function validateDatasets(datasets: SeedDataset[]): void   // throws Error listing every problem
+// write.ts
+async function writeDatasets(db: Firestore, auth: Auth, datasets: SeedDataset[]): Promise&lt;void&gt;
+// admin.ts
+function getSeedAdmin(): { db: Firestore; auth: Auth }     // sets the 3 emulator env vars from config.mjs, asserts demo- project, named app 'e2e-seed'
+// index.ts
+async function seedAll(): Promise&lt;void&gt;                    // validateDatasets(ALL_DATASETS) then writeDatasets(...)
+// datasets/index.ts
+const ALL_DATASETS: SeedDataset[]
+// datasets/shared.ts — exported constants tests import by name:
+const SHARED: { users: { admin; alice; bob; carol }, group: SeedGroup /* key 'g-shared', owner 'shared' */ }
+// utils/session.ts
+async function signInAs(page: Page, user: SeedUser): Promise&lt;void&gt;   // UI login via AuthPage, waits for the authenticated shell</code></pre>
+<p><strong>Rules the writer must follow</strong> (from the spec §4 and the trigger analysis):</p>
+<ul>
+  <li>Users: <code>auth.createUser({ uid, email, password, emailVerified: true })</code>; then <strong>poll until <code>users/{uid}</code> exists</strong> (written by <code>createUserProfileOnSignUp</code>), then <code>update</code> the profile fields. Writing before the trigger lands lets its <code>merge</code> overwrite them. Poll timeout 15 s with a clear error.</li>
+  <li><code>SHARED.users.admin.uid = 'cgrizSOG69QiNquzKOA69ls8clFm'</code> (<code>ADMIN_UID_EMU</code>) and email <code>admin@pipsplit.test</code> (matches <code>environment.e2e.ts</code> <code>appOwnerEmail</code>), so both client <code>adminGuard</code> and functions <code>assertAdmin</code> accept it.</li>
+  <li>Write derived fields up front so idempotent triggers become no-ops: member <code>emailLower</code> (via <code>email.trim().toLowerCase()</code>, omitted for blank email), group <code>memberUids</code> / <code>activeMemberUids</code> / <code>adminUids</code> (computed the way <code>syncGroupMemberUidsInternal</code> in <code>functions/src/index.ts</code> does — read it), user <code>emailLower</code>.</li>
+  <li>Document shapes mirror what the app writes: group/member/category from <code>group.service.ts addGroup</code> + <code>member.service.ts</code>; expense/split/history exactly as <code>scripts/db/refresh-seed-expenses.ts</code> writes them (dates as <code>YYYY-MM-DD</code> strings, self-splits written <code>paid: true</code>, <code>receiptPath: null</code>). Splits are computed with the Task 5 allocation helpers, and the writer throws if they don't reconcile to <code>totalAmount</code>.</li>
+  <li>Group defaults: <code>active: true</code>, <code>archived: false</code>, <code>autoAddMembers: false</code>, USD / <code>$</code> / 2 decimals.</li>
+  <li>Dates are fixed strings, not "N days ago", except where a test needs "recent" data — then compute from a single <code>SEED_TODAY</code> captured once per run.</li>
+</ul>
+<p><strong><code>validateDatasets</code> rejects:</strong> duplicate user keys/uids/emails across all datasets; duplicate group keys; any email not ending in <code>@pipsplit.test</code>; a member/expense/payment referencing an unknown key; a group without <code>owner</code>; two groups with the same <code>name</code> (tests select groups by name in the UI).</p>
+<p><strong>Baseline <code>shared.ts</code></strong> (read-only, <code>owner: 'shared'</code>): users <code>admin</code>, <code>alice</code> (profile <code>venmoId: 'alice-venmo'</code>, <code>defaultGroupKey: 'g-shared'</code>), <code>bob</code>, <code>carol</code>; group <code>g-shared</code> "Shared – Beach House" with members Alice (admin, linked), Bob (linked), Carol (linked), Dana (no user, no email); categories Groceries, Lodging, Dining; four unpaid expenses (one per split method, one with shared + proportional pools); one expense fully paid via a <code>SeedPayment</code> (Bob → Alice). Pick concrete amounts and record the resulting per-member balances in a comment so tests can assert them.</p>
+<p class="step">Write failing tests in <code>e2e/infra/seed.spec.ts</code>, <code>test.describe('seed', { tag: '@infra' }, …)</code>:</p>
+<pre><code>test('validateDatasets accepts ALL_DATASETS', () =&gt; expect(() =&gt; validateDatasets(ALL_DATASETS)).not.toThrow());
+test('validateDatasets rejects a duplicate user email', …)          // clone SHARED users with a second key, same email → toThrow(/duplicate.*email/i)
+test('validateDatasets rejects a non-.test email', …)               // toThrow(/pipsplit\.test/)
+test('validateDatasets rejects an unknown member key in a split', …) // toThrow(/unknown/i)
+test('validateDatasets rejects a group without an owner', …)
+test('seeded users are email-verified', async () =&gt; {               // via getSeedAdmin().auth.getUserByEmail(SHARED.users.alice.email)
+  expect(user.emailVerified).toBe(true);
+});
+test('seeded profile fields survive the sign-up trigger', async () =&gt; {   // Review Focus 5
+  const snap = await db.doc(`users/${SHARED.users.alice.uid}`).get();
+  expect(snap.get('venmoId')).toBe('alice-venmo');
+});
+test('shared group has derived member UID arrays', async () =&gt; {
+  const g = await db.doc('groups/g-shared').get();
+  expect(new Set(g.get('memberUids'))).toEqual(new Set([alice.uid, bob.uid, carol.uid]));
+});
+test('signInAs lands a seeded user on the authenticated app', async ({ page }) =&gt; {
+  await signInAs(page, SHARED.users.alice);
+  // assert an element only an authenticated user with a group sees, e.g. the selected group name "Shared – Beach House"
+});</code></pre>
+<p class="step">Run <code>pnpm e2e --grep @infra</code> — expect FAIL.</p>
+<p class="step">Implement admin/types/validate/write/index/datasets/session; replace the Task 4 call-site marker in <code>global-setup.ts</code> with <code>await seedAll()</code>. Seed time should stay well under 30 s; log a one-line summary (users, groups, docs written, ms).</p>
+<p class="step">Run <code>pnpm e2e --grep @infra</code> three times in a row — expect PASS each time (fresh emulators per run, so no leftover state).</p>
+<p class="step">Run <code>cd e2e &amp;&amp; pnpm exec tsc --noEmit -p .</code> — expect clean.</p>
+<p class="step">Commit: <code>Seed a shared deterministic data set for e2e [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 7: Area map and <code>pnpm test:area</code></h2>
+<p><strong>Files:</strong> Create <code>scripts/test-area/areas.mjs</code>, <code>scripts/test-area/test-area.mjs</code>, <code>scripts/test-area/test-area.test.mjs</code>. Modify <code>package.json</code>; add area tags to every existing <code>e2e/**/*.spec.ts</code>.</p>
+<p><strong>Interfaces — Produces:</strong></p>
+<ul class="ifc">
+  <li><code>areas.mjs</code>: <code>export const AREAS: Record&lt;AreaName, { unit: string[]; functions: string[]; tag: string }&gt;</code> for exactly these names: <code>shell, auth, account, groups, members, categories, expenses, rental, receipts, memorized, summary, history, split, home, help, admin</code>. <code>unit</code> = paths relative to <code>src/</code> as accepted by <code>ng test --include</code> (directories allowed); <code>functions</code> = spec files relative to <code>functions/</code>; <code>tag</code> = <code>'@&lt;name&gt;'</code>. Cross-cutting code (e.g. <code>app/shared/directives/filters</code>, <code>app/utilities</code>, <code>app/services/locale.service.ts</code>) is listed under every area that depends on it. Every one of the 11 current functions specs is assigned (e.g. <code>invite-email</code> + <code>link-invited-members</code> → groups/members; <code>receipt-ocr</code> + <code>receipt-parser</code> → receipts; <code>settle-email</code> + <code>category-breakdown</code> → summary; <code>admin-reports</code> → admin; <code>user-deletion</code> → account; <code>email-*</code>, <code>sync-group-member-uids</code> → groups/members/auth as appropriate).</li>
+  <li><code>test-area.mjs</code> CLI: <code>pnpm test:area &lt;area…&gt; [--unit | --e2e]</code> and <code>pnpm test:area --check</code>. Exported pure helpers: <code>resolveAreas(names: string[], areas) → AreaName[]</code> (throws listing valid names on an unknown one); <code>buildRunPlan(areaNames, areas, { unit: boolean, e2e: boolean }) → Array&lt;{ label: string, cmd: string, args: string[] }&gt;</code>; <code>findUnassigned({ unitSpecs: string[], functionsSpecs: string[], e2eTests: Array&lt;{ title: string, tags: string[] }&gt; }, areas) → { unit: string[], functions: string[], e2e: string[] }</code>.</li>
+  <li>Run plan for one or more areas: (1) <code>ng test --watch=false --include …</code> with every <code>unit</code> path of the selected areas; (2) one <code>with-test-emulators.mjs --build-functions -- …</code> invocation that runs the selected functions specs (<code>pnpm --dir functions exec vitest run &lt;files&gt;</code>) and then <code>playwright test --grep "&lt;tag&gt;|&lt;tag&gt;"</code>, both inside the same emulator session, running both even if the first fails and exiting non-zero if either failed. Skip a step with nothing to run. Print a final per-step PASS/FAIL table.</li>
+  <li><code>--check</code>: unit specs from <code>ng test --list-tests</code>, functions specs by globbing <code>functions/src/**/*.spec.ts</code>, e2e tests from <code>playwright test --list --reporter=json</code> (no emulators needed for listing; if global setup gets in the way, gate it behind an env var set by <code>--check</code>). Prints anything unassigned and exits 1 if any.</li>
+  <li><code>package.json</code>: <code>"test:area": "node scripts/test-area/test-area.mjs"</code>.</li>
+</ul>
+<p class="step">Write failing tests in <code>test-area.test.mjs</code>:</p>
+<pre><code>test('resolveAreas rejects an unknown area and lists valid ones', () =&gt;
+  assert.throws(() =&gt; resolveAreas(['expences'], AREAS), /expenses/));
+test('every area has a tag matching its name', () =&gt;
+  Object.entries(AREAS).forEach(([n, a]) =&gt; assert.equal(a.tag, `@${n}`)));
+test('the area list is exactly the 16 agreed names', () =&gt; assert.deepEqual(Object.keys(AREAS).sort(), [...SIXTEEN].sort()));
+test('buildRunPlan with --unit has no emulator step', () =&gt;
+  assert.ok(buildRunPlan(['expenses'], AREAS, { unit: true, e2e: false }).every(s =&gt; !s.args.join(' ').includes('emulators'))));
+test('buildRunPlan joins several areas into one grep', () =&gt; {
+  const e2e = buildRunPlan(['expenses', 'history'], AREAS, { unit: false, e2e: true }).at(-1);
+  assert.match(e2e.args.join(' '), /@expenses\|@history/);
+});
+test('findUnassigned flags a spec under no area and an untagged e2e test', () =&gt; {
+  const r = findUnassigned({ unitSpecs: ['app/orphan/x.spec.ts'], functionsSpecs: [], e2eTests: [{ title: 't', tags: [] }] }, AREAS);
+  assert.deepEqual(r.unit, ['app/orphan/x.spec.ts']); assert.deepEqual(r.e2e, ['t']);
+});</code></pre>
+<p class="step">Run <code>pnpm test:scripts</code> — expect FAIL.</p>
+<p class="step">Implement <code>areas.mjs</code> and <code>test-area.mjs</code>. Tag existing specs at the <code>describe</code> level with <code>{ tag: [...] }</code>: <code>auth/*</code> → <code>@auth</code>; <code>smoke/navigation</code> → <code>@shell</code>; <code>smoke/homepage</code> → <code>@home</code>; <code>groups/groups-admin</code> → <code>@groups</code> (plus <code>@members</code>/<code>@categories</code> on the describes that cover those); <code>critical-flows/expenses</code> → <code>@expenses</code>; <code>summary</code> → <code>@summary</code>; <code>history</code> → <code>@history</code>; <code>expense-to-payment-flow</code> → <code>@expenses @summary @history</code>; <code>infra/seed</code> keeps <code>@infra</code> and is also included in every area run (seed health gates everything) — add <code>@infra</code> to the grep in <code>buildRunPlan</code> and to the test above.</p>
+<p class="step">Run <code>pnpm test:scripts</code> — expect PASS. Run <code>pnpm test:area --check</code> — expect exit 0 (fix the map until it is). Run <code>pnpm test:area expenses --unit</code> — expect only expense-related unit specs to run and pass.</p>
+<p class="step">Commit: <code>Add per-area test runner and area tags [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 8: Keep-it-current process and docs</h2>
+<p><strong>Files:</strong> Modify <code>CLAUDE.md</code>, <code>e2e/README.md</code>, <code>C:\Users\mpipk\.claude\skills\pip-angular-testing\SKILL.md</code> (outside the repo — not committed). Leave <code>e2e/TESTING_PATTERNS.md</code> for Plan 2 (its lessons get validated and folded into the skill during the repair).</p>
+<p class="step">Add to <code>CLAUDE.md</code> a "Testing" section: whenever a feature is changed, update or add that area's unit, functions and e2e tests in the same task, then run <code>pnpm test:area &lt;area&gt;</code> and report the result before calling the task done; new code or specs must be assigned in <code>scripts/test-area/areas.mjs</code> (<code>pnpm test:area --check</code> must pass); e2e and functions tests run only on the isolated test emulators — never against the default ports.</p>
+<p class="step">Add an "E2E (Playwright)" section to the skill covering: the parallel-worker wipe history and why there are no per-test clears; the ownership rules (<code>shared</code> = read-only; mutate only a group/user your spec owns; new entities get unique names; scope assertions to your own data); how to add a dataset; the trigger rules (profile poll, derived fields); isolated emulators, ports, <code>demo-pipsplit-test</code>, mail suppression, never the default ports; <code>pnpm e2e</code> / <code>pnpm test:area</code> / <code>--check</code> / <code>pnpm kill-test-ports</code>; no <code>waitForTimeout</code>. Extend the skill's <code>description</code> frontmatter so it also triggers on Playwright, e2e, seed data and <code>test:area</code> work.</p>
+<p class="step">Rewrite <code>e2e/README.md</code> to accurate, short run instructions (the commands above, prerequisites: <code>pnpm e2e:install</code> after Playwright upgrades, Java for the Firestore emulator) and a pointer to the skill. Remove the stale claims (multi-browser, automatic seed-data import, <code>pnpm test:full</code>, <code>firebasePage</code>).</p>
+<p class="step">Commit (repo files only): <code>Document test workflow and per-area rule [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 9: First meaningful e2e run → Plan 2 input</h2>
+<p class="step">With the owner's dev emulators running (ask), run <code>pnpm e2e</code>. Expect: infra tests pass; many legacy specs fail (that's the point). Confirm the dev emulators' data is unchanged afterwards (Review Focus 1; same one-read-with-permission rule as Task 1).</p>
+<p class="step">Run <code>pnpm test</code>, <code>cd functions &amp;&amp; pnpm test</code>, <code>pnpm test:scripts</code>, <code>pnpm test:area --check</code> — all PASS.</p>
+<p class="step">Write the failure list to <code>docs/superpowers/plans/2026-10-19-e2e-failures.html</code>: per failing test — spec, test title, first error line, and a provisional triage (stale test / feature removed / suspected app bug / infra). Do not fix any legacy spec in this plan. Commit: <code>Record baseline e2e failures for repair plan [no-deploy]</code>.</p>
+<p class="step">Report to the owner: the infra is in place, the counts, and the suspected-bug candidates. Plan 2 is written from this list.</p>
+
+</body>
+</html>

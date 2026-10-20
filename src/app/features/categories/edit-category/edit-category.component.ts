@@ -18,12 +18,14 @@ import { LoadingService } from '@components/loading/loading.service';
 import { Category, EditCategoryForm } from '@models/category';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryService } from '@services/category.service';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-edit-category',
   templateUrl: './edit-category.component.html',
   styleUrl: './edit-category.component.scss',
   imports: [
+    DefaultButtonDirective,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,

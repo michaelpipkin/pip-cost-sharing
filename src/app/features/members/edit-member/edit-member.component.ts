@@ -34,16 +34,19 @@ import { LoadingService } from '@components/loading/loading.service';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-edit-member',
   templateUrl: './edit-member.component.html',
   styleUrl: './edit-member.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatButtonModule,
     MatDialogModule,
@@ -60,6 +63,7 @@ export class EditMemberComponent {
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly groupStore = inject(GroupStore);
+  protected readonly groupService = inject(GroupService);
   protected readonly memberService = inject(MemberService);
   protected readonly router = inject(Router);
   protected readonly loading = inject(LoadingService);
@@ -222,7 +226,8 @@ export class EditMemberComponent {
             this.data.groupId,
             memberRef
           );
-          this.groupStore.clearCurrentGroup();
+          // Also stops the left group's data listeners, not just unselects it
+          this.groupService.clearCurrentGroup();
           if (deleted) {
             // No historical splits - the member doc is gone entirely, so
             // there's nothing left to rejoin; drop the group from the list.
@@ -238,7 +243,6 @@ export class EditMemberComponent {
             });
           }
           this.userStore.updateUser({ defaultGroupRef: null });
-          localStorage.removeItem('currentGroup');
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'You have left the group successfully.' },
           });

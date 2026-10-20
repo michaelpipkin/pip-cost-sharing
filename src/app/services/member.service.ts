@@ -44,6 +44,10 @@ export class MemberService implements IMemberService {
   protected readonly analytics = inject(AnalyticsService);
 
   #unsubscribe?: () => void;
+  // The group the latest getMemberByUserRef() lookup is for (null once
+  // listening stops), so a slower lookup for a group the user has since
+  // switched away from can't overwrite currentMember.
+  #currentMemberGroupId: string | null = null;
 
   // Canonical form for email comparisons - Firestore has no case-insensitive
   // query operator, so matches/lookups query the emailLower field (kept in
@@ -57,6 +61,7 @@ export class MemberService implements IMemberService {
     groupId: string,
     userRef: DocumentReference<User>
   ): Promise<void> {
+    this.#currentMemberGroupId = groupId;
     try {
       const q = query(
         collection(this.fs, `groups/${groupId}/members`),
@@ -64,6 +69,7 @@ export class MemberService implements IMemberService {
         limit(1)
       );
       const docSnap = await getDocs(q);
+      if (this.#currentMemberGroupId !== groupId) return;
 
       if (docSnap.empty) {
         this.memberStore.clearCurrentMember();
@@ -169,6 +175,7 @@ export class MemberService implements IMemberService {
   stopListening(): void {
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
+    this.#currentMemberGroupId = null;
   }
 
   async addMemberToGroup(

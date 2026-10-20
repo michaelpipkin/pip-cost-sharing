@@ -13,6 +13,7 @@ import {
 } from '@testing/test-helpers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AddCategoryComponent } from './add-category.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('AddCategoryComponent', () => {
   let fixture: ComponentFixture<AddCategoryComponent>;
@@ -80,5 +81,9 @@ describe('AddCategoryComponent', () => {
       expect(cancelBtn).toBeTruthy();
       expect(cancelBtn?.textContent?.trim()).toBe('Cancel');
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

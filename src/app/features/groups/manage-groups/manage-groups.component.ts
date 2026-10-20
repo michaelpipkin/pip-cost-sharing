@@ -36,12 +36,14 @@ import { ExpenseService } from '@services/expense.service';
 import { GroupService } from '@services/group.service';
 import { ExpenseStore } from '@store/expense.store';
 import { GroupStore } from '@store/group.store';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-manage-groups',
   templateUrl: './manage-groups.component.html',
   styleUrl: './manage-groups.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatButtonModule,
     MatDialogModule,
