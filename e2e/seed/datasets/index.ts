@@ -1,4 +1,5 @@
 import type { SeedDataset } from '../types';
+import { ACCOUNT_DATASET } from './account';
 import { AUTH_DATASET } from './auth';
 import { EXPENSES_DATASET } from './expenses';
 import { GROUPS_DATASET } from './groups';
@@ -24,4 +25,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   RENTAL_DATASET,
   MEMORIZED_DATASET,
   RECEIPTS_DATASET,
+  ACCOUNT_DATASET,
 ];
