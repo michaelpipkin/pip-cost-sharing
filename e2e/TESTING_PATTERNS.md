@@ -1,3 +1,5 @@
+> **LEGACY - superseded by the `pip-angular-testing` skill.** The `cleanFirebase` / `firebasePage` wipe fixtures this document describes were removed on purpose and must not be reintroduced. Plan 2 will fold the still-valid lessons into the skill.
+
 # E2E Testing Patterns and Best Practices
 
 This document captures patterns and best practices learned from developing and fixing e2e tests, particularly from the `expense-to-payment-flow.spec.ts` implementation. These patterns ensure reliable, maintainable tests that work consistently across environments.

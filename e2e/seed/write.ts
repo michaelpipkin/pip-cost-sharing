@@ -64,16 +64,35 @@ export async function writeDatasets(
 class CountingBatch extends ChunkedBatch {
   count = 0;
 
-  override set(ref: DocumentReference, data: DocumentData): void {
+  /**
+   * ChunkedBatch starts a new Firestore batch every 400 writes, which could
+   * split one group's member writes across batches. syncGroupMemberUids then
+   * could read a partial member set and overwrite the pre-written UID arrays
+   * non-deterministically. The seed fits one chunk today (~35 writes), so
+   * fail loudly rather than risk that.
+   */
+  #bump(): void {
+    if (this.count >= SEED_BATCH_LIMIT) {
+      throw new Error(
+        `Seed would exceed one batch chunk (${SEED_BATCH_LIMIT} writes); splitting a group's writes across batches races syncGroupMemberUids. Seed less data or restructure write.ts.`
+      );
+    }
     this.count++;
+  }
+
+  override set(ref: DocumentReference, data: DocumentData): void {
+    this.#bump();
     super.set(ref, data);
   }
 
   override update(ref: DocumentReference, data: DocumentData): void {
-    this.count++;
+    this.#bump();
     super.update(ref, data);
   }
 }
+
+/** Matches BATCH_LIMIT in scripts/db/chunked-batch.ts (not exported). */
+const SEED_BATCH_LIMIT = 400;
 
 // ---------------------------------------------------------------------------
 // Users

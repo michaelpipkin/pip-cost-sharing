@@ -8,11 +8,11 @@ test.describe('Authentication - Authenticated User Tests', { tag: '@auth' }, () 
     // Test Firebase emulator connectivity before running authenticated tests
 
     // Test Firestore emulator
-    const firestoreResponse = await page.request.get('http://127.0.0.1:8080');
+    const firestoreResponse = await page.request.get(TEST_CONFIG.firebase.emulators.firestore);
     expect(firestoreResponse.ok()).toBeTruthy();
 
     // Test Auth emulator
-    const authResponse = await page.request.get('http://127.0.0.1:9099');
+    const authResponse = await page.request.get(TEST_CONFIG.firebase.emulators.auth);
     expect(authResponse.ok()).toBeTruthy();
   });
 

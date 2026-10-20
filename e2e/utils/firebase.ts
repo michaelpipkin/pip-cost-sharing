@@ -8,21 +8,6 @@ import { TEST_CONFIG } from '../constants';
 const { projectId, emulators } = TEST_CONFIG.firebase;
 
 /**
- * Clear Firebase emulator data between tests
- */
-export async function clearFirebaseData(page: Page) {
-  // Clear Firestore data
-  await page.request.delete(
-    `${emulators.firestore}/emulator/v1/projects/${projectId}/databases/(default)/documents`
-  );
-
-  // Clear Auth data
-  await page.request.delete(
-    `${emulators.auth}/emulator/v1/projects/${projectId}/accounts`
-  );
-}
-
-/**
  * Create a test user in Firebase Auth emulator with emailVerified set to true.
  * Uses the v1 Identity Toolkit REST API endpoints supported by the emulator.
  */

@@ -12,4 +12,12 @@ describe('firebase-options: resolveFirebaseOptions', () => {
     expect(o.storageBucket).toBe('demo-pipsplit-test.appspot.com');
     expect(o.apiKey).toBe(firebaseConfig.apiKey);
   });
+
+  it('omits measurementId for an emulator project', () =>
+    expect(resolveFirebaseOptions('demo-pipsplit-test').measurementId).toBeUndefined());
+
+  it('keeps measurementId in the real config', () =>
+    expect(resolveFirebaseOptions(null).measurementId).toBe(
+      firebaseConfig.measurementId
+    ));
 });

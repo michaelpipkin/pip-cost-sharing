@@ -12,6 +12,8 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   /* Run tests in files in parallel */
   fullyParallel: true,
+  /* A stray test.only must fail the run, not silently run one test and pass. */
+  forbidOnly: true,
   retries: 0,
   /* 2 workers: 4 concurrent first page loads time out on the ng dev server here. Tests are isolated by unique user accounts. */
   workers: 2,
@@ -68,11 +70,14 @@ export default defineConfig({
   ],
   timeout: 60 * 1000,
   /* Dev server built with the e2e configuration (test emulators, demo project).
-     The emulators themselves are started by `pnpm e2e` (with-test-emulators). */
+     The emulators themselves are started by `pnpm e2e` (with-test-emulators).
+     reuseExistingServer is false on purpose: Playwright stops the server it
+     starts, so reuse could only ever pick up a foreign server on 4300 (e.g. a
+     dev-config ng serve pointing at the dev emulators). Fail loudly instead. */
   webServer: {
     command: 'pnpm exec ng serve --configuration e2e --host 127.0.0.1 --port 4300',
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

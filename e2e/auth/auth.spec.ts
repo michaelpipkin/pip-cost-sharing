@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { TEST_CONFIG } from '../constants';
 // This file has been split into:
 // - auth-unauthenticated.spec.ts: Tests for unauthenticated users (login/register forms, validation)
 // - auth-authenticated.spec.ts: Tests for authenticated users (logout, guard redirects, etc.)
@@ -11,11 +12,11 @@ test.describe('Authentication - Setup Verification', { tag: '@auth' }, () => {
     // before running the more specific auth tests
 
     // Test Firestore emulator
-    const firestoreResponse = await page.request.get('http://127.0.0.1:8080');
+    const firestoreResponse = await page.request.get(TEST_CONFIG.firebase.emulators.firestore);
     expect(firestoreResponse.ok()).toBeTruthy();
 
     // Test Auth emulator
-    const authResponse = await page.request.get('http://127.0.0.1:9099');
+    const authResponse = await page.request.get(TEST_CONFIG.firebase.emulators.auth);
     expect(authResponse.ok()).toBeTruthy();
   });
 });

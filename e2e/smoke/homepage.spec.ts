@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures';
 import type { Page } from '@playwright/test';
+import { TEST_CONFIG } from '../constants';
 import { HomePage } from '../pages/home.page';
 
 /**
@@ -45,11 +46,11 @@ test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
     // Test that Firebase emulators are accessible
     // This validates our emulator integration
     const firestoreHealth = await preserveDataFirebasePage.request.get(
-      'http://localhost:8080'
+      TEST_CONFIG.firebase.emulators.firestore
     );
     expect(firestoreHealth.ok()).toBeTruthy();
 
-    const authHealth = await preserveDataFirebasePage.request.get('http://localhost:9099');
+    const authHealth = await preserveDataFirebasePage.request.get(TEST_CONFIG.firebase.emulators.auth);
     expect(authHealth.ok()).toBeTruthy();
   });
 
