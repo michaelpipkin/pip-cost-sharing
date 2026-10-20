@@ -1,250 +1,69 @@
-# E2E Testing with Playwright and Firebase Emulators
+# E2E tests (Playwright)
 
-This directory contains end-to-end tests for the PipSplit application using Playwright with Firebase emulator integration.
+Playwright specs for PipSplit. They run against an isolated Firebase emulator suite (project `demo-pipsplit-test`, non-default ports) that is started, seeded and torn down for you. Chromium only.
 
-## Setup
+For how to write or fix specs (shared seed data, ownership rules, selectors, gotchas), see the `pip-angular-testing` skill (`~/.claude/skills/pip-angular-testing/SKILL.md`).
 
-The e2e testing environment has been configured with:
+## Prerequisites
 
-- **Playwright**: Modern web testing framework
-- **Firebase Emulators**: Local Firebase services with test data
-- **TypeScript**: Full TypeScript support for tests
-- **Page Object Model**: Organized page objects for maintainable tests
-- **Test Utilities**: Helper functions for common test operations
-- **Multiple Browsers**: Tests run on Chromium, Firefox, WebKit, and mobile viewports
+- Dependencies installed (`pnpm install`).
+- Playwright's Chromium: run `pnpm e2e:install` once, and again after upgrading `@playwright/test`.
+- Java on the PATH (the Firestore emulator needs it).
+- The test ports free (below). If a crashed run leaves emulators behind: `pnpm kill-test-ports`.
 
-## Firebase Emulator Integration
+## Running
 
-Tests automatically start Firebase emulators before running:
+```bash
+pnpm e2e                      # whole suite, headless
+pnpm e2e --grep "@expenses"   # extra Playwright args are passed through
+pnpm e2e e2e/infra/seed.spec.ts # a single spec file
+pnpm e2e:headed               # visible browser
+pnpm e2e:ui                   # Playwright UI mode
+pnpm e2e:debug                # Playwright inspector
+pnpm e2e:report               # open the last HTML report
+```
 
-- **Authentication Emulator** (port 9099): For testing user authentication
-- **Firestore Emulator** (port 8080): For testing database operations
-- **Functions Emulator** (port 5001): For testing cloud functions
-- **Storage Emulator** (port 9199): For testing file storage
-- **Test Data Import**: Automatically imports seed data from `seed-data/` directory
+`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (or reuses one already running there). Global setup clears Auth and Firestore once and seeds the data set in `e2e/seed/`; tests never clear data.
 
-Each test runs with a clean Firebase state and can create test users and data as needed.
+### By area
 
-## Folder Structure
+Each product area (defined in `scripts/test-area/areas.mjs`) has unit specs, Cloud Functions specs and tagged e2e tests:
+
+```bash
+pnpm test:area expenses              # unit + functions + e2e for the area
+pnpm test:area expenses summary      # several areas
+pnpm test:area expenses --unit       # app unit specs only (no emulators)
+pnpm test:area expenses --e2e        # functions specs + e2e (everything needing emulators)
+pnpm test:area --check               # every spec/test is assigned to an area
+```
+
+### Related
+
+```bash
+pnpm --dir functions test     # Cloud Functions specs on the test emulators
+pnpm test                     # app unit specs (Vitest, jsdom)
+pnpm test:scripts             # node:test specs for scripts/
+pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config, dev emulators on 4200)
+```
+
+## Test environment
+
+- Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The single source of truth is `scripts/test-env/config.mjs`.
+- Never the default emulator ports - those are the dev emulators.
+- Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
+- Playwright runs 2 workers; traces are kept on failure (`pnpm e2e:report`), video is off.
+- Do not set `E2E_TARGET` when running the suite; global setup rejects it (it is only for the feature-tour capture config).
+
+## Layout
 
 ```
 e2e/
-├── critical-flows/      # HIGH PRIORITY - Core business value tests
-│   ├── expenses.spec.ts              # Expense CRUD, FormArray, receipts (13 scenarios)
-│   ├── expense-to-payment-flow.spec.ts # End-to-end workflow (8 scenarios)
-│   ├── summary.spec.ts               # Payment summary, filtering (11 scenarios)
-│   └── history.spec.ts               # Payment history, deletion (10 scenarios)
-├── auth/                # Authentication tests
-│   ├── auth.spec.ts                  # Emulator connectivity
-│   ├── auth-authenticated.spec.ts    # Authenticated user tests
-│   └── auth-unauthenticated.spec.ts  # Login/register tests
-├── smoke/               # Basic smoke tests
-│   ├── navigation.spec.ts            # Routing, PWA, mobile menu
-│   └── homepage.spec.ts              # Dashboard display
-├── groups/              # Group administration
-│   └── groups-admin.spec.ts          # Group CRUD, settings
-├── pages/               # Page Object Model classes
-│   ├── base.page.ts                  # Base page object class
-│   ├── auth.page.ts                  # Authentication pages
-│   ├── home.page.ts                  # Home/dashboard page
-│   ├── groups.page.ts                # Groups administration
-│   ├── expenses.page.ts              # Expense creation/editing
-│   ├── summary.page.ts               # Payment summary
-│   └── history.page.ts               # Payment history
-├── fixtures/            # Test fixtures with Firebase emulator setup
-├── constants/           # Test constants and Firebase configuration
-├── utils/               # Helper utilities for tests
-├── tsconfig.json        # TypeScript configuration for e2e tests
-└── README.md            # This documentation
-```
-
-## Testing Philosophy
-
-This e2e test suite follows a **pragmatic testing approach**:
-
-- **Critical Flows**: Focus on user journeys that require e2e validation (async flows, Firebase integration, dialog confirmations)
-- **Unit Test Coverage**: Complex component logic is tested in unit tests (332/332 passing with Vitest)
-- **E2E Test Coverage**: Integration scenarios that were deferred from unit tests due to jsdom limitations
-- **No Over-Testing**: Test critical paths and integration points, not every edge case
-
-## Test Coverage Summary
-
-### Critical Flows (42 scenarios)
-
-**expense-to-payment-flow.spec.ts** (8 scenarios)
-- Full end-to-end: Create expense → Pay → Verify history
-- Payment cancellation and confirmation
-- Net amount calculation with mutual debts
-- Multiple categories in payment tracking
-- Date range filtering
-- Clipboard integration
-- Payment method selection
-
-**expenses.spec.ts** (13 scenarios)
-- Create expense with multiple splits
-- Form validation (required fields, zero amount)
-- Add/remove splits dynamically
-- "Add All Members" functionality
-- Equal and proportional split allocation
-- Percentage mode toggle
-- Save & Add Another workflow
-- Memorize expense for reuse
-- Receipt upload (deferred to future implementation)
-- Date picker integration
-- Category auto-selection
-
-**summary.spec.ts** (11 scenarios)
-- Display who-owes-whom from unpaid splits
-- Filter by member and date range
-- Calculate net amounts (mutual debt netting)
-- Expand/collapse category breakdown
-- Copy summary to clipboard
-- Payment dialog integration
-- Clear filters functionality
-- Empty state handling
-
-**history.spec.ts** (10 scenarios)
-- Display payment history with sorting
-- Filter by member (paid by/paid to)
-- Filter by date range
-- Sort by date/amount/member
-- Expand detail for category breakdown
-- Copy history to clipboard
-- Delete payment record (admin only)
-- Delete confirmation and cancellation
-- Empty state handling
-- Clear filters
-
-### Auth & Smoke Tests (Existing)
-
-**auth/** - User authentication flows
-**smoke/** - Navigation and basic functionality
-**groups/** - Group administration and settings
-
-## Running Tests
-
-### Development Workflow (Recommended)
-
-**Step 1: Start Firebase Emulators**
-```bash
-pnpm emu:data
-```
-
-**Step 2: Run Tests**
-```bash
-pnpm e2e              # Run all tests headlessly
-pnpm e2e:headed       # Run with browser UI visible
-pnpm e2e:debug        # Run in debug mode
-pnpm e2e:ui           # Run with Playwright's interactive UI
-```
-
-### Alternative: Fully Automated
-If you prefer everything automated in one command:
-```bash
-pnpm test:full        # Starts emulators + runs tests automatically
-```
-
-### Other Commands
-- `pnpm e2e:report` - View the last test report
-- `pnpm e2e:install` - Reinstall browsers if needed
-
-## Configuration
-
-The main configuration is in `playwright.config.ts` at the project root. Key features:
-
-- **Base URL**: Set to `http://localhost:4200` for all environments
-  - Tests use Firebase Auth emulator API to create users (not the registration page)
-  - localhost enables clipboard API for copy-to-clipboard tests
-- **Firebase Emulators**: Automatically starts `pnpm emu:data` before tests
-- **Web Server Integration**: Starts your Angular dev server after emulators
-- **Multiple Projects**: Tests run on different browsers and mobile viewports
-- **Screenshots & Videos**: Captured on test failures
-- **Traces**: Available for debugging failed tests
-
-## Firebase Testing Features
-
-### Automatic Emulator Management
-- Emulators start automatically with test data import
-- Clean state for each test (auth users and Firestore data cleared)
-- Project ID: `pip-cost-sharing` (matches your Firebase project)
-
-### Firebase Utilities
-- `createTestUser()` - Create test users in Auth emulator
-- `addFirestoreTestData()` - Add test data to Firestore
-- `clearFirebaseData()` - Clean up between tests
-- `waitForFirebaseEmulators()` - Ensure emulators are ready
-
-### Test Fixtures
-- `cleanFirebase` - Ensures clean Firebase state for each test
-- `firebasePage` - Page with Firebase emulators pre-configured
-
-## Page Object Model
-
-Tests use the Page Object Model pattern for better maintainability:
-
-1. **BasePage**: Common functionality for all pages
-2. **Specific Pages**: Each page has its own class (e.g., `HomePage`)
-3. **Locators**: Using data-testid attributes for reliable element selection
-
-## Test Utilities
-
-The `utils/helpers.ts` file provides common functions:
-
-- `waitForAngular()` - Wait for Angular to stabilize
-- `fillAndValidate()` - Fill forms and wait for validation
-- `mockApiResponse()` - Mock API calls for testing
-- `clearStorage()` - Clear browser storage between tests
-
-## Best Practices
-
-1. Use `data-testid` attributes in your Angular components for reliable element selection
-2. Utilize the Page Object Model for organizing test code
-3. Use meaningful test descriptions and organize tests in describe blocks
-4. Mock external API calls when appropriate
-5. Keep tests independent and atomic
-
-## Adding New Tests
-
-1. Create test files in appropriate subdirectories under `e2e/`
-2. Use the `test` import from `fixtures/index.ts` for consistent setup
-3. Create page objects for new pages in the `pages/` directory
-4. Add test data constants to `constants/index.ts`
-
-## Example Test Structure
-
-```typescript
-import { test, expect } from '../fixtures';
-import { AuthPage } from '../pages/auth.page';
-import { TEST_DATA } from '../constants';
-
-test.describe('Authentication', () => {
-  test('should login with valid credentials', async ({ firebasePage }) => {
-    const authPage = new AuthPage(firebasePage);
-    
-    // Create and login test user
-    await authPage.createAndLoginTestUser();
-    
-    // Verify login success
-    await expect(authPage.isLoggedIn()).resolves.toBe(true);
-  });
-
-  test('should handle invalid login', async ({ firebasePage }) => {
-    const authPage = new AuthPage(firebasePage);
-    await authPage.gotoLogin();
-    
-    // Try login with invalid credentials
-    await authPage.login(TEST_DATA.validEmail, 'wrongpassword');
-    
-    // Verify error message
-    await expect(authPage.errorMessage).toBeVisible();
-  });
-});
-```
-
-## Browser Installation
-
-If you need to reinstall browsers:
-
-```bash
-pnpm e2e:install
+  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds
+  seed/             # shared deterministic data set (types, validate, write, datasets/)
+  fixtures/         # seededPage (clipboard permissions)
+  utils/            # session.ts (signInAs), helpers, firebase utilities
+  pages/            # page objects
+  infra/            # seed health spec (@infra, runs with every area)
+  auth/ smoke/ groups/ critical-flows/   # specs
+  feature-tour/     # screenshot capture config (not part of the suite)
 ```
