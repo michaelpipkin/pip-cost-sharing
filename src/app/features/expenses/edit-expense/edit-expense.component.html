@@ -444,7 +444,10 @@
               }
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
-                <span class="mock-value-right">
+                <span
+                  class="mock-value-right"
+                  data-testid="edit-allocated-amount"
+                >
                   {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
@@ -475,6 +478,7 @@
           !expenseFullyAllocated()
         "
         (click)="onSubmit()"
+        data-testid="edit-expense-save-button"
       >
         Save
       </button>
@@ -486,7 +490,12 @@
       >
         Delete
       </button>
-      <button mat-stroked-button type="button" (click)="onCancel()">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="onCancel()"
+        data-testid="edit-expense-cancel-button"
+      >
         Cancel
       </button>
     </div>
