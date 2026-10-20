@@ -55,10 +55,12 @@ import {
   buildExpenseFormTourSteps,
   createExpenseFormTour,
 } from '@features/expenses/expense-form.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-edit-memorized',
   imports: [
+    DefaultButtonDirective,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,

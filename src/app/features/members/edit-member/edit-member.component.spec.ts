@@ -28,6 +28,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditMemberComponent } from './edit-member.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('EditMemberComponent', () => {
   let fixture: ComponentFixture<EditMemberComponent>;
@@ -342,5 +343,10 @@ describe('EditMemberComponent', () => {
       });
       expect(mockGroupStore.removeGroup).not.toHaveBeenCalled();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", async () => {
+    await createComponent(testMember);
+    expectEnterToSave(fixture);
   });
 });

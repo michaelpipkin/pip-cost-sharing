@@ -14,6 +14,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HelpComponent } from './help.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('HelpComponent', () => {
   let fixture: ComponentFixture<HelpComponent>;
@@ -296,5 +297,9 @@ describe('HelpComponent', () => {
       expect(mockLoadingService.loadingOn).toHaveBeenCalled();
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

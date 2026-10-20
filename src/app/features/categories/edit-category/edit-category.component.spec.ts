@@ -19,6 +19,7 @@ import {
 } from '@testing/test-helpers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditCategoryComponent } from './edit-category.component';
+import { expectEnterToSave } from '@testing/default-button';
 
 describe('EditCategoryComponent', () => {
   let fixture: ComponentFixture<EditCategoryComponent>;
@@ -155,5 +156,9 @@ describe('EditCategoryComponent', () => {
       component.deleteCategory();
       expect(dialogSpy).toHaveBeenCalled();
     });
+  });
+
+  it("should save on Enter (Save is the form's default button)", () => {
+    expectEnterToSave(fixture);
   });
 });

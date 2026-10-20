@@ -6,14 +6,15 @@ import type { SeedUser } from '../seed/types';
 import { signInAs } from '../utils/session';
 
 // Data: e2e/seed/datasets/groups.ts. Every test that mutates data or selects
-// a group signs in as its own user, because each page load rewrites the
-// user's default group and would undo a parallel tab's selection. Read-only
+// a group signs in as its own user, because selecting a group saves it as the
+// user's default, which a parallel tab would pick up. Read-only
 // tests share groups-empty (no groups; no test may create one as them) or
 // groups-viewer ("Groups – View A/B"). Created groups get unique names.
 // Every test signs in itself.
 const {
   empty,
   firstCreator,
+  enterCreator,
   autoAddCreator,
   multiCreator,
   workflowCreator,
@@ -149,6 +150,21 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
 
     await groupsPage.verifyGroupInList(groupName);
     await groupsPage.selectGroup(groupName);
+  });
+
+  test('should create a group by pressing Enter', async ({ page }) => {
+    const groupsPage = await openGroupsAs(page, enterCreator);
+    const groupName = uniqueGroupName('Enter');
+
+    await groupsPage.openAddGroupDialog();
+    await groupsPage.groupNameInput.fill(groupName);
+    await groupsPage.displayNameInput.fill('Groups Creator');
+    // Enter in a field saves the form (Save is the default button).
+    await groupsPage.displayNameInput.press('Enter');
+
+    await expect(groupsPage.addGroupDialog).toBeHidden();
+    await expect(groupsPage.snackbarWith('Group added')).toBeVisible();
+    await groupsPage.verifyGroupInList(groupName);
   });
 
   test('should create a group with auto-add members enabled', async ({

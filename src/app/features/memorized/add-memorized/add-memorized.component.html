@@ -320,6 +320,7 @@
         mat-raised-button
         class="btn-secondary"
         type="submit"
+        form="expense-form"
         defaultButton
         [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !memorizedFullyAllocated()"
         (click)="onSubmit()"

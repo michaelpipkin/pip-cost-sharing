@@ -19,10 +19,12 @@ import { LoadingService } from '@components/loading/loading.service';
 import { AddMemberForm, Member } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-add-member',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatDialogModule,
     MatFormFieldModule,

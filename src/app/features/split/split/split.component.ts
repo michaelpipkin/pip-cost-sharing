@@ -59,10 +59,12 @@ import {
   SplitRentalRow,
 } from '../split-rental-grid/split-rental-grid.component';
 import { buildSplitTourSteps } from './split.tour';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-split',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatTableModule,
     MatButtonModule,

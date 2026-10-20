@@ -39,12 +39,14 @@ import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 
 @Component({
   selector: 'app-edit-member',
   templateUrl: './edit-member.component.html',
   styleUrl: './edit-member.component.scss',
   imports: [
+    DefaultButtonDirective,
     FormField,
     MatButtonModule,
     MatDialogModule,

@@ -3,7 +3,7 @@
   @if (userAdminGroups().length === 0) {
     <p>You are not an admin of any groups.</p>
   } @else {
-    <form (submit)="$event.preventDefault()">
+    <form id="manage-groups-form" (submit)="$event.preventDefault()">
       <div class="content pt-3">
         <mat-form-field id="group-select" data-tour-anchor="manage-select">
           <mat-label>Select Group</mat-label>
@@ -153,6 +153,7 @@
         mat-raised-button
         class="btn-secondary"
         type="submit"
+        form="manage-groups-form"
         defaultButton
         [disabled]="!groupRefValid() || !editGroupForm().valid() || !hasChanges()"
         (click)="onSubmit()"

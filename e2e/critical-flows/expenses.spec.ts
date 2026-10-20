@@ -189,6 +189,45 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
       });
     });
 
+    test('should save on Enter in the amount field, after allocating the splits', async ({
+      page,
+    }) => {
+      const expensesPage = await startExpense(page);
+      const description = uniqueDescription('Enter saves');
+
+      await expensesPage.addAllMembers();
+      await expensesPage.setDescription(description);
+      await expensesPage.selectCategory('Food');
+      // Type the total and press Enter without leaving the field. The splits
+      // are only allocated when the field loses focus (Save stays disabled
+      // until then), so this proves Enter runs that first, then saves.
+      await expensesPage.totalAmountInput.fill('75');
+      await expensesPage.totalAmountInput.press('Enter');
+
+      await expect(page).toHaveURL(/\/expenses$/);
+      await expect(expensesPage.snackbarWith('Expense added')).toBeVisible();
+      await expensesPage.waitForList();
+      await expensesPage.expectSavedExpense(description, {
+        payer: ARI,
+        category: 'Food',
+        total: 75,
+        splits: zipSplits(MAIN_MEMBERS, byAmount(75, [0, 0, 0])),
+      });
+    });
+
+    test('should move to the next field on Enter while the expense is incomplete', async ({
+      page,
+    }) => {
+      const expensesPage = await startExpense(page);
+
+      await expensesPage.descriptionInput.fill(uniqueDescription('Enter moves'));
+      await expensesPage.descriptionInput.press('Enter');
+
+      // Nothing saved; like Tab, the cursor moved on to the next field.
+      await expect(expensesPage.categorySelect).toBeFocused();
+      await expect(page).toHaveURL(/\/expenses\/add$/);
+    });
+
     // "should memorize expense for reuse" was removed: the add-expense form
     // no longer memorizes; that moved to /memorized/add (Plan 3's @memorized).
 
