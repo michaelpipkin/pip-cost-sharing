@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
  * Helper function to wait for page load
  */
 async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForSelector('app-root', { timeout: 10000 });
+  await page.waitForSelector('app-root', );
 }
 
 test.describe('Navigation - Public Routes', { tag: '@shell' }, () => {

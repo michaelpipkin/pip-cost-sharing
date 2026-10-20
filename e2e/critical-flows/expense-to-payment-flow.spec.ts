@@ -27,9 +27,6 @@ const { flowUser, cancelUser, methodUser, payeeUser, mutualUser } =
   PAYMENT_FLOW.users;
 const { pay, cancel, method, mutual } = PAYMENT_FLOW.groups;
 
-/** Firestore batch behind Submit, on a possibly cold emulator. */
-const PAYMENT_TIMEOUT_MS = 15_000;
-
 /**
  * Signs in (landing on the user's only group) and opens Summary from the nav
  * bar: in-app, because a full load of a deep link right after sign-in can be
@@ -52,7 +49,7 @@ async function recordPayment(summaryPage: SummaryPage): Promise<void> {
   await summaryPage.submitPayment();
   await expect(
     summaryPage.snackbarWith('Expenses have been marked paid')
-  ).toBeVisible({ timeout: PAYMENT_TIMEOUT_MS });
+  ).toBeVisible();
   // Every unpaid split in the group was between the two paying members.
   await summaryPage.verifyEmptyState();
   await expect(summaryPage.summaryRows).toHaveCount(0);

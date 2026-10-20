@@ -62,7 +62,7 @@ e2e/
   global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, warms routes
   seed/             # shared deterministic data set (types, validate, write, datasets/)
   fixtures/         # seededPage (clipboard permissions), browserWarmUp (per worker)
-  utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts, helpers
+  utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts
   pages/            # page objects
   infra/            # seed health spec (@infra, runs with every area)
   auth/ smoke/ groups/ critical-flows/   # specs

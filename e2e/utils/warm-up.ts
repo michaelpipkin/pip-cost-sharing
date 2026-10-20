@@ -22,9 +22,9 @@ const WARM_UP_ROUTES = [
   ROUTE_PATHS.HELP,
 ];
 
-// Carol is read-only here: signing in and visiting pages never writes (she
-// belongs to exactly one group, so it is auto-selected without saving a
-// default group), and no spec signs in as her.
+// Carol is effectively read-only here: signing in rewrites her user doc's
+// defaultGroupRef, but to the value she is seeded with (a content no-op; see
+// the shared.ts header), and no spec signs in as her.
 const WARM_UP_USER = SHARED.users.carol;
 
 const FIRST_ROUTE_TIMEOUT_MS = 60_000;

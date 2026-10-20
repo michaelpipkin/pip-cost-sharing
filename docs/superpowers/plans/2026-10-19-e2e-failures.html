@@ -29,6 +29,7 @@
 
 <div class="box">
   <p><strong>Status: resolved by Plan 2</strong> (<code>docs/superpowers/plans/2026-10-19-e2e-repair.html</code>, branch <code>e2e-repair</code>, 2026-10-20). Every spec below was migrated onto seeded data, <code>describe.serial</code> and fixed sleeps are gone, and <code>pnpm e2e</code> passed three consecutive full runs at 2 workers and one at 4 workers (94 tests each: 93 passed, 1 expected failure pinning an app bug, 0 unexpected, 0 flaky). Commits: <code>7c192ffc</code> seed hardening, <code>7265a8d5</code> tooling, <code>63b82d6c</code> + <code>d04bc9f6</code> auth/smoke and dev-server warm-up, <code>6806c630</code> + <code>23deecee</code> + <code>8fb2d822</code> groups admin, <code>0cd1989e</code> + <code>8cb7781a</code> expenses and the redirect-race pin, <code>6df3ea27</code> summary/history, <code>dd1d64a6</code> payment flow and legacy helper removal, <code>000d7ae9</code> in-app Groups/Members navigation and the 15 s expect timeout, and the close-out commit "Close out e2e repair: docs and verification".</p>
+  <p><strong>Two owner decisions are pending.</strong> (a) Accept the 2-worker default as the definition of done: the Plan 2 spec (section 7) asked for 4 workers, but 4 concurrent first page loads time out on the ng dev server on this machine; three of the four verification runs were at 2 workers and one at 4. (b) Explicitly defer or fix the pinned history-detail <code>CurrencyPipe</code> bug (see the App bugs table below): the spec (section 6b) counts its expected failure as green only once the owner defers it.</p>
   <p>The rest of this file is the historical baseline, kept as it was written. Watch-list item <code>groups-admin.spec.ts:157</code> turned out to be a test-side race (filling before MatDialog moved focus to its first field), not an app bug. The baseline found no app bugs; Plan 2 found the ones listed in the next section.</p>
 </div>
 
@@ -74,6 +75,9 @@
   </tr>
 </table>
 </div>
+
+<h2>Machine-stall probe recipe</h2>
+<p>Used to measure the 10-12.5 s stalls that justify the config-level 15 s <code>expect</code> timeout. Re-run it if waits start failing at about 15 s instead of nudging timeouts. A throwaway spec (not committed) that, per iteration: loads <code>/auth/login</code>, signs in as a seeded user with <code>signInAs</code>, then does a full <code>page.goto</code> of a deep link (e.g. <code>/analysis/summary</code>). Record, with <code>Date.now()</code> deltas, the duration of each step (DOMContentLoaded, sign-in landing, route render, the data load behind the loading overlay) and the final <code>page.url()</code> (a landing on <code>/expenses</code> is the deep-link redirect race). Run it with <code>pnpm e2e &lt;probe file&gt; --repeat-each 80 --workers 2</code> and tally steps over about 5 s and the landing URLs. The last measurement: 42 of 80 iterations had one step stalled by a near-constant extra 10 s (worst 12.5 s on an <code>expect</code>), the rest settled in about 1.5 s, and 7 of 237 deep-link loads redirected to <code>/expenses</code>.</p>
 
 <h2>Baseline (historical)</h2>
 <p class="muted">Input to Plan 2 (repair of the legacy e2e specs). Nothing in this section was fixed when it was written; every row is a provisional triage, not a diagnosis.</p>

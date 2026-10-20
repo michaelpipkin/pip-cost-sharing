@@ -1,9 +1,6 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
-/** Firestore writes behind Save can be slow on a cold emulator. */
-const SAVE_TIMEOUT_MS = 15_000;
-
 export type SplitMethod = 'amount' | 'percentage' | 'shares';
 
 /** One split as the Expenses page's detail table shows it. */
@@ -167,7 +164,7 @@ export class ExpensesPage extends BasePage {
    * Loads Expenses with a full page load and waits for the current group's
    * list. A full load is only safe for /expenses itself, so other expense
    * pages are reached in-app: once the user's groups load,
-   * GroupService.getUserGroups redirects to /expenses whenever router.url is
+   * GroupService.handleGroupsSnapshot redirects to /expenses whenever router.url is
    * '/' - and router.url stays '/' until the initial navigation commits, so
    * a deep link whose lazy route is still loading (a cold page load) gets
    * replaced by /expenses.
@@ -391,9 +388,7 @@ export class ExpensesPage extends BasePage {
   async saveExpense(): Promise<void> {
     await expect(this.saveButton).toBeEnabled();
     await this.saveButton.click();
-    await expect(this.page).toHaveURL(/\/expenses$/, {
-      timeout: SAVE_TIMEOUT_MS,
-    });
+    await expect(this.page).toHaveURL(/\/expenses$/);
     await this.waitForList();
   }
 
@@ -401,9 +396,7 @@ export class ExpensesPage extends BasePage {
   async saveAndAddAnother(): Promise<void> {
     await expect(this.saveAndAddAnotherButton).toBeEnabled();
     await this.saveAndAddAnotherButton.click();
-    await expect(this.snackbarWith('Expense added')).toBeVisible({
-      timeout: SAVE_TIMEOUT_MS,
-    });
+    await expect(this.snackbarWith('Expense added')).toBeVisible();
     await expect(this.loadingOverlay).toBeHidden();
     await expect(this.descriptionInput).toHaveValue('');
   }

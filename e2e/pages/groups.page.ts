@@ -1,9 +1,6 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 
-/** Firestore writes behind Save can be slow on a cold emulator. */
-const SAVE_TIMEOUT_MS = 15_000;
-
 export class GroupsPage extends BasePage {
   readonly navGroupsLink: Locator;
 
@@ -206,7 +203,7 @@ export class GroupsPage extends BasePage {
   async submitAddGroupForm(): Promise<void> {
     await expect(this.addGroupSaveButton).toBeEnabled();
     await this.addGroupSaveButton.click();
-    await expect(this.addGroupDialog).toBeHidden({ timeout: SAVE_TIMEOUT_MS });
+    await expect(this.addGroupDialog).toBeHidden();
     await expect(this.loadingOverlay).toBeHidden();
   }
 
@@ -260,9 +257,7 @@ export class GroupsPage extends BasePage {
   async saveManageGroups(): Promise<void> {
     await expect(this.manageGroupsSaveButton).toBeEnabled();
     await this.manageGroupsSaveButton.click();
-    await expect(this.manageGroupsDialog).toBeHidden({
-      timeout: SAVE_TIMEOUT_MS,
-    });
+    await expect(this.manageGroupsDialog).toBeHidden();
     await expect(this.loadingOverlay).toBeHidden();
   }
 

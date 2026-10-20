@@ -4,8 +4,6 @@ import { BasePage } from './base.page';
 // The post-login navigation lazy-loads the landing route's chunks and waits
 // on Firestore listeners, so it gets more than the default expect timeout.
 const LANDING_TIMEOUT_MS = 30_000;
-// A leftover snackbar auto-dismisses after 4 s (SNACKBAR_DURATION).
-const SNACKBAR_CLEAR_TIMEOUT_MS = 10_000;
 
 export class AuthPage extends BasePage {
   readonly emailInput: Locator;
@@ -61,9 +59,7 @@ export class AuthPage extends BasePage {
     await this.page.waitForLoadState('domcontentloaded');
 
     // Wait for register form email input (has different testid than login page)
-    await this.page
-      .getByTestId('register-email-input')
-      .waitFor({ state: 'visible', timeout: 10000 });
+    await expect(this.page.getByTestId('register-email-input')).toBeVisible();
   }
 
   /**
@@ -90,10 +86,11 @@ export class AuthPage extends BasePage {
     await expect(this.emailInput).toHaveValue(email);
     await expect(this.passwordInput).toHaveValue(password);
     await expect(this.loginButton).toBeEnabled();
+    // A leftover snackbar auto-dismisses after 4 s (SNACKBAR_DURATION).
     await expect(
       snackbar,
       `${context}: a snackbar from an earlier action never went away`
-    ).toHaveCount(0, { timeout: SNACKBAR_CLEAR_TIMEOUT_MS });
+    ).toHaveCount(0);
     await this.loginButton.click();
 
     const authenticated = this.page
@@ -160,7 +157,7 @@ export class AuthPage extends BasePage {
     );
 
     try {
-      await logoutButton.waitFor({ state: 'visible', timeout: 5000 });
+      await logoutButton.waitFor({ state: 'visible' });
 
       // Use force click to bypass any overlay issues
       await logoutButton.click({ force: true });
