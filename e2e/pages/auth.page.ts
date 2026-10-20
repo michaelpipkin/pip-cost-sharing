@@ -1,6 +1,5 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { createTestUser } from '../utils/firebase';
 
 // The post-login navigation lazy-loads the landing route's chunks and waits
 // on Firestore listeners, so it gets more than the default expect timeout.
@@ -149,88 +148,6 @@ export class AuthPage extends BasePage {
     await this.signUpButton.click();
     // Don't wait for networkidle after signup - see gotoSignUp() above.
     await this.page.waitForLoadState('domcontentloaded');
-  }
-
-  /**
-   * Login or create a test user with specific credentials.
-   * This method tries to login first, and only creates the user if login fails.
-   * Useful for test specs that want to reuse the same user across multiple tests.
-   *
-   * @param email - Email address for the user
-   * @param password - Password for the user
-   */
-  async loginOrCreateTestUser(
-    email: string,
-    password: string,
-    options?: { assumeNew?: boolean }
-  ) {
-    // If we know the user is new (e.g., timestamp-based email), skip the login attempt
-    if (options?.assumeNew) {
-      try {
-        // Create the user in Firebase Auth emulator
-        await createTestUser(this.page, email, password);
-
-        // Navigate to login page and login
-        await this.gotoLogin();
-        await this.waitForLoadingComplete();
-        await this.login(email, password);
-        await this.waitForLoadingComplete();
-
-        // Verify login succeeded
-        const loggedIn = await this.isLoggedIn();
-        if (!loggedIn) {
-          throw new Error(
-            `Created user ${email} but login failed - check Firebase Auth emulator`
-          );
-        }
-        return;
-      } catch (createError) {
-        throw new Error(
-          `Failed to create and login new user ${email}: ${createError.message}`
-        );
-      }
-    }
-
-    // Navigate to login page
-    await this.gotoLogin();
-    await this.waitForLoadingComplete();
-
-    // Try to login first (user may already exist from previous test). A
-    // rejection means the user doesn't exist yet; isLoggedIn() decides below.
-    await this.login(email, password).catch(() => undefined);
-    await this.waitForLoadingComplete();
-
-    // Check if login was successful
-    const loggedIn = await this.isLoggedIn();
-
-    if (loggedIn) {
-      // Login succeeded - user already exists
-      return;
-    }
-
-    // Login failed, user doesn't exist yet - create and try again
-    try {
-      // Create the user in Firebase Auth emulator
-      await createTestUser(this.page, email, password);
-
-      // Navigate back to login page and try again
-      await this.gotoLogin();
-      await this.waitForLoadingComplete();
-      await this.login(email, password);
-      await this.waitForLoadingComplete();
-
-      // Verify login succeeded this time
-      const finalLoginStatus = await this.isLoggedIn();
-      if (!finalLoginStatus) {
-        throw new Error(
-          `Created user ${email} but login still failed - check Firebase Auth emulator`
-        );
-      }
-    } catch (createError) {
-      throw new Error(
-        `Failed to create and login user ${email}: ${createError.message}`
-      );
-    }
   }
 
   /**

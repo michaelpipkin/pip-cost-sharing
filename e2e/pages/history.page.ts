@@ -148,23 +148,6 @@ export class HistoryPage extends BasePage {
     );
   }
 
-  /** Row `rowIndex`'s cells, as text. */
-  async getHistoryRecord(rowIndex: number): Promise<{
-    paidBy: string;
-    paidTo: string;
-    amount: string;
-    date: string;
-  }> {
-    const text = async (cells: Locator) =>
-      ((await cells.nth(rowIndex).textContent()) ?? '').trim();
-    return {
-      date: await text(this.dateCells),
-      paidTo: await text(this.paidToCells),
-      paidBy: await text(this.paidByCells),
-      amount: await text(this.amountCells),
-    };
-  }
-
   /** The group has no payments. */
   async verifyEmptyState(): Promise<void> {
     await expect(this.noHistoryPlaceholder).toBeVisible();
@@ -245,12 +228,6 @@ export class HistoryPage extends BasePage {
     ).toBeVisible();
   }
 
-  /** Opens row `rowIndex`'s detail page and copies its payment summary. */
-  async copyToClipboard(rowIndex: number): Promise<void> {
-    await this.openDetail(rowIndex);
-    await this.copyDetailToClipboard();
-  }
-
   /**
    * On the open detail page (as a group admin): Unpay Payment, which asks
    * for confirmation. Confirming (confirmButton) marks the payment's splits
@@ -260,20 +237,5 @@ export class HistoryPage extends BasePage {
   async openUnpayDialog(): Promise<void> {
     await this.unpayAllButton.click();
     await expect(this.confirmDialogText).toBeVisible();
-  }
-
-  // ---- Legacy -------------------------------------------------------------
-  // Kept only so e2e/critical-flows/expense-to-payment-flow.spec.ts compiles
-  // until it is repaired (Plan 2 Task 7). History rows no longer expand: they
-  // open the payment detail page (openDetail / splitRows).
-
-  /** @deprecated Use openDetail; see the Legacy note above. */
-  async expandDetail(rowIndex: number): Promise<void> {
-    await this.openDetail(rowIndex);
-  }
-
-  /** @deprecated Use splitRows; see the Legacy note above. */
-  get detailRows(): Locator {
-    return this.splitRows;
   }
 }

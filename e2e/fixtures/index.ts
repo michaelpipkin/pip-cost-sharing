@@ -6,8 +6,6 @@ type TestFixtures = {
   // Page with clipboard permissions. The test emulators are already running
   // and seeded by global setup (started via `pnpm e2e`), so no probes here.
   seededPage: Page;
-  // Alias of seededPage; Plan 2 removes it once specs are migrated.
-  preserveDataFirebasePage: Page;
 };
 
 type WorkerFixtures = {
@@ -46,10 +44,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       .context()
       .grantPermissions(['clipboard-read', 'clipboard-write']);
     await use(page);
-  },
-
-  preserveDataFirebasePage: async ({ seededPage }, use) => {
-    await use(seededPage);
   },
 });
 

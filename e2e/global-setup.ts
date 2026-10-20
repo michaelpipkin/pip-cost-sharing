@@ -13,8 +13,8 @@ const CLEAR_TIMEOUT_MS = 5000;
 const START_HINT =
   'Start e2e via `pnpm e2e` (or `pnpm test:area <area>`).';
 
-// E2E_TARGET switches the shared e2e modules (constants, createTestUser, ...)
-// to the dev emulators. It is only meant for the feature-tour capture config,
+// E2E_TARGET switches the shared e2e modules (TEST_CONFIG in constants, and
+// everything built on it) to the dev emulators. It is only meant for the feature-tour capture config,
 // so refuse to run the main suite if it is set in the environment.
 function assertNoDevTarget() {
   if (process.env.E2E_TARGET !== undefined) {

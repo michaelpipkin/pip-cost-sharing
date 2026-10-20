@@ -9,6 +9,9 @@ export interface ExpectedBalance {
   amount: number;
 }
 
+/** A payment service the payment dialog can list (payment-dialog.component). */
+export type PaymentService = 'venmo' | 'paypal' | 'cashapp' | 'zelle';
+
 /** One category line of an expanded Summary row. */
 export interface ExpectedCategoryLine {
   category: string;
@@ -47,8 +50,6 @@ export class SummaryPage extends BasePage {
   // ends, so scope to a row with rowDetail() rather than using `detail`.
   /** Every detail in the DOM (for counting). */
   readonly detail: Locator;
-  /** Category lines of every detail in the DOM. */
-  readonly detailRows: Locator;
 
   // Payment dialog
   readonly paymentDialog: Locator;
@@ -97,7 +98,6 @@ export class SummaryPage extends BasePage {
     this.payButtons = this.summaryRows.getByTestId('pay-expenses-button');
 
     this.detail = page.getByTestId('summary-detail');
-    this.detailRows = this.detail.getByTestId('summary-detail-row');
 
     this.paymentDialog = page.locator('mat-dialog-container');
     this.paymentDialogTitle = page.getByTestId('payment-dialog-title');
@@ -114,9 +114,6 @@ export class SummaryPage extends BasePage {
     this.snackbar = page.getByTestId('snackbar');
     this.loadingOverlay = page.getByTestId('loading-spinner-container');
     this.selectPanel = page.getByRole('listbox');
-
-    // Legacy, see below.
-    this.paymentMethodSelect = page.getByTestId('payment-method-select');
   }
 
   // ---- Navigation ---------------------------------------------------------
@@ -208,17 +205,6 @@ export class SummaryPage extends BasePage {
     );
   }
 
-  /** The row where `owedBy` owes `owedTo`. */
-  balanceRow(owedBy: string, owedTo: string): Locator {
-    const cell = (testId: string, name: string) =>
-      this.page
-        .getByTestId(testId)
-        .and(this.page.getByRole('cell', { name, exact: true }));
-    return this.summaryRows
-      .filter({ has: cell('summary-owed-by', owedBy) })
-      .filter({ has: cell('summary-owed-to', owedTo) });
-  }
-
   /**
    * Row `rowIndex`'s expanded detail (each summary row is followed by its
    * own detail row, empty unless expanded).
@@ -255,11 +241,6 @@ export class SummaryPage extends BasePage {
     );
   }
 
-  /** Row `rowIndex`'s amount cell text. */
-  async getNetAmount(rowIndex: number): Promise<string> {
-    return (await this.amountCells.nth(rowIndex).textContent()) ?? '';
-  }
-
   /** Expands row `rowIndex` and copies its summary (waits for the snackbar). */
   async copyToClipboard(rowIndex: number): Promise<void> {
     await this.expandDetail(rowIndex);
@@ -285,6 +266,19 @@ export class SummaryPage extends BasePage {
     await expect(this.loadingOverlay).toBeHidden();
   }
 
+  /**
+   * In the open payment dialog: copies the payee's ID for `service` with its
+   * copy icon (the service's link would also open the service's site in a
+   * new tab) and waits for the confirmation snackbar. Reading the clipboard
+   * needs the `seededPage` fixture.
+   */
+  async copyPaymentId(service: PaymentService): Promise<void> {
+    await this.paymentDialog.getByTestId(`copy-${service}-id-button`).click();
+    await expect(
+      this.snackbarWith('Payment ID copied to clipboard')
+    ).toBeVisible();
+  }
+
   async cancelPayment(): Promise<void> {
     await this.paymentCancelButton.click();
     await expect(this.paymentDialog).toBeHidden();
@@ -295,25 +289,5 @@ export class SummaryPage extends BasePage {
   /** The group has no unpaid splits. */
   async verifyEmptyState(): Promise<void> {
     await expect(this.noUnpaidSplitsPlaceholder).toBeVisible();
-  }
-
-  // ---- Legacy -------------------------------------------------------------
-  // Kept only so e2e/critical-flows/expense-to-payment-flow.spec.ts compiles
-  // until it is repaired (Plan 2 Task 7). The payment dialog has no payment
-  // method select or amount input: it only lists the payee's payment IDs.
-
-  /** @deprecated No such element; see the Legacy note above. */
-  readonly paymentMethodSelect: Locator;
-
-  /** @deprecated The payment dialog has no form; see the Legacy note above. */
-  fillPaymentForm(_data: {
-    paymentMethod?: string;
-    amount?: number;
-  }): Promise<void> {
-    return Promise.reject(
-      new Error(
-        'SummaryPage.fillPaymentForm: the payment dialog has no payment method or amount fields'
-      )
-    );
   }
 }

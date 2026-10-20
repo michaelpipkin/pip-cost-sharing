@@ -1,333 +1,268 @@
-import { TEST_CONFIG } from '../constants';
+import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { AuthPage } from '../pages/auth.page';
-import { ExpensesPage } from '../pages/expenses.page';
-import { GroupsPage } from '../pages/groups.page';
-import { HistoryPage } from '../pages/history.page';
-import { MembersPage } from '../pages/members.page';
+import {
+  ExpensesPage,
+  formatMoney,
+  formatShortDate,
+} from '../pages/expenses.page';
+import { HistoryPage, type ExpectedPayment } from '../pages/history.page';
 import { SummaryPage } from '../pages/summary.page';
+import { seedDateDaysAgo as daysAgo } from '../seed/dates';
+import { PAYMENT_FLOW } from '../seed/datasets/payment-flow';
+import type { SeedGroup, SeedUser } from '../seed/types';
+import { readClipboard } from '../utils/clipboard';
+import { signInAs } from '../utils/session';
 
-test.describe('Critical Flow: Expense → Payment → History', {
-  tag: ['@expenses', '@summary', '@history'],
-}, () => {
-  let authPage: AuthPage;
-  let groupsPage: GroupsPage;
-  let membersPage: MembersPage;
-  let expensesPage: ExpensesPage;
-  let summaryPage: SummaryPage;
-  let historyPage: HistoryPage;
+// Data: e2e/seed/datasets/payment-flow.ts. Each test signs in as its own
+// group's only user (Pay, Cancel, Method, Mutual), so no two tests share a
+// group or a user, and no test switches groups. Every payment recorded here
+// is between this dataset's members, so payment mail can only reach its
+// users (mail is suppressed under the demo project; nothing asserts on it).
+//
+// Coverage that moved: summary date filtering and category detail are
+// summary.spec.ts's ("should filter summary by date range", "should show
+// category breakdown in detail"), against SHARED's exact balances.
 
-  // Unique user per test run (enables parallel execution)
-  // Generate email in beforeAll to ensure uniqueness across repeat-each runs
-  let testUser: { email: string; password: string; displayName: string };
+const { flowUser, cancelUser, methodUser, payeeUser, mutualUser } =
+  PAYMENT_FLOW.users;
+const { pay, cancel, method, mutual } = PAYMENT_FLOW.groups;
 
-  // Create the user once before all tests
-  test.beforeAll(async ({ browser }) => {
-    // Generate unique email for this test run
-    testUser = {
-      email: `e2e-flow-tester-${Date.now()}@test.com`,
-      password: 'password123',
-      displayName: 'E2E Flow Tester',
-    };
+/** Firestore batch behind Submit, on a possibly cold emulator. */
+const PAYMENT_TIMEOUT_MS = 15_000;
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    const { createTestUser } = await import('../utils/firebase');
-    await createTestUser(page, testUser.email, testUser.password);
-    await context.close();
-  });
+/**
+ * Signs in (landing on the user's only group) and opens Summary from the nav
+ * bar: in-app, because a full load of a deep link right after sign-in can be
+ * redirected to /expenses.
+ */
+async function openSummary(
+  page: Page,
+  user: SeedUser,
+  group: SeedGroup
+): Promise<SummaryPage> {
+  await signInAs(page, user);
+  const summaryPage = new SummaryPage(page);
+  await summaryPage.goto();
+  await expect(summaryPage.currentGroupName).toHaveText(group.name);
+  return summaryPage;
+}
 
-  test.beforeEach(async ({ preserveDataFirebasePage }) => {
-    authPage = new AuthPage(preserveDataFirebasePage);
-    groupsPage = new GroupsPage(preserveDataFirebasePage);
-    membersPage = new MembersPage(preserveDataFirebasePage);
-    expensesPage = new ExpensesPage(preserveDataFirebasePage);
-    summaryPage = new SummaryPage(preserveDataFirebasePage);
-    historyPage = new HistoryPage(preserveDataFirebasePage);
+/** Submits the open payment dialog and waits for the app to confirm it. */
+async function recordPayment(summaryPage: SummaryPage): Promise<void> {
+  await summaryPage.submitPayment();
+  await expect(
+    summaryPage.snackbarWith('Expenses have been marked paid')
+  ).toBeVisible({ timeout: PAYMENT_TIMEOUT_MS });
+  // Every unpaid split in the group was between the two paying members.
+  await summaryPage.verifyEmptyState();
+  await expect(summaryPage.summaryRows).toHaveCount(0);
+}
 
-    // Login unique test user (already created in beforeAll)
-    await authPage.loginOrCreateTestUser(testUser.email, testUser.password);
+function uniqueDescription(label: string): string {
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return `Flow – ${label} ${suffix}`;
+}
 
-    // Verify logged in
-    const isLoggedIn = await authPage.isLoggedIn();
-    expect(isLoggedIn).toBe(true);
-  });
+test.describe(
+  'Critical Flow: Expense → Payment → History',
+  { tag: ['@expenses', '@summary', '@history'] },
+  () => {
+    test('should create expense, pay it, and verify in history', async ({
+      seededPage: page,
+    }) => {
+      // Expenses: add a Food expense; auto-add splits it between both
+      // members (listed by name), Pia paying.
+      await signInAs(page, flowUser);
+      const expensesPage = new ExpensesPage(page);
+      await expect(page).toHaveURL(/\/expenses$/);
+      await expensesPage.waitForList();
+      await expect(expensesPage.currentGroupName).toHaveText(pay.name);
 
-  // Serial workflow - comprehensive payment flow with history features
-  test.describe.serial('Payment Workflow and History', () => {
-    test('should create expense, pay it, and verify in history', async () => {
-      // Setup - Create group with auto-add members enabled
-      await groupsPage.goto();
-      const groupName = `Test Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName, true);
-      await groupsPage.selectGroup(groupName); // Make this the active group
-
-      // Add a second member to the group
-      await membersPage.goto();
-      await membersPage.addMember('Test User 1', `testuser1-${Date.now()}@example.com`);
-
-      // Create expense (Admin pays $100, to be split equally)
-      await expensesPage.gotoAddExpense();
+      await expensesPage.openAddExpense();
+      await expect(expensesPage.payerSelect).toHaveText('Pia');
+      await expect(expensesPage.splitRows).toHaveText(['Pia', 'Quinn']);
+      const description = uniqueDescription('Pay lunch');
       await expensesPage.fillExpenseForm({
-        description: 'Team Lunch',
-        amount: 100,
+        description,
+        category: 'Food',
+        amount: 60,
+      });
+      await expensesPage.expectAllocatedAmounts([30, 30]);
+      await expensesPage.saveExpense();
+      await expect(expensesPage.snackbarWith('Expense added')).toBeVisible();
+      await expensesPage.expectSavedExpense(description, {
+        payer: 'Pia',
+        category: 'Food',
+        total: 60,
+        date: new Date(),
+        splits: [
+          { member: 'Pia', amount: 30 },
+          { member: 'Quinn', amount: 30 },
+        ],
       });
 
-      // Verify both members have splits (auto-added with equal allocation)
-      const splitCount = await expensesPage.splitRows.count();
-      expect(splitCount).toBe(2);
-
-      // Save expense
-      await expensesPage.saveExpense();
-
-      // Verify success message
-      await expect(expensesPage.snackbar).toContainText('Expense added');
-
-      // Navigate to Summary and verify amounts
+      // Summary: Quinn owes Pia her lunch share plus the seeded fuel share.
+      const summaryPage = new SummaryPage(page);
       await summaryPage.goto();
-      await summaryPage.verifyPageLoaded();
+      await summaryPage.expectBalances([
+        { owedBy: 'Quinn', owedTo: 'Pia', amount: 50 },
+      ]);
+      await summaryPage.expandDetail(0);
+      await summaryPage.expectCategoryLines(0, [
+        { category: 'Food', amount: 30 },
+        { category: 'Fuel', amount: 20 },
+      ]);
 
-      // Verify summary shows the debt
-      const summaryCount = await summaryPage.summaryRows.count();
-      expect(summaryCount).toBeGreaterThan(0);
-
-      // Pay the expense
+      // Pay: the dialog names the payee (Pia has no saved payment IDs).
       await summaryPage.openPaymentDialog(0);
-      await expect(summaryPage.paymentDialogTitle).toBeVisible();
-
-      // Submit payment (amount should be pre-filled)
-      await summaryPage.submitPayment();
-
-      // Verify success message
-      await expect(summaryPage.snackbar).toContainText(
-        'Expenses have been marked paid'
+      await expect(summaryPage.noPaymentMethodsMessage).toContainText(
+        'Pia does not have any saved payment service IDs'
       );
+      await recordPayment(summaryPage);
 
-      // Verify payment appears in history
-      await historyPage.goto();
-      await historyPage.verifyPageLoaded();
-
-      // Verify at least one history record exists
-      const historyCount = await historyPage.historyRows.count();
-      expect(historyCount).toBeGreaterThan(0);
-
-      // Verify the payment record contains expected data
-      const historyRecord = await historyPage.getHistoryRecord(0);
-      expect(historyRecord.amount).toContain('50'); // Should show $50 payment
-
-      // Verify splits are marked as paid (removed from Summary)
-      await summaryPage.goto();
-
-      // The summary should now have fewer entries (or be empty)
-      const newSummaryCount = await summaryPage.summaryRows.count();
-      expect(newSummaryCount).toBeLessThanOrEqual(summaryCount);
-    });
-
-    test('should copy payment history to clipboard', async () => {
-      // Skip if clipboard not supported
-      if (!TEST_CONFIG.supportsClipboard) {
-        test.skip();
-        return;
-      }
-
-      // Copy the payment created in the previous test
-      await historyPage.goto();
-      await historyPage.copyToClipboard(0);
-
-      // Verify success message
-      await expect(historyPage.snackbar).toContainText('copied');
-    });
-
-    test('should handle multiple categories in payment history', async () => {
-      // Expand detail on the payment from the first test
-      await historyPage.goto();
-      await historyPage.verifyPageLoaded();
-      await historyPage.expandDetail(0);
-
-      // Detail should show category breakdown
-      await expect(historyPage.detailRows.first()).toBeVisible();
-    });
-  });
-
-  // Serial workflow - payment interactions
-  test.describe.serial('Payment Interactions', () => {
-    test('should handle payment cancellation', async () => {
-      // Setup - Create group with auto-add members
-      await groupsPage.goto();
-      const groupName = `Test Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName, true);
-      await groupsPage.selectGroup(groupName); // Make this the active group
-
-      // Add second member with unique email
-      await membersPage.goto();
-      await membersPage.addMember('Test User 2', `testuser2-${Date.now()}@example.com`);
-
-      // Create expense (auto-splits equally: Admin $37.50, Test User $37.50)
-      await expensesPage.gotoAddExpense();
-      await expensesPage.fillExpenseForm({
-        description: 'Cancelled Payment Test',
-        amount: 75,
-      });
-      await expensesPage.saveExpense();
-
-      // Go to Summary
-      await summaryPage.goto();
-      const initialCount = await summaryPage.summaryRows.count();
-
-      // Open payment dialog and cancel
-      await summaryPage.openPaymentDialog(0);
-      await summaryPage.cancelPayment();
-
-      // Verify summary unchanged
-      const afterCancelCount = await summaryPage.summaryRows.count();
-      expect(afterCancelCount).toBe(initialCount);
-    });
-
-    test('should handle payment with payment method selection', async () => {
-      // Create another expense (reuses group and members from previous test)
-      await expensesPage.gotoAddExpense();
-      await expensesPage.fillExpenseForm({
-        description: 'Payment Method Test',
-        amount: 100,
-      });
-      await expensesPage.saveExpense();
-
-      // Pay with specific payment method
-      await summaryPage.goto();
-      await summaryPage.openPaymentDialog(0);
-
-      // Select payment method (if available)
-      const paymentMethodVisible = await summaryPage.paymentMethodSelect
-        .isVisible()
-        .catch(() => false);
-
-      if (paymentMethodVisible) {
-        await summaryPage.fillPaymentForm({
-          paymentMethod: 'Cash',
-        });
-      }
-
-      await summaryPage.submitPayment();
-
-      // Verify success
-      await expect(summaryPage.snackbar).toContainText(
-        'Expenses have been marked paid'
-      );
-    });
-  });
-
-  // Serial workflow - summary features
-  test.describe.serial('Summary Features', () => {
-    test('should filter summary by date range', async () => {
-      // Setup - Create group with auto-add members
-      await groupsPage.goto();
-      const groupName = `Test Group ${Date.now()}`;
-      await groupsPage.createGroup(groupName, testUser.displayName, true);
-      await groupsPage.selectGroup(groupName); // Make this the active group
-
-      // Add second member with unique email
-      await membersPage.goto();
-      await membersPage.addMember('Test User 3', `testuser3-${Date.now()}@example.com`);
-
-      // Create expense (auto-splits equally: Admin $25, Test User $25)
-      await expensesPage.gotoAddExpense();
-      await expensesPage.fillExpenseForm({
-        description: 'Recent Expense',
+      // History: one payment for the net amount, today.
+      const payment: ExpectedPayment = {
+        date: new Date(),
+        paidBy: 'Quinn',
+        paidTo: 'Pia',
         amount: 50,
-      });
-      await expensesPage.saveExpense();
+      };
+      const historyPage = new HistoryPage(page);
+      await historyPage.goto();
+      await historyPage.expectPayments([payment]);
 
-      // Go to Summary
-      await summaryPage.goto();
-      const initialCount = await summaryPage.summaryRows.count();
-      expect(initialCount).toBeGreaterThan(0);
+      // Its detail lists both paid splits, one per category (by date).
+      await historyPage.openDetail(0);
+      await historyPage.expectDetail(payment);
+      await historyPage.expectPaidSplits([
+        { date: daysAgo(4), category: 'Fuel' },
+        { date: new Date(), category: 'Food' },
+      ]);
 
-      // Filter to future dates (should show nothing)
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 7);
-      await summaryPage.filterByDateRange(futureDate, undefined);
-
-      // Should show no results
-      await summaryPage.verifyEmptyState();
-
-      // Clear filters
-      await summaryPage.clearFilters();
-
-      // Should show results again
-      const afterClearCount = await summaryPage.summaryRows.count();
-      expect(afterClearCount).toBe(initialCount);
+      // ...and the copied summary breaks the payment down by category.
+      // history-detail.component generateSummaryText: amounts right-aligned
+      // to the longest "Category: amount" line (13 chars), under a rule one
+      // wider.
+      await historyPage.copyDetailToClipboard();
+      expect(await readClipboard(page)).toBe(
+        [
+          'Payment Summary',
+          `Quinn paid Pia ${formatMoney(50)} on ${formatShortDate(payment.date)}`,
+          '',
+          'Breakdown by Category:',
+          '='.repeat(14),
+          'Food:  $ 30.00',
+          'Fuel:  $ 20.00',
+        ].join('\n')
+      );
     });
 
-    test('should verify summary detail breakdown by category', async () => {
-      // View detail on the expense from previous test
-      await summaryPage.goto();
+    test('should handle payment cancellation', async ({ page }) => {
+      const summaryPage = await openSummary(page, cancelUser, cancel);
+      const balances = [{ owedBy: 'Cora', owedTo: 'Remy', amount: 12 }];
+      await summaryPage.expectBalances(balances);
+
+      // The dialog names the payee; Cancel records nothing.
+      await summaryPage.openPaymentDialog(0);
+      await expect(summaryPage.noPaymentMethodsMessage).toContainText(
+        'Remy does not have any saved payment service IDs'
+      );
+      await summaryPage.cancelPayment();
+      await expect(
+        summaryPage.snackbarWith('Expenses have been marked paid')
+      ).toHaveCount(0);
+      await summaryPage.expectBalances(balances);
+
+      const historyPage = new HistoryPage(page);
+      await historyPage.goto();
+      await historyPage.verifyEmptyState();
+      await expect(historyPage.historyRows).toHaveCount(0);
+    });
+
+    // The payment dialog has no method field and history stores none: it
+    // lists the payee's saved payment IDs, and "choosing" one means copying
+    // that ID to pay outside the app before recording the payment.
+    test('should handle payment with payment method selection', async ({
+      seededPage: page,
+    }) => {
+      const summaryPage = await openSummary(page, methodUser, method);
+      await summaryPage.expectBalances([
+        { owedBy: 'Mae', owedTo: 'Nico', amount: 40 },
+      ]);
+
+      await summaryPage.openPaymentDialog(0);
+      await expect(summaryPage.paymentInstructions).toContainText(
+        'You can pay Nico with any of the following methods'
+      );
+      // Only Venmo and Zelle are set, so only they are listed.
+      await expect(summaryPage.paymentMethods).toHaveCount(2);
+      await expect(summaryPage.paymentMethods.nth(0)).toContainText(
+        `Venmo : ${payeeUser.profile!.venmoId!}`
+      );
+      await expect(summaryPage.paymentMethods.nth(1)).toContainText(
+        `Zelle : ${payeeUser.profile!.zelleId!}`
+      );
+      await expect(summaryPage.noPaymentMethodsMessage).toHaveCount(0);
+
+      await summaryPage.copyPaymentId('zelle');
+      expect(await readClipboard(page)).toBe(payeeUser.profile!.zelleId!);
+
+      await recordPayment(summaryPage);
+
+      const payment: ExpectedPayment = {
+        date: new Date(),
+        paidBy: 'Mae',
+        paidTo: 'Nico',
+        amount: 40,
+      };
+      const historyPage = new HistoryPage(page);
+      await historyPage.goto();
+      await historyPage.expectPayments([payment]);
+      await historyPage.openDetail(0);
+      await historyPage.expectDetail(payment);
+      await historyPage.expectPaidSplits([
+        { date: daysAgo(5), category: 'Tickets' },
+      ]);
+    });
+
+    test('should calculate net amounts correctly with mutual debts', async ({
+      page,
+    }) => {
+      const summaryPage = await openSummary(page, mutualUser, mutual);
+
+      // Nell owes Max 50 (cabin) and Max owes Nell 30 (dinner): one netted
+      // line, Nell owes Max 20.
+      await summaryPage.expectBalances([
+        { owedBy: 'Nell', owedTo: 'Max', amount: 20 },
+      ]);
       await summaryPage.expandDetail(0);
+      await summaryPage.expectCategoryLines(0, [
+        { category: 'Dining', amount: -30 },
+        { category: 'Lodging', amount: 50 },
+      ]);
 
-      // Verify detail content is visible (detail-table-container appears)
-      const detailContent = summaryPage.detailRows
-        .first()
-        .locator('.detail-table-container');
-      await expect(detailContent).toBeVisible();
+      // Paying settles both directions with one payment of the net amount.
+      await summaryPage.openPaymentDialog(0);
+      await expect(summaryPage.noPaymentMethodsMessage).toContainText(
+        'Max does not have any saved payment service IDs'
+      );
+      await recordPayment(summaryPage);
 
-      // Collapse detail
-      await summaryPage.expandDetail(0);
-
-      // Detail content should be hidden (row still exists but content is gone)
-      await expect(detailContent).not.toBeVisible();
+      const payment: ExpectedPayment = {
+        date: new Date(),
+        paidBy: 'Nell',
+        paidTo: 'Max',
+        amount: 20,
+      };
+      const historyPage = new HistoryPage(page);
+      await historyPage.goto();
+      await historyPage.expectPayments([payment]);
+      await historyPage.openDetail(0);
+      await historyPage.expectDetail(payment);
+      await historyPage.expectPaidSplits([
+        { date: daysAgo(8), category: 'Lodging' },
+        { date: daysAgo(6), category: 'Dining' },
+      ]);
     });
-  });
-
-  // Independent test - complex setup with mutual debts
-  test('should calculate net amounts correctly with mutual debts', async ({
-    preserveDataFirebasePage,
-  }) => {
-    // Setup - Create group with auto-add enabled
-    await groupsPage.goto();
-    const groupName = `Test Group ${Date.now()}`;
-    await groupsPage.createGroup(groupName, testUser.displayName, true);
-    await groupsPage.selectGroup(groupName); // Make this the active group
-
-    // Add second member with unique email
-    await membersPage.goto();
-    await membersPage.addMember('Test User 4', `testuser4-${Date.now()}@example.com`);
-
-    // Create first expense: Admin pays $100, split 50/50 between members
-    await expensesPage.gotoAddExpense();
-    await expensesPage.fillExpenseForm({
-      description: 'Expense 1',
-      amount: 100,
-    });
-    // Auto-add creates splits for both members, update to specific amounts
-    await expensesPage.updateSplitAmount(0, 50); // E2E Flow Tester
-    await expensesPage.updateSplitAmount(1, 50); // Test User 4
-    await expensesPage.saveExpense();
-
-    // Create second expense: Test User 4 pays $30, Admin owes $30
-    // (Net result: Test User 4 owes Admin $20)
-    await expensesPage.gotoAddExpense();
-
-    // Change payer to Test User 4
-    await expensesPage.payerSelect.click();
-    await preserveDataFirebasePage
-      .locator('mat-option')
-      .filter({ hasText: 'Test User 4' })
-      .click();
-
-    await expensesPage.descriptionInput.fill('Expense 2');
-    await expensesPage.totalAmountInput.fill('30');
-    await expensesPage.totalAmountInput.blur();
-
-    // Auto-add creates splits for both members, update to specific amounts
-    await expensesPage.updateSplitAmount(0, 30); // Admin User owes $30
-    await expensesPage.updateSplitAmount(1, 0); // Test User 4 owes $0
-    await expensesPage.saveExpense();
-
-    // Check Summary for net amount
-    await summaryPage.goto();
-    await summaryPage.verifyPageLoaded();
-
-    // Should show net debt of $20 (50 - 30)
-    const netAmount = await summaryPage.getNetAmount(0);
-    expect(netAmount).toContain('20');
-  });
-});
+  }
+);

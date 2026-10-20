@@ -53,6 +53,7 @@ import {
   type Route,
   type TestInfo,
 } from '@playwright/test';
+import { TEST_CONFIG } from '../constants';
 import { expect, test } from '../fixtures';
 import { AuthPage } from '../pages/auth.page';
 import { GroupsPage } from '../pages/groups.page';
@@ -409,9 +410,54 @@ async function addMemorized(
 }
 
 /**
- * Signs in through the login form. Deliberately not
- * AuthPage.loginOrCreateTestUser(): its isLoggedIn() check looks for the
- * desktop-only toolbar buttons, which don't render at phone width.
+ * Creates an email-verified user on the emulators this config targets (dev,
+ * via TEST_CONFIG): signs up through the Auth emulator's REST API, then sets
+ * emailVerified with the verifyUserEmail function (only the Admin SDK can).
+ * Lives here because the capture is its only caller; the main suite signs in
+ * as seeded users instead (e2e/seed).
+ */
+async function createTestUser(page: Page, email: string, password: string) {
+  const { projectId, emulators } = TEST_CONFIG.firebase;
+  const signUpResponse = await page.request.post(
+    `${emulators.auth}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
+    { data: { email, password, returnSecureToken: true } }
+  );
+  if (!signUpResponse.ok()) {
+    throw new Error(
+      `Failed to create test user ${email}: ${signUpResponse.status()} ${await signUpResponse.text()}`
+    );
+  }
+  const { localId } = await signUpResponse.json();
+
+  const verifyResponse = await page.request.post(
+    `${emulators.functions}/${projectId}/us-central1/verifyUserEmail`,
+    { data: { data: { uid: localId } } }
+  );
+  if (!verifyResponse.ok()) {
+    console.warn(
+      `Warning: Failed to set emailVerified for ${email}: ${verifyResponse.status()} ${await verifyResponse.text()}`
+    );
+  }
+}
+
+/**
+ * Creates the user and signs in through the login form. Setup runs at
+ * desktop size (see the Group features beforeAll).
+ */
+async function createAndSignInTestUser(
+  page: Page,
+  email: string,
+  password: string
+) {
+  await createTestUser(page, email, password);
+  const authPage = new AuthPage(page);
+  await authPage.gotoLogin();
+  await authPage.login(email, password);
+}
+
+/**
+ * Signs in through the login form, then waits until the group is
+ * auto-selected and the overlay is gone.
  */
 async function signIn(page: Page, email: string, password: string) {
   const authPage = new AuthPage(page);
@@ -553,8 +599,8 @@ async function mockScanReceipt(page: Page): Promise<void> {
 test.describe('Feature tour - Split calculator', () => {
   let page: Page;
 
-  test.beforeEach(async ({ preserveDataFirebasePage }) => {
-    page = preserveDataFirebasePage;
+  test.beforeEach(async ({ seededPage }) => {
+    page = seededPage;
     await forceLightTheme(page);
     await gotoSplit(page);
   });
@@ -704,11 +750,7 @@ test.describe.serial('Feature tour - Group features', () => {
 
       // Creates the user via createTestUser (Auth emulator + verifyUserEmail)
       // and signs in.
-      await new AuthPage(setupPage).loginOrCreateTestUser(
-        user.email,
-        user.password,
-        { assumeNew: true }
-      );
+      await createAndSignInTestUser(setupPage, user.email, user.password);
 
       const groupsPage = new GroupsPage(setupPage);
       await groupsPage.goto();
@@ -735,8 +777,8 @@ test.describe.serial('Feature tour - Group features', () => {
     }
   });
 
-  test.beforeEach(async ({ preserveDataFirebasePage }) => {
-    page = preserveDataFirebasePage;
+  test.beforeEach(async ({ seededPage }) => {
+    page = seededPage;
     await forceLightTheme(page);
     await signIn(page, user.email, user.password);
   });

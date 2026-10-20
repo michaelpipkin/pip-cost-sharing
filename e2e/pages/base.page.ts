@@ -74,25 +74,14 @@ export abstract class BasePage {
   }
 
   /**
-   * Wait for loading spinner to appear
-   */
-  async waitForLoading(options?: { timeout?: number }) {
-    await this.page
-      .locator('[data-testid="loading-spinner-container"]')
-      .waitFor({ state: 'visible', ...options });
-  }
-
-  /**
-   * Wait for loading spinner to disappear (most common use case)
+   * Waits until the LoadingService overlay is gone. The overlay exists only
+   * while loading is on, so this returns at once when nothing is loading:
+   * callers that start a load must first wait for something the load is for
+   * (a dialog closing, a URL), not on the overlay appearing.
    */
   async waitForLoadingComplete() {
-    try {
-      await this.waitForLoading({ timeout: 1000 });
-    } catch {
-      // Ignore timeout error if spinner doesn't appear - we just want to ensure it's not visible before proceeding
-    }
     await this.page
-      .locator('[data-testid="loading-spinner-container"]')
+      .getByTestId('loading-spinner-container')
       .waitFor({ state: 'hidden' });
   }
 }
