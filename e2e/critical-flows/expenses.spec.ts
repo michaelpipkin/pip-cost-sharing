@@ -228,6 +228,23 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
       await expect(page).toHaveURL(/\/expenses\/add$/);
     });
 
+    // Android's keyboard otherwise shows a "next field" key (->|) that never
+    // sends Enter; enterkeyhint="go" makes it a Go key that does.
+    test('should ask on-screen keyboards for a Go key, including on new split rows', async ({
+      page,
+    }) => {
+      const expensesPage = await startExpense(page);
+
+      await expect(expensesPage.totalAmountInput).toHaveAttribute(
+        'enterkeyhint',
+        'go'
+      );
+      await expensesPage.addSplit();
+      const newSplitAmount = expensesPage.assignedAmountInputs.first();
+      await newSplitAmount.focus();
+      await expect(newSplitAmount).toHaveAttribute('enterkeyhint', 'go');
+    });
+
     // "should memorize expense for reuse" was removed: the add-expense form
     // no longer memorizes; that moved to /memorized/add (Plan 3's @memorized).
 
