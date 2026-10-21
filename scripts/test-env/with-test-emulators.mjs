@@ -14,6 +14,14 @@ const ALL_EMULATORS = ['auth', 'firestore', 'storage', 'functions'];
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const CONNECT_TIMEOUT_MS = 300;
 
+// How long a finished emulator session gets to release its ports on its own
+// before the leftover listeners are killed.
+export const PORT_RELEASE_TIMEOUT_MS = 15_000;
+// How long start-up waits for busy test ports (a previous session still
+// shutting down) before refusing to run.
+export const PORT_BUSY_GRACE_MS = 10_000;
+export const PORT_POLL_INTERVAL_MS = 250;
+
 // Port keys (in TEST_PORTS) each emulator occupies.
 const EMULATOR_PORT_KEYS = {
   auth: ['auth'],
@@ -150,6 +158,59 @@ export async function findBusyPorts(ports) {
   return ports.filter((_, i) => results[i]);
 }
 
+// Re-probes the ports every intervalMs until none is busy or timeoutMs has
+// passed. Returns the ports still busy at the end (empty means all free).
+// probe, now and sleep are injectable so tests need no real timers.
+export async function waitForPortsFree(
+  ports,
+  {
+    timeoutMs,
+    intervalMs = PORT_POLL_INTERVAL_MS,
+    probe = findBusyPorts,
+    now = Date.now,
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  }
+) {
+  const deadline = now() + timeoutMs;
+  let busy = await probe(ports);
+  while (busy.length > 0 && now() < deadline) {
+    await sleep(intervalMs);
+    busy = await probe(ports);
+  }
+  return busy;
+}
+
+// The start-up busy-port check. A previous session's emulators (notably the
+// Firestore Java process on Windows) can still be shutting down, so busy ports
+// get a grace window to free up before the run is refused. The test ports are
+// non-default and used only by this repo's test emulators.
+export async function checkPortsAtStartup(
+  ports,
+  {
+    probe = findBusyPorts,
+    now = Date.now,
+    sleep,
+    log = console,
+    graceMs = PORT_BUSY_GRACE_MS,
+  } = {}
+) {
+  const first = await probe(ports);
+  if (first.length === 0) {
+    return { busy: [], waitedMs: 0 };
+  }
+  log.log(
+    `Test emulator port(s) ${first.join(', ')} busy; waiting up to ${graceMs / 1000}s for a previous session to release them...`
+  );
+  const started = now();
+  const busy = await waitForPortsFree(ports, {
+    timeoutMs: graceMs,
+    probe,
+    now,
+    sleep,
+  });
+  return { busy, waitedMs: now() - started };
+}
+
 // On Windows, firebase-tools does not stop the Firestore emulator's Java
 // process on shutdown, which would leave the test ports busy for the next run.
 // The ports were verified free at start-up, so any listener left on them after
@@ -158,9 +219,11 @@ async function releaseLeakedPorts(ports) {
   if (process.platform !== 'win32') {
     return;
   }
-  // Emulators release their ports asynchronously after shutdown.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  const leaked = await findBusyPorts(ports);
+  // Emulators release their ports asynchronously after shutdown; give them
+  // time to do so before killing whatever still listens.
+  const leaked = await waitForPortsFree(ports, {
+    timeoutMs: PORT_RELEASE_TIMEOUT_MS,
+  });
   if (leaked.length === 0) {
     return;
   }
@@ -247,10 +310,10 @@ async function main() {
     TEST_PORTS.hub,
     TEST_PORTS.logging,
   ];
-  const busy = await findBusyPorts(ports);
+  const { busy, waitedMs } = await checkPortsAtStartup(ports);
   if (busy.length > 0) {
     console.error(
-      `Test emulator port(s) ${busy.join(', ')} in use — a previous run may have crashed. From the repo root, run: pnpm kill-test-ports`
+      `Test emulator port(s) ${busy.join(', ')} still in use after waiting ${Math.round(waitedMs / 1000)}s — a previous run may have crashed. From the repo root, run: pnpm kill-test-ports`
     );
     return 1;
   }

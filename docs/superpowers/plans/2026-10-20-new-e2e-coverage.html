@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New E2E Coverage Plan</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .3rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  .step { margin: .35rem 0; }
+  .step::before { content: "☐ "; color: var(--accent); }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>New E2E Coverage — Implementation Plan (Plan 3 of 4)</h1>
+
+<div class="box">
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: use <code>superpowers:subagent-driven-development</code> (recommended) or <code>superpowers:executing-plans</code>. Steps marked ☐ are checkboxes. Load the <code>pip-angular-testing</code> skill first; its "E2E (Playwright)" section is binding (rules, seed data, ownership, <code>signInAs</code>, running, gotchas). Plan 2's lessons are in it.</p>
+</div>
+
+<p><strong>Goal:</strong> Every feature that never had e2e coverage gets tests for its main journeys and the integration points unit tests can't reach (Firestore and Storage round-trips, dialogs, router hand-offs, function calls), on the shared seeded data, passing alone and in parallel.</p>
+<p><strong>Architecture:</strong> One spec per area under <code>e2e/&lt;area&gt;/</code>, each with its own seeded dataset (owned groups and users) and a page object extending <code>BasePage</code>. The seeder grows to cover memorized expenses, rental details, stored receipts, left and invited members, and the global <code>mail</code> and <code>app_errors</code> collections. Missing <code>data-testid</code>s are added to templates. The receipt OCR callable is mocked in the browser. Real Cloud Functions are used everywhere else: invites, linking, admin reports, error logging.</p>
+<p><strong>Tech stack:</strong> Playwright 1.64, Angular 22 (signal forms, zoneless), Firebase emulators via <code>pnpm e2e</code> / <code>pnpm test:area</code>, the e2e seeder (<code>e2e/seed/</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-10-19-test-suite-design.html</code> (§2 goal 2 and anti-goals, §3 email/OCR constraints, §4 data ownership, §5 areas, §6c, §7 done).</p>
+<p><strong>Inputs:</strong> <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code> (Plan 3 section, folded into Tasks 1 and 12).</p>
+<p><strong>Branch:</strong> <code>e2e-new-coverage</code>, created from <code>dev</code>.</p>
+
+<h2>Global Constraints</h2>
+<ul>
+  <li>All rules in the skill's E2E section apply: never clear data; <code>shared</code> is read-only; mutate only data your spec owns; unique runtime names; scope every assertion to your own data; tag every test; isolated emulators only; no <code>waitForTimeout</code>; no mail to shared users.</li>
+  <li><strong>No order dependence:</strong> no <code>describe.serial</code>, no state carried between tests, and a multi-step journey is one test. Every spec passes alone, and every single test passes alone (<code>--grep</code>).</li>
+  <li><strong>No conditional assertions:</strong> no <code>if (await x.isVisible())</code> around an <code>expect</code>.</li>
+  <li><strong>Bug triage (spec §2, §6b):</strong> if the app looks wrong, keep the assertion of the <em>correct</em> behaviour, mark the test <code>test.fail()</code> with a comment describing the bug, and list it in the task report with evidence. Never change an assertion to match broken behaviour, and never change app logic. Worked numbers in this plan come from reading the code. If the app disagrees, recompute by hand from the cited utility before deciding which side is wrong.</li>
+  <li><strong>App template changes</strong> are limited to adding <code>data-testid</code> (and <code>aria-label</code> where a control has no accessible name). Test ids are kebab-case and prefixed by feature when they could repeat across pages (e.g. <code>memorized-create-expense-button</code>). Commits containing only those changes carry <code>[no-deploy]</code>. Run the touched component's unit spec after adding ids.</li>
+  <li><strong>Runtime users:</strong> only the invite-registration journey (Task 9) creates an Auth user at runtime, because registering is what it tests. Its email is fixed and seeded as an invited member; emulators start empty every run.</li>
+  <li><strong>Global collections</strong> (<code>mail</code>, <code>app_errors</code>) are written by many specs. Assert only on documents your test seeded or caused, found by a unique recipient, subject or component name. Never click Clear Log, select-all or the admin repair buttons.</li>
+  <li><strong>Router-state hand-offs</strong> (rental → add, memorized → add, scan → add) survive only in-app navigation. Never <code>page.goto</code> the target page mid-journey.</li>
+  <li><strong>Blur-driven inputs:</strong> amount, nights, room and split inputs commit on blur. Page-object fill helpers fill, blur and assert the formatted value (the existing <code>fillCurrency</code> pattern).</li>
+  <li>New seeded emails end in <code>@pipsplit.test</code>. New group names are unique across all datasets and start with the area (e.g. <code>"Rental – Create"</code>).</li>
+  <li>Never touch the default emulator ports. No <code>pnpm install</code>/<code>add</code>/downloads. Commit messages end with <code>[no-deploy]</code> (all of Plan 3 is test or testid-only) and the Co-Authored-By trailer.</li>
+  <li><strong>After each task:</strong>
+    <ul>
+      <li><code>pnpm test:area &lt;areas touched&gt;</code> passes (unit + functions + e2e);</li>
+      <li><code>cd e2e &amp;&amp; pnpm exec tsc --noEmit -p .</code> is clean;</li>
+      <li><code>pnpm test:area --check</code> and <code>pnpm test:scripts</code> pass;</li>
+      <li>each new spec file passes when run alone twice (each run starts cold).</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Review Focus</h2>
+<ol>
+  <li><strong>Hand-offs lost to a reload:</strong> a journey that reaches Add Expense by URL would get a blank form and pass or fail for the wrong reason. Pinned by each hand-off test (Tasks 4, 5, 6) asserting a prefilled value on Add Expense before saving.</li>
+  <li><strong>Global collections:</strong> a mail or error-log assertion that counts rows, or picks the first row, flakes when another worker writes. Pinned by Task 11's rule (rows found by seeded subject or component) and Task 9's mail lookup by recipient. Task 12 adds a grep gate: no <code>Clear Log</code> / <code>select all</code> / repair-button clicks in <code>e2e/</code>.</li>
+  <li><strong>One-way user state:</strong> <code>receiptPolicy</code>, a changed password, an invite cooldown or a saved default group leaking into a second test as the same user. Pinned by the dataset table (one owned user or member per mutating test) and by the "run each spec alone twice" step.</li>
+  <li><strong>Blur-dependent buttons:</strong> Continue/Save/Generate stay disabled until a field blurs, so a test that fills without blurring fails intermittently or for the wrong reason. Pinned by page-object fill helpers that blur and assert the formatted value (Tasks 3, 4, 5).</li>
+  <li><strong>Data-dependent tour lengths:</strong> tours skip steps based on role and data, so a hard-coded step count breaks when data changes. Pinned by Task 10 reading "N of M" from <code>guided-tour-count</code> and walking until "M of M".</li>
+</ol>
+
+<h2>Dataset ownership</h2>
+<p>Each spec task adds one dataset file and registers it in <code>ALL_DATASETS</code>. Each table entry is the minimum; the task decides the rest. Handles are exported constants the spec imports. Members keyed by their user's key are linked (<code>userKey</code>).</p>
+<div class="table-wrap">
+<table>
+  <tr><th>Dataset</th><th>Owner (<code>spec:</code>)</th><th>Contents</th></tr>
+  <tr><td><code>split</code></td><td>none</td><td>No data: /split is public and stores nothing.</td></tr>
+  <tr><td><code>datasets/rental.ts</code></td><td><code>e2e/rental/rental.spec.ts</code></td><td>User <code>rental-user@</code>. Groups "Rental – Create" (3 members Ari/Blake/Cody incl. the user, categories General + Travel; the create tests add expenses with unique descriptions), "Rental – Rooms" (2 members, same categories), "Rental – Edit" (3 members, one seeded rental expense: 2 nights, all present, $300). Each group gets its own user (<code>rental-create@</code>, <code>rental-rooms@</code>, <code>rental-edit@</code>), so no test switches groups.</td></tr>
+  <tr><td><code>datasets/memorized.ts</code></td><td><code>e2e/memorized/memorized.spec.ts</code></td><td>Users and groups, one per mutating test:<br>"Memorized – Browse" (read-only: two memorized docs with different descriptions/payers/categories, for list, search and expand);<br>"Memorized – Use" (one memorized doc used to create an expense);<br>"Memorized – Create" (none);<br>"Memorized – Edit" (one);<br>"Memorized – Delete" (one);<br>"Memorized – Empty" (none, read-only).</td></tr>
+  <tr><td><code>datasets/receipts.ts</code></td><td><code>e2e/receipts/receipts.spec.ts</code></td><td>User <code>receipts-attach@</code> (<code>receiptPolicy: true</code>) in "Receipts – Attach"; <code>receipts-policy@</code> (no policy yet) in "Receipts – Policy"; <code>receipts-view@</code> (<code>receiptPolicy: true</code>) in "Receipts – View" with one seeded expense carrying a stored receipt; <code>receipts-scan@</code> (<code>receiptPolicy: true</code>) in "Receipts – Scan" (3 members).</td></tr>
+  <tr><td><code>datasets/account.ts</code></td><td><code>e2e/account/account.spec.ts</code></td><td>One user per mutating test, each in its own group ("Account – &lt;test&gt;"):<br><code>account-payments@</code>, <code>account-notify@</code>, <code>account-legal@</code>, <code>account-password@</code>;<br><code>account-prefs@</code> (two groups "Account – Prefs A" (default) and "Account – Prefs B");<br><code>account-rejoin@</code> (one home group plus "Account – Left", where their member is <code>leftGroup: true, active: false</code> and the group's admin is a seeded placeholder admin user).</td></tr>
+  <tr><td><code>datasets/categories.ts</code></td><td><code>e2e/categories/categories.spec.ts</code></td><td>User <code>categories-admin@</code> in "Categories – Main" with categories: General (in use by one seeded expense), "Rename Me", "Deactivate Me", "Delete Me" (unused), plus a non-admin <code>categories-viewer@</code> (read-only).</td></tr>
+  <tr><td><code>datasets/members.ts</code></td><td><code>e2e/members/members.spec.ts</code></td><td>Admin <code>members-admin@</code> in "Members – Main" with placeholder members "Edit Me", "Remove Me" (no splits) and "Has Splits" (one seeded expense). <code>members-leaver@</code> in "Members – Leave" with a separate admin, no splits (leaving deletes their member doc), plus a home group so leaving leaves them a group to fall back to.</td></tr>
+  <tr><td><code>datasets/invites.ts</code></td><td><code>e2e/invites/invites.spec.ts</code></td><td>Admin user <code>invites-admin@</code> and a non-admin <code>invites-viewer@</code> in group "Invites – Main". Members:<br>
+    <ul>
+      <li>one unregistered member per sending test (<code>invite-send@</code>, <code>invite-register@</code>);</li>
+      <li>one with a seeded recent invite (cooldown);</li>
+      <li>one inactive;</li>
+      <li>one with a blank email;</li>
+      <li>one linked (the viewer).</li>
+    </ul>
+    Placeholder emails are never seeded as Auth users.</td></tr>
+  <tr><td><code>datasets/tours.ts</code></td><td><code>e2e/tours/tours.spec.ts</code></td><td>User <code>tours-user@</code> in "Tours – Home" (read-only): 2 members, 2 categories, one expense, one memorized doc, one payment. Tours never write; real-data tours run as this user, and the groups empty-state tour stays in groups-admin.</td></tr>
+  <tr><td><code>datasets/admin.ts</code></td><td><code>e2e/admin/admin.spec.ts</code></td><td>No groups. Top-level <code>mail</code> docs:
+    <ul>
+      <li>subject "Admin – Seeded error" in state ERROR;</li>
+      <li>"Admin – Seeded retry" in state RETRY;</li>
+      <li>"Admin – Delete me" in state ERROR, deleted by its test.</li>
+    </ul>
+    Top-level <code>app_errors</code> docs:
+    <ul>
+      <li>component "AdminSpec Listed", twice with an identical action and message (grouped count 2);</li>
+      <li>"AdminSpec Delete", deleted by its test.</li>
+    </ul>
+    Uses <code>SHARED.users.admin</code> and, for the non-admin check, <code>SHARED.users.bob</code> (read-only visit).</td></tr>
+</table>
+</div>
+
+<!-- ===================================================================== -->
+<h2>Task 1: Page-object foundations and Plan 2 follow-ups</h2>
+<p><strong>Files:</strong> <code>e2e/pages/base.page.ts</code>, new <code>e2e/utils/format.ts</code>, every existing page object, <code>e2e/smoke/*.spec.ts</code>, <code>e2e/auth/*.spec.ts</code>, <code>e2e/groups/groups-admin.spec.ts</code>, <code>e2e/pages/home.page.ts</code>.</p>
+<p><strong>Interfaces produced (later tasks use these; don't add per-page copies):</strong></p>
+<ul>
+  <li><code>BasePage.snackbarWith(message: string): Locator</code></li>
+  <li><code>BasePage.selectPanel: Locator</code></li>
+  <li><code>BasePage.option(name: string): Locator</code> (exact match)</li>
+  <li><code>BasePage.chooseOption(select: Locator, name: string): Promise&lt;void&gt;</code> (open, click the exact option, wait for the panel to close and the select to show <code>name</code>)</li>
+  <li><code>BasePage.setSwitch(toggle: Locator, checked: boolean): Promise&lt;void&gt;</code> (click the inner <code>role=switch</code> only if needed, then assert <code>toBeChecked({ checked })</code>)</li>
+  <li><code>BasePage.waitForLoadingComplete()</code> as the only overlay-wait idiom</li>
+  <li><code>e2e/utils/format.ts</code> exports <code>formatMoney(amount: number): string</code> and <code>formatShortDate(date: Date): string</code>, moved from <code>expenses.page.ts</code> (re-export from there is not needed; update imports)</li>
+</ul>
+<p class="step">Hoist the duplicates the follow-ups doc lists:
+  <ul>
+    <li><code>snackbarWith</code> (4 copies) and <code>selectPanel</code>/<code>option</code> (3 copies);</li>
+    <li>the two different <code>setToggle</code>s in groups and members, which become <code>setSwitch</code> (keep each caller's behaviour; if one relied on a blind click, convert it and say so in the report);</li>
+    <li>the two loading-wait idioms;</li>
+    <li>the money/date formatters.</li>
+  </ul>
+  Keep the feature-tour methods' signatures: <code>pnpm exec playwright test -c e2e/feature-tour/playwright.feature-tour.config.ts --list</code> must still list 14 tests (never run it).</p>
+<p class="step">Smaller follow-ups:
+  <ul>
+    <li>Delete <code>HomePage.isAuthenticated()</code>.</li>
+    <li>Give "should have responsive viewport" (<code>e2e/smoke/homepage.spec.ts</code>) a real assertion (at 375×667 the mobile nav toggle is visible and the desktop nav is hidden), or delete it if no such element distinguishes mobile; say which in the report.</li>
+    <li>Auth redirect tests assert <code>toHaveURL(/\/expenses$/)</code> and drop the redundant <code>isLoggedIn()</code> checks.</li>
+    <li>Remove the dangling <code>waitForSelector('app-root', )</code> in the two smoke specs.</li>
+    <li>Move the group-specific error test ids reached directly in <code>groups-admin.spec.ts</code> into <code>GroupsPage</code>.</li>
+    <li>Add a comment at the top of the read-only <code>groups-viewer</code> tests restating that none may save or select a group.</li>
+  </ul></p>
+<p class="step">Full <code>pnpm e2e</code> passes (no behaviour change intended), e2e tsc clean, feature-tour <code>--list</code> = 14. Commit <code>Hoist shared page-object helpers; Plan 2 follow-ups [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 2: Seeder extensions</h2>
+<p><strong>Files:</strong> <code>e2e/seed/types.ts</code>, <code>write.ts</code>, <code>validate.ts</code>, <code>admin.ts</code>, new <code>e2e/seed/storage.ts</code>, new <code>e2e/fixtures/files/receipt.png</code> (a small valid PNG; generate it with a script, don't download), <code>e2e/infra/seed.spec.ts</code>.</p>
+<p><strong>Interfaces produced:</strong></p>
+<ul>
+  <li><code>SeedMemorized { key; description; categoryKey; paidByKey; totalAmount; splitMethod; sharedAmount?; allocatedAmount?; splits: SeedSplitInput[] }</code> and <code>SeedGroup.memorized?: SeedMemorized[]</code>. Written to <code>groups/{g}/memorized/{key}</code> in the app's shape:
+    <ul>
+      <li>splits embedded as an array of <code>{assignedAmount, percentage, shares, allocatedAmount, paidByMemberRef, owedByMemberRef}</code>, allocated with <code>allocateExpense</code>;</li>
+      <li>no date/paid/receiptPath.</li>
+    </ul>
+  </li>
+  <li><code>SeedRental { nightCount; stays: { memberKey; nights: number[]; roomId? }[]; rooms?: { id; name; rate }[] }</code> and <code>SeedExpense.rental?</code>. Written as the expense's <code>rental</code> field with <code>memberRef</code>s; the expense must use <code>splitMethod: 'shares'</code> with shares supplied by the dataset author.</li>
+  <li><code>SeedExpense.receipt?: { file: string /* under e2e/fixtures/files */; contentType: string }</code>. Sets <code>receiptPath = groups/{g}/receipts/{expenseKey}</code> and uploads the bytes.</li>
+  <li><code>SeedMember.leftGroup?: boolean</code> (written as <code>leftGroup</code>) and <code>SeedMember.invite?: { sentDaysAgo: number; sendCount: number }</code> (written as <code>invite: { lastSentAt: Timestamp, lastSentTo: member email, sendCount }</code>).</li>
+  <li><code>SeedDataset.mail?: SeedMail[]</code> with <code>SeedMail { key; to; subject; state: 'PENDING'|'PROCESSING'|'SUCCESS'|'ERROR'|'RETRY'; startedMinutesAgo; error? }</code>. It is always written with a <code>delivery</code> block (<code>state, attempts, startTime, error</code>), so the <code>sendMailQueueEmail</code> trigger skips it.</li>
+  <li><code>SeedDataset.appErrors?: SeedAppError[]</code> with <code>SeedAppError { key; component; action; message; hoursAgo }</code>.</li>
+  <li><code>e2e/seed/storage.ts</code>:
+    <ul>
+      <li><code>uploadToStorageEmulator(path: string, bytes: Buffer, contentType: string): Promise&lt;void&gt;</code></li>
+      <li><code>storageObjectExists(path: string): Promise&lt;boolean&gt;</code></li>
+    </ul>
+    Both use <code>fetch</code> against the test Storage emulator's REST API with <code>Authorization: Bearer owner</code>, on host/port and bucket from <code>scripts/test-env/config.mjs</code>. No new dependency. Specs import <code>storageObjectExists</code> too.</li>
+</ul>
+<p class="step"><strong>Lift the 400-write cap first.</strong> Write users in one batch, then <strong>each group in its own batch</strong> (committed before the next starts), so a group's writes can never span batches; fail loudly if a single group exceeds 400 writes. The <code>mail</code>/<code>app_errors</code> docs go in a final batch. Update the comments that explain the old cap.</p>
+<p class="step">Failing tests first in <code>seed.spec.ts</code> (<code>@infra</code>):
+  <ul>
+    <li>Validator rules, one test each, cloning a valid dataset with one defect and asserting <code>validateDatasets</code> throws a message naming it:
+      <ul>
+        <li>memorized splits don't reconcile to the total;</li>
+        <li>rental on a non-shares expense;</li>
+        <li>a rental stay's member not in the group;</li>
+        <li>a stay night outside <code>[0, nightCount)</code>;</li>
+        <li>a night with nobody present;</li>
+        <li>a <code>roomId</code> not in <code>rooms</code>;</li>
+        <li>a receipt file that doesn't exist;</li>
+        <li>a mail doc with an unknown state;</li>
+        <li><code>leftGroup</code> on an active member;</li>
+        <li>duplicate mail or app-error keys.</li>
+      </ul>
+    </li>
+    <li>Write checks against the emulator:
+      <ul>
+        <li>a seeded memorized doc has the embedded splits;</li>
+        <li>the seeded rental expense's <code>rental.stays[].memberRef</code> are member refs;</li>
+        <li>the seeded receipt exists in Storage (<code>storageObjectExists</code>);</li>
+        <li>a seeded ERROR mail doc is still ERROR after 10 s (the trigger skipped it).</li>
+      </ul>
+      Use the Task 4, 5, 6 and 11 datasets once they exist; until then add a small <code>@infra</code>-owned fixture dataset (<code>datasets/infra.ts</code>, owner <code>spec:e2e/infra/seed.spec.ts</code>).</li>
+  </ul></p>
+<p class="step">Implement types, validation and writing. <code>getSeedAdmin()</code> is unchanged (Storage goes through REST).</p>
+<p class="step"><code>pnpm e2e --grep @infra</code> twice, then full <code>pnpm e2e</code>. Commit <code>Seed memorized, rental, receipts, member state, mail and app errors [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 3: Split tool (<code>@split</code>)</h2>
+<p><strong>Files:</strong> <code>src/app/features/split/split/split.component.html</code> (testids), new <code>e2e/pages/split.page.ts</code>, new <code>e2e/split/split.spec.ts</code>.</p>
+<p class="step">Add test ids:
+  <ul>
+    <li>form: <code>split-total-amount-input</code>, <code>split-proportional-amount-input</code>, <code>split-shared-remainder</code>, <code>split-add-split-button</code>;</li>
+    <li>per split row: <code>split-name-input</code>, <code>split-member-amount-input</code>, <code>split-percentage-input</code>, <code>split-shares-input</code>, <code>split-allocated-amount</code>, <code>split-remove-button</code>;</li>
+    <li>actions: <code>split-generate-summary-button</code>, <code>split-cancel-button</code>;</li>
+    <li>summary: <code>split-summary</code>, one <code>split-summary-line</code> per person, <code>split-copy-summary-button</code>, <code>split-edit-button</code>, <code>split-start-over-button</code>;</li>
+    <li>grid night checkboxes, on both the rental grids (Task 4 reuses this): <code>night-checkbox</code> per cell, located by row + column.</li>
+  </ul>
+  Run the split and grid unit specs.</p>
+<p class="step">Page object: <code>gotoSplit()</code> (signed out, <code>page.goto('/split')</code>, wait for hydration by waiting for <code>split-add-split-button</code> to be enabled), <code>setTotal(amount)</code>, <code>addPerson(name, memberAmount?)</code>, <code>setMethod(method)</code> (reuse the split-method toggle ids), <code>generateSummary()</code>, rental-mode helpers.</p>
+<p class="step">Tests, all signed out, no seed:
+  <ul>
+    <li>"should split an amount evenly with one fixed share and summarize it": total 90, Ari fixed 30, Blake and Cody even → allocated 30 / 30 / 30. Generate Summary, then the summary shows three lines with 30.00 each. Edit Split returns with values kept; Start Over clears them.</li>
+    <li>"should split by percentage and by shares": percentage 50/30/(20 computed) of 200 → 100/60/40; shares 2/1/1 of 100 → 50/25/25.</li>
+    <li>"should apply a vacation rental grid as shares": 2 nights, three people, one absent night 2, total 600 → shares applied, method switches to shares, allocations 250/250/100.</li>
+    <li>"should copy the summary" (<code>seededPage</code>): copy, then the snackbar "Summary copied to clipboard", then <code>readClipboard</code> contains each person's line.</li>
+    <li>"should keep Generate Summary disabled until fully allocated": fixed shares exceeding the total.</li>
+  </ul>
+  Expected numbers: recompute from <code>scripts/db/allocation.ts</code> where it applies.</p>
+<p class="step">Area checks; run the file alone twice. Commit <code>Add split tool e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 4: Rental expenses (<code>@rental</code>)</h2>
+<p><strong>Files:</strong> rental templates if ids are missing, the edit-expense rental banner area if needed, new <code>e2e/pages/rental.page.ts</code>, new <code>e2e/seed/datasets/rental.ts</code>, new <code>e2e/rental/rental.spec.ts</code>.</p>
+<p class="step">Page object:
+  <ul>
+    <li><code>openFromExpenses()</code>: Expenses → <code>add-expense-button</code> → <code>rental-expense-button</code>, then wait for <code>member-row</code> count = active members;</li>
+    <li><code>setAmount</code>, <code>setNights</code>, <code>toggleNight(member, night)</code>;</li>
+    <li><code>addRoom(name, rate, occupants[])</code> (multi-select: press Escape to close);</li>
+    <li><code>continueToExpense()</code>.</li>
+  </ul>
+  Scope every locator to <code>rental-container</code>, because <code>description-input</code> and <code>cancel-button</code> also exist elsewhere.</p>
+<p class="step">Tests:
+  <ul>
+    <li>"should create a rental expense from the occupancy grid": "Rental – Create", 3 members, 2 nights, Cody absent night 2, $600, unique description.
+      <ul>
+        <li>The grid shows shares 2.50 / 2.50 / 1.00 and amounts 250 / 250 / 100.</li>
+        <li>Continue: Add Expense shows split method shares, the category Travel picked automatically and the same allocations (the hand-off check).</li>
+        <li>Save, then the expense is listed with those splits.</li>
+      </ul>
+    </li>
+    <li>"should weight shares by room rate": "Rental – Rooms", 1 night, $500, Ari in a 1.5× room, Blake unassigned.
+      <ul>
+        <li>The unassigned note names Blake, and the amounts are 300 / 200.</li>
+        <li>Continue and save; the saved expense lists 300 / 200.</li>
+      </ul>
+    </li>
+    <li>"should block Continue for an empty night or no amount": untick everyone for night 2, which shows <code>empty-nights-warning</code> and disables Continue; with amount 0, Continue is disabled.</li>
+    <li>"should edit a saved rental's occupancy": "Rental – Edit" seeded expense.
+      <ul>
+        <li>Open it from the list: the <code>rental-banner</code> shows; then <code>edit-rental-grid-button</code>.</li>
+        <li>In the dialog, untick Cody night 2 and Save.</li>
+        <li>Confirm the "splits will be unpaid" dialog, then save the expense.</li>
+        <li>The list shows the recomputed splits ($300: 125/125/50).</li>
+      </ul>
+    </li>
+    <li>"should leave a rental unchanged when the grid edit is cancelled".</li>
+  </ul></p>
+<p class="step">Area checks; run alone twice. Commit <code>Add rental expense e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 5: Memorized expenses (<code>@memorized</code>)</h2>
+<p><strong>Files:</strong> <code>memorized.component.html</code>, <code>add-memorized</code> and <code>edit-memorized</code> templates (testids), new <code>e2e/pages/memorized.page.ts</code>, new <code>e2e/seed/datasets/memorized.ts</code>, new <code>e2e/memorized/memorized.spec.ts</code>.</p>
+<p class="step">Test ids:
+  <ul>
+    <li>list: <code>memorized-row</code>, <code>memorized-create-expense-button</code> (plus <code>aria-label="Create expense from memorized"</code>), <code>memorized-no-results</code>;</li>
+    <li>add/edit memorized forms, mirroring Add Expense's names where the control is the same: <code>payer-select</code>, <code>description-input</code>, <code>category-select</code>, <code>total-amount-input</code>, <code>proportional-amount-input</code>, <code>add-split-button</code>, <code>add-all-members-button</code>, per row <code>split-member-select</code> / <code>split-assigned-amount-input</code> / <code>remove-split</code>, <code>save-button</code>, <code>cancel-button</code>, <code>delete-button</code>.</li>
+  </ul>
+  Run the memorized unit specs.</p>
+<p class="step">Page object: reuse <code>ExpensesPage</code>'s form helpers by extracting the shared form actions into <code>e2e/pages/expense-form.ts</code> (<code>ExpenseForm</code>, constructed with a page and a container locator), used by both <code>ExpensesPage</code> and <code>MemorizedPage</code>. This is the one structural change to <code>expenses.page.ts</code>; keep its public methods.</p>
+<p class="step">Tests:
+  <ul>
+    <li>"should memorize an expense" (Create): fill, add all members, Save; the snackbar reads "Memorized expense added" and the row is listed.</li>
+    <li>"should create an expense from a memorized one" (Use): click the row's create button, and Add Expense is prefilled (payer, category, total, splits; the hand-off check). Save, then the expense is in the Expenses list with those splits.</li>
+    <li>"should edit a memorized expense" (Edit): change the total, re-allocate, Save; the snackbar reads "Memorized expense updated" and the row shows the new total after reloading the list in-app.</li>
+    <li>"should delete a memorized expense" (Delete): Delete, then confirm; the snackbar reads "Memorized expense deleted" and the row is gone.</li>
+    <li>"should search memorized expenses by description, payer and category" (Browse, read-only).</li>
+    <li>"should show the empty state" (Empty).</li>
+  </ul></p>
+<p class="step">Area checks (memorized and expenses, since <code>ExpensesPage</code> changed); run alone twice. Commit <code>Add memorized expense e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 6: Receipts (<code>@receipts</code>)</h2>
+<p><strong>Files:</strong> <code>edit-expense.component.html</code> receipt section and <code>expenses.component.html</code> receipt cell (testids), new <code>e2e/utils/scan-receipt-mock.ts</code>, new <code>e2e/pages/scan-receipt.page.ts</code>, new <code>e2e/seed/datasets/receipts.ts</code>, new <code>e2e/receipts/receipts.spec.ts</code>.</p>
+<p class="step">Test ids:
+  <ul>
+    <li>edit expense: <code>edit-file-input</code>, <code>edit-attach-file-button</code>, <code>edit-remove-file-button</code>, <code>edit-attached-filename</code>, <code>view-receipt-link</code>;</li>
+    <li>expenses list: <code>expense-receipt-indicator</code> on the receipt cell.</li>
+  </ul></p>
+<p class="step"><code>scan-receipt-mock.ts</code> exports <code>mockScanReceipt(page: Page, reply: ParsedReceipt | { error: 'no-text-found' }): Promise&lt;void&gt;</code>, which routes the <code>scanReceipt</code> callable on the functions emulator. Move the working mock (CORS preflight + <code>{ result }</code> body) and the synthetic receipt PNG renderer out of <code>e2e/feature-tour/feature-tour.capture.ts</code> and import them there too. The callable is always mocked: the real function downloads tesseract language data from a CDN (spec §3), and OCR output isn't deterministic. Record this in the follow-ups doc as the resolution of its tesseract item.</p>
+<p class="step">Tests:
+  <ul>
+    <li>"should attach a receipt to a new expense" (Attach): add an expense with <code>uploadReceipt</code>, then Save.
+      <ul>
+        <li>The list row shows <code>expense-receipt-indicator</code>.</li>
+        <li><code>storageObjectExists('groups/&lt;g&gt;/receipts/&lt;id&gt;')</code> is true, with the id read from the row's link.</li>
+      </ul>
+    </li>
+    <li>"should ask for the receipt policy once, then open the file picker" (Policy): Attach opens the policy dialog; acknowledge, then confirm; the file selection dialog opens; <code>file-button</code> produces a <code>filechooser</code>; set the file and Save. Reopening Add Expense and clicking Attach goes straight to the picker (the policy was saved).</li>
+    <li>"should show a stored receipt on the expense" (View): open the seeded expense; <code>view-receipt-link</code> has an emulator download URL that fetches with status 200.</li>
+    <li>"should create an expense from a scanned receipt" (Scan, mocked):
+      <ul>
+        <li>Three line items: assign two to members and leave one unassigned. Check the member subtotals, the unassigned total and the tax/tip total.</li>
+        <li>Continue: Add Expense is prefilled (total, splits, attached file name; the hand-off check).</li>
+        <li>Save, then the expense and its receipt indicator are listed.</li>
+      </ul>
+    </li>
+    <li>"should explain an unreadable receipt" (mocked <code>no-text-found</code>): the "Receipt Not Readable" dialog shows; closing it returns to an editable form.</li>
+  </ul></p>
+<p class="step">Area checks (receipts and expenses); run alone twice. Commit <code>Add receipt e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 7: Account settings (<code>@account</code>)</h2>
+<p><strong>Files:</strong> <code>account-security.component.html</code> (<code>confirm-password-input</code>), new <code>e2e/pages/account.page.ts</code>, new <code>e2e/seed/datasets/account.ts</code>, new <code>e2e/account/account.spec.ts</code>.</p>
+<p class="step">Page object navigates in-app: header <code>nav-account-desktop</code>, then the sidebar links. The exception is Preferences, which has no link; reach it from Account with <code>page.goto('/auth/account/preferences')</code> after the account page has rendered (the redirect race is fixed). Persistence checks use <code>BasePage.waitForInitialNavigation()</code> after <code>page.reload()</code>.</p>
+<p class="step">Tests (each signs in as its own user):
+  <ul>
+    <li>"should save payment service IDs": fill all four, Save; the snackbar shows, and after a reload the inputs are prefilled.</li>
+    <li>"should turn email notifications off and on": the toggle and its snackbar text persist across a reload.</li>
+    <li>"should accept the receipt policy": checkbox, then Accept; <code>policy-accepted</code> shows and persists across a reload.</li>
+    <li>"should save a default group": choose "Account – Prefs B" and Save; after signing out and back in, the current group is Prefs B.</li>
+    <li>"should change the password": new password plus confirm, Change.
+      <ul>
+        <li>The snackbar shows.</li>
+        <li>After signing out, signing in with the old password is rejected (<code>signInAs</code> fails fast) and the new one works.</li>
+      </ul>
+      If the Auth emulator demands recent login, sign in fresh first. Report any <code>requires-recent-login</code> as an app gap (there is no re-auth UI).</li>
+    <li>"should rejoin a group the user left": Group Membership, choose "Account – Left", Rejoin, confirm; the group then appears in the group select.</li>
+  </ul>
+  Email change is out of scope (it locks the user into verification; note it in the report as a candidate for later).</p>
+<p class="step">Area checks; run alone twice. Commit <code>Add account settings e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 8: Categories and members (<code>@categories</code>, <code>@members</code>)</h2>
+<p><strong>Files:</strong> categories templates (testids where missing), new <code>e2e/pages/categories.page.ts</code>, <code>e2e/pages/members.page.ts</code>, new <code>e2e/seed/datasets/categories.ts</code> and <code>members.ts</code>, new <code>e2e/categories/categories.spec.ts</code> and <code>e2e/members/members.spec.ts</code>.</p>
+<p class="step">Spec §2 goal 2 includes these "if not adequately covered": today categories has no e2e at all, and <code>MembersPage</code> edit/remove/leave were never exercised (follow-ups doc). Treat those page-object methods as unverified: fix them as needed, and keep the feature-tour ones' signatures.</p>
+<p class="step">Categories tests, as <code>categories-admin</code>:
+  <ul>
+    <li>"should add a category": unique name; it's listed and offered in Add Expense's category select.</li>
+    <li>"should rename a category" ("Rename Me").</li>
+    <li>"should deactivate a category" ("Deactivate Me"): its status shows inactive, and Add Expense no longer offers it.</li>
+    <li>"should delete an unused category" ("Delete Me", via the delete dialog).</li>
+    <li>"should not delete a category in use" (General): assert the app's actual guard (read <code>category.service.ts</code>), e.g. an error snackbar, and that General is still listed.</li>
+  </ul>
+  As <code>categories-viewer</code> (read-only): no add or edit controls, if the app restricts them to admins; check the component first.</p>
+<p class="step">Members tests:
+  <ul>
+    <li>"should edit a member's name and admin flag" ("Edit Me"): the change persists after an in-app reload.</li>
+    <li>"should remove a member without splits" ("Remove Me").</li>
+    <li>"should not remove a member with splits" ("Has Splits"): the app's error, and the member is still listed.</li>
+    <li>"should leave a group" (<code>members-leaver</code>): Leave, then confirm; the user is back on their home group and "Members – Leave" isn't in the select.</li>
+  </ul>
+  Adding a member is already covered in groups-admin; don't duplicate it.</p>
+<p class="step">Area checks (categories, members, expenses); run both files alone twice. Commit <code>Add categories and members e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 9: Group invites (<code>@members</code>, <code>@groups</code>)</h2>
+<p><strong>Files:</strong> <code>members.component.html</code> (<code>invite-column-header</code>), <code>e2e/pages/members.page.ts</code>, new <code>e2e/utils/auth-emulator.ts</code>, new <code>e2e/seed/datasets/invites.ts</code>, new <code>e2e/invites/invites.spec.ts</code>.</p>
+<p class="step"><code>auth-emulator.ts</code>:
+  <ul>
+    <li><code>findMail(to: string): Promise&lt;DocumentData | null&gt;</code>, via <code>getSeedAdmin().db</code> (clients can't read <code>mail</code>);</li>
+    <li><code>verifyEmailViaEmulator(page: Page, email: string): Promise&lt;void&gt;</code>, which reads the oob code from the Auth emulator's <code>/emulator/v1/projects/&lt;id&gt;/oobCodes</code> REST endpoint and opens <code>/auth/account-action?mode=verifyEmail&amp;oobCode=…</code>.</li>
+  </ul>
+  Ports and project come from <code>scripts/test-env/config.mjs</code>.</p>
+<p class="step">Tests (tag both <code>@members</code> and <code>@groups</code>):
+  <ul>
+    <li>"should send an invite and start the cooldown":
+      <ul>
+        <li>As admin, click <code>invite-member-button-&lt;invite-send key&gt;</code> and confirm.</li>
+        <li>The snackbar reads "Invitation sent to invite-send@pipsplit.test" and the envelope disappears.</li>
+        <li><code>findMail</code> (polled) shows the subject "You're invited to join Invites – Main on PipSplit" with delivery SUCCESS and messageId <code>suppressed</code>.</li>
+      </ul>
+    </li>
+    <li>"should only offer invites to unregistered, active members with an email": there are no envelopes for the linked, inactive, blank-email and cooldown members. As the viewer (non-admin), there is no <code>invite-column-header</code>.</li>
+    <li>"should link an invited member when they register":
+      <ul>
+        <li>Signed out, register as <code>invite-register@pipsplit.test</code>, then <code>verifyEmailViaEmulator</code>.</li>
+        <li>The new user lands on Groups with "Invites – Main" in the group select (poll; it waits for the <code>syncGroupMemberUids</code> trigger).</li>
+        <li>As admin, that member no longer has an envelope.</li>
+      </ul>
+    </li>
+  </ul></p>
+<p class="step">Area checks (members, groups); run alone twice. Commit <code>Add group invite e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 10: Guided tours (<code>@help</code> + each page's area)</h2>
+<p><strong>Files:</strong> new <code>e2e/pages/tour.ts</code> (<code>TourCard</code>), new <code>e2e/seed/datasets/tours.ts</code>, new <code>e2e/tours/tours.spec.ts</code>.</p>
+<p class="step"><code>TourCard</code>:
+  <ul>
+    <li><code>title</code>, <code>text</code>, <code>count</code>, <code>next()</code>, <code>back()</code>, <code>close()</code>;</li>
+    <li><code>stepCount(): Promise&lt;{ step: number; total: number }&gt;</code> parsed from <code>guided-tour-count</code>;</li>
+    <li><code>walkToEnd(): Promise&lt;number&gt;</code>, which clicks the primary button until the count reads "M of M" and the button says "Done", asserting the title changes or the count advances each step. It returns M.</li>
+  </ul>
+  Tests use <code>test.use({ reducedMotion: 'reduce' })</code>.</p>
+<p class="step">A data-driven walk. One test per row, title <code>should walk the &lt;page&gt; tour</code>, tagged <code>['@help', '@&lt;page area&gt;']</code>. Rows: <code>{ route reached in-app, helpTestId, firstTitle }</code> for:
+  <ul>
+    <li>expenses, add-expense, edit-expense (the seeded expense), rental, scan-receipt;</li>
+    <li>members, categories;</li>
+    <li>memorized, add-memorized, edit-memorized;</li>
+    <li>summary, history, history-detail (the seeded payment);</li>
+    <li>split (signed out).</li>
+  </ul>
+  Each test:
+  <ul>
+    <li>starts the tour, then <code>title</code> = firstTitle and step 1;</li>
+    <li><code>walkToEnd()</code>, then Done;</li>
+    <li>afterwards the card and <code>guided-tour-spotlight</code> are hidden, no <code>mat-dialog-container</code> is left open, and the page shows its real data again (e.g. the seeded expense row).</li>
+  </ul>
+  First titles: read them from each <code>*.tour.ts</code>; don't guess.</p>
+<p class="step">"should navigate a tour with buttons and keys" (split, signed out):
+  <ul>
+    <li>No Back on step 1; Next then Back returns to the first title.</li>
+    <li>ArrowRight and ArrowLeft move, and Esc closes.</li>
+    <li>The close button ends the tour mid-way.</li>
+  </ul></p>
+<p class="step">"should open full help from the last step" (members): <code>guided-tour-full-help-button</code> shows only on the last step; it ends the tour and opens the help dialog (<code>help-dialog-title</code> "Members Help"); close the dialog.</p>
+<p class="step">Area checks (help plus every page area listed); run alone twice. Commit <code>Add guided tour e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 11: Admin pages (<code>@admin</code>)</h2>
+<p><strong>Files:</strong> admin templates (shell, reports, email-log, error-log, both detail dialogs: testids), new <code>e2e/pages/admin.page.ts</code>, new <code>e2e/seed/datasets/admin.ts</code>, new <code>e2e/admin/admin.spec.ts</code>.</p>
+<p class="step">Test ids:
+  <ul>
+    <li>shell: <code>admin-tab-reports</code>, <code>admin-tab-email-log</code>, <code>admin-tab-error-log</code>;</li>
+    <li>reports: <code>report-select</code>, <code>run-report-button</code>, <code>report-results</code>;</li>
+    <li>email log: <code>email-state-chip-&lt;state&gt;</code>, <code>email-row</code> (row text includes the subject), <code>email-detail-delete-button</code>, <code>email-detail-close-button</code>;</li>
+    <li>error log: <code>error-row</code>, <code>error-view-toggle-individual</code>, <code>error-view-toggle-grouped</code>, <code>error-group-count</code>, <code>error-detail-delete-button</code>, <code>error-detail-close-button</code>.</li>
+  </ul>
+  Run the admin unit specs.</p>
+<p class="step">Tests:
+  <ul>
+    <li>"should keep non-admins out": signed out, <code>/admin</code> goes to login; as bob (read-only), <code>/admin</code> goes to Home and Account shows no <code>nav-admin</code>.</li>
+    <li>"should open the admin area from the account page": as admin, <code>nav-admin</code> opens Reports; the tabs switch to Email Log and Error Log.</li>
+    <li>"should run a report": pick the first report option, Run, and <code>report-results</code> appears. Assert structure only (headings or table headers); never the numbers, and never the repair buttons.</li>
+    <li>"should filter the email log by state": the ERROR chip shows "Admin – Seeded error" and hides "Admin – Seeded retry"; the RETRY chip does the reverse. Rows are found by subject only.</li>
+    <li>"should delete one email log entry": open "Admin – Delete me", delete it, confirm, and its row is gone.</li>
+    <li>"should list and group seeded errors, then delete one": "AdminSpec Listed" shows two rows; in Grouped view its count is 2; delete the "AdminSpec Delete" row from its detail dialog, and it's gone.</li>
+  </ul></p>
+<p class="step">Area checks; run alone twice. Commit <code>Add admin e2e coverage [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 12: Docs, full verification, close-out</h2>
+<p><strong>Files:</strong> the skill's E2E section, <code>e2e/README.md</code>, <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>.</p>
+<p class="step">Skill:
+  <ul>
+    <li>add the new datasets to the seed section;</li>
+    <li>add the patterns this plan introduced: <code>BasePage</code> helpers, <code>ExpenseForm</code>, <code>mockScanReceipt</code>, <code>storageObjectExists</code>, <code>findMail</code>, <code>verifyEmailViaEmulator</code>, <code>TourCard</code>, per-test multi-area tags, and the global-collection rule;</li>
+    <li>remove anything Plan 3 made untrue.</li>
+  </ul>
+  README: list the new spec folders.</p>
+<p class="step">Grep gates, each 0 matches in <code>e2e/</code> outside <code>feature-tour/</code>:
+  <ul>
+    <li><code>waitForTimeout</code></li>
+    <li><code>describe.serial</code></li>
+    <li><code>if \(await .*\.isVisible\(</code></li>
+    <li>clicks on Clear Log, select-all or repair buttons</li>
+  </ul></p>
+<p class="step">Windows command-line check (follow-ups item): run <code>pnpm test:area</code> with all 16 areas and <code>--unit</code> once. If it hits cmd's ~8k limit, report it as a Plan 4 item rather than fixing it here.</p>
+<p class="step">Verification:
+  <ul>
+    <li>full unit, functions and script suites;</li>
+    <li>every area alone via <code>pnpm test:area &lt;area&gt;</code>;</li>
+    <li>three consecutive full <code>pnpm e2e</code> runs at 2 workers (owner-accepted standard) with 0 failures and 0 flaky, plus one at <code>--workers 4</code>.</li>
+  </ul>
+  Record the counts.</p>
+<p class="step">Follow-ups doc: tick the Plan 3 items with commits and add anything deferred. Commit <code>Close out new e2e coverage: docs and verification [no-deploy]</code>.</p>
+
+</body>
+</html>

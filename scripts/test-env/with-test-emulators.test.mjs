@@ -12,6 +12,11 @@ import {
   parseListeningPids,
   runStep,
   runPlan,
+  waitForPortsFree,
+  checkPortsAtStartup,
+  PORT_RELEASE_TIMEOUT_MS,
+  PORT_BUSY_GRACE_MS,
+  PORT_POLL_INTERVAL_MS,
 } from './with-test-emulators.mjs';
 
 test('parseArgs splits options from the command at --', () => {
@@ -244,4 +249,114 @@ test('a failing cleanup never replaces the exit code', async () => {
     });
     assert.equal(code, stepCode);
   }
+});
+
+test('the port wait constants match the ruling', () => {
+  assert.equal(PORT_RELEASE_TIMEOUT_MS, 15_000);
+  assert.equal(PORT_BUSY_GRACE_MS, 10_000);
+  assert.equal(PORT_POLL_INTERVAL_MS, 250);
+});
+
+// A fake clock: sleep advances now, so no real timers are involved.
+function fakeClock() {
+  const clock = { t: 0, sleeps: [] };
+  clock.now = () => clock.t;
+  clock.sleep = async (ms) => {
+    clock.sleeps.push(ms);
+    clock.t += ms;
+  };
+  return clock;
+}
+
+test('waitForPortsFree returns [] immediately, without sleeping, when nothing is busy', async () => {
+  const clock = fakeClock();
+  let probes = 0;
+  const busy = await waitForPortsFree([1, 2], {
+    timeoutMs: 1000,
+    intervalMs: 250,
+    probe: async () => {
+      probes++;
+      return [];
+    },
+    ...clock,
+  });
+  assert.deepEqual(busy, []);
+  assert.equal(probes, 1);
+  assert.deepEqual(clock.sleeps, []);
+});
+
+test('waitForPortsFree returns [] once a busy port frees up before the timeout', async () => {
+  const clock = fakeClock();
+  let probes = 0;
+  const busy = await waitForPortsFree([1, 2], {
+    timeoutMs: 1000,
+    intervalMs: 250,
+    probe: async (ports) => {
+      assert.deepEqual(ports, [1, 2]);
+      return ++probes <= 3 ? [2] : [];
+    },
+    ...clock,
+  });
+  assert.deepEqual(busy, []);
+  assert.equal(probes, 4);
+  assert.deepEqual(clock.sleeps, [250, 250, 250]);
+});
+
+test('waitForPortsFree returns the still-busy ports and stops probing at the timeout', async () => {
+  const clock = fakeClock();
+  let probes = 0;
+  const busy = await waitForPortsFree([1, 2], {
+    timeoutMs: 1000,
+    intervalMs: 250,
+    probe: async () => {
+      probes++;
+      return [2];
+    },
+    ...clock,
+  });
+  assert.deepEqual(busy, [2]);
+  // Probes at t = 0, 250, 500, 750, 1000, then the deadline stops the loop.
+  assert.equal(probes, 5);
+  assert.equal(clock.t, 1000);
+  assert.ok(clock.sleeps.every((ms) => ms === 250));
+});
+
+test('checkPortsAtStartup does not wait or log when the ports are free', async () => {
+  const clock = fakeClock();
+  const messages = [];
+  const result = await checkPortsAtStartup([1], {
+    probe: async () => [],
+    log: { log: (m) => messages.push(m) },
+    ...clock,
+  });
+  assert.deepEqual(result, { busy: [], waitedMs: 0 });
+  assert.deepEqual(clock.sleeps, []);
+  assert.deepEqual(messages, []);
+});
+
+test('checkPortsAtStartup accepts ports that free up within the grace window', async () => {
+  const clock = fakeClock();
+  const messages = [];
+  let probes = 0;
+  const result = await checkPortsAtStartup([1, 2], {
+    probe: async () => (++probes <= 9 ? [1, 2] : []),
+    log: { log: (m) => messages.push(m) },
+    ...clock,
+  });
+  assert.deepEqual(result.busy, []);
+  assert.equal(result.waitedMs, 2000);
+  assert.equal(messages.length, 1);
+  assert.match(messages[0], /1, 2/);
+});
+
+test('checkPortsAtStartup refuses only after the whole grace window', async () => {
+  const clock = fakeClock();
+  const result = await checkPortsAtStartup([1, 2], {
+    probe: async () => [2],
+    log: { log: () => {} },
+    ...clock,
+  });
+  assert.deepEqual(result.busy, [2]);
+  assert.equal(result.waitedMs, PORT_BUSY_GRACE_MS);
+  assert.equal(clock.t, PORT_BUSY_GRACE_MS);
 });

@@ -73,12 +73,13 @@
             </thead>
             <tbody>
               @for (row of participants(); track row.name; let i = $index) {
-                <tr>
+                <tr data-testid="participant-nights-row">
                   @for (night of nightIndices(); track night) {
                     <td class="cell-center">
                       <mat-checkbox
                         [checked]="row.nights[night]"
                         (change)="toggleNight(i, night)"
+                        data-testid="night-checkbox"
                         [attr.aria-label]="
                           row.name + ' present night ' + (night + 1)
                         "

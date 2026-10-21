@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,6 +32,7 @@ import { Group } from '@models/group';
 import { Member } from '@models/member';
 import { Memorized, SerializableMemorized } from '@models/memorized';
 import { GuidedTourService } from '@services/guided-tour.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SplitService } from '@services/split.service';
 import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
@@ -72,7 +72,7 @@ export class MemorizedComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly guidedTour = inject(GuidedTourService);
   protected readonly fs = inject(getFirestore);
 
@@ -86,7 +86,7 @@ export class MemorizedComponent {
   memorizeds: Signal<Memorized[]> = computed(
     () => this.tourSample() ?? this.memorizedStore.memorizedExpenses()
   );
-  smallScreen = signal<boolean>(false);
+  readonly smallScreen = this.mediaQuery.matches('(max-width: 1009px)');
 
   searchText = model<string>('');
   searchFocused = model<boolean>(false);
@@ -109,7 +109,12 @@ export class MemorizedComponent {
   });
   expandedExpense = model<Memorized | null>(null);
 
-  columnsToDisplay = signal<string[]>([]);
+  // Narrow screens stack description/category into one column.
+  columnsToDisplay = computed<string[]>(() =>
+    this.smallScreen()
+      ? ['paidBy', 'description-category', 'amount', 'create', 'expand']
+      : ['paidBy', 'description', 'category', 'amount', 'create', 'expand']
+  );
 
   constructor() {
     // Leaving the page mid-tour ends it (and clears what it changed)
@@ -122,32 +127,6 @@ export class MemorizedComponent {
         this.loading.loadingOn();
       }
     });
-
-    // Observe breakpoint changes for responsive column display
-    this.breakpointObserver
-      .observe('(max-width: 1009px)')
-      .subscribe((result) => {
-        if (result.matches) {
-          this.columnsToDisplay.set([
-            'paidBy',
-            'description-category',
-            'amount',
-            'create',
-            'expand',
-          ]);
-          this.smallScreen.set(true);
-        } else {
-          this.columnsToDisplay.set([
-            'paidBy',
-            'description',
-            'category',
-            'amount',
-            'create',
-            'expand',
-          ]);
-          this.smallScreen.set(false);
-        }
-      });
   }
 
   onSearchFocus() {

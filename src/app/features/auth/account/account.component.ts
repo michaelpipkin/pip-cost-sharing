@@ -17,8 +17,8 @@ import {
   RouterLink,
   RouterOutlet,
 } from '@angular/router';
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
+import { MediaQueryService } from '@services/media-query.service';
 import { GroupStore } from '@store/group.store';
 import { UserStore } from '@store/user.store';
 import { User as FirebaseUser, getAuth } from 'firebase/auth';
@@ -41,7 +41,7 @@ export class AccountComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
 
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
@@ -56,16 +56,11 @@ export class AccountComponent {
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
   isAdmin = computed(() => this.firebaseUser()?.email === APP_OWNER_EMAIL);
 
-  isMobile = signal(false);
+  readonly isMobile = this.mediaQuery.matches('(max-width: 767px)');
   isChildActive = signal(!/^\/auth\/account\/?$/.test(this.router.url));
   currentUrl = signal(this.router.url);
 
   constructor() {
-    this.breakpointObserver
-      .observe('(max-width: 767px)')
-      .subscribe((result) => {
-        this.isMobile.set(result.matches);
-      });
 
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {

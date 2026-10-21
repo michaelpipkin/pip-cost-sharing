@@ -1,21 +1,10 @@
 import { expect, test } from '../fixtures';
-import type { Page } from '@playwright/test';
 import { HomePage } from '../pages/home.page';
-
-/**
- * Helper function to wait for page load
- */
-async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForSelector('app-root', );
-}
 
 test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
   test('should load the homepage successfully', async ({ page }) => {
     // Navigate to the homepage
     await page.goto('/');
-
-    // Wait for the page to load and handle LoadingService overlay
-    await waitForPageLoad(page);
 
     // Basic checks to ensure the page loaded
     await expect(page).toHaveTitle(/PipSplit/i);
@@ -26,16 +15,18 @@ test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
   });
 
   test('should have responsive viewport', async ({ page }) => {
+    const homePage = new HomePage(page);
     await page.goto('/');
-    await waitForPageLoad(page);
 
-    // Test that page works on different viewport sizes
-    await page.setViewportSize({ width: 1200, height: 800 });
-    await expect(page.locator('body')).toBeVisible();
+    // The toolbar renders the desktop or the mobile layout (BreakpointObserver),
+    // each with its own app title; the other layout's title is not in the DOM.
+    await homePage.setViewport(1200, 800);
+    await expect(homePage.desktopAppTitle).toBeVisible();
+    await expect(homePage.mobileAppTitle).toHaveCount(0);
 
-    // Test mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
-    await expect(page.locator('body')).toBeVisible();
+    await homePage.setViewport(375, 667);
+    await expect(homePage.mobileAppTitle).toBeVisible();
+    await expect(homePage.desktopAppTitle).toHaveCount(0);
   });
 
   test('should open the feature tour dialog', async ({ page }) => {
@@ -43,7 +34,6 @@ test.describe('Homepage - Basic Setup Validation', { tag: '@home' }, () => {
     // Plain goto (not homePage.goto()) - background analytics requests can
     // keep networkidle from ever settling; the assertions below auto-wait.
     await page.goto('/');
-    await waitForPageLoad(page);
 
     await expect(homePage.featureTourButton).toBeVisible();
     await expect(homePage.featureTourButton).toContainText(

@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
@@ -29,6 +28,7 @@ import { AppError } from '@models/app-error';
 import { AdminErrorLogService } from '@services/admin-error-log.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { ErrorDetailDialogComponent } from './error-detail-dialog.component';
+import { MediaQueryService } from '@services/media-query.service';
 
 type GroupedError = AppError & { count: number; ids: string[] };
 
@@ -56,7 +56,7 @@ export class AdminErrorLogComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly dialog = inject(MatDialog);
 
   startDate = model<Date | null>(
@@ -66,7 +66,7 @@ export class AdminErrorLogComponent {
   errors = signal<AppError[]>([]);
   loadError = signal<string | null>(null);
   groupedView = model<boolean>(false);
-  isMobile = signal(false);
+  readonly isMobile = this.mediaQuery.matches('(max-width: 799px)');
   selectedErrorIds = signal<Set<string>>(new Set());
 
   sortActive = signal<string>('dateTime');
@@ -167,12 +167,6 @@ export class AdminErrorLogComponent {
   hasSelection = computed<boolean>(() => this.selectedErrorIds().size > 0);
 
   constructor() {
-    this.breakpointObserver
-      .observe('(max-width: 799px)')
-      .subscribe((result) => {
-        this.isMobile.set(result.matches);
-      });
-
     effect(() => {
       const fifth = this.groupedView() ? 'count' : 'dateTime';
       this.sortActive.set(fifth);

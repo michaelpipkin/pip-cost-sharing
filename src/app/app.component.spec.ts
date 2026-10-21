@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -9,6 +8,7 @@ import { AdMobService } from '@services/admob.service';
 import { AdSenseService } from '@services/adsense.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { DeepLinkService } from '@services/deep-link.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -18,6 +18,7 @@ import {
   createMockAnalyticsService,
   createMockGroupStore,
   createMockLoadingService,
+  createMockMediaQueryService,
   createMockPwaDetectionService,
   createMockThemeService,
   createMockUserStore,
@@ -35,12 +36,6 @@ describe('AppComponent', () => {
   let mockThemeService: ReturnType<typeof createMockThemeService>;
   let mockUserService: {
     logout: ReturnType<typeof vi.fn>;
-  };
-
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
   };
 
   const mockAdMobService = {
@@ -78,7 +73,7 @@ describe('AppComponent', () => {
           provide: PwaDetectionService,
           useValue: createMockPwaDetectionService(),
         },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: createMockMediaQueryService() },
         { provide: AdMobService, useValue: mockAdMobService },
         { provide: AdSenseService, useValue: mockAdSenseService },
         { provide: DeepLinkService, useValue: mockDeepLinkService },

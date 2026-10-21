@@ -7,9 +7,10 @@ import {
   type AllocationSplit,
 } from '../../scripts/db/allocation';
 import { expect, test } from '../fixtures';
-import { ExpensesPage, formatMoney } from '../pages/expenses.page';
+import { ExpensesPage } from '../pages/expenses.page';
 import { EXPENSES } from '../seed/datasets/expenses';
 import type { SeedGroup, SeedUser } from '../seed/types';
+import { formatMoney } from '../utils/format';
 import { signInAs } from '../utils/session';
 
 // Data: e2e/seed/datasets/expenses.ts. Every test signs in as expenses-user
@@ -84,7 +85,10 @@ function byPercentage(
 
 function byShares(total: number, shares: number[]): number[] {
   return allocateByShares(
-    { totalAmount: total, splits: splitsFor(shares.map((s) => ({ shares: s }))) },
+    {
+      totalAmount: total,
+      splits: splitsFor(shares.map((s) => ({ shares: s }))),
+    },
     rounder
   ).splits.map((s) => s.allocatedAmount);
 }
@@ -105,7 +109,11 @@ function uniqueDescription(label: string): string {
  */
 async function startExpense(
   page: Page,
-  { user, group, payer }: { user: SeedUser; group: SeedGroup; payer: string } = {
+  {
+    user,
+    group,
+    payer,
+  }: { user: SeedUser; group: SeedGroup; payer: string } = {
     user: expensesUser,
     group: main,
     payer: ARI,
@@ -236,7 +244,9 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
     }) => {
       const expensesPage = await startExpense(page);
 
-      await expensesPage.descriptionInput.fill(uniqueDescription('Enter moves'));
+      await expensesPage.descriptionInput.fill(
+        uniqueDescription('Enter moves')
+      );
       await expensesPage.descriptionInput.press('Enter');
 
       // Nothing saved; like Tab, the cursor moved on to the next field.
@@ -495,6 +505,28 @@ test.describe('Critical Flow: Expenses', { tag: '@expenses' }, () => {
       await expensesPage.addAllMembers();
       await expect(expensesPage.saveButton).toBeDisabled();
       await expensesPage.selectCategory('Food');
+      await expect(expensesPage.saveButton).toBeEnabled();
+    });
+
+    // Member amounts above the total would leave a negative remainder to
+    // share, handing the other members negative amounts.
+    test('should keep Save disabled while member amounts exceed the total', async ({
+      page,
+    }) => {
+      const expensesPage = await startExpense(page);
+
+      await expensesPage.addAllMembers();
+      await expensesPage.fillExpenseForm({
+        description: uniqueDescription('Over the total'),
+        category: 'Food',
+        amount: 90,
+      });
+      await expensesPage.updateSplitAmount(0, 100);
+      await expect(expensesPage.remainderError).toBeVisible();
+      await expect(expensesPage.saveButton).toBeDisabled();
+
+      await expensesPage.updateSplitAmount(0, 30);
+      await expect(expensesPage.remainderError).toBeHidden();
       await expect(expensesPage.saveButton).toBeEnabled();
     });
 

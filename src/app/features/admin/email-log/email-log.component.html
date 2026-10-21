@@ -13,6 +13,7 @@
             @for (filter of group; track $index) {
               <mat-chip
                 [class]="'state-chip state-chip--' + filter.toLowerCase()"
+                [attr.data-testid]="'email-state-chip-' + filter.toLowerCase()"
                 [class.state-chip--selected]="selectedState() === filter"
                 [style.--mat-chip-label-text-color]="chipTextColor(filter)"
                 (click)="selectedState.set(filter)"
@@ -170,6 +171,7 @@
             mat-row
             *matRowDef="let row; columns: columnsToDisplay()"
             class="clickable-row"
+            data-testid="email-row"
             tabindex="0"
             (click)="onRowClick(row)"
             (keydown.enter)="onRowClick(row)"

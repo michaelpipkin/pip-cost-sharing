@@ -6,7 +6,7 @@
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 
 // Firestore batches cap at 500 writes; stay comfortably under that.
-const BATCH_LIMIT = 400;
+export const BATCH_LIMIT = 400;
 
 export class ChunkedBatch {
   readonly #db: Firestore;

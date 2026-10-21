@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
@@ -24,6 +23,7 @@ import { MailDelivery, MailDocument } from '@models/mail';
 import { AdminMailService } from '@services/admin-mail.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { EmailDetailDialogComponent } from './email-detail-dialog.component';
+import { MediaQueryService } from '@services/media-query.service';
 
 type DeliveryStateFilter = 'ALL' | MailDelivery['state'];
 
@@ -46,13 +46,13 @@ export class AdminEmailLogComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly dialog = inject(MatDialog);
 
   mailDocuments = signal<MailDocument[]>([]);
   selectedState = model<DeliveryStateFilter>('ALL');
   error = signal<string | null>(null);
-  isMobile = signal(false);
+  readonly isMobile = this.mediaQuery.matches('(max-width: 799px)');
   selectedMailIds = signal<Set<string>>(new Set());
 
   readonly stateFilters: DeliveryStateFilter[] = [
@@ -101,12 +101,6 @@ export class AdminEmailLogComponent {
   hasSelection = computed<boolean>(() => this.selectedMailIds().size > 0);
 
   constructor() {
-    this.breakpointObserver
-      .observe('(max-width: 799px)')
-      .subscribe((result) => {
-        this.isMobile.set(result.matches);
-      });
-
     effect(() => {
       this.selectedState();
       this.selectedMailIds.set(new Set());

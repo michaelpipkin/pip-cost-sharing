@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -9,6 +8,7 @@ import { MemberInvite } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { InviteService } from '@services/invite.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SortingService } from '@services/sorting.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -19,6 +19,7 @@ import {
   createMockInviteService,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMediaQueryService,
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
@@ -61,17 +62,6 @@ describe('MembersComponent', () => {
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
   let mockInviteService: ReturnType<typeof createMockInviteService>;
-
-  function createMockBreakpointObserver(matches = false) {
-    return {
-      observe: vi.fn(() => ({
-        subscribe: (callback: (result: any) => void) => {
-          callback({ matches, breakpoints: {} });
-          return { unsubscribe: vi.fn() };
-        },
-      })),
-    };
-  }
 
   beforeEach(async () => {
     mockUserStore = createMockUserStore();
@@ -123,8 +113,8 @@ describe('MembersComponent', () => {
         { provide: InviteService, useValue: mockInviteService },
         { provide: getFirestore, useValue: {} },
         {
-          provide: BreakpointObserver,
-          useValue: createMockBreakpointObserver(false),
+          provide: MediaQueryService,
+          useValue: createMockMediaQueryService(false),
         },
       ],
     }).compileComponents();
@@ -265,8 +255,8 @@ describe('MembersComponent', () => {
           { provide: getFirestore, useValue: {} },
           { provide: getFirestore, useValue: {} },
           {
-            provide: BreakpointObserver,
-            useValue: createMockBreakpointObserver(true),
+            provide: MediaQueryService,
+            useValue: createMockMediaQueryService(true),
           },
         ],
       }).compileComponents();

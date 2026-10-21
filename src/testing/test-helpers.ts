@@ -331,6 +331,15 @@ export function createMockSortingService() {
   };
 }
 
+/**
+ * MediaQueryService stub: every query reports `state`, a writable signal a
+ * test can flip to switch between narrow and wide layouts.
+ */
+export function createMockMediaQueryService(matches = false) {
+  const state = signal(matches);
+  return { state, matches: vi.fn(() => state.asReadonly()) };
+}
+
 export function createMockPwaDetectionService() {
   return {
     isRunningInBrowser: vi.fn(() => true),

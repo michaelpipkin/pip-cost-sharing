@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -45,6 +44,7 @@ import {
   GuidedTourDialogs,
 } from '@services/guided-tour-dialogs';
 import { GuidedTourService } from '@services/guided-tour.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SortingService } from '@services/sorting.service';
 import { ActiveInactivePipe } from '@shared/pipes/active-inactive.pipe';
 import { YesNoCheckPipe } from '@shared/pipes/yes-no-check.pipe';
@@ -91,7 +91,7 @@ export class MembersComponent {
   protected readonly dialog = inject(MatDialog);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly inviteService = inject(InviteService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
@@ -111,7 +111,7 @@ export class MembersComponent {
 
   sortField = signal<string>('displayName');
   sortAsc = signal<boolean>(true);
-  smallScreen = signal<boolean>(false);
+  readonly smallScreen = this.mediaQuery.matches('(max-width: 1009px)');
 
   activeOnly = model<boolean>(true);
   nameFilter = model<string>('');
@@ -166,11 +166,6 @@ export class MembersComponent {
         this.loading.loadingOn();
       }
     });
-
-    // Observe breakpoint changes for responsive column display
-    this.breakpointObserver
-      .observe('(max-width: 1009px)')
-      .subscribe((result) => this.smallScreen.set(result.matches));
   }
 
   sortMembers(e: { active: string; direction: string }): void {

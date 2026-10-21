@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,6 +6,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SplitService } from '@services/split.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -18,6 +18,7 @@ import {
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMediaQueryService,
   createMockMemberStore,
   createMockMemorizedStore,
   createMockSnackBar,
@@ -34,18 +35,14 @@ import { MemorizedComponent } from './memorized.component';
 describe('MemorizedComponent', () => {
   let fixture: ComponentFixture<MemorizedComponent>;
   let component: MemorizedComponent;
+  let mockMediaQuery: ReturnType<typeof createMockMediaQueryService>;
   let mockMemorizedStore: ReturnType<typeof createMockMemorizedStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockCategoryStore: ReturnType<typeof createMockCategoryStore>;
   let router: Router;
 
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
-  };
-
   beforeEach(async () => {
+    mockMediaQuery = createMockMediaQueryService();
     mockMemorizedStore = createMockMemorizedStore();
     mockMemberStore = createMockMemberStore();
     mockCategoryStore = createMockCategoryStore();
@@ -65,7 +62,7 @@ describe('MemorizedComponent', () => {
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: MatDialog, useValue: createMockMatDialog() },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: mockMediaQuery },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: getFirestore, useValue: {} },
       ],
@@ -291,6 +288,32 @@ describe('MemorizedComponent', () => {
       const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
       fixture.destroy();
       expect(stopSpy).toHaveBeenCalledWith('closed');
+    });
+  });
+
+  describe('columnsToDisplay', () => {
+    it('should show separate description and category columns on wide screens', () => {
+      expect(component.columnsToDisplay()).toEqual([
+        'paidBy',
+        'description',
+        'category',
+        'amount',
+        'create',
+        'expand',
+      ]);
+    });
+
+    it('should combine description and category on narrow screens', () => {
+      mockMediaQuery.state.set(true);
+
+      expect(component.smallScreen()).toBe(true);
+      expect(component.columnsToDisplay()).toEqual([
+        'paidBy',
+        'description-category',
+        'amount',
+        'create',
+        'expand',
+      ]);
     });
   });
 });

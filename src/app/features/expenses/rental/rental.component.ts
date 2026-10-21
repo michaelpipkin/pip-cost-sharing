@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -33,6 +32,7 @@ import {
 import { Member } from '@models/member';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { MemberStore } from '@store/member.store';
 import { RentalUtilsService } from '@utils/rental-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
@@ -72,7 +72,7 @@ import { buildRentalTourSteps } from './rental.tour';
 export class RentalComponent {
   protected readonly router = inject(Router);
   protected readonly dialog = inject(MatDialog);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly memberStore = inject(MemberStore);
   protected readonly localeService = inject(LocaleService);
   protected readonly stringUtils = inject(StringUtils);
@@ -303,7 +303,7 @@ export class RentalComponent {
    * window after landing on the page shouldn't keep re-triggering this.
    */
   #showSmallScreenNoticeIfNeeded(): void {
-    if (!this.breakpointObserver.isMatched('(max-width: 767px)')) return;
+    if (!this.mediaQuery.matches('(max-width: 767px)')()) return;
     this.dialog.open(ConfirmDialogComponent, {
       disableClose: false,
       maxWidth: '400px',

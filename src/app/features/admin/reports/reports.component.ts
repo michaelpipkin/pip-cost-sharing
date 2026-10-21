@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -27,6 +26,7 @@ import {
 import { AdminReportsService } from '@services/admin-reports.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { ReportsStore } from '@store/reports.store';
 
 @Component({
@@ -51,14 +51,14 @@ export class AdminReportsComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly dialog = inject(MatDialog);
 
   protected readonly reportOptions = ADMIN_REPORT_OPTIONS;
 
   selectedReport = signal<AdminReportId>('overview');
   error = signal<string | null>(null);
-  isMobile = signal(false);
+  readonly isMobile = this.mediaQuery.matches('(max-width: 799px)');
 
   result = computed(() => this.reportsStore.results()[this.selectedReport()] ?? null);
   hasResult = computed(() => this.result() !== null);
@@ -90,9 +90,6 @@ export class AdminReportsComponent {
   });
 
   constructor() {
-    this.breakpointObserver
-      .observe('(max-width: 799px)')
-      .subscribe((result) => this.isMobile.set(result.matches));
 
     // Switching reports shows a different (possibly not-yet-loaded) result,
     // so any error from the previous report no longer applies.

@@ -94,12 +94,8 @@ test.describe('Groups - no groups yet', { tag: '@groups' }, () => {
     await expect(
       groupsPage.dialogErrors.filter({ hasText: '*Required' })
     ).toHaveCount(2);
-    await expect(groupsPage.page.getByTestId('group-name-error-0')).toHaveText(
-      '*Required'
-    );
-    await expect(
-      groupsPage.page.getByTestId('display-name-error-0')
-    ).toHaveText('*Required');
+    await expect(groupsPage.groupNameError).toHaveText('*Required');
+    await expect(groupsPage.displayNameError).toHaveText('*Required');
     await expect(groupsPage.addGroupSaveButton).toBeDisabled();
 
     await groupsPage.cancelAddGroup();
@@ -228,6 +224,11 @@ test.describe('Groups - creating groups', { tag: '@groups' }, () => {
   });
 });
 
+// The tests below that sign in as groups-viewer (the group admin / Manage
+// Groups / validation / cancel tests on "Groups – View A/B") are read-only and
+// share one user: none of them may ever save a change or select a group,
+// because that would alter the user's saved default group or the groups'
+// data for the others. A test that needs to mutate gets its own user.
 test.describe('Groups - managing groups', { tag: '@groups' }, () => {
   test('should show the group select and Manage Groups for a group admin', async ({
     page,
@@ -282,9 +283,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
 
     await groupsPage.manageGroupNameInput.clear();
     await groupsPage.manageGroupNameInput.blur();
-    await expect(
-      groupsPage.page.getByTestId('manage-group-name-error-0')
-    ).toHaveText('*Required');
+    await expect(groupsPage.manageGroupNameError).toHaveText('*Required');
     await expect(groupsPage.manageGroupsSaveButton).toBeDisabled();
 
     await groupsPage.manageGroupNameInput.fill('Groups – Valid Name');
@@ -327,7 +326,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
 
     await groupsPage.openManageGroupsFor(active.name);
     await expect(groupsPage.switchOf(groupsPage.manageActiveToggle)).toBeChecked();
-    await groupsPage.setToggle(groupsPage.manageActiveToggle, false);
+    await groupsPage.setSwitch(groupsPage.manageActiveToggle, false);
     await groupsPage.saveManageGroups();
 
     await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();
@@ -348,7 +347,7 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
     await expect(
       groupsPage.switchOf(groupsPage.manageAutoAddToggle)
     ).not.toBeChecked();
-    await groupsPage.setToggle(groupsPage.manageAutoAddToggle, true);
+    await groupsPage.setSwitch(groupsPage.manageAutoAddToggle, true);
     await groupsPage.saveManageGroups();
 
     await expect(groupsPage.snackbarWith('Group updated')).toBeVisible();

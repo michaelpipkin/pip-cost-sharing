@@ -9,6 +9,7 @@
     <mat-form-field subscriptSizing="dynamic" class="report-select">
       <mat-label>Report</mat-label>
       <mat-select
+        data-testid="report-select"
         [value]="selectedReport()"
         (selectionChange)="selectedReport.set($event.value)"
       >
@@ -21,6 +22,7 @@
     <button
       mat-raised-button
       class="btn-primary"
+      data-testid="run-report-button"
       (click)="hasResult() ? refreshReport() : loadReport()"
     >
       <mat-icon>{{ hasResult() ? 'refresh' : 'play_arrow' }}</mat-icon>
@@ -107,7 +109,7 @@
       }
     }
 
-    <div class="footer-info">
+    <div class="footer-info" data-testid="report-results">
       <p>Generated: {{ report.generatedAt | date: 'medium' }}</p>
     </div>
   }

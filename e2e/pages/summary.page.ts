@@ -1,6 +1,6 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { formatMoney, formatShortDate } from './expenses.page';
+import { formatMoney, formatShortDate } from '../utils/format';
 
 /** One who-owes-whom row of the Summary table. */
 export interface ExpectedBalance {
@@ -63,12 +63,6 @@ export class SummaryPage extends BasePage {
   readonly paymentSaveButton: Locator;
   readonly paymentCancelButton: Locator;
 
-  // Generic
-  readonly snackbar: Locator;
-  readonly loadingOverlay: Locator;
-  /** The open mat-select panel. */
-  readonly selectPanel: Locator;
-
   constructor(page: Page) {
     super(page);
 
@@ -111,9 +105,6 @@ export class SummaryPage extends BasePage {
     this.paymentSaveButton = page.getByTestId('submit-payment-button');
     this.paymentCancelButton = page.getByTestId('cancel-payment-button');
 
-    this.snackbar = page.getByTestId('snackbar');
-    this.loadingOverlay = page.getByTestId('loading-spinner-container');
-    this.selectPanel = page.getByRole('listbox');
   }
 
   // ---- Navigation ---------------------------------------------------------
@@ -134,28 +125,14 @@ export class SummaryPage extends BasePage {
   async verifyPageLoaded(): Promise<void> {
     await expect(this.pageTitle).toBeVisible();
     await expect(this.helpButton).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
-  }
-
-  /**
-   * The snackbar showing `message`. Matched by text because an earlier
-   * snackbar can still be in the DOM (exit animation) when a new one opens.
-   */
-  snackbarWith(message: string): Locator {
-    return this.snackbar.filter({ hasText: message });
+    await this.waitForLoadingComplete();
   }
 
   // ---- Filters ------------------------------------------------------------
 
   /** Picks the member whose balances the table shows (default: you). */
   async filterByMember(memberName: string): Promise<void> {
-    await this.memberSelect.click();
-    await expect(this.selectPanel).toBeVisible();
-    await this.selectPanel
-      .getByRole('option', { name: memberName, exact: true })
-      .click();
-    await expect(this.selectPanel).toBeHidden();
-    await expect(this.memberSelect).toHaveText(memberName);
+    await this.chooseOption(this.memberSelect, memberName);
   }
 
   /** Types the given start and/or end date (inclusive) and blurs each. */
@@ -169,10 +146,7 @@ export class SummaryPage extends BasePage {
   }
 
   private async fillDate(input: Locator, date: Date): Promise<void> {
-    const text = formatShortDate(date);
-    await input.fill(text);
-    await input.blur();
-    await expect(input).toHaveValue(text);
+    await this.fillAndCommit(input, formatShortDate(date));
   }
 
   /**
@@ -256,14 +230,14 @@ export class SummaryPage extends BasePage {
   async openPaymentDialog(rowIndex: number): Promise<void> {
     await this.payButtons.nth(rowIndex).click();
     await expect(this.paymentDialogTitle).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /** Records the payment (marks the pair's splits paid). */
   async submitPayment(): Promise<void> {
     await this.paymentSaveButton.click();
     await expect(this.paymentDialog).toBeHidden();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /**

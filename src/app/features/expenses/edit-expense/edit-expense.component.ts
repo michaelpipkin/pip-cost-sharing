@@ -525,6 +525,14 @@ export class EditExpenseComponent {
     () => this.stringUtils.toNumber(this.expenseFormData().amount) === this.allocatedTotal()
   );
 
+  // Member and proportional amounts must not add up to more than the total:
+  // the evenly shared remainder would hand the other members a negative share.
+  readonly remainderValid = computed(
+    () =>
+      this.splitMethod() !== 'amount' ||
+      this.allocationUtils.remainderMatchesTotal(this.stringUtils.toNumber(this.expenseFormData().amount), this.expenseModel().sharedAmount)
+  );
+
   isLastSplit(index: number): boolean {
     return this.splitMethod() === 'percentage' && index === this.expenseModel().splits.length - 1;
   }

@@ -50,7 +50,6 @@ import {
   devices,
   type Locator,
   type Page,
-  type Route,
   type TestInfo,
 } from '@playwright/test';
 import { TEST_CONFIG } from '../constants';
@@ -59,6 +58,11 @@ import { AuthPage } from '../pages/auth.page';
 import { GroupsPage } from '../pages/groups.page';
 import { MembersPage } from '../pages/members.page';
 import { configureFirebaseEmulators } from '../utils/firebase';
+import {
+  MOCK_RECEIPT,
+  mockScanReceipt,
+  renderReceiptImage,
+} from '../utils/scan-receipt-mock';
 
 // ---------------------------------------------------------------------------
 // Output
@@ -474,123 +478,12 @@ async function signIn(page: Page, email: string, password: string) {
 // Mocked receipt scan (slide 3)
 // ---------------------------------------------------------------------------
 
-/**
- * Mirrors ParsedReceipt (src/app/models/receipt-scan.ts, itself mirroring
- * functions/src/receipt-parser.ts) - the scanReceipt callable's `data`.
- * subtotal 115.70 + tax 9.26 + tip 23.14 = total 148.10.
- */
-const MOCK_RECEIPT = {
-  total: 148.1,
-  subtotal: 115.7,
-  tax: 9.26,
-  tip: 23.14,
-  lineItems: [
-    { description: 'Crispy Calamari', amount: 13.5, confidence: 96 },
-    { description: 'Fish Tacos', amount: 16.75, confidence: 94 },
-    { description: 'Grilled Salmon', amount: 24.95, confidence: 97 },
-    { description: 'Lobster Roll', amount: 28.5, confidence: 95 },
-    { description: 'Pitcher of Margaritas', amount: 32.0, confidence: 92 },
-  ],
-  // First line becomes the guessed expense description.
-  rawText: [
-    'Seaside Grill',
-    '12 Harbor Way, Cape May NJ',
-    'Crispy Calamari 13.50',
-    'Fish Tacos 16.75',
-    'Grilled Salmon 24.95',
-    'Lobster Roll 28.50',
-    'Pitcher of Margaritas 32.00',
-    'Subtotal 115.70',
-    'Tax 9.26',
-    'Tip 23.14',
-    'Total 148.10',
-  ].join('\n'),
-};
-
 /** Line item index -> member; the rest stay "Shared / No one". */
 const RECEIPT_ASSIGNMENTS: Record<number, string> = {
   1: 'Alice',
   2: 'Bob',
   3: 'Charlie',
 };
-
-const money = (n: number) => n.toFixed(2);
-
-function receiptHtml(): string {
-  const rows = MOCK_RECEIPT.lineItems
-    .map(
-      (item) =>
-        `<div class="row"><span>${item.description}</span><span>${money(item.amount)}</span></div>`
-    )
-    .join('');
-  return `<!doctype html>
-<html><head><style>
-  body { margin: 0; background: #d9d4cc; font-family: 'Courier New', monospace; }
-  .receipt { width: 360px; margin: 24px; padding: 28px 24px; background: #fffdf7;
-             color: #222; box-shadow: 0 2px 8px rgba(0,0,0,.25); font-size: 15px; }
-  h1 { font-size: 22px; text-align: center; margin: 0 0 4px; letter-spacing: 2px; }
-  .center { text-align: center; font-size: 13px; }
-  .row { display: flex; justify-content: space-between; margin: 6px 0; }
-  hr { border: none; border-top: 1px dashed #777; margin: 14px 0; }
-  .total { font-weight: bold; font-size: 17px; }
-</style></head><body>
-  <div class="receipt">
-    <h1>SEASIDE GRILL</h1>
-    <div class="center">12 Harbor Way, Cape May NJ</div>
-    <div class="center">Table 7 &middot; Server: Jess</div>
-    <hr />
-    ${rows}
-    <hr />
-    <div class="row"><span>Subtotal</span><span>${money(MOCK_RECEIPT.subtotal)}</span></div>
-    <div class="row"><span>Tax</span><span>${money(MOCK_RECEIPT.tax)}</span></div>
-    <div class="row"><span>Tip</span><span>${money(MOCK_RECEIPT.tip)}</span></div>
-    <hr />
-    <div class="row total"><span>TOTAL</span><span>${money(MOCK_RECEIPT.total)}</span></div>
-    <hr />
-    <div class="center">Thank you!</div>
-  </div>
-</body></html>`;
-}
-
-/** Renders the synthetic receipt to a PNG in the test's output dir. */
-async function renderReceiptImage(
-  page: Page,
-  testInfo: TestInfo
-): Promise<string> {
-  const file = testInfo.outputPath('seaside-grill-receipt.png');
-  const receiptPage = await page.context().newPage();
-  try {
-    await receiptPage.setContent(receiptHtml());
-    await receiptPage.locator('.receipt').screenshot({ path: file });
-  } finally {
-    await receiptPage.close();
-  }
-  return file;
-}
-
-/** Answers the scanReceipt callable with MOCK_RECEIPT (callable protocol: { result }). */
-async function mockScanReceipt(page: Page): Promise<void> {
-  await page.route('**/scanReceipt', async (route: Route) => {
-    const request = route.request();
-    const origin = (await request.headerValue('origin')) ?? '*';
-    const corsHeaders = {
-      'access-control-allow-origin': origin,
-      'access-control-allow-credentials': 'true',
-      'access-control-allow-methods': 'POST, OPTIONS',
-      'access-control-allow-headers':
-        (await request.headerValue('access-control-request-headers')) ?? '*',
-    };
-    if (request.method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: corsHeaders });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      headers: corsHeaders,
-      json: { result: MOCK_RECEIPT },
-    });
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Slides 1, 2, 4 - public /split page
@@ -785,7 +678,7 @@ test.describe.serial('Feature tour - Group features', () => {
 
   test('receipt-scan', async ({}, testInfo) => {
     const receiptImage = await renderReceiptImage(page, testInfo);
-    await mockScanReceipt(page);
+    await mockScanReceipt(page, MOCK_RECEIPT);
 
     await page.goto('/expenses/scan-receipt');
     await expect(page.getByTestId('select-photo-placeholder')).toBeVisible();

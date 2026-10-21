@@ -15,7 +15,7 @@ export default defineConfig({
   /* A stray test.only must fail the run, not silently run one test and pass. */
   forbidOnly: true,
   retries: 0,
-  /* 2 workers: 4 concurrent first page loads time out on the ng dev server here. Tests are isolated by seeded data each spec owns (see the pip-angular-testing skill). */
+  /* 2 workers: with a browser launched per worker, 4 concurrent first page loads timed out here (the fresh-browser stall, not the dev server; see FIRST_NAVIGATION_TIMEOUT_MS). Workers now share global setup's browser. Tests are isolated by seeded data each spec owns (see the pip-angular-testing skill). */
   workers: 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [

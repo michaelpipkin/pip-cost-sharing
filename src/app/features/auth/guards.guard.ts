@@ -45,8 +45,7 @@ export const groupGuard: CanActivateFn = () => {
   }
 
   if (groupStore.loaded() && !groupStore.currentGroup()) {
-    router.navigate([ROUTE_PATHS.ADMIN_GROUPS]);
-    return false;
+    return router.createUrlTree([ROUTE_PATHS.ADMIN_GROUPS]);
   }
   return true;
 };
@@ -128,8 +127,7 @@ export const noCrawlerGuard: CanActivateFn = () => {
 
   // Block AdSense crawler from accessing add/edit routes
   if (auth.currentUser?.email === ADSENSE_CRAWLER_EMAIL) {
-    router.navigate([ROUTE_PATHS.HOME]);
-    return false;
+    return router.createUrlTree([ROUTE_PATHS.HOME]);
   }
   return true;
 };
@@ -140,10 +138,13 @@ export const adminGuard: CanActivateFn = async () => {
 
   const user = await waitForAuthInit(auth);
 
-  if (user?.email === APP_OWNER_EMAIL) {
-    return true;
-  } else {
-    router.navigate([ROUTE_PATHS.HOME]);
-    return false;
+  // Redirect by returning a UrlTree, not by calling router.navigate(): this
+  // route also runs authGuard, and a navigate() here superseded authGuard's
+  // redirect, so a signed-out visitor landed on Home instead of login.
+  if (!user) {
+    return router.createUrlTree([ROUTE_PATHS.AUTH_LOGIN]);
   }
+  return user.email === APP_OWNER_EMAIL
+    ? true
+    : router.createUrlTree([ROUTE_PATHS.HOME]);
 };
