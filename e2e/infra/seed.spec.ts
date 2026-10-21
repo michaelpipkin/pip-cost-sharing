@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures';
 import { getSeedAdmin } from '../seed/admin';
 import { ALL_DATASETS } from '../seed/datasets';
+import { ACCOUNT_ACTION } from '../seed/datasets/account-action';
 import { INFRA } from '../seed/datasets/infra';
 import { SHARED } from '../seed/datasets/shared';
 import { storageObjectExists } from '../seed/storage';
@@ -205,6 +206,22 @@ test.describe('seed', { tag: '@infra' }, () => {
     const { auth } = getSeedAdmin();
     const user = await auth.getUserByEmail(SHARED.users.alice.email);
     expect(user.emailVerified).toBe(true);
+  });
+
+  test('a user seeded with emailVerified false is unverified', async () => {
+    // account-action's resend user is never verified by its test.
+    const { auth } = getSeedAdmin();
+    const user = await auth.getUserByEmail(ACCOUNT_ACTION.users.resend.email);
+    expect(user.emailVerified).toBe(false);
+  });
+
+  test('validateDatasets rejects a non-boolean emailVerified', () => {
+    const datasets = cloneDatasets();
+    const shared = sharedDataset(datasets);
+    (shared.users[0] as { emailVerified?: unknown }).emailVerified = 'yes';
+    expect(() => validateDatasets(datasets)).toThrow(
+      /emailVerified must be a boolean/
+    );
   });
 
   test('seeded profile fields survive the sign-up trigger', async () => {

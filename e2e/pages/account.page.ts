@@ -32,6 +32,10 @@ export class AccountPage extends BasePage {
 
   // Profile
   readonly emailNotificationsToggle: Locator;
+  readonly emailInput: Locator;
+  readonly updateEmailButton: Locator;
+  readonly verifyEmailButton: Locator;
+  readonly syncMemberEmails: Locator;
 
   // Payments
   readonly venmoInput: Locator;
@@ -74,6 +78,10 @@ export class AccountPage extends BasePage {
     this.emailNotificationsToggle = page.getByTestId(
       'email-notifications-toggle'
     );
+    this.emailInput = page.getByTestId('account-email-input');
+    this.updateEmailButton = page.getByTestId('update-email-button');
+    this.verifyEmailButton = page.getByTestId('verify-email-button');
+    this.syncMemberEmails = page.getByTestId('sync-member-emails');
 
     this.venmoInput = page.getByTestId('venmo-input');
     this.paypalInput = page.getByTestId('paypal-input');
@@ -155,6 +163,19 @@ export class AccountPage extends BasePage {
     await this.logoutButton.click();
     await expect(this.loginLink.filter({ visible: true })).toBeVisible();
     await expect(this.logoutButton).toBeHidden();
+  }
+
+  // ---- Profile email ------------------------------------------------------
+
+  /**
+   * Types a new address into the Profile email field (blurred) and presses
+   * Update Email. Returns without waiting for an outcome: the caller asserts
+   * the snackbar the attempt shows.
+   */
+  async submitEmailChange(newEmail: string): Promise<void> {
+    await this.fillAndCommit(this.emailInput, newEmail);
+    await expect(this.updateEmailButton).toBeEnabled();
+    await this.updateEmailButton.click();
   }
 
   // ---- Payments -----------------------------------------------------------

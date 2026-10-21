@@ -30,6 +30,12 @@ export interface SeedUser {
   uid: string;
   email: string;
   password: string;
+  /**
+   * Whether the Auth account is email-verified. Defaults to true; set false
+   * for a test that verifies the address itself (a signed-in unverified user
+   * is held on the Account page by the auth guard).
+   */
+  emailVerified?: boolean;
   profile?: SeedUserProfile;
 }
 

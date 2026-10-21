@@ -2,7 +2,9 @@ import { expect, test } from '../fixtures';
 import { AccountPage } from '../pages/account.page';
 import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
-import { ACCOUNT, NEW_PASSWORD } from '../seed/datasets/account';
+import { getSeedAdmin } from '../seed/admin';
+import { ACCOUNT, NEW_EMAIL, NEW_PASSWORD } from '../seed/datasets/account';
+import { verifyEmailViaEmulator } from '../utils/auth-emulator';
 import { signInAs } from '../utils/session';
 
 // Each test signs in as its own user (see e2e/seed/datasets/account.ts): they
@@ -11,8 +13,9 @@ import { signInAs } from '../utils/session';
 // so it is opened by URL once the account page has rendered. Persistence is
 // checked with a real reload, which makes the page read from Firestore.
 //
-// Changing the email address is not covered: it locks the account into email
-// verification (a candidate for later).
+// The email tests go through Firebase's updateEmail and the Auth emulator's
+// emailed-link code (verifyEmailViaEmulator), reading the Auth account and
+// users/{uid} back with the Admin SDK on the test emulators.
 
 test.describe('Account settings', { tag: ['@account'] }, () => {
   test('should save payment service IDs', async ({ page }) => {
@@ -133,5 +136,76 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
 
     await groups.goto();
     await groups.verifyGroupInList(left);
+  });
+
+  test('should change the email address and verify the new one', async ({
+    page,
+  }) => {
+    const account = new AccountPage(page);
+    const { email: user } = ACCOUNT.users;
+    const { auth, db } = getSeedAdmin();
+
+    await signInAs(page, user);
+    await account.gotoAccount();
+    await expect(account.emailInput).toHaveValue(user.email);
+    await expect(account.verifyEmailButton).toHaveText('Email Verified');
+    await expect(account.syncMemberEmails).toBeVisible();
+
+    await account.submitEmailChange(NEW_EMAIL);
+    await expect(
+      account.snackbarWith('Check your email to verify your email address')
+    ).toBeVisible();
+    // The profile now treats the address as unverified: the verified-only
+    // member email sync is gone and the button offers to verify again.
+    await expect(account.syncMemberEmails).toBeHidden();
+    await expect(account.verifyEmailButton).toHaveText('Verify Email');
+    // The Auth account moved to the new address, unverified.
+    const changed = await auth.getUser(user.uid);
+    expect(changed.email).toBe(NEW_EMAIL);
+    expect(changed.emailVerified).toBe(false);
+
+    // The emailed link for the NEW address verifies it, and the app then
+    // writes it to the user doc (the trigger keeps emailLower in step).
+    await verifyEmailViaEmulator(page, NEW_EMAIL);
+    await expect
+      .poll(
+        async () => {
+          const data = (await db.doc(`users/${user.uid}`).get()).data();
+          return [data?.['email'], data?.['emailLower']];
+        },
+        { message: 'users/{uid} never got the new email', timeout: 30_000 }
+      )
+      .toEqual([NEW_EMAIL, NEW_EMAIL]);
+
+    // Only the new address signs in now.
+    await account.signOut();
+    await expect(signInAs(page, user)).rejects.toThrow(/sign-in rejected/);
+    await signInAs(page, { ...user, email: NEW_EMAIL });
+    await account.gotoAccount();
+    await expect(account.emailInput).toHaveValue(NEW_EMAIL);
+    await expect(account.verifyEmailButton).toHaveText('Email Verified');
+  });
+
+  test('should refuse an email address another account already uses', async ({
+    page,
+  }) => {
+    const account = new AccountPage(page);
+    const { inUse: user, taken } = ACCOUNT.users;
+    const { auth } = getSeedAdmin();
+
+    await signInAs(page, user);
+    await account.gotoAccount();
+    await account.submitEmailChange(taken.email);
+    await expect(
+      account.snackbarWith(
+        'This email address is already in use by another account'
+      )
+    ).toBeVisible();
+    await expect(
+      account.snackbarWith('Check your email to verify your email address')
+    ).toBeHidden();
+
+    expect((await auth.getUser(user.uid)).email).toBe(user.email);
+    expect((await auth.getUser(taken.uid)).email).toBe(taken.email);
   });
 });

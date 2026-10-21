@@ -171,7 +171,12 @@ class GroupBatch {
 async function createAuthUsers(db: Firestore, auth: Auth, users: SeedUser[]): Promise<void> {
   await Promise.all(
     users.map((u) =>
-      auth.createUser({ uid: u.uid, email: u.email, password: u.password, emailVerified: true })
+      auth.createUser({
+        uid: u.uid,
+        email: u.email,
+        password: u.password,
+        emailVerified: u.emailVerified ?? true,
+      })
     )
   );
   await waitForProfileDocs(db, users);

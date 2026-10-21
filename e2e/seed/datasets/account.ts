@@ -21,6 +21,13 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *   where the user's member left the group (inactive, leftGroup). The
  *   group's admin is the placeholder user account-leftadmin, who never signs
  *   in. The rejoin test brings the member back.
+ * - account-email, "Account – Email": changes the account email to NEW_EMAIL
+ *   (never seeded), verifies it and signs in with it. The old address stops
+ *   working, so nobody else signs in as them.
+ * - account-inuse, "Account – In Use": tries to change the email to
+ *   account-taken's address and is refused; nothing about them changes.
+ * - account-taken: owns the address account-inuse tries to take. Never signs
+ *   in, has no group.
  */
 
 const SPEC = 'spec:e2e/account/account.spec.ts' as const;
@@ -28,6 +35,13 @@ const PASSWORD = 'Seed-Pass-123!';
 
 /** The password the change-password test sets on account-password. */
 export const NEW_PASSWORD = 'Changed-Pass-456!';
+
+/**
+ * The address the change-email test moves account-email to. Not seeded
+ * anywhere (the emulators start empty each run), so it is free until that
+ * test claims it: one-shot per seeding, like the password test.
+ */
+export const NEW_EMAIL = 'account-email-changed@pipsplit.test';
 
 function makeUser(name: string, defaultGroupKey: string): SeedUser {
   return {
@@ -47,6 +61,14 @@ const users = {
   prefs: makeUser('prefs', 'g-account-prefs-a'),
   rejoin: makeUser('rejoin', 'g-account-rejoin-home'),
   leftAdmin: makeUser('leftadmin', 'g-account-left'),
+  email: makeUser('email', 'g-account-email'),
+  inUse: makeUser('inuse', 'g-account-inuse'),
+  taken: {
+    key: 'account-taken',
+    uid: 'u-account-taken',
+    email: 'account-taken@pipsplit.test',
+    password: PASSWORD,
+  },
 };
 
 function ari(user: SeedUser, extra: Partial<SeedMember> = {}): SeedMember {
@@ -84,6 +106,8 @@ export const ACCOUNT = {
     prefsA: makeGroup('prefs-a', 'Prefs A', [ari(users.prefs)]),
     prefsB: makeGroup('prefs-b', 'Prefs B', [ari(users.prefs)]),
     rejoinHome: makeGroup('rejoin-home', 'Rejoin Home', [ari(users.rejoin)]),
+    email: makeGroup('email', 'Email', [ari(users.email)]),
+    inUse: makeGroup('inuse', 'In Use', [ari(users.inUse)]),
     left: makeGroup('left', 'Left', [
       ari(users.leftAdmin, { key: 'dana', displayName: 'Dana' }),
       ari(users.rejoin, { groupAdmin: false, active: false, leftGroup: true }),

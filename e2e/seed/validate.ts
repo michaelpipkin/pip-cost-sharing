@@ -51,6 +51,9 @@ export function validateDatasets(datasets: SeedDataset[]): void {
       );
       checkEmail(where, user.email);
       checkDocId(problems, where, user.uid);
+      if (user.emailVerified !== undefined && typeof user.emailVerified !== 'boolean') {
+        problems.push(`${where}: emailVerified must be a boolean`);
+      }
     }
     for (const group of dataset.groups) {
       const where = `${dataset.name} group "${group.key}"`;

@@ -41,11 +41,13 @@ const AUTH_EMULATOR_API = `http://${emulatorHost('auth')}/emulator/v1/projects/$
 /**
  * Verifies `email` the way its verification link would: reads the newest
  * VERIFY_EMAIL oob code the Auth emulator issued for that address (polling,
- * since the app sends it right after registering), opens the app's
- * account-action page with it in `page`, then waits until the emulator
- * reports the address verified (Admin SDK on the test Auth emulator). The page itself is not asserted on: a
- * verified user with a group is moved on to Groups almost at once, so the
- * success card is too brief to rely on. Test auth emulator only.
+ * since the app sends it right after registering or changing the address),
+ * opens the app's account-action page with it in `page`, then waits until the
+ * emulator reports the address verified (Admin SDK on the test Auth
+ * emulator). The page itself is not asserted on here: a verified user with a
+ * group may be moved on at once, so the success card can be too brief to rely
+ * on (the verify screen has its own spec, e2e/auth/account-action.spec.ts, on
+ * links from `verifyEmailPath`). Test auth emulator only.
  */
 export async function verifyEmailViaEmulator(
   page: Page,
@@ -87,4 +89,20 @@ export async function verifyEmailViaEmulator(
       { message: `${email} never became verified`, timeout: 30_000 }
     )
     .toBe(true);
+}
+
+/**
+ * The app path (`/auth/account-action?mode=verifyEmail&oobCode=...`) of a
+ * fresh verification link for `email`, generated through the Admin SDK on the
+ * test Auth emulator. Deterministic and independent of the app's own send
+ * button, so a test can open the verify-email screen for a seeded unverified
+ * user. Each call issues a new code; the code works once.
+ */
+export async function verifyEmailPath(email: string): Promise<string> {
+  const link = await getSeedAdmin().auth.generateEmailVerificationLink(email);
+  const oobCode = new URL(link).searchParams.get('oobCode');
+  if (!oobCode) {
+    throw new Error(`No oobCode in the verification link for ${email}: ${link}`);
+  }
+  return `/auth/account-action?mode=verifyEmail&oobCode=${encodeURIComponent(oobCode)}`;
 }
