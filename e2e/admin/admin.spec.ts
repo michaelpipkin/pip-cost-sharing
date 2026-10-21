@@ -54,9 +54,7 @@ test.describe('Admin', { tag: ['@admin'] }, () => {
     await expect(admin.navAdminLink).toHaveCount(0);
   });
 
-  test('should open the admin area from the account page', async ({
-    page,
-  }) => {
+  test('should open the admin area from the account page', async ({ page }) => {
     const account = new AccountPage(page);
     const admin = new AdminPage(page);
 
@@ -88,8 +86,8 @@ test.describe('Admin', { tag: ['@admin'] }, () => {
     await expect(admin.reportResults).toBeVisible({
       timeout: REPORT_TIMEOUT_MS,
     });
-    await expect(admin.reportResults.getByText('Total Groups')).toBeVisible();
-    await expect(admin.reportResults.getByText('Total Users')).toBeVisible();
+    await expect(page.getByText('Total Groups')).toBeVisible();
+    await expect(page.getByText('Total Users')).toBeVisible();
     await expect(admin.reportResults.getByText(/^Generated:/)).toBeVisible();
     // Once there is a result the button re-runs it.
     await expect(admin.runReportButton).toHaveText(/Refresh/);

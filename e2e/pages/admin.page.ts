@@ -3,12 +3,7 @@ import { BasePage } from './base.page';
 
 /** A delivery-state filter chip of the email log (the testid suffix). */
 export type EmailState =
-  | 'all'
-  | 'pending'
-  | 'processing'
-  | 'success'
-  | 'error'
-  | 'retry';
+  'all' | 'pending' | 'processing' | 'success' | 'error' | 'retry';
 
 /**
  * The site-admin area (/admin/...): reached from the Account sidebar's Admin
@@ -134,13 +129,13 @@ export class AdminPage extends BasePage {
     return this.emailRows.filter({ hasText: subject });
   }
 
-  /** Opens a row's detail dialog, deletes it and confirms. */
+  /** Opens an email row's detail dialog, deletes it and confirms. */
   async deleteEmail(subject: string): Promise<void> {
-    await this.emailRow(subject).click();
-    await this.emailDetailDeleteButton.click();
-    await this.deleteConfirmButton.click();
-    await expect(this.snackbarWith('Email deleted successfully')).toBeVisible();
-    await this.waitForLoadingComplete();
+    await this.deleteViaDetail(
+      this.emailRow(subject),
+      this.emailDetailDeleteButton,
+      'Email deleted successfully'
+    );
   }
 
   // ---- Error log ----------------------------------------------------------
@@ -164,14 +159,30 @@ export class AdminPage extends BasePage {
     await expect(this.groupedToggle).toHaveClass(/mat-button-toggle-checked/);
   }
 
-  /** Opens a row's detail dialog, deletes it and confirms. */
+  /** Opens an error row's detail dialog, deletes it and confirms. */
   async deleteError(component: string): Promise<void> {
-    await this.errorRow(component).click();
-    await this.errorDetailDeleteButton.click();
+    await this.deleteViaDetail(
+      this.errorRow(component),
+      this.errorDetailDeleteButton,
+      'Error(s) deleted successfully'
+    );
+  }
+
+  // ---- Shared -------------------------------------------------------------
+
+  /**
+   * Opens a log row's detail dialog, presses its Delete button, confirms in
+   * the shared delete dialog and waits for the success snackbar and overlay.
+   */
+  private async deleteViaDetail(
+    row: Locator,
+    detailDeleteButton: Locator,
+    successMessage: string
+  ): Promise<void> {
+    await row.click();
+    await detailDeleteButton.click();
     await this.deleteConfirmButton.click();
-    await expect(
-      this.snackbarWith('Error(s) deleted successfully')
-    ).toBeVisible();
+    await expect(this.snackbarWith(successMessage)).toBeVisible();
     await this.waitForLoadingComplete();
   }
 }

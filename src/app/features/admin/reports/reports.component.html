@@ -47,72 +47,70 @@
   }
 
   @if (result(); as report) {
-    <div class="report-results" data-testid="report-results">
-      @if (report.summary.length > 0) {
-        <div class="stats-grid">
-          @for (section of report.summary; track section.title) {
-            <mat-card class="stat-card">
-              <mat-card-header>
-                <mat-card-title>{{ section.title }}</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-                @for (stat of section.stats; track stat.label) {
-                  <div class="stat-row">
-                    <span>{{ stat.label }}:</span>
-                    <span class="stat-value">{{ stat.value }}</span>
-                  </div>
-                }
-              </mat-card-content>
-            </mat-card>
-          }
-        </div>
-      }
-
-      @for (table of report.tables; track table.title) {
-        <h4 class="report-table-title">{{ table.title }}</h4>
-        @if (table.rows.length > 0) {
-          <div class="table-container mat-elevation-z8">
-            <div class="scrollable-table">
-              <table
-                mat-table
-                [dataSource]="table.rows"
-                class="static-table"
-                [class.compact-table]="isMobile()"
-              >
-                @for (col of table.columns; track col.key) {
-                  <ng-container [matColumnDef]="col.key">
-                    <th
-                      mat-header-cell
-                      *matHeaderCellDef
-                      [class]="col.align ? 'cell-' + col.align : ''"
-                    >
-                      {{ col.label }}
-                    </th>
-                    <td
-                      mat-cell
-                      *matCellDef="let row"
-                      [class]="col.align ? 'cell-' + col.align : ''"
-                    >
-                      {{ formatCell(row[col.key]) }}
-                    </td>
-                  </ng-container>
-                }
-                <tr
-                  mat-header-row
-                  *matHeaderRowDef="columnKeys(table); sticky: true"
-                ></tr>
-                <tr mat-row *matRowDef="let row; columns: columnKeys(table)"></tr>
-              </table>
-            </div>
-          </div>
-        } @else {
-          <p class="no-data">{{ table.emptyMessage ?? 'No data found.' }}</p>
+    @if (report.summary.length > 0) {
+      <div class="stats-grid">
+        @for (section of report.summary; track section.title) {
+          <mat-card class="stat-card">
+            <mat-card-header>
+              <mat-card-title>{{ section.title }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @for (stat of section.stats; track stat.label) {
+                <div class="stat-row">
+                  <span>{{ stat.label }}:</span>
+                  <span class="stat-value">{{ stat.value }}</span>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
         }
-      }
-
-      <div class="footer-info">
-        <p>Generated: {{ report.generatedAt | date: 'medium' }}</p>
       </div>
+    }
+
+    @for (table of report.tables; track table.title) {
+      <h4 class="report-table-title">{{ table.title }}</h4>
+      @if (table.rows.length > 0) {
+        <div class="table-container mat-elevation-z8">
+          <div class="scrollable-table">
+            <table
+              mat-table
+              [dataSource]="table.rows"
+              class="static-table"
+              [class.compact-table]="isMobile()"
+            >
+              @for (col of table.columns; track col.key) {
+                <ng-container [matColumnDef]="col.key">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    [class]="col.align ? 'cell-' + col.align : ''"
+                  >
+                    {{ col.label }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let row"
+                    [class]="col.align ? 'cell-' + col.align : ''"
+                  >
+                    {{ formatCell(row[col.key]) }}
+                  </td>
+                </ng-container>
+              }
+              <tr
+                mat-header-row
+                *matHeaderRowDef="columnKeys(table); sticky: true"
+              ></tr>
+              <tr mat-row *matRowDef="let row; columns: columnKeys(table)"></tr>
+            </table>
+          </div>
+        </div>
+      } @else {
+        <p class="no-data">{{ table.emptyMessage ?? 'No data found.' }}</p>
+      }
+    }
+
+    <div class="footer-info" data-testid="report-results">
+      <p>Generated: {{ report.generatedAt | date: 'medium' }}</p>
     </div>
   }
 </div>

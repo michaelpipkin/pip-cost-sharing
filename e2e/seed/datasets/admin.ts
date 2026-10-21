@@ -50,7 +50,10 @@ const mail: Record<'error' | 'retry' | 'deleteMe', SeedMail> = {
   },
 };
 
-const appErrors: Record<'listedFirst' | 'listedSecond' | 'deleteMe', SeedAppError> = {
+const appErrors: Record<
+  'listedFirst' | 'listedSecond' | 'deleteMe',
+  SeedAppError
+> = {
   listedFirst: {
     key: 'err-admin-listed-1',
     component: 'AdminSpec Listed',
