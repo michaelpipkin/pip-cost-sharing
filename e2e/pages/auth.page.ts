@@ -8,7 +8,6 @@ const LANDING_TIMEOUT_MS = 30_000;
 export class AuthPage extends BasePage {
   readonly emailInput: Locator;
   readonly passwordInput: Locator;
-  readonly confirmPasswordInput: Locator;
   readonly loginButton: Locator;
   readonly signUpButton: Locator;
   readonly forgotPasswordLink: Locator;
@@ -20,9 +19,6 @@ export class AuthPage extends BasePage {
     // Use data-testid selectors for reliable element selection
     this.emailInput = this.page.getByTestId('email-input');
     this.passwordInput = this.page.getByTestId('password-input');
-    this.confirmPasswordInput = this.page.locator(
-      'input[formControlName="confirmPassword"]'
-    );
     this.loginButton = this.page.getByTestId('login-submit-button');
     this.signUpButton = this.page.locator(
       'button:has-text("Sign Up"), button:has-text("Register")'
@@ -153,29 +149,6 @@ export class AuthPage extends BasePage {
       this.page.getByTestId('register-confirmation-card')
     ).toBeVisible();
     await this.waitForLoadingComplete();
-  }
-
-  /**
-   * Sign up with email and password
-   */
-  async signUp(email: string, password: string, confirmPassword?: string) {
-    await this.emailInput.fill(email);
-    await this.emailInput.blur();
-    await expect(this.emailInput).toHaveValue(email);
-
-    await this.passwordInput.fill(password);
-    await this.passwordInput.blur();
-    await expect(this.passwordInput).toHaveValue(password);
-
-    if (confirmPassword && this.confirmPasswordInput) {
-      await this.confirmPasswordInput.fill(confirmPassword);
-      await this.confirmPasswordInput.blur();
-      await expect(this.confirmPasswordInput).toHaveValue(confirmPassword);
-    }
-
-    await this.signUpButton.click();
-    // Don't wait for networkidle after signup - see gotoSignUp() above.
-    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**

@@ -114,12 +114,17 @@ test.describe('Group invites', { tag: ['@members', '@groups'] }, () => {
     await verifyEmailViaEmulator(page, register.email);
 
     // Verifying links the member (linkInvitedMembers) and the app moves the
-    // new user on to Groups; the group shows up in its select once the
-    // syncGroupMemberUids trigger has granted access to it.
+    // new user on to Groups. The group arrives once the syncGroupMemberUids
+    // trigger has granted access to it: the app listens live (member and
+    // group snapshots), and the first group is auto-selected, so waiting for
+    // the select to show it needs no reload and never opens the dropdown
+    // while the group is still missing (a panel left open would block a
+    // retried click). Then check the list itself, once.
     await expect(page).toHaveURL(/\/administration\/groups$/);
-    await expect(async () => {
-      await groups.verifyGroupInList(group.name);
-    }).toPass({ timeout: FUNCTION_CHAIN_TIMEOUT_MS });
+    await expect(groups.groupSelect).toContainText(group.name, {
+      timeout: FUNCTION_CHAIN_TIMEOUT_MS,
+    });
+    await groups.verifyGroupInList(group.name);
 
     // The member is linked now, so the admin has nobody left to invite there.
     await account.signOut();
