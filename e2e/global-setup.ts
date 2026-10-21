@@ -70,7 +70,8 @@ async function clear(label: string, url: string) {
  * after a failed test restarts its worker, stalled the OTHER worker's
  * running test past its 30 s bounds. Launched once here, the stall is paid
  * before any test starts; new contexts in a running browser don't set it
- * off.
+ * off. Headed and --debug runs don't share it (this browser is headless and
+ * the Inspector needs a browser of its own): their workers launch as before.
  */
 export default async function globalSetup(config: FullConfig) {
   assertNoDevTarget();
@@ -98,6 +99,12 @@ export default async function globalSetup(config: FullConfig) {
   } catch (error) {
     await browserServer.close();
     throw error;
+  }
+  const interactive =
+    config.projects[0].use.headless === false || !!process.env.PWDEBUG;
+  if (interactive) {
+    await browserServer.close();
+    return;
   }
   process.env[SHARED_BROWSER_WS_ENDPOINT_ENV] = browserServer.wsEndpoint();
   return async () => {

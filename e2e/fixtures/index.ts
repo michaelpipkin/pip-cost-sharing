@@ -23,12 +23,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // (e2e/global-setup.ts) instead of launching their own: a fresh Chromium's
   // first page loads set off a machine-wide stall here (see
   // FIRST_NAVIGATION_TIMEOUT_MS) that also froze the other worker's test.
-  // Without the variable (feature-tour config, which has no global setup)
-  // each worker launches a browser as usual.
+  // Connect options Playwright already has (the config, or a tool such as
+  // the VS Code extension's "show browser") win. Without the variable
+  // (feature-tour config, which has no global setup; headed and --debug
+  // runs) each worker launches a browser as usual.
   connectOptions: [
-    async ({}, use) => {
+    async ({ connectOptions }, use) => {
       const wsEndpoint = process.env[SHARED_BROWSER_WS_ENDPOINT_ENV];
-      await use(wsEndpoint ? { wsEndpoint } : undefined);
+      await use(connectOptions ?? (wsEndpoint ? { wsEndpoint } : undefined));
     },
     { scope: 'worker' },
   ],
