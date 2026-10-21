@@ -80,7 +80,11 @@
           id="description"
         >
           <mat-label>Description</mat-label>
-          <input matInput [formField]="expenseForm.description" />
+          <input
+            matInput
+            [formField]="expenseForm.description"
+            data-testid="edit-description-input"
+          />
           @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
@@ -125,6 +129,7 @@
             appFormatCurrencyInput
             (blur)="updateTotalAmount()"
             inputmode="decimal"
+            data-testid="edit-total-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>

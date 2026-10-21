@@ -14,6 +14,7 @@ import { RECEIPTS_DATASET } from './receipts';
 import { RENTAL_DATASET } from './rental';
 import { SHARED_DATASET } from './shared';
 import { SUMMARY_DATASET } from './summary';
+import { TOURS_DATASET } from './tours';
 
 /** Every dataset global setup seeds. Spec-owned datasets register here too. */
 export const ALL_DATASETS: SeedDataset[] = [
@@ -32,4 +33,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   CATEGORIES_DATASET,
   MEMBERS_DATASET,
   INVITES_DATASET,
+  TOURS_DATASET,
 ];
