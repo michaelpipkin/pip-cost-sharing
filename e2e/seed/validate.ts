@@ -51,7 +51,10 @@ export function validateDatasets(datasets: SeedDataset[]): void {
       );
       checkEmail(where, user.email);
       checkDocId(problems, where, user.uid);
-      if (user.emailVerified !== undefined && typeof user.emailVerified !== 'boolean') {
+      if (
+        user.emailVerified !== undefined &&
+        typeof user.emailVerified !== 'boolean'
+      ) {
         problems.push(`${where}: emailVerified must be a boolean`);
       }
     }

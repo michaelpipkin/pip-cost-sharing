@@ -114,7 +114,9 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
     ).toBeVisible();
 
     await account.signOut();
-    await expect(signInAs(page, user)).rejects.toThrow(/sign-in rejected/);
+    await expect(signInAs(page, user)).rejects.toThrow(
+      /sign-in rejected - "Could not sign you in\. Please check your email and password\."/
+    );
     await signInAs(page, { ...user, password: NEW_PASSWORD });
     await expect(account.logoutButton).toBeVisible();
   });
@@ -179,7 +181,9 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
 
     // Only the new address signs in now.
     await account.signOut();
-    await expect(signInAs(page, user)).rejects.toThrow(/sign-in rejected/);
+    await expect(signInAs(page, user)).rejects.toThrow(
+      /sign-in rejected - "Could not sign you in\. Please check your email and password\."/
+    );
     await signInAs(page, { ...user, email: NEW_EMAIL });
     await account.gotoAccount();
     await expect(account.emailInput).toHaveValue(NEW_EMAIL);
