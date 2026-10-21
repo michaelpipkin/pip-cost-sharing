@@ -57,8 +57,6 @@ export class HistoryPage extends BasePage {
   readonly confirmButton: Locator;
   readonly cancelButton: Locator;
 
-  // Generic
-
   constructor(page: Page) {
     super(page);
 

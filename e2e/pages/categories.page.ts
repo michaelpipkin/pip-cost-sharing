@@ -95,9 +95,7 @@ export class CategoriesPage extends BasePage {
     await expect(this.addTitle).toBeVisible();
     // Dialog ready: MatDialog moves focus here after its open animation.
     await expect(this.addNameInput).toBeFocused();
-    await this.addNameInput.fill(name);
-    await this.addNameInput.blur();
-    await expect(this.addNameInput).toHaveValue(name);
+    await this.fillAndCommit(this.addNameInput, name);
     await expect(this.addSaveButton).toBeEnabled();
     await this.addSaveButton.click();
     await expect(this.addTitle).toBeHidden();
@@ -116,9 +114,7 @@ export class CategoriesPage extends BasePage {
   async rename(row: Locator, newName: string): Promise<void> {
     await this.openEdit(row);
     await this.editNameInput.clear();
-    await this.editNameInput.fill(newName);
-    await this.editNameInput.blur();
-    await expect(this.editNameInput).toHaveValue(newName);
+    await this.fillAndCommit(this.editNameInput, newName);
     await this.saveEdit();
   }
 

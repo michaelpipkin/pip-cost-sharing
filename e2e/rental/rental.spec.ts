@@ -184,6 +184,20 @@ test.describe('Rental expenses', { tag: ['@rental'] }, () => {
         { member: 'Cody', amount: 50 },
       ],
     });
+
+    // The occupancy itself was saved, not just the splits: reopening the
+    // grid shows Cody absent night 2 (and still there night 1).
+    await rental.openSavedRental(description);
+    await rental.openEditDialog(3);
+    await rental.dialogGrid.expectShares([2.5, 2.5, 1]);
+    await expect(
+      await rental.dialogGrid.nightCheckbox('Cody', 1)
+    ).not.toBeChecked();
+    await expect(
+      await rental.dialogGrid.nightCheckbox('Cody', 0)
+    ).toBeChecked();
+    await rental.cancelEditDialog();
+    await rental.cancelEditedExpense();
   });
 
   test('should leave a rental unchanged when the grid edit is cancelled', async ({

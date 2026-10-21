@@ -119,15 +119,11 @@ export class ExpenseForm extends BasePage {
    * form's re-allocation); the input then shows it formatted to cents.
    */
   private async fillCurrency(input: Locator, amount: number): Promise<void> {
-    await input.fill(amount.toString());
-    await input.blur();
-    await expect(input).toHaveValue(amount.toFixed(2));
+    await this.fillAndCommit(input, amount.toString(), amount.toFixed(2));
   }
 
   async setDescription(description: string): Promise<void> {
-    await this.descriptionInput.fill(description);
-    await this.descriptionInput.blur();
-    await expect(this.descriptionInput).toHaveValue(description);
+    await this.fillAndCommit(this.descriptionInput, description);
   }
 
   async setTotalAmount(amount: number): Promise<void> {
@@ -192,24 +188,28 @@ export class ExpenseForm extends BasePage {
     await expect(this.splitRows).toHaveCount(count - 1);
   }
 
-  /** Sets split row `index`'s member amount (amount split method). */
+  /**
+   * Sets split row `index`'s member amount (amount split method); the input
+   * then shows it formatted to cents.
+   */
   async updateSplitAmount(index: number, amount: number): Promise<void> {
-    const input = this.assignedAmountInputs.nth(index);
-    await input.fill(amount.toString());
-    await input.blur();
+    await this.fillAndCommit(
+      this.assignedAmountInputs.nth(index),
+      amount.toString(),
+      amount.toFixed(2)
+    );
   }
 
   /** Sets split row `index`'s percentage (not the last row: it's computed). */
   async setSplitPercentage(index: number, percentage: number): Promise<void> {
-    const input = this.percentageInputs.nth(index);
-    await input.fill(percentage.toString());
-    await input.blur();
+    await this.fillAndCommit(
+      this.percentageInputs.nth(index),
+      percentage.toString()
+    );
   }
 
   async setSplitShares(index: number, shares: number): Promise<void> {
-    const input = this.sharesInputs.nth(index);
-    await input.fill(shares.toString());
-    await input.blur();
+    await this.fillAndCommit(this.sharesInputs.nth(index), shares.toString());
   }
 
   /** Switches the split method and waits for its toggle to show it. */

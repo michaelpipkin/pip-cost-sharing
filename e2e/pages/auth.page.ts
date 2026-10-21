@@ -141,9 +141,7 @@ export class AuthPage extends BasePage {
     ];
     for (const [testId, value] of fields) {
       const input = this.page.getByTestId(testId);
-      await input.fill(value);
-      await input.blur();
-      await expect(input).toHaveValue(value);
+      await this.fillAndCommit(input, value);
     }
     const submit = this.page
       .getByTestId('register-form')
@@ -183,9 +181,7 @@ export class AuthPage extends BasePage {
    */
   async forgotPassword(email: string) {
     await this.forgotPasswordLink.click();
-    await this.emailInput.fill(email);
-    await this.emailInput.blur();
-    await expect(this.emailInput).toHaveValue(email);
+    await this.fillAndCommit(this.emailInput, email);
     const resetButton = this.getByTestId('reset-password-button');
     await resetButton.click();
     await this.waitForLoadingComplete();

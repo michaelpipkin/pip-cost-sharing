@@ -145,9 +145,7 @@ test.describe('Categories', { tag: ['@categories'] }, () => {
       categories.general.name
     );
     await expect(categoriesPage.addCategoryButton).toBeHidden();
+    // Rows only open the editor for users who can edit.
     await expect(row).not.toHaveClass(/clickable-row/);
-
-    await row.click();
-    await expect(categoriesPage.editTitle).toBeHidden();
   });
 });

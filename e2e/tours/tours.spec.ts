@@ -334,7 +334,9 @@ test.describe('Guided tours', { tag: ['@help'] }, () => {
       await tour.close();
       await expect(tour.title).toBeHidden();
       await expect(tour.spotlight).toBeHidden();
-      await expect(split.addSplitButton).toBeEnabled();
+      // Ending it part-way restored the calculator, as finishing does.
+      await expect(split.totalAmountInput).toHaveValue('0.00');
+      await expect(split.nameInputs).toHaveCount(0);
     }
   );
 

@@ -52,7 +52,7 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 - Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
-- Playwright runs 2 workers (more time out on first page loads on the owner's machine; `pnpm e2e --workers 4` is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
+- Playwright runs 2 workers (with a browser launched per worker, 4 concurrent first page loads timed out on the owner's machine: the fresh-browser stall, not the dev server; workers now share one browser, see below. `pnpm e2e --workers 4` passes but is no faster, so it is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
 - The workers share one headless browser that global setup launches and warms (a freshly launched browser's first page loads stall the whole machine here; see `FIRST_NAVIGATION_TIMEOUT_MS` in `constants/`). Headed and `--debug` (inspector or cli) runs launch a browser per worker instead.
 - Do not set `E2E_TARGET` when running the suite; global setup rejects it (it is only for the feature-tour capture config).
 
@@ -62,7 +62,7 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 e2e/
   global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, launches the shared browser, warms routes
   seed/             # shared deterministic data set (types, validate, write, storage, datasets/)
-  fixtures/         # seededPage (clipboard permissions), connectOptions (shared browser), browserWarmUp (per worker)
+  fixtures/         # seededPage (clipboard permissions, records the page's clipboard writes), connectOptions (shared browser), browserWarmUp (per worker)
   utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts, format.ts (formatMoney, formatShortDate),
                     # auth-emulator.ts (findMail, verifyEmailViaEmulator), scan-receipt-mock.ts (mockScanReceipt)
   pages/            # page objects (BasePage helpers, ExpenseForm, TourCard, ...)

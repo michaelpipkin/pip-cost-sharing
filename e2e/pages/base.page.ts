@@ -125,6 +125,22 @@ export abstract class BasePage {
   }
 
   /**
+   * Types into an input, blurs it (forms commit, reformat and re-allocate on
+   * blur) and asserts the value it then shows: `expected`, which defaults to
+   * what was typed. Pass the formatted value for inputs that reformat (a
+   * currency input shows cents).
+   */
+  async fillAndCommit(
+    input: Locator,
+    value: string,
+    expected: string = value
+  ): Promise<void> {
+    await input.fill(value);
+    await input.blur();
+    await expect(input).toHaveValue(expected);
+  }
+
+  /**
    * Waits until a full page load's initial navigation has committed: the
    * routed component renders as a sibling of <router-outlet> only then.
    * After it, the app's post-load redirect to /expenses (which only fires

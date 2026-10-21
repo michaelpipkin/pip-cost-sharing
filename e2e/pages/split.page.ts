@@ -97,17 +97,6 @@ export class SplitPage extends BasePage {
 
   // ---- Form -----------------------------------------------------------------
 
-  /** Types into an input and blurs it; the committed value is then shown. */
-  private async fillAndCommit(
-    input: Locator,
-    typed: string,
-    shown: string = typed
-  ): Promise<void> {
-    await input.fill(typed);
-    await input.blur();
-    await expect(input).toHaveValue(shown);
-  }
-
   async setTotal(amount: number): Promise<void> {
     await this.fillAndCommit(
       this.totalAmountInput,

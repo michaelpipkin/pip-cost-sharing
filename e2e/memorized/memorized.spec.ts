@@ -119,7 +119,8 @@ test.describe('Memorized expenses', { tag: ['@memorized'] }, () => {
 
     await memorized.saveEdit();
 
-    // Reload the list in-app: leave Memorized and come back.
+    // Leave Memorized and come back. This is in-app navigation, not a
+    // reload: it shows the live listener's data, not a fresh read.
     await memorized.expenses.navigateToList();
     await memorized.navigateToList();
     await memorized.expectRow(description, {

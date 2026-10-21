@@ -155,9 +155,7 @@ export class MembersPage extends BasePage {
 
   // Filter methods
   async searchMembers(searchText: string): Promise<void> {
-    await this.memberSearchInput.fill(searchText);
-    await this.memberSearchInput.blur();
-    await expect(this.memberSearchInput).toHaveValue(searchText);
+    await this.fillAndCommit(this.memberSearchInput, searchText);
   }
 
   async clearSearch(): Promise<void> {
@@ -191,13 +189,8 @@ export class MembersPage extends BasePage {
   }
 
   async fillAddMemberForm(name: string, email: string): Promise<void> {
-    await this.memberNameInput.fill(name);
-    await this.memberNameInput.blur();
-    await expect(this.memberNameInput).toHaveValue(name);
-
-    await this.memberEmailInput.fill(email);
-    await this.memberEmailInput.blur();
-    await expect(this.memberEmailInput).toHaveValue(email);
+    await this.fillAndCommit(this.memberNameInput, name);
+    await this.fillAndCommit(this.memberEmailInput, email);
   }
 
   async submitAddMemberForm(): Promise<void> {
@@ -234,16 +227,12 @@ export class MembersPage extends BasePage {
   async fillEditMemberForm(name?: string, email?: string): Promise<void> {
     if (name !== undefined) {
       await this.editMemberNameInput.clear();
-      await this.editMemberNameInput.fill(name);
-      await this.editMemberNameInput.blur();
-      await expect(this.editMemberNameInput).toHaveValue(name);
+      await this.fillAndCommit(this.editMemberNameInput, name);
     }
 
     if (email !== undefined) {
       await this.editMemberEmailInput.clear();
-      await this.editMemberEmailInput.fill(email);
-      await this.editMemberEmailInput.blur();
-      await expect(this.editMemberEmailInput).toHaveValue(email);
+      await this.fillAndCommit(this.editMemberEmailInput, email);
     }
   }
 

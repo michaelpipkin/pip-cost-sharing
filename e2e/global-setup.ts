@@ -116,7 +116,16 @@ export default async function globalSetup(config: FullConfig) {
 
   await seedAll();
 
-  const browserServer = await chromium.launchServer({ host: '127.0.0.1' });
+  // The workers' own launches would use the project's launch options and
+  // channel; this browser replaces theirs, so it gets them too (otherwise a
+  // flag added to the config, such as launchOptions.args, would work in
+  // headed runs and silently do nothing in the suite).
+  const { launchOptions, channel } = config.projects[0].use;
+  const browserServer = await chromium.launchServer({
+    ...launchOptions,
+    ...(channel ? { channel } : {}),
+    host: '127.0.0.1',
+  });
   try {
     await warmUpDevServer(
       config.projects[0].use.baseURL,

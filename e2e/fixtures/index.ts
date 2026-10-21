@@ -4,6 +4,7 @@ import {
   SHARED_BROWSER_WS_ENDPOINT_ENV,
 } from '../constants';
 import { AuthPage } from '../pages/auth.page';
+import { recordClipboardWrites } from '../utils/clipboard';
 
 // Define types for our fixtures
 type TestFixtures = {
@@ -64,10 +65,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   seededPage: async ({ page }, use) => {
-    // Grant clipboard permissions for copy-to-clipboard tests
+    // Grant clipboard permissions for copy-to-clipboard tests, and record
+    // what the page writes so tests read it back per page (readClipboard)
+    // rather than from the clipboard the workers share.
     await page
       .context()
       .grantPermissions(['clipboard-read', 'clipboard-write']);
+    await recordClipboardWrites(page);
     await use(page);
   },
 });

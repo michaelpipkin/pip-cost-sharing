@@ -168,13 +168,8 @@ export class GroupsPage extends BasePage {
     displayName: string,
     autoAddMembers: boolean = false
   ): Promise<void> {
-    await this.groupNameInput.fill(groupName);
-    await this.groupNameInput.blur();
-    await expect(this.groupNameInput).toHaveValue(groupName);
-
-    await this.displayNameInput.fill(displayName);
-    await this.displayNameInput.blur();
-    await expect(this.displayNameInput).toHaveValue(displayName);
+    await this.fillAndCommit(this.groupNameInput, groupName);
+    await this.fillAndCommit(this.displayNameInput, displayName);
 
     if (autoAddMembers) {
       await this.setSwitch(this.autoAddMembersToggle, true);

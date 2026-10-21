@@ -168,9 +168,7 @@ export class AccountPage extends BasePage {
       [this.zelleInput, ids.zelle],
     ];
     for (const [input, value] of fields) {
-      await input.fill(value);
-      await input.blur();
-      await expect(input).toHaveValue(value);
+      await this.fillAndCommit(input, value);
     }
   }
 
@@ -224,12 +222,8 @@ export class AccountPage extends BasePage {
     password: string,
     confirmation: string = password
   ): Promise<void> {
-    await this.newPasswordInput.fill(password);
-    await this.newPasswordInput.blur();
-    await expect(this.newPasswordInput).toHaveValue(password);
-    await this.confirmPasswordInput.fill(confirmation);
-    await this.confirmPasswordInput.blur();
-    await expect(this.confirmPasswordInput).toHaveValue(confirmation);
+    await this.fillAndCommit(this.newPasswordInput, password);
+    await this.fillAndCommit(this.confirmPasswordInput, confirmation);
     await expect(this.changePasswordButton).toBeEnabled();
     await this.changePasswordButton.click();
   }

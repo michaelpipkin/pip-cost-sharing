@@ -63,8 +63,6 @@ export class SummaryPage extends BasePage {
   readonly paymentSaveButton: Locator;
   readonly paymentCancelButton: Locator;
 
-  // Generic
-
   constructor(page: Page) {
     super(page);
 
@@ -148,10 +146,7 @@ export class SummaryPage extends BasePage {
   }
 
   private async fillDate(input: Locator, date: Date): Promise<void> {
-    const text = formatShortDate(date);
-    await input.fill(text);
-    await input.blur();
-    await expect(input).toHaveValue(text);
+    await this.fillAndCommit(input, formatShortDate(date));
   }
 
   /**

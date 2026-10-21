@@ -191,17 +191,13 @@ export class RentalPage extends BasePage {
     await expect(this.grid.memberRows).toHaveCount(memberCount);
   }
 
-  private async fillAndBlur(input: Locator, value: string): Promise<void> {
-    await input.fill(value);
-    await input.blur();
-    await expect(input).toHaveValue(value);
-  }
-
   /** Types the total cost; the input then shows it formatted to cents. */
   async setAmount(amount: number): Promise<void> {
-    await this.amountInput.fill(amount.toString());
-    await this.amountInput.blur();
-    await expect(this.amountInput).toHaveValue(amount.toFixed(2));
+    await this.fillAndCommit(
+      this.amountInput,
+      amount.toString(),
+      amount.toFixed(2)
+    );
   }
 
   /**
@@ -209,14 +205,14 @@ export class RentalPage extends BasePage {
    * night columns (new nights start ticked for everyone).
    */
   async setNights(nights: number): Promise<void> {
-    await this.fillAndBlur(this.nightCountInput, nights.toString());
+    await this.fillAndCommit(this.nightCountInput, nights.toString());
     await expect(
       this.grid.nightRows.first().getByTestId('night-checkbox')
     ).toHaveCount(nights);
   }
 
   async setDescription(description: string): Promise<void> {
-    await this.fillAndBlur(this.descriptionInput, description);
+    await this.fillAndCommit(this.descriptionInput, description);
   }
 
   /** Ticks or unticks `member` on 0-based `night`. */
@@ -244,8 +240,8 @@ export class RentalPage extends BasePage {
     await expect(this.roomRows).toHaveCount(index + 1);
     const room = this.roomRows.nth(index);
 
-    await this.fillAndBlur(room.getByTestId('room-name-input'), name);
-    await this.fillAndBlur(
+    await this.fillAndCommit(room.getByTestId('room-name-input'), name);
+    await this.fillAndCommit(
       room.getByTestId('room-rate-input'),
       rate.toString()
     );

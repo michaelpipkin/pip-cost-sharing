@@ -7,8 +7,9 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *
  * - tours-user is Ari, the admin of "Tours – Home", their only and default
  *   group (signing in writes nothing). The other member, Blake, is a
- *   placeholder (no email), so the group has two members and the tours that
- *   add sample members when you are alone (Members, Split) use the real ones.
+ *   placeholder (no email), so the group has two members and the Members
+ *   tour, which adds sample members when you are alone, uses the real ones.
+ *   (Split is signed out and uses no group.)
  * - Two categories (General, Travel), so the category field is shown.
  * - Two expenses, both paid by Ari and split evenly with Blake:
  *   - "Tours – Dinner" ($40, unpaid): the row the Expenses list shows (it
