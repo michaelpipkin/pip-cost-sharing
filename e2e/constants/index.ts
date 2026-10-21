@@ -65,7 +65,7 @@ export const TEST_CONFIG = {
  *
  * On this machine (suspected Norton network filtering) a fresh Chromium's
  * first burst of page requests often sets off a machine-wide stall: for
- * whole ~10 s units (measured 9.7-10.4 s), socket calls in EVERY process
+ * whole ~10 s units (measured 9.7-10.5 s), socket calls in EVERY process
  * block, the browser, the dev server, the emulators and unrelated Node
  * processes alike, while a process that makes no socket calls keeps running.
  * Units come back to back: two fresh browsers each loading a 150-request

@@ -25,6 +25,29 @@ function assertNoDevTarget() {
   }
 }
 
+// The shared browser's endpoint is set here and nowhere else. An ambient
+// value would point the workers at some other (or long dead) browser.
+function assertNoAmbientSharedBrowser() {
+  const ambient = process.env[SHARED_BROWSER_WS_ENDPOINT_ENV];
+  if (ambient !== undefined) {
+    throw new Error(
+      `${SHARED_BROWSER_WS_ENDPOINT_ENV} is set (${ambient}) - global setup sets it for the run's shared browser; unset it before running pnpm e2e.`
+    );
+  }
+}
+
+// Runs that need a browser of their own instead of the shared headless one:
+// --headed and --debug (inspector) turn headless off (and the inspector
+// sets PWDEBUG); --debug=cli sets neither, so it is read from the runner's
+// arguments.
+function isInteractiveRun(config: FullConfig): boolean {
+  return (
+    config.projects[0].use.headless === false ||
+    !!process.env.PWDEBUG ||
+    process.argv.some((arg) => arg === '--debug' || arg.startsWith('--debug='))
+  );
+}
+
 async function probe(label: string, url: string) {
   try {
     await fetch(`${url}/`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
@@ -55,7 +78,8 @@ async function clear(label: string, url: string) {
 }
 
 /**
- * Runs once before all tests: refuses ambient E2E_TARGET / E2E_SEED_TODAY,
+ * Runs once before all tests: refuses ambient E2E_TARGET / E2E_SEED_TODAY /
+ * E2E_SHARED_BROWSER_WS_ENDPOINT,
  * publishes the run's seed date, verifies the test emulators are up, resets
  * Auth and Firestore, seeds the deterministic dataset, then launches the
  * run's one browser and warms up the dev server's routes in it (after
@@ -70,11 +94,13 @@ async function clear(label: string, url: string) {
  * after a failed test restarts its worker, stalled the OTHER worker's
  * running test past its 30 s bounds. Launched once here, the stall is paid
  * before any test starts; new contexts in a running browser don't set it
- * off. Headed and --debug runs don't share it (this browser is headless and
- * the Inspector needs a browser of its own): their workers launch as before.
+ * off. Headed and --debug runs (inspector or cli) don't share it (this
+ * browser is headless and a debugger wants a browser of its own): their
+ * workers launch as before.
  */
 export default async function globalSetup(config: FullConfig) {
   assertNoDevTarget();
+  assertNoAmbientSharedBrowser();
   publishSeedToday();
   await probe('Firestore', FIRESTORE_URL);
   await probe('Auth', AUTH_URL);
@@ -100,14 +126,25 @@ export default async function globalSetup(config: FullConfig) {
     await browserServer.close();
     throw error;
   }
-  const interactive =
-    config.projects[0].use.headless === false || !!process.env.PWDEBUG;
-  if (interactive) {
+  if (isInteractiveRun(config)) {
     await browserServer.close();
     return;
   }
+
+  // If the shared browser dies mid-run, every later test fails to connect;
+  // say why once instead of leaving only that cascade.
+  let closing = false;
+  browserServer.process().once('exit', (code, signal) => {
+    if (!closing) {
+      console.error(
+        `[e2e] the shared browser exited during the run (code ${code}, signal ${signal}); every test after this fails to connect to it.`
+      );
+    }
+  });
   process.env[SHARED_BROWSER_WS_ENDPOINT_ENV] = browserServer.wsEndpoint();
   return async () => {
+    closing = true;
+    delete process.env[SHARED_BROWSER_WS_ENDPOINT_ENV];
     await browserServer.close();
   };
 }

@@ -38,11 +38,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // Loads the login page once per worker before its first test, with a
   // generous bound. In the suite the browser is the shared, already warmed
   // one, so this takes a second or two; where a worker launches its own
-  // browser (feature-tour), it absorbs that browser's first-load stall (one
-  // to six ~10 s units) so it can't land on a test's own timeouts. Waits for
-  // the rendered login form (most tests' first page), not just the
-  // document: the stall can also hit the route's lazily loaded dependencies
-  // after DOMContentLoaded.
+  // browser (feature-tour, headed and --debug runs), it absorbs that
+  // browser's first-load stall (one to six ~10 s units) so it can't land on
+  // a test's own timeouts. Waits for the rendered login form (most tests'
+  // first page), not just the document: the stall can also hit the route's
+  // lazily loaded dependencies after DOMContentLoaded.
   browserWarmUp: [
     async ({ browser }, use) => {
       const context = await browser.newContext();

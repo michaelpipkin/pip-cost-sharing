@@ -2,7 +2,6 @@ import { expect, test } from '../fixtures';
 import { AccountPage } from '../pages/account.page';
 import { AdminPage } from '../pages/admin.page';
 import { AuthPage } from '../pages/auth.page';
-import { HomePage } from '../pages/home.page';
 import { ADMIN } from '../seed/datasets/admin';
 import { SHARED } from '../seed/datasets/shared';
 import { signInAs } from '../utils/session';
@@ -37,16 +36,32 @@ test.describe('Admin', { tag: ['@admin'] }, () => {
   });
 
   test('should keep non-admins out', async ({ page }) => {
-    const home = new HomePage(page);
     const account = new AccountPage(page);
     const admin = new AdminPage(page);
 
-    // Bob is signed in but is not the app owner: /admin goes to Home.
     await signInAs(page, SHARED.users.bob);
+
+    // Bob is signed in but is not the app owner: adminGuard sends /admin to
+    // Home. For a signed-in user with a group, Home is only a stop: once
+    // the reloaded app has handled his groups snapshot, GroupService moves
+    // him on to Expenses (handleGroupsSnapshot's redirect pages in
+    // src/app/services/group.service.ts). That landing is the evidence the
+    // snapshot has run. Clicking Account before it raced it: the Account
+    // link targets /auth/account, also a redirect page, and was bounced to
+    // Expenses (Task 11b). The guard decides on auth state alone, so it has
+    // always sent him Home before the snapshot (three Firestore reads
+    // later) can arrive.
+    const visited: string[] = [];
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        visited.push(new URL(frame.url()).pathname);
+      }
+    });
     await page.goto('/admin');
-    await home.waitForInitialNavigation();
-    await expect(home.title).toBeVisible();
-    await expect(page).not.toHaveURL(/\/admin/);
+    await expect(page).toHaveURL(/\/expenses$/);
+    expect(visited).toContain('/');
+    await account.waitForInitialNavigation();
+    await account.waitForLoadingComplete();
 
     // And his Account page offers no way in.
     await account.gotoAccount();
