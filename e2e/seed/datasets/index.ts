@@ -1,5 +1,6 @@
 import type { SeedDataset } from '../types';
 import { ACCOUNT_DATASET } from './account';
+import { ADMIN_DATASET } from './admin';
 import { AUTH_DATASET } from './auth';
 import { CATEGORIES_DATASET } from './categories';
 import { EXPENSES_DATASET } from './expenses';
@@ -34,4 +35,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   MEMBERS_DATASET,
   INVITES_DATASET,
   TOURS_DATASET,
+  ADMIN_DATASET,
 ];

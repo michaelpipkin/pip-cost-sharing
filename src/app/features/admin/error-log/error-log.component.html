@@ -36,8 +36,14 @@
       aria-label="View mode toggle"
       hideSingleSelectionIndicator="true"
     >
-      <mat-button-toggle [value]="false">Individual</mat-button-toggle>
-      <mat-button-toggle [value]="true">Grouped</mat-button-toggle>
+      <mat-button-toggle
+        [value]="false"
+        data-testid="error-view-toggle-individual"
+      >Individual</mat-button-toggle>
+      <mat-button-toggle
+        [value]="true"
+        data-testid="error-view-toggle-grouped"
+      >Grouped</mat-button-toggle>
     </mat-button-toggle-group>
 
     <button
@@ -161,7 +167,12 @@
             >
               Count
             </th>
-            <td mat-cell *matCellDef="let row" class="cell-center">
+            <td
+              mat-cell
+              *matCellDef="let row"
+              class="cell-center"
+              data-testid="error-group-count"
+            >
               {{ asGroupedError(row).count }}
             </td>
           </ng-container>
@@ -174,6 +185,7 @@
             mat-row
             *matRowDef="let row; columns: columnsToDisplay()"
             class="clickable-row"
+            data-testid="error-row"
             (click)="onRowClick(row)"
             (keydown.enter)="onRowClick(row)"
           ></tr>

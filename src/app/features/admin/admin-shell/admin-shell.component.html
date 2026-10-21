@@ -2,6 +2,7 @@
   <a
     mat-tab-link
     routerLink="reports"
+    data-testid="admin-tab-reports"
     routerLinkActive
     #rla1="routerLinkActive"
     [active]="rla1.isActive"
@@ -11,6 +12,7 @@
   <a
     mat-tab-link
     routerLink="email-log"
+    data-testid="admin-tab-email-log"
     routerLinkActive
     #rla2="routerLinkActive"
     [active]="rla2.isActive"
@@ -20,6 +22,7 @@
   <a
     mat-tab-link
     routerLink="error-log"
+    data-testid="admin-tab-error-log"
     routerLinkActive
     #rla3="routerLinkActive"
     [active]="rla3.isActive"
