@@ -450,6 +450,18 @@ export class SplitComponent {
       this.allocatedTotal()
   );
 
+  // Member and proportional amounts must not add up to more than the total:
+  // the evenly shared remainder would hand the other members a negative share.
+  readonly remainderValid = computed(
+    () =>
+      this.rentalMode() ||
+      this.splitMethod() !== 'amount' ||
+      this.allocationUtils.remainderMatchesTotal(
+        this.stringUtils.toNumber(this.expenseModel().amount),
+        this.expenseModel().sharedAmount
+      )
+  );
+
   protected splitField(i: number) {
     return this.expenseForm.splits[i]!;
   }

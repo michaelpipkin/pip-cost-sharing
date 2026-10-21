@@ -719,6 +719,15 @@ describe('GroupService', () => {
         );
       });
 
+      it('does not redirect a validated user on the Account menu', async () => {
+        useRouter('/auth/account', null);
+
+        await deliverOneActiveGroup();
+
+        expect(mockGroupStore.setCurrentGroup).toHaveBeenCalled();
+        expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+      });
+
       it('lets an unverified user finish a pending email-action link', async () => {
         useRouter('/', '/auth/account-action?mode=verifyEmail&oobCode=abc');
         isValidUserComputed.set(false);

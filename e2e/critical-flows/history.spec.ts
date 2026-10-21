@@ -1,6 +1,5 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { formatMoney, formatShortDate } from '../pages/expenses.page';
 import {
   HistoryPage,
   type ExpectedPaidSplit,
@@ -12,6 +11,7 @@ import { HISTORY } from '../seed/datasets/history';
 import { SHARED } from '../seed/datasets/shared';
 import type { SeedUser } from '../seed/types';
 import { readClipboard } from '../utils/clipboard';
+import { formatMoney, formatShortDate } from '../utils/format';
 import { signInAs } from '../utils/session';
 
 // Data: the display and copy tests read SHARED's one payment as alice and

@@ -212,7 +212,7 @@
           [class.hidden]="splitMethod() !== 'amount'"
         >
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value-right" data-testid="shared-remainder-amount">
+          <span class="mock-value-right" [class.error-text]="!remainderValid()" data-testid="shared-remainder-amount">
             {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
@@ -445,6 +445,11 @@
         }
       </div>
     </form>
+    @if (!remainderValid()) {
+      <p class="error-text mt-3" data-testid="remainder-error">
+        Member and proportional amounts add up to more than the total.
+      </p>
+    }
     <div class="flex-wrap fw-start row-gap mt-3" data-tour-anchor="save-actions">
       <button
         mat-raised-button
@@ -452,7 +457,7 @@
         type="submit"
         form="expense-form"
         defaultButton
-        [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !expenseFullyAllocated()"
+        [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !expenseFullyAllocated() || !remainderValid()"
         (click)="onSubmit(false)"
         data-testid="save-button"
         aria-label="Save expense"
@@ -464,7 +469,7 @@
           mat-raised-button
           class="btn-secondary"
           type="submit"
-          [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !expenseFullyAllocated()"
+          [disabled]="!expenseForm().valid() || !paidByMemberValid() || !categoryValid() || !splitsValid() || !expenseFullyAllocated() || !remainderValid()"
           (click)="onSubmit(true)"
           data-testid="save-and-add-another-button"
           aria-label="Save & Add Another"

@@ -3,9 +3,15 @@ import { TEST_CONFIG } from '../constants';
 
 export abstract class BasePage {
   readonly page: Page;
+  /** Every snackbar in the DOM; see snackbarWith. */
+  readonly snackbar: Locator;
+  /** The open mat-select panel. */
+  readonly selectPanel: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.snackbar = page.getByTestId('snackbar');
+    this.selectPanel = page.getByRole('listbox');
   }
 
   /**
@@ -71,6 +77,67 @@ export abstract class BasePage {
    */
   getByPlaceholder(text: string | RegExp): Locator {
     return this.page.getByPlaceholder(text);
+  }
+
+  /**
+   * The snackbar showing `message`. Matched by text because an earlier
+   * snackbar can still be in the DOM (exit animation) when a new one opens.
+   */
+  snackbarWith(message: string): Locator {
+    return this.snackbar.filter({ hasText: message });
+  }
+
+  /** A mat-select option in the open panel, matched on its full text. */
+  option(name: string): Locator {
+    return this.selectPanel.getByRole('option', { name, exact: true });
+  }
+
+  /**
+   * Picks `name` in a mat-select: opens it, clicks the exact option (without
+   * `exact`, "Bob" would also match "Bobby"), then waits for the panel to
+   * close and the select to show the name.
+   */
+  async chooseOption(select: Locator, name: string): Promise<void> {
+    await select.click();
+    await expect(this.selectPanel).toBeVisible();
+    await this.option(name).click();
+    await expect(this.selectPanel).toBeHidden();
+    await expect(select).toHaveText(name);
+  }
+
+  /** The switch inside a mat-slide-toggle (it carries the checked state). */
+  switchOf(toggle: Locator): Locator {
+    return toggle.getByRole('switch');
+  }
+
+  /**
+   * Sets a mat-slide-toggle to `checked`: clicks its switch only when it
+   * isn't already, then waits for the state to take. Not setChecked(): that
+   * re-reads the state synchronously after its click, but aria-checked only
+   * updates on the app's next (zoneless) change detection.
+   */
+  async setSwitch(toggle: Locator, checked: boolean): Promise<void> {
+    const control = this.switchOf(toggle);
+    if ((await control.isChecked()) !== checked) {
+      await control.click();
+    }
+    await expect(control).toBeChecked({ checked });
+  }
+
+  /**
+   * Types into an input, blurs it (forms commit, reformat and re-allocate on
+   * blur) and asserts the value it then shows: `expected`, which defaults to
+   * what was typed. Pass the formatted value for inputs that reformat (a
+   * currency input shows cents).
+   */
+  async fillAndCommit(
+    input: Locator,
+    value: string,
+    expected: string = value
+  ): Promise<void> {
+    await input.fill(value);
+    await input.blur();
+    await expect(input).toHaveValue(expected);
   }
 
   /**

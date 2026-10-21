@@ -1,7 +1,7 @@
+import { MediaQueryService } from '@services/media-query.service';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { By } from '@angular/platform-browser';
 import { getAuth } from 'firebase/auth';
 import { getFunctions } from 'firebase/functions';
@@ -11,6 +11,7 @@ import { GroupStore } from '@store/group.store';
 import { APP_OWNER_EMAIL } from '@features/auth/guards.guard';
 import {
   createMockGroupStore,
+  createMockMediaQueryService,
   createMockUserStore,
   mockUser,
 } from '@testing/test-helpers';
@@ -35,12 +36,6 @@ describe('AccountComponent', () => {
     },
   };
 
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
-  };
-
   async function createComponent(authValue = mockAuthWithUser): Promise<void> {
     mockUserStore = createMockUserStore();
     mockUserStore.user.set(mockUser());
@@ -54,7 +49,7 @@ describe('AccountComponent', () => {
         { provide: getFunctions, useValue: {} },
         { provide: UserStore, useValue: mockUserStore },
         { provide: GroupStore, useValue: mockGroupStore },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: createMockMediaQueryService() },
       ],
     }).compileComponents();
 

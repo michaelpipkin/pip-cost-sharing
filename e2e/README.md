@@ -24,7 +24,7 @@ pnpm e2e:local                  # alias for pnpm e2e
 pnpm e2e:report                 # open the last HTML report (no emulators needed)
 ```
 
-`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (it never reuses a server already on 4300; a busy port fails the run). Global setup clears Auth and Firestore once, seeds the data set in `e2e/seed/`, then signs in as a shared user and loads each main route once to warm the dev server; tests never clear data. A full run takes about 4-5 minutes (longer on a cold machine); results are in `test-results/results.json` and `playwright-report/`, overwritten by the next run.
+`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (it never reuses a server already on 4300; a busy port fails the run). Global setup clears Auth and Firestore once, seeds the data set in `e2e/seed/`, then signs in as a shared user and loads each main route once to warm the dev server; tests never clear data. A full run (177 tests) takes about 11 minutes (budget up to 15 on a cold machine); results are in `test-results/results.json` and `playwright-report/`, overwritten by the next run.
 
 ### By area
 
@@ -52,19 +52,24 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 - Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
-- Playwright runs 2 workers (more time out on first page loads on the owner's machine; `pnpm e2e --workers 4` is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
+- Playwright runs 2 workers (with a browser launched per worker, 4 concurrent first page loads timed out on the owner's machine: the fresh-browser stall, not the dev server; workers now share one browser, see below. `pnpm e2e --workers 4` passes but is no faster, so it is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
+- The workers share one headless browser that global setup launches and warms (a freshly launched browser's first page loads stall the whole machine here; see `FIRST_NAVIGATION_TIMEOUT_MS` in `constants/`). Headed and `--debug` (inspector or cli) runs launch a browser per worker instead.
 - Do not set `E2E_TARGET` when running the suite; global setup rejects it (it is only for the feature-tour capture config).
 
 ## Layout
 
 ```
 e2e/
-  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, warms routes
-  seed/             # shared deterministic data set (types, validate, write, datasets/)
-  fixtures/         # seededPage (clipboard permissions), browserWarmUp (per worker)
-  utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts
-  pages/            # page objects
+  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, launches the shared browser, warms routes
+  seed/             # shared deterministic data set (types, validate, write, storage, datasets/)
+  fixtures/         # seededPage (clipboard permissions, records the page's clipboard writes), connectOptions (shared browser), browserWarmUp (per worker)
+  utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts, format.ts (formatMoney, formatShortDate),
+                    # auth-emulator.ts (findMail, verifyEmailViaEmulator), scan-receipt-mock.ts (mockScanReceipt)
+  pages/            # page objects (BasePage helpers, ExpenseForm, TourCard, ...)
   infra/            # seed health spec (@infra, runs with every area)
   auth/ smoke/ groups/ critical-flows/   # specs
+  rental/ memorized/ split/ receipts/    # specs: rental wizard, memorized expenses, public split tool, receipt attach/scan
+  account/ categories/ members/ invites/ # specs: account settings, categories, members, invites + registration
+  tours/ admin/                          # specs: guided tours, admin page (mail log, error log, reports)
   feature-tour/     # screenshot capture config (not part of the suite)
 ```

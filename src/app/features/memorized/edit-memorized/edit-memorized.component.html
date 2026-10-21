@@ -31,6 +31,8 @@
             [value]="expenseModel().paidByMember"
             (selectionChange)="expenseModel.update(m => ({...m, paidByMember: $event.value})); modelDirty.set(true)"
             docRefCompare
+            data-testid="payer-select"
+            aria-label="Select who paid for this expense"
           >
             @for (member of memorizedMembers(); track member.ref) {
               <mat-option [value]="member.ref">
@@ -46,7 +48,12 @@
       <div class="flex-wrap fw-start">
         <mat-form-field data-tour-anchor="description" appearance="fill" id="description">
           <mat-label>Description</mat-label>
-          <input matInput [formField]="expenseForm.description" />
+          <input
+            matInput
+            [formField]="expenseForm.description"
+            data-testid="description-input"
+            aria-label="Enter expense description"
+          />
           @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
@@ -60,6 +67,7 @@
             [value]="expenseModel().category"
             (selectionChange)="expenseModel.update(m => ({...m, category: $event.value})); modelDirty.set(true)"
             docRefCompare
+            data-testid="category-select"
           >
             @for (category of categories(); track category.ref) {
               <mat-option [value]="category.ref">
@@ -86,6 +94,7 @@
             appFormatCurrencyInput
             (blur)="updateTotalAmount()"
             inputmode="decimal"
+            data-testid="total-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
@@ -126,6 +135,7 @@
             appFormatCurrencyInput
             (blur)="allocateSharedAmounts()"
             inputmode="decimal"
+            data-testid="proportional-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
@@ -152,7 +162,7 @@
         </mat-form-field>
         <div data-tour-anchor="remainder" class="mock-input" [class.hidden]="splitMethod() !== 'amount'">
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value-right">
+          <span class="mock-value-right" [class.error-text]="!remainderValid()" data-testid="shared-remainder-amount">
             {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
@@ -163,6 +173,8 @@
           class="btn-primary"
           type="button"
           (click)="addSplit()"
+          data-testid="add-split-button"
+          aria-label="Add New Split"
           [disabled]="splitMembers().length === expenseModel().splits.length"
         >
           Add New Split
@@ -186,6 +198,7 @@
                   [value]="split.owedByMemberRef"
                   (selectionChange)="updateSplit(i, 'owedByMemberRef', $event.value); allocateSharedAmounts()"
                   docRefCompare
+                  data-testid="split-member-select"
                 >
                   @for (
                     member of availableMembersForSplit(i);
@@ -197,7 +210,13 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <button type="button" mat-mini-fab class="btn-danger" (click)="removeSplit(i)">
+              <button type="button"
+                mat-mini-fab
+                class="btn-danger"
+                (click)="removeSplit(i)"
+                aria-label="Remove split"
+                data-testid="remove-split"
+              >
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -224,6 +243,7 @@
                         [value]="split.percentage"
                         [readonly]="true"
                         (blur)="allocateByPercentage()"
+                        data-testid="split-percentage-input"
                       />
                     } @else {
                       <input
@@ -232,6 +252,7 @@
                         class="number-right"
                         [value]="split.percentage ?? 0"
                         (blur)="updateSplit(i, 'percentage', +$any($event.target).value || 0); allocateByPercentage()"
+                        data-testid="split-percentage-input"
                       />
                     }
                     <span matTextSuffix>%</span>
@@ -252,6 +273,7 @@
                         [value]="split.shares ?? 0"
                         inputmode="decimal"
                         (blur)="updateSplit(i, 'shares', +$any($event.target).value || 0); allocateByShares()"
+                        data-testid="split-shares-input"
                       />
                       <span matTextSuffix class="no-wrap">
                         &nbsp;&nbsp;({{
@@ -275,6 +297,7 @@
                       appFormatCurrencyInput
                       (blur)="updateSplit(i, 'assignedAmount', $any($event.target).value); allocateSharedAmounts()"
                       inputmode="decimal"
+                      data-testid="split-assigned-amount-input"
                     />
                     @if (localeService.currency().symbolPosition === 'prefix') {
                       <span matTextPrefix>
@@ -304,7 +327,11 @@
               }
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
-                <span class="mock-value-right">
+                <span
+                  class="mock-value-right"
+                  aria-label="Allocated amount"
+                  data-testid="allocated-amount"
+                >
                   {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
@@ -316,6 +343,11 @@
         }
       </div>
     </form>
+    @if (!remainderValid()) {
+      <p class="error-text mt-3" data-testid="remainder-error">
+        Member and proportional amounts add up to more than the total.
+      </p>
+    }
     <div class="flex-wrap fw-start row-gap mt-3" data-tour-anchor="save-actions">
       <button
         mat-raised-button
@@ -329,9 +361,11 @@
           !categoryValid() ||
           !isFormDirty() ||
           !splitsValid() ||
-          !memorizedFullyAllocated()
+          !memorizedFullyAllocated() || !remainderValid()
         "
         (click)="onSubmit()"
+        data-testid="save-button"
+        aria-label="Save memorized expense"
       >
         Save
       </button>
@@ -340,6 +374,8 @@
         type="button"
         class="btn-danger"
         (click)="onDelete()"
+        data-testid="delete-button"
+        aria-label="Delete memorized expense"
       >
         Delete
       </button>
@@ -347,6 +383,8 @@
         mat-stroked-button
         type="button"
         (click)="onCancel()"
+        data-testid="cancel-button"
+        aria-label="Cancel"
       >
         Cancel
       </button>

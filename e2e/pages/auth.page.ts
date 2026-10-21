@@ -8,7 +8,6 @@ const LANDING_TIMEOUT_MS = 30_000;
 export class AuthPage extends BasePage {
   readonly emailInput: Locator;
   readonly passwordInput: Locator;
-  readonly confirmPasswordInput: Locator;
   readonly loginButton: Locator;
   readonly signUpButton: Locator;
   readonly forgotPasswordLink: Locator;
@@ -20,9 +19,6 @@ export class AuthPage extends BasePage {
     // Use data-testid selectors for reliable element selection
     this.emailInput = this.page.getByTestId('email-input');
     this.passwordInput = this.page.getByTestId('password-input');
-    this.confirmPasswordInput = this.page.locator(
-      'input[formControlName="confirmPassword"]'
-    );
     this.loginButton = this.page.getByTestId('login-submit-button');
     this.signUpButton = this.page.locator(
       'button:has-text("Sign Up"), button:has-text("Register")'
@@ -38,15 +34,16 @@ export class AuthPage extends BasePage {
    * Navigate to the login page. Waits only for DOMContentLoaded (the form
    * assertions that follow do the real waiting), with the config's default
    * timeouts: global setup warms the dev server, so a slow load is a real
-   * regression.
+   * regression. `timeout` overrides them only for a fresh browser's first
+   * page load (FIRST_NAVIGATION_TIMEOUT_MS), never inside a test.
    */
-  async gotoLogin() {
-    await super.goto('/auth/login', { waitUntil: 'domcontentloaded' });
-    await expect(this.page.getByTestId('login-form')).toBeVisible();
+  async gotoLogin({ timeout }: { timeout?: number } = {}) {
+    await super.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
+    await expect(this.page.getByTestId('login-form')).toBeVisible({ timeout });
     // Fields are bound by Angular once the form renders; make sure they are
     // there before a caller starts typing.
-    await expect(this.emailInput).toBeVisible();
-    await expect(this.passwordInput).toBeVisible();
+    await expect(this.emailInput).toBeVisible({ timeout });
+    await expect(this.passwordInput).toBeVisible({ timeout });
   }
 
   /**
@@ -72,13 +69,18 @@ export class AuthPage extends BasePage {
    * immediately with `context` and the snackbar's message. Any snackbar from
    * an earlier action is waited out first so it can't be mistaken for a
    * rejection of this submit.
+   *
+   * `landingTimeout` overrides the landing waits only for a fresh browser's
+   * first sign-in (FIRST_NAVIGATION_TIMEOUT_MS, global-setup warm-up), never
+   * inside a test.
    */
   async submitLogin(
     email: string,
     password: string,
-    context: string = `login(${email})`
+    context: string = `login(${email})`,
+    { landingTimeout = LANDING_TIMEOUT_MS }: { landingTimeout?: number } = {}
   ): Promise<void> {
-    const snackbar = this.page.getByTestId('snackbar');
+    const { snackbar } = this;
 
     await expect(this.emailInput).toBeVisible();
     await this.emailInput.fill(email);
@@ -99,7 +101,7 @@ export class AuthPage extends BasePage {
     await expect(
       authenticated.or(snackbar).first(),
       `${context}: neither the authenticated shell nor a login error appeared`
-    ).toBeVisible({ timeout: LANDING_TIMEOUT_MS });
+    ).toBeVisible({ timeout: landingTimeout });
     // No snackbar existed before the submit, so any now is this attempt's.
     if ((await snackbar.count()) > 0) {
       const message = (await snackbar.first().innerText()).split('\n')[0];
@@ -109,11 +111,11 @@ export class AuthPage extends BasePage {
     await expect(
       this.page,
       `${context}: never redirected away from login`
-    ).not.toHaveURL(/\/auth\/login/, { timeout: LANDING_TIMEOUT_MS });
+    ).not.toHaveURL(/\/auth\/login/, { timeout: landingTimeout });
     await expect(
       this.page.getByTestId('loading-spinner-container'),
       `${context}: loading overlay never cleared`
-    ).toBeHidden({ timeout: LANDING_TIMEOUT_MS });
+    ).toBeHidden({ timeout: landingTimeout });
   }
 
   /**
@@ -125,26 +127,31 @@ export class AuthPage extends BasePage {
   }
 
   /**
-   * Sign up with email and password
+   * Fills and submits the registration form (already on screen), then waits
+   * for the "Check Your Email" confirmation. The new account is signed in but
+   * unverified until its emailed link is followed (see
+   * verifyEmailViaEmulator). Creates a real Auth user: only the invite
+   * registration journey does that in the suite.
    */
-  async signUp(email: string, password: string, confirmPassword?: string) {
-    await this.emailInput.fill(email);
-    await this.emailInput.blur();
-    await expect(this.emailInput).toHaveValue(email);
-
-    await this.passwordInput.fill(password);
-    await this.passwordInput.blur();
-    await expect(this.passwordInput).toHaveValue(password);
-
-    if (confirmPassword && this.confirmPasswordInput) {
-      await this.confirmPasswordInput.fill(confirmPassword);
-      await this.confirmPasswordInput.blur();
-      await expect(this.confirmPasswordInput).toHaveValue(confirmPassword);
+  async register(email: string, password: string): Promise<void> {
+    const fields: [string, string][] = [
+      ['register-email-input', email],
+      ['register-password-input', password],
+      ['register-confirm-password-input', password],
+    ];
+    for (const [testId, value] of fields) {
+      const input = this.page.getByTestId(testId);
+      await this.fillAndCommit(input, value);
     }
-
-    await this.signUpButton.click();
-    // Don't wait for networkidle after signup - see gotoSignUp() above.
-    await this.page.waitForLoadState('domcontentloaded');
+    const submit = this.page
+      .getByTestId('register-form')
+      .getByRole('button', { name: 'Register' });
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    await expect(
+      this.page.getByTestId('register-confirmation-card')
+    ).toBeVisible();
+    await this.waitForLoadingComplete();
   }
 
   /**
@@ -170,53 +177,11 @@ export class AuthPage extends BasePage {
   }
 
   /**
-   * Check if user is logged in by looking for elements that are guaranteed to be visible
-   * to any logged-in user (account, logout, groups) based on the UserStore.isLoggedIn signal
-   */
-  async isLoggedIn(): Promise<boolean> {
-    try {
-      await this.waitForLoadingComplete();
-
-      // Check for elements that appear when logged out first (faster)
-      const loginButton = this.page.locator(
-        '[data-testid="nav-login-desktop"]'
-      );
-
-      // If login button is visible, user is not logged in
-      const loginVisible = await loginButton.isVisible().catch(() => false);
-      if (loginVisible) {
-        return false;
-      }
-
-      // Check for logged-in elements
-      const logoutButton = this.page.locator(
-        '[data-testid="logout-button-desktop"]'
-      );
-      const accountButton = this.page.locator(
-        '[data-testid="nav-account-desktop"]'
-      );
-
-      // Check if any of the two guaranteed logged-in elements are visible
-      const logoutVisible = await logoutButton.isVisible().catch(() => false);
-      const accountVisible = await accountButton.isVisible().catch(() => false);
-
-      // User is logged in if any of these two elements are visible
-      return logoutVisible || accountVisible;
-    } catch (error) {
-      console.log('Error checking login status:', error);
-      // If we can't determine state, assume logged out
-      return false;
-    }
-  }
-
-  /**
    * Initiate forgot password flow
    */
   async forgotPassword(email: string) {
     await this.forgotPasswordLink.click();
-    await this.emailInput.fill(email);
-    await this.emailInput.blur();
-    await expect(this.emailInput).toHaveValue(email);
+    await this.fillAndCommit(this.emailInput, email);
     const resetButton = this.getByTestId('reset-password-button');
     await resetButton.click();
     await this.waitForLoadingComplete();

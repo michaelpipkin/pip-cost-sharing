@@ -12,6 +12,9 @@ export class MembersPage extends BasePage {
   readonly addMemberButton: Locator;
   readonly membersTable: Locator;
   readonly helpButton: Locator;
+  readonly currentGroupName: Locator;
+  /** The Invite column header: admins only, and only while a listed member can be invited. */
+  readonly inviteColumnHeader: Locator;
 
   // Add Member Dialog elements
   readonly addMemberDialog: Locator;
@@ -36,11 +39,12 @@ export class MembersPage extends BasePage {
   // Confirmation dialogs: Remove opens the shared delete dialog, Leave Group
   // the shared confirm dialog.
   readonly deleteDialogTitle: Locator;
+  readonly deleteConfirmButton: Locator;
   readonly confirmDialogTitle: Locator;
+  readonly confirmButton: Locator;
 
   // Generic elements
   readonly formErrors: Locator;
-  readonly snackbar: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -56,6 +60,8 @@ export class MembersPage extends BasePage {
     this.addMemberButton = page.getByTestId('add-member-button');
     this.membersTable = page.getByTestId('members-table');
     this.helpButton = page.getByTestId('members-help-button');
+    this.currentGroupName = page.getByTestId('current-group-name');
+    this.inviteColumnHeader = page.getByTestId('invite-column-header');
 
     // Add Member Dialog elements using test IDs
     this.addMemberDialog = page.locator('mat-dialog-container');
@@ -78,11 +84,12 @@ export class MembersPage extends BasePage {
     this.editMemberCancelButton = page.getByTestId('edit-member-cancel-button');
 
     this.deleteDialogTitle = page.getByTestId('delete-dialog-title');
+    this.deleteConfirmButton = page.getByTestId('delete-confirm-button');
     this.confirmDialogTitle = page.getByTestId('dialog-title');
+    this.confirmButton = page.getByTestId('confirm-button');
 
     // Generic elements
     this.formErrors = page.locator('mat-error');
-    this.snackbar = page.getByTestId('snackbar');
   }
 
   /**
@@ -103,6 +110,42 @@ export class MembersPage extends BasePage {
     await this.waitForLoadingComplete();
   }
 
+  /**
+   * Reloads the app (so the page reads from Firestore, not the in-memory
+   * stores), then opens Members in-app. Waits for the reload's initial
+   * navigation to settle first so no redirect can override the click (see
+   * GroupsPage.reload).
+   */
+  async reload(): Promise<void> {
+    await this.page.reload();
+    await this.waitForInitialNavigation();
+    await this.waitForLoadingComplete();
+    await this.goto();
+  }
+
+  /** A member's row; `memberId` is the member doc id (the seed key). */
+  row(memberId: string): Locator {
+    return this.page.getByTestId(`member-row-${memberId}`);
+  }
+
+  /** A member's invite (envelope) button; `memberId` is the member doc id. */
+  inviteButton(memberId: string): Locator {
+    return this.page.getByTestId(`invite-member-button-${memberId}`);
+  }
+
+  /**
+   * Clicks a member's envelope and confirms the Send App Invitation dialog,
+   * then waits for the dialog to close and the loading overlay to clear. The
+   * outcome (snackbar, envelope gone) is the caller's to assert.
+   */
+  async sendInvite(memberId: string): Promise<void> {
+    await this.inviteButton(memberId).click();
+    await expect(this.confirmDialogTitle).toHaveText('Send App Invitation');
+    await this.confirmButton.click();
+    await expect(this.confirmDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
+  }
+
   async verifyPageLoaded(): Promise<void> {
     await expect(this.pageTitle).toBeVisible();
     await expect(this.pageTitle).toHaveText('Members');
@@ -112,9 +155,7 @@ export class MembersPage extends BasePage {
 
   // Filter methods
   async searchMembers(searchText: string): Promise<void> {
-    await this.memberSearchInput.fill(searchText);
-    await this.memberSearchInput.blur();
-    await expect(this.memberSearchInput).toHaveValue(searchText);
+    await this.fillAndCommit(this.memberSearchInput, searchText);
   }
 
   async clearSearch(): Promise<void> {
@@ -128,23 +169,8 @@ export class MembersPage extends BasePage {
 
   /** Clicks a mat-slide-toggle and waits for its switch to change state. */
   private async flipToggle(toggle: Locator): Promise<void> {
-    const control = toggle.getByRole('switch');
-    const wasChecked = await control.isChecked();
-    await control.click();
-    await expect(control).toBeChecked({ checked: !wasChecked });
-  }
-
-  /**
-   * Sets a mat-slide-toggle to `checked` and waits for the state to take.
-   * Not setChecked(): it re-reads the state synchronously after clicking,
-   * before the app's (zoneless) change detection has updated aria-checked.
-   */
-  private async setToggle(toggle: Locator, checked: boolean): Promise<void> {
-    const control = toggle.getByRole('switch');
-    if ((await control.isChecked()) !== checked) {
-      await control.click();
-    }
-    await expect(control).toBeChecked({ checked });
+    const wasChecked = await this.switchOf(toggle).isChecked();
+    await this.setSwitch(toggle, !wasChecked);
   }
 
   // Add Member Dialog methods
@@ -163,13 +189,8 @@ export class MembersPage extends BasePage {
   }
 
   async fillAddMemberForm(name: string, email: string): Promise<void> {
-    await this.memberNameInput.fill(name);
-    await this.memberNameInput.blur();
-    await expect(this.memberNameInput).toHaveValue(name);
-
-    await this.memberEmailInput.fill(email);
-    await this.memberEmailInput.blur();
-    await expect(this.memberEmailInput).toHaveValue(email);
+    await this.fillAndCommit(this.memberNameInput, name);
+    await this.fillAndCommit(this.memberEmailInput, email);
   }
 
   async submitAddMemberForm(): Promise<void> {
@@ -206,16 +227,12 @@ export class MembersPage extends BasePage {
   async fillEditMemberForm(name?: string, email?: string): Promise<void> {
     if (name !== undefined) {
       await this.editMemberNameInput.clear();
-      await this.editMemberNameInput.fill(name);
-      await this.editMemberNameInput.blur();
-      await expect(this.editMemberNameInput).toHaveValue(name);
+      await this.fillAndCommit(this.editMemberNameInput, name);
     }
 
     if (email !== undefined) {
       await this.editMemberEmailInput.clear();
-      await this.editMemberEmailInput.fill(email);
-      await this.editMemberEmailInput.blur();
-      await expect(this.editMemberEmailInput).toHaveValue(email);
+      await this.fillAndCommit(this.editMemberEmailInput, email);
     }
   }
 
@@ -244,10 +261,28 @@ export class MembersPage extends BasePage {
     await expect(this.deleteDialogTitle).toBeVisible();
   }
 
+  /**
+   * Confirms the delete dialog opened by removeMember and waits for it to
+   * close. The outcome is the caller's to assert: on success the Edit dialog
+   * closes too, on a refusal it stays open with an error snackbar.
+   */
+  async confirmRemove(): Promise<void> {
+    await this.deleteConfirmButton.click();
+    await expect(this.deleteDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
+  }
+
   /** Clicks Leave Group; resolves once the confirmation dialog is showing. */
   async leaveGroup(): Promise<void> {
     await this.leaveGroupButton.click();
     await expect(this.confirmDialogTitle).toBeVisible();
+  }
+
+  /** Confirms the Leave dialog and waits for it to close. */
+  async confirmLeave(): Promise<void> {
+    await this.confirmButton.click();
+    await expect(this.confirmDialogTitle).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   async editMember(
@@ -269,11 +304,11 @@ export class MembersPage extends BasePage {
 
     // The checked state lives on the toggle's inner switch, not its host.
     if (options.active !== undefined) {
-      await this.setToggle(this.editMemberActiveToggle, options.active);
+      await this.setSwitch(this.editMemberActiveToggle, options.active);
     }
 
     if (options.groupAdmin !== undefined) {
-      await this.setToggle(this.editMemberAdminToggle, options.groupAdmin);
+      await this.setSwitch(this.editMemberAdminToggle, options.groupAdmin);
     }
 
     // Save changes

@@ -80,7 +80,11 @@
           id="description"
         >
           <mat-label>Description</mat-label>
-          <input matInput [formField]="expenseForm.description" />
+          <input
+            matInput
+            [formField]="expenseForm.description"
+            data-testid="edit-description-input"
+          />
           @for (error of expenseForm.description().errors(); track error.kind) {
             <mat-error>{{ error.message }}</mat-error>
           }
@@ -125,6 +129,7 @@
             appFormatCurrencyInput
             (blur)="updateTotalAmount()"
             inputmode="decimal"
+            data-testid="edit-total-amount-input"
           />
           @if (localeService.currency().symbolPosition === 'prefix') {
             <span matTextPrefix>{{ localeService.currency().symbol }}</span>
@@ -196,7 +201,7 @@
           [class.hidden]="splitMethod() !== 'amount'"
         >
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value-right">
+          <span class="mock-value-right" [class.error-text]="!remainderValid()">
             {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
@@ -208,11 +213,15 @@
               type="button"
               mat-mini-fab
               class="btn btn-danger"
+              aria-label="Remove attached receipt file"
+              data-testid="edit-remove-file-button"
               (click)="removeFile()"
             >
               <mat-icon>delete</mat-icon>
             </button>
-            <span class="filename">{{ fileName() }}</span>
+            <span class="filename" data-testid="edit-attached-filename">
+              {{ fileName() }}
+            </span>
           </div>
         } @else {
           <div data-tour-anchor="receipt" class="attachment">
@@ -220,6 +229,7 @@
               type="file"
               accept=".pdf,image/*"
               class="file-input"
+              data-testid="edit-file-input"
               #attachFile
               (change)="onFileSelected($event)"
             />
@@ -227,6 +237,8 @@
               type="button"
               mat-mini-fab
               class="btn btn-success"
+              aria-label="Attach receipt file"
+              data-testid="edit-attach-file-button"
               (click)="openFileSelectionDialog()"
             >
               <mat-icon>attach_file</mat-icon>
@@ -252,6 +264,7 @@
         </button>
         <a
           data-tour-anchor="view-receipt"
+          data-testid="view-receipt-link"
           type="button"
           mat-raised-button
           class="btn-primary"
@@ -444,7 +457,10 @@
               }
               <div class="mock-input">
                 <span class="mock-label">Allocated Amount</span>
-                <span class="mock-value-right">
+                <span
+                  class="mock-value-right"
+                  data-testid="edit-allocated-amount"
+                >
                   {{ split.allocatedAmount | groupCurrency }}
                 </span>
               </div>
@@ -456,6 +472,11 @@
         }
       </div>
     </form>
+    @if (!remainderValid()) {
+      <p class="error-text mt-3" data-testid="remainder-error">
+        Member and proportional amounts add up to more than the total.
+      </p>
+    }
     <div
       class="flex-wrap fw-start row-gap mt-3"
       data-tour-anchor="save-actions"
@@ -472,9 +493,11 @@
           !categoryValid() ||
           !isFormDirty() ||
           !splitsValid() ||
-          !expenseFullyAllocated()
+          !expenseFullyAllocated() ||
+          !remainderValid()
         "
         (click)="onSubmit()"
+        data-testid="edit-expense-save-button"
       >
         Save
       </button>
@@ -486,7 +509,12 @@
       >
         Delete
       </button>
-      <button mat-stroked-button type="button" (click)="onCancel()">
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="onCancel()"
+        data-testid="edit-expense-cancel-button"
+      >
         Cancel
       </button>
     </div>

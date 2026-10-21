@@ -414,21 +414,70 @@ describe('AllocationUtilsService', () => {
       // a vacation-rental split where several members had identical
       // shares).
       const splits: AllocationSplit[] = [
-        { owedByMemberRef: { id: 'anya' }, assignedAmount: 0, percentage: 0, shares: 3, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'brie' }, assignedAmount: 0, percentage: 0, shares: 6.33, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'dmitri' }, assignedAmount: 0, percentage: 0, shares: 4.33, allocatedAmount: 0 },
-        { owedByMemberRef: { id: 'michael' }, assignedAmount: 0, percentage: 0, shares: 6.33, allocatedAmount: 0 },
+        {
+          owedByMemberRef: { id: 'anya' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 3,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'brie' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 6.33,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'dmitri' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 4.33,
+          allocatedAmount: 0,
+        },
+        {
+          owedByMemberRef: { id: 'michael' },
+          assignedAmount: 0,
+          percentage: 0,
+          shares: 6.33,
+          allocatedAmount: 0,
+        },
       ];
       const result = service.allocateByShares({ totalAmount: 950, splits });
 
-      const byId = new Map(result.splits.map(s => [s.owedByMemberRef.id, s]));
-      expect(byId.get('brie')!.allocatedAmount).toBe(byId.get('michael')!.allocatedAmount);
-      expect(byId.get('brie')!.percentage).toBe(byId.get('michael')!.percentage);
+      const byId = new Map(result.splits.map((s) => [s.owedByMemberRef.id, s]));
+      expect(byId.get('brie')!.allocatedAmount).toBe(
+        byId.get('michael')!.allocatedAmount
+      );
+      expect(byId.get('brie')!.percentage).toBe(
+        byId.get('michael')!.percentage
+      );
 
       const total = localeService.roundToCurrency(
         result.splits.reduce((sum, s) => sum + s.allocatedAmount, 0)
       );
       expect(total).toBe(950);
+    });
+  });
+
+  describe('remainderMatchesTotal', () => {
+    it('accepts a remainder with the same sign as the total', () => {
+      expect(service.remainderMatchesTotal(90, 10)).toBe(true);
+      expect(service.remainderMatchesTotal(-90, -10)).toBe(true);
+    });
+
+    it('accepts a zero remainder', () => {
+      expect(service.remainderMatchesTotal(90, 0)).toBe(true);
+      expect(service.remainderMatchesTotal(-90, 0)).toBe(true);
+    });
+
+    it('rejects a negative remainder on a positive total', () => {
+      // Total 90 with a member amount of 100 leaves -10 to share.
+      expect(service.remainderMatchesTotal(90, -10)).toBe(false);
+    });
+
+    it('rejects a positive remainder on a negative total', () => {
+      expect(service.remainderMatchesTotal(-90, 10)).toBe(false);
     });
   });
 });

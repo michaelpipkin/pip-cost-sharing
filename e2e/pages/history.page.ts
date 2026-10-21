@@ -1,6 +1,6 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { formatMoney, formatShortDate } from './expenses.page';
+import { formatMoney, formatShortDate } from '../utils/format';
 
 /** A payment as the History table (and the payment detail page) shows it. */
 export interface ExpectedPayment {
@@ -57,10 +57,6 @@ export class HistoryPage extends BasePage {
   readonly confirmButton: Locator;
   readonly cancelButton: Locator;
 
-  // Generic
-  readonly snackbar: Locator;
-  readonly loadingOverlay: Locator;
-
   constructor(page: Page) {
     super(page);
 
@@ -100,8 +96,6 @@ export class HistoryPage extends BasePage {
     this.confirmButton = this.confirmDialog.getByTestId('confirm-button');
     this.cancelButton = this.confirmDialog.getByTestId('cancel-button');
 
-    this.snackbar = page.getByTestId('snackbar');
-    this.loadingOverlay = page.getByTestId('loading-spinner-container');
   }
 
   // ---- Navigation ---------------------------------------------------------
@@ -122,15 +116,7 @@ export class HistoryPage extends BasePage {
   async verifyPageLoaded(): Promise<void> {
     await expect(this.pageTitle).toBeVisible();
     await expect(this.helpButton).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
-  }
-
-  /**
-   * The snackbar showing `message`. Matched by text because an earlier
-   * snackbar can still be in the DOM (exit animation) when a new one opens.
-   */
-  snackbarWith(message: string): Locator {
-    return this.snackbar.filter({ hasText: message });
+    await this.waitForLoadingComplete();
   }
 
   // ---- History list -------------------------------------------------------
@@ -163,7 +149,7 @@ export class HistoryPage extends BasePage {
     await this.historyRows.nth(rowIndex).click();
     await expect(this.page).toHaveURL(/\/analysis\/history\/[^/]+$/);
     await expect(this.detailTitle).toBeVisible();
-    await expect(this.loadingOverlay).toBeHidden();
+    await this.waitForLoadingComplete();
   }
 
   /**
@@ -204,7 +190,7 @@ export class HistoryPage extends BasePage {
       `Amount: ${formatMoney(total)}`
     );
     await expect(this.splitRows.getByTestId('split-amount')).toHaveText(
-      splitAmounts.map(formatMoney)
+      splitAmounts.map((amount) => formatMoney(amount))
     );
   }
 

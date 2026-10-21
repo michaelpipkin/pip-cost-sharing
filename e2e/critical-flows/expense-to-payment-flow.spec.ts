@@ -1,16 +1,13 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import {
-  ExpensesPage,
-  formatMoney,
-  formatShortDate,
-} from '../pages/expenses.page';
+import { ExpensesPage } from '../pages/expenses.page';
 import { HistoryPage, type ExpectedPayment } from '../pages/history.page';
 import { SummaryPage } from '../pages/summary.page';
 import { seedDateDaysAgo as daysAgo } from '../seed/dates';
 import { PAYMENT_FLOW } from '../seed/datasets/payment-flow';
 import type { SeedGroup, SeedUser } from '../seed/types';
 import { readClipboard } from '../utils/clipboard';
+import { formatMoney, formatShortDate } from '../utils/format';
 import { signInAs } from '../utils/session';
 
 // Data: e2e/seed/datasets/payment-flow.ts. Each test signs in as its own

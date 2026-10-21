@@ -27,6 +27,20 @@ export interface AllocationResult {
 export class AllocationUtilsService {
   protected readonly localeService = inject(LocaleService);
 
+  /**
+   * Whether the evenly shared remainder (total minus member and proportional
+   * amounts) can be split without handing anyone a share of the opposite
+   * sign. Member and proportional amounts that add up to more than a
+   * positive total (or less than a negative one, e.g. a refund) leave a
+   * remainder of the wrong sign; the allocations still reconcile with the
+   * total, so the fully-allocated check alone doesn't catch it.
+   */
+  remainderMatchesTotal(totalAmount: number, sharedAmount: number): boolean {
+    return (
+      sharedAmount === 0 || Math.sign(sharedAmount) === Math.sign(totalAmount)
+    );
+  }
+
   allocateSharedAmounts(input: AllocationInput): AllocationResult {
     if (input.splits.length === 0) {
       return {
@@ -39,9 +53,9 @@ export class AllocationUtilsService {
     let splits = [...input.splits];
 
     // Remove empty splits (no member selected and no assigned amount)
-    splits = splits.filter(s => s.owedByMemberRef || s.assignedAmount !== 0);
+    splits = splits.filter((s) => s.owedByMemberRef || s.assignedAmount !== 0);
 
-    const splitCount = splits.filter(s => s.owedByMemberRef != null).length;
+    const splitCount = splits.filter((s) => s.owedByMemberRef != null).length;
 
     const splitTotal: number = splits.reduce(
       (total, s) => total + (+s.assignedAmount || 0),
@@ -125,9 +139,13 @@ export class AllocationUtilsService {
     const percentageTotal = this.localeService.roundToCurrency(
       +splits.reduce((total, s) => total + s.percentage, 0)
     );
-    const splitCount = splits.filter(s => s.owedByMemberRef !== null).length;
+    const splitCount = splits.filter((s) => s.owedByMemberRef !== null).length;
 
-    if (allocatedTotal !== totalAmount && percentageTotal === 100 && splitCount > 0) {
+    if (
+      allocatedTotal !== totalAmount &&
+      percentageTotal === 100 &&
+      splitCount > 0
+    ) {
       this.#adjustAllocationForRounding(splits, totalAmount, allocatedTotal);
     }
 
@@ -147,17 +165,18 @@ export class AllocationUtilsService {
    * Returns splits with updated percentage and allocatedAmount — caller
    * patches both back into the form.
    */
-  allocateByShares(input: {
-    totalAmount: number;
+  allocateByShares(input: { totalAmount: number; splits: AllocationSplit[] }): {
     splits: AllocationSplit[];
-  }): { splits: AllocationSplit[] } {
+  } {
     if (input.splits.length === 0) return { splits: [] };
 
-    const splits = input.splits.filter(s => s.owedByMemberRef || s.assignedAmount !== 0);
+    const splits = input.splits.filter(
+      (s) => s.owedByMemberRef || s.assignedAmount !== 0
+    );
     const totalShares = splits.reduce((t, s) => t + (+s.shares || 0), 0);
 
     if (totalShares === 0 || splits.length === 0) {
-      splits.forEach(s => {
+      splits.forEach((s) => {
         s.percentage = 0;
         s.allocatedAmount = 0;
       });
@@ -166,10 +185,12 @@ export class AllocationUtilsService {
 
     const totalAmount = +input.totalAmount;
 
-    splits.forEach(s => {
+    splits.forEach((s) => {
       const shareRatio = (+s.shares || 0) / totalShares;
       s.percentage = this.localeService.roundToCurrency(shareRatio * 100);
-      s.allocatedAmount = this.localeService.roundToCurrency(shareRatio * totalAmount);
+      s.allocatedAmount = this.localeService.roundToCurrency(
+        shareRatio * totalAmount
+      );
     });
 
     const allocatedTotal = this.localeService.roundToCurrency(
@@ -183,9 +204,13 @@ export class AllocationUtilsService {
     return { splits };
   }
 
-  #filterSplitsAndSetLastPercentage(splits: AllocationSplit[]): AllocationSplit[] {
+  #filterSplitsAndSetLastPercentage(
+    splits: AllocationSplit[]
+  ): AllocationSplit[] {
     let totalPercentage = 0;
-    const result = splits.filter(s => s.owedByMemberRef || s.assignedAmount !== 0);
+    const result = splits.filter(
+      (s) => s.owedByMemberRef || s.assignedAmount !== 0
+    );
     for (let i = 0; i < result.length - 1; i++) {
       result[i]!.percentage = +result[i]!.percentage;
       totalPercentage += result[i]!.percentage;
@@ -204,7 +229,9 @@ export class AllocationUtilsService {
     totalAmount: number,
     allocatedTotal: number
   ): void {
-    let diff = this.localeService.roundToCurrency(+(totalAmount - allocatedTotal));
+    let diff = this.localeService.roundToCurrency(
+      +(totalAmount - allocatedTotal)
+    );
     const increment = this.localeService.getSmallestIncrement();
     let i = 0;
     while (diff != 0) {
