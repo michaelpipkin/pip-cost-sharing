@@ -29,28 +29,34 @@ const WARM_UP_ROUTES = [
 // the shared.ts header), and no spec signs in as her.
 const WARM_UP_USER = SHARED.users.carol;
 
-const FIRST_ROUTE_TIMEOUT_MS = 60_000;
 const ROUTE_TIMEOUT_MS = 30_000;
 
 /**
  * Cold-start warm-up. Run once from global setup AFTER seeding finishes
- * (running it alongside the seed starves the functions emulator): signs in
- * as a shared user, then loads each main route and waits for its routed
- * component to render. Fails with the step's name if one never renders.
+ * (running it alongside the seed starves the functions emulator), in the
+ * run's shared browser (`wsEndpoint`: launched by global setup, reused by
+ * every worker): signs in as a shared user, then loads each main route and
+ * waits for its routed component to render. Fails with the step's name if
+ * one never renders.
  *
  * Every wait here needs an explicit bound. Global setup runs outside the
  * test runner, so playwright.config.ts's `expect.timeout` (15 s) and `use`
  * timeouts don't apply: a bare expect() gets Playwright's 5 s default. This
- * is also the run's first fresh Chromium, whose first page load hits the
- * machine's ~10.5 s network stall (see FIRST_NAVIGATION_TIMEOUT_MS); with
- * signInAs's default bounds that failed 5 runs in 15 (login form not
- * visible within 5 s, or the 30 s page.goto). The login page therefore gets
- * the first-navigation bound; after it, submitLogin's short waits are
- * DOM-only (fields filled, button enabled) and its landing waits are 30 s.
+ * is also the shared browser's first page load, which sets off the
+ * machine's stall (whole ~10 s units, up to 61.5 s measured; see
+ * FIRST_NAVIGATION_TIMEOUT_MS). With signInAs's default bounds that failed
+ * 5 runs in 15 (Task 6c), and with only the login page on the long bound
+ * the stall still outlasted the 30 s sign-in landing (Task 11). So the login
+ * page, the sign-in landing and the first route all get the first-navigation
+ * bound; submitLogin's other waits are DOM-only (fields filled, button
+ * enabled).
  */
-export async function warmUpDevServer(baseURL: string): Promise<void> {
+export async function warmUpDevServer(
+  baseURL: string,
+  wsEndpoint: string
+): Promise<void> {
   const started = Date.now();
-  const browser = await chromium.launch();
+  const browser = await chromium.connect(wsEndpoint);
   try {
     const page = await browser.newPage({ baseURL });
     const authPage = new AuthPage(page);
@@ -59,7 +65,8 @@ export async function warmUpDevServer(baseURL: string): Promise<void> {
       await authPage.submitLogin(
         WARM_UP_USER.email,
         WARM_UP_USER.password,
-        `warm-up sign-in (${WARM_UP_USER.email})`
+        `warm-up sign-in (${WARM_UP_USER.email})`,
+        { landingTimeout: FIRST_NAVIGATION_TIMEOUT_MS }
       );
     } catch (error) {
       throw new Error(
@@ -72,7 +79,7 @@ export async function warmUpDevServer(baseURL: string): Promise<void> {
 
     let first = true;
     for (const route of WARM_UP_ROUTES) {
-      const timeout = first ? FIRST_ROUTE_TIMEOUT_MS : ROUTE_TIMEOUT_MS;
+      const timeout = first ? FIRST_NAVIGATION_TIMEOUT_MS : ROUTE_TIMEOUT_MS;
       first = false;
       try {
         await page.goto(route, { waitUntil: 'domcontentloaded', timeout });

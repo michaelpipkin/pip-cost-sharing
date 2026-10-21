@@ -69,11 +69,16 @@ export class AuthPage extends BasePage {
    * immediately with `context` and the snackbar's message. Any snackbar from
    * an earlier action is waited out first so it can't be mistaken for a
    * rejection of this submit.
+   *
+   * `landingTimeout` overrides the landing waits only for a fresh browser's
+   * first sign-in (FIRST_NAVIGATION_TIMEOUT_MS, global-setup warm-up), never
+   * inside a test.
    */
   async submitLogin(
     email: string,
     password: string,
-    context: string = `login(${email})`
+    context: string = `login(${email})`,
+    { landingTimeout = LANDING_TIMEOUT_MS }: { landingTimeout?: number } = {}
   ): Promise<void> {
     const { snackbar } = this;
 
@@ -96,7 +101,7 @@ export class AuthPage extends BasePage {
     await expect(
       authenticated.or(snackbar).first(),
       `${context}: neither the authenticated shell nor a login error appeared`
-    ).toBeVisible({ timeout: LANDING_TIMEOUT_MS });
+    ).toBeVisible({ timeout: landingTimeout });
     // No snackbar existed before the submit, so any now is this attempt's.
     if ((await snackbar.count()) > 0) {
       const message = (await snackbar.first().innerText()).split('\n')[0];
@@ -106,11 +111,11 @@ export class AuthPage extends BasePage {
     await expect(
       this.page,
       `${context}: never redirected away from login`
-    ).not.toHaveURL(/\/auth\/login/, { timeout: LANDING_TIMEOUT_MS });
+    ).not.toHaveURL(/\/auth\/login/, { timeout: landingTimeout });
     await expect(
       this.page.getByTestId('loading-spinner-container'),
       `${context}: loading overlay never cleared`
-    ).toBeHidden({ timeout: LANDING_TIMEOUT_MS });
+    ).toBeHidden({ timeout: landingTimeout });
   }
 
   /**
