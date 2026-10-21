@@ -113,14 +113,18 @@ test.describe('Group invites', { tag: ['@members', '@groups'] }, () => {
     await auth.register(register.email, users.admin.password);
     await verifyEmailViaEmulator(page, register.email);
 
-    // Verifying links the member (linkInvitedMembers) and the app moves the
-    // new user on to Groups. The group arrives once the syncGroupMemberUids
-    // trigger has granted access to it: the app listens live (member and
-    // group snapshots), and the first group is auto-selected, so waiting for
-    // the select to show it needs no reload and never opens the dropdown
-    // while the group is still missing (a panel left open would block a
-    // retried click). Then check the list itself, once.
-    await expect(page).toHaveURL(/\/administration\/groups$/);
+    // Verifying links the member (linkInvitedMembers). Whether the app then
+    // moves the new user on to Groups by itself is a race: only a members
+    // snapshot that still finds no member record redirects there, and once
+    // the link has landed the success card simply stays (seen in Task 11b,
+    // when the run was fast). So open Groups in-app either way. The group
+    // arrives once the syncGroupMemberUids trigger has granted access to it:
+    // the app listens live (member and group snapshots), and the first group
+    // is auto-selected, so waiting for the select to show it needs no reload
+    // and never opens the dropdown while the group is still missing (a panel
+    // left open would block a retried click). Then check the list itself,
+    // once.
+    await groups.goto();
     await expect(groups.groupSelect).toContainText(group.name, {
       timeout: FUNCTION_CHAIN_TIMEOUT_MS,
     });
