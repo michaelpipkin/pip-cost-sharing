@@ -39,13 +39,20 @@ const CHECK_MARK = '✔';
 const receiptPath = (groupKey: string, expenseId: string) =>
   `groups/${groupKey}/receipts/${expenseId}`;
 
-/** getDownloadURL's result on the test Storage emulator (host is localhost or 127.0.0.1). */
-function downloadUrlPattern(objectPath: string): RegExp {
-  const prefix = `/v0/b/${TEST_STORAGE_BUCKET}/o/${encodeURIComponent(objectPath)}?alt=media`;
-  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(
-    `^http://(localhost|127\\.0\\.0\\.1):${TEST_PORTS.storage}${escapedPrefix}`
+/**
+ * Asserts `url` is getDownloadURL's result for `objectPath` on the test
+ * Storage emulator (host is localhost or 127.0.0.1). Compares the parsed
+ * parts rather than building a regular expression from the bucket name.
+ */
+function expectEmulatorDownloadUrl(url: string, objectPath: string): void {
+  const parsed = new URL(url);
+  expect(parsed.protocol).toBe('http:');
+  expect(['localhost', '127.0.0.1']).toContain(parsed.hostname);
+  expect(parsed.port).toBe(String(TEST_PORTS.storage));
+  expect(parsed.pathname).toBe(
+    `/v0/b/${TEST_STORAGE_BUCKET}/o/${encodeURIComponent(objectPath)}`
   );
+  expect(parsed.searchParams.get('alt')).toBe('media');
 }
 
 test.describe('Receipts', { tag: ['@receipts'] }, () => {
@@ -139,11 +146,9 @@ test.describe('Receipts', { tag: ['@receipts'] }, () => {
 
     // The link is filled by getDownloadURL: an emulator URL that serves the file.
     await expect(expenses.viewReceiptLink).toBeVisible();
-    await expect(expenses.viewReceiptLink).toHaveAttribute(
-      'href',
-      downloadUrlPattern(receiptPath(groupKey, expenseId))
-    );
+    await expect(expenses.viewReceiptLink).toHaveAttribute('href', /^http/);
     const url = (await expenses.viewReceiptLink.getAttribute('href'))!;
+    expectEmulatorDownloadUrl(url, receiptPath(groupKey, expenseId));
     const response = await page.request.get(url);
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toContain('image/png');

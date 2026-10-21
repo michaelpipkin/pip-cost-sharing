@@ -540,9 +540,10 @@ test.describe('seed', { tag: '@infra' }, () => {
   test('signInAs fails fast on a wrong password', async ({ seededPage }) => {
     const wrongPassword = { ...SHARED.users.bob, password: 'not-the-password' };
     const started = Date.now();
-    const email = wrongPassword.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // toThrow(string) matches a substring of the message: signInAs's context
+    // names the user, then the rejection.
     await expect(signInAs(seededPage, wrongPassword)).rejects.toThrow(
-      new RegExp(`${email}.*sign-in rejected`)
+      `signInAs(${wrongPassword.key} <${wrongPassword.email}>): sign-in rejected`
     );
     expect(Date.now() - started).toBeLessThan(SIGN_IN_FAIL_FAST_MS);
   });
