@@ -389,6 +389,64 @@ describe('SummaryComponent', () => {
     // and creating history is better tested in e2e tests.
   });
 
+  describe('Payment requests', () => {
+    it.each([
+      ['sent', 'Payment request email sent successfully'],
+      [
+        'not_registered',
+        'Bob is not a registered user and cannot receive emails',
+      ],
+      ['opted_out', 'Bob has opted out of email notifications'],
+    ])(
+      'sends the group id, member refs and numeric amount, then shows the %s message',
+      async (result, message) => {
+        mockUserService.sendPaymentRequestEmail = vi
+          .fn()
+          .mockResolvedValue(result);
+        const row = component.summaryData()[0]!; // Bob owes Alice 10
+
+        await component.requestPayment(row);
+
+        expect(mockUserService.sendPaymentRequestEmail).toHaveBeenCalledWith(
+          mockGroupStore.currentGroup()!.id,
+          row.owedByMemberRef,
+          row.owedToMemberRef,
+          10
+        );
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+          expect.anything(),
+          { data: { message } }
+        );
+      }
+    );
+
+    it.each([
+      [1, 'Payment request(s) sent to 1 member(s)'],
+      [0, 'No eligible members to request payment from'],
+    ])(
+      'requests every settlement transfer by ref and amount (%i sent)',
+      async (sent, message) => {
+        mockUserService.sendGroupPaymentRequestEmails = vi
+          .fn()
+          .mockResolvedValue({ sent, skipped: 1 - sent });
+        const alice = mockMemberStore.groupMembers()[0]!;
+        const bob = mockMemberStore.groupMembers()[1]!;
+
+        await component.requestAllPayments();
+
+        expect(
+          mockUserService.sendGroupPaymentRequestEmails
+        ).toHaveBeenCalledWith(mockGroupStore.currentGroup()!.id, [
+          { owedByMemberRef: bob.ref, owedToMemberRef: alice.ref, amount: 10 },
+        ]);
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+          expect.anything(),
+          { data: { message } }
+        );
+      }
+    );
+  });
+
   describe('Help', () => {
     it('should show help button', () => {
       const helpButton = el.querySelector(

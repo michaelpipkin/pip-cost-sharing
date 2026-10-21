@@ -84,6 +84,10 @@ const APP_CHECK_ERRORS = [
   `${UTILITIES}/app-check-error.util.spec.ts`,
 ];
 const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
+// The server side of the user service's group emails (payment requests and
+// unpay notices): a functions spec, so it goes in each area's `functions`
+// list wherever USER_SERVICE is in its `unit` list.
+const USER_SERVICE_FUNCTIONS = ['src/group-emails.spec.ts'];
 const LOADING = [`${COMPONENTS}/loading`];
 
 export const AREAS = {
@@ -114,7 +118,7 @@ export const AREAS = {
       `${COMPONENTS}/update-prompt-dialog`,
     ],
     // Mail delivery suppression applies to every email the backend sends.
-    functions: ['src/mail-suppression.spec.ts'],
+    functions: ['src/mail-suppression.spec.ts', ...USER_SERVICE_FUNCTIONS],
     tag: '@shell',
   },
 
@@ -144,6 +148,7 @@ export const AREAS = {
       'src/email-normalization.spec.ts',
       'src/sync-group-member-uids.spec.ts',
       'src/user-deletion.spec.ts',
+      ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@auth',
   },
@@ -164,7 +169,7 @@ export const AREAS = {
       `${COMPONENTS}/account-menu`,
       ...CONFIRM_DIALOG,
     ],
-    functions: ['src/user-deletion.spec.ts'],
+    functions: ['src/user-deletion.spec.ts', ...USER_SERVICE_FUNCTIONS],
     tag: '@account',
   },
 
@@ -282,7 +287,7 @@ export const AREAS = {
       ...RENTAL_UTILS,
       ...STRING_UTILS,
     ],
-    functions: [],
+    functions: [...USER_SERVICE_FUNCTIONS],
     tag: '@expenses',
   },
 
@@ -321,7 +326,11 @@ export const AREAS = {
       ...FORMAT_CURRENCY_INPUT,
       ...STRING_UTILS,
     ],
-    functions: ['src/receipt-ocr.spec.ts', 'src/receipt-parser.spec.ts'],
+    functions: [
+      'src/receipt-ocr.spec.ts',
+      'src/receipt-parser.spec.ts',
+      ...USER_SERVICE_FUNCTIONS,
+    ],
     tag: '@receipts',
   },
 
@@ -370,6 +379,7 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/mail-suppression.spec.ts',
       'src/settle-email.spec.ts',
+      ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@summary',
   },
@@ -389,7 +399,7 @@ export const AREAS = {
       ...GUIDED_TOUR,
       ...CONFIRM_DIALOG,
     ],
-    functions: [],
+    functions: ['src/email-formatting.spec.ts', ...USER_SERVICE_FUNCTIONS],
     tag: '@history',
   },
 

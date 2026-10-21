@@ -17,6 +17,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { toIsoFormat } from '@utils/date-utils';
 import { FirebaseError } from 'firebase/app';
 import {
   browserLocalPersistence,
@@ -37,7 +38,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { appCheckTokenReady } from '../app-check';
 import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
+import { IUserService, PaymentRequestResult } from './user.service.interface';
 
 // Total attempts (initial + retries) for the login-time Firestore sequence
 // below, and the fixed delay between them - short, bounded, and only ever
@@ -490,275 +491,111 @@ export class UserService implements IUserService {
     }
   }
 
-  private escapeHtml(str: string): string {
-    return str
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-  }
+  // Group emails are built and addressed server-side (functions/src/
+  // group-emails.ts): the client sends only member ids and amounts, and the
+  // server reads each recipient's address from their member doc.
 
-  private buildEmailHtml(content: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.</p></td></tr></table></td></tr></table></body></html>`;
-  }
-
-  private buildPaymentMethodLines(userData: {
-    venmoId?: string;
-    paypalId?: string;
-    cashAppId?: string;
-    zelleId?: string;
-  }): string {
-    const methods: string[] = [];
-    if (userData.venmoId)
-      methods.push(`Venmo: @${userData.venmoId.replace(/^@/, '')}`);
-    if (userData.paypalId) methods.push(`PayPal: ${userData.paypalId}`);
-    if (userData.cashAppId) methods.push(`Cash App: $${userData.cashAppId}`);
-    if (userData.zelleId) methods.push(`Zelle: ${userData.zelleId}`);
-    return methods.length > 0
-      ? methods.join('\n')
-      : '(No payment methods on file)';
-  }
-
-  private buildPaymentMethodsHtml(methods: string): string {
-    if (methods === '(No payment methods on file)') {
-      return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
-    }
-    return methods
-      .split('\n')
-      .map((line) => `<p style="margin:2px 0;">${this.escapeHtml(line)}</p>`)
-      .join('');
-  }
-
-  private async callSendEmail(
-    to: string,
-    subject: string,
-    text: string,
-    html: string
-  ): Promise<void> {
+  async #callSendPaymentRequests(
+    groupId: string,
+    requests: {
+      owedByMemberRef: DocumentReference<Member>;
+      owedToMemberRef: DocumentReference<Member>;
+      amount: number;
+    }[]
+  ): Promise<PaymentRequestResult[]> {
     const fn = httpsCallable<
-      { to: string; subject: string; text: string; html: string },
-      { success: boolean }
-    >(this.functions, 'sendEmail');
-    await fn({ to, subject, text, html });
+      {
+        groupId: string;
+        requests: {
+          owedByMemberId: string;
+          owedToMemberId: string;
+          amount: number;
+        }[];
+      },
+      { results: PaymentRequestResult[] }
+    >(this.functions, 'sendPaymentRequests');
+    const { data } = await fn({
+      groupId,
+      requests: requests.map((r) => ({
+        owedByMemberId: r.owedByMemberRef.id,
+        owedToMemberId: r.owedToMemberRef.id,
+        amount: r.amount,
+      })),
+    });
+    return data.results;
   }
 
   async sendPaymentRequestEmail(
-    owedByMember: Member,
-    owedToMember: Member,
-    groupName: string,
-    formattedAmount: string
-  ): Promise<'sent' | 'not_registered' | 'opted_out'> {
-    if (!owedByMember.userRef) {
-      return 'not_registered';
-    }
-    const owedByUserDoc = await getDoc(owedByMember.userRef);
-    if (
-      owedByUserDoc.exists() &&
-      owedByUserDoc.data()?.['emailOptOut'] === true
-    ) {
-      return 'opted_out';
-    }
-    let paymentMethodLines = '(No payment methods on file)';
-    if (owedToMember.userRef) {
-      const owedToUserDoc = await getDoc(owedToMember.userRef);
-      if (owedToUserDoc.exists()) {
-        paymentMethodLines = this.buildPaymentMethodLines(
-          owedToUserDoc.data() as {
-            venmoId?: string;
-            paypalId?: string;
-            cashAppId?: string;
-            zelleId?: string;
-          }
-        );
-      }
-    }
-    const subject = `Payment request from ${owedToMember.displayName} for group "${groupName}" in PipSplit`;
-    const text = [
-      `Hi ${owedByMember.displayName},`,
-      '',
-      `${owedToMember.displayName} is requesting payment of ${formattedAmount} in the "${groupName}" group via PipSplit.`,
-      '',
-      `Please log in to PipSplit to mark this balance as paid, or send the payment directly to ${owedToMember.displayName} using one of the following:`,
-      paymentMethodLines,
-    ].join('\n');
-    const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
-    const html = this.buildEmailHtml(
-      `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-        `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(owedByMember.displayName)}</strong>,</p>` +
-        `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-        `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(formattedAmount)}</span></div>` +
-        `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-        `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(owedToMember.displayName)}</strong> using one of the following:</p>` +
-        `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
-    );
-    await this.callSendEmail(owedByMember.email, subject, text, html);
-    return 'sent';
+    groupId: string,
+    owedByMemberRef: DocumentReference<Member>,
+    owedToMemberRef: DocumentReference<Member>,
+    amount: number
+  ): Promise<PaymentRequestResult> {
+    const [result] = await this.#callSendPaymentRequests(groupId, [
+      { owedByMemberRef, owedToMemberRef, amount },
+    ]);
+    return result!;
   }
 
   async sendGroupPaymentRequestEmails(
+    groupId: string,
     transfers: {
-      owedByMember: Member;
-      owedToMember: Member;
-      formattedAmount: string;
-    }[],
-    groupName: string
+      owedByMemberRef: DocumentReference<Member>;
+      owedToMemberRef: DocumentReference<Member>;
+      amount: number;
+    }[]
   ): Promise<{ sent: number; skipped: number }> {
-    const eligible = transfers.filter((t) => !!t.owedByMember.userRef);
-    const skippedNoAccount = transfers.length - eligible.length;
-
-    const owedByUserDocs = await Promise.all(
-      eligible.map((t) => {
-        const userRef = t.owedByMember.userRef!;
-        return getDoc(userRef);
-      })
-    );
-
-    const notOptedOut = eligible.filter((_, i) => {
-      const doc = owedByUserDocs[i];
-      return !doc?.exists() || doc.data()?.['emailOptOut'] !== true;
-    });
-    const skippedOptedOut = eligible.length - notOptedOut.length;
-
-    const owedToUserDocs = await Promise.all(
-      notOptedOut.map((t) =>
-        t.owedToMember.userRef
-          ? getDoc(t.owedToMember.userRef)
-          : Promise.resolve(null)
-      )
-    );
-
-    await Promise.all(
-      notOptedOut.map((t, i) => {
-        const owedToDoc = owedToUserDocs[i];
-        const paymentMethodLines = owedToDoc?.exists()
-          ? this.buildPaymentMethodLines(
-              owedToDoc.data() as {
-                venmoId?: string;
-                paypalId?: string;
-                cashAppId?: string;
-                zelleId?: string;
-              }
-            )
-          : '(No payment methods on file)';
-        const subject = `Payment request from ${t.owedToMember.displayName} for group "${groupName}" in PipSplit`;
-        const text = [
-          `Hi ${t.owedByMember.displayName},`,
-          '',
-          `${t.owedToMember.displayName} is requesting payment of ${t.formattedAmount} in the "${groupName}" group via PipSplit.`,
-          '',
-          `Please log in to PipSplit to mark this balance as paid, or send the payment directly to ${t.owedToMember.displayName} using one of the following:`,
-          paymentMethodLines,
-        ].join('\n');
-        const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(t.owedByMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-            `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(t.formattedAmount)}</span></div>` +
-            `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-            `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> using one of the following:</p>` +
-            `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
-        );
-        return this.callSendEmail(t.owedByMember.email, subject, text, html);
-      })
-    );
-
-    return {
-      sent: notOptedOut.length,
-      skipped: skippedNoAccount + skippedOptedOut,
-    };
+    if (transfers.length === 0) {
+      return { sent: 0, skipped: 0 };
+    }
+    const results = await this.#callSendPaymentRequests(groupId, transfers);
+    const sent = results.filter((r) => r === 'sent').length;
+    return { sent, skipped: results.length - sent };
   }
 
   async sendMemberPaymentUnpayEmails(
-    paidByMember: Member | undefined,
-    paidToMember: Member | undefined,
-    groupName: string,
-    formattedAmount: string,
+    groupId: string,
+    paidByMemberRef: DocumentReference<Member>,
+    paidToMemberRef: DocumentReference<Member>,
+    amount: number,
     splitCount: number
   ): Promise<void> {
-    const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
-    const sends: Promise<void>[] = [];
-
-    if (paidByMember?.userRef && paidByMember.email) {
-      const userDoc = await getDoc(paidByMember.userRef);
-      if (!userDoc.exists() || userDoc.data()?.['emailOptOut'] !== true) {
-        const paidToName = paidToMember?.displayName ?? 'another member';
-        const subject = `A payment from you to ${paidToName} in PipSplit has been reversed`;
-        const text = [
-          `Hi ${paidByMember.displayName},`,
-          '',
-          `A payment of ${formattedAmount} from you to ${paidToName} in the group "${groupName}" has been reversed in PipSplit.`,
-          '',
-          `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.`,
-        ].join('\n');
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidByMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from you to <strong>${this.escapeHtml(paidToName)}</strong> in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.</p>`
-        );
-        sends.push(this.callSendEmail(paidByMember.email, subject, text, html));
-      }
-    }
-
-    if (paidToMember?.userRef && paidToMember.email) {
-      const userDoc = await getDoc(paidToMember.userRef);
-      if (!userDoc.exists() || userDoc.data()?.['emailOptOut'] !== true) {
-        const paidByName = paidByMember?.displayName ?? 'another member';
-        const subject = `A payment from ${paidByName} to you in PipSplit has been reversed`;
-        const text = [
-          `Hi ${paidToMember.displayName},`,
-          '',
-          `A payment of ${formattedAmount} from ${paidByName} to you in the group "${groupName}" has been reversed in PipSplit.`,
-          '',
-          `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.`,
-        ].join('\n');
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidToMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from <strong>${this.escapeHtml(paidByName)}</strong> to you in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.</p>`
-        );
-        sends.push(this.callSendEmail(paidToMember.email, subject, text, html));
-      }
-    }
-
-    await Promise.all(sends);
+    const fn = httpsCallable<
+      {
+        groupId: string;
+        paidByMemberId: string;
+        paidToMemberId: string;
+        amount: number;
+        splitCount: number;
+      },
+      { sent: number }
+    >(this.functions, 'sendPaymentReversalEmails');
+    await fn({
+      groupId,
+      paidByMemberId: paidByMemberRef.id,
+      paidToMemberId: paidToMemberRef.id,
+      amount,
+      splitCount,
+    });
   }
 
   async sendGroupSettleUnpayEmails(
-    members: Member[],
-    groupName: string,
-    settleDate: string
+    groupId: string,
+    memberRefs: DocumentReference<Member>[],
+    settleDate: Date
   ): Promise<void> {
-    const eligible = members.filter((m) => !!m.userRef && !!m.email);
-    const userDocs = await Promise.all(
-      eligible.map((m) => {
-        const userRef = m.userRef!;
-        return getDoc(userRef);
-      })
-    );
-    await Promise.all(
-      eligible
-        .filter((_, i) => userDocs[i]?.data()?.['emailOptOut'] !== true)
-        .map((m) => {
-          const subject = `The group settle for "${groupName}" has been reversed in PipSplit`;
-          const text = [
-            `Hi ${m.displayName},`,
-            '',
-            `A group admin has reversed the group settlement for "${groupName}" that was recorded on ${settleDate}.`,
-            '',
-            'All outstanding balances have been restored. Please check your current balance in PipSplit.',
-          ].join('\n');
-          const html = this.buildEmailHtml(
-            `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Group Settlement Reversed</h2>` +
-              `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(m.displayName)}</strong>,</p>` +
-              `<p style="margin:0 0 16px 0;">A group admin has reversed the group settlement for <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> that was recorded on <strong>${this.escapeHtml(settleDate)}</strong>.</p>` +
-              `<p style="margin:0;">All outstanding balances have been restored. Please check your current balance in PipSplit.</p>`
-          );
-          return this.callSendEmail(m.email, subject, text, html);
-        })
-    );
+    if (memberRefs.length === 0) {
+      return;
+    }
+    const fn = httpsCallable<
+      { groupId: string; memberIds: string[]; settleDate: string },
+      { sent: number }
+    >(this.functions, 'sendSettleReversalEmails');
+    await fn({
+      groupId,
+      memberIds: memberRefs.map((ref) => ref.id),
+      settleDate: toIsoFormat(settleDate),
+    });
   }
 
   async logout(redirect: boolean = true): Promise<void> {

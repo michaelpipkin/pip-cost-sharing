@@ -314,6 +314,12 @@ export function createMockUserService() {
     getUserDetails: vi.fn().mockResolvedValue(null),
     createUserIfNotExists: vi.fn().mockResolvedValue(null),
     logout: vi.fn().mockResolvedValue(undefined),
+    sendPaymentRequestEmail: vi.fn().mockResolvedValue('sent'),
+    sendGroupPaymentRequestEmails: vi
+      .fn()
+      .mockResolvedValue({ sent: 0, skipped: 0 }),
+    sendMemberPaymentUnpayEmails: vi.fn().mockResolvedValue(undefined),
+    sendGroupSettleUnpayEmails: vi.fn().mockResolvedValue(undefined),
   };
 }
 

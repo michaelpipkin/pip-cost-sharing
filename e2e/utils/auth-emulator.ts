@@ -10,23 +10,35 @@ import {
 import { getSeedAdmin } from '../seed/admin';
 
 /**
- * The `mail` doc addressed to `to`, or null when there is none yet. If a
- * recipient has several, the one whose delivery started last wins (mail docs
- * carry no creation time; ones not yet processed sort last). Reads through
- * the Admin SDK because clients can't read `mail`. The collection is global
- * and written by many specs: look up by a recipient the calling test owns
- * (never count rows or take an unscoped first row), and poll with
- * `expect.poll` since the doc appears when a function writes it.
+ * The `mail` doc addressed to `to` (and, if given, with exactly this
+ * `subject`), or null when there is none yet. If several match, the one whose
+ * delivery started last wins (mail docs carry no creation time; ones not yet
+ * processed sort last). Pass `subject` when the recipient also gets other
+ * mail whose timing the test doesn't control (e.g. a seeded payment's
+ * notice). Reads through the Admin SDK because clients can't read `mail`.
+ * The collection is global and written by many specs: look up by a
+ * recipient the calling test owns (never count rows or take an unscoped
+ * first row), and poll with `expect.poll` since the doc appears when a
+ * function writes it.
  */
-export async function findMail(to: string): Promise<DocumentData | null> {
+export async function findMail(
+  to: string,
+  subject?: string
+): Promise<DocumentData | null> {
   const { db } = getSeedAdmin();
   const snapshot = await db.collection('mail').where('to', '==', to).get();
-  if (snapshot.empty) return null;
+  const matches = snapshot.docs
+    .map((d) => d.data())
+    .filter(
+      (data) =>
+        subject === undefined || data['message']?.subject === subject
+    );
+  if (matches.length === 0) return null;
   const deliveryStartedAt = (data: DocumentData): number =>
     data['delivery']?.startTime?.toMillis?.() ?? 0;
-  return snapshot.docs
-    .map((d) => d.data())
-    .sort((a, b) => deliveryStartedAt(b) - deliveryStartedAt(a))[0];
+  return matches.sort(
+    (a, b) => deliveryStartedAt(b) - deliveryStartedAt(a)
+  )[0]!;
 }
 
 interface OobCode {

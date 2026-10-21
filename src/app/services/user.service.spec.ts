@@ -428,6 +428,159 @@ describe('UserService', () => {
     });
   });
 
+  describe('group emails (server-built callables)', () => {
+    const groupId = 'g-trip';
+    const patRef = { id: 'm-pat' } as any;
+    const owenRef = { id: 'm-owen' } as any;
+    const ivoRef = { id: 'm-ivo' } as any;
+
+    function mockCallable(data: unknown) {
+      const callable = vi.fn().mockResolvedValue({ data });
+      const httpsCallableSpy = vi
+        .spyOn(functionsModule, 'httpsCallable')
+        .mockReturnValue(callable as any);
+      return { callable, httpsCallableSpy };
+    }
+
+    describe('sendPaymentRequestEmail', () => {
+      it('sends only the group id, member ids and the numeric amount to sendPaymentRequests', async () => {
+        const { callable, httpsCallableSpy } = mockCallable({
+          results: ['sent'],
+        });
+
+        await service.sendPaymentRequestEmail(groupId, patRef, owenRef, 12.5);
+
+        expect(httpsCallableSpy).toHaveBeenCalledWith(
+          mockFunctions,
+          'sendPaymentRequests'
+        );
+        expect(callable).toHaveBeenCalledWith({
+          groupId,
+          requests: [
+            { owedByMemberId: 'm-pat', owedToMemberId: 'm-owen', amount: 12.5 },
+          ],
+        });
+      });
+
+      it.each(['sent', 'not_registered', 'opted_out'] as const)(
+        'returns the server result %s',
+        async (result) => {
+          mockCallable({ results: [result] });
+
+          await expect(
+            service.sendPaymentRequestEmail(groupId, patRef, owenRef, 5)
+          ).resolves.toBe(result);
+        }
+      );
+
+      it('rejects when the callable fails, so Summary shows its error', async () => {
+        const callable = vi.fn().mockRejectedValue(new Error('denied'));
+        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+          callable as any
+        );
+
+        await expect(
+          service.sendPaymentRequestEmail(groupId, patRef, owenRef, 5)
+        ).rejects.toThrow('denied');
+      });
+    });
+
+    describe('sendGroupPaymentRequestEmails', () => {
+      it('sends every transfer in one sendPaymentRequests call and counts the results', async () => {
+        const { callable, httpsCallableSpy } = mockCallable({
+          results: ['sent', 'not_registered', 'sent', 'opted_out'],
+        });
+
+        const result = await service.sendGroupPaymentRequestEmails(groupId, [
+          { owedByMemberRef: patRef, owedToMemberRef: owenRef, amount: 1 },
+          { owedByMemberRef: ivoRef, owedToMemberRef: owenRef, amount: 2 },
+          { owedByMemberRef: owenRef, owedToMemberRef: patRef, amount: 3 },
+          { owedByMemberRef: ivoRef, owedToMemberRef: patRef, amount: 4 },
+        ]);
+
+        expect(result).toEqual({ sent: 2, skipped: 2 });
+        expect(httpsCallableSpy).toHaveBeenCalledWith(
+          mockFunctions,
+          'sendPaymentRequests'
+        );
+        expect(callable).toHaveBeenCalledWith({
+          groupId,
+          requests: [
+            { owedByMemberId: 'm-pat', owedToMemberId: 'm-owen', amount: 1 },
+            { owedByMemberId: 'm-ivo', owedToMemberId: 'm-owen', amount: 2 },
+            { owedByMemberId: 'm-owen', owedToMemberId: 'm-pat', amount: 3 },
+            { owedByMemberId: 'm-ivo', owedToMemberId: 'm-pat', amount: 4 },
+          ],
+        });
+      });
+
+      it('makes no call for an empty settlement', async () => {
+        const { httpsCallableSpy } = mockCallable({ results: [] });
+
+        await expect(
+          service.sendGroupPaymentRequestEmails(groupId, [])
+        ).resolves.toEqual({ sent: 0, skipped: 0 });
+        expect(httpsCallableSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('sendMemberPaymentUnpayEmails', () => {
+      it('sends the member ids, amount and split count to sendPaymentReversalEmails', async () => {
+        const { callable, httpsCallableSpy } = mockCallable({ sent: 2 });
+
+        await service.sendMemberPaymentUnpayEmails(
+          groupId,
+          ivoRef,
+          owenRef,
+          30,
+          3
+        );
+
+        expect(httpsCallableSpy).toHaveBeenCalledWith(
+          mockFunctions,
+          'sendPaymentReversalEmails'
+        );
+        expect(callable).toHaveBeenCalledWith({
+          groupId,
+          paidByMemberId: 'm-ivo',
+          paidToMemberId: 'm-owen',
+          amount: 30,
+          splitCount: 3,
+        });
+      });
+    });
+
+    describe('sendGroupSettleUnpayEmails', () => {
+      it('sends the member ids and the local settle date as YYYY-MM-DD to sendSettleReversalEmails', async () => {
+        const { callable, httpsCallableSpy } = mockCallable({ sent: 2 });
+
+        await service.sendGroupSettleUnpayEmails(
+          groupId,
+          [ivoRef, owenRef],
+          new Date(2026, 0, 5, 23, 30)
+        );
+
+        expect(httpsCallableSpy).toHaveBeenCalledWith(
+          mockFunctions,
+          'sendSettleReversalEmails'
+        );
+        expect(callable).toHaveBeenCalledWith({
+          groupId,
+          memberIds: ['m-ivo', 'm-owen'],
+          settleDate: '2026-01-05',
+        });
+      });
+
+      it('makes no call when there is no one to notify', async () => {
+        const { httpsCallableSpy } = mockCallable({ sent: 0 });
+
+        await service.sendGroupSettleUnpayEmails(groupId, [], new Date());
+
+        expect(httpsCallableSpy).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   describe('logout', () => {
     it('should sign out and clear user store', async () => {
       await service.logout();

@@ -289,6 +289,61 @@ describe('HistoryDetailComponent', () => {
     });
   });
 
+  describe('Unpay notices', () => {
+    it('sends the group id, member refs, numeric total and split count for a payment', async () => {
+      const h = mockHistory({
+        ...testHistory,
+        splitsPaid: [
+          mockDocRef('groups/group-1/splits/s-1'),
+          mockDocRef('groups/group-1/splits/s-2'),
+        ] as any,
+      });
+
+      await (component as any).notifyMemberPaymentUnpay(h);
+
+      expect(mockUserService.sendMemberPaymentUnpayEmails).toHaveBeenCalledWith(
+        'group-1',
+        adminMember.ref,
+        regularMember.ref,
+        50,
+        2
+      );
+    });
+
+    it('sends each known settle member once, with the settle date', async () => {
+      const settleDate = new Date(2026, 9, 21);
+      const unknownRef = mockDocRef('groups/group-1/members/gone');
+      const first = mockHistory({
+        id: 'h-a',
+        batchId: 'batch-1',
+        date: settleDate,
+        paidByMemberRef: adminMember.ref!,
+        paidByMember: adminMember,
+        paidToMemberRef: regularMember.ref!,
+        paidToMember: regularMember,
+      });
+      const second = mockHistory({
+        id: 'h-b',
+        batchId: 'batch-1',
+        date: settleDate,
+        paidByMemberRef: regularMember.ref!,
+        paidByMember: regularMember,
+        paidToMemberRef: unknownRef,
+        paidToMember: undefined,
+      });
+      mockHistoryStore.groupHistory.set([first, second]);
+      component.history.set(first);
+
+      await (component as any).notifyGroupSettleUnpay(first);
+
+      expect(mockUserService.sendGroupSettleUnpayEmails).toHaveBeenCalledWith(
+        'group-1',
+        [adminMember.ref, regularMember.ref],
+        settleDate
+      );
+    });
+  });
+
   describe('Copy to clipboard', () => {
     it('should copy to clipboard and show snackbar', async () => {
       const writeTextMock = vi.fn().mockResolvedValue(undefined);

@@ -26,7 +26,26 @@ import {
   isDemoProject,
   normalizeEmail,
 } from './common';
+import {
+  buildEmailHtml,
+  buildPaymentMethodLines,
+  buildPaymentMethodsHtml,
+  escapeHtml,
+  formatAmount,
+} from './email-builders';
 
+export {
+  buildEmailHtml,
+  buildPaymentMethodLines,
+  buildPaymentMethodsHtml,
+  escapeHtml,
+  formatAmount,
+} from './email-builders';
+export {
+  sendPaymentRequests,
+  sendPaymentReversalEmails,
+  sendSettleReversalEmails,
+} from './group-emails';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
 export {
@@ -66,56 +85,6 @@ const MAIL_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year, matches the extension'
 // ---------------------------------------------------------------------------
 
 /**
- * Format a monetary amount using the group's currency settings.
- * Falls back to symbol + toFixed for non-ISO codes (OTH, OT2).
- */
-export function formatAmount(
-  amount: number,
-  currencyCode: string,
-  currencySymbol: string,
-  decimalPlaces: number
-): string {
-  if (currencyCode === 'OTH' || currencyCode === 'OT2') {
-    const plain = amount.toFixed(decimalPlaces);
-    return currencySymbol ? `${currencySymbol}${plain}` : plain;
-  }
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: decimalPlaces,
-      maximumFractionDigits: decimalPlaces,
-    }).format(amount);
-  } catch {
-    const plain = amount.toFixed(decimalPlaces);
-    return currencySymbol ? `${currencySymbol}${plain}` : plain;
-  }
-}
-
-/**
- * Escape HTML special characters in a string for safe embedding in HTML.
- */
-export function escapeHtml(str: string): string {
-  return str
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-/**
- * Wrap email body content in the standard PipSplit HTML email shell.
- * `footerText` defaults to the member opt-out notice; pass a different
- * value for emails that aren't sent to group members (e.g. admin alerts).
- */
-export function buildEmailHtml(
-  content: string,
-  footerText: string = 'You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.'
-): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">${footerText}</p></td></tr></table></td></tr></table></body></html>`;
-}
-
-/**
  * Convert a plain-text category breakdown string to an HTML table.
  * Each line has the form "  Category: $X.XX".
  */
@@ -133,40 +102,6 @@ export function buildCategoryBreakdownHtml(breakdown: string): string {
     })
     .join('');
   return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;margin:0 0 20px 0;"><tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Category</th><th style="padding:10px 12px;text-align:right;color:#ffffff;">Amount</th></tr>${rows}</table>`;
-}
-
-/**
- * Convert a plain-text payment methods string to HTML paragraphs.
- */
-export function buildPaymentMethodsHtml(methods: string): string {
-  if (methods === '(No payment methods on file)') {
-    return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
-  }
-  return methods
-    .split('\n')
-    .map((line) => `<p style="margin:2px 0;">${escapeHtml(line)}</p>`)
-    .join('');
-}
-
-/**
- * Build a newline-separated list of payment method lines for a user.
- * Returns a fallback string if no payment methods are configured.
- */
-export function buildPaymentMethodLines(
-  userData: DocumentData
-): string {
-  const methods: string[] = [];
-  if (userData['venmoId'])
-    methods.push(
-      `Venmo: @${(userData['venmoId'] as string).replace(/^@/, '')}`
-    );
-  if (userData['paypalId']) methods.push(`PayPal: ${userData['paypalId']}`);
-  if (userData['cashAppId'])
-    methods.push(`Cash App: $${userData['cashAppId']}`);
-  if (userData['zelleId']) methods.push(`Zelle: ${userData['zelleId']}`);
-  return methods.length > 0
-    ? methods.join('\n')
-    : '(No payment methods on file)';
 }
 
 /** Collect the unique category DocumentReferences referenced by a set of split docs. */
@@ -1152,28 +1087,6 @@ async function handleMemberPaymentEmail(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Generic email sender — all business logic runs client-side; this function
-// simply writes the pre-built mail document to the Firestore mail collection.
-// ---------------------------------------------------------------------------
-
-export const sendEmail = onCall<{
-  to: string;
-  subject: string;
-  text: string;
-  html: string;
-}>(callableAppCheck, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-  const { to, subject, text, html } = request.data;
-  if (!to || !subject || !text) {
-    throw new HttpsError('invalid-argument', 'Missing required email fields');
-  }
-  await db.collection('mail').add({ to, message: { subject, text, html } });
-  return { success: true };
-});
-
 /**
  * Atomically claim responsibility for sending a settle batch's emails.
  * Returns false if another function instance already claimed this batch.
@@ -1574,10 +1487,10 @@ export const logAppError = onCall<{
 
 // ---------------------------------------------------------------------------
 // Group Invitation — emails a member who has no PipSplit account yet, asking
-// them to register. Deliberately NOT built on the generic `sendEmail`
-// callable: the recipient address is read server-side from the member
-// document, never taken from the client, so this cannot be used as an open
-// relay to spam arbitrary addresses.
+// them to register. Like the group emails in group-emails.ts, the recipient
+// address is read server-side from the member document, never taken from the
+// client, so this cannot be used as an open relay to spam arbitrary
+// addresses.
 //
 // Anti-spam: one invitation per member per 24 hours, reset early if the
 // member's email address changes (tracked via invite.lastSentTo — comparing
@@ -1871,10 +1784,11 @@ export const notifyNewIssue = onCall<{
 // ---------------------------------------------------------------------------
 // Mail queue sender — replaces the retired "Trigger Email from Firestore"
 // extension. Watches the `mail` collection (written to by
-// handleMemberPaymentEmail, handleSettleEmail, sendEmail, logAppError, and
-// notifyNewIssue above), delivers each queued message via SMTP, and writes
-// back a `delivery` object in the same shape the extension used to, which
-// src/app/models/mail.ts and the admin email-log UI already expect.
+// handleMemberPaymentEmail, handleSettleEmail, logAppError, sendGroupInvite
+// and notifyNewIssue above, and by the group-emails.ts callables), delivers
+// each queued message via SMTP, and writes back a `delivery` object in the
+// same shape the extension used to, which src/app/models/mail.ts and the
+// admin email-log UI already expect.
 // ---------------------------------------------------------------------------
 
 async function getMailTransport(): Promise<nodemailer.Transporter> {

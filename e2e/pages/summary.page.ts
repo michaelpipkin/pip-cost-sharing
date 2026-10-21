@@ -44,6 +44,8 @@ export class SummaryPage extends BasePage {
   readonly owedToCells: Locator;
   readonly amountCells: Locator;
   readonly payButtons: Locator;
+  /** Each row's "Send payment request email" button. */
+  readonly requestPaymentButtons: Locator;
 
   // Expanded detail. One row is expanded at a time, but a row collapsed by
   // expanding another keeps its detail in the DOM until its leave animation
@@ -90,6 +92,9 @@ export class SummaryPage extends BasePage {
     this.owedToCells = this.summaryRows.getByTestId('summary-owed-to');
     this.amountCells = this.summaryRows.getByTestId('summary-amount');
     this.payButtons = this.summaryRows.getByTestId('pay-expenses-button');
+    this.requestPaymentButtons = this.summaryRows.getByTestId(
+      'request-payment-button'
+    );
 
     this.detail = page.getByTestId('summary-detail');
 
@@ -222,6 +227,16 @@ export class SummaryPage extends BasePage {
     await expect(
       this.snackbarWith('Summary copied to clipboard')
     ).toBeVisible();
+  }
+
+  // ---- Payment request ----------------------------------------------------
+
+  /**
+   * Clicks row `rowIndex`'s request-payment button. The caller asserts the
+   * snackbar (its text depends on whether the member can be emailed).
+   */
+  async requestPayment(rowIndex: number): Promise<void> {
+    await this.requestPaymentButtons.nth(rowIndex).click();
   }
 
   // ---- Payment dialog -----------------------------------------------------

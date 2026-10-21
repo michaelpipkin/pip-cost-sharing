@@ -2,35 +2,38 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { DocumentReference } from 'firebase/firestore';
 
+/** sendPaymentRequests' per-request outcome (functions/src/group-emails.ts). */
+export type PaymentRequestResult = 'sent' | 'not_registered' | 'opted_out';
+
 export interface IUserService {
   getUserDetails(userId: string): Promise<User | null>;
   updateUser(changes: Partial<User>): Promise<void>;
   getPaymentMethods(memberRef: DocumentReference<Member>): Promise<object>;
   sendPaymentRequestEmail(
-    owedByMember: Member,
-    owedToMember: Member,
-    groupName: string,
-    formattedAmount: string
-  ): Promise<'sent' | 'not_registered' | 'opted_out'>;
+    groupId: string,
+    owedByMemberRef: DocumentReference<Member>,
+    owedToMemberRef: DocumentReference<Member>,
+    amount: number
+  ): Promise<PaymentRequestResult>;
   sendGroupPaymentRequestEmails(
+    groupId: string,
     transfers: {
-      owedByMember: Member;
-      owedToMember: Member;
-      formattedAmount: string;
-    }[],
-    groupName: string
+      owedByMemberRef: DocumentReference<Member>;
+      owedToMemberRef: DocumentReference<Member>;
+      amount: number;
+    }[]
   ): Promise<{ sent: number; skipped: number }>;
   sendMemberPaymentUnpayEmails(
-    paidByMember: Member | undefined,
-    paidToMember: Member | undefined,
-    groupName: string,
-    formattedAmount: string,
+    groupId: string,
+    paidByMemberRef: DocumentReference<Member>,
+    paidToMemberRef: DocumentReference<Member>,
+    amount: number,
     splitCount: number
   ): Promise<void>;
   sendGroupSettleUnpayEmails(
-    members: Member[],
-    groupName: string,
-    settleDate: string
+    groupId: string,
+    memberRefs: DocumentReference<Member>[],
+    settleDate: Date
   ): Promise<void>;
   logout(): Promise<void>;
 }
