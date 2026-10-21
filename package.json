@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.26.16",
+  "version": "1.26.17",
   "type": "module",
   "packageManager": "pnpm@12.14.0",
   "scripts": {
