@@ -55,6 +55,7 @@ export class ExpensesPage extends BasePage {
   readonly totalAmountInput: Locator;
   readonly proportionalAmountInput: Locator;
   readonly sharedRemainderAmount: Locator;
+  readonly remainderError: Locator;
   readonly splitMethodToggles: Record<SplitMethod, Locator>;
   readonly addSplitButton: Locator;
   readonly addAllMembersButton: Locator;
@@ -137,6 +138,7 @@ export class ExpensesPage extends BasePage {
     this.totalAmountInput = form.totalAmountInput;
     this.proportionalAmountInput = form.proportionalAmountInput;
     this.sharedRemainderAmount = form.sharedRemainderAmount;
+    this.remainderError = form.remainderError;
     this.splitMethodToggles = form.splitMethodToggles;
     this.addSplitButton = form.addSplitButton;
     this.addAllMembersButton = form.addAllMembersButton;
@@ -246,7 +248,9 @@ export class ExpensesPage extends BasePage {
       month: 'long',
       day: 'numeric',
     });
-    await this.calendar.getByRole('button', { name: label, exact: true }).click();
+    await this.calendar
+      .getByRole('button', { name: label, exact: true })
+      .click();
     await expect(this.calendar).toBeHidden();
     await expect(this.dateInput).toHaveValue(formatShortDate(date));
   }

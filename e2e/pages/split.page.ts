@@ -27,6 +27,8 @@ export class SplitPage extends BasePage {
   readonly removeButtons: Locator;
 
   readonly generateSummaryButton: Locator;
+  /** Shown while member and proportional amounts exceed the total. */
+  readonly remainderError: Locator;
   readonly cancelButton: Locator;
 
   // Summary
@@ -69,6 +71,7 @@ export class SplitPage extends BasePage {
     this.generateSummaryButton = page.getByTestId(
       'split-generate-summary-button'
     );
+    this.remainderError = page.getByTestId('remainder-error');
     this.cancelButton = page.getByTestId('split-cancel-button');
 
     this.summary = page.getByTestId('split-summary');
@@ -196,9 +199,9 @@ export class SplitPage extends BasePage {
 
   async setNightCount(nights: number): Promise<void> {
     await this.fillAndCommit(this.nightCountInput, nights.toString());
-    await expect(this.nightRows.first().getByTestId('night-checkbox')).toHaveCount(
-      nights
-    );
+    await expect(
+      this.nightRows.first().getByTestId('night-checkbox')
+    ).toHaveCount(nights);
   }
 
   /** Adds a participant to the occupancy grid (present every night). */

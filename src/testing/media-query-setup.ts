@@ -1,6 +1,6 @@
 // Polyfill window.matchMedia for jsdom, which does not implement it.
-// Angular CDK's BreakpointObserver calls matchMedia().addListener() (deprecated API)
-// which throws in the test environment without this stub.
+// Anything that queries the viewport (MediaQueryService, third-party
+// components) would otherwise throw in the test environment.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   configurable: true,

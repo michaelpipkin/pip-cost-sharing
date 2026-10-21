@@ -342,4 +342,31 @@ describe('EditExpenseComponent', () => {
   it("should end the form's Enter order on Save", () => {
     expectEnterEndsOnSave(fixture);
   });
+
+  describe('remainderValid', () => {
+    function setAmounts(total: string, sharedAmount: number): void {
+      (component as any).expenseFormData.update((fd: any) => ({ ...fd, amount: total }));
+      (component as any).expenseModel.update((m: any) => ({ ...m, sharedAmount }));
+    }
+
+    it('should accept a remainder that fits within the total', () => {
+      setAmounts('90.00', 10);
+
+      expect(component.remainderValid()).toBe(true);
+    });
+
+    it('should reject member amounts that add up to more than the total', () => {
+      // Total 90 with a member amount of 100 leaves -10 to share evenly.
+      setAmounts('90.00', -10);
+
+      expect(component.remainderValid()).toBe(false);
+    });
+
+    it('should ignore the remainder outside the amount split method', () => {
+      setAmounts('90.00', -10);
+      component.splitMethod.set('percentage');
+
+      expect(component.remainderValid()).toBe(true);
+    });
+  });
 });

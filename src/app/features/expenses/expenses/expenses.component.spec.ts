@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
@@ -12,6 +11,7 @@ import { GuidedTourService } from '@services/guided-tour.service';
 import { CategoryService } from '@services/category.service';
 import { ExpenseService } from '@services/expense.service';
 import { LocaleService } from '@services/locale.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
@@ -28,6 +28,7 @@ import {
   createMockGroupStore,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMediaQueryService,
   createMockMemberStore,
   createMockSnackBar,
   createMockSortingService,
@@ -48,19 +49,15 @@ import { ExpensesComponent } from './expenses.component';
 describe('ExpensesComponent', () => {
   let fixture: ComponentFixture<ExpensesComponent>;
   let component: ExpensesComponent;
+  let mockMediaQuery: ReturnType<typeof createMockMediaQueryService>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
   let mockExpenseStore: ReturnType<typeof createMockExpenseStore>;
   let mockExpenseService: ReturnType<typeof createMockExpenseService>;
   let mockSplitService: ReturnType<typeof createMockSplitService>;
   let router: Router;
 
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
-  };
-
   beforeEach(async () => {
+    mockMediaQuery = createMockMediaQueryService();
     mockGroupStore = createMockGroupStore();
     mockExpenseStore = createMockExpenseStore();
     mockExpenseService = createMockExpenseService();
@@ -88,7 +85,7 @@ describe('ExpensesComponent', () => {
         { provide: LoadingService, useValue: createMockLoadingService() },
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: MatDialog, useValue: createMockMatDialog() },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: mockMediaQuery },
         TableFilterService,
         LocaleService,
       ],
@@ -375,6 +372,45 @@ describe('ExpensesComponent', () => {
       const stopSpy = vi.spyOn(TestBed.inject(GuidedTourService), 'stop');
       fixture.destroy();
       expect(stopSpy).toHaveBeenCalledWith('closed');
+    });
+  });
+
+  describe('columnsToDisplay', () => {
+    it('should show every column separately on wide screens', () => {
+      expect(component.columnsToDisplay()).toEqual([
+        'date',
+        'paidBy',
+        'description',
+        'category',
+        'amount',
+        'receipt',
+        'paid',
+        'expand',
+      ]);
+      expect(component.footerColumnsToDisplay()).toEqual([
+        'amount',
+        'receipt',
+        'paid',
+        'expand',
+      ]);
+    });
+
+    it('should combine columns on narrow screens', () => {
+      mockMediaQuery.state.set(true);
+
+      expect(component.smallScreen()).toBe(true);
+      expect(component.columnsToDisplay()).toEqual([
+        'date-paidBy',
+        'description-category',
+        'amount',
+        'receipt-paid',
+        'expand',
+      ]);
+      expect(component.footerColumnsToDisplay()).toEqual([
+        'amount',
+        'receipt-paid',
+        'expand',
+      ]);
     });
   });
 });

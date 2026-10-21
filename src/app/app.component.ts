@@ -1,5 +1,4 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
-import { afterNextRender, ChangeDetectionStrategy, Component, inject, signal, Signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, inject, Signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -23,6 +22,7 @@ import { AdSenseService } from '@services/adsense.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppUpdatePromptService } from '@services/app-update-prompt.service';
 import { DeepLinkService } from '@services/deep-link.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { PwaDetectionService } from '@services/pwa-detection.service';
 import { ThemeService } from '@services/theme.service';
 import { UserService } from '@services/user.service';
@@ -56,7 +56,7 @@ export class AppComponent {
   protected readonly groupStore = inject(GroupStore);
   protected readonly router = inject(Router);
   protected readonly analytics = inject(AnalyticsService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly pwaDetection = inject(PwaDetectionService);
   protected readonly adMobService = inject(AdMobService);
   protected readonly adSenseService = inject(AdSenseService);
@@ -64,7 +64,7 @@ export class AppComponent {
   protected readonly appUpdatePrompt = inject(AppUpdatePromptService);
   protected readonly navigationLoading = inject(NavigationLoadingService);
 
-  isSmallScreen = signal<boolean>(false);
+  readonly isSmallScreen = this.mediaQuery.matches('(max-width: 1115px)');
 
   user: Signal<User | null> = this.userStore.user;
   isLoggedIn: Signal<boolean> = this.userStore.isLoggedIn;
@@ -81,13 +81,6 @@ export class AppComponent {
       this.deepLinkService.initialize();
       await this.appUpdatePrompt.checkOnStartup();
     });
-
-    // Observe breakpoint changes for responsive layout
-    this.breakpointObserver
-      .observe('(max-width: 1115px)')
-      .subscribe((result) => {
-        this.isSmallScreen.set(result.matches);
-      });
   }
 
   private async lockTextZoom() {

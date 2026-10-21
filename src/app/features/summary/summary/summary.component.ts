@@ -9,7 +9,6 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -47,6 +46,7 @@ import {
 import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
@@ -110,7 +110,7 @@ export class SummaryComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly localeService = inject(LocaleService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
   protected readonly guidedTour = inject(GuidedTourService);
   protected readonly fs = inject(getFirestore);
@@ -156,7 +156,11 @@ export class SummaryComponent {
   startDate = model<Date | null>(null);
   endDate = model<Date | null>(null);
 
-  smallScreen = signal<boolean>(false);
+  // Below this size, the two summary tables can't both show a useful
+  // number of rows at once, so they're shown one at a time via a toggle.
+  readonly smallScreen = this.mediaQuery.matches(
+    '(max-width: 600px), (max-height: 700px)'
+  );
   summaryView = signal<'individual' | 'settlement'>('individual');
 
   filteredSplits = computed(() => {
@@ -390,13 +394,6 @@ export class SummaryComponent {
         this.loading.loadingOn();
       }
     });
-    // Below this size, the two summary tables can't both show a useful
-    // number of rows at once, so they're shown one at a time via a toggle.
-    this.breakpointObserver
-      .observe(['(max-width: 600px)', '(max-height: 700px)'])
-      .subscribe((result) => {
-        this.smallScreen.set(result.matches);
-      });
   }
 
   onExpandClick(amountDue: AmountDue): void {

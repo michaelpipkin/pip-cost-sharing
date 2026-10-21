@@ -140,7 +140,9 @@ test.describe('Split tool', { tag: ['@split'] }, () => {
     await split.generateSummary();
 
     await split.copySummaryButton.click();
-    await expect(split.snackbarWith('Summary copied to clipboard')).toBeVisible();
+    await expect(
+      split.snackbarWith('Summary copied to clipboard')
+    ).toBeVisible();
 
     const copied = await readClipboard(page);
     expect(copied).toContain('Total: $90.00');
@@ -184,23 +186,24 @@ test.describe('Split tool', { tag: ['@split'] }, () => {
     await expect(split.generateSummaryButton).toBeEnabled();
   });
 
-  // App bug: personal amounts that add up to more than the total push the
-  // evenly shared remainder negative, so the others are "allocated" a
-  // negative amount (Ari 95, Blake -5) and the total still reconciles, which
-  // is all expenseFullyAllocated() checks. Neither the split page nor the
-  // group expense forms guard against it, so Generate Summary stays
-  // enabled. It should stay disabled while the personal amounts exceed the
-  // total. Remove test.fail() once the app blocks it.
+  // Personal amounts above the total push the evenly shared remainder
+  // negative (Ari 95, Blake -5) while the allocations still reconcile with
+  // the total, so the fully-allocated check alone used to let this through.
   test('should keep Generate Summary disabled when fixed shares exceed the total', async ({
     page,
   }) => {
-    test.fail();
     const split = new SplitPage(page);
     await split.gotoSplit();
 
     await split.setTotal(90);
     await split.addPerson('Ari', 100);
     await split.addPerson('Blake');
+    await expect(split.remainderError).toBeVisible();
     await expect(split.generateSummaryButton).toBeDisabled();
+
+    // Bringing Ari's amount back within the total clears it.
+    await split.setMemberAmount(0, 30);
+    await expect(split.remainderError).toBeHidden();
+    await expect(split.generateSummaryButton).toBeEnabled();
   });
 });

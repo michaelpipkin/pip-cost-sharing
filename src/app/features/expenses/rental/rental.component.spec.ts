@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
@@ -6,10 +5,12 @@ import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { MemberStore } from '@store/member.store';
 import {
   createMockAnalyticsService,
   createMockMatDialog,
+  createMockMediaQueryService,
   createMockMemberStore,
   mockDocRef,
   mockMember,
@@ -47,15 +48,7 @@ describe('RentalComponent', () => {
         provideRouter([]),
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: MatDialog, useValue: createMockMatDialog() },
-        {
-          provide: BreakpointObserver,
-          useValue: {
-            isMatched: vi.fn(() => false),
-            observe: vi.fn(() => ({
-              subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-            })),
-          },
-        },
+        { provide: MediaQueryService, useValue: createMockMediaQueryService() },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
         { provide: getFirestore, useValue: {} },
         LocaleService,

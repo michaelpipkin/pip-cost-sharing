@@ -51,6 +51,8 @@ export class ExpenseForm extends BasePage {
   readonly totalAmountInput: Locator;
   readonly proportionalAmountInput: Locator;
   readonly sharedRemainderAmount: Locator;
+  /** Shown while member and proportional amounts exceed the total. */
+  readonly remainderError: Locator;
   readonly split: SplitMethodToggle;
   readonly splitMethodToggles: Record<SplitMethod, Locator>;
   readonly addSplitButton: Locator;
@@ -82,6 +84,7 @@ export class ExpenseForm extends BasePage {
     this.sharedRemainderAmount = container.getByTestId(
       'shared-remainder-amount'
     );
+    this.remainderError = container.getByTestId('remainder-error');
     this.split = new SplitMethodToggle(container);
     this.splitMethodToggles = this.split.toggles;
     this.addSplitButton = container.getByTestId('add-split-button');

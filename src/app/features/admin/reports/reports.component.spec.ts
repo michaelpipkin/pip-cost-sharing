@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,10 +6,12 @@ import { AdminReportResult } from '@models/admin-report';
 import { AdminReportsService } from '@services/admin-reports.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { ReportsStore } from '@store/reports.store';
 import {
   createMockAnalyticsService,
   createMockLoadingService,
+  createMockMediaQueryService,
   createMockSnackBar,
 } from '@testing/test-helpers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -63,12 +64,6 @@ describe('AdminReportsComponent', () => {
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockAppCheckErrorHandler: { handle: ReturnType<typeof vi.fn> };
 
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
-  };
-
   async function createComponent(): Promise<void> {
     mockLoadingService = createMockLoadingService();
     mockAnalyticsService = createMockAnalyticsService();
@@ -89,7 +84,7 @@ describe('AdminReportsComponent', () => {
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: AppCheckErrorHandlerService, useValue: mockAppCheckErrorHandler },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: createMockMediaQueryService() },
       ],
     }).compileComponents();
 

@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,10 +5,12 @@ import { LoadingService } from '@components/loading/loading.service';
 import { MailDocument } from '@models/mail';
 import { AdminMailService } from '@services/admin-mail.service';
 import { AnalyticsService } from '@services/analytics.service';
+import { MediaQueryService } from '@services/media-query.service';
 import {
   createMockAnalyticsService,
   createMockLoadingService,
   createMockMatDialog,
+  createMockMediaQueryService,
 } from '@testing/test-helpers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EmailDetailDialogComponent } from './email-detail-dialog.component';
@@ -41,13 +42,10 @@ describe('AdminEmailLogComponent', () => {
   let mockAnalyticsService: ReturnType<typeof createMockAnalyticsService>;
   let mockSnackBar: { openFromComponent: ReturnType<typeof vi.fn> };
 
-  const mockBreakpointObserver = {
-    observe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
-    })),
-  };
+  let mockMediaQuery: ReturnType<typeof createMockMediaQueryService>;
 
   async function createComponent(): Promise<void> {
+    mockMediaQuery = createMockMediaQueryService();
     mockLoadingService = createMockLoadingService();
     mockAnalyticsService = createMockAnalyticsService();
     mockSnackBar = { openFromComponent: vi.fn() };
@@ -64,7 +62,7 @@ describe('AdminEmailLogComponent', () => {
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
-        { provide: BreakpointObserver, useValue: mockBreakpointObserver },
+        { provide: MediaQueryService, useValue: mockMediaQuery },
         { provide: MatDialog, useValue: createMockMatDialog() },
       ],
     }).compileComponents();
@@ -93,24 +91,24 @@ describe('AdminEmailLogComponent', () => {
 
     it('should include subject column on desktop', async () => {
       await createComponent();
-      component.isMobile.set(false);
+      mockMediaQuery.state.set(false);
       expect(component.columnsToDisplay()).toContain('subject');
     });
 
     it('should exclude subject column on mobile', async () => {
       await createComponent();
-      component.isMobile.set(true);
+      mockMediaQuery.state.set(true);
       expect(component.columnsToDisplay()).not.toContain('subject');
     });
 
     it('should always include base columns regardless of breakpoint', async () => {
       await createComponent();
       const base = ['dateTime', 'recipient', 'state', 'attempts', 'error'];
-      component.isMobile.set(true);
+      mockMediaQuery.state.set(true);
       const mobileCols = component.columnsToDisplay();
       base.forEach((col) => expect(mobileCols).toContain(col));
 
-      component.isMobile.set(false);
+      mockMediaQuery.state.set(false);
       const desktopCols = component.columnsToDisplay();
       base.forEach((col) => expect(desktopCols).toContain(col));
     });

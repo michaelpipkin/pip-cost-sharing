@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -54,6 +53,7 @@ import {
   GuidedTourDialogs,
 } from '@services/guided-tour-dialogs';
 import { GuidedTourService } from '@services/guided-tour.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SortingService } from '@services/sorting.service';
 import { SplitService } from '@services/split.service';
 import { TableFilterService } from '@services/table-filter.service';
@@ -125,7 +125,7 @@ export class ExpensesComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly sorter = inject(SortingService);
   protected readonly localeService = inject(LocaleService);
-  protected readonly breakpointObserver = inject(BreakpointObserver);
+  protected readonly mediaQuery = inject(MediaQueryService);
   protected readonly guidedTour = inject(GuidedTourService);
   protected readonly fs = inject(getFirestore);
 
@@ -181,41 +181,6 @@ export class ExpensesComponent {
         this.loadExpenses();
       }
     });
-
-    // Observe breakpoint changes for responsive column display
-    this.breakpointObserver
-      .observe('(max-width: 1009px)')
-      .subscribe((result) => {
-        if (result.matches) {
-          this.columnsToDisplay.set([
-            'date-paidBy',
-            'description-category',
-            'amount',
-            'receipt-paid',
-            'expand',
-          ]);
-          this.footerColumnsToDisplay.set(['amount', 'receipt-paid', 'expand']);
-          this.smallScreen.set(true);
-        } else {
-          this.columnsToDisplay.set([
-            'date',
-            'paidBy',
-            'description',
-            'category',
-            'amount',
-            'receipt',
-            'paid',
-            'expand',
-          ]);
-          this.footerColumnsToDisplay.set([
-            'amount',
-            'receipt',
-            'paid',
-            'expand',
-          ]);
-          this.smallScreen.set(false);
-        }
-      });
   }
 
   startDate = model<Date | null>(
@@ -261,9 +226,34 @@ export class ExpensesComponent {
 
   expandedExpense = model<Expense | null>(null);
 
-  columnsToDisplay = signal<string[]>([]);
-  footerColumnsToDisplay = signal<string[]>([]);
-  smallScreen = signal<boolean>(false);
+  readonly smallScreen = this.mediaQuery.matches('(max-width: 1009px)');
+  // Narrow screens stack date/payer, description/category and receipt/paid
+  // into shared columns.
+  columnsToDisplay = computed<string[]>(() =>
+    this.smallScreen()
+      ? [
+          'date-paidBy',
+          'description-category',
+          'amount',
+          'receipt-paid',
+          'expand',
+        ]
+      : [
+          'date',
+          'paidBy',
+          'description',
+          'category',
+          'amount',
+          'receipt',
+          'paid',
+          'expand',
+        ]
+  );
+  footerColumnsToDisplay = computed<string[]>(() =>
+    this.smallScreen()
+      ? ['amount', 'receipt-paid', 'expand']
+      : ['amount', 'receipt', 'paid', 'expand']
+  );
 
   async loadExpenses(): Promise<void> {
     this.loading.loadingOn();

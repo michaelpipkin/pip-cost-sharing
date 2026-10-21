@@ -253,13 +253,16 @@ export class GroupService implements IGroupService {
     }
 
     // Handle auto-navigation for bookmarked/direct home page visits
-    // Login/register pages are handled by loggedInGuard
+    // Login/register pages are handled by loggedInGuard. /auth/account is
+    // deliberately not a redirect page: on narrow screens it is the Account
+    // menu itself, and a validated user there must not be bounced to
+    // Expenses whenever a groups snapshot lands (unvalidated users never get
+    // here - getUserGroups returns early for them).
     const currentUrl = this.#effectiveUrl();
     const isRedirectPage =
       currentUrl === '/home' ||
       currentUrl === '/' ||
-      currentUrl === '/auth/login' ||
-      currentUrl === '/auth/account';
+      currentUrl === '/auth/login';
 
     if (isRedirectPage) {
       // Validated users go to expenses, unvalidated users go to account

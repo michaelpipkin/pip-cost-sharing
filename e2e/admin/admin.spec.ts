@@ -20,15 +20,10 @@ const { mail, appErrors } = ADMIN;
 const REPORT_TIMEOUT_MS = 90_000;
 
 test.describe('Admin', { tag: ['@admin'] }, () => {
-  // APP BUG (found writing this spec): visiting /admin signed out lands on
-  // Home, not the login page. The route is guarded by [authGuard, adminGuard];
-  // both run for the navigation, authGuard calls router.navigate(login) and
-  // adminGuard (no user, so "not the owner") calls router.navigate(home) right
-  // after, and the later redirect wins. The correct behaviour (login) is what
-  // is asserted; remove test.fail() once adminGuard stops redirecting a
-  // signed-out visitor.
+  // The route runs [authGuard, adminGuard]. adminGuard used to call
+  // router.navigate(home) for any non-owner, which superseded authGuard's
+  // redirect, so a signed-out visitor landed on Home; it now returns UrlTrees.
   test('should send a signed-out visitor to login', async ({ page }) => {
-    test.fail();
     const auth = new AuthPage(page);
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/auth\/login/);
@@ -46,11 +41,10 @@ test.describe('Admin', { tag: ['@admin'] }, () => {
     // the reloaded app has handled his groups snapshot, GroupService moves
     // him on to Expenses (handleGroupsSnapshot's redirect pages in
     // src/app/services/group.service.ts). That landing is the evidence the
-    // snapshot has run. Clicking Account before it raced it: the Account
-    // link targets /auth/account, also a redirect page, and was bounced to
-    // Expenses (Task 11b). The guard decides on auth state alone, so it has
-    // always sent him Home before the snapshot (three Firestore reads
-    // later) can arrive.
+    // snapshot has run, so that redirect can't land after the Account
+    // click below and carry him off the Account page. The guard decides on
+    // auth state alone, so it has always sent him Home before the snapshot
+    // (three Firestore reads later) can arrive.
     const visited: string[] = [];
     page.on('framenavigated', (frame) => {
       if (frame === page.mainFrame()) {

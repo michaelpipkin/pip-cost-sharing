@@ -201,7 +201,7 @@
           [class.hidden]="splitMethod() !== 'amount'"
         >
           <span class="mock-label">Evenly Shared Remainder</span>
-          <span class="mock-value-right">
+          <span class="mock-value-right" [class.error-text]="!remainderValid()">
             {{ expenseModel().sharedAmount | groupCurrency }}
           </span>
         </div>
@@ -472,6 +472,11 @@
         }
       </div>
     </form>
+    @if (!remainderValid()) {
+      <p class="error-text mt-3" data-testid="remainder-error">
+        Member and proportional amounts add up to more than the total.
+      </p>
+    }
     <div
       class="flex-wrap fw-start row-gap mt-3"
       data-tour-anchor="save-actions"
@@ -488,7 +493,8 @@
           !categoryValid() ||
           !isFormDirty() ||
           !splitsValid() ||
-          !expenseFullyAllocated()
+          !expenseFullyAllocated() ||
+          !remainderValid()
         "
         (click)="onSubmit()"
         data-testid="edit-expense-save-button"

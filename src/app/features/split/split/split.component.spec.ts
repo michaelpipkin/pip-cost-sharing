@@ -831,4 +831,43 @@ describe('SplitComponent', () => {
   it("should end the form's Enter order on Save", () => {
     expectEnterEndsOnSave(fixture);
   });
+
+  describe('remainderValid', () => {
+    it('should reject member amounts that add up to more than the total', async () => {
+      component.addSplit();
+      component.addSplit();
+      patchSplit(0, { owedBy: 'Ari', assignedAmount: '100.00' });
+      patchSplit(1, { owedBy: 'Blake' });
+      patchModel({ amount: '90.00', sharedAmount: 0, allocatedAmount: '0.00' });
+
+      component.allocateSharedAmounts();
+      await fixture.whenStable();
+
+      // The allocations still reconcile (95 + -5 = 90), which is why the
+      // fully-allocated check alone let Generate Summary through.
+      expect(component.expenseFullyAllocated()).toBe(true);
+      expect(getModel().sharedAmount).toBe(-10);
+      expect(component.remainderValid()).toBe(false);
+    });
+
+    it('should accept member amounts within the total', async () => {
+      component.addSplit();
+      component.addSplit();
+      patchSplit(0, { owedBy: 'Ari', assignedAmount: '30.00' });
+      patchSplit(1, { owedBy: 'Blake' });
+      patchModel({ amount: '90.00', sharedAmount: 0, allocatedAmount: '0.00' });
+
+      component.allocateSharedAmounts();
+      await fixture.whenStable();
+
+      expect(component.remainderValid()).toBe(true);
+    });
+
+    it('should ignore the remainder outside the amount split method', () => {
+      patchModel({ amount: '90.00', sharedAmount: -10 });
+      component.splitMethod.set('shares');
+
+      expect(component.remainderValid()).toBe(true);
+    });
+  });
 });

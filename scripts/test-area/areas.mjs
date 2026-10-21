@@ -38,6 +38,7 @@ const LOCALE = [
 ];
 const GUIDED_TOUR = [`${SERVICES}/guided-tour.service.spec.ts`];
 const SORTING = [`${SERVICES}/sorting.service.spec.ts`];
+const MEDIA_QUERY = [`${SERVICES}/media-query.service.spec.ts`];
 const CONFIRM_DIALOG = [`${COMPONENTS}/confirm-dialog`];
 const DELETE_DIALOG = [`${COMPONENTS}/delete-dialog`];
 const CALCULATOR = [`${COMPONENTS}/calculator`];
@@ -90,6 +91,7 @@ export const AREAS = {
   // primitives described above.
   shell: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -149,6 +151,7 @@ export const AREAS = {
   // Signed-in user's account: profile, group memberships, account deletion.
   account: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -197,6 +200,7 @@ export const AREAS = {
   // Group members and invitations.
   members: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -244,6 +248,7 @@ export const AREAS = {
   // and receipt scanning have their own areas but the forms depend on them.
   expenses: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -323,6 +328,7 @@ export const AREAS = {
   // Memorized (recurring/template) expenses.
   memorized: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -347,6 +353,7 @@ export const AREAS = {
   // Balances, payments and settle-up (including the settle-up email).
   summary: {
     unit: [
+      ...MEDIA_QUERY,
       ...ANALYTICS,
       ...LOADING,
       ...SNACKBAR,
@@ -437,6 +444,7 @@ export const AREAS = {
   // Site-admin screens (email log, reports) and their backend.
   admin: {
     unit: [
+      ...MEDIA_QUERY,
       `${FEATURES}/admin`,
       ...ANALYTICS,
       ...LOADING,
