@@ -53,15 +53,16 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
 - Playwright runs 2 workers (more time out on first page loads on the owner's machine; `pnpm e2e --workers 4` is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.
+- The workers share one headless browser that global setup launches and warms (a freshly launched browser's first page loads stall the whole machine here; see `FIRST_NAVIGATION_TIMEOUT_MS` in `constants/`). Headed and `--debug` runs launch a browser per worker instead.
 - Do not set `E2E_TARGET` when running the suite; global setup rejects it (it is only for the feature-tour capture config).
 
 ## Layout
 
 ```
 e2e/
-  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, warms routes
+  global-setup.ts   # verifies emulators, clears Auth + Firestore once, seeds, launches the shared browser, warms routes
   seed/             # shared deterministic data set (types, validate, write, datasets/)
-  fixtures/         # seededPage (clipboard permissions), browserWarmUp (per worker)
+  fixtures/         # seededPage (clipboard permissions), connectOptions (shared browser), browserWarmUp (per worker)
   utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts
   pages/            # page objects
   infra/            # seed health spec (@infra, runs with every area)
