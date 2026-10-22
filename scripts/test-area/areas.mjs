@@ -360,6 +360,7 @@ export const AREAS = {
       `${FEATURES}/expenses/add-expense`,
       `${FEATURES}/expenses/add-expense-options-dialog`,
       `${FEATURES}/expenses/edit-expense`,
+      `${FEATURES}/expenses/edit-expense.resolver.spec.ts`,
       `${FEATURES}/expenses/expense-form.tour.spec.ts`,
       `${FEATURES}/expenses/expenses`,
       ...DEFAULT_BUTTON,
