@@ -51,6 +51,19 @@ const LOGIN_SEQUENCE_RETRY_DELAY_MS = 2000;
 // Firestore doc before falling back to creating it client-side.
 const SERVER_USER_PROFILE_WAIT_TIMEOUT_MS = 8000;
 
+// Auth errors meaning the session's tokens were revoked (e.g. by an email
+// change), as opposed to a real failure.
+const REVOKED_SESSION_CODES = new Set([
+  'auth/user-token-expired',
+  'auth/user-not-found',
+  'auth/user-disabled',
+  'auth/invalid-user-token',
+]);
+
+function isRevokedSessionError(error: unknown): boolean {
+  return error instanceof FirebaseError && REVOKED_SESSION_CODES.has(error.code);
+}
+
 /** The sign-in address once verified, else '' (see #syncProfileEmail). */
 function verifiedEmail(firebaseUser: FirebaseUser): string {
   return firebaseUser.emailVerified ? (firebaseUser.email ?? '') : '';
@@ -257,6 +270,13 @@ export class UserService implements IUserService {
         if (willRetry) {
           await this.delay(LOGIN_SEQUENCE_RETRY_DELAY_MS);
           continue;
+        }
+        // A confirmed email change revoked the session mid-start (the
+        // account-action page expects that and explains it): nothing failed
+        // that the generic error would help with.
+        if (this.#expectingSignOut && isRevokedSessionError(error)) {
+          this.loading.loadingOff();
+          return;
         }
         this.analytics.logError(
           'User Service',

@@ -681,6 +681,48 @@ describe('UserService', () => {
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
     });
 
+    it('does not show the load-failure error when an expected email-change revocation hits the session start', async () => {
+      // The page load's session sync refreshes the token after account-action
+      // has reloaded the user onto the new address; production has revoked
+      // the session by then.
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
+      const firebaseUser = {
+        uid: 'user-123',
+        email: 'new@test.com',
+        emailVerified: true,
+        providerData: [{ providerId: 'password' }],
+        getIdTokenResult: vi
+          .fn()
+          .mockRejectedValue(
+            new FirebaseError('auth/user-token-expired', 'expired')
+          ),
+      };
+      const callback = await getAuthStateCallback(service);
+
+      service.expectSignOut(true);
+      await callback(firebaseUser as any);
+
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalledWith(
+        'User Service',
+        'initializeAuth',
+        'Failed to initialize user',
+        expect.anything()
+      );
+
+      // Without the expectation the same failure is reported as usual.
+      service.expectSignOut(false);
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
+      await callback(firebaseUser as any);
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+    });
+
     it('reports the loss again once the caller stops expecting a sign-out', async () => {
       userSignal.set({ id: 'user-123' });
       const callback = await getAuthStateCallback(service);

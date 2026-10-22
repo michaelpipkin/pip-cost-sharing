@@ -26,24 +26,32 @@
  *
  * DRY RUN BY DEFAULT - prints the planned changes and writes nothing. Pass
  * --apply to write (chunked batches). This targets PRODUCTION (lib.ts: ADC,
- * project pip-cost-sharing, no emulator) - review the dry run first.
+ * project pip-cost-sharing; it refuses to start while any *_EMULATOR_HOST
+ * is set) - review the dry run first.
  *
- * Run: pnpm query clear-unverified-profile-emails [-- --apply]
+ * --apply also refuses, before writing anything, when Auth returned zero
+ * users, or when more than 25 profiles (or 5%) have no Auth account: both
+ * mean Auth was read from the wrong backend. If the dry run's list of
+ * no-auth-user profiles is genuinely right, add --force-threshold (zero
+ * users is never overridable).
+ *
+ * Run: pnpm query clear-unverified-profile-emails [-- --apply [--force-threshold]]
  */
 import {
   applyProfileEmailFixes,
   auditProfileEmails,
+  checkApplySafety,
 } from '../profile-email-audit.ts';
 import { auth, db, logCount, NON_USER_AUTH_EMAILS, writeTable } from '../lib.ts';
 
 const apply = process.argv.includes('--apply');
+const forceThreshold = process.argv.includes('--force-threshold');
 
-const { fixes, reviewMembers } = await auditProfileEmails(
-  db,
-  auth,
-  NON_USER_AUTH_EMAILS
-);
+const audit = await auditProfileEmails(db, auth, NON_USER_AUTH_EMAILS);
+const { fixes, reviewMembers } = audit;
 
+logCount('Auth accounts', audit.authUserCount);
+logCount('users docs scanned', audit.profileCount);
 logCount('users docs to fix', fixes.length);
 for (const reason of [
   'no-auth-user',
@@ -94,6 +102,13 @@ writeTable('Profile emails to clear, and linked members to review', [
 ]);
 
 if (apply) {
+  // Before writing anything: an implausible audit (zero Auth accounts, or
+  // too many profiles without one) means Auth came from the wrong backend.
+  const safety = checkApplySafety(audit, forceThreshold);
+  if (!safety.ok) {
+    console.error(`Not applying: ${safety.reason}`);
+    process.exit(1);
+  }
   const { applied, skipped } = await applyProfileEmailFixes(db, fixes);
   logCount('Applied', applied);
   logCount('Skipped', skipped.length);

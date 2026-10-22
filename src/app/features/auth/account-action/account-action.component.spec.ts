@@ -329,6 +329,9 @@ describe('AccountActionComponent', () => {
         'Failed to change email. The link is invalid or has expired.'
       );
       expect(mockUserService.updateUserEmailAndLinkMembers).not.toHaveBeenCalled();
+      // Nothing changed, so the session stays and is no longer expected to end.
+      expect(mockUserService.expectSignOut).toHaveBeenNthCalledWith(1, true);
+      expect(mockUserService.expectSignOut).toHaveBeenLastCalledWith(false);
     });
   });
 
