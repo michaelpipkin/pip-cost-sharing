@@ -70,9 +70,9 @@ describe('ForgotPasswordComponent', () => {
       expect(submitBtn.disabled).toBe(true);
     });
 
-    // a@b passed Angular's built-in email validator; the app now requires one
-    // address with a dotted domain (utilities/email-validation.ts).
-    it.each(['notanemail', 'a@b', 'test@example.com,other@example.com'])(
+    // This form keeps Angular's email validator (ruling R6): lists are
+    // refused, but a@b-style legacy addresses can still sign in / reset.
+    it.each(['notanemail', 'test@example.com,other@example.com'])(
       'should disable submit when email is %s',
       async (email) => {
         const input = query('forgot-email-input') as HTMLInputElement;
@@ -84,6 +84,16 @@ describe('ForgotPasswordComponent', () => {
         expect(submitBtn.disabled).toBe(true);
       }
     );
+
+    it('should enable submit for a legacy a@b-style address', async () => {
+      const input = query('forgot-email-input') as HTMLInputElement;
+      input.value = 'a@b';
+      input.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+
+      const submitBtn = query('forgot-password-submit') as HTMLButtonElement;
+      expect(submitBtn.disabled).toBe(false);
+    });
 
     it('should enable submit when valid email is entered', async () => {
       const input = query('forgot-email-input') as HTMLInputElement;

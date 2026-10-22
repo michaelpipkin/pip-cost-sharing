@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import {
+  email as emailValidator,
   form,
   FormField,
 } from '@angular/forms/signals';
@@ -32,7 +33,6 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
-import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-login',
@@ -67,7 +67,10 @@ export class LoginComponent {
 
   protected readonly loginModel = signal<LoginForm>({ email: '', password: '' });
   protected readonly loginForm = form(this.loginModel, (p) => {
-    singleEmail(p.email, { message: 'Invalid email address' });
+    // Angular's validator, not the app's singleEmail: this form stores
+    // nothing, and the stricter rule could lock out accounts registered
+    // before it existed (ruling R6; see utilities/email-validation.ts).
+    emailValidator(p.email, { message: 'Invalid email address' });
   });
 
   isRunningInBrowser(): boolean {

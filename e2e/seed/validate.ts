@@ -153,13 +153,15 @@ function validateGroup(
     const at = `${where} member "${member.key}"`;
     claim(problems, memberKeys, member.key, `${at}: duplicate member key`);
     checkDocId(problems, at, member.key);
-    if (member.email.trim() !== '') {
-      checkEmail(at, member.email);
+    // A null email (legacy shape, rules tests only) is treated as blank.
+    const memberEmail = member.email ?? '';
+    if (memberEmail.trim() !== '') {
+      checkEmail(at, memberEmail);
       claim(
         problems,
         memberEmails,
-        member.email.trim().toLowerCase(),
-        `${at}: duplicate member email "${member.email}" (compared case-insensitively)`
+        memberEmail.trim().toLowerCase(),
+        `${at}: duplicate member email "${memberEmail}" (compared case-insensitively)`
       );
     }
     validateMemberState(problems, at, member);
@@ -167,7 +169,7 @@ function validateGroup(
       const user = usersByKey.get(member.userKey);
       if (user === undefined) {
         problems.push(`${at}: unknown userKey "${member.userKey}"`);
-      } else if (member.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+      } else if (memberEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
         problems.push(
           `${at}: email "${member.email}" does not match user "${user.key}" email "${user.email}"`
         );
@@ -382,7 +384,7 @@ function validateMemberState(problems: string[], at: string, member: SeedMember)
   if (!Number.isInteger(invite.sendCount) || invite.sendCount < 1) {
     problems.push(`${at}: invite.sendCount must be a positive integer (got ${invite.sendCount})`);
   }
-  if (member.email.trim() === '') {
+  if ((member.email ?? '').trim() === '') {
     problems.push(`${at}: invite needs a member email (it is recorded as lastSentTo)`);
   }
 }

@@ -23,6 +23,13 @@ export interface SeedUserProfile {
   emailOptOut?: boolean;
   /** Key of a SeedGroup; written as `defaultGroupRef`. */
   defaultGroupKey?: string;
+  /**
+   * Overrides the users doc `email` (normally the Auth address the sign-up
+   * trigger copies), to seed a legacy stored value that today's rules would
+   * refuse, e.g. a comma list. The Auth account keeps `SeedUser.email`.
+   * Not checked against the seed email domain.
+   */
+  storedEmail?: string;
 }
 
 export interface SeedUser {
@@ -42,8 +49,11 @@ export interface SeedUser {
 export interface SeedMember {
   key: string;
   displayName: string;
-  /** Blank for a placeholder member who never signs in. */
-  email: string;
+  /**
+   * Blank for a placeholder member who never signs in. `null` seeds a
+   * legacy null email (only for rules tests; the app never writes one).
+   */
+  email: string | null;
   /** Key of the SeedUser this member is linked to (`userRef`). */
   userKey?: string;
   active?: boolean;

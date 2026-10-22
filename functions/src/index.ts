@@ -976,8 +976,6 @@ async function handleMemberPaymentEmail(
 
   const payerName: string = payerData['displayName'] ?? 'Someone';
   const payeeName: string = payeeData['displayName'] ?? 'Someone';
-  const payerEmail = mailableMemberEmail(payerData, 'handleMemberPaymentEmail');
-  const payeeEmail = mailableMemberEmail(payeeData, 'handleMemberPaymentEmail');
   const groupName: string = groupData['name'] ?? 'your group';
   const currencyCode: string = groupData['currencyCode'] ?? 'USD';
   const currencySymbol: string = groupData['currencySymbol'] ?? '$';
@@ -1026,11 +1024,21 @@ async function handleMemberPaymentEmail(
     payerUserDoc?.exists && payerUserDoc.data()!['emailOptOut'] === true;
   const payeeOptedOut =
     payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
+  // Checked only for an otherwise eligible party, so the warning for an
+  // invalid stored address is logged only when it actually costs a mail.
+  const payerEmail =
+    payerHasAccount && !payerOptedOut
+      ? mailableMemberEmail(payerData, 'handleMemberPaymentEmail')
+      : '';
+  const payeeEmail =
+    payeeHasAccount && !payeeOptedOut
+      ? mailableMemberEmail(payeeData, 'handleMemberPaymentEmail')
+      : '';
 
   const categoryBreakdownHtml = buildCategoryBreakdownHtml(categoryBreakdown);
   const paymentMethodsHtml = buildPaymentMethodsHtml(paymentMethodLines);
 
-  if (payerEmail && payerHasAccount && !payerOptedOut) {
+  if (payerEmail) {
     const payerSubject = `A payment from you to ${payeeName} in PipSplit has been marked as complete`;
     const payerText = [
       `Hi ${payerName},`,
@@ -1064,7 +1072,7 @@ async function handleMemberPaymentEmail(
     );
   }
 
-  if (payeeEmail && payeeHasAccount && !payeeOptedOut) {
+  if (payeeEmail) {
     const payeeSubject = `A payment from ${payerName} to you in PipSplit has been marked as complete`;
     const payeeText = [
       `Hi ${payeeName},`,
@@ -1098,7 +1106,7 @@ async function handleMemberPaymentEmail(
 
   await Promise.all(mailWrites);
   console.log(
-    `Member payment emails sent: payer="${payerEmail}", payee="${payeeEmail}"`
+    `Member payment emails sent: ${mailWrites.length} (payer member ${payerMemberRef.id}, payee member ${payeeMemberRef.id})`
   );
 }
 
@@ -1292,10 +1300,7 @@ async function handleSettleEmail(
   const mailWrites: Promise<DocumentReference>[] = [];
 
   for (const [memberPath, memberData] of memberDataMap.entries()) {
-    const memberEmail = mailableMemberEmail(memberData, 'handleSettleEmail');
     const memberName: string = memberData['displayName'] ?? 'Member';
-    if (!memberEmail) continue;
-
     const memberUserRef = memberData[
       'userRef'
     ] as DocumentReference | null;
@@ -1303,6 +1308,10 @@ async function handleSettleEmail(
       ? userDataMap.get(memberUserRef.path)
       : undefined;
     if (!memberUserRef || memberUserData?.['emailOptOut'] === true) continue;
+
+    // Checked after eligibility, so the warning only fires when it costs a mail.
+    const memberEmail = mailableMemberEmail(memberData, 'handleSettleEmail');
+    if (!memberEmail) continue;
 
     const { transferLines, transferHtmlBlocks } = buildMemberTransferBlocks(
       memberPath,
@@ -1646,7 +1655,9 @@ export const sendGroupInvite = onCall<{
       if (member['userRef']) return { status: 'already-registered' };
       if (member['active'] !== true) return { status: 'inactive' };
 
-      const email = String(member['email'] ?? '').trim();
+      // Not trimmed: the stored address is used as is, like every other
+      // server email (and rules and forms refuse surrounding whitespace).
+      const email: unknown = member['email'];
       if (!isSingleEmailAddress(email)) return { status: 'invalid-email' };
 
       const invite = member['invite'] as

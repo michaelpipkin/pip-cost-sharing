@@ -9,17 +9,19 @@ import type { DocumentData } from 'firebase-admin/firestore';
  * Exactly one email address: a dot-atom local part (no quotes, `<`, `>`,
  * `,`, `;` or whitespace, and no leading, trailing or doubled dot), one `@`,
  * then dot-separated domain labels (letters, digits, inner hyphens) ending
- * in a TLD of 2+ letters. Lists such as `a@x.com,b@y.com` never match.
+ * in a TLD of 2+ letters or a punycode TLD (`xn--...`). Lists such as
+ * `a@x.com,b@y.com` never match. Non-ASCII addresses are refused.
  *
  * The same rule is written three times and must stay identical:
  *  - here (server emails: invites, group emails, payment/settle notices);
  *  - src/app/utilities/email-validation.ts `SINGLE_EMAIL_PATTERN` (forms);
  *  - firestore.rules `isValidEmailOrEmpty` (member and user doc writes).
+ * scripts/db/email-audit.ts imports this copy for the production audit.
  * `[.]` is used for a literal dot so the text needs no escaping in the rules.
  * The 254-character bound is checked separately (RE2 has no lookahead).
  */
 export const SINGLE_EMAIL_PATTERN =
-  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:[.][A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?[.])+[A-Za-z]{2,}$/;
+  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:[.][A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?[.])+(?:[A-Za-z]{2,}|xn--[A-Za-z0-9-]*[A-Za-z0-9])$/;
 
 /** The longest address accepted (RFC 5321's path limit). */
 export const MAX_EMAIL_LENGTH = 254;

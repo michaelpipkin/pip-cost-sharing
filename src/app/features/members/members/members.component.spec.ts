@@ -359,6 +359,8 @@ describe('MembersComponent', () => {
       [undefined as unknown as string],
       ['a@x.com,b'],
       ['a@x.com<b>'],
+      // Not trimmed, matching sendGroupInvite.
+      [' alex@example.com '],
     ])(
       'returns false for a missing or invalid email address (%s)',
       (email) => {

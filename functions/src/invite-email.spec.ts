@@ -166,6 +166,8 @@ describe('sendGroupInvite: the invitee address', () => {
     ['a comma list', (a: string) => `${a},other@invite.test`],
     ['angle brackets', (a: string) => `${a}<b>`],
     ['no dot in the domain', () => `invitee-${randomUUID()}@invite`],
+    // Not trimmed, consistent with the payment/settle and group emails.
+    ['surrounding spaces', (a: string) => ` ${a} `],
   ])('refuses %s and sends nothing', async (_label, build) => {
     const valid = `invitee-${randomUUID()}@invite.test`;
     const stored = build(valid);

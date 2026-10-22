@@ -24,6 +24,9 @@ describe('isSingleEmailAddress', () => {
     "o'brien@x.io",
     'first.last@sub-domain.example.org',
     'a@x1.co',
+    'A@X.COM',
+    'user@example.xn--p1ai',
+    'user@xn--80ak6aa92e.com',
   ])('accepts %s', (email) => {
     expect(isSingleEmailAddress(email)).toBe(true);
   });
@@ -48,6 +51,9 @@ describe('isSingleEmailAddress', () => {
     ['a trailing newline', 'a@x.com\n'],
     ['a display name', 'Al <a@x.com>'],
     ['an empty string', ''],
+    ['a non-ASCII local part', 'ü@x.com'],
+    ['a non-ASCII domain', 'a@bücher.de'],
+    ['an unfinished punycode TLD', 'a@x.xn--'],
   ])('rejects %s (%s)', (_label, email) => {
     expect(isSingleEmailAddress(email)).toBe(false);
   });

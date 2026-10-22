@@ -224,8 +224,10 @@ async function waitForProfileDocs(db: Firestore, users: SeedUser[]): Promise<voi
 }
 
 function userProfileFields(db: Firestore, user: SeedUser): DocumentData {
-  const { defaultGroupKey, ...profile } = user.profile ?? {};
-  const fields: DocumentData = { emailLower: normalizeEmail(user.email) };
+  const { defaultGroupKey, storedEmail, ...profile } = user.profile ?? {};
+  const email = storedEmail ?? user.email;
+  const fields: DocumentData = { emailLower: normalizeEmail(email) };
+  if (storedEmail !== undefined) fields['email'] = storedEmail;
   for (const [field, value] of Object.entries(profile)) {
     if (value !== undefined) fields[field] = value;
   }

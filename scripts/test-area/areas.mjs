@@ -52,11 +52,12 @@ const DEFAULT_BUTTON = [`${DIRECTIVES}/default-button.directive.spec.ts`];
 const ALLOCATION_UTILS = [`${UTILITIES}/allocation-utils.service.spec.ts`];
 const RENTAL_UTILS = [`${UTILITIES}/rental-utils.service.spec.ts`];
 const STRING_UTILS = [`${UTILITIES}/string-utils.service.spec.ts`];
-// The single-email-address rule (and its signal-forms validator) used by every
-// form with an email field: add/edit member, account profile, register,
-// login, forgot password and help. Its server copy is checked in
-// email-formatting.spec.ts, its Firestore-rules copy by the @members/@account
-// e2e spec e2e/infra/email-rules.spec.ts.
+// The single-email-address rule (and its signal-forms validator) used by the
+// forms that store or send to an address (add/edit member, account profile,
+// register, help) and by canInvite and add-group. Login and forgot password
+// keep Angular's validator (ruling R6). Its server copy is checked in
+// email-formatting.spec.ts, its Firestore-rules copy by the
+// @members/@account/@auth e2e spec e2e/infra/email-rules.spec.ts.
 const EMAIL_VALIDATION = [`${UTILITIES}/email-validation.spec.ts`];
 // Receipt capture plumbing shared by the scan-receipt page and the expense forms.
 const RECEIPT_CAPTURE = [
@@ -190,6 +191,7 @@ export const AREAS = {
       ...APP_CHECK_ERRORS,
       `${FEATURES}/groups`,
       ...DEFAULT_BUTTON,
+      ...EMAIL_VALIDATION,
       `${SERVICES}/expense.service.spec.ts`,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/invite.service.spec.ts`,

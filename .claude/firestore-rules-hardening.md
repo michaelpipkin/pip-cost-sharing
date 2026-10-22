@@ -367,6 +367,16 @@ function isGroupAdmin(gid) { return isSignedIn() && request.auth.uid in group(gi
   `allow read, write, delete: if request.auth != null` — explicitly Phase 3,
   not touched here.
 
+  **Update (2026-10-21, Plan 4 task B12):** who may write `users` is still
+  the blanket `request.auth != null`, but `write` is now split into
+  `read, delete` / `create` / `update` so create and update also run the
+  email guard (`emailCreateValid()` / `emailUpdateValid()`: an email that is
+  set or changed must be '' or one valid address; see the comment above
+  `isValidEmailOrEmpty`). Members create/update carry the same guard. Phase 3
+  must keep both guards when it narrows who may write. The client-SDK rules
+  spec is `e2e/infra/email-rules.spec.ts`; its users-create denials rely on
+  writes to a foreign uid still being allowed, so Phase 3 must revisit them.
+
 Also fold in two fixes found along the way (both still outstanding, since
 nothing has touched `firestore.rules` yet):
 

@@ -191,7 +191,8 @@ export class MembersComponent {
   canInvite(member: Member): boolean {
     if (member.userRef || !member.active) return false;
 
-    const email = (member.email ?? '').trim();
+    // Not trimmed, matching sendGroupInvite.
+    const email = member.email ?? '';
     if (!isSingleEmailAddress(email)) return false;
 
     const invite = member.invite;
