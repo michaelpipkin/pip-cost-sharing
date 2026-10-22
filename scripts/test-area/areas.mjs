@@ -666,6 +666,8 @@ export const AREAS = {
     ],
     functions: [
       'src/admin-reports.spec.ts',
+      'src/admin-reports-builders.spec.ts',
+      'src/admin-reports-callables.spec.ts',
       'src/common.spec.ts',
       'src/sync-auth-emails.spec.ts',
     ],
