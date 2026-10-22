@@ -717,6 +717,20 @@ describe('ExpenseService', () => {
         ).toBeLessThan(mockBatch.commit.mock.invocationCallOrder[0]);
       });
 
+      it('should not try to delete a receipt whose upload failed', async () => {
+        vi.spyOn(storageModule, 'uploadBytes').mockRejectedValueOnce(
+          new Error('quota')
+        );
+
+        await expect(
+          service.addExpense('g1', {}, [], receipt)
+        ).rejects.toThrow('quota');
+        await flushCleanup();
+
+        expect(storageModule.deleteObject).not.toHaveBeenCalled();
+        expect(mockBatch.commit).not.toHaveBeenCalled();
+      });
+
       it('should delete the uploaded receipt, log the failure and rethrow when the batch fails', async () => {
         mockBatch.commit.mockRejectedValueOnce(new Error('batch error'));
 
@@ -860,13 +874,30 @@ describe('ExpenseService', () => {
         );
       });
 
-      // BUG (new): expense.service.ts:332 - the catch deletes
-      // receipts/{expenseId} whenever a receipt was passed, even when the
-      // upload itself failed and nothing new was written. That path is where an
-      // existing receipt for this expense lives, so a failed replacement
-      // upload deletes the receipt the expense already had (the expense doc
-      // keeps pointing at it).
-      it.fails('should not delete the stored receipt when the replacement upload fails', async () => {
+      // Regression for B16: the catch used to delete receipts/{expenseId}
+      // whenever a receipt was passed, even when the upload itself failed.
+      // That path is where the expense's existing receipt lives.
+      it('should not delete the stored receipt when the replacement upload fails', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ receiptPath: 'groups/g1/receipts/e1' }),
+        } as any);
+        vi.spyOn(storageModule, 'uploadBytes').mockRejectedValueOnce(
+          new Error('quota')
+        );
+        const changes: any = {};
+
+        await expect(
+          service.updateExpense('g1', expenseRef, changes, [], receipt)
+        ).rejects.toThrow('Failed to upload receipt');
+        await flushCleanup();
+
+        expect(storageModule.deleteObject).not.toHaveBeenCalled();
+        expect(changes.receiptPath).toBeUndefined();
+        expect(mockBatch.commit).not.toHaveBeenCalled();
+      });
+
+      it('should not delete anything when a first-time upload fails', async () => {
         vi.spyOn(storageModule, 'uploadBytes').mockRejectedValueOnce(
           new Error('quota')
         );
@@ -879,7 +910,23 @@ describe('ExpenseService', () => {
         expect(storageModule.deleteObject).not.toHaveBeenCalled();
       });
 
-      it('should delete the uploaded receipt, log the failure and rethrow when the batch fails', async () => {
+      it('should keep a replaced receipt when the document write fails, since the expense still references that path', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ receiptPath: 'groups/g1/receipts/e1' }),
+        } as any);
+        mockBatch.commit.mockRejectedValueOnce(new Error('batch error'));
+
+        await expect(
+          service.updateExpense('g1', expenseRef, {}, [], receipt)
+        ).rejects.toThrow('batch error');
+        await flushCleanup();
+
+        expect(storageModule.uploadBytes).toHaveBeenCalledTimes(1);
+        expect(storageModule.deleteObject).not.toHaveBeenCalled();
+      });
+
+      it('should delete a newly created receipt, log the failure and rethrow when the batch fails', async () => {
         mockBatch.commit.mockRejectedValueOnce(new Error('batch error'));
 
         await expect(
