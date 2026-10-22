@@ -132,11 +132,9 @@ describe('deleteUserAccount', () => {
     });
   });
 
-  // BUG (B2): functions/src/index.ts:415-419 (handleUserGroupMembership).
-  // With the departing admin inactive, activeMembers.length is 1 (not > 1),
-  // so the sole-admin branch is skipped and nobody is promoted: the group is
-  // left with no active admin.
-  it.fails('promotes the one other active member when the sole admin is inactive', async () => {
+  // Regression for B2: with the departing sole admin inactive, the single
+  // other active member used to be left unpromoted (no active admin).
+  it('promotes the one other active member when the sole admin is inactive', async () => {
     const { uid, userRef } = await makeUser();
     const group = await makeGroup();
     await makeMember(group, { userRef, groupAdmin: true, active: false });

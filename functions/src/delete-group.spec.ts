@@ -73,19 +73,17 @@ describe('deleteGroup: guards', () => {
     expect((await target.collection('members').get()).size).toBe(1);
   });
 
-  // BUG (B2): functions/src/index.ts:552 reads request.data.groupId before
-  // any check, so a call with no payload throws a TypeError (surfacing as an
-  // opaque internal error to the client) instead of invalid-argument.
-  it.fails('rejects a null payload with an HttpsError, not a TypeError', async () => {
+  // Regression for B2: a missing payload used to throw a TypeError (surfacing
+  // as an opaque internal error) instead of invalid-argument.
+  it('rejects a null payload with an HttpsError, not a TypeError', async () => {
     const error = await call(uniqueId('u'), null).catch((e) => e);
 
     expect(['unauthenticated', 'invalid-argument']).toContain(error?.code);
   });
 
-  // BUG (B2): functions/src/index.ts:567-572 matches on groupAdmin alone and
-  // never checks `active`, so a member who left the group (active false) can
-  // still delete it.
-  it.fails('refuses an inactive admin', async () => {
+  // Regression for B2: the admin check once ignored `active`, so a member who
+  // left the group could still delete it.
+  it('refuses an inactive admin', async () => {
     const uid = uniqueId('u');
     const group = await groupWith(uid, { groupAdmin: true, active: false });
     await makeMember(group, {

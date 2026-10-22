@@ -101,10 +101,9 @@ describe('sendGroupInvite: guards', () => {
     expect(await mailTo(email)).toHaveLength(0);
   });
 
-  // BUG (B2): functions/src/index.ts:1661-1666 matches on groupAdmin alone and
-  // never checks `active`, so a member who left the group can still send
-  // invitations from it.
-  it.fails('refuses an inactive admin and sends nothing', async () => {
+  // Regression for B2: the admin check once ignored `active`, so a member who
+  // left the group could still send invitations from it.
+  it('refuses an inactive admin and sends nothing', async () => {
     const { uid, group, member, email } = await seed({
       admin: { active: false },
     });

@@ -21,7 +21,11 @@ export function assertAdmin(request: CallableRequest): string {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  if (uid !== ADMIN_UID_PROD && uid !== ADMIN_UID_EMU) {
+  // The emulator admin uid is a fixed, public constant, so it only counts
+  // inside the Functions emulator.
+  const isEmulatorAdmin =
+    uid === ADMIN_UID_EMU && process.env.FUNCTIONS_EMULATOR === 'true';
+  if (uid !== ADMIN_UID_PROD && !isEmulatorAdmin) {
     throw new HttpsError('permission-denied', 'Admin access required');
   }
   return uid;

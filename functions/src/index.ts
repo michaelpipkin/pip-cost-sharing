@@ -416,8 +416,12 @@ export async function handleUserGroupMembership(
   const userIsOnlyAdmin =
     admins.length === 1 && userMemberData.groupAdmin === true;
 
-  if (userIsOnlyAdmin && activeMembers.length > 1) {
-    // User is the only admin but there are other active members
+  const otherActiveMembers = activeMembers.filter(
+    (doc) => doc.id !== userMemberDoc.id
+  );
+
+  if (userIsOnlyAdmin && otherActiveMembers.length > 0) {
+    // User is the only admin (active or not) but there are other active members
     // Promote all other active members to admin and demote/anonymize user
     console.log(
       `User is the only admin of group ${groupRef.id} - promoting other members`
@@ -549,7 +553,6 @@ export const deleteUserAccount = onCall(callableAppCheck, async (request) => {
 
 export const deleteGroup = onCall(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
-  const groupId = request.data.groupId;
 
   if (!uid) {
     throw new HttpsError(
@@ -558,7 +561,8 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
     );
   }
 
-  if (!groupId) {
+  const groupId: unknown = request.data?.groupId;
+  if (typeof groupId !== 'string' || groupId.length === 0) {
     throw new HttpsError('invalid-argument', 'Group ID is required');
   }
 
@@ -569,6 +573,7 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
       .collection('members')
       .where('userRef', '==', db.collection('users').doc(uid))
       .where('groupAdmin', '==', true)
+      .where('active', '==', true)
       .get();
 
     if (membersSnapshot.empty) {
@@ -1662,6 +1667,7 @@ export const sendGroupInvite = onCall<{
       .collection('members')
       .where('userRef', '==', db.collection('users').doc(uid))
       .where('groupAdmin', '==', true)
+      .where('active', '==', true)
       .limit(1)
       .get();
 

@@ -62,13 +62,11 @@ describe('assertAdmin', () => {
     expect(assertAdmin(asRequest({ uid: ADMIN_UID_EMU }))).toBe(ADMIN_UID_EMU);
   });
 
-  // BUG (B2): functions/src/common.ts:24 - the emulator admin uid is a
-  // fixed, publicly readable constant accepted unconditionally, so anyone who
-  // can create that uid in a project's Auth would be an admin in production.
-  // It must be accepted only when FUNCTIONS_EMULATOR is 'true'. The module is
-  // re-imported under the stubbed env, so the pin flips whether the fix reads
-  // the env inside assertAdmin or once at module load (as callableAppCheck does).
-  it.fails('rejects the emulator admin uid outside the emulator', async () => {
+  // Regression for B2: the emulator admin uid is a fixed, public constant, so
+  // it is accepted only when FUNCTIONS_EMULATOR is 'true'. The module is
+  // re-imported under the stubbed env so this holds whether the env is read
+  // per call or once at module load.
+  it('rejects the emulator admin uid outside the emulator', async () => {
     vi.stubEnv('FUNCTIONS_EMULATOR', 'false');
     vi.resetModules();
     const outside = await import('./common');
