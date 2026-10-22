@@ -24,7 +24,7 @@ pnpm e2e:local                  # alias for pnpm e2e
 pnpm e2e:report                 # open the last HTML report (no emulators needed)
 ```
 
-`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (it never reuses a server already on 4300; a busy port fails the run). Global setup clears Auth and Firestore once, seeds the data set in `e2e/seed/`, then signs in as a shared user and loads each main route once to warm the dev server; tests never clear data. A full run (177 tests) takes about 11 minutes (budget up to 15 on a cold machine); results are in `test-results/results.json` and `playwright-report/`, overwritten by the next run.
+`pnpm e2e` builds the functions, starts the test emulators (auth, firestore, storage, functions), runs Playwright, and shuts the emulators down. Playwright then starts the app with `ng serve --configuration e2e` on port 4300 (it never reuses a server already on 4300; a busy port fails the run). Global setup clears Auth and Firestore once, seeds the data set in `e2e/seed/`, then signs in as a shared user and loads each main route once to warm the dev server; tests never clear data. A full run (219 tests) takes about 11 minutes (budget up to 15 on a cold machine); results are in `test-results/results.json` and `playwright-report/`, overwritten by the next run.
 
 ### By area
 
@@ -43,6 +43,7 @@ pnpm test:area --check               # every spec/test is assigned to an area
 ```bash
 pnpm --dir functions test     # Cloud Functions specs on the test emulators
 pnpm test                     # app unit specs (Vitest, jsdom)
+pnpm test:coverage            # the same with a V8 coverage table and summary
 pnpm test:scripts             # node:test specs for scripts/
 pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config, dev emulators on 4200)
 ```
@@ -64,9 +65,10 @@ e2e/
   seed/             # shared deterministic data set (types, validate, write, storage, datasets/)
   fixtures/         # seededPage (clipboard permissions, records the page's clipboard writes), connectOptions (shared browser), browserWarmUp (per worker)
   utils/            # session.ts (signInAs), warm-up.ts, clipboard.ts, format.ts (formatMoney, formatShortDate),
-                    # auth-emulator.ts (findMail, verifyEmailViaEmulator), scan-receipt-mock.ts (mockScanReceipt)
+                    # auth-emulator.ts (findMail, verifyEmailViaEmulator, confirmEmailChangeViaEmulator), scan-receipt-mock.ts (mockScanReceipt),
+                    # rules-client.ts (client-SDK harness for the Firestore rules specs: withDb, withUsers, withSession)
   pages/            # page objects (BasePage helpers, ExpenseForm, TourCard, ...)
-  infra/            # seed health spec (@infra, runs with every area)
+  infra/            # seed health spec (@infra, runs with every area) and the Firestore rules specs (user-rules, email-rules: client SDK, no page; tagged with the areas they protect)
   auth/ smoke/ groups/ critical-flows/   # specs
   rental/ memorized/ split/ receipts/    # specs: rental wizard, memorized expenses, public split tool, receipt attach/scan
   account/ categories/ members/ invites/ # specs: account settings, categories, members, invites + registration
