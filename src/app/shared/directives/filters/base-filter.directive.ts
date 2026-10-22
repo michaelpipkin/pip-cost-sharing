@@ -6,6 +6,7 @@ import {
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
   afterNextRender,
+  ComponentRef,
   DestroyRef,
   Directive,
   effect,
@@ -13,8 +14,8 @@ import {
   inject,
   input,
   Renderer2,
+  Type,
   untracked,
-  ViewContainerRef,
 } from '@angular/core';
 import {
   FilterValue,
@@ -25,44 +26,49 @@ import {
  * Base directive for all table filter directives
  * Handles CDK Overlay, icon injection, and common filter logic
  *
+ * The overlay is created once, on the first open, and disposed when the
+ * directive is destroyed (which also destroys any open panel component).
+ *
  * @abstract
- * Subclasses must implement:
- * - createFilterPanel(): ComponentPortal for the filter UI
+ * Subclasses must provide:
+ * - panelType: the filter panel component to show
+ * - configurePanel(): sets the panel's inputs and wires its outputs
  */
 @Directive({
   standalone: true,
 })
-export abstract class BaseFilterDirective {
-  protected elementRef = inject(ElementRef);
-  protected renderer = inject(Renderer2);
-  protected overlay = inject(Overlay);
-  protected viewContainerRef = inject(ViewContainerRef);
+export abstract class BaseFilterDirective<TPanel> {
+  protected readonly elementRef = inject(ElementRef);
+  protected readonly renderer = inject(Renderer2);
+  protected readonly overlay = inject(Overlay);
   readonly #destroyRef = inject(DestroyRef);
 
   /**
    * The property key to filter on (e.g., 'date', 'paidBy', 'description')
    */
-  filterKey = input.required<string>();
+  readonly filterKey = input.required<string>();
 
   /**
    * The filter service instance to use for state management
    */
-  filterService = input.required<TableFilterService<any>>();
+  readonly filterService = input.required<TableFilterService<any>>();
 
   /**
    * The column header text to display in the filter panel (e.g., 'Date', 'Paid By')
    */
-  columnHeader = input<string>();
+  readonly columnHeader = input<string>();
 
   /**
    * Controls whether the filter icon is shown. When false, the icon is hidden
    * and any active filter for this column is cleared. Defaults to true.
    */
-  enabled = input<boolean>(true);
+  readonly enabled = input<boolean>(true);
 
-  protected overlayRef: OverlayRef | null = null;
+  /** The filter panel component this directive shows. */
+  protected abstract readonly panelType: Type<TPanel>;
+
+  #overlayRef: OverlayRef | null = null;
   protected filterIcon: HTMLElement | null = null;
-  protected isFilterActive = false;
 
   constructor() {
     // Watch for filter changes to update icon state
@@ -74,8 +80,10 @@ export abstract class BaseFilterDirective {
       }
     });
 
-    // Reactively show/hide the filter icon based on the enabled input.
-    // Using untracked for the clearFilter call to avoid circular dependencies.
+    // Reactively show/hide the filter icon based on the enabled input, and
+    // clear this column's filter while it is disabled. This runs before the
+    // icon exists on the first pass, so the clearing must not depend on the
+    // icon. Untracked so the service reads/writes don't become dependencies.
     effect(() => {
       const isEnabled = this.enabled();
       if (this.filterIcon) {
@@ -83,10 +91,14 @@ export abstract class BaseFilterDirective {
           this.renderer.removeStyle(this.filterIcon, 'display');
         } else {
           this.renderer.setStyle(this.filterIcon, 'display', 'none');
-          if (this.isFilterActive) {
-            untracked(() => this.clearFilter());
-          }
         }
+      }
+      if (!isEnabled) {
+        untracked(() => {
+          if (this.filterService().hasFilter(this.filterKey())) {
+            this.clearFilter();
+          }
+        });
       }
     });
 
@@ -97,10 +109,11 @@ export abstract class BaseFilterDirective {
 
     // Cleanup on destroy
     this.#destroyRef.onDestroy(() => {
-      this.closeFilterPanel();
-      if (this.filterIcon) {
-        this.filterIcon.remove();
-      }
+      // dispose() detaches (destroying the panel component), removes the pane
+      // and backdrop, and completes backdropClick() so its subscription ends
+      this.#overlayRef?.dispose();
+      this.#overlayRef = null;
+      this.filterIcon?.remove();
     });
   }
 
@@ -146,8 +159,6 @@ export abstract class BaseFilterDirective {
   protected updateIconState(isActive: boolean): void {
     if (!this.filterIcon) return;
 
-    this.isFilterActive = isActive;
-
     if (isActive) {
       this.renderer.addClass(this.filterIcon, 'filter-active');
     } else {
@@ -159,7 +170,7 @@ export abstract class BaseFilterDirective {
    * Toggles the filter panel overlay
    */
   protected toggleFilterPanel(): void {
-    if (this.overlayRef?.hasAttached()) {
+    if (this.#overlayRef?.hasAttached()) {
       this.closeFilterPanel();
     } else {
       this.openFilterPanel();
@@ -170,23 +181,18 @@ export abstract class BaseFilterDirective {
    * Opens the filter panel overlay
    */
   protected openFilterPanel(): void {
-    this.overlayRef ??= this.createOverlay();
+    this.#overlayRef ??= this.createOverlay();
 
-    const portal = this.createFilterPanel();
-    this.overlayRef.attach(portal);
-
-    // Close on backdrop click
-    this.overlayRef.backdropClick().subscribe(() => {
-      this.closeFilterPanel();
-    });
+    const panel = this.#overlayRef.attach(new ComponentPortal(this.panelType));
+    this.configurePanel(panel);
   }
 
   /**
    * Closes the filter panel overlay
    */
   protected closeFilterPanel(): void {
-    if (this.overlayRef?.hasAttached()) {
-      this.overlayRef.detach();
+    if (this.#overlayRef?.hasAttached()) {
+      this.#overlayRef.detach();
     }
   }
 
@@ -194,14 +200,18 @@ export abstract class BaseFilterDirective {
    * Creates the CDK overlay with positioning strategy
    */
   protected createOverlay(): OverlayRef {
-    const positionStrategy = this.getPositionStrategy();
-
-    return this.overlay.create({
-      positionStrategy,
+    const overlayRef = this.overlay.create({
+      positionStrategy: this.getPositionStrategy(),
       hasBackdrop: true,
       backdropClass: 'cdk-overlay-transparent-backdrop',
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
     });
+
+    // Close on backdrop click. Subscribed once per overlay (the overlay is
+    // created once); dispose() completes the stream.
+    overlayRef.backdropClick().subscribe(() => this.closeFilterPanel());
+
+    return overlayRef;
   }
 
   /**
@@ -263,8 +273,8 @@ export abstract class BaseFilterDirective {
   }
 
   /**
-   * Abstract method to create the filter panel content
-   * Must be implemented by subclasses
+   * Sets the freshly attached panel's inputs and wires its outputs.
+   * Must be implemented by subclasses.
    */
-  protected abstract createFilterPanel(): ComponentPortal<any>;
+  protected abstract configurePanel(panel: ComponentRef<TPanel>): void;
 }

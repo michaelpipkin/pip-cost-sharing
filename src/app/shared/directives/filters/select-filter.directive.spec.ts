@@ -3,7 +3,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { TableFilterService } from '@services/table-filter.service';
 import {
-  B7_LEAKED_FILTER_PANES,
   clickBackdrop,
   disposeOverlays,
   overlayButton,
@@ -62,14 +61,6 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
   let fixture: ComponentFixture<HostComponent>;
   let host: HostComponent;
   let service: TableFilterService<any>;
-  let destroyedWhileOpen = false;
-  // Destroys the host, noting whether its panel was open (the B7 leak case)
-  const destroyHost = () => {
-    destroyedWhileOpen ||= document.querySelector(
-      '.cdk-overlay-container .filter-panel'
-    ) !== null;
-    fixture.destroy();
-  };
 
   const settle = async () => {
     fixture.detectChanges();
@@ -117,13 +108,9 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
   });
 
   afterEach(() => {
-    if (fixture) destroyHost();
+    fixture?.destroy();
     vi.restoreAllMocks();
-    disposeOverlays({
-      // B7: a pane open when the host was destroyed outlives it
-      knownLeakedPanes: destroyedWhileOpen ? B7_LEAKED_FILTER_PANES : 0,
-    });
-    destroyedWhileOpen = false;
+    disposeOverlays();
   });
 
   describe('filter icon', () => {
@@ -151,7 +138,7 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
       const el = icon()!;
       expect(el.isConnected).toBe(true);
 
-      destroyHost();
+      fixture.destroy();
 
       expect(el.isConnected).toBe(false);
     });
@@ -185,10 +172,9 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
       expect(service.hasFilter('other')).toBe(true);
     });
 
-    // BUG (B7): base-filter.directive.ts:79-90 - the enabled effect runs before
-    // the icon exists, and injectFilterIcon only hides the icon, so a directive
+      // the icon exists, and injectFilterIcon only hides the icon, so a directive
     // created disabled leaves an existing filter applied (and invisible).
-    it.fails('clears an existing filter when it is created disabled', async () => {
+    it('clears an existing filter when it is created disabled', async () => {
       service.setFilter('payer', { type: 'select', value: ALICE });
       fixture = TestBed.createComponent(HostComponent);
       fixture.componentInstance.enabled.set(false);
@@ -362,31 +348,29 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
       await openPanel();
       expect(panel()).not.toBeNull();
 
-      destroyHost();
+      fixture.destroy();
 
       expect(panel()).toBeNull();
     });
 
-    // BUG (B7): base-filter.directive.ts:99-104 - the destroy handler only
-    // detaches the overlay, it never disposes it, so the pane (and backdrop)
+      // detaches the overlay, it never disposes it, so the pane (and backdrop)
     // stay in the overlay container for the life of the page.
-    it.fails('disposes the overlay, leaving no pane behind', async () => {
+    it('disposes the overlay, leaving no pane behind', async () => {
       await create();
       await openPanel();
       expect(overlayPanes()).toHaveLength(1);
 
-      destroyHost();
+      fixture.destroy();
 
       expect(overlayPanes()).toHaveLength(0);
     });
   });
 
   describe('reopening', () => {
-    // BUG (B7): base-filter.directive.ts:179 (and the copy in each subclass's
-    // openFilterPanel) - every open subscribes to the same overlay's
+      // openFilterPanel) - every open subscribes to the same overlay's
     // backdropClick() and never unsubscribes, so after N opens one backdrop
     // click runs the close handler N times.
-    it.fails('does not accumulate backdrop subscriptions', async () => {
+    it('does not accumulate backdrop subscriptions', async () => {
       await create();
       const close = vi.spyOn(directive() as any, 'closeFilterPanel');
       for (let i = 0; i < 3; i++) {

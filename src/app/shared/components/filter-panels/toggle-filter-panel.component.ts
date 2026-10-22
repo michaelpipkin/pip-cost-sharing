@@ -23,7 +23,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === null"
             (click)="selectAll()"
           >
-            All
+            {{ allLabel() }}
           </button>
           <button
             matButton="elevated"
@@ -31,7 +31,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === true"
             (click)="selectTrue()"
           >
-            Yes
+            {{ trueLabel() }}
           </button>
           <button
             matButton="elevated"
@@ -39,7 +39,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === false"
             (click)="selectFalse()"
           >
-            No
+            {{ falseLabel() }}
           </button>
         </div>
       </div>
