@@ -19,9 +19,9 @@ export const TEST_PORTS = {
 export const E2E_APP_PORT = 4300;
 
 export function emulatorHost(name) {
-  const port = TEST_PORTS[name];
-  if (port === undefined) {
+  // hasOwn: an inherited key such as "toString" is not an emulator.
+  if (!Object.hasOwn(TEST_PORTS, name)) {
     throw new Error(`Unknown emulator: ${name}`);
   }
-  return `127.0.0.1:${port}`;
+  return `127.0.0.1:${TEST_PORTS[name]}`;
 }

@@ -67,20 +67,30 @@ export function parseArgs(argv) {
 // metacharacters (e.g. the "|" in --grep "@a|@b") must be quoted or the shell
 // splits/pipes them.
 const NEEDS_QUOTING = /[\s|&<>^%()"';$`*?]/;
+// POSIX shells also treat a backslash, ~, #, !, braces and brackets specially.
+const NEEDS_QUOTING_POSIX = /[\s|&<>^%()"';$`*?\\~#!{}[\]]/;
 
 // Quotes each argument for the shell that runs the inner command. On Windows
 // that is cmd.exe, where a double quote inside quotes is written as "".
-// The result is the raw inner command string; buildExecPlan then escapes it
-// once more for the command line that launches firebase.
+// On POSIX the result is already escaped for the outer double quotes that
+// quoteForFirebase adds, so it is a backslash-escaped pair of quotes around the
+// argument. The characters that stay special inside double quotes (" \ $ `)
+// get a three-backslash prefix: the outer shell turns it into \c, and the
+// inner shell then reads a literal c. An empty argument must still be emitted
+// as a quoted empty string, or it silently vanishes from the command.
+// buildExecPlan then wraps the result for the command line that launches
+// firebase.
 export function quoteInner(args, platform = process.platform) {
   return args
     .map((arg) => {
-      if (!NEEDS_QUOTING.test(arg)) {
+      const needsQuoting =
+        platform === 'win32' ? NEEDS_QUOTING : NEEDS_QUOTING_POSIX;
+      if (arg !== '' && !needsQuoting.test(arg)) {
         return arg;
       }
       return platform === 'win32'
         ? `"${arg.replaceAll('"', '""')}"`
-        : `\\"${arg}\\"`;
+        : `\\"${arg.replace(/["\\$`]/g, '\\\\\\$&')}\\"`;
     })
     .join(' ');
 }
