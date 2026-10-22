@@ -424,6 +424,19 @@ export class SummaryComponent {
     try {
       paymentMethods =
         await this.userService.getPaymentMethods(owedToMemberRef);
+    } catch (error) {
+      this.analytics.logError(
+        'Summary Component',
+        'load_payment_methods',
+        'Failed to load payment methods',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Could not load payment methods. Please try again.',
+        },
+      });
+      return;
     } finally {
       this.loading.loadingOff();
     }

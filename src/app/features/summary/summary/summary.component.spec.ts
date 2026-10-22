@@ -784,22 +784,29 @@ describe('SummaryComponent', () => {
       expect(mockDialog.open.mock.calls.length).toBe(open + 1);
     });
 
-    // BUG (new): summary.component.ts:425-429 - payExpenses has try/finally
-    // but no catch around getPaymentMethods. When the payee's payment
-    // methods cannot be read, the click handler's promise rejects unhandled:
-    // the dialog never opens and the user is told nothing (every other
-    // action on this page reports a failure with a snackbar). Fixed when the
-    // call resolves and the user gets an error message about it.
-    it.fails('resolves and tells the user when the payment methods cannot be loaded', async () => {
+    // Regression for B18: payExpenses had try/finally but no catch around
+    // getPaymentMethods, so a failure became an unhandled rejection with no
+    // message and the dialog never opened.
+    it('resolves and tells the user when the payment methods cannot be loaded', async () => {
       mockUserService.getPaymentMethods.mockRejectedValueOnce(
         new Error('offline')
       );
+      mockDialog.open.mockClear();
+      mockLoadingService.loadingOff.mockClear();
 
       await expect(
         component.payExpenses(alice().ref!, bob().ref!)
       ).resolves.toBeUndefined();
 
       expect(lastSnackbar()).toMatch(/could not|went wrong|payment method/i);
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Summary Component',
+        'load_payment_methods',
+        'Failed to load payment methods',
+        'offline'
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      expect(mockDialog.open).not.toHaveBeenCalled();
     });
   });
 
