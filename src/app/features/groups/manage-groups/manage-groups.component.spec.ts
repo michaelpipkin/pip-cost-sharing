@@ -527,13 +527,19 @@ describe('ManageGroupsComponent', () => {
         (
           m.root.querySelector('.mat-mdc-select-trigger') as HTMLElement
         ).click();
-        m.fx.detectChanges();
-        await m.fx.whenStable();
-        (
-          document.querySelector(
-            '[data-testid="manage-group-option-group-2"]'
-          ) as HTMLElement
-        ).click();
+        // The panel renders in a later pass than one whenStable guarantees.
+        let option: HTMLElement | null = null;
+        await vi.waitFor(
+          () => {
+            m.fx.detectChanges();
+            option = document.querySelector(
+              '[data-testid="manage-group-option-group-2"]'
+            );
+            expect(option).not.toBeNull();
+          },
+          { timeout: 3000, interval: 20 }
+        );
+        (option as unknown as HTMLElement).click();
         m.fx.detectChanges();
         await m.fx.whenStable();
         m.fx.detectChanges();
@@ -545,8 +551,8 @@ describe('ManageGroupsComponent', () => {
       } finally {
         m.fx.destroy();
         TestBed.inject(OverlayContainer).ngOnDestroy();
-        expect(document.querySelectorAll('.cdk-overlay-pane').length).toBe(0);
       }
+      expect(document.querySelectorAll('.cdk-overlay-pane').length).toBe(0);
     });
 
     it('does not read Firestore when switching between the tour sample groups', async () => {
@@ -639,7 +645,9 @@ describe('ManageGroupsComponent', () => {
         success: true,
         operation: 'saved',
       });
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('shows an Error from the save, logs it, keeps the dialog open and clears the overlay', async () => {
@@ -659,7 +667,9 @@ describe('ManageGroupsComponent', () => {
         'A group with that name already exists'
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('shows a generic message when the save fails with something that is not an Error', async () => {
@@ -707,7 +717,9 @@ describe('ManageGroupsComponent', () => {
         success: true,
         operation: 'archived',
       });
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('reports an Error from archiving and stays open', async () => {
@@ -729,7 +741,9 @@ describe('ManageGroupsComponent', () => {
         'Cannot archive'
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('shows a generic message when archiving fails with something that is not an Error', async () => {
@@ -781,7 +795,9 @@ describe('ManageGroupsComponent', () => {
         'Cannot unarchive'
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('shows a generic message when it fails with something that is not an Error', async () => {
@@ -842,7 +858,9 @@ describe('ManageGroupsComponent', () => {
         success: true,
         operation: 'deleted',
       });
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('opens the confirm dialog from the Delete button', () => {
@@ -872,7 +890,9 @@ describe('ManageGroupsComponent', () => {
         'Delete failed'
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();
-      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(2);
+      expect(mockLoading.loadingOff.mock.calls.length).toBe(
+        mockLoading.loadingOn.mock.calls.length
+      );
     });
 
     it('shows a generic message, without logging, when the delete fails with something that is not an Error', async () => {

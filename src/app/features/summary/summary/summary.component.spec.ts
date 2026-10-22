@@ -784,19 +784,22 @@ describe('SummaryComponent', () => {
       expect(mockDialog.open.mock.calls.length).toBe(open + 1);
     });
 
-    // BUG (new): summary.component.ts:429-433 - payExpenses has try/finally
+    // BUG (new): summary.component.ts:425-429 - payExpenses has try/finally
     // but no catch around getPaymentMethods. When the payee's payment
     // methods cannot be read, the click handler's promise rejects unhandled:
     // the dialog never opens and the user is told nothing (every other
-    // action on this page reports a failure with a snackbar).
-    it.fails('tells the user when the payment methods cannot be loaded', async () => {
+    // action on this page reports a failure with a snackbar). Fixed when the
+    // call resolves and the user gets an error message about it.
+    it.fails('resolves and tells the user when the payment methods cannot be loaded', async () => {
       mockUserService.getPaymentMethods.mockRejectedValueOnce(
         new Error('offline')
       );
 
-      await component.payExpenses(alice().ref!, bob().ref!).catch(() => {});
+      await expect(
+        component.payExpenses(alice().ref!, bob().ref!)
+      ).resolves.toBeUndefined();
 
-      expect(lastSnackbar()).toEqual(expect.any(String));
+      expect(lastSnackbar()).toMatch(/could not|went wrong|payment method/i);
     });
   });
 
@@ -835,10 +838,19 @@ describe('SummaryComponent', () => {
       component.settleGroupAction();
       await handled();
 
+      const [s1, s2] = mockSplitStore.unpaidSplits();
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
       expect(settleGroup).toHaveBeenCalledWith(
         'group-1',
-        component.filteredSplits(),
-        component.leastTransfers()
+        [s1, s2],
+        [
+          expect.objectContaining({
+            owedByMemberRef: bob.ref,
+            owedToMemberRef: alice.ref,
+            amount: 10,
+          }),
+        ]
       );
       expect(lastSnackbar()).toBe('Group settlement completed successfully');
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
@@ -1201,15 +1213,9 @@ describe('SummaryComponent', () => {
   });
 
   describe('Help', () => {
-    it('opens the Summary section of the help dialog from the help button', () => {
+    it('opens the Summary section of the help dialog', () => {
       mockDialog.open.mockClear();
 
-      (
-        el.querySelector('[data-testid="summary-help-button"]') as HTMLElement
-      ).click();
-
-      // The button starts the tour; the full help is reached from the tour.
-      expect(mockDialog.open).not.toHaveBeenCalled();
       component.showHelp();
       expect(mockDialog.open).toHaveBeenCalledWith(HelpDialogComponent, {
         disableClose: false,

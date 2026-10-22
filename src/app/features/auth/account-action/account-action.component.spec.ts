@@ -713,19 +713,35 @@ describe('AccountActionComponent', () => {
       expect(submitButton().disabled).toBe(true);
     });
 
+    it('holds a passwordMismatch error on the form while the passwords differ, and none once they match', async () => {
+      const errors = () =>
+        (component as any)
+          .resetPasswordForm()
+          .errors()
+          .map((e: any) => [e.kind, e.message]);
+
+      await fill('newpassword123', 'different123');
+      expect(errors()).toEqual([
+        ['passwordMismatch', 'Passwords do not match.'],
+      ]);
+
+      await fill('newpassword123', 'newpassword123');
+      expect(errors()).toEqual([]);
+    });
+
     // BUG (new): account-action.component.html:82 - the form does hold the
-    // "Passwords do not match." error (root-level, from applyPasswordMatch) and
-    // the confirm field is touched, but the <mat-error> sits in a form field
-    // whose own control is not in error state, so Material never renders it.
-    // The user is left with a disabled Reset button and no explanation.
-    // (reset-password.component shows the same message in a plain div.)
-    it.fails('says the passwords do not match once the confirm field is left', async () => {
+    // error (previous test) and the confirm field is touched, but the message
+    // sits in a <mat-error> whose form field's own control is not in error
+    // state, so Material never renders it. The user is left with a disabled
+    // Reset button and no explanation. Fix-agnostic: the text may come back in
+    // a mat-error or a plain div (as reset-password and register do).
+    it.fails('shows "Passwords do not match." in the form once the confirm field is left', async () => {
       await fill('newpassword123', 'different123');
       await leaveConfirmField();
 
-      expect(fixture.nativeElement.querySelector('mat-error')?.textContent).toContain(
-        'Passwords do not match.'
-      );
+      expect(
+        fixture.nativeElement.querySelector('.reset-password-form').textContent
+      ).toContain('Passwords do not match.');
     });
 
     it('submits the form with the typed password and confirms in the UI', async () => {

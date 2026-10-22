@@ -79,17 +79,33 @@ describe('AccountPreferencesComponent', () => {
     ) as HTMLButtonElement;
   }
 
+  // The panel renders in a later change-detection pass than one
+  // detectChanges + whenStable guarantees, so wait (bounded) for the options
+  // to exist instead of reading them once.
+  async function openOptions(): Promise<HTMLElement[]> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    let options: HTMLElement[] = [];
+    await vi.waitFor(
+      () => {
+        fixture.detectChanges();
+        options = Array.from(
+          document.querySelectorAll('.cdk-overlay-container mat-option')
+        ) as HTMLElement[];
+        expect(options.length).toBeGreaterThan(0);
+      },
+      { timeout: 3000, interval: 20 }
+    );
+    return options;
+  }
+
   async function choose(optionText: string): Promise<void> {
     (
       fixture.nativeElement.querySelector(
         '.mat-mdc-select-trigger'
       ) as HTMLElement
     ).click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const options = Array.from(
-      document.querySelectorAll('.cdk-overlay-container mat-option')
-    ) as HTMLElement[];
+    const options = await openOptions();
     const option = options.find((o) => o.textContent?.trim() === optionText);
     expect(option, `option "${optionText}"`).toBeDefined();
     option!.click();
@@ -127,11 +143,7 @@ describe('AccountPreferencesComponent', () => {
     it('should list None and the active groups, not archived ones', async () => {
       await createComponent();
       select().open();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      const texts = Array.from(
-        document.querySelectorAll('.cdk-overlay-container mat-option')
-      ).map((o) => o.textContent?.trim());
+      const texts = (await openOptions()).map((o) => o.textContent?.trim());
       expect(texts).toEqual(['-- None --', 'Group A', 'Group B']);
     });
 
