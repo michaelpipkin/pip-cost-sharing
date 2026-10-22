@@ -500,7 +500,7 @@ describe('sendPaymentNotificationEmail: settle batch', () => {
     expect(await mailTo(aEmail)).toHaveLength(0);
   });
 
-  // BUG (B9): functions/src/index.ts:1324 - handleSettleEmail claims the batch
+  // BUG (B9): functions/src/index.ts:1335 - handleSettleEmail claims the batch
   // (claimSettleBatch) BEFORE building and queueing the emails, and nothing
   // releases the claim when a later step throws, so the settle emails are
   // never retried; deferred by owner 2026-10-21. A fix that releases the claim
