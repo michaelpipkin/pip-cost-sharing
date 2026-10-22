@@ -138,7 +138,9 @@ describe('sendMailQueueEmail: demo project (the isolated emulators)', () => {
   // BUG (B8): functions/src/index.ts:1907 - the suppressed-delivery write is
   // outside the try/catch that guards the real send, so a failing write
   // rejects the whole handler (and leaves the doc stuck in PROCESSING). It
-  // should be caught, like a failing send is.
+  // should be caught, like a failing send is. Only the suppressed write
+  // (update call 2, after the PROCESSING write) fails, so a fix that records
+  // an ERROR delivery from the catch can still write it and flips this pin.
   it.fails('catches a failure while writing the suppressed delivery', async () => {
     const ref = await queue({ to: 'a@mail-queue.test', message });
     const snap = await ref.get();
@@ -146,15 +148,17 @@ describe('sendMailQueueEmail: demo project (the isolated emulators)', () => {
     let calls = 0;
     vi.spyOn(snap.ref, 'update').mockImplementation((...args: any[]) => {
       calls++;
-      return calls === 1
-        ? (realUpdate as any)(...args)
-        : Promise.reject(new Error('write failed'));
+      return calls === 2
+        ? Promise.reject(new Error('write failed'))
+        : (realUpdate as any)(...args);
     });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await expect(
       (sendMailQueueEmail as any).run({ data: snap, params: { docId: ref.id } })
     ).resolves.toBeUndefined();
+    // The doc must not be left stuck in PROCESSING.
+    expect((await ref.get()).get('delivery.state')).not.toBe('PROCESSING');
   });
 });
 

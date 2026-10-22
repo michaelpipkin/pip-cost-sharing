@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Transaction } from 'firebase-admin/firestore';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { profileEmail } from './common';
 import { createUserProfileOnSignUp } from './index';
@@ -106,17 +106,21 @@ describe('createUserProfileOnSignUp: defaults and re-runs', () => {
     });
   });
 
-  it('is idempotent: a second run changes nothing and does not rewrite the doc', async () => {
+  it('is idempotent: a second run changes nothing and issues no write', async () => {
     const uid = `u-${randomUUID()}`;
     const user = { uid, email: `twice-${uid}@example.com`, emailVerified: true };
+    const set = vi.spyOn(Transaction.prototype, 'set');
     await signUp(user);
     const first = await db.doc(`users/${uid}`).get();
+    expect(set).toHaveBeenCalledTimes(1);
 
     await signUp(user);
 
     const second = await db.doc(`users/${uid}`).get();
     expect(second.data()).toEqual(first.data());
-    expect(second.updateTime!.isEqual(first.updateTime!)).toBe(true);
+    // The emulator skips a no-op write without bumping updateTime, so the
+    // transaction's set is what shows a redundant write was attempted.
+    expect(set).toHaveBeenCalledTimes(1);
   });
 
   it('rethrows when the profile cannot be written, so Auth retries the trigger', async () => {

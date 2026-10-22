@@ -53,34 +53,38 @@ describe.each(targets)('$name', (target) => {
   }
 
   it('writes the lowercased email as emailLower', async () => {
-    const ref = await target.create({ email: 'Alice@Example.COM' });
+    const n = uniqueId('alice');
+    const ref = await target.create({ email: `${n}@Example.COM` });
 
     const snap = await written(ref);
 
-    expect(snap.get('emailLower')).toBe('alice@example.com');
-    expect(snap.get('email')).toBe('Alice@Example.COM');
+    expect(snap.get('emailLower')).toBe(`${n}@example.com`);
+    expect(snap.get('email')).toBe(`${n}@Example.COM`);
     expect(update).toHaveBeenCalledTimes(1);
   });
 
   it('trims surrounding whitespace when lowercasing', async () => {
-    const ref = await target.create({ email: '  Bob@Example.com ' });
+    const n = uniqueId('bob');
+    const ref = await target.create({ email: `  ${n}@Example.com ` });
 
-    expect((await written(ref)).get('emailLower')).toBe('bob@example.com');
+    expect((await written(ref)).get('emailLower')).toBe(`${n}@example.com`);
   });
 
   it('corrects a stale emailLower that no longer matches the email', async () => {
+    const n = uniqueId('new');
     const ref = await target.create({
-      email: 'New@Example.com',
-      emailLower: 'old@example.com',
+      email: `${n}@Example.com`,
+      emailLower: `old-${n}@example.com`,
     });
 
-    expect((await written(ref)).get('emailLower')).toBe('new@example.com');
+    expect((await written(ref)).get('emailLower')).toBe(`${n}@example.com`);
   });
 
   it('does not write when emailLower already matches, so its own write cannot loop', async () => {
+    const n = uniqueId('carol');
     const ref = await target.create({
-      email: 'Carol@Example.com',
-      emailLower: 'carol@example.com',
+      email: `${n}@Example.com`,
+      emailLower: `${n}@example.com`,
     });
     const updateTime = (await ref.get()).updateTime!;
 
@@ -102,7 +106,10 @@ describe.each(targets)('$name', (target) => {
   });
 
   it('deletes a stale emailLower when the email is blank', async () => {
-    const ref = await target.create({ email: '', emailLower: 'gone@example.com' });
+    const ref = await target.create({
+      email: '',
+      emailLower: `${uniqueId('gone')}@example.com`,
+    });
 
     const snap = await written(ref);
 
@@ -111,13 +118,16 @@ describe.each(targets)('$name', (target) => {
   });
 
   it('deletes a stale emailLower when the email field is missing', async () => {
-    const ref = await target.create({ emailLower: 'gone@example.com' });
+    const ref = await target.create({
+      emailLower: `${uniqueId('gone')}@example.com`,
+    });
 
     expect((await written(ref)).data()).not.toHaveProperty('emailLower');
   });
 
   it('does nothing when the document was deleted', async () => {
-    const ref = await target.create({ email: 'Dave@Example.com' });
+    const email = `${uniqueId('dave')}@Example.com`;
+    const ref = await target.create({ email });
     const real = await ref.get();
     // The event for a delete carries a snapshot that does not exist. It is
     // pointed at a live doc, and still reports data that would need a write,
@@ -125,7 +135,7 @@ describe.each(targets)('$name', (target) => {
     const deleted = {
       exists: false,
       ref,
-      data: () => ({ email: 'Dave@Example.com' }),
+      data: () => ({ email }),
     };
     const spy = vi.spyOn(ref, 'update');
 
@@ -141,10 +151,12 @@ describe.each(targets)('$name', (target) => {
   });
 
   it('does nothing when the event carries no data', async () => {
-    const ref = await target.create({ email: 'Eve@Example.com' });
+    const ref = await target.create({ email: `${uniqueId('eve')}@Example.com` });
     const updateTime = (await ref.get()).updateTime!;
 
-    await target.run({ data: undefined, params: target.params(ref) });
+    await expect(
+      target.run({ data: undefined, params: target.params(ref) })
+    ).resolves.toBeUndefined();
 
     expect((await ref.get()).updateTime!.isEqual(updateTime)).toBe(true);
   });

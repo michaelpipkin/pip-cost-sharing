@@ -20,10 +20,6 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
 }
 
 describe('verifyUserEmail', () => {
-  it('is exported under the emulator', () => {
-    expect(verifyUserEmail).toBeDefined();
-  });
-
   it('rejects a call with no uid as invalid-argument', async () => {
     expect(await codeOf(call({}))).toBe('invalid-argument');
   });
