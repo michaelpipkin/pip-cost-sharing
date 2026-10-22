@@ -13,8 +13,8 @@ import {
   buildPaymentMethodsHtml,
   escapeHtml,
   formatAmount,
-  isSingleEmailAddress,
 } from './email-builders';
+import { memberRecipient, type MemberRecipient } from './group-mail-recipient';
 
 // ---------------------------------------------------------------------------
 // Group emails the app sends on a member's behalf: payment requests (Summary)
@@ -24,13 +24,16 @@ import {
 // PipSplit's address. Here the client sends only ids and numbers; the server
 // checks the caller's membership and builds the content itself.
 //
-// Recipients are only ever linked app users, mailed at their PROFILE address
-// (users/{uid}.email), never at the member doc's email: any signed-in user
-// can create a group and add members with any email and any userRef, so a
-// member email is attacker-chosen. A profile email can only be '' or the
-// account's own verified sign-in address (firestore.rules, Plan 4 B14), so
-// mail goes only to verified addresses of registered users who haven't opted
-// out (final review I2).
+// Recipients are only ever linked app users who haven't opted out, mailed at
+// their GROUP email (the member doc's `email`), through the one recipient
+// rule every group mail shares (group-mail-recipient.ts, Plan 4 B19). A
+// linked member's email is always an address its user proved they own:
+// firestore.rules refuses any other value on a linked member doc (so an
+// admin can no longer pair a victim's userRef with an address of their
+// choosing, final review I2), and a new address is applied only once
+// confirmed through a link mailed to it (member-email.ts). The member-id
+// cap (MAX_BATCH) and the membership checks below still bound who can be
+// mailed and how often.
 //
 // getFirestore() is called inside each handler rather than at module scope:
 // index.ts imports (and so evaluates) this module before it calls
@@ -246,26 +249,17 @@ function linkedUser(
   return userRef ? users.get(userRef.path) : undefined;
 }
 
-type Recipient =
-  | { result: 'sent'; to: string }
-  | { result: Exclude<PaymentRequestResult, 'sent'> };
-
 /**
- * Whether and where a member can be emailed: a linked app user whose user
- * doc exists and holds exactly one valid address (no list or array), who
- * hasn't opted out. Anything else (a placeholder, a userRef with no user doc,
- * an empty or invalid profile email) is not_registered. The member doc's own
- * email is never read: see the header.
+ * Whether and where a member can be emailed (memberRecipient: linked, the
+ * users doc exists, not opted out, and the member's group email is one
+ * valid address). A placeholder, a userRef with no user doc or an empty or
+ * invalid group email is not_registered.
  */
 function recipient(
   member: DocumentData,
   users: Map<string, DocumentData>
-): Recipient {
-  const user = linkedUser(member, users);
-  const to: unknown = user?.['email'];
-  if (!user || !isSingleEmailAddress(to)) return { result: 'not_registered' };
-  if (user['emailOptOut'] === true) return { result: 'opted_out' };
-  return { result: 'sent', to };
+): MemberRecipient {
+  return memberRecipient(member, linkedUser(member, users));
 }
 
 interface GroupFormat {

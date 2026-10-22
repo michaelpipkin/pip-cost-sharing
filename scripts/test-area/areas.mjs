@@ -151,6 +151,10 @@ const INVITE_LINKING_FUNCTIONS = [
   'src/user-onboarding.spec.ts',
 ];
 
+// The group-email change callables (Plan 4 B19): edit-member requests a
+// change, the auth confirm-group-email page confirms it.
+const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
+
 export const AREAS = {
   // App bootstrap, layout chrome, ads/PWA/theme plumbing and the app-wide
   // primitives described above.
@@ -229,6 +233,7 @@ export const AREAS = {
       'src/user-deletion.spec.ts',
       'src/verify-user-email.spec.ts',
       ...INVITE_LINKING_FUNCTIONS,
+      ...MEMBER_EMAIL_FUNCTIONS,
       ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
@@ -344,6 +349,9 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/email-normalization.spec.ts',
       'src/invite-email.spec.ts',
+      // Verified group emails (B19): requestMemberEmailChange from
+      // edit-member, confirmMemberEmailChange from the auth confirm page.
+      ...MEMBER_EMAIL_FUNCTIONS,
       ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
       'src/send-group-invite.spec.ts',

@@ -12,6 +12,12 @@ export const callableAppCheck = {
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
 } satisfies CallableOptions;
 
+// The app's public origin, for links in emails. Mirrors BASE_URL in
+// src/app/services/page-title-strategy.service.ts: the two projects don't
+// share a path-mapped module, so this one constant is deliberately
+// duplicated rather than imported.
+export const APP_BASE_URL = 'https://pipsplit.com';
+
 export const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 export const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 

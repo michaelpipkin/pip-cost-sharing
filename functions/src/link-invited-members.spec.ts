@@ -56,6 +56,30 @@ describe('linkInvitedMembersInternal', () => {
     expect(unchanged.data()?.['userRef']?.id).toBe(existingUserRef.id);
   });
 
+  // B19: a linked member's email must be one its user proved they own, so a
+  // member whose emailLower is stale (its email was just changed and the
+  // syncMemberEmailLower trigger has not caught up) is not linked by it.
+  it('does not link a member whose email no longer matches its emailLower', async () => {
+    const address = `stale-${randomUUID()}@example.com`;
+    const groupRef = db.collection('groups').doc();
+    const memberRef = groupRef.collection('members').doc();
+    await memberRef.set({
+      displayName: 'Alex',
+      email: `other-${randomUUID()}@example.com`,
+      emailLower: address,
+      active: true,
+      groupAdmin: false,
+      userRef: null,
+    });
+    const userRef = db.collection('users').doc();
+    await userRef.set({ email: address });
+
+    const result = await linkInvitedMembersInternal(userRef.id, address);
+
+    expect(result.membersLinked).toBe(0);
+    expect((await memberRef.get()).data()?.['userRef']).toBeNull();
+  });
+
   it('returns zero when no member matches the email', async () => {
     const userRef = db.collection('users').doc();
     await userRef.set({ email: 'nobody@example.com' });

@@ -210,6 +210,45 @@ describe('sendPaymentNotificationEmail: member payment', () => {
     expect(await mailTo(payeeEmail)).toHaveLength(0);
   });
 
+  // B19: one recipient rule for all group mail (group-mail-recipient.ts).
+  it("mails the members' group emails, never the linked profile emails", async () => {
+    const group = await makeGroup();
+    const payerEmail = uniqueEmail('payer');
+    const payeeEmail = uniqueEmail('payee');
+    const payerProfile = uniqueEmail('payer-profile');
+    const payeeProfile = uniqueEmail('payee-profile');
+    const payer = await linkedMember(group, 'Pat', payerEmail, {
+      email: payerProfile,
+    });
+    const payee = await linkedMember(group, 'Quinn', payeeEmail, {
+      email: payeeProfile,
+    });
+
+    await fire(group, memberPayment(payer, payee, group));
+
+    expect(await mailTo(payerEmail)).toHaveLength(1);
+    expect(await mailTo(payeeEmail)).toHaveLength(1);
+    expect(await mailTo(payerProfile)).toHaveLength(0);
+    expect(await mailTo(payeeProfile)).toHaveLength(0);
+  });
+
+  it('sends no mail to a payee whose userRef has no users doc behind it', async () => {
+    const group = await makeGroup();
+    const payerEmail = uniqueEmail('payer');
+    const payeeEmail = uniqueEmail('payee');
+    const payer = await linkedMember(group, 'Pat', payerEmail);
+    const payee = await makeMember(group, {
+      displayName: 'Quinn',
+      email: payeeEmail,
+      userRef: db.collection('users').doc(uniqueId('u-missing')),
+    });
+
+    await fire(group, memberPayment(payer, payee, group));
+
+    expect(await mailTo(payerEmail)).toHaveLength(1);
+    expect(await mailTo(payeeEmail)).toHaveLength(0);
+  });
+
   it('sends no mail to a linked payee who has no email on file', async () => {
     const group = await makeGroup();
     const payerEmail = uniqueEmail('payer');
@@ -418,6 +457,28 @@ describe('sendPaymentNotificationEmail: settle batch', () => {
     expect(toA[0].message.text).toContain('Venmo: @quinn-v');
     expect(toB[0].message.text).toContain('Pat owes you $30.00');
     expect(await markerExists(group, batchId)).toBe(true);
+  });
+
+  it("mails each member's group email, skipping a userRef with no users doc (B19)", async () => {
+    const group = await makeGroup();
+    const aEmail = uniqueEmail('a');
+    const aProfile = uniqueEmail('a-profile');
+    const ghostEmail = uniqueEmail('ghost');
+    const a = await linkedMember(group, 'Pat', aEmail, { email: aProfile });
+    const ghost = await makeMember(group, {
+      displayName: 'Quinn',
+      email: ghostEmail,
+      userRef: db.collection('users').doc(uniqueId('u-missing')),
+    });
+    const batchId = uniqueId('b');
+    const history = transfer(a, ghost, batchId, 1);
+    await seedHistory(group, history);
+
+    await fire(group, history);
+
+    expect(await mailTo(aEmail)).toHaveLength(1);
+    expect(await mailTo(aProfile)).toHaveLength(0);
+    expect(await mailTo(ghostEmail)).toHaveLength(0);
   });
 
   it('mails nobody when the group doc is gone', async () => {

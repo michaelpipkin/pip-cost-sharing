@@ -18,6 +18,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
 import {
+  APP_BASE_URL,
   assertAdmin,
   buildSuccessDelivery,
   buildSuppressedDelivery,
@@ -34,6 +35,8 @@ import {
   formatAmount,
   isSingleEmailAddress,
 } from './email-builders';
+import { memberRecipient } from './group-mail-recipient';
+import { deleteExpiredMemberEmailChanges } from './member-email';
 
 export {
   buildEmailHtml,
@@ -47,6 +50,11 @@ export {
   sendPaymentReversalEmails,
   sendSettleReversalEmails,
 } from './group-emails';
+export {
+  confirmMemberEmailChange,
+  deleteExpiredMemberEmailChanges,
+  requestMemberEmailChange,
+} from './member-email';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
 export {
@@ -62,10 +70,6 @@ const storage = getStorage();
 
 const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
 
-// Mirrors BASE_URL in src/app/services/page-title-strategy.service.ts. The two
-// projects don't share a path-mapped module, so this one constant is
-// deliberately duplicated rather than imported.
-const APP_BASE_URL = 'https://pipsplit.com';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.pipsplit.app';
 // Anti-spam window for sendGroupInvite: one invite per member per address per
@@ -387,6 +391,17 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
   } catch (error) {
     console.error('Error fetching files from storage: ', error);
   }
+
+  // Expired group-email confirmation links and ended rate-limit windows
+  // (member-email.ts). Independent of the receipt cleanup above.
+  try {
+    const deleted = await deleteExpiredMemberEmailChanges();
+    console.log(
+      `Deleted ${deleted.tokens} expired email-change token(s) and ${deleted.limits} rate-limit doc(s)`
+    );
+  } catch (error) {
+    console.error('Error deleting expired email-change tokens: ', error);
+  }
 });
 
 /**
@@ -622,16 +637,27 @@ export async function linkInvitedMembersInternal(
     .where('userRef', '==', null)
     .get();
 
-  if (!membersSnapshot.empty) {
+  // A linked member's email must be one its user proved they own (B19,
+  // group-mail-recipient.ts), so the email itself must match too: emailLower
+  // lags an email change until syncMemberEmailLower catches up.
+  const emailLower = normalizeEmail(email);
+  const matching = membersSnapshot.docs.filter((memberDoc) => {
+    const memberEmail: unknown = memberDoc.get('email');
+    return (
+      typeof memberEmail === 'string' &&
+      normalizeEmail(memberEmail) === emailLower
+    );
+  });
+  if (matching.length > 0) {
     const userRef = db.collection('users').doc(uid);
     const batch = db.batch();
-    for (const memberDoc of membersSnapshot.docs) {
+    for (const memberDoc of matching) {
       batch.update(memberDoc.ref, { userRef });
     }
     await batch.commit();
   }
 
-  return { membersLinked: membersSnapshot.size };
+  return { membersLinked: matching.length };
 }
 
 /**
@@ -976,21 +1002,6 @@ export const sendPaymentNotificationEmail = onDocumentCreated(
   }
 );
 
-/**
- * A member's stored `email` if it is exactly one valid address, else ''.
- * A stored value that is set but invalid (a comma list, an array, `a@b`, ...)
- * is logged and treated like a missing address, so no mail is queued to it.
- */
-function mailableMemberEmail(member: DocumentData, context: string): string {
-  const email: unknown = member['email'];
-  if (email === undefined || email === null || email === '') return '';
-  if (isSingleEmailAddress(email)) return email;
-  console.warn(
-    `${context}: skipping member "${member['displayName'] ?? ''}" whose stored email is not a single valid address`
-  );
-  return '';
-}
-
 async function handleMemberPaymentEmail(
   data: DocumentData,
   groupRef: DocumentReference,
@@ -1065,22 +1076,22 @@ async function handleMemberPaymentEmail(
 
   const mailWrites: Promise<DocumentReference>[] = [];
 
-  const payerHasAccount = !!payerUserRef;
-  const payeeHasAccount = !!payeeUserRef;
-  const payerOptedOut =
-    payerUserDoc?.exists && payerUserDoc.data()!['emailOptOut'] === true;
-  const payeeOptedOut =
-    payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
-  // Checked only for an otherwise eligible party, so the warning for an
-  // invalid stored address is logged only when it actually costs a mail.
-  const payerEmail =
-    payerHasAccount && !payerOptedOut
-      ? mailableMemberEmail(payerData, 'handleMemberPaymentEmail')
-      : '';
-  const payeeEmail =
-    payeeHasAccount && !payeeOptedOut
-      ? mailableMemberEmail(payeeData, 'handleMemberPaymentEmail')
-      : '';
+  // The one recipient rule for group mail (group-mail-recipient.ts): the
+  // member's group email, for a linked user with a users doc who hasn't
+  // opted out.
+  const recipientEmail = (
+    member: DocumentData,
+    userDoc: DocumentSnapshot | null
+  ): string => {
+    const r = memberRecipient(
+      member,
+      userDoc?.exists ? userDoc.data() : undefined,
+      'handleMemberPaymentEmail'
+    );
+    return r.result === 'sent' ? r.to : '';
+  };
+  const payerEmail = recipientEmail(payerData, payerUserDoc);
+  const payeeEmail = recipientEmail(payeeData, payeeUserDoc);
 
   const categoryBreakdownHtml = buildCategoryBreakdownHtml(categoryBreakdown);
   const paymentMethodsHtml = buildPaymentMethodsHtml(paymentMethodLines);
@@ -1354,11 +1365,14 @@ async function handleSettleEmail(
     const memberUserData = memberUserRef
       ? userDataMap.get(memberUserRef.path)
       : undefined;
-    if (!memberUserRef || memberUserData?.['emailOptOut'] === true) continue;
-
-    // Checked after eligibility, so the warning only fires when it costs a mail.
-    const memberEmail = mailableMemberEmail(memberData, 'handleSettleEmail');
-    if (!memberEmail) continue;
+    // The one recipient rule for group mail (group-mail-recipient.ts).
+    const recipient = memberRecipient(
+      memberData,
+      memberUserData,
+      'handleSettleEmail'
+    );
+    if (recipient.result !== 'sent') continue;
+    const memberEmail = recipient.to;
 
     const { transferLines, transferHtmlBlocks } = buildMemberTransferBlocks(
       memberPath,
