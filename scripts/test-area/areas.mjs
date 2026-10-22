@@ -482,6 +482,7 @@ export const AREAS = {
       ...STRING_UTILS,
     ],
     functions: [
+      'src/receipt-cleanup.spec.ts',
       'src/receipt-ocr.spec.ts',
       'src/receipt-parser.spec.ts',
       'src/scan-receipt.spec.ts',
@@ -553,6 +554,7 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
+      'src/payment-email.spec.ts',
       'src/settle-email.spec.ts',
       ...USER_SERVICE_FUNCTIONS,
     ],
@@ -585,6 +587,7 @@ export const AREAS = {
     functions: [
       'src/email-formatting.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
+      'src/payment-email.spec.ts',
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@history',
