@@ -6,6 +6,7 @@ import { AUTH_DATASET } from './auth';
 import { CATEGORIES_DATASET } from './categories';
 import { EMAIL_RULES_DATASET } from './email-rules';
 import { EXPENSES_DATASET } from './expenses';
+import { GROUP_EMAIL_UPDATE_DATASET } from './group-email-update';
 import { GROUPS_DATASET } from './groups';
 import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
@@ -48,4 +49,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   MEMBER_RULES_DATASET,
   MEMBER_EMAIL_RULES_DATASET,
   MEMBER_EMAIL_DATASET,
+  GROUP_EMAIL_UPDATE_DATASET,
 ];
