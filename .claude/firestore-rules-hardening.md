@@ -517,14 +517,29 @@ mutating methods, not just the UI gating:
   `edit-member.component.html`'s `groupAdmin` toggle), again zero
   defense-in-depth. This one mattered most: the old rule
   (`isActiveMember(groupId) || self`) let *any* active member write to
-  *any other* member's doc via the SDK - including flipping their own
-  `groupAdmin` to `true`, a real privilege-escalation path, or removing
+  *any other* member's doc via the SDK, e.g. promoting or removing
   someone else. **Tightened: `create` now requires `isGroupAdmin(groupId)`;
   `update, delete` now require `isGroupAdmin(groupId) || self` (dropped the
   "any active member" clause, kept the self-write carve-out for
   leave/rejoin/self-edit).** Verified this doesn't break `addGroup()`'s
   sequential-write fix - the creator is already in `adminUids` from the
   group doc's own creation, before the member/category batch runs.
+  - **Correction (2026-10-22, Plan 4 final review C1):** Phase 2 did NOT
+    close self-promotion. The self clause (`resource.data.userRef ==
+    ownUserRef()`) limited no fields, so any linked member, even one who
+    had left, could write `{groupAdmin: true}` (or change `userRef`) on
+    their OWN member doc; `syncGroupMemberUids` then copied them into
+    `adminUids`, a full admin (including `deleteGroup`). It was live in
+    production. Fixed by `memberSelfUpdateValid()` in `firestore.rules`: a
+    non-admin self-write may change only `displayName`, `email`, `active`,
+    `leftGroup` and `groupAdmin`; may never set `groupAdmin` to true when
+    it wasn't; may set `active` to true only when rejoining after leaving
+    (`leftGroup == true`, so a member an admin deactivated can't
+    reactivate themselves); and may set `leftGroup` to true only when
+    leaving an active membership (with `active: false`). The app's
+    self-write paths (edit-member self-edit, `leaveGroup`, `rejoinGroup`,
+    `updateAllMemberEmails`) all fit; self-delete (leaving with no splits)
+    is unchanged. Emulator tests: `e2e/infra/member-rules.spec.ts`.
 - **history** - cleanly separable, unlike splits (below): a history doc is
   *only* ever created via the legitimate settle-up flow
   (`split.service.ts`'s `paySplitsBetweenMembers`/`settleGroup`, any active

@@ -179,10 +179,50 @@ service cloud.firestore {
       // toggle) with NO defense-in-depth in the mutating methods themselves -
       // without this rule, any active member could directly add/remove
       // members or self-promote to admin via the SDK, bypassing the UI
-      // entirely. Editing one's own record (display name, payment handles)
-      // is open to any member regardless of active status - see the second
-      // clause below.
+      // entirely. A member may still write their own record (see
+      // memberSelfUpdateValid), but only in the shapes the app's own
+      // self-service paths use.
       match /members/{memberId} {
+        // A non-admin's write to their OWN member doc (userRef is the
+        // caller). Every self-write path in the app, and what it changes:
+        //  - edit-member's Save on one's own row (updateMemberWithUserMatching):
+        //    displayName, email; it also sends active and groupAdmin, but
+        //    unchanged (the toggles are hidden from non-admins and the
+        //    groupAdmin toggle is disabled on one's own row);
+        //  - leaveGroup() with splits: active false, leftGroup true,
+        //    groupAdmin false (without splits it deletes the doc instead);
+        //  - rejoinGroup(): leftGroup false, active true;
+        //  - updateAllMemberEmails() (Account > Profile): email.
+        // So a self-write may change only those five fields (userRef,
+        // emailLower and invite are server- or admin-written), and:
+        //  - may never grant groupAdmin: syncGroupMemberUids copies it into
+        //    adminUids, which is a full admin (deleteGroup included). Clearing
+        //    it (leaveGroup) is fine.
+        //  - may set active to true only by rejoining after leaving
+        //    voluntarily (leftGroup == true). A member an admin deactivated
+        //    is reactivated by an admin; Member.leftGroup exists for exactly
+        //    this distinction.
+        //  - may set leftGroup to true only when leaving, i.e. from an active
+        //    membership and together with active false. Otherwise a
+        //    deactivated member could "leave" and then "rejoin" themselves.
+        // Fields are read with get(): legacy docs may lack leftGroup.
+        function memberSelfUpdateValid() {
+          let before = resource.data;
+          let after = request.resource.data;
+          return before.get('userRef', null) == ownUserRef() &&
+            after.diff(before).affectedKeys()
+              .hasOnly(['displayName', 'email', 'active', 'leftGroup', 'groupAdmin']) &&
+            !(after.get('groupAdmin', false) == true &&
+              before.get('groupAdmin', false) != true) &&
+            !(after.get('active', false) == true &&
+              before.get('active', false) != true &&
+              before.get('leftGroup', false) != true) &&
+            !(after.get('leftGroup', false) == true &&
+              before.get('leftGroup', false) != true &&
+              (before.get('active', false) != true ||
+                after.get('active', false) == true));
+        }
+
         allow read: if isActiveMember(groupId);
         // Safe for the very first member of a brand-new group too: addGroup()
         // creates the group doc first (own write, awaited) and only then
@@ -190,14 +230,18 @@ service cloud.firestore {
         // sees a group that genuinely exists by the time this runs - and the
         // creator is already in adminUids from that same group-creation write.
         allow create: if isGroupAdmin(groupId) && emailCreateValid();
-        // The second clause covers self-service writes made *while
-        // inactive* - rejoinGroup() (flips leftGroup:false, active:true,
-        // the exact state this write is trying to escape) and
-        // updateAllMemberEmails() (syncing a display email across every
-        // group a user belongs to, active or not) - plus ordinary self-edits
-        // (e.g. payment handles) and leaveGroup()'s own self-update/delete.
-        allow update: if (isGroupAdmin(groupId) ||
-          resource.data.userRef == ownUserRef()) && emailUpdateValid();
+        // The self clause does not require an active membership: it covers
+        // self-service writes made *while inactive* - rejoinGroup() (the
+        // exact state this write is trying to escape) and
+        // updateAllMemberEmails() (syncing an email across every group a
+        // user belongs to, active or not) - plus edit-member self-edits and
+        // leaveGroup()'s own self-update. Its shape is limited by
+        // memberSelfUpdateValid() above.
+        allow update: if (isGroupAdmin(groupId) || memberSelfUpdateValid()) &&
+          emailUpdateValid();
+        // Self-delete is leaveGroup() for a member with no splits. It only
+        // removes the caller's own access (the member can't recreate it;
+        // create is admin-only).
         allow delete: if isGroupAdmin(groupId) ||
           resource.data.userRef == ownUserRef();
       }

@@ -10,6 +10,7 @@ import { GROUPS_DATASET } from './groups';
 import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
 import { INVITES_DATASET } from './invites';
+import { MEMBER_RULES_DATASET } from './member-rules';
 import { MEMBERS_DATASET } from './members';
 import { MEMORIZED_DATASET } from './memorized';
 import { PAYMENT_FLOW_DATASET } from './payment-flow';
@@ -42,4 +43,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   ADMIN_DATASET,
   EMAIL_RULES_DATASET,
   USER_RULES_DATASET,
+  MEMBER_RULES_DATASET,
 ];
