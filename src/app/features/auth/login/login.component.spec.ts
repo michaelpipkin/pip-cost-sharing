@@ -21,20 +21,25 @@ describe('LoginComponent', () => {
   let el: HTMLElement;
   let mockPwaDetection: ReturnType<typeof createMockPwaDetectionService>;
   let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
+  let mockLoading: ReturnType<typeof createMockLoadingService>;
+  let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  const mockAuth = {};
 
   beforeEach(async () => {
     vi.clearAllMocks();
     mockPwaDetection = createMockPwaDetectionService();
     mockAnalytics = createMockAnalyticsService();
+    mockLoading = createMockLoadingService();
+    mockSnackBar = createMockSnackBar();
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
         provideRouter([]),
-        { provide: getAuth, useValue: {} },
+        { provide: getAuth, useValue: mockAuth },
         { provide: AnalyticsService, useValue: mockAnalytics },
-        { provide: LoadingService, useValue: createMockLoadingService() },
-        { provide: MatSnackBar, useValue: createMockSnackBar() },
+        { provide: LoadingService, useValue: mockLoading },
+        { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: PwaDetectionService, useValue: mockPwaDetection },
       ],
     }).compileComponents();
@@ -192,6 +197,254 @@ describe('LoginComponent', () => {
         'sign_up',
         expect.anything()
       );
+    });
+  });
+
+  // ---- Coverage pass B -------------------------------------------------
+
+  const GENERIC_EMAIL_FAILURE =
+    'Could not sign you in. Please check your email and password.';
+  const GENERIC_GOOGLE_FAILURE =
+    'There was a problem signing you in. Please try again or use a different sign-in method.';
+
+  async function typeInto(testId: string, value: string) {
+    const input = query(testId) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  async function submitForm() {
+    (query('login-form') as HTMLFormElement).dispatchEvent(
+      new Event('submit', { cancelable: true })
+    );
+    await fixture.whenStable();
+  }
+
+  describe('signing in with email and password', () => {
+    beforeEach(async () => {
+      await typeInto('email-input', 'alice@example.com');
+      await typeInto('password-input', 's3cret!');
+    });
+
+    it('checks the account first, then signs in with the typed credentials', async () => {
+      const methods = vi
+        .spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail')
+        .mockResolvedValue(['password']);
+      const signIn = vi
+        .spyOn(firebaseAuthModule, 'signInWithEmailAndPassword')
+        .mockResolvedValue({ user: {} } as any);
+
+      await submitForm();
+
+      expect(methods).toHaveBeenCalledWith(mockAuth, 'alice@example.com');
+      expect(signIn).toHaveBeenCalledWith(
+        mockAuth,
+        'alice@example.com',
+        's3cret!'
+      );
+      expect(methods.mock.invocationCallOrder[0]).toBeLessThan(
+        signIn.mock.invocationCallOrder[0]!
+      );
+      // The overlay stays on: the auth listener finishes the navigation.
+      expect(mockLoading.loadingOn).toHaveBeenCalledWith('navigation');
+      expect(mockLoading.loadingOff).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+    });
+
+    it('also signs in an account that has Google plus a password', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockResolvedValue(
+        ['google.com', 'password']
+      );
+      const signIn = vi
+        .spyOn(firebaseAuthModule, 'signInWithEmailAndPassword')
+        .mockResolvedValue({ user: {} } as any);
+
+      await component.emailLogin();
+
+      expect(signIn).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends a Google-only account to the Google button instead of trying a password', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockResolvedValue(
+        ['google.com']
+      );
+      const signIn = vi.spyOn(firebaseAuthModule, 'signInWithEmailAndPassword');
+
+      await submitForm();
+
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Please sign in with Google' } }
+      );
+      expect(mockLoading.loadingOff).toHaveBeenCalledWith('navigation');
+    });
+
+    it('says to check the email and password when sign-in is refused, and clears the overlay', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockResolvedValue(
+        ['password']
+      );
+      vi.spyOn(firebaseAuthModule, 'signInWithEmailAndPassword').mockRejectedValue(
+        new Error('auth/wrong-password')
+      );
+
+      await submitForm();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: GENERIC_EMAIL_FAILURE } }
+      );
+      expect(mockLoading.loadingOff).toHaveBeenCalledWith('navigation');
+    });
+
+    it('gives the same message when the account lookup itself fails', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockRejectedValue(
+        new Error('network')
+      );
+      const signIn = vi.spyOn(firebaseAuthModule, 'signInWithEmailAndPassword');
+
+      await submitForm();
+
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: GENERIC_EMAIL_FAILURE } }
+      );
+    });
+
+    it('lets the user try again after a failed attempt', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockResolvedValue(
+        ['password']
+      );
+      const signIn = vi
+        .spyOn(firebaseAuthModule, 'signInWithEmailAndPassword')
+        .mockRejectedValueOnce(new Error('auth/wrong-password'))
+        .mockResolvedValueOnce({ user: {} } as any);
+
+      await submitForm();
+      await submitForm();
+
+      expect(signIn).toHaveBeenCalledTimes(2);
+    });
+
+    it('ignores a second submit while the first is in flight', async () => {
+      const methods = vi
+        .spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail')
+        .mockResolvedValue(['password']);
+      vi.spyOn(firebaseAuthModule, 'signInWithEmailAndPassword').mockResolvedValue({
+        user: {},
+      } as any);
+
+      const first = component.emailLogin();
+      const second = component.emailLogin();
+      await Promise.all([first, second]);
+
+      expect(methods).toHaveBeenCalledTimes(1);
+    });
+
+    it('signs in when Enter is pressed in the password field of a valid form', async () => {
+      vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail').mockResolvedValue(
+        ['password']
+      );
+      const signIn = vi
+        .spyOn(firebaseAuthModule, 'signInWithEmailAndPassword')
+        .mockResolvedValue({ user: {} } as any);
+
+      (query('password-input') as HTMLInputElement).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', cancelable: true })
+      );
+      await fixture.whenStable();
+
+      expect(signIn).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not sign in on Enter while the email is invalid', async () => {
+      await typeInto('email-input', 'notanemail');
+      const methods = vi.spyOn(firebaseAuthModule, 'fetchSignInMethodsForEmail');
+
+      (query('password-input') as HTMLInputElement).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', cancelable: true })
+      );
+      await fixture.whenStable();
+
+      expect(methods).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signing in with Google in the browser', () => {
+    it('opens the Google popup on this auth with a Google provider', async () => {
+      const popup = vi
+        .spyOn(firebaseAuthModule, 'signInWithPopup')
+        .mockResolvedValue({ user: {} } as any);
+
+      (query('google-login-button') as HTMLButtonElement).click();
+      await fixture.whenStable();
+
+      expect(popup).toHaveBeenCalledWith(
+        mockAuth,
+        expect.any(firebaseAuthModule.GoogleAuthProvider)
+      );
+      expect(mockLoading.loadingOn).toHaveBeenCalledWith('navigation');
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+    });
+
+    it('explains the failure, clears the overlay, and allows another attempt', async () => {
+      const popup = vi
+        .spyOn(firebaseAuthModule, 'signInWithPopup')
+        .mockRejectedValueOnce(new Error('auth/popup-closed-by-user'))
+        .mockResolvedValueOnce({ user: {} } as any);
+
+      await component.googleLogin();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: GENERIC_GOOGLE_FAILURE } }
+      );
+      expect(mockLoading.loadingOff).toHaveBeenCalledWith('navigation');
+
+      await component.googleLogin();
+      expect(popup).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('signing in with Google in the installed app', () => {
+    beforeEach(() => {
+      mockPwaDetection.isRunningAsApp.mockReturnValue(true);
+      mockPwaDetection.isRunningInBrowser.mockReturnValue(false);
+    });
+
+    // The Capacitor plugin proxy exposes no own methods to spy on, so these
+    // run the plugin's real web fallback against the mocked firebase/auth;
+    // the native success path (ID token handed to Firebase, sign_up for a
+    // new user) cannot be driven in unit tests and has no automated cover.
+    it('does not open the browser popup in the installed app, and explains a failed native sign-in', async () => {
+      const popup = vi.spyOn(firebaseAuthModule, 'signInWithPopup');
+      const withCredential = vi.spyOn(
+        firebaseAuthModule,
+        'signInWithCredential'
+      );
+
+      await component.googleLogin();
+
+      expect(popup).not.toHaveBeenCalled();
+      expect(withCredential).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: GENERIC_GOOGLE_FAILURE } }
+      );
+      expect(mockLoading.loadingOff).toHaveBeenCalledWith('navigation');
+    });
+
+    it('shows the "visit us on the web" note instead of the app download', async () => {
+      fixture = TestBed.createComponent(LoginComponent);
+      el = fixture.nativeElement;
+      await fixture.whenStable();
+
+      expect(query('web-visit')).toBeTruthy();
+      expect(query('app-download')).toBeNull();
     });
   });
 

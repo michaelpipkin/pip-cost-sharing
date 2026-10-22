@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserService } from '@services/user.service';
@@ -11,6 +11,7 @@ import {
   createMockSnackBar,
   createMockUserStore,
 } from '@testing/test-helpers';
+import { FirebaseError } from 'firebase/app';
 import * as authModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,6 +27,8 @@ describe('AccountActionComponent', () => {
   };
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
+  let mockLoading: ReturnType<typeof createMockLoadingService>;
 
   const authStateReady = () => Promise.resolve();
 
@@ -52,6 +55,8 @@ describe('AccountActionComponent', () => {
   ) {
     mockSnackBar = createMockSnackBar();
     mockUserStore = createMockUserStore();
+    mockAnalytics = createMockAnalyticsService();
+    mockLoading = createMockLoadingService();
     mockUserService = {
       updateUserEmailAndLinkMembers: vi.fn().mockResolvedValue(undefined),
       logout: vi.fn().mockResolvedValue(undefined),
@@ -70,10 +75,10 @@ describe('AccountActionComponent', () => {
         { provide: getAuth, useValue: authValue },
         { provide: ActivatedRoute, useValue: mockRoute },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: LoadingService, useValue: createMockLoadingService() },
+        { provide: LoadingService, useValue: mockLoading },
         { provide: UserService, useValue: mockUserService },
         { provide: UserStore, useValue: mockUserStore },
-        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     }).compileComponents();
 
@@ -466,6 +471,499 @@ describe('AccountActionComponent', () => {
     it('should call sendEmailVerification when user is logged in', async () => {
       await component.resendVerificationEmail();
       expect(authModule.sendEmailVerification).toHaveBeenCalled();
+    });
+  });
+
+  describe('opening the page without a usable link', () => {
+    it('sends a signed-in, verified user on to expenses when there is no code', async () => {
+      const navigate = vi.spyOn(Router.prototype, 'navigate').mockResolvedValue(true);
+      const auth = {
+        authStateReady,
+        currentUser: { email: 'a@example.com', emailVerified: true },
+      };
+
+      await createComponent(auth, {});
+
+      expect(navigate).toHaveBeenCalledWith(['/expenses']);
+      expect(component.errorMessage()).toBe('');
+    });
+
+    it('shows and logs "No code provided" for a signed-out visitor', async () => {
+      await createComponent(mockAuthWithoutUser, { mode: 'verifyEmail' });
+
+      expect(component.errorMessage()).toBe('Invalid link. No code provided.');
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Account Action Component',
+        'process_action',
+        'No oobCode in URL',
+        'N/A'
+      );
+      expect(
+        fixture.nativeElement.querySelector(
+          '[data-testid="account-action-error-message"]'
+        ).textContent
+      ).toContain('Invalid link. No code provided.');
+    });
+
+    it('shows and logs an unverified signed-in user the same way (no redirect)', async () => {
+      const navigate = vi.spyOn(Router.prototype, 'navigate').mockResolvedValue(true);
+
+      await createComponent(mockAuthWithUser, {});
+
+      expect(navigate).not.toHaveBeenCalled();
+      expect(component.errorMessage()).toBe('Invalid link. No code provided.');
+    });
+
+    it('logs the unknown mode it refused', async () => {
+      await createComponent(mockAuthWithUser, { mode: 'bogus', oobCode: 'x' });
+
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Account Action Component',
+        'process_action',
+        'Invalid mode: bogus',
+        'N/A'
+      );
+      expect(component.mode()).toBeNull();
+    });
+  });
+
+  describe('after the code is applied', () => {
+    it.each([
+      ['verifyEmail', 'email_verified'],
+      ['verifyAndChangeEmail', 'email_changed'],
+      ['recoverEmail', 'email_recovered'],
+    ])('logs %s as %s', async (mode, event) => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+
+      await createComponent(mockAuthWithoutUser, { mode, oobCode: 'code' });
+
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith(event, {
+        component: 'Account Action Component',
+      });
+      expect(component.processing()).toBe(false);
+    });
+
+    it.each([
+      ['an Error', new Error('write failed'), 'write failed'],
+      ['a non-Error', 'denied', 'Unknown error'],
+    ])(
+      'still succeeds when the profile write fails with %s, and keeps the session for a plain verification',
+      async (_label, thrown, message) => {
+        vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+
+        await createComponent(mockAuthWithUser, { mode: 'verifyEmail', oobCode: 'c' }, (u) =>
+          u.updateUserEmailAndLinkMembers.mockRejectedValueOnce(thrown)
+        );
+
+        expect(component.success()).toBe(true);
+        expect(component.errorMessage()).toBe('');
+        expect(mockAnalytics.logError).toHaveBeenCalledWith(
+          'Account Action Component',
+          'verify email',
+          'Code applied, but the profile could not be updated',
+          message
+        );
+        // The address is unchanged, so the session is not ended.
+        expect(mockUserService.logout).not.toHaveBeenCalled();
+        expect(mockUserStore.setIsEmailConfirmed).not.toHaveBeenCalled();
+        expect(mockAnalytics.logEvent).toHaveBeenCalledWith('email_verified', {
+          component: 'Account Action Component',
+        });
+      }
+    );
+
+    it('reports a reload failure that left the user signed in as a profile-update problem, not a bad link', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      const auth: any = {
+        authStateReady,
+        currentUser: {
+          email: 'a@example.com',
+          emailVerified: true,
+          reload: vi.fn().mockRejectedValue(new Error('offline')),
+        },
+      };
+
+      await createComponent(auth, { mode: 'verifyEmail', oobCode: 'c' });
+
+      expect(component.success()).toBe(true);
+      expect(component.errorMessage()).toBe('');
+      expect(mockUserService.updateUserEmailAndLinkMembers).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Account Action Component',
+        'verify email',
+        'Code applied, but the profile could not be updated',
+        'offline'
+      );
+    });
+  });
+
+  describe('applying the code fails', () => {
+    async function failWith(error: unknown) {
+      vi.spyOn(authModule, 'applyActionCode').mockRejectedValue(error);
+      await createComponent(mockAuthWithUser, { mode: 'verifyEmail', oobCode: 'c' });
+    }
+    const lastSnackbarMessage = () =>
+      mockSnackBar.openFromComponent.mock.calls.at(-1)![1].data.message;
+
+    it.each([
+      ['auth/invalid-action-code', 'Failed to verify email. The link is invalid or has expired.'],
+      ['auth/expired-action-code', 'Failed to verify email. The link has expired.'],
+      ['auth/user-disabled', 'Failed to verify email. This user account has been disabled.'],
+      ['auth/user-not-found', 'Failed to verify email. No user found for this link.'],
+      ['auth/weak-password', 'Failed to verify email. Password is too weak.'],
+    ])('explains %s', async (code, message) => {
+      await failWith(new FirebaseError(code, 'raw sdk text'));
+
+      expect(component.errorMessage()).toBe(message);
+      expect(lastSnackbarMessage()).toBe(message);
+      expect(component.success()).toBe(false);
+      expect(
+        fixture.nativeElement.querySelector(
+          '[data-testid="account-action-error-message"]'
+        ).textContent
+      ).toContain(message);
+    });
+
+    it('falls back to the SDK message for any other code', async () => {
+      await failWith(new FirebaseError('auth/network-request-failed', 'Network down'));
+
+      expect(component.errorMessage()).toBe('Failed to verify email. Network down');
+    });
+
+    it('does not log a FirebaseError (expected user-facing failures)', async () => {
+      await failWith(new FirebaseError('auth/invalid-action-code', 'x'));
+
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('logs anything that is not a FirebaseError with its message and code', async () => {
+      await failWith(Object.assign(new Error('odd failure'), { code: 'weird' }));
+
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Account Action Component',
+        'verify email',
+        'odd failure',
+        'weird'
+      );
+      expect(component.errorMessage()).toBe('Failed to verify email. odd failure');
+    });
+
+    it('offers to resend the email to a signed-in user verifying their address, and nothing to a signed-out one', async () => {
+      await failWith(new FirebaseError('auth/invalid-action-code', 'x'));
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="account-action-resend-button"]')
+      ).not.toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="account-action-back-account"]')
+      ).not.toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="account-action-back-login"]')
+      ).toBeNull();
+
+      TestBed.resetTestingModule();
+      vi.spyOn(authModule, 'applyActionCode').mockRejectedValue(
+        new FirebaseError('auth/invalid-action-code', 'x')
+      );
+      await createComponent(mockAuthWithoutUser, { mode: 'verifyEmail', oobCode: 'c' });
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="account-action-resend-button"]')
+      ).toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="account-action-back-login"]')
+      ).not.toBeNull();
+    });
+  });
+
+  describe('resetting the password through the form', () => {
+    const fill = async (password: string, confirm: string) => {
+      const set = (id: string, value: string) => {
+        const input = fixture.nativeElement.querySelector(
+          `[data-testid="${id}"]`
+        ) as HTMLInputElement;
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+      };
+      set('account-action-password-input', password);
+      set('account-action-confirm-password-input', confirm);
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    const submitButton = () =>
+      fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+    beforeEach(async () => {
+      await createComponent(mockAuthWithoutUser, {
+        mode: 'resetPassword',
+        oobCode: 'reset-code',
+      });
+    });
+
+    const leaveConfirmField = async () => {
+      fixture.nativeElement
+        .querySelector('[data-testid="account-action-confirm-password-input"]')
+        .dispatchEvent(new Event('blur'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+
+    it('keeps Reset disabled while the two passwords differ', async () => {
+      await fill('newpassword123', 'different123');
+      await leaveConfirmField();
+
+      expect(submitButton().disabled).toBe(true);
+    });
+
+    // BUG (new): account-action.component.html:82 - the form does hold the
+    // "Passwords do not match." error (root-level, from applyPasswordMatch) and
+    // the confirm field is touched, but the <mat-error> sits in a form field
+    // whose own control is not in error state, so Material never renders it.
+    // The user is left with a disabled Reset button and no explanation.
+    // (reset-password.component shows the same message in a plain div.)
+    it.fails('says the passwords do not match once the confirm field is left', async () => {
+      await fill('newpassword123', 'different123');
+      await leaveConfirmField();
+
+      expect(fixture.nativeElement.querySelector('mat-error')?.textContent).toContain(
+        'Passwords do not match.'
+      );
+    });
+
+    it('submits the form with the typed password and confirms in the UI', async () => {
+      vi.spyOn(authModule, 'confirmPasswordReset').mockResolvedValue(undefined);
+      await fill('newpassword123', 'newpassword123');
+      expect(submitButton().disabled).toBe(false);
+
+      fixture.nativeElement
+        .querySelector('form')
+        .dispatchEvent(new Event('submit', { cancelable: true }));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(authModule.confirmPasswordReset).toHaveBeenCalledWith(
+        mockAuthWithoutUser,
+        'reset-code',
+        'newpassword123'
+      );
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Password reset successfully' } }
+      );
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith('password_reset_success', {
+        component: 'Account Action Component',
+      });
+      expect(mockLoading.loadingOn).toHaveBeenCalled();
+      expect(mockLoading.loadingOff).toHaveBeenCalled();
+      expect(
+        fixture.nativeElement.querySelector(
+          '[data-testid="account-action-success-message"]'
+        ).textContent
+      ).toContain('Your password has been reset successfully!');
+    });
+
+    it('shows the failure, stays on the form and clears the overlay when the reset is refused', async () => {
+      vi.spyOn(authModule, 'confirmPasswordReset').mockRejectedValue(
+        new FirebaseError('auth/weak-password', 'weak')
+      );
+      await fill('abc', 'abc');
+
+      await component.resetPassword();
+      fixture.detectChanges();
+
+      expect(component.success()).toBe(false);
+      expect(component.errorMessage()).toBe(
+        'Failed to reset password. Password is too weak.'
+      );
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Failed to reset password. Password is too weak.' } }
+      );
+      expect(mockLoading.loadingOff).toHaveBeenCalled();
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'password_reset_success',
+        expect.anything()
+      );
+    });
+
+    it('toggles each password field between hidden and visible from its own button', async () => {
+      const password = () =>
+        fixture.nativeElement.querySelector(
+          '[data-testid="account-action-password-input"]'
+        ) as HTMLInputElement;
+      const confirm = () =>
+        fixture.nativeElement.querySelector(
+          '[data-testid="account-action-confirm-password-input"]'
+        ) as HTMLInputElement;
+      const [toggleFirst, toggleSecond] = Array.from(
+        fixture.nativeElement.querySelectorAll('button[matIconSuffix]')
+      ) as HTMLButtonElement[];
+      expect(password().type).toBe('password');
+      expect(confirm().type).toBe('password');
+
+      toggleFirst!.click();
+      fixture.detectChanges();
+      expect(password().type).toBe('text');
+      expect(confirm().type).toBe('password');
+
+      toggleSecond!.click();
+      fixture.detectChanges();
+      expect(confirm().type).toBe('text');
+
+      toggleFirst!.click();
+      toggleSecond!.click();
+      fixture.detectChanges();
+      expect(password().type).toBe('password');
+      expect(confirm().type).toBe('password');
+    });
+  });
+
+  describe('resending the verification email', () => {
+    it('asks a signed-out visitor to sign in first and sends nothing', async () => {
+      const send = vi.spyOn(authModule, 'sendEmailVerification');
+      await createComponent(mockAuthWithoutUser, { mode: 'verifyEmail' });
+
+      await component.resendVerificationEmail();
+
+      expect(send).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'You must be logged in to resend the verification email',
+          },
+        }
+      );
+    });
+
+    it('sends the link back to this page, confirms, and logs it', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      const send = vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue(undefined);
+      await createComponent(mockAuthWithUser, { mode: 'verifyEmail', oobCode: 'c' });
+      mockSnackBar.openFromComponent.mockClear();
+
+      await component.resendVerificationEmail();
+
+      expect(send).toHaveBeenCalledWith(mockAuthWithUser.currentUser, {
+        url: globalThis.location.origin + '/auth/account-action',
+        handleCodeInApp: true,
+      });
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Verification email sent! Please check your inbox' } }
+      );
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith('verification_email_resent', {
+        component: 'Account Action Component',
+      });
+      expect(component.resending()).toBe(false);
+    });
+
+    it('shows the SDK reason without logging when Firebase refuses (e.g. too many requests)', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      vi.spyOn(authModule, 'sendEmailVerification').mockRejectedValue(
+        new FirebaseError('auth/too-many-requests', 'Too many requests')
+      );
+      await createComponent(mockAuthWithUser, { mode: 'verifyEmail', oobCode: 'c' });
+      mockSnackBar.openFromComponent.mockClear();
+
+      await component.resendVerificationEmail();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Failed to send verification email: Too many requests' } }
+      );
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      expect(component.resending()).toBe(false);
+    });
+
+    it.each([
+      ['an Error', new Error('socket closed'), 'socket closed'],
+      ['an Error-like object', { message: 'socket closed' }, 'Unknown error'],
+    ])('also logs a failure that is not from Firebase (%s)', async (_label, thrown, logged) => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      vi.spyOn(authModule, 'sendEmailVerification').mockRejectedValue(thrown);
+      await createComponent(mockAuthWithUser, { mode: 'verifyEmail', oobCode: 'c' });
+      mockSnackBar.openFromComponent.mockClear();
+
+      await component.resendVerificationEmail();
+
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Account Action Component',
+        'resend_verification_email',
+        'Failed to resend verification email',
+        logged
+      );
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Failed to send verification email: socket closed' } }
+      );
+      expect(component.resending()).toBe(false);
+    });
+  });
+
+  describe('wording by action', () => {
+    beforeEach(async () => {
+      await createComponent(mockAuthWithoutUser, {});
+    });
+
+    it.each([
+      ['verifyEmail', 'Email Verification'],
+      ['verifyAndChangeEmail', 'Email Change'],
+      ['resetPassword', 'Reset Password'],
+      ['recoverEmail', 'Email Recovery'],
+    ] as const)('titles %s as "%s"', (mode, title) => {
+      component.mode.set(mode);
+      expect(component.getTitle()).toBe(title);
+    });
+
+    it.each([
+      ['verifyEmail', "You've successfully confirmed your email address!"],
+      ['resetPassword', 'Your password has been reset successfully!'],
+      ['recoverEmail', 'Your email address has been recovered successfully!'],
+    ] as const)('says %s succeeded', (mode, message) => {
+      component.mode.set(mode);
+      expect(component.getSuccessMessage()).toBe(message);
+    });
+
+    it('uses a generic success message before any mode is known', () => {
+      expect(component.getSuccessMessage()).toBe('Action completed successfully!');
+    });
+
+    it.each([
+      ['verifyEmail', 'Verifying your email address...'],
+      ['verifyAndChangeEmail', 'Confirming your new email address...'],
+      ['recoverEmail', 'Recovering your email address...'],
+      ['resetPassword', 'Processing...'],
+    ] as const)('shows "%s" progress text', (mode, message) => {
+      component.mode.set(mode);
+      expect(component.getProcessingMessage()).toBe(message);
+    });
+
+    it('has no success hint for a password reset or before a mode is known', () => {
+      component.mode.set('resetPassword');
+      expect(component.getSuccessHint()).toBeNull();
+      component.mode.set(null);
+      expect(component.getSuccessHint()).toBeNull();
+    });
+
+    it('tells a signed-out visitor to log in, except after an email change (that message already says so)', () => {
+      component.isUserLoggedIn.set(false);
+      component.mode.set('verifyEmail');
+      expect(component.getSuccessHint()).toBe('You can now log in to your account.');
+      component.mode.set('recoverEmail');
+      expect(component.getSuccessHint()).toBe('You can now log in to your account.');
+      component.mode.set('verifyAndChangeEmail');
+      expect(component.getSuccessHint()).toBeNull();
+    });
+
+    it('tells a signed-in user they can use the app', () => {
+      component.isUserLoggedIn.set(true);
+      component.mode.set('verifyEmail');
+      expect(component.getSuccessHint()).toBe(
+        'You can now access all features of the app.'
+      );
+      component.mode.set('recoverEmail');
+      expect(component.getSuccessHint()).toBe(
+        'You can now access all features of the app.'
+      );
     });
   });
 

@@ -4,11 +4,17 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
+import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
+import { AmountDue } from '@models/amount-due';
 import { GuidedTourConfig } from '@models/guided-tour';
+import { Split } from '@models/split';
+import { HelpDialogComponent } from '../../help/help-dialog/help-dialog.component';
+import { FirebaseError } from 'firebase/app';
 import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
+import { MediaQueryService } from '@services/media-query.service';
 import { SplitService } from '@services/split.service';
 import { UserService } from '@services/user.service';
 import { CategoryStore } from '@store/category.store';
@@ -21,6 +27,7 @@ import {
   createMockCategoryStore,
   createMockGroupStore,
   createMockHistoryService,
+  createMockMediaQueryService,
   createMockLoadingService,
   createMockMatDialog,
   createMockMemberStore,
@@ -38,6 +45,7 @@ import {
 import * as firestoreModule from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
 import { SummaryComponent } from './summary.component';
 
@@ -59,6 +67,7 @@ describe('SummaryComponent', () => {
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockUserService: any;
   let mockLocaleService: any;
+  let mockMediaQuery: ReturnType<typeof createMockMediaQueryService>;
 
   beforeEach(async () => {
     mockGroupStore = createMockGroupStore();
@@ -72,6 +81,7 @@ describe('SummaryComponent', () => {
     mockLoadingService = createMockLoadingService();
     mockDialog = createMockMatDialog();
     mockSnackBar = createMockSnackBar();
+    mockMediaQuery = createMockMediaQueryService(false);
 
     // Set up stores with test data
     const testGroup = mockGroup();
@@ -153,6 +163,7 @@ describe('SummaryComponent', () => {
         { provide: HistoryService, useValue: mockHistoryService },
         { provide: UserService, useValue: mockUserService },
         { provide: LocaleService, useValue: mockLocaleService },
+        { provide: MediaQueryService, useValue: mockMediaQuery },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
@@ -447,7 +458,766 @@ describe('SummaryComponent', () => {
     );
   });
 
+  // ---- Coverage pass B -------------------------------------------------
+
+  const rowText = (id: string) =>
+    Array.from(el.querySelectorAll(`[data-testid="${id}"]`)).map((n) =>
+      n.textContent?.trim()
+    );
+  const settle = async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+  /** Answers the next dialog the page opens; resolves when its close handler is done. */
+  function answerNextDialog(result: unknown): () => Promise<void> {
+    let handled: Promise<void> = Promise.resolve();
+    mockDialog.open.mockImplementationOnce((() => ({
+      afterClosed: () => ({
+        subscribe: (cb: (r: unknown) => Promise<void>) => {
+          handled = cb(result);
+        },
+      }),
+    })) as any);
+    return () => handled;
+  }
+  const lastSnackbar = () =>
+    (mockSnackBar.openFromComponent.mock.calls.at(-1) as any)?.[1]?.data
+      ?.message;
+
+  describe('Who the summary is for', () => {
+    it('shows what the selected member owes when they are the debtor', () => {
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      component.selectedMember.set(bob.ref!);
+
+      const [row] = component.summaryData();
+
+      expect(component.summaryData()).toHaveLength(1);
+      expect(row!.owedByMemberRef).toBe(bob.ref);
+      expect(row!.owedToMemberRef).toBe(alice.ref);
+      expect(row!.amount).toBe(10);
+    });
+
+    it('shows nothing when there is no current member', async () => {
+      mockMemberStore.currentMember.set(null);
+      await settle();
+
+      expect(component.selectedMember()).toBeNull();
+      expect(component.summaryData()).toEqual([]);
+    });
+
+    it('lists the selected member’s balances in the table', async () => {
+      await settle();
+
+      expect(rowText('summary-owed-by')).toEqual(['Bob']);
+      expect(rowText('summary-owed-to')).toEqual(['Alice']);
+      expect(rowText('summary-amount')).toEqual(['$10.00']);
+    });
+  });
+
+  describe('Date filtering boundaries', () => {
+    const inJanuary = (day: number, hour = 13) =>
+      new Date(2025, 0, day, hour, 0, 0);
+    beforeEach(() => {
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      mockSplitStore.unpaidSplits.set([
+        mockSplit({
+          id: 'jan-15',
+          date: inJanuary(15),
+          paidByMemberRef: alice.ref!,
+          owedByMemberRef: bob.ref!,
+          allocatedAmount: 30,
+        }),
+      ]);
+    });
+
+    it('includes a split on the end date itself', () => {
+      component.endDate.set(new Date(2025, 0, 15));
+      expect(component.filteredSplits().map((s) => s.id)).toEqual(['jan-15']);
+    });
+
+    it('excludes a split the day after the end date', () => {
+      component.endDate.set(new Date(2025, 0, 14));
+      expect(component.filteredSplits()).toEqual([]);
+    });
+
+    it('includes a split on the start date itself', () => {
+      component.startDate.set(new Date(2025, 0, 15));
+      expect(component.filteredSplits().map((s) => s.id)).toEqual(['jan-15']);
+    });
+
+    it('excludes a split the day before the start date', () => {
+      component.startDate.set(new Date(2025, 0, 16));
+      expect(component.filteredSplits()).toEqual([]);
+    });
+  });
+
+  describe('Detail breakdown by category', () => {
+    it('shows nothing until a row is expanded', () => {
+      expect(component.detailData()).toEqual([]);
+    });
+
+    it('lists only categories that have splits between the two members, with the net amount', () => {
+      mockCategoryStore.groupCategories.set([
+        ...mockCategoryStore.groupCategories(),
+        mockCategory({
+          id: 'travel',
+          name: 'Travel',
+          ref: mockDocRef('groups/group-1/categories/travel'),
+        }),
+      ]);
+      component.onExpandClick(component.summaryData()[0]!);
+
+      const detail = component.detailData();
+
+      expect(detail.map((d) => d.category?.name)).toEqual(['Food']);
+      // Alice paid 30 of it, Bob paid 20: Bob owes Alice the difference.
+      expect(detail[0]!.amount).toBe(10);
+    });
+  });
+
+  /** Brings a third person in, who owes Alice 12: the settlement section needs three. */
+  const addCarol = (userRef: any = mockDocRef('users/carol')) => {
+    const alice = mockMemberStore.groupMembers()[0]!;
+    const bob = mockMemberStore.groupMembers()[1]!;
+    const carol = mockMember({
+      id: 'carol',
+      displayName: 'Carol',
+      userRef,
+      ref: mockDocRef('groups/group-1/members/carol'),
+    });
+    mockMemberStore.groupMembers.set([alice, bob, carol]);
+    mockSplitStore.unpaidSplits.set([
+      ...mockSplitStore.unpaidSplits(),
+      mockSplit({
+        id: 's3',
+        date: new Date(Date.now() - 2 * 86_400_000),
+        paidByMemberRef: alice.ref!,
+        owedByMemberRef: carol.ref!,
+        categoryRef: mockCategoryStore.groupCategories()[0]!.ref!,
+        allocatedAmount: 12,
+      }),
+    ]);
+  };
+
+  describe('Small screens', () => {
+    it('shows both tables on a wide screen, with no view switch', async () => {
+      addCarol();
+      await settle();
+
+      expect(el.querySelector('[data-testid="summary-view-toggle"]')).toBeNull();
+      expect(el.querySelector('[data-testid="summary-row"]')).toBeTruthy();
+      expect(el.querySelector('[data-testid="least-transfers-table"]')).toBeTruthy();
+    });
+
+    it('shows one table at a time and lets the user switch between them', async () => {
+      addCarol();
+      mockMediaQuery.state.set(true);
+      await settle();
+
+      const toggle = el.querySelector(
+        '[data-testid="summary-view-toggle"]'
+      ) as HTMLElement;
+      expect(toggle).toBeTruthy();
+      expect(el.querySelector('[data-testid="summary-row"]')).toBeTruthy();
+      expect(el.querySelector('[data-testid="least-transfers-table"]')).toBeNull();
+
+      (
+        el.querySelector(
+          '[data-testid="summary-view-settlement-toggle"] button'
+        ) as HTMLElement
+      ).click();
+      await settle();
+
+      expect(component.summaryView()).toBe('settlement');
+      expect(el.querySelector('[data-testid="summary-row"]')).toBeNull();
+      expect(el.querySelector('[data-testid="least-transfers-table"]')).toBeTruthy();
+    });
+
+    it('offers no switch when only two people are involved', async () => {
+      mockMediaQuery.state.set(true);
+      await settle();
+
+      expect(el.querySelector('[data-testid="summary-view-toggle"]')).toBeNull();
+      expect(el.querySelector('[data-testid="summary-row"]')).toBeTruthy();
+    });
+  });
+
+  describe('Marking expenses paid', () => {
+    const alice = () => mockMemberStore.groupMembers()[0]!;
+    const bob = () => mockMemberStore.groupMembers()[1]!;
+    let paySplits: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      paySplits = vi.fn().mockResolvedValue(undefined);
+      (mockSplitService as any).paySplitsBetweenMembers = paySplits;
+      // Distinct refs so the history's splitsPaid can be checked.
+      mockSplitStore.unpaidSplits.set(
+        mockSplitStore.unpaidSplits().map(
+          (s, i) =>
+            new Split({
+              ...s,
+              ref: mockDocRef(`groups/group-1/splits/s${i + 1}`),
+            })
+        )
+      );
+    });
+
+    it('opens the payment dialog with the payee name and their payment methods', async () => {
+      mockUserService.getPaymentMethods.mockResolvedValueOnce({
+        venmoId: '@alice',
+        zelleId: 'alice@pay.com',
+      });
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+
+      expect(mockUserService.getPaymentMethods).toHaveBeenCalledWith(
+        alice().ref
+      );
+      expect(mockDialog.open).toHaveBeenCalledWith(PaymentDialogComponent, {
+        data: {
+          payToMemberName: 'Alice',
+          venmoId: '@alice',
+          zelleId: 'alice@pay.com',
+        },
+      });
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('records nothing when the dialog is dismissed', async () => {
+      const handled = answerNextDialog(false);
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+      await handled();
+
+      expect(paySplits).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+    });
+
+    it('marks the splits between the two members paid with a dated history of the net amount', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 2, 5, 12, 0, 0));
+      try {
+        const handled = answerNextDialog(true);
+
+        await component.payExpenses(alice().ref!, bob().ref!);
+        await handled();
+
+        const [s1, s2] = mockSplitStore.unpaidSplits();
+        expect(paySplits).toHaveBeenCalledWith(
+          'group-1',
+          [s1, s2],
+          {
+            paidByMemberRef: bob().ref,
+            paidToMemberRef: alice().ref,
+            date: '2026-03-05',
+            // Alice paid 30 for Bob, Bob paid 20 for Alice: Bob settles 10.
+            totalPaid: 10,
+            splitsPaid: [s1!.ref, s2!.ref],
+          }
+        );
+        expect(lastSnackbar()).toBe('Expenses have been marked paid');
+        expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('leaves out splits that do not involve both members', async () => {
+      const carol = mockDocRef('groups/group-1/members/carol');
+      mockSplitStore.unpaidSplits.set([
+        ...mockSplitStore.unpaidSplits(),
+        mockSplit({
+          id: 'with-carol',
+          date: new Date(Date.now() - 86_400_000),
+          paidByMemberRef: alice().ref!,
+          owedByMemberRef: carol,
+          allocatedAmount: 99,
+          ref: mockDocRef('groups/group-1/splits/with-carol'),
+        }),
+      ]);
+      const handled = answerNextDialog(true);
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+      await handled();
+
+      const paid = paySplits.mock.calls[0]![1] as { id: string }[];
+      expect(paid.map((s) => s.id)).toEqual(['s1', 's2']);
+    });
+
+    it.each([
+      [new Error('write failed'), 'write failed'],
+      ['denied', 'Unknown error'],
+    ])('logs the failure and tells the user (%s)', async (failure, message) => {
+      paySplits.mockRejectedValueOnce(failure);
+      const handled = answerNextDialog(true);
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+      await handled();
+
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Summary Component',
+        'mark_expenses_paid',
+        'Failed to mark expenses paid',
+        message
+      );
+      expect(lastSnackbar()).toBe(
+        'Something went wrong - could not mark expenses paid'
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('starts from the Pay button on a row', async () => {
+      await settle();
+      const open = mockDialog.open.mock.calls.length;
+
+      (
+        el.querySelector('[data-testid="pay-expenses-button"]') as HTMLElement
+      ).click();
+      await settle();
+
+      expect(mockUserService.getPaymentMethods).toHaveBeenCalledWith(
+        alice().ref
+      );
+      expect(mockDialog.open.mock.calls.length).toBe(open + 1);
+    });
+
+    // BUG (new): summary.component.ts:429-433 - payExpenses has try/finally
+    // but no catch around getPaymentMethods. When the payee's payment
+    // methods cannot be read, the click handler's promise rejects unhandled:
+    // the dialog never opens and the user is told nothing (every other
+    // action on this page reports a failure with a snackbar).
+    it.fails('tells the user when the payment methods cannot be loaded', async () => {
+      mockUserService.getPaymentMethods.mockRejectedValueOnce(
+        new Error('offline')
+      );
+
+      await component.payExpenses(alice().ref!, bob().ref!).catch(() => {});
+
+      expect(lastSnackbar()).toEqual(expect.any(String));
+    });
+  });
+
+  describe('Settling the group', () => {
+    let settleGroup: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      settleGroup = vi.fn().mockResolvedValue(undefined);
+      (mockSplitService as any).settleGroup = settleGroup;
+    });
+
+    it('opens nothing when nobody owes anything', () => {
+      mockSplitStore.unpaidSplits.set([]);
+      mockDialog.open.mockClear();
+
+      expect(component.settleGroupAction()).toBeNull();
+      expect(mockDialog.open).not.toHaveBeenCalled();
+    });
+
+    it('shows the transfers and their text in the confirmation', () => {
+      const [transfer] = component.leastTransfers();
+
+      component.settleGroupAction();
+
+      expect(mockDialog.open).toHaveBeenCalledWith(SettleGroupDialogComponent, {
+        data: {
+          transfers: [transfer],
+          settlementText: 'Group Settlement Transfers\n\nBob pays Alice: $10.00',
+        },
+      });
+    });
+
+    it('settles the filtered splits with the transfers once confirmed', async () => {
+      const handled = answerNextDialog(true);
+
+      component.settleGroupAction();
+      await handled();
+
+      expect(settleGroup).toHaveBeenCalledWith(
+        'group-1',
+        component.filteredSplits(),
+        component.leastTransfers()
+      );
+      expect(lastSnackbar()).toBe('Group settlement completed successfully');
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('does nothing when the confirmation is dismissed', async () => {
+      const handled = answerNextDialog(false);
+
+      component.settleGroupAction();
+      await handled();
+
+      expect(settleGroup).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [new Error('write failed'), 'write failed'],
+      ['denied', 'Unknown error'],
+    ])('logs the failure and tells the user (%s)', async (failure, message) => {
+      settleGroup.mockRejectedValueOnce(failure);
+      const handled = answerNextDialog(true);
+
+      component.settleGroupAction();
+      await handled();
+
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Summary Component',
+        'settle_group',
+        'Failed to settle group',
+        message
+      );
+      expect(lastSnackbar()).toBe(
+        'Something went wrong - could not settle group'
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('starts from the Settle Group button', async () => {
+      addCarol();
+      await settle();
+      mockDialog.open.mockClear();
+
+      (
+        el.querySelector('[data-testid="settle-group-button"]') as HTMLElement
+      ).click();
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        SettleGroupDialogComponent,
+        expect.anything()
+      );
+    });
+  });
+
+  describe('Copying to the clipboard', () => {
+    let originalClipboard: PropertyDescriptor | undefined;
+    let writeText: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      originalClipboard = Object.getOwnPropertyDescriptor(
+        navigator,
+        'clipboard'
+      );
+      writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      if (originalClipboard) {
+        Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      } else {
+        delete (navigator as any).clipboard;
+      }
+    });
+
+    it('copies the aligned category breakdown for an expanded row', async () => {
+      const row = component.summaryData()[0]!;
+      component.onExpandClick(row);
+
+      await component.copySummaryToClipboard(row);
+
+      expect(writeText).toHaveBeenCalledWith(
+        [
+          'Expenses Summary',
+          'Bob owes Alice $10.00',
+          '',
+          'Breakdown by Category:',
+          '=============',
+          'Food:  $10.00',
+        ].join('\n')
+      );
+      expect(lastSnackbar()).toBe('Summary copied to clipboard');
+    });
+
+    it('copies just the headline when no breakdown is open, with "Unknown" for missing members', async () => {
+      await component.copySummaryToClipboard(
+        new AmountDue({
+          owedByMemberRef: mockDocRef('groups/group-1/members/x'),
+          owedToMemberRef: mockDocRef('groups/group-1/members/y'),
+          amount: 5,
+        })
+      );
+
+      expect(writeText).toHaveBeenCalledWith(
+        'Expenses Summary\nUnknown owes Unknown $5.00'
+      );
+    });
+
+    it('copies from the row’s copy button', async () => {
+      await settle();
+      (
+        el.querySelector('[data-testid="summary-row"]') as HTMLElement
+      ).click();
+      await settle();
+
+      (
+        el.querySelector('[data-testid="copy-summary-button"]') as HTMLElement
+      ).click();
+      await settle();
+
+      expect(writeText).toHaveBeenCalledTimes(1);
+      expect(writeText.mock.calls[0]![0]).toContain('Bob owes Alice $10.00');
+    });
+
+    it('copies every settlement transfer', async () => {
+      await component.copySettlementToClipboard();
+
+      expect(writeText).toHaveBeenCalledWith(
+        'Group Settlement Transfers\n\nBob pays Alice: $10.00'
+      );
+      expect(lastSnackbar()).toBe('Settlement copied to clipboard');
+    });
+
+    it('uses "Unknown" for a payee who is no longer in the group', async () => {
+      mockMemberStore.groupMembers.set([mockMemberStore.groupMembers()[1]!]);
+      mockMemberStore.currentMember.set(mockMemberStore.groupMembers()[0]!);
+      await settle();
+
+      await component.copySettlementToClipboard();
+
+      expect(writeText).toHaveBeenCalledWith(
+        'Group Settlement Transfers\n\nBob pays Unknown: $10.00'
+      );
+    });
+
+    it('copies the settlement from its button', async () => {
+      addCarol();
+      await settle();
+
+      (
+        el.querySelector('[data-testid="copy-settlement-button"]') as HTMLElement
+      ).click();
+      await settle();
+
+      expect(writeText).toHaveBeenCalledWith(
+        'Group Settlement Transfers\n\nCarol pays Alice: $12.00\nBob pays Alice: $10.00'
+      );
+    });
+
+    it('uses "Unknown" for a settlement member who is no longer in the group', async () => {
+      mockMemberStore.groupMembers.set([mockMemberStore.groupMembers()[0]!]);
+      await settle();
+
+      await component.copySettlementToClipboard();
+
+      expect(writeText).toHaveBeenCalledWith(
+        'Group Settlement Transfers\n\nUnknown pays Alice: $10.00'
+      );
+    });
+
+    it.each([
+      ['summary', (c: SummaryComponent) => c.copySummaryToClipboard(new AmountDue({
+        owedByMemberRef: mockDocRef('a/b'),
+        owedToMemberRef: mockDocRef('a/c'),
+        amount: 1,
+      })), 'copy_summary_to_clipboard', 'Failed to copy summary to clipboard', 'Failed to copy summary'],
+      ['settlement', (c: SummaryComponent) => c.copySettlementToClipboard(), 'copy_settlement_to_clipboard', 'Failed to copy settlement to clipboard', 'Failed to copy settlement'],
+    ])(
+      'reports a refused %s copy: the Error text and a log, or a generic message',
+      async (_what, copy, event, logMessage, generic) => {
+        writeText.mockRejectedValueOnce(new Error('Document is not focused'));
+        await copy(component);
+        expect(lastSnackbar()).toBe('Document is not focused');
+        expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+          'Summary Component',
+          event,
+          logMessage,
+          'Document is not focused'
+        );
+
+        mockAnalyticsService.logError.mockClear();
+        writeText.mockRejectedValueOnce('denied');
+        await copy(component);
+        expect(lastSnackbar()).toBe(generic);
+        expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+      }
+    );
+  });
+
+  describe('Requesting payment failures', () => {
+    it.each([
+      [new Error('callable failed'), 'callable failed'],
+      ['denied', 'Unknown error'],
+    ])('logs a failed request and tells the user (%s)', async (failure, message) => {
+      mockUserService.sendPaymentRequestEmail = vi
+        .fn()
+        .mockRejectedValue(failure);
+
+      await component.requestPayment(component.summaryData()[0]!);
+
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Summary Component',
+        'request_payment',
+        'Failed to send payment request',
+        message
+      );
+      expect(lastSnackbar()).toBe(
+        'Something went wrong - could not send payment request'
+      );
+      expect(mockLoadingService.loadingOn).toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it.each([
+      [new Error('callable failed'), 'callable failed'],
+      ['denied', 'Unknown error'],
+    ])('logs a failed request-all and tells the user (%s)', async (failure, message) => {
+      mockUserService.sendGroupPaymentRequestEmails = vi
+        .fn()
+        .mockRejectedValue(failure);
+
+      await component.requestAllPayments();
+
+      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
+        'Summary Component',
+        'request_all_payments',
+        'Failed to send group payment requests',
+        message
+      );
+      expect(lastSnackbar()).toBe(
+        'Something went wrong - could not send payment requests'
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('opens the App Check dialog instead when the callable is refused as unauthenticated', async () => {
+      mockUserService.sendPaymentRequestEmail = vi
+        .fn()
+        .mockRejectedValue(
+          new FirebaseError('functions/unauthenticated', 'unauthenticated')
+        );
+      mockSnackBar.openFromComponent.mockClear();
+
+      await component.requestPayment(component.summaryData()[0]!);
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        { disableClose: false, maxWidth: '80vw' }
+      );
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+    });
+
+    it('sends a request from the row’s button, and disables it for a member who is not a registered user', async () => {
+      mockUserService.sendPaymentRequestEmail = vi
+        .fn()
+        .mockResolvedValue('sent');
+      await settle();
+      const button = () =>
+        el.querySelector(
+          '[data-testid="request-payment-button"]'
+        ) as HTMLButtonElement;
+      expect(button().disabled).toBe(false);
+
+      button().click();
+      await settle();
+
+      expect(mockUserService.sendPaymentRequestEmail).toHaveBeenCalledTimes(1);
+      expect(lastSnackbar()).toBe('Payment request email sent successfully');
+
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      mockMemberStore.groupMembers.set([
+        alice,
+        mockMember({
+          id: 'bob',
+          displayName: 'Bob',
+          userRef: null as any,
+          ref: bob.ref,
+        }),
+      ]);
+      await settle();
+      expect(button().disabled).toBe(true);
+    });
+
+    it('sends one request per settlement transfer from the Request All Payments button', async () => {
+      addCarol();
+      mockUserService.sendGroupPaymentRequestEmails = vi
+        .fn()
+        .mockResolvedValue({ sent: 2, skipped: 0 });
+      await settle();
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      const carol = mockMemberStore.groupMembers()[2]!;
+
+      (
+        el.querySelector(
+          '[data-testid="request-all-payments-button"]'
+        ) as HTMLElement
+      ).click();
+      await settle();
+
+      expect(
+        mockUserService.sendGroupPaymentRequestEmails
+      ).toHaveBeenCalledWith('group-1', [
+        { owedByMemberRef: carol.ref, owedToMemberRef: alice.ref, amount: 12 },
+        { owedByMemberRef: bob.ref, owedToMemberRef: alice.ref, amount: 10 },
+      ]);
+      expect(lastSnackbar()).toBe('Payment request(s) sent to 2 member(s)');
+    });
+
+    it('disables Request All Payments when nobody who owes is a registered user', async () => {
+      addCarol(null);
+      const alice = mockMemberStore.groupMembers()[0]!;
+      const bob = mockMemberStore.groupMembers()[1]!;
+      const carol = mockMemberStore.groupMembers()[2]!;
+      mockMemberStore.groupMembers.set([
+        alice,
+        mockMember({ ...bob, userRef: null as any }),
+        carol,
+      ]);
+      await settle();
+
+      expect(component['hasEmailableRecipients']()).toBe(false);
+      expect(
+        (
+          el.querySelector(
+            '[data-testid="request-all-payments-button"]'
+          ) as HTMLButtonElement
+        ).disabled
+      ).toBe(true);
+    });
+
+    it('enables Request All Payments when at least one person who owes is a registered user', async () => {
+      addCarol(null);
+      await settle();
+
+      // Bob (registered) still owes Alice.
+      expect(component['hasEmailableRecipients']()).toBe(true);
+      expect(
+        (
+          el.querySelector(
+            '[data-testid="request-all-payments-button"]'
+          ) as HTMLButtonElement
+        ).disabled
+      ).toBe(false);
+    });
+  });
+
   describe('Help', () => {
+    it('opens the Summary section of the help dialog from the help button', () => {
+      mockDialog.open.mockClear();
+
+      (
+        el.querySelector('[data-testid="summary-help-button"]') as HTMLElement
+      ).click();
+
+      // The button starts the tour; the full help is reached from the tour.
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      component.showHelp();
+      expect(mockDialog.open).toHaveBeenCalledWith(HelpDialogComponent, {
+        disableClose: false,
+        maxWidth: '80vw',
+        data: { sectionId: 'summary' },
+      });
+    });
+
     it('should show help button', () => {
       const helpButton = el.querySelector(
         '[data-testid="summary-help-button"]'
@@ -577,6 +1347,32 @@ describe('SummaryComponent', () => {
       tourConfig.onEnd!('closed');
       expect(ref.close).toHaveBeenCalled();
       expect(component.summaryView()).toBe('individual');
+    });
+
+    it('should add a sample category for the breakdown when the group has none', async () => {
+      mockSplitStore.unpaidSplits.set([]);
+      mockCategoryStore.groupCategories.set([]);
+
+      component.startTour();
+      await runStep('breakdown');
+
+      expect(component.detailData().map((d) => d.category?.name)).toEqual([
+        'Default',
+      ]);
+      tourConfig.onEnd!('closed');
+      expect(component.detailData()).toEqual([]);
+    });
+
+    it('should open the full help from the tour', () => {
+      component.startTour();
+
+      tourConfig.fullHelp!();
+
+      expect(mockDialog.open).toHaveBeenCalledWith(HelpDialogComponent, {
+        disableClose: false,
+        maxWidth: '80vw',
+        data: { sectionId: 'summary' },
+      });
     });
 
     it('should stop the tour when the page is destroyed', () => {

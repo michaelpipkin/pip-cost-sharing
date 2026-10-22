@@ -9,7 +9,9 @@ import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog
 import { FirebaseError } from 'firebase/app';
 import * as firestoreModule from 'firebase/firestore';
 import * as authModule from 'firebase/auth';
+import * as appCheckModule from 'firebase/app-check';
 import * as functionsModule from 'firebase/functions';
+import { initAppCheck, resetAppCheckForTesting } from '../app-check';
 import { UserService } from './user.service';
 import { UserStore } from '@store/user.store';
 import { GroupStore } from '@store/group.store';
@@ -1095,6 +1097,384 @@ describe('UserService', () => {
         { merge: true }
       );
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+    });
+  });
+
+  describe('coverage pass: diagnostics, failure logging and edge cases', () => {
+    const unverifiedUser = () => ({
+      uid: 'user-123',
+      email: 'alice@test.com',
+      emailVerified: false,
+      providerData: [{ providerId: 'password' }],
+    });
+    const failure = (message: string) =>
+      [
+        ['an Error', new Error(message), message],
+        ['a non-Error', message, 'Unknown error'],
+      ] as const;
+
+    afterEach(() => {
+      resetAppCheckForTesting();
+    });
+
+    describe('App Check readiness at sign-in', () => {
+      it('keeps loading the account and logs the rejection reason when no App Check token is confirmed', async () => {
+        initAppCheck({} as any);
+        vi.spyOn(appCheckModule, 'getToken').mockRejectedValue(
+          new Error('low score')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(mockAnalytics.logAppCheckStatus).toHaveBeenCalledWith({
+          ready: false,
+          reason: 'error',
+          detail: 'low score',
+        });
+        expect(mockAnalytics.logError).toHaveBeenCalledWith(
+          'User Service',
+          'initializeAuth',
+          'Proceeding without confirmed App Check token',
+          'error: low score'
+        );
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+      });
+
+      it('logs only the reason when the token is still in flight after the wait', async () => {
+        initAppCheck({} as any);
+        vi.spyOn(appCheckModule, 'getToken').mockReturnValue(
+          new Promise(() => {}) as any
+        );
+        vi.useFakeTimers();
+        try {
+          const callback = await getAuthStateCallback(service);
+
+          const done = callback(unverifiedUser() as any);
+          await vi.advanceTimersByTimeAsync(10_000);
+          await done;
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'initializeAuth',
+            'Proceeding without confirmed App Check token',
+            'timeout'
+          );
+          expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('logs nothing about App Check when the token is ready', async () => {
+        initAppCheck({} as any);
+        vi.spyOn(appCheckModule, 'getToken').mockResolvedValue({
+          token: 'abc',
+        } as any);
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(mockAnalytics.logAppCheckStatus).toHaveBeenCalledWith({
+          ready: true,
+          reason: 'ready',
+        });
+        expect(mockAnalytics.logError).not.toHaveBeenCalledWith(
+          'User Service',
+          'initializeAuth',
+          'Proceeding without confirmed App Check token',
+          expect.anything()
+        );
+      });
+    });
+
+    describe('waiting for the server-created profile', () => {
+      it('falls back to creating the profile at once when the listener fails, without waiting out the timeout', async () => {
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          ((_ref: any, _onNext: any, onError: any) => {
+            setTimeout(() => onError(new Error('listen failed')), 0);
+            return vi.fn();
+          }) as any
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(mockAnalytics.logSnapshotError).toHaveBeenCalledWith(
+          'User Service',
+          'waitForServerCreatedUser',
+          'Failed to listen for server-created user profile',
+          'listen failed'
+        );
+        expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1);
+        expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+          mockDocRef,
+          expect.objectContaining({ email: '', defaultGroupRef: null })
+        );
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+      });
+
+      it('logs "Unknown error" when the listener fails with something that is not an Error', async () => {
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          ((_ref: any, _onNext: any, onError: any) => {
+            onError({ code: 'permission-denied' });
+            return vi.fn();
+          }) as any
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(mockAnalytics.logSnapshotError).toHaveBeenCalledWith(
+          'User Service',
+          'waitForServerCreatedUser',
+          'Failed to listen for server-created user profile',
+          'Unknown error'
+        );
+      });
+
+      it('takes the first profile the listener delivers and stops listening, ignoring later snapshots', async () => {
+        const unsubscribe = vi.fn();
+        vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+          ((_ref: any, onNext: any) => {
+            setTimeout(() => {
+              onNext(makeUserSnap(true, { email: '' }));
+              onNext(makeUserSnap(true, { email: 'late@test.com' }));
+            }, 0);
+            return unsubscribe;
+          }) as any
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback(unverifiedUser() as any);
+
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        expect(mockUserStore.initUser).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'user-123', email: '' }),
+          false,
+          false
+        );
+        expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('session start edge cases', () => {
+      it('does not write or refresh the token for a verified user who has no sign-in address', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: '' }) as any
+        );
+        const getIdTokenResult = vi.fn();
+        const callback = await getAuthStateCallback(service);
+
+        await callback({
+          ...unverifiedUser(),
+          email: null,
+          emailVerified: true,
+          getIdTokenResult,
+        } as any);
+
+        expect(getIdTokenResult).not.toHaveBeenCalled();
+        expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+        expect(mockUserStore.initUser).toHaveBeenCalledWith(
+          expect.objectContaining({ email: '' }),
+          false,
+          true
+        );
+      });
+
+      it('does not write when the refreshed token carries no address', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: '' }) as any
+        );
+        const callback = await getAuthStateCallback(service);
+
+        await callback({
+          ...unverifiedUser(),
+          emailVerified: true,
+          getIdTokenResult: vi
+            .fn()
+            .mockResolvedValue({ claims: { email_verified: true } }),
+        } as any);
+
+        expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      });
+
+      it.each(failure('boom'))(
+        'logs the load failure for %s',
+        async (_label, thrown, message) => {
+          vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(thrown);
+          const callback = await getAuthStateCallback(service);
+
+          await callback(unverifiedUser() as any);
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'initializeAuth',
+            'Failed to initialize user',
+            message
+          );
+          expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+        }
+      );
+
+      it('still reports a load failure that is not a revoked session while a sign-out is expected', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
+          new Error('network error')
+        );
+        const callback = await getAuthStateCallback(service);
+
+        service.expectSignOut(true);
+        await callback(unverifiedUser() as any);
+
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+          expect.anything(),
+          {
+            data: {
+              message:
+                'Something went wrong loading your account. Please try again.',
+            },
+          }
+        );
+      });
+
+      it.each(failure('denied'))(
+        'logs a failed persistence setup for %s and still listens',
+        async (_label, thrown, message) => {
+          vi.spyOn(authModule, 'setPersistence').mockRejectedValueOnce(thrown);
+
+          await (service as any).initializeAuth();
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'initializeAuth',
+            'Failed to set auth persistence',
+            message
+          );
+          expect(mockAuth.onAuthStateChanged).toHaveBeenCalled();
+        }
+      );
+    });
+
+    describe('reporting a lost session once', () => {
+      it('shows the expired-session notice once for repeated losses, and again after the next successful sign-in', async () => {
+        userSignal.set({ id: 'user-123' });
+        const callback = await getAuthStateCallback(service);
+
+        await callback(null);
+        await callback(null);
+
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledTimes(1);
+        expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+
+        await callback(unverifiedUser() as any);
+        await callback(null);
+
+        expect(mockSnackBar.openFromComponent).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('user document failures', () => {
+      it.each(failure('read failed'))(
+        'logs and rethrows a getUserDetails failure for %s',
+        async (_label, thrown, message) => {
+          vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(thrown);
+
+          await expect(service.getUserDetails('user-123')).rejects.toBe(thrown);
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'getUserDetails',
+            'Failed to get user details',
+            message
+          );
+        }
+      );
+
+      it.each(failure('write failed'))(
+        'logs and rethrows when creating the profile fails for %s',
+        async (_label, thrown, message) => {
+          vi.spyOn(firestoreModule, 'setDoc').mockRejectedValueOnce(thrown);
+
+          await expect(
+            service.createUserIfNotExists('new-user')
+          ).rejects.toBe(thrown);
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'createUserIfNotExists',
+            'Failed to create user',
+            message
+          );
+        }
+      );
+
+      it.each(failure('write failed'))(
+        'logs, rethrows and leaves the store alone when updating the user fails for %s',
+        async (_label, thrown, message) => {
+          (mockAuth as any).currentUser = { uid: 'user-123' };
+          vi.spyOn(firestoreModule, 'setDoc').mockRejectedValueOnce(thrown);
+
+          await expect(
+            service.updateUser({ venmoId: '@alice' })
+          ).rejects.toBe(thrown);
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'updateUser',
+            'Failed to update user',
+            message
+          );
+          expect(mockUserStore.updateUser).not.toHaveBeenCalled();
+        }
+      );
+    });
+
+    describe('getPaymentMethods', () => {
+      const memberRef = { id: 'member-1' } as any;
+
+      it('reads the member, then the user it points at, and answers empty strings for payment ids the user never set', async () => {
+        const userRef = { id: 'user-1' };
+        vi.spyOn(firestoreModule, 'getDoc')
+          .mockResolvedValueOnce({
+            exists: () => true,
+            data: () => ({ userRef }),
+          } as any)
+          .mockResolvedValueOnce({
+            exists: () => true,
+            data: () => ({}),
+          } as any);
+
+        const result = await service.getPaymentMethods(memberRef);
+
+        expect(vi.mocked(firestoreModule.getDoc).mock.calls).toEqual([
+          [memberRef],
+          [userRef],
+        ]);
+        expect(result).toEqual({
+          venmoId: '',
+          paypalId: '',
+          cashAppId: '',
+          zelleId: '',
+        });
+      });
+
+      it.each(failure('read failed'))(
+        'logs and rethrows a failure for %s',
+        async (_label, thrown, message) => {
+          vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(thrown);
+
+          await expect(service.getPaymentMethods(memberRef)).rejects.toBe(
+            thrown
+          );
+
+          expect(mockAnalytics.logError).toHaveBeenCalledWith(
+            'User Service',
+            'getPaymentMethods',
+            'Failed to get payment methods',
+            message
+          );
+        }
+      );
     });
   });
 });
