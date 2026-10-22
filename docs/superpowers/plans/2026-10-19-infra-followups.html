@@ -92,7 +92,7 @@
   <li class="done">Task 1 <code>6348a100</code> test-runner and wrapper edge cases. Task 2 <code>885deca7</code> test-infra follow-ups. Task 3 <code>6c81a485</code>, <code>b634fde2</code> utilities, pipes, directives. Task 4 <code>b2e4739e</code> stores, loading, tour dialogs. Task 5 <code>46ffa040</code> admin error log, dialogs, admin services. Task 6 <code>b3186d0d</code> account pages and edit resolvers. Task 7 <code>99e51de1</code>, <code>ab5f1cc3</code> table filters and calculator overlay. Task 8 <code>0ee3682f</code>, <code>eab8996e</code> rental grid. Task 9 <code>f2726a85</code>, <code>483b0eca</code> common helpers, onboarding, email-lower triggers, mail queue. Task 10 <code>32e6c4f5</code> callable guards and outcomes. Task 11 <code>a51597be</code> receipt cleanup and payment emails. Task 12 <code>15584639</code>, <code>16e36ab9</code> admin report callables and builders. Task 13 <code>d777b73a</code>, <code>147800ca</code> expense and history pages. Task 14 <code>7c9a0c45</code>, <code>763612f0</code> core services and auth pages. Task 15: this close-out.</li>
   <li>Not tested on purpose: route tables, interfaces, config files, the four plain stores, <code>kill-test-ports.mjs</code>, <code>areas.mjs</code> data, <code>scanReceipt</code>'s OCR path (needs network language data), and the dead code listed in B11.</li>
 </ul>
-<p class="note">Results: see "Plan 4 verification" below.</p>
+<p class="note">Results: see "Plan 4 verification (closing gate)" below.</p>
 
 <h2>Plan 4 — pinned bugs (owner decisions)</h2>
 <p>Every bug found while writing tests was pinned with <code>it.fails</code> and a <code>// BUG (Bn)</code> comment, asserting the CORRECT behaviour. A fix removes exactly the <code>.fails</code> and keeps the assertion. <strong>Eleven pins remain, all owner-deferred: 6 in app specs (6 expected failures) and 5 in Cloud Functions specs</strong> (B6 &times;1, B9 &times;4, B10 &times;6). Every other bug below is fixed and its test is an ordinary passing test. A fresh <code>grep -rn "it\.fails\|test\.fail(" src functions/src e2e</code> lists exactly these eleven; <code>grep -rn "BUG (" src functions/src</code> lists their comments. Line numbers are the pin's <code>it.fails</code> line, re-checked after the final fix wave.</p>
@@ -135,15 +135,17 @@
   <li><strong>Open tabs need a reload before email edits work.</strong> A tab (or the Android app, which loads the live site) opened before the release keeps the old edit-member code: an admin's save that changes a linked member's email, and a member's own email change, are refused by the new rules until that tab reloads. Expect a few "Missing or insufficient permissions" reports on release day; reloading fixes them.</li>
 </ol>
 
-<h2>Plan 4 verification (quick checks; closing gate deferred)</h2>
-<p><strong>The full closing gate is deferred.</strong> The owner is adding the verified group-email feature after this fix wave, which would make a gate run now stale. After that feature lands, run: every area in full (<code>pnpm test:area &lt;area&gt;</code>, unit + functions + e2e, the 16 areas one after another), then three back-to-back full <code>pnpm e2e</code> runs at 2 workers (all green, 0 flaky), and record the results here. Results from before the final fix waves (Phase A, HEAD <code>763612f0</code>): all 16 areas green in unit mode, a full e2e run 219/219 (an earlier one 217/219 on two <code>admin.spec.ts</code> timeouts in <code>page.goto('/auth/login')</code>, the known machine-stall class; the admin area alone passed 7/7 and the repeat full run 219/219). FW1 (security) ran 6 areas in full and a full e2e run of 227/227; FW2 (B15-B18) ran 6 areas in full; neither is the full gate.</p>
-<p>Quick checks after fix wave 3 (HEAD after commits <code>19cd298e</code> and <code>ec4096b3</code>, plus the docs commit):</p>
+<h2>Plan 4 verification (closing gate, 2026-10-22)</h2>
+<p>The closing gate ran after B19 and B20 landed, on branch <code>unit-gaps</code> at the docs commit that precedes this one (<code>79b72fd2</code>); no defects were found and no code changed during the gate. The earlier quick checks and pre-gate runs are superseded by these results.</p>
 <ul>
-  <li><code>pnpm test:coverage</code> (app unit suite): 157 files passed; 2577 tests passed | 6 expected fail (2583). Coverage (V8, includes the <code>src/testing</code> helpers): 83.42% statements, 81.02% branches, 78.31% functions, 86.18% lines. Before Plan 4 (dev <code>6e125942</code>): 72.1 / 65.5 / 64.8 / 74.3; unit suite 118 files / 1573 tests.</li>
-  <li><code>pnpm --dir functions test</code>: 29 files passed; 486 tests passed | 5 expected fail (491).</li>
+  <li><code>pnpm test --coverage</code> (app unit suite): 162 files passed; 2741 tests passed | 6 expected fail (2747). Coverage (V8, includes the <code>src/testing</code> helpers): 83.83% statements (12730/15184), 81.65% branches (4367/5348), 78.77% functions (2149/2728), 86.57% lines (10671/12326). Before Plan 4: 72.1 / 65.5 / 64.8 / 74.3.</li>
+  <li><code>pnpm --dir functions test</code> (functions rebuilt first): 30 files passed; 513 tests passed | 5 expected fail (518).</li>
   <li><code>pnpm test:scripts</code>: 128 tests, 128 pass, 0 fail.</li>
-  <li><code>pnpm test:area --check</code>: 157 unit specs, 29 functions specs, 227 e2e tests; every test is assigned to an area.</li>
+  <li><code>pnpm test:area --check</code>: 162 unit specs, 30 functions specs, 243 e2e tests; every test is assigned to an area.</li>
   <li><code>ng build</code>: succeeded.</li>
+  <li>Every area in full (<code>pnpm test:area &lt;area&gt;</code>: unit, then Cloud Functions, then e2e), one after another, 16 of 16 passing with 0 failed and 0 flaky. e2e tests passed per area: shell 55, auth 82, account 95, groups 94, members 93, categories 50, expenses 67, rental 49, receipts 49, memorized 52, summary 59, history 53, split 51, home 46, help 59, admin 50.</li>
+  <li>Three back-to-back full <code>pnpm e2e --workers 2</code> runs: 243 passed in each (13.0, 13.2 and 13.5 min), 0 failed, 0 flaky, 0 skipped.</li>
+  <li>The 11 <code>it.fails</code> pins (6 app, 5 functions) are the expected failures above; <code>grep -rn "it\.fails" src functions/src</code> lists exactly eleven.</li>
 </ul>
 
 <h2>Owner</h2>
