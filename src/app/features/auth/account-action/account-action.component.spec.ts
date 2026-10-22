@@ -760,19 +760,27 @@ describe('AccountActionComponent', () => {
       expect(errors()).toEqual([]);
     });
 
-    // BUG (new): account-action.component.html:82 - the form does hold the
-    // error (previous test) and the confirm field is touched, but the message
-    // sits in a <mat-error> whose form field's own control is not in error
-    // state, so Material never renders it. The user is left with a disabled
-    // Reset button and no explanation. Fix-agnostic: the text may come back in
-    // a mat-error or a plain div (as reset-password and register do).
-    it.fails('shows "Passwords do not match." in the form once the confirm field is left', async () => {
+    // Regression for B17: the message sat in a <mat-error> inside the field,
+    // but the mismatch error lives on the form root, so the field never
+    // entered its error state and Material never rendered it. It now shows
+    // below the field, as on the reset-password and register pages.
+    it('shows "Passwords do not match." in the form once the confirm field is left', async () => {
       await fill('newpassword123', 'different123');
       await leaveConfirmField();
 
       expect(
         fixture.nativeElement.querySelector('.reset-password-form').textContent
       ).toContain('Passwords do not match.');
+    });
+
+    it('does not show the mismatch message once the passwords match', async () => {
+      await fill('newpassword123', 'different123');
+      await leaveConfirmField();
+      await fill('newpassword123', 'newpassword123');
+
+      expect(
+        fixture.nativeElement.querySelector('.reset-password-form').textContent
+      ).not.toContain('Passwords do not match.');
     });
 
     it('submits the form with the typed password and confirms in the UI', async () => {

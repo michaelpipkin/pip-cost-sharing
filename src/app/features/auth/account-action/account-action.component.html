@@ -79,10 +79,15 @@
                   {{ hideConfirmPassword() ? 'visibility_off' : 'visibility' }}
                 </mat-icon>
               </button>
-              @if (resetPasswordForm().errors().some(e => e.message === 'Passwords do not match.')) {
-                <mat-error>Passwords do not match.</mat-error>
-              }
             </mat-form-field>
+            @if (
+              resetPasswordForm().errors().some(e => e.message === 'Passwords do not match.') &&
+              resetPasswordForm.confirmPassword().touched()
+            ) {
+              <div class="form-error" data-testid="account-action-password-mismatch-error">
+                Passwords do not match.
+              </div>
+            }
 
             <div class="form-actions">
               <button
