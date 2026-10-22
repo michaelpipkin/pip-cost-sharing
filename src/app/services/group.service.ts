@@ -236,20 +236,29 @@ export class GroupService implements IGroupService {
       });
     });
 
-    this.groupStore.setAllUserGroups(groups);
+    // Published at once, but not counted as loaded until the selection below
+    // has loaded too (see #markGroupsLoaded).
+    this.groupStore.setAllUserGroups(groups, false);
 
     const user = this.userStore.user();
     const userRef = user?.ref;
-    if (!userRef) return;
+    if (!userRef) {
+      this.#markGroupsLoaded();
+      return;
+    }
 
-    const defaultGroupRef = await this.resolveDefaultGroupRef(
-      user?.defaultGroupRef ?? null,
-      groups,
-      userRef
-    );
+    try {
+      const defaultGroupRef = await this.resolveDefaultGroupRef(
+        user?.defaultGroupRef ?? null,
+        groups,
+        userRef
+      );
 
-    if (!this.groupStore.skipAutoSelect()) {
-      await this.autoSelectGroup(groups, defaultGroupRef, userRef);
+      if (!this.groupStore.skipAutoSelect()) {
+        await this.autoSelectGroup(groups, defaultGroupRef, userRef);
+      }
+    } finally {
+      this.#markGroupsLoaded();
     }
 
     // Handle auto-navigation for bookmarked/direct home page visits
@@ -286,6 +295,17 @@ export class GroupService implements IGroupService {
         this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       }
     }
+  }
+
+  // groupGuard reads "groups loaded, no current group" as "this user has no
+  // group" and sends them to Groups. A session start empties the current
+  // group and the groups list arrives before the auto-selected group's own
+  // read, so the groups count as loaded only once no selection is still
+  // loading; otherwise a navigation in between (e.g. right after a full page
+  // load) landed on Groups. A selection still loading marks them itself when
+  // it finishes (getGroup).
+  #markGroupsLoaded(): void {
+    if (this.#pendingGroupId === null) this.groupStore.setLoadedState(true);
   }
 
   // Where the user is: router.url, or - while a navigation is in flight -
@@ -495,7 +515,10 @@ export class GroupService implements IGroupService {
       );
       throw error;
     } finally {
-      if (!isSuperseded()) this.#pendingGroupId = null;
+      if (!isSuperseded()) {
+        this.#pendingGroupId = null;
+        this.groupStore.setLoadedState(true);
+      }
     }
   }
 

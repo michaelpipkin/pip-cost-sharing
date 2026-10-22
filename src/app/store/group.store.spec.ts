@@ -20,6 +20,22 @@ describe('GroupStore', () => {
       expect(store.loaded()).toBe(true);
     });
 
+    it('should store the groups without changing loaded when markLoaded is false', () => {
+      const store = setup();
+      const groups = [mockGroup({ id: 'a' })];
+
+      store.setAllUserGroups(groups, false);
+
+      expect(store.allUserGroups()).toEqual(groups);
+      expect(store.loaded()).toBe(false);
+
+      store.setLoadedState(true);
+      store.setAllUserGroups([], false);
+
+      expect(store.allUserGroups()).toEqual([]);
+      expect(store.loaded()).toBe(true);
+    });
+
     it('should reset groups, current group and loaded, but leave skipAutoSelect alone', () => {
       const store = setup();
       store.setAllUserGroups([mockGroup({ id: 'a' })]);
