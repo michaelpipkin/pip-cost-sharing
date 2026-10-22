@@ -379,8 +379,38 @@ describe('AccountProfileComponent', () => {
   });
 
   describe('syncMemberEmails()', () => {
+    // M8: the address comes from a freshly refreshed ID token (only a
+    // verified one), not the possibly stale profile email.
+    let tokenClaims: Record<string, unknown>;
+    const syncAuth = {
+      currentUser: {
+        email: 'test@example.com',
+        emailVerified: true,
+        getIdTokenResult: vi.fn(async () => ({ claims: tokenClaims })),
+      },
+    };
+
     beforeEach(async () => {
-      await createComponent();
+      tokenClaims = { email: 'token@example.com', email_verified: true };
+      await createComponent(syncAuth as any);
+    });
+
+    it('should write the verified token email, not the profile email', async () => {
+      await component.syncMemberEmails();
+      expect(syncAuth.currentUser.getIdTokenResult).toHaveBeenCalledWith(true);
+      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
+        mockUserStore.user()!.ref,
+        'token@example.com'
+      );
+    });
+
+    it('should skip, asking for verification, without a verified token email', async () => {
+      tokenClaims = { email: 'token@example.com', email_verified: false };
+      await component.syncMemberEmails();
+      expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
+      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
+      expect(data?.message).toBe('Verify your login email first.');
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
     it('should call loadingOn and updateAllMemberEmails', async () => {

@@ -37,7 +37,7 @@ import {
   sendEmailVerification,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
-import { singleEmail } from '@utils/email-validation';
+import { isSingleEmailAddress, singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-account-profile',
@@ -93,6 +93,17 @@ export class AccountProfileComponent {
   #signInEmail(): string {
     const profileEmail = this.currentUser()?.email ?? '';
     return this.auth.currentUser?.email ?? profileEmail;
+  }
+
+  /** The refreshed ID token's address when verified and valid, else ''. */
+  async #verifiedTokenEmail(): Promise<string> {
+    const firebaseUser = this.auth.currentUser;
+    if (!firebaseUser) return '';
+    const { claims } = await firebaseUser.getIdTokenResult(true);
+    const email = claims['email'];
+    return claims['email_verified'] === true && isSingleEmailAddress(email)
+      ? email
+      : '';
   }
 
   #actionCodeSettings(): ActionCodeSettings {
@@ -197,11 +208,21 @@ export class AccountProfileComponent {
   async syncMemberEmails(): Promise<void> {
     this.loading.loadingOn();
     try {
+      // The rules accept a linked member email only when it is the caller's
+      // verified token address, so take it from a freshly refreshed token
+      // (as UserService #syncProfileEmail does), not the profile copy,
+      // which can lag a login-email change.
+      const tokenEmail = await this.#verifiedTokenEmail();
+      if (!tokenEmail) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message: 'Verify your login email first.' },
+        });
+        return;
+      }
       const userRef = this.currentUser()!.ref!;
-      const currentEmail = this.currentUser()!.email;
       const count = await this.memberService.updateAllMemberEmails(
         userRef,
-        currentEmail
+        tokenEmail
       );
       const recordText = count === 1 ? 'record' : 'records';
       this.snackbar.openFromComponent(CustomSnackbarComponent, {

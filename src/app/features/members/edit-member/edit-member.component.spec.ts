@@ -43,6 +43,7 @@ describe('EditMemberComponent', () => {
     leaveGroup: ReturnType<typeof vi.fn>;
   };
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
@@ -101,6 +102,7 @@ describe('EditMemberComponent', () => {
       leaveGroup: vi.fn().mockResolvedValue(undefined),
     };
     mockSnackBar = createMockSnackBar();
+    mockAnalytics = createMockAnalyticsService();
 
     mockUserStore.user.set(testUser);
     mockMemberStore.currentMember.set(mockMember({ groupAdmin: true }));
@@ -122,7 +124,7 @@ describe('EditMemberComponent', () => {
         { provide: GroupService, useValue: mockGroupService },
         { provide: MemberService, useValue: mockMemberService },
         { provide: MatDialog, useValue: mockDialog },
-        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     }).compileComponents();
 
@@ -209,7 +211,7 @@ describe('EditMemberComponent', () => {
       );
     });
 
-    it('should save other fields the admin way, with the email unchanged', async () => {
+    it('should save other fields the admin way, leaving the locked email out', async () => {
       await typeInto('edit-member-name-input', 'Alicia');
 
       await component.onSubmit();
@@ -218,7 +220,6 @@ describe('EditMemberComponent', () => {
         testMember.ref,
         {
           displayName: 'Alicia',
-          email: 'alice@example.com',
           active: true,
           groupAdmin: false,
         },
@@ -263,6 +264,41 @@ describe('EditMemberComponent', () => {
         });
       component.removeMember();
       expect(dialogSpy).toHaveBeenCalled();
+    });
+  });
+
+  // M4: a linked legacy doc may have no email (or null). The locked field
+  // must not add one, or the rules refuse the admin's whole save.
+  describe.each([
+    ['no email field', undefined],
+    ['a null email', null],
+  ])('when editing a linked member with %s', (_label, email) => {
+    const legacy = mockMember({
+      id: 'member-legacy',
+      displayName: 'Lena',
+      email: email as unknown as string,
+      active: true,
+      groupAdmin: false,
+      userRef: otherUserRef,
+    });
+
+    beforeEach(async () => {
+      await createComponent(legacy);
+    });
+
+    it('should save the other fields without writing an email', async () => {
+      await typeInto('edit-member-name-input', 'Lena B');
+
+      await component.onSubmit();
+
+      const changes =
+        mockMemberService.updateMemberWithUserMatching.mock.calls[0]![1];
+      expect(changes).toEqual({
+        displayName: 'Lena B',
+        active: true,
+        groupAdmin: false,
+      });
+      expect(changes).not.toHaveProperty('email');
     });
   });
 
@@ -336,6 +372,37 @@ describe('EditMemberComponent', () => {
       expect(query('edit-member-email-hint')?.textContent).not.toContain(
         LOCKED_HINT
       );
+    });
+
+    // M7: a member's own group email is what group mail uses, so it can't
+    // be cleared (the server would refuse '' anyway).
+    it('should refuse a blank email on your own row', async () => {
+      await typeInto('edit-member-email-input', '');
+      (query('edit-member-email-input') as HTMLInputElement).dispatchEvent(
+        new Event('blur')
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(
+        (query('edit-member-save-button') as HTMLButtonElement).disabled
+      ).toBe(true);
+      expect(query('edit-member-email-error-0')?.textContent?.trim()).toBe(
+        "*Your group email can't be blank"
+      );
+    });
+
+    // M6: the other fields are written first, then the email request.
+    it('should save the other fields before requesting the email change', async () => {
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      const saved =
+        mockMemberService.updateMember.mock.invocationCallOrder[0]!;
+      const requested =
+        mockMemberService.requestMemberEmailChange.mock.invocationCallOrder[0]!;
+      expect(saved).toBeLessThan(requested);
     });
 
     it('should save other fields directly and never write the email itself', async () => {
@@ -438,8 +505,45 @@ describe('EditMemberComponent', () => {
           },
         }
       );
+      // The other fields were saved first; only the refusal is reported.
+      expect(mockMemberService.updateMember).toHaveBeenCalledOnce();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledOnce();
       expect(mockDialogRef.close).not.toHaveBeenCalled();
-      expect(mockMemberService.updateMember).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    // I1: an unverified login email can't request a change.
+    it('should ask for a verified login email (permission-denied)', async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        Object.assign(new Error('Verify your login email first.'), {
+          code: 'functions/permission-denied',
+        })
+      );
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        { data: { message: 'Verify your login email first.' } }
+      );
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('should log an unexpected failure', async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        Object.assign(new Error('boom'), { code: 'functions/internal' })
+      );
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Edit Member Component',
+        'edit_member',
+        'boom'
+      );
     });
 
     it("should show the server's message for any other refusal", async () => {
@@ -465,6 +569,8 @@ describe('EditMemberComponent', () => {
         }
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();
+      // M7: an expected refusal is not an error to log.
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
   });
 
