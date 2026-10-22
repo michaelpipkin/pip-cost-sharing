@@ -5,6 +5,23 @@ import type { DocumentData } from 'firebase-admin/firestore';
 // group-emails.ts is itself re-exported from index.ts, so importing them from
 // index.ts there would be circular.
 
+/** One plausible address (sendGroupInvite's check on an invitee's email). */
+export const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
+
+/**
+ * Whether a stored member `email` is exactly one plausible address, safe to
+ * use as a mail doc's `to`: nodemailer also accepts arrays and comma- or
+ * semicolon-separated lists, which INVITE_EMAIL_PATTERN alone lets through
+ * after the domain (e.g. `a@x.com,b`).
+ */
+export function isSingleEmailAddress(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    !/[,;]/.test(value) &&
+    INVITE_EMAIL_PATTERN.test(value)
+  );
+}
+
 /**
  * Format a monetary amount using the group's currency settings.
  * Falls back to symbol + toFixed for non-ISO codes (OTH, OT2).

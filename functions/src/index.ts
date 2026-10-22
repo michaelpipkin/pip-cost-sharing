@@ -32,6 +32,7 @@ import {
   buildPaymentMethodsHtml,
   escapeHtml,
   formatAmount,
+  INVITE_EMAIL_PATTERN,
 } from './email-builders';
 
 export {
@@ -70,7 +71,6 @@ const PLAY_STORE_URL =
 // Anti-spam window for sendGroupInvite: one invite per member per address per
 // this many ms, mirrored client-side in members.component.ts for UX only.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
 
 // SMTP config replicating the retired "Trigger Email from Firestore" extension.
 const SMTP_HOST = 'smtp.office365.com';

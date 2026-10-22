@@ -13,6 +13,7 @@ import {
   buildPaymentMethodsHtml,
   escapeHtml,
   formatAmount,
+  isSingleEmailAddress,
 } from './email-builders';
 
 // ---------------------------------------------------------------------------
@@ -80,13 +81,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** A string usable as a single Firestore document id. */
+/**
+ * A string usable as a single Firestore document id: no `/`, and not one of
+ * the reserved ids (`.`, `..`, `__x__`) the backend would reject as an
+ * `internal` error.
+ */
 function isDocId(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     value.length > 0 &&
     value.length <= 1500 &&
-    !value.includes('/')
+    !value.includes('/') &&
+    !/^\.\.?$|^__.*__$/.test(value)
   );
 }
 
@@ -114,8 +120,11 @@ function requireIdList(value: unknown, field: string): unknown[] {
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-/** `YYYY-MM-DD` (a real calendar date) as en-US `M/D/YYYY`. */
-function formatIsoDate(value: unknown): string {
+/**
+ * The validated date, printed as is: emails show dates as ISO `YYYY-MM-DD`
+ * (owner decision). It must be a real calendar date (no 2026-02-30).
+ */
+function requireIsoDate(value: unknown): string {
   const match = typeof value === 'string' ? ISO_DATE.exec(value) : null;
   if (!match) invalid('settleDate must be a YYYY-MM-DD date');
   const [year, month, day] = match.slice(1).map(Number) as [
@@ -131,7 +140,7 @@ function formatIsoDate(value: unknown): string {
   ) {
     invalid('settleDate must be a YYYY-MM-DD date');
   }
-  return date.toLocaleDateString('en-US', { timeZone: 'UTC' });
+  return value as string;
 }
 
 function requireUid(request: CallableRequest): string {
@@ -224,13 +233,16 @@ function linkedUser(
 /**
  * Whether a member can be emailed, as the client used to decide it: a linked
  * app user with a stored address, who hasn't opted out. A missing user doc is
- * not an opt-out.
+ * not an opt-out. The stored address must be exactly one valid address (no
+ * list or array), or the member is treated as having none.
  */
 function eligibility(
   member: DocumentData,
   users: Map<string, DocumentData>
 ): PaymentRequestResult {
-  if (!member['userRef'] || !member['email']) return 'not_registered';
+  if (!member['userRef'] || !isSingleEmailAddress(member['email'])) {
+    return 'not_registered';
+  }
   return linkedUser(member, users)?.['emailOptOut'] === true
     ? 'opted_out'
     : 'sent';
@@ -528,7 +540,7 @@ export const sendSettleReversalEmails = onCall<SendSettleReversalEmailsData>(
     const memberIds = requireIdList(data['memberIds'], 'memberIds').map((id) =>
       requireDocId(id, 'memberIds')
     );
-    const settleDate = formatIsoDate(data['settleDate']);
+    const settleDate = requireIsoDate(data['settleDate']);
 
     const db = getFirestore();
     const groupRef = db.collection('groups').doc(groupId);

@@ -86,6 +86,40 @@ async function seedCallerGroup(
   return { groupRef, caller };
 }
 
+/**
+ * Stored member emails that are not exactly one valid address. Each is built
+ * from fresh unique addresses (returned in `parts`) so a test can check that
+ * none of them got mail.
+ */
+function badAddresses(): { label: string; email: unknown; parts: string[] }[] {
+  const fresh = () => uniqueEmail('list');
+  const [a1, b1, a2, b2, a3, b3, a4, a5] = Array.from({ length: 8 }, fresh) as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  return [
+    { label: 'a comma list', email: `${a1},${b1}`, parts: [a1, b1] },
+    { label: 'a semicolon list', email: `${a2}; ${b2}`, parts: [a2, b2] },
+    { label: 'an array', email: [a3, b3], parts: [a3, b3] },
+    { label: 'an inner space', email: a4.replace('@', ' @'), parts: [a4] },
+    { label: 'a comma after the domain', email: `${a5},x`, parts: [a5] },
+    { label: 'no @', email: 'not-an-email', parts: [] },
+  ];
+}
+
+async function expectNoMailToAny(addresses: unknown[]): Promise<void> {
+  for (const address of addresses) {
+    if (typeof address !== 'string') continue;
+    expect(await mailTo(address)).toHaveLength(0);
+  }
+}
+
 // `any`: each callable's run() takes its own CallableRequest<T>.
 type Callable = { run: (request: any) => unknown };
 
@@ -160,6 +194,15 @@ describe('sendPaymentRequests', () => {
     ['a missing groupId', { requests: [valid] }],
     ['a blank groupId', { groupId: '', requests: [valid] }],
     ['a groupId with a slash', { groupId: 'a/b', requests: [valid] }],
+    ['a reserved groupId (..)', { groupId: '..', requests: [valid] }],
+    [
+      'a reserved member id (__x__)',
+      { groupId: 'g', requests: [{ ...valid, owedByMemberId: '__x__' }] },
+    ],
+    [
+      'a reserved member id (.)',
+      { groupId: 'g', requests: [{ ...valid, owedToMemberId: '.' }] },
+    ],
     ['requests that are not an array', { groupId: 'g', requests: valid }],
     ['no requests', { groupId: 'g', requests: [] }],
     [
@@ -450,6 +493,36 @@ describe('sendPaymentRequests', () => {
     expect(await mailTo(placeholderEmail)).toHaveLength(0);
     expect(await mailTo(optedOut.email)).toHaveLength(0);
     expect((await onlyMailTo(pat.email)).text).toContain('payment of $5.00 in');
+  });
+
+  it('treats a stored email that is not one valid address as not_registered', async () => {
+    const { groupRef, owen, owenRef } = await seedRequestGroup();
+    const cases = badAddresses();
+    const memberIds: string[] = [];
+    for (const c of cases) {
+      const user = await seedUser();
+      const ref = groupRef.collection('members').doc(`m-${randomUUID()}`);
+      await ref.set({
+        displayName: c.label,
+        email: c.email,
+        userRef: user.ref,
+        active: true,
+        groupAdmin: false,
+      });
+      memberIds.push(ref.id);
+    }
+
+    const result = await call(sendPaymentRequests, owen.uid, {
+      groupId: groupRef.id,
+      requests: memberIds.map((id) => ({
+        owedByMemberId: id,
+        owedToMemberId: owenRef.id,
+        amount: 5,
+      })),
+    });
+
+    expect(result).toEqual({ results: cases.map(() => 'not_registered') });
+    await expectNoMailToAny(cases.flatMap((c) => [c.email, ...c.parts]));
   });
 
   it('treats a linked member with no stored email as not_registered', async () => {
@@ -755,6 +828,36 @@ describe('sendPaymentReversalEmails', () => {
     expect(await mailTo(placeholderEmail)).toHaveLength(0);
   });
 
+  it('skips a member whose stored email is a list, still mailing the other', async () => {
+    const { groupRef, caller } = await seedCallerGroup();
+    const payee = await seedUser();
+    const payeeRef = await seedMember(groupRef, {
+      displayName: 'Hana',
+      user: payee,
+    });
+    const listUser = await seedUser();
+    const [a, b] = [uniqueEmail('list'), uniqueEmail('list')];
+    const listRef = await seedMember(groupRef, {
+      displayName: 'Ivo',
+      user: listUser,
+      email: `${a},${b}`,
+    });
+
+    const result = await call(sendPaymentReversalEmails, caller.uid, {
+      groupId: groupRef.id,
+      paidByMemberId: listRef.id,
+      paidToMemberId: payeeRef.id,
+      amount: 30,
+      splitCount: 1,
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    await expectNoMailToAny([a, b, `${a},${b}`]);
+    expect((await onlyMailTo(payee.email)).subject).toBe(
+      'A payment from Ivo to you in PipSplit has been reversed'
+    );
+  });
+
   it('still mails the other member when one side is skipped', async () => {
     const { groupRef, caller } = await seedCallerGroup();
     const payee = await seedUser();
@@ -835,6 +938,7 @@ describe('sendSettleReversalEmails', () => {
       { ...valid, memberIds: Array.from({ length: 101 }, (_, i) => `m${i}`) },
     ],
     ['a blank member id', { ...valid, memberIds: ['a', ''] }],
+    ['a reserved member id (..)', { ...valid, memberIds: ['..'] }],
     ['a non-string member id', { ...valid, memberIds: [7] }],
     ['a missing settleDate', { ...valid, settleDate: undefined }],
     ['a US-format settleDate', { ...valid, settleDate: '10/21/2026' }],
@@ -951,6 +1055,14 @@ describe('sendSettleReversalEmails', () => {
       email: placeholderEmail,
     });
 
+    const listUser = await seedUser();
+    const [listA, listB] = [uniqueEmail('list'), uniqueEmail('list')];
+    const listRef = await seedMember(groupRef, {
+      displayName: 'Lex',
+      user: listUser,
+      email: `${listA};${listB}`,
+    });
+
     const result = await call(sendSettleReversalEmails, caller.uid, {
       groupId: groupRef.id,
       memberIds: [
@@ -958,6 +1070,7 @@ describe('sendSettleReversalEmails', () => {
         optedOutRef.id,
         hanaRef.id,
         placeholderRef.id,
+        listRef.id,
         ivoRef.id,
       ],
       settleDate: '2026-10-21',
@@ -966,6 +1079,7 @@ describe('sendSettleReversalEmails', () => {
     expect(result).toEqual({ sent: 2 });
     expect(await mailTo(optedOut.email)).toHaveLength(0);
     expect(await mailTo(placeholderEmail)).toHaveLength(0);
+    await expectNoMailToAny([listA, listB, `${listA};${listB}`]);
     expect(await onlyMailTo(hana.email)).toBeDefined();
 
     const mail = await onlyMailTo(ivo.email);
@@ -976,7 +1090,7 @@ describe('sendSettleReversalEmails', () => {
       [
         'Hi Ivo,',
         '',
-        'A group admin has reversed the group settlement for "Beach Trip" that was recorded on 10/21/2026.',
+        'A group admin has reversed the group settlement for "Beach Trip" that was recorded on 2026-10-21.',
         '',
         'All outstanding balances have been restored. Please check your current balance in PipSplit.',
       ].join('\n')
@@ -984,10 +1098,10 @@ describe('sendSettleReversalEmails', () => {
     expect(mail.html).toContain(
       '<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Group Settlement Reversed</h2>'
     );
-    expect(mail.html).toContain('recorded on <strong>10/21/2026</strong>');
+    expect(mail.html).toContain('recorded on <strong>2026-10-21</strong>');
   });
 
-  it('formats the date without shifting it a day (no time-zone drift)', async () => {
+  it('prints the settle date as ISO yyyy-MM-dd, unchanged', async () => {
     const { groupRef, caller } = await seedCallerGroup();
     const ivo = await seedUser();
     const ivoRef = await seedMember(groupRef, {
@@ -998,12 +1112,12 @@ describe('sendSettleReversalEmails', () => {
     await call(sendSettleReversalEmails, caller.uid, {
       groupId: groupRef.id,
       memberIds: [ivoRef.id],
-      settleDate: '2026-01-01',
+      settleDate: '2026-03-07',
     });
 
-    expect((await onlyMailTo(ivo.email)).text).toContain(
-      'recorded on 1/1/2026.'
-    );
+    const mail = await onlyMailTo(ivo.email);
+    expect(mail.text).toContain('recorded on 2026-03-07.');
+    expect(mail.html).toContain('recorded on <strong>2026-03-07</strong>');
   });
 
   it('HTML-escapes names and the group name', async () => {
