@@ -315,6 +315,34 @@ describe('MembersComponent', () => {
       expect(mockDialog.open).not.toHaveBeenCalled();
     });
 
+    it.each([
+      [{ success: true, operation: 'saved' }, 'Member saved'],
+      // B19: a pending group email change says a link was sent instead.
+      [
+        { success: true, operation: 'saved', message: 'We sent a link.' },
+        'We sent a link.',
+      ],
+    ])(
+      'should show the snackbar the edit dialog closes with (%o)',
+      (result, message) => {
+        const snackbar = TestBed.inject(MatSnackBar) as unknown as ReturnType<
+          typeof createMockSnackBar
+        >;
+        mockDialog.open.mockReturnValueOnce({
+          afterClosed: () => ({
+            subscribe: (cb: (r: unknown) => void) => cb(result),
+          }),
+        } as any);
+
+        component.onRowClick(mockMember());
+
+        expect(snackbar.openFromComponent).toHaveBeenCalledWith(
+          expect.anything(),
+          { data: { message } }
+        );
+      }
+    );
+
     it('should open help dialog on showHelp', () => {
       component.showHelp();
       expect(mockDialog.open).toHaveBeenCalled();

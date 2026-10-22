@@ -32,6 +32,7 @@ import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.c
 import { LoadingService } from '@components/loading/loading.service';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
+import { DocumentReference } from 'firebase/firestore';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
@@ -79,10 +80,22 @@ export class EditMemberComponent {
   private readonly activeMemberCount =
     this.memberStore.activeGroupMembers().length;
 
-  protected readonly activeTooltip: string = this.#computeActiveTooltip();
-  protected readonly groupAdminTooltip: string = this.member.userRef?.eq(
+  /** This row is the signed-in user's own member record. */
+  protected readonly isOwnRow: boolean = !!this.member.userRef?.eq(
     this.userStore.user()!.ref!
-  )
+  );
+  /**
+   * A linked member's email may hold only an address its user has proven
+   * they own (firestore.rules, Plan 4 B19), so once a member is linked to
+   * someone else's profile, only that member can change it.
+   */
+  protected readonly emailLocked: boolean =
+    !!this.member.userRef && !this.isOwnRow;
+  protected readonly lockedEmailHint =
+    'Only the member can change their email address once it is linked to their profile.';
+
+  protected readonly activeTooltip: string = this.#computeActiveTooltip();
+  protected readonly groupAdminTooltip: string = this.isOwnRow
     ? 'You cannot remove yourself as a group admin'
     : '';
 
@@ -96,14 +109,13 @@ export class EditMemberComponent {
   protected readonly editMemberForm = form(this.editMemberModel, (p) => {
     required(p.memberName, { message: '*Required' });
     singleEmail(p.email, { message: '*Not a valid email address' });
+    disabled(p.email, { when: () => this.emailLocked });
     disabled(p.active, {
       when: () =>
         !!this.member.leftGroup ||
         (this.activeMemberCount === 1 && !!this.editMemberModel().active),
     });
-    disabled(p.groupAdmin, {
-      when: () => !!this.member.userRef?.eq(this.userStore.user()!.ref!),
-    });
+    disabled(p.groupAdmin, { when: () => this.isOwnRow });
   });
 
   #computeActiveTooltip(): string {
@@ -130,13 +142,20 @@ export class EditMemberComponent {
     try {
       this.loading.loadingOn();
       const val = this.editMemberForm().value();
+      const memberRef = this.member.ref!;
+      if (this.isOwnRow) {
+        await this.#saveOwnRow(memberRef, val);
+        return;
+      }
+      // Someone else's row, or an unlinked one: the email is written
+      // directly (an unlinked member may be linked by it; a linked one's
+      // field is disabled, so it is sent unchanged).
       const changes: Partial<Member> = {
         displayName: val.memberName,
         email: val.email,
         active: val.active,
         groupAdmin: val.groupAdmin,
       };
-      const memberRef = this.member.ref!;
       await this.memberService.updateMemberWithUserMatching(
         memberRef,
         changes,
@@ -145,7 +164,14 @@ export class EditMemberComponent {
       );
       this.dialogRef.close({ success: true, operation: 'saved' });
     } catch (error) {
-      if (error instanceof Error) {
+      if (this.#callableCode(error) === 'functions/resource-exhausted') {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: {
+            message:
+              'Too many email change requests. Please try again tomorrow.',
+          },
+        });
+      } else if (error instanceof Error) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
@@ -162,6 +188,48 @@ export class EditMemberComponent {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  /**
+   * One's own linked row: a changed email goes through the server
+   * (requestMemberEmailChange), which applies the verified sign-in address
+   * at once and otherwise mails a confirmation link to the new address. It
+   * runs first, so a refused request (the daily limit, a duplicate address)
+   * saves nothing; the other fields are then written as usual.
+   */
+  async #saveOwnRow(
+    memberRef: DocumentReference<Member>,
+    val: EditMemberForm
+  ): Promise<void> {
+    const emailChanged =
+      val.email.trim().toLowerCase() !==
+      (this.member.email ?? '').trim().toLowerCase();
+    const status = emailChanged
+      ? await this.memberService.requestMemberEmailChange(
+          this.data.groupId,
+          this.member.id,
+          val.email
+        )
+      : 'unchanged';
+    await this.memberService.updateMember(memberRef, {
+      displayName: val.memberName,
+      active: val.active,
+      groupAdmin: val.groupAdmin,
+    });
+    this.dialogRef.close(
+      status === 'pending'
+        ? {
+            success: true,
+            operation: 'saved',
+            message: `We sent a confirmation link to ${val.email}. Your group email will change once you confirm it.`,
+          }
+        : { success: true, operation: 'saved' }
+    );
+  }
+
+  #callableCode(error: unknown): string | undefined {
+    const code = (error as { code?: unknown } | null)?.code;
+    return typeof code === 'string' ? code : undefined;
   }
 
   removeMember(): void {

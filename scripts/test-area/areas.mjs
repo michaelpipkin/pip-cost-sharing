@@ -214,6 +214,7 @@ export const AREAS = {
       ...USER_SERVICE,
       `${FEATURES}/auth/account-action`,
       `${FEATURES}/auth/auth-main`,
+      `${FEATURES}/auth/confirm-group-email`,
       `${FEATURES}/auth/delete-account`,
       `${FEATURES}/auth/forgot-password`,
       `${FEATURES}/auth/guards.guard.spec.ts`,
@@ -334,6 +335,8 @@ export const AREAS = {
       ...SNACKBAR,
       ...APP_CHECK_ERRORS,
       `${FEATURES}/members`,
+      // Where a member's group email change is confirmed (B19).
+      `${FEATURES}/auth/confirm-group-email`,
       ...DEFAULT_BUTTON,
       ...EMAIL_VALIDATION,
       `${SERVICES}/invite.service.spec.ts`,

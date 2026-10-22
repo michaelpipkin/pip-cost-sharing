@@ -291,8 +291,9 @@ export class MembersComponent {
     const dialogRef = this.dialog.open(EditMemberComponent, dialogConfig);
     dialogRef.afterClosed().subscribe((result) => {
       if (result?.success) {
+        // A pending group email change brings its own message (B19).
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: `Member ${result.operation}` },
+          data: { message: result.message ?? `Member ${result.operation}` },
         });
       }
     });

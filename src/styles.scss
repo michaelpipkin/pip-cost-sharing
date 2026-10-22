@@ -864,6 +864,15 @@ mat-slide-toggle {
   margin-bottom: 1rem;
 }
 
+// Outcome icons on a placeholder card (e.g. the confirm-group-email page).
+.placeholder-icon.success {
+  color: tokens.color('primary');
+}
+
+.placeholder-icon.error {
+  color: var(--error);
+}
+
 .placeholder-text {
   color: var(--outline);
   font-size: 1rem;

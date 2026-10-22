@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import * as firestoreModule from 'firebase/firestore';
+import * as functionsModule from 'firebase/functions';
 import { MemberService } from './member.service';
 import { UserStore } from '@store/user.store';
 import { MemberStore } from '@store/member.store';
@@ -9,6 +10,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { SortingService } from './sorting.service';
 
 const mockFs = {};
+const mockFunctions = {};
 
 function makeSnap(docs: any[] = []) {
   return { size: docs.length, empty: docs.length === 0, docs };
@@ -71,6 +73,7 @@ describe('MemberService', () => {
       providers: [
         MemberService,
         { provide: firestoreModule.getFirestore, useValue: mockFs },
+        { provide: functionsModule.getFunctions, useValue: mockFunctions },
         { provide: UserStore, useValue: mockUserStore },
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: AnalyticsService, useValue: mockAnalytics },
@@ -702,6 +705,124 @@ describe('MemberService', () => {
       await expect(
         service.updateAllMemberEmails(mockUserRef, 'new@test.com')
       ).rejects.toThrow('Firestore error');
+    });
+  });
+
+  // Plan 4 B19: a member's own group email change goes through the server,
+  // which mails a confirmation link to any address that isn't the caller's
+  // verified sign-in address.
+  describe('requestMemberEmailChange', () => {
+    it('calls the requestMemberEmailChange callable and returns its status', async () => {
+      const callable = vi.fn().mockResolvedValue({ data: { status: 'pending' } });
+      const httpsCallable = vi
+        .spyOn(functionsModule, 'httpsCallable')
+        .mockReturnValue(callable as any);
+
+      const status = await service.requestMemberEmailChange(
+        'group-1',
+        'member-1',
+        'new@example.com'
+      );
+
+      expect(httpsCallable).toHaveBeenCalledWith(
+        mockFunctions,
+        'requestMemberEmailChange'
+      );
+      expect(callable).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        memberId: 'member-1',
+        email: 'new@example.com',
+      });
+      expect(status).toBe('pending');
+    });
+
+    it.each(['functions/resource-exhausted', 'functions/already-exists'])(
+      'rethrows %s (an outcome the dialog reports) without logging it',
+      async (code) => {
+        const error = Object.assign(new Error('refused'), { code });
+        vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+          vi.fn().mockRejectedValue(error) as any
+        );
+
+        await expect(
+          service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+        ).rejects.toBe(error);
+        expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      }
+    );
+
+    it('logs and rethrows an unexpected failure', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(new Error('boom'), { code: 'functions/internal' })
+          ) as any
+      );
+
+      await expect(
+        service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+      ).rejects.toThrow('boom');
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'requestMemberEmailChange',
+        'Failed to request member email change',
+        'boom'
+      );
+    });
+  });
+
+  describe('confirmMemberEmailChange', () => {
+    it('calls the confirmMemberEmailChange callable with the token', async () => {
+      const callable = vi.fn().mockResolvedValue({
+        data: { groupId: 'group-1', email: 'new@example.com' },
+      });
+      const httpsCallable = vi
+        .spyOn(functionsModule, 'httpsCallable')
+        .mockReturnValue(callable as any);
+
+      const result = await service.confirmMemberEmailChange('tok-123');
+
+      expect(httpsCallable).toHaveBeenCalledWith(
+        mockFunctions,
+        'confirmMemberEmailChange'
+      );
+      expect(callable).toHaveBeenCalledWith({ token: 'tok-123' });
+      expect(result).toEqual({ groupId: 'group-1', email: 'new@example.com' });
+    });
+
+    it('rethrows a rejected call without logging the expected outcomes', async () => {
+      const error = Object.assign(new Error('expired'), {
+        code: 'functions/failed-precondition',
+      });
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(
+        error
+      );
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it('logs an unexpected failure', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(new Error('boom'), { code: 'functions/internal' })
+          ) as any
+      );
+
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toThrow(
+        'boom'
+      );
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'confirmMemberEmailChange',
+        'Failed to confirm member email change',
+        'boom'
+      );
     });
   });
 });

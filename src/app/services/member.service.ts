@@ -24,7 +24,11 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { IMemberService } from './member.service.interface';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import {
+  IMemberService,
+  MemberEmailChangeStatus,
+} from './member.service.interface';
 import { SortingService } from './sorting.service';
 
 /**
@@ -33,6 +37,19 @@ import { SortingService } from './sorting.service';
  */
 const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
 
+/**
+ * Callable error codes that are outcomes the UI reports to the user, not
+ * failures to log: the daily request limit and a duplicate address
+ * (requestMemberEmailChange), and an expired/used link or another account
+ * (confirmMemberEmailChange).
+ */
+const EXPECTED_EMAIL_CHANGE_CODES = new Set([
+  'functions/resource-exhausted',
+  'functions/already-exists',
+  'functions/failed-precondition',
+  'functions/permission-denied',
+]);
+
 @Injectable({
   providedIn: 'root',
 })
@@ -40,6 +57,7 @@ export class MemberService implements IMemberService {
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly fs = inject(getFirestore);
+  protected readonly functions = inject(getFunctions);
   protected readonly sorter = inject(SortingService);
   protected readonly analytics = inject(AnalyticsService);
 
@@ -374,6 +392,70 @@ export class MemberService implements IMemberService {
   // Member.leftGroup.
   async rejoinGroup(memberRef: DocumentReference<Member>): Promise<void> {
     await updateDoc(memberRef, { leftGroup: false, active: true });
+  }
+
+  /**
+   * A member's change of their OWN linked row's group email (edit-member).
+   * Firestore rules let a linked member's email hold only an address its
+   * user has proven they own, so the server decides (functions/src/
+   * member-email.ts): `updated` (their verified sign-in address, applied),
+   * `unchanged`, or `pending` (a confirmation link was mailed to the new
+   * address; nothing changes until it is used).
+   */
+  async requestMemberEmailChange(
+    groupId: string,
+    memberId: string,
+    email: string
+  ): Promise<MemberEmailChangeStatus> {
+    try {
+      const requestFn = httpsCallable<
+        { groupId: string; memberId: string; email: string },
+        { status: MemberEmailChangeStatus }
+      >(this.functions, 'requestMemberEmailChange');
+      const result = await requestFn({ groupId, memberId, email });
+      return result.data.status;
+    } catch (error) {
+      this.#logUnexpected(
+        error,
+        'requestMemberEmailChange',
+        'Failed to request member email change'
+      );
+      throw error;
+    }
+  }
+
+  /** The confirmation link's page (/auth/confirm-group-email). */
+  async confirmMemberEmailChange(
+    token: string
+  ): Promise<{ groupId: string; email: string }> {
+    try {
+      const confirmFn = httpsCallable<
+        { token: string },
+        { groupId: string; email: string }
+      >(this.functions, 'confirmMemberEmailChange');
+      const result = await confirmFn({ token });
+      return result.data;
+    } catch (error) {
+      this.#logUnexpected(
+        error,
+        'confirmMemberEmailChange',
+        'Failed to confirm member email change'
+      );
+      throw error;
+    }
+  }
+
+  #logUnexpected(error: unknown, action: string, message: string): void {
+    const code = (error as { code?: unknown } | null)?.code;
+    if (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) {
+      return;
+    }
+    this.analytics.logError(
+      'Member Service',
+      action,
+      message,
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   async updateAllMemberEmails(
