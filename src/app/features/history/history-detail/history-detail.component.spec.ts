@@ -102,7 +102,10 @@ describe('HistoryDetailComponent', () => {
     mockHistoryStore.groupHistory.set([testHistory]);
 
     mockLocaleService = {
-      formatCurrency: vi.fn((amount: number) => `$${amount.toFixed(2)}`),
+      // same shape as the real service: symbol, a space, minus before the symbol
+      formatCurrency: vi.fn((amount: number) =>
+        amount < 0 ? `-$ ${(-amount).toFixed(2)}` : `$ ${amount.toFixed(2)}`
+      ),
     };
 
     mockParamGet = vi.fn((key: string) => (key === 'id' ? testHistoryId : null));
@@ -136,8 +139,7 @@ describe('HistoryDetailComponent', () => {
     el = fixture.nativeElement;
     fixture.detectChanges();
     await fixture.whenStable();
-    // Manually set history since afterNextRender behavior varies in test environments
-    component.history.set(testHistory);
+    // afterNextRender has loaded the history from the store by now
     fixture.detectChanges();
     await fixture.whenStable();
   });
@@ -1266,10 +1268,6 @@ describe('HistoryDetailComponent', () => {
     };
 
     it('should say who paid whom, how much and when, with the category breakdown aligned', async () => {
-      // like the real service, the minus sign comes before the symbol
-      mockLocaleService.formatCurrency.mockImplementation((amount: number) =>
-        amount < 0 ? `-$${(-amount).toFixed(2)}` : `$${amount.toFixed(2)}`
-      );
       categoriesByRef([categoryFood, 'Food'], [categoryFuel, 'Transport']);
       component.paidSplits.set([
         mockSplit({
@@ -1288,13 +1286,13 @@ describe('HistoryDetailComponent', () => {
 
       expect(text.split('\n')).toEqual([
         'Payment Summary',
-        `Admin paid Regular $50.00 on ${testHistory.date.toLocaleDateString()}`,
+        `Admin paid Regular $ 50.00 on ${testHistory.date.toLocaleDateString()}`,
         '',
         'Breakdown by Category:',
-        // widest line is "Transport:" + "-$10.00" = 9 + 2 + 7 = 18
-        '='.repeat(19),
-        'Food:' + ' '.repeat(8) + '$30.00',
-        'Transport:' + ' '.repeat(2) + '-$10.00',
+        // widest line is "Transport:" + "-$ 10.00" = 9 + 2 + 8 = 19
+        '='.repeat(20),
+        'Food:' + ' '.repeat(8) + '$ 30.00',
+        'Transport:' + ' '.repeat(2) + '-$ 10.00',
       ]);
     });
 
@@ -1311,7 +1309,7 @@ describe('HistoryDetailComponent', () => {
       const text = await copiedText();
 
       expect(text).toBe(
-        `Payment Summary\nUnknown paid Unknown $50.00 on ${testHistory.date.toLocaleDateString()}`
+        `Payment Summary\nUnknown paid Unknown $ 50.00 on ${testHistory.date.toLocaleDateString()}`
       );
     });
 

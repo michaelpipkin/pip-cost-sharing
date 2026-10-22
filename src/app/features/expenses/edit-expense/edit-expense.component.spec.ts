@@ -1094,6 +1094,9 @@ describe('EditExpenseComponent', () => {
     });
 
     it('should save the edited expense and its splits, mark everything unpaid, and return to the list', async () => {
+      // 100 total, nothing fixed or proportional: all of it is the evenly shared remainder
+      patchFormData({ allocatedAmount: '0.00' });
+      patchSplit(0, { assignedAmount: '0.00' });
       component.addSplit();
       const dialog = pendingDialog();
       await component.onSubmit();
@@ -1110,8 +1113,8 @@ describe('EditExpenseComponent', () => {
         description: 'Team Lunch',
         categoryRef,
         paidByMemberRef: memberRefCurrent,
-        sharedAmount: expect.any(Number),
-        allocatedAmount: 100,
+        sharedAmount: 100,
+        allocatedAmount: 0,
         totalAmount: 100,
         splitMethod: 'amount',
         paid: false,

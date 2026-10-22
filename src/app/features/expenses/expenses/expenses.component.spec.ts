@@ -681,9 +681,21 @@ describe('ExpensesComponent', () => {
 
   describe('loading the list', () => {
     it('should load the current group\'s expenses with the default filter', async () => {
+      // The default start is computed when the page is created, so create it
+      // at a fixed time: the window is then exactly 90 days, not shorter or longer.
+      const now = new Date(2026, 5, 15, 12, 0, 0);
+      vi.useFakeTimers({ toFake: ['Date'] });
+      let created: ComponentFixture<ExpensesComponent>;
+      try {
+        vi.setSystemTime(now);
+        created = TestBed.createComponent(ExpensesComponent);
+      } finally {
+        vi.useRealTimers();
+      }
+      await created.whenStable();
       mockExpenseService.getGroupExpensesByDateRange.mockClear();
 
-      await component.loadExpenses();
+      await created.componentInstance.loadExpenses();
 
       const [groupId, start, end, unpaidOnly, payer, category] = (
         mockExpenseService.getGroupExpensesByDateRange.mock
@@ -691,12 +703,31 @@ describe('ExpensesComponent', () => {
       );
       expect(groupId).toBe('group-1');
       // the default window is the last 90 days, and still open at the end
-      const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
-      expect(Date.now() - start.getTime() - ninetyDaysMs).toBeLessThan(60_000);
+      expect(start).toEqual(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000));
       expect(end).toBeUndefined();
       expect(unpaidOnly).toBe(true);
       expect(payer).toBeNull();
       expect(category).toBeNull();
+    });
+
+    it('should leave the start open and show the returned rows when the start date is cleared', async () => {
+      const rows = [
+        new Expense({ id: 'old', description: 'Old', date: new Date(2020, 0, 1), splits: [] }),
+        new Expense({ id: 'new', description: 'New', date: new Date(2026, 0, 1), splits: [] }),
+      ];
+      mockExpenseService.getGroupExpensesByDateRange.mockResolvedValueOnce(
+        rows as never[]
+      );
+      // the clear button next to the start date does exactly this
+      component.startDate.set(null);
+
+      await component.loadExpenses();
+
+      const args = mockExpenseService.getGroupExpensesByDateRange.mock
+        .lastCall as unknown as any[];
+      expect(args[0]).toBe('group-1');
+      expect(args[1]).toBeUndefined();
+      expect(component.filteredExpenses().map((e) => e.id)).toEqual(['old', 'new']);
     });
 
     it('should pass the chosen date range, payer, category and paid filter, and remember them', async () => {

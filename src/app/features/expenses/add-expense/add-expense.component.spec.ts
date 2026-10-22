@@ -952,7 +952,6 @@ describe('AddExpenseComponent', () => {
     }
 
     it('should load a scanned receipt: file attached, payer defaulted, splits by item', async () => {
-      useDistinctCategories();
       mockCategoryStore.groupCategories.set([
         mockCategory({ id: 'cat-1', name: 'Food', ref: catFood }),
       ]);
