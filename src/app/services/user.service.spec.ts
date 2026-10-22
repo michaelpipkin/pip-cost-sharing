@@ -511,6 +511,35 @@ describe('UserService', () => {
         });
       });
 
+      it('splits a settlement of more than 25 transfers into calls of at most 25 (the server cap), in order', async () => {
+        const { callable } = mockCallable(undefined);
+        callable
+          .mockResolvedValueOnce({
+            data: { results: Array.from({ length: 25 }, () => 'sent') },
+          })
+          .mockResolvedValueOnce({
+            data: { results: ['sent', 'opted_out', 'sent'] },
+          });
+        const transfers = Array.from({ length: 28 }, (_, i) => ({
+          owedByMemberRef: { id: `m-${i}` } as any,
+          owedToMemberRef: owenRef,
+          amount: i + 1,
+        }));
+
+        const result = await service.sendGroupPaymentRequestEmails(
+          groupId,
+          transfers
+        );
+
+        expect(result).toEqual({ sent: 27, skipped: 1 });
+        expect(callable).toHaveBeenCalledTimes(2);
+        const sentIds = callable.mock.calls.map(([data]: any[]) =>
+          data.requests.map((r: any) => r.owedByMemberId)
+        );
+        expect(sentIds[0]).toHaveLength(25);
+        expect(sentIds.flat()).toEqual(transfers.map((t) => t.owedByMemberRef.id));
+      });
+
       it('makes no call for an empty settlement', async () => {
         const { httpsCallableSpy } = mockCallable({ results: [] });
 
@@ -564,6 +593,29 @@ describe('UserService', () => {
         expect(callable).toHaveBeenCalledWith({
           groupId,
           memberIds: ['m-ivo', 'm-owen'],
+          settleDate: '2026-01-05',
+        });
+      });
+
+      it('splits more than 25 members into calls of at most 25 (the server cap)', async () => {
+        const { callable } = mockCallable({ sent: 1 });
+        const refs = Array.from({ length: 30 }, (_, i) => ({ id: `m-${i}` }) as any);
+
+        await service.sendGroupSettleUnpayEmails(
+          groupId,
+          refs,
+          new Date(2026, 0, 5)
+        );
+
+        expect(callable).toHaveBeenCalledTimes(2);
+        expect(callable).toHaveBeenNthCalledWith(1, {
+          groupId,
+          memberIds: refs.slice(0, 25).map((r) => r.id),
+          settleDate: '2026-01-05',
+        });
+        expect(callable).toHaveBeenNthCalledWith(2, {
+          groupId,
+          memberIds: refs.slice(25).map((r) => r.id),
           settleDate: '2026-01-05',
         });
       });

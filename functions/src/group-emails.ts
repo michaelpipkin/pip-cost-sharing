@@ -22,16 +22,32 @@ import {
 // the old generic `sendEmail` callable, which wrote whatever recipient,
 // subject and HTML the client sent and so worked as an open relay from
 // PipSplit's address. Here the client sends only ids and numbers; the server
-// checks the caller's membership, reads every recipient address from its
-// member doc and builds the content itself.
+// checks the caller's membership and builds the content itself.
+//
+// Recipients are only ever linked app users, mailed at their PROFILE address
+// (users/{uid}.email), never at the member doc's email: any signed-in user
+// can create a group and add members with any email and any userRef, so a
+// member email is attacker-chosen. A profile email can only be '' or the
+// account's own verified sign-in address (firestore.rules, Plan 4 B14), so
+// mail goes only to verified addresses of registered users who haven't opted
+// out (final review I2).
 //
 // getFirestore() is called inside each handler rather than at module scope:
 // index.ts imports (and so evaluates) this module before it calls
 // initializeApp(), the same constraint as receipt-ocr.ts.
 // ---------------------------------------------------------------------------
 
-/** Request and member-id lists are capped so one call can't fan out widely. */
-const MAX_BATCH = 100;
+/**
+ * Request and member-id lists are capped so one call can't fan out widely.
+ * 25 covers every real call: Request All sends one request per settlement
+ * transfer, and the least-transfers settlement has at most n - 1 transfers
+ * for n members; a settle reversal names each member of the settle batch
+ * once. So one call serves a group of up to 26 (Request All) or 25 members
+ * (reversal). The client splits a longer list into several calls
+ * (user.service.ts GROUP_EMAIL_BATCH, which must not exceed this), so the cap
+ * bounds one invocation's work and mail, not the group size.
+ */
+const MAX_BATCH = 25;
 
 const NO_PAYMENT_METHODS = '(No payment methods on file)';
 
@@ -230,22 +246,26 @@ function linkedUser(
   return userRef ? users.get(userRef.path) : undefined;
 }
 
+type Recipient =
+  | { result: 'sent'; to: string }
+  | { result: Exclude<PaymentRequestResult, 'sent'> };
+
 /**
- * Whether a member can be emailed, as the client used to decide it: a linked
- * app user with a stored address, who hasn't opted out. A missing user doc is
- * not an opt-out. The stored address must be exactly one valid address (no
- * list or array), or the member is treated as having none.
+ * Whether and where a member can be emailed: a linked app user whose user
+ * doc exists and holds exactly one valid address (no list or array), who
+ * hasn't opted out. Anything else (a placeholder, a userRef with no user doc,
+ * an empty or invalid profile email) is not_registered. The member doc's own
+ * email is never read: see the header.
  */
-function eligibility(
+function recipient(
   member: DocumentData,
   users: Map<string, DocumentData>
-): PaymentRequestResult {
-  if (!member['userRef'] || !isSingleEmailAddress(member['email'])) {
-    return 'not_registered';
-  }
-  return linkedUser(member, users)?.['emailOptOut'] === true
-    ? 'opted_out'
-    : 'sent';
+): Recipient {
+  const user = linkedUser(member, users);
+  const to: unknown = user?.['email'];
+  if (!user || !isSingleEmailAddress(to)) return { result: 'not_registered' };
+  if (user['emailOptOut'] === true) return { result: 'opted_out' };
+  return { result: 'sent', to };
 }
 
 interface GroupFormat {
@@ -425,18 +445,19 @@ export const sendPaymentRequests = onCall<SendPaymentRequestsData>(
       getGroupFormat(groupRef),
     ]);
 
-    const results = requests.map((r) =>
-      eligibility(members.get(r.owedByMemberId)!, users)
+    const recipients = requests.map((r) =>
+      recipient(members.get(r.owedByMemberId)!, users)
     );
     await Promise.all(
       requests.map((r, i) => {
-        if (results[i] !== 'sent') return Promise.resolve();
+        const owedByRecipient = recipients[i]!;
+        if (owedByRecipient.result !== 'sent') return Promise.resolve();
         const owedBy = members.get(r.owedByMemberId)!;
         const owedTo = members.get(r.owedToMemberId)!;
         const owedToUser = linkedUser(owedTo, users);
         return queueMail(
           db,
-          owedBy['email'],
+          owedByRecipient.to,
           buildPaymentRequestEmail({
             owedByName: displayName(owedBy),
             owedToName: displayName(owedTo),
@@ -449,7 +470,7 @@ export const sendPaymentRequests = onCall<SendPaymentRequestsData>(
         );
       })
     );
-    return { results };
+    return { results: recipients.map((r) => r.result) };
   }
 );
 
@@ -499,9 +520,10 @@ export const sendPaymentReversalEmails = onCall<SendPaymentReversalEmailsData>(
     };
 
     const mails: { to: string; message: MailMessage }[] = [];
-    if (eligibility(paidBy, users) === 'sent') {
+    const paidByRecipient = recipient(paidBy, users);
+    if (paidByRecipient.result === 'sent') {
       mails.push({
-        to: paidBy['email'],
+        to: paidByRecipient.to,
         message: buildPaymentReversalEmail({
           ...shared,
           recipientName: displayName(paidBy),
@@ -510,9 +532,10 @@ export const sendPaymentReversalEmails = onCall<SendPaymentReversalEmailsData>(
         }),
       });
     }
-    if (eligibility(paidTo, users) === 'sent') {
+    const paidToRecipient = recipient(paidTo, users);
+    if (paidToRecipient.result === 'sent') {
       mails.push({
-        to: paidTo['email'],
+        to: paidToRecipient.to,
         message: buildPaymentReversalEmail({
           ...shared,
           recipientName: displayName(paidTo),
@@ -552,22 +575,23 @@ export const sendSettleReversalEmails = onCall<SendSettleReversalEmailsData>(
       getGroupFormat(groupRef),
     ]);
 
-    const recipients = [...members.values()].filter(
-      (m) => eligibility(m, users) === 'sent'
-    );
+    const mails = [...members.values()].flatMap((member) => {
+      const r = recipient(member, users);
+      return r.result === 'sent' ? [{ member, to: r.to }] : [];
+    });
     await Promise.all(
-      recipients.map((m) =>
+      mails.map(({ member, to }) =>
         queueMail(
           db,
-          m['email'],
+          to,
           buildSettleReversalEmail({
-            recipientName: displayName(m),
+            recipientName: displayName(member),
             groupName: format.groupName,
             settleDate,
           })
         )
       )
     );
-    return { sent: recipients.length };
+    return { sent: mails.length };
   }
 );

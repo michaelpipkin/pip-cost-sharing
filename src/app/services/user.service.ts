@@ -64,6 +64,19 @@ function isRevokedSessionError(error: unknown): boolean {
   return error instanceof FirebaseError && REVOKED_SESSION_CODES.has(error.code);
 }
 
+// The most requests or member ids one group-email callable accepts
+// (functions/src/group-emails.ts MAX_BATCH); must not exceed it.
+const GROUP_EMAIL_BATCH = 25;
+
+/** `items` in order, split into lists of at most GROUP_EMAIL_BATCH. */
+function inBatches<T>(items: T[]): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += GROUP_EMAIL_BATCH) {
+    batches.push(items.slice(i, i + GROUP_EMAIL_BATCH));
+  }
+  return batches;
+}
+
 /** The sign-in address once verified, else '' (see #syncProfileEmail). */
 function verifiedEmail(firebaseUser: FirebaseUser): string {
   return firebaseUser.emailVerified ? (firebaseUser.email ?? '') : '';
@@ -567,7 +580,9 @@ export class UserService implements IUserService {
 
   // Group emails are built and addressed server-side (functions/src/
   // group-emails.ts): the client sends only member ids and amounts, and the
-  // server reads each recipient's address from their member doc.
+  // server mails each recipient's linked account at its verified profile
+  // address. The server takes at most GROUP_EMAIL_BATCH requests or member
+  // ids per call, so longer lists go out as several calls.
 
   async #callSendPaymentRequests(
     groupId: string,
@@ -622,7 +637,13 @@ export class UserService implements IUserService {
     if (transfers.length === 0) {
       return { sent: 0, skipped: 0 };
     }
-    const results = await this.#callSendPaymentRequests(groupId, transfers);
+    const results = (
+      await Promise.all(
+        inBatches(transfers).map((batch) =>
+          this.#callSendPaymentRequests(groupId, batch)
+        )
+      )
+    ).flat();
     const sent = results.filter((r) => r === 'sent').length;
     return { sent, skipped: results.length - sent };
   }
@@ -665,11 +686,15 @@ export class UserService implements IUserService {
       { groupId: string; memberIds: string[]; settleDate: string },
       { sent: number }
     >(this.functions, 'sendSettleReversalEmails');
-    await fn({
-      groupId,
-      memberIds: memberRefs.map((ref) => ref.id),
-      settleDate: toIsoFormat(settleDate),
-    });
+    await Promise.all(
+      inBatches(memberRefs).map((batch) =>
+        fn({
+          groupId,
+          memberIds: batch.map((ref) => ref.id),
+          settleDate: toIsoFormat(settleDate),
+        })
+      )
+    );
   }
 
   async logout(redirect: boolean = true): Promise<void> {

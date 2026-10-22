@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { DocumentData, DocumentReference } from 'firebase-admin/firestore';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 // index.ts calls initializeApp() at module scope and re-exports the
 // group-email callables, so importing from it both initialises the Admin SDK
@@ -55,6 +55,13 @@ interface MemberInput {
   email?: string;
   active?: boolean;
   groupAdmin?: boolean;
+  /** A userRef with no matching user doc (a fake link). */
+  userRefOverride?: DocumentReference;
+}
+
+/** A users/{uid} ref with no doc behind it. */
+function missingUserRef(): DocumentReference {
+  return db.collection('users').doc(`u-missing-${randomUUID()}`);
 }
 
 async function seedMember(
@@ -65,7 +72,7 @@ async function seedMember(
   await ref.set({
     displayName: input.displayName,
     email: input.email ?? input.user?.email ?? '',
-    userRef: input.user?.ref ?? null,
+    userRef: input.userRefOverride ?? input.user?.ref ?? null,
     active: input.active ?? true,
     groupAdmin: input.groupAdmin ?? false,
   });
@@ -207,8 +214,8 @@ describe('sendPaymentRequests', () => {
     ['requests that are not an array', { groupId: 'g', requests: valid }],
     ['no requests', { groupId: 'g', requests: [] }],
     [
-      'more than 100 requests',
-      { groupId: 'g', requests: Array.from({ length: 101 }, () => valid) },
+      'more than 25 requests',
+      { groupId: 'g', requests: Array.from({ length: 26 }, () => valid) },
     ],
     ['a request that is not an object', { groupId: 'g', requests: ['x'] }],
     [
@@ -496,19 +503,20 @@ describe('sendPaymentRequests', () => {
     expect((await onlyMailTo(pat.email)).text).toContain('payment of $5.00 in');
   });
 
-  it('treats a stored email that is not one valid address as not_registered', async () => {
+  it('treats a linked user whose profile email is not one valid address as not_registered', async () => {
     const { groupRef, owen, owenRef } = await seedRequestGroup();
     const cases = badAddresses();
     const memberIds: string[] = [];
+    const memberEmails: string[] = [];
     for (const c of cases) {
-      const user = await seedUser();
-      const ref = groupRef.collection('members').doc(`m-${randomUUID()}`);
-      await ref.set({
+      const user = await seedUser({ email: c.email });
+      // A valid member email: it is never the recipient, so it gets nothing.
+      const memberEmail = uniqueEmail('member');
+      memberEmails.push(memberEmail);
+      const ref = await seedMember(groupRef, {
         displayName: c.label,
-        email: c.email,
-        userRef: user.ref,
-        active: true,
-        groupAdmin: false,
+        user,
+        email: memberEmail,
       });
       memberIds.push(ref.id);
     }
@@ -523,31 +531,101 @@ describe('sendPaymentRequests', () => {
     });
 
     expect(result).toEqual({ results: cases.map(() => 'not_registered') });
-    await expectNoMailToAny(cases.flatMap((c) => [c.email, ...c.parts]));
+    await expectNoMailToAny([
+      ...cases.flatMap((c) => [c.email, ...c.parts]),
+      ...memberEmails,
+    ]);
   });
 
-  it('treats a linked member with no stored email as not_registered', async () => {
+  it('treats a linked user with no profile email as not_registered, whatever the member email', async () => {
     const { groupRef, owen, owenRef } = await seedRequestGroup();
-    const noEmail = await seedUser();
-    const noEmailRef = await seedMember(groupRef, {
-      displayName: 'Nell',
-      user: noEmail,
-      email: '',
+    const memberEmail = uniqueEmail('member');
+    const results: unknown[] = [];
+    for (const email of ['', null, 'missing']) {
+      const user = await seedUser({ email });
+      if (email === 'missing') {
+        await user.ref.update({ email: FieldValue.delete() });
+      }
+      const ref = await seedMember(groupRef, {
+        displayName: 'Nell',
+        user,
+        email: memberEmail,
+      });
+      results.push(
+        await call(sendPaymentRequests, owen.uid, {
+          groupId: groupRef.id,
+          requests: [
+            { owedByMemberId: ref.id, owedToMemberId: owenRef.id, amount: 5 },
+          ],
+        })
+      );
+    }
+
+    expect(results).toEqual(
+      Array.from({ length: 3 }, () => ({ results: ['not_registered'] }))
+    );
+    expect(await mailTo(memberEmail)).toHaveLength(0);
+  });
+
+  it('treats a member whose userRef points at a missing user doc as not_registered (I2)', async () => {
+    // Anyone can create a group and add members with any email and any
+    // userRef: the member doc's email must never be the recipient.
+    const { groupRef, owen, owenRef } = await seedRequestGroup();
+    const memberEmail = uniqueEmail('fake-member');
+    const fakeRef = await seedMember(groupRef, {
+      displayName: 'Fake',
+      email: memberEmail,
+      userRefOverride: missingUserRef(),
     });
 
     const result = await call(sendPaymentRequests, owen.uid, {
       groupId: groupRef.id,
       requests: [
-        {
-          owedByMemberId: noEmailRef.id,
-          owedToMemberId: owenRef.id,
-          amount: 5,
-        },
+        { owedByMemberId: fakeRef.id, owedToMemberId: owenRef.id, amount: 5 },
       ],
     });
 
     expect(result).toEqual({ results: ['not_registered'] });
-    expect(await mailTo(noEmail.email)).toHaveLength(0);
+    expect(await mailTo(memberEmail)).toHaveLength(0);
+  });
+
+  it("mails the linked user's profile email, never the member doc's email (I2)", async () => {
+    const { groupRef, owen, owenRef } = await seedRequestGroup();
+    const user = await seedUser();
+    const memberEmail = uniqueEmail('stale-member');
+    const ref = await seedMember(groupRef, {
+      displayName: 'Rita',
+      user,
+      email: memberEmail,
+    });
+
+    const result = await call(sendPaymentRequests, owen.uid, {
+      groupId: groupRef.id,
+      requests: [
+        { owedByMemberId: ref.id, owedToMemberId: owenRef.id, amount: 5 },
+      ],
+    });
+
+    expect(result).toEqual({ results: ['sent'] });
+    expect(await mailTo(memberEmail)).toHaveLength(0);
+    expect((await onlyMailTo(user.email)).text).toContain('Hi Rita,');
+  });
+
+  it('accepts 25 requests in one call (the cap)', async () => {
+    const { groupRef, owen, owenRef, patRef, pat } = await seedRequestGroup();
+    const result = await call(sendPaymentRequests, owen.uid, {
+      groupId: groupRef.id,
+      requests: Array.from({ length: 25 }, (_, i) => ({
+        owedByMemberId: patRef.id,
+        owedToMemberId: owenRef.id,
+        amount: i + 1,
+      })),
+    });
+
+    expect(result).toEqual({
+      results: Array.from({ length: 25 }, () => 'sent'),
+    });
+    expect(await mailTo(pat.email)).toHaveLength(25);
   });
 
   it('lets any active member send, not just the payee or an admin (mirrors Summary)', async () => {
@@ -829,19 +907,20 @@ describe('sendPaymentReversalEmails', () => {
     expect(await mailTo(placeholderEmail)).toHaveLength(0);
   });
 
-  it('skips a member whose stored email is a list, still mailing the other', async () => {
+  it('skips a member whose linked profile email is a list, still mailing the other', async () => {
     const { groupRef, caller } = await seedCallerGroup();
     const payee = await seedUser();
     const payeeRef = await seedMember(groupRef, {
       displayName: 'Hana',
       user: payee,
     });
-    const listUser = await seedUser();
     const [a, b] = [uniqueEmail('list'), uniqueEmail('list')];
+    const listUser = await seedUser({ email: `${a},${b}` });
+    const memberEmail = uniqueEmail('member');
     const listRef = await seedMember(groupRef, {
       displayName: 'Ivo',
       user: listUser,
-      email: `${a},${b}`,
+      email: memberEmail,
     });
 
     const result = await call(sendPaymentReversalEmails, caller.uid, {
@@ -853,10 +932,100 @@ describe('sendPaymentReversalEmails', () => {
     });
 
     expect(result).toEqual({ sent: 1 });
-    await expectNoMailToAny([a, b, `${a},${b}`]);
+    await expectNoMailToAny([a, b, `${a},${b}`, memberEmail]);
     expect((await onlyMailTo(payee.email)).subject).toBe(
       'A payment from Ivo to you in PipSplit has been reversed'
     );
+  });
+
+  it("mails the linked users' profile emails; a missing user doc gets nothing (I2)", async () => {
+    const { groupRef, caller } = await seedCallerGroup();
+    const payee = await seedUser();
+    const payeeMemberEmail = uniqueEmail('stale-member');
+    const payeeRef = await seedMember(groupRef, {
+      displayName: 'Hana',
+      user: payee,
+      email: payeeMemberEmail,
+    });
+    const fakeEmail = uniqueEmail('fake-member');
+    const fakeRef = await seedMember(groupRef, {
+      displayName: 'Ivo',
+      email: fakeEmail,
+      userRefOverride: missingUserRef(),
+    });
+
+    const result = await call(sendPaymentReversalEmails, caller.uid, {
+      groupId: groupRef.id,
+      paidByMemberId: fakeRef.id,
+      paidToMemberId: payeeRef.id,
+      amount: 30,
+      splitCount: 1,
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    await expectNoMailToAny([fakeEmail, payeeMemberEmail]);
+    expect(await onlyMailTo(payee.email)).toBeDefined();
+  });
+
+  it('rejects member ids from another group, even for an admin of both', async () => {
+    // The caller administers A and B; the members are in B, but the call
+    // names A, where those ids are looked up and not found.
+    const { groupRef: groupA, caller } = await seedCallerGroup();
+    const groupB = await seedGroup();
+    await seedMember(groupB, {
+      displayName: 'Caller',
+      user: caller,
+      groupAdmin: true,
+    });
+    const payer = await seedUser();
+    const payee = await seedUser();
+    const payerRef = await seedMember(groupB, {
+      displayName: 'Ivo',
+      user: payer,
+    });
+    const payeeRef = await seedMember(groupB, {
+      displayName: 'Hana',
+      user: payee,
+    });
+
+    await expectCode(
+      call(sendPaymentReversalEmails, caller.uid, {
+        groupId: groupA.id,
+        paidByMemberId: payerRef.id,
+        paidToMemberId: payeeRef.id,
+        amount: 30,
+        splitCount: 1,
+      }),
+      'not-found'
+    );
+    await expectNoMailToAny([payer.email, payee.email]);
+  });
+
+  it("rejects an admin of group A naming group B's members under group B", async () => {
+    const { caller } = await seedCallerGroup();
+    const groupB = await seedGroup();
+    const payer = await seedUser();
+    const payee = await seedUser();
+    const payerRef = await seedMember(groupB, {
+      displayName: 'Ivo',
+      user: payer,
+    });
+    const payeeRef = await seedMember(groupB, {
+      displayName: 'Hana',
+      user: payee,
+    });
+
+    await expectCode(
+      call(sendPaymentReversalEmails, caller.uid, {
+        groupId: groupB.id,
+        paidByMemberId: payerRef.id,
+        paidToMemberId: payeeRef.id,
+        amount: 30,
+        splitCount: 1,
+      }),
+      'permission-denied'
+    );
+    await expectNoMailToAny([payer.email, payee.email]);
   });
 
   it('still mails the other member when one side is skipped', async () => {
@@ -935,8 +1104,8 @@ describe('sendSettleReversalEmails', () => {
     ['memberIds that are not an array', { ...valid, memberIds: 'a' }],
     ['no memberIds', { ...valid, memberIds: [] }],
     [
-      'more than 100 memberIds',
-      { ...valid, memberIds: Array.from({ length: 101 }, (_, i) => `m${i}`) },
+      'more than 25 memberIds',
+      { ...valid, memberIds: Array.from({ length: 26 }, (_, i) => `m${i}`) },
     ],
     ['a blank member id', { ...valid, memberIds: ['a', ''] }],
     ['a reserved member id (..)', { ...valid, memberIds: ['..'] }],
@@ -1056,12 +1225,19 @@ describe('sendSettleReversalEmails', () => {
       email: placeholderEmail,
     });
 
-    const listUser = await seedUser();
     const [listA, listB] = [uniqueEmail('list'), uniqueEmail('list')];
+    const listUser = await seedUser({ email: `${listA};${listB}` });
+    const listMemberEmail = uniqueEmail('member');
     const listRef = await seedMember(groupRef, {
       displayName: 'Lex',
       user: listUser,
-      email: `${listA};${listB}`,
+      email: listMemberEmail,
+    });
+    const fakeEmail = uniqueEmail('fake-member');
+    const fakeRef = await seedMember(groupRef, {
+      displayName: 'Fay',
+      email: fakeEmail,
+      userRefOverride: missingUserRef(),
     });
 
     const result = await call(sendSettleReversalEmails, caller.uid, {
@@ -1072,6 +1248,7 @@ describe('sendSettleReversalEmails', () => {
         hanaRef.id,
         placeholderRef.id,
         listRef.id,
+        fakeRef.id,
         ivoRef.id,
       ],
       settleDate: '2026-10-21',
@@ -1080,7 +1257,13 @@ describe('sendSettleReversalEmails', () => {
     expect(result).toEqual({ sent: 2 });
     expect(await mailTo(optedOut.email)).toHaveLength(0);
     expect(await mailTo(placeholderEmail)).toHaveLength(0);
-    await expectNoMailToAny([listA, listB, `${listA};${listB}`]);
+    await expectNoMailToAny([
+      listA,
+      listB,
+      `${listA};${listB}`,
+      listMemberEmail,
+      fakeEmail,
+    ]);
     expect(await onlyMailTo(hana.email)).toBeDefined();
 
     const mail = await onlyMailTo(ivo.email);
@@ -1100,6 +1283,87 @@ describe('sendSettleReversalEmails', () => {
       '<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Group Settlement Reversed</h2>'
     );
     expect(mail.html).toContain('recorded on <strong>2026-10-21</strong>');
+  });
+
+  it("mails the linked user's profile email, never the member doc's email (I2)", async () => {
+    const { groupRef, caller } = await seedCallerGroup();
+    const ivo = await seedUser();
+    const memberEmail = uniqueEmail('stale-member');
+    const ivoRef = await seedMember(groupRef, {
+      displayName: 'Ivo',
+      user: ivo,
+      email: memberEmail,
+    });
+
+    const result = await call(sendSettleReversalEmails, caller.uid, {
+      groupId: groupRef.id,
+      memberIds: [ivoRef.id],
+      settleDate: '2026-10-21',
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    expect(await mailTo(memberEmail)).toHaveLength(0);
+    expect(await onlyMailTo(ivo.email)).toBeDefined();
+  });
+
+  it('rejects member ids from another group, even for an admin of both', async () => {
+    const { groupRef: groupA, caller } = await seedCallerGroup();
+    const groupB = await seedGroup();
+    await seedMember(groupB, {
+      displayName: 'Caller',
+      user: caller,
+      groupAdmin: true,
+    });
+    const target = await seedUser();
+    const targetRef = await seedMember(groupB, {
+      displayName: 'Ivo',
+      user: target,
+    });
+
+    await expectCode(
+      call(sendSettleReversalEmails, caller.uid, {
+        groupId: groupA.id,
+        memberIds: [targetRef.id],
+        settleDate: '2026-10-21',
+      }),
+      'not-found'
+    );
+    expect(await mailTo(target.email)).toHaveLength(0);
+  });
+
+  it("rejects an admin of group A naming group B's members under group B", async () => {
+    const { caller } = await seedCallerGroup();
+    const groupB = await seedGroup();
+    const target = await seedUser();
+    const targetRef = await seedMember(groupB, {
+      displayName: 'Ivo',
+      user: target,
+    });
+
+    await expectCode(
+      call(sendSettleReversalEmails, caller.uid, {
+        groupId: groupB.id,
+        memberIds: [targetRef.id],
+        settleDate: '2026-10-21',
+      }),
+      'permission-denied'
+    );
+    expect(await mailTo(target.email)).toHaveLength(0);
+  });
+
+  it('accepts 25 member ids in one call (the cap), mailing each member once', async () => {
+    const { groupRef, caller } = await seedCallerGroup();
+    const ivo = await seedUser();
+    const ivoRef = await seedMember(groupRef, { displayName: 'Ivo', user: ivo });
+
+    const result = await call(sendSettleReversalEmails, caller.uid, {
+      groupId: groupRef.id,
+      memberIds: Array.from({ length: 25 }, () => ivoRef.id),
+      settleDate: '2026-10-21',
+    });
+
+    expect(result).toEqual({ sent: 1 });
+    expect(await mailTo(ivo.email)).toHaveLength(1);
   });
 
   it('prints the settle date as ISO yyyy-MM-dd, unchanged', async () => {
