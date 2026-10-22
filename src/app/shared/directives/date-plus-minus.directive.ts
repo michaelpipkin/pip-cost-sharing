@@ -1,17 +1,16 @@
-import { Directive, ElementRef, HostListener, inject } from '@angular/core';
+import { Directive, ElementRef, inject } from '@angular/core';
 import { NgControl } from '@angular/forms';
 import { FORM_FIELD } from '@angular/forms/signals';
 
 @Directive({
   selector: '[appDateShortcutKeys]',
-  standalone: true,
+  host: { '(keydown)': 'onKeyDown($event)' },
 })
 export class DateShortcutKeysDirective {
   readonly #formField = inject(FORM_FIELD, { optional: true });
   readonly #ngControl = inject(NgControl, { optional: true });
   readonly #el = inject(ElementRef);
 
-  @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
     // Leave browser and OS shortcuts (Ctrl+T, Ctrl+Y, Cmd+M, ...) alone
     if (event.ctrlKey || event.metaKey || event.altKey) return;

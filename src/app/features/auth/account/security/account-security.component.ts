@@ -19,6 +19,7 @@ import { LoadingService } from '@components/loading/loading.service';
 import { PasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { UserStore } from '@store/user.store';
+import { FirebaseError } from 'firebase/app';
 import { User as FirebaseUser, getAuth, updatePassword } from 'firebase/auth';
 import { applyPasswordMatch } from '../../auth-main/password-match-schema';
 
@@ -89,11 +90,15 @@ export class AccountSecurityComponent {
       });
       this.passwordForm().reset({ password: '', confirmPassword: '' });
     } catch (error) {
-      this.analytics.logError(
-        'Account Security Component',
-        'update_password',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      // Expected Firebase errors (e.g. auth/requires-recent-login) are shown to
+      // the user and not logged, as in account-profile.
+      if (!(error instanceof FirebaseError)) {
+        this.analytics.logError(
+          'Account Security Component',
+          'update_password',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
       const code = (error as { code?: string } | null)?.code;
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {

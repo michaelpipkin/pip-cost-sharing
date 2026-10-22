@@ -3,7 +3,8 @@ import { NativeDateAdapter } from '@angular/material/core';
 import moment from 'moment';
 
 // Month and day, optionally followed by a year, separated by "/", "-" or ".".
-const NUMERIC_DATE = /^(\d{1,2})([/.-])(\d{1,2})(?:\2(\d+))?$/;
+// A trailing separator with no year ("3/17/") means no year.
+const NUMERIC_DATE = /^(\d{1,2})([/.-])(\d{1,2})(?:\2(\d*))?$/;
 
 @Injectable({
   providedIn: 'root',
@@ -13,7 +14,11 @@ export class CustomDateAdapter extends NativeDateAdapter {
     if (typeof value === 'string' && value.length > 0) {
       const match = NUMERIC_DATE.exec(value.trim());
       if (match) {
-        return this.#parseNumericDate(+match[1]!, +match[3]!, match[4]);
+        return this.#parseNumericDate(
+          +match[1]!,
+          +match[3]!,
+          match[4] || undefined
+        );
       }
     }
     return super.parse(value);

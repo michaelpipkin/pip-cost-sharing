@@ -153,14 +153,30 @@ describe('DateShortcutKeysDirective', () => {
       expect(written()).toBe('2026-06-15');
     });
 
-    it('should give today for a shortcut on empty input', () => {
+    it('should give today at local midnight for a shortcut on empty input', () => {
       press('+', '');
       expect(written()).toBe('2026-06-15');
+      expect(h.value()?.getTime()).toBe(new Date(2026, 5, 15).getTime());
     });
 
-    it('should give today for a shortcut on unparseable input', () => {
+    it('should give today at local midnight for a shortcut on unparseable input', () => {
       press('-', 'not a date');
       expect(written()).toBe('2026-06-15');
+      expect(h.value()?.getTime()).toBe(new Date(2026, 5, 15).getTime());
+    });
+
+    // Shift is not a modifier to ignore: "+" is Shift+"=" on a US keyboard, so
+    // the shortcut must still work with it held.
+    it('should step forward a day on "+" with shiftKey held', () => {
+      const event = press('+', '6/15/2026', { shiftKey: true });
+      expect(written()).toBe('2026-06-16');
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('should still handle "t" with shiftKey held', () => {
+      const event = press('t', '3/17/2020', { shiftKey: true });
+      expect(written()).toBe('2026-06-15');
+      expect(event.defaultPrevented).toBe(true);
     });
 
     it.each(['-', '+', 't', 'm', 'y'])(

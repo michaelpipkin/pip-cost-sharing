@@ -32,6 +32,12 @@ describe('CustomDateAdapter', () => {
     expect(ymd(adapter.parse('3/17'))).toEqual([2026, 3, 17]);
   });
 
+  it('should accept a trailing separator and assume the current year', () => {
+    expect(ymd(adapter.parse('3/17/'))).toEqual([2026, 3, 17]);
+    expect(ymd(adapter.parse('3-17-'))).toEqual([2026, 3, 17]);
+    expect(ymd(adapter.parse('3.17.'))).toEqual([2026, 3, 17]);
+  });
+
   it('should use the clock year, not a hard-coded one', () => {
     vi.setSystemTime(new Date(2031, 0, 2));
     expect(ymd(adapter.parse('3/17'))).toEqual([2031, 3, 17]);
@@ -67,6 +73,25 @@ describe('CustomDateAdapter', () => {
     expect(ymd(adapter.parse('12/31/30'))).toEqual([2030, 12, 31]);
     expect(ymd(adapter.parse('1/1/68'))).toEqual([2068, 1, 1]);
     expect(ymd(adapter.parse('1/1/69'))).toEqual([1969, 1, 1]);
+  });
+
+  it('should read the two-digit year 00 as 2000', () => {
+    expect(ymd(adapter.parse('1/5/00'))).toEqual([2000, 1, 5]);
+  });
+
+  it.each([
+    ['-', '3-17-25', [2025, 3, 17]],
+    ['.', '3.17.25', [2025, 3, 17]],
+    ['-', '3-17', [2026, 3, 17]],
+    ['.', '3.17.2025', [2025, 3, 17]],
+  ])('should accept the %s separator in %s', (_sep, text, expected) => {
+    expect(ymd(adapter.parse(text))).toEqual(expected);
+  });
+
+  it('should return an invalid date for a one-digit year (1/5/2)', () => {
+    const result = adapter.parse('1/5/2');
+    expect(result).toBeInstanceOf(Date);
+    expect(adapter.isValid(result as Date)).toBe(false);
   });
 
   it('should return an invalid date, not roll over, for an impossible date with a two-digit year', () => {

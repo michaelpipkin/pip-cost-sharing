@@ -10,6 +10,7 @@ import {
   createMockUserStore,
 } from '@testing/test-helpers';
 import * as authModule from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountSecurityComponent } from './account-security.component';
@@ -201,8 +202,8 @@ describe('AccountSecurityComponent', () => {
       expect(mockLoading.loadingOff).toHaveBeenCalledTimes(1);
     });
 
-    // Regression for B3: an updatePassword() rejection reaches analytics.logError.
-    it('should log an updatePassword rejection through analytics.logError', async () => {
+    // Regression for B3: an unexpected (non-Firebase) updatePassword() rejection reaches analytics.logError.
+    it('should log an unexpected updatePassword rejection through analytics.logError', async () => {
       await createComponent();
       vi.spyOn(authModule, 'updatePassword').mockRejectedValue(
         new Error('auth/requires-recent-login')
@@ -221,14 +222,12 @@ describe('AccountSecurityComponent', () => {
       );
     });
 
-    it('should explain requires-recent-login, log it, and keep the form', async () => {
+    it('should explain requires-recent-login without logging it, and keep the form', async () => {
       await createComponent();
       vi.spyOn(authModule, 'updatePassword').mockRejectedValue(
-        Object.assign(
-          new Error('Firebase: Error (auth/requires-recent-login).'),
-          {
-            code: 'auth/requires-recent-login',
-          }
+        new FirebaseError(
+          'auth/requires-recent-login',
+          'Firebase: Error (auth/requires-recent-login).'
         )
       );
       type('new-password-input', 'newpw');
@@ -239,7 +238,7 @@ describe('AccountSecurityComponent', () => {
       expect(messages()).toEqual([
         'For security, please sign out and sign in again, then change your password.',
       ]);
-      expect(mockAnalytics.logError).toHaveBeenCalledTimes(1);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
       expect(mockLoading.loadingOff).toHaveBeenCalledTimes(1);
       expect((component as any).passwordModel().password).toBe('newpw');
     });
