@@ -10,6 +10,7 @@ import { Split } from '@models/split';
 import { AmountDue } from '@models/amount-due';
 import { ParsedReceipt } from '@models/receipt-scan';
 import { ReceiptFilePickResult } from '@services/receipt-file-selection.service';
+import type { GroupEmailPrompt } from '@store/user.store';
 
 // ---- Mock DocumentReference ----
 
@@ -199,8 +200,13 @@ export function createMockUserStore() {
   const user = signal<User | null>(null);
   const isGoogleUser = signal(false);
   const isEmailConfirmed = signal(false);
+  const groupEmailPrompt = signal<GroupEmailPrompt | null>(null);
   return {
     user,
+    groupEmailPrompt,
+    setGroupEmailPrompt: vi.fn((p: GroupEmailPrompt | null) =>
+      groupEmailPrompt.set(p)
+    ),
     isGoogleUser,
     isEmailConfirmed,
     isLoggedIn: computed(() => !!user()),

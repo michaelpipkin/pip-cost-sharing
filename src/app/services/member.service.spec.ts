@@ -684,6 +684,72 @@ describe('MemberService', () => {
       expect(count).toBe(2);
     });
 
+    describe('onlyFromEmail', () => {
+      const memberDocs = () => [
+        makeDocSnap('m1', { email: 'Old@Test.com' }, { id: 'm1' }),
+        makeDocSnap('m2', { email: 'work@corp.com' }, { id: 'm2' }),
+        makeDocSnap('m3', { email: 'old@test.com' }, { id: 'm3' }),
+      ];
+
+      it('writes only the records on that address, ignoring case, and counts them', async () => {
+        const docs = memberDocs();
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap(docs) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
+
+        const count = await service.updateAllMemberEmails(
+          mockUserRef,
+          'new@test.com',
+          'old@test.com'
+        );
+
+        expect(count).toBe(2);
+        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
+        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(docs[0]!.ref, {
+          email: 'new@test.com',
+        });
+        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(docs[2]!.ref, {
+          email: 'new@test.com',
+        });
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalledWith(
+          docs[1]!.ref,
+          expect.anything()
+        );
+      });
+
+      it('writes nothing when no record is on that address', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap(memberDocs()) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
+
+        const count = await service.updateAllMemberEmails(
+          mockUserRef,
+          'new@test.com',
+          'nobody@test.com'
+        );
+
+        expect(count).toBe(0);
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+      });
+
+      it('writes every record when the parameter is omitted', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap(memberDocs()) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
+
+        const count = await service.updateAllMemberEmails(
+          mockUserRef,
+          'new@test.com'
+        );
+
+        expect(count).toBe(3);
+        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(3);
+      });
+    });
+
     it('should return 0 when no members are linked to the user', async () => {
       vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
         makeSnap([]) as any
@@ -705,6 +771,42 @@ describe('MemberService', () => {
       await expect(
         service.updateAllMemberEmails(mockUserRef, 'new@test.com')
       ).rejects.toThrow('Firestore error');
+    });
+  });
+
+  describe('getLinkedMemberEmails', () => {
+    const mockUserRef = { id: 'user-1' } as any;
+
+    it("returns the email on each of the user's member records", async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+        makeSnap([
+          makeDocSnap('m1', { email: 'a@test.com' }, { id: 'm1' }),
+          makeDocSnap('m2', { email: 'b@test.com' }, { id: 'm2' }),
+          makeDocSnap('m3', {}, { id: 'm3' }),
+        ]) as any
+      );
+
+      expect(await service.getLinkedMemberEmails(mockUserRef)).toEqual([
+        'a@test.com',
+        'b@test.com',
+        '',
+      ]);
+    });
+
+    it('logs and rethrows a failed read', async () => {
+      vi.spyOn(firestoreModule, 'getDocs').mockRejectedValueOnce(
+        new Error('Firestore error')
+      );
+
+      await expect(service.getLinkedMemberEmails(mockUserRef)).rejects.toThrow(
+        'Firestore error'
+      );
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'getLinkedMemberEmails',
+        'Failed to get linked member emails',
+        'Firestore error'
+      );
     });
   });
 

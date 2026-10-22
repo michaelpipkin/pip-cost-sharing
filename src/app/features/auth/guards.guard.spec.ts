@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, provideRouter, Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import * as authModule from 'firebase/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,8 @@ import { GroupStore } from '@store/group.store';
 import {
   adminGuard,
   APP_OWNER_EMAIL,
+  authGuard,
+  basicAuthGuard,
   groupGuard,
   loggedInGuard,
   noCrawlerGuard,
@@ -197,5 +199,87 @@ describe('redirecting guards', () => {
 
       expect(await run(noCrawlerGuard)).toBe(true);
     });
+  });
+});
+
+describe('signed-out redirects remember the attempted page (B20)', () => {
+  const mockAuth = {
+    currentUser: null as Partial<authModule.User> | null,
+    authStateReady: vi.fn().mockResolvedValue(undefined),
+  };
+  let router: Router;
+
+  async function run(guard: CanActivateFn, url: string): Promise<unknown> {
+    return TestBed.runInInjectionContext(() =>
+      Promise.resolve(guard({} as any, { url } as any))
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.currentUser = null;
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: authModule.getAuth, useValue: mockAuth },
+      ],
+    });
+    router = TestBed.inject(Router);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe.each([
+    ['authGuard', authGuard],
+    ['basicAuthGuard', basicAuthGuard],
+  ])('%s', (_name, guard) => {
+    it('sends a signed-out visitor to login with the page they wanted', async () => {
+      const result = await run(guard, '/administration/members');
+
+      expect(router.serializeUrl(result as any)).toBe(
+        '/auth/login?returnUrl=%2Fadministration%2Fmembers'
+      );
+    });
+
+    it("keeps a one-time link's token in the stored URL", async () => {
+      const result = await run(
+        guard,
+        '/auth/confirm-group-email?token=abc123'
+      );
+
+      const tree = result as ReturnType<Router['parseUrl']>;
+      expect(tree.queryParams['returnUrl']).toBe(
+        '/auth/confirm-group-email?token=abc123'
+      );
+    });
+
+    it('sends them to plain login when they came from the home page', async () => {
+      const result = await run(guard, '/');
+
+      expect(router.serializeUrl(result as any)).toBe('/auth/login');
+    });
+
+    it('does not redirect while the delete-account confirmation shows', async () => {
+      vi.spyOn(router, 'url', 'get').mockReturnValue('/auth/delete-account');
+
+      expect(await run(guard, '/auth/account')).toBe(false);
+    });
+  });
+
+  it('authGuard lets a validated user through', async () => {
+    mockAuth.currentUser = {
+      providerData: [{ providerId: 'password' } as authModule.UserInfo],
+      emailVerified: true,
+    };
+
+    expect(await run(authGuard, '/expenses')).toBe(true);
+  });
+
+  it('basicAuthGuard lets any signed-in user through', async () => {
+    mockAuth.currentUser = { emailVerified: false };
+
+    expect(await run(basicAuthGuard, '/auth/account')).toBe(true);
   });
 });

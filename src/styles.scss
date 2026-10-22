@@ -980,6 +980,19 @@ mat-dialog-actions {
   justify-items: end;
 }
 
+/* A dialog with three or more buttons: they stack on narrow screens. */
+@media (max-width: 600px) {
+  mat-dialog-actions.dialog-actions-wrap {
+    grid-auto-flow: row;
+    justify-items: stretch;
+  }
+}
+
+.small-text {
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
 .help-dialog-header {
   display: grid;
   grid-template-columns: auto max-content;

@@ -458,9 +458,43 @@ export class MemberService implements IMemberService {
     );
   }
 
+  /**
+   * The email on each member record linked to the user (one per group
+   * membership), as stored. Used to tell how many memberships a login-email
+   * change would touch.
+   */
+  async getLinkedMemberEmails(
+    userRef: DocumentReference<User>
+  ): Promise<string[]> {
+    try {
+      const membersSnapshot = await getDocs(
+        query(
+          collectionGroup(this.fs, 'members'),
+          where('userRef', '==', userRef)
+        )
+      );
+      return membersSnapshot.docs.map((d) => d.data().email ?? '');
+    } catch (error) {
+      this.analytics.logError(
+        'Member Service',
+        'getLinkedMemberEmails',
+        'Failed to get linked member emails',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Sets `newEmail` on the user's member records and returns how many it
+   * wrote. With `onlyFromEmail`, only records whose email equals it
+   * (case-insensitively) are written, so a deliberate address set for one
+   * group is kept.
+   */
   async updateAllMemberEmails(
     userRef: DocumentReference<User>,
-    newEmail: string
+    newEmail: string,
+    onlyFromEmail?: string
   ): Promise<number> {
     try {
       const membersQuery = query(
@@ -468,16 +502,22 @@ export class MemberService implements IMemberService {
         where('userRef', '==', userRef)
       );
       const membersSnapshot = await getDocs(membersQuery);
+      const from = onlyFromEmail?.toLowerCase();
+      const toUpdate = membersSnapshot.docs.filter(
+        (memberDoc) =>
+          from === undefined ||
+          (memberDoc.data().email ?? '').toLowerCase() === from
+      );
 
-      for (const memberDoc of membersSnapshot.docs) {
+      for (const memberDoc of toUpdate) {
         await updateDoc(memberDoc.ref, { email: newEmail });
       }
 
       this.analytics.logEvent('member_emails_updated', {
-        membersUpdated: membersSnapshot.size,
+        membersUpdated: toUpdate.length,
       });
 
-      return membersSnapshot.size;
+      return toUpdate.length;
     } catch (error) {
       this.analytics.logError(
         'Member Service',

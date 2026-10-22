@@ -8,16 +8,31 @@ import {
   withState,
 } from '@ngrx/signals';
 
+/**
+ * A login email change that has just been written to the user's profile
+ * (from a non-empty old address to a different one), waiting for the app
+ * shell to offer to update the user's group member emails to match.
+ */
+export type GroupEmailPrompt = {
+  uid: string;
+  oldEmail: string;
+  newEmail: string;
+};
+
 type UserState = {
   user: User | null;
   isGoogleUser: boolean;
   isEmailConfirmed: boolean;
+  // Deliberately survives clearUser(): a confirmed email change often ends
+  // the session, and the offer is made after the user signs back in.
+  groupEmailPrompt: GroupEmailPrompt | null;
 };
 
 const initialState: UserState = {
   user: null,
   isGoogleUser: false,
   isEmailConfirmed: false,
+  groupEmailPrompt: null,
 };
 
 export const UserStore = signalStore(
@@ -48,6 +63,8 @@ export const UserStore = signalStore(
         isEmailConfirmed,
       });
     },
+    setGroupEmailPrompt: (groupEmailPrompt: GroupEmailPrompt | null) =>
+      patchState(store, { groupEmailPrompt }),
     setIsGoogleUser: (isGoogleUser: boolean) =>
       patchState(store, { isGoogleUser: isGoogleUser }),
     setIsEmailConfirmed: (isEmailConfirmed: boolean) =>

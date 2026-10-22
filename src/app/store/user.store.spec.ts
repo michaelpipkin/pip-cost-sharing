@@ -92,4 +92,29 @@ describe('UserStore', () => {
       expect(store.isValidUser()).toBe(false);
     });
   });
+
+  describe('groupEmailPrompt', () => {
+    const prompt = { uid: 'u1', oldEmail: 'a@x.com', newEmail: 'b@x.com' };
+
+    it('should start empty and hold what is set until it is cleared', () => {
+      const store = setup();
+      expect(store.groupEmailPrompt()).toBeNull();
+
+      store.setGroupEmailPrompt(prompt);
+      expect(store.groupEmailPrompt()).toEqual(prompt);
+
+      store.setGroupEmailPrompt(null);
+      expect(store.groupEmailPrompt()).toBeNull();
+    });
+
+    it('should survive clearUser, since an email change often ends the session', () => {
+      const store = setup();
+      store.initUser(mockUser(), false, true);
+      store.setGroupEmailPrompt(prompt);
+
+      store.clearUser();
+
+      expect(store.groupEmailPrompt()).toEqual(prompt);
+    });
+  });
 });

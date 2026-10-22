@@ -99,6 +99,7 @@ describe('GroupService', () => {
     navigated: true,
     currentNavigation: signal<any>(null),
     serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
+    parseUrl: (url: string) => serializer.parse(url),
     navigate: vi.fn(),
     navigateByUrl: vi.fn(),
   };
@@ -625,6 +626,7 @@ describe('GroupService', () => {
           navigated: pending === null,
           currentNavigation: signal(pending),
           serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
+          parseUrl: (url: string) => serializer.parse(url),
         };
       }
 
@@ -717,6 +719,82 @@ describe('GroupService', () => {
         expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
           ROUTE_PATHS.EXPENSES_ROOT
         );
+      });
+
+      // B20: the authGuard sends a signed-out visitor to
+      // /auth/login?returnUrl=<the page they wanted>.
+      describe('after a sign-in from the login page', () => {
+        const loginUrl = (returnUrl?: string) =>
+          returnUrl === undefined
+            ? '/auth/login'
+            : `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+
+        it('goes to Expenses when there is no returnUrl', async () => {
+          useRouter('/auth/login', null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+            ROUTE_PATHS.EXPENSES_ROOT
+          );
+        });
+
+        it('returns to the page the visitor was after', async () => {
+          useRouter(loginUrl('/administration/members'), null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledTimes(1);
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe('/administration/members');
+        });
+
+        it("keeps a one-time link's token in the URL it returns to", async () => {
+          useRouter(
+            loginUrl('/auth/confirm-group-email?token=abc123'),
+            null
+          );
+
+          await deliverOneActiveGroup();
+
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe(
+            '/auth/confirm-group-email?token=abc123'
+          );
+        });
+
+        it('judges a pending navigation to the login page the same way', async () => {
+          useRouter('/', loginUrl('/analysis/summary'));
+
+          await deliverOneActiveGroup();
+
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe('/analysis/summary');
+        });
+
+        it.each([
+          ['a protocol-relative URL', '//evil.com'],
+          ['an absolute URL', 'https://evil.com'],
+          ['a backslash host', '/\\evil.com'],
+          ['a javascript: URL', 'javascript:alert(1)'],
+        ])('falls back to Expenses for %s', async (_label, returnUrl) => {
+          useRouter(loginUrl(returnUrl), null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledTimes(1);
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+            ROUTE_PATHS.EXPENSES_ROOT
+          );
+        });
+
+        it('ignores a returnUrl on any other redirect page', async () => {
+          useRouter('/home?returnUrl=%2Fadministration%2Fmembers', null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+        });
       });
 
       it('does not redirect a validated user on the Account menu', async () => {

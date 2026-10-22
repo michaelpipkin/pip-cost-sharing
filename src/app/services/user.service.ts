@@ -346,6 +346,7 @@ export class UserService implements IUserService {
 
       const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
       await setDoc(docRef, { email: tokenEmail }, { merge: true });
+      this.#offerGroupEmailUpdate(firebaseUser.uid, profileEmail, tokenEmail);
       return tokenEmail;
     } catch (error) {
       if (isRevokedSessionError(error)) throw error;
@@ -357,6 +358,17 @@ export class UserService implements IUserService {
       );
       return profileEmail;
     }
+  }
+
+  // The profile email just changed from `oldEmail` to `newEmail`: record it
+  // so the app shell can offer to move the user's group member emails too
+  // (they stay on the old address otherwise, unless the user finds Account >
+  // Profile > Sync). A blank old address is a legacy profile being filled
+  // in, not a change, and a case-only difference is the same address.
+  #offerGroupEmailUpdate(uid: string, oldEmail: string, newEmail: string): void {
+    if (!oldEmail || !newEmail) return;
+    if (oldEmail.toLowerCase() === newEmail.toLowerCase()) return;
+    this.userStore.setGroupEmailPrompt({ uid, oldEmail, newEmail });
   }
 
   private async initializeAuth(): Promise<void> {
@@ -544,6 +556,7 @@ export class UserService implements IUserService {
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     const userId = this.#requireUserId();
     await this.auth.currentUser!.getIdToken(true);
+    const oldEmail = this.userStore.user()?.email ?? '';
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,
@@ -556,6 +569,7 @@ export class UserService implements IUserService {
     if (isSingleEmailAddress(newEmail)) {
       await setDoc(userDocRef, { email: newEmail }, { merge: true });
       this.userStore.updateUser({ email: newEmail });
+      this.#offerGroupEmailUpdate(userId, oldEmail, newEmail);
     }
 
     // Link any unlinked member records with the verified address

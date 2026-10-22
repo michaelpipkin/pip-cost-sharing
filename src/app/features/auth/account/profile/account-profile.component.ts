@@ -37,7 +37,8 @@ import {
   sendEmailVerification,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
-import { isSingleEmailAddress, singleEmail } from '@utils/email-validation';
+import { singleEmail } from '@utils/email-validation';
+import { verifiedTokenEmail } from '@utils/verified-token-email.util';
 
 @Component({
   selector: 'app-account-profile',
@@ -93,17 +94,6 @@ export class AccountProfileComponent {
   #signInEmail(): string {
     const profileEmail = this.currentUser()?.email ?? '';
     return this.auth.currentUser?.email ?? profileEmail;
-  }
-
-  /** The refreshed ID token's address when verified and valid, else ''. */
-  async #verifiedTokenEmail(): Promise<string> {
-    const firebaseUser = this.auth.currentUser;
-    if (!firebaseUser) return '';
-    const { claims } = await firebaseUser.getIdTokenResult(true);
-    const email = claims['email'];
-    return claims['email_verified'] === true && isSingleEmailAddress(email)
-      ? email
-      : '';
   }
 
   #actionCodeSettings(): ActionCodeSettings {
@@ -212,7 +202,7 @@ export class AccountProfileComponent {
       // verified token address, so take it from a freshly refreshed token
       // (as UserService #syncProfileEmail does), not the profile copy,
       // which can lag a login-email change.
-      const tokenEmail = await this.#verifiedTokenEmail();
+      const tokenEmail = await verifiedTokenEmail(this.auth);
       if (!tokenEmail) {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Verify your login email first.' },

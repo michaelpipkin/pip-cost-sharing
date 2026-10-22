@@ -16,6 +16,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { RETURN_URL_PARAM, safeReturnUrl } from '@utils/return-url.util';
 import {
   collection,
   collectionGroup,
@@ -258,16 +259,30 @@ export class GroupService implements IGroupService {
     // menu itself, and a validated user there must not be bounced to
     // Expenses whenever a groups snapshot lands (unvalidated users never get
     // here - getUserGroups returns early for them).
+    // The login page may carry a returnUrl (the page the authGuard sent the
+    // visitor away from), so only its path decides whether this is a redirect
+    // page; a validated sign-in then returns to that page.
     const currentUrl = this.#effectiveUrl();
+    const currentPath = currentUrl.split(/[?#]/)[0];
+    const isLoginPage = currentPath === ROUTE_PATHS.AUTH_LOGIN;
     const isRedirectPage =
-      currentUrl === '/home' ||
-      currentUrl === '/' ||
-      currentUrl === '/auth/login';
+      isLoginPage || currentUrl === '/home' || currentUrl === '/';
 
     if (isRedirectPage) {
-      // Validated users go to expenses, unvalidated users go to account
+      // Validated users go to expenses (or back to where they were headed),
+      // unvalidated users go to account
       if (this.userStore.isValidUser()) {
-        this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+        const returnTree = isLoginPage
+          ? safeReturnUrl(
+              this.router,
+              this.router.parseUrl(currentUrl).queryParams[RETURN_URL_PARAM]
+            )
+          : null;
+        if (returnTree) {
+          this.router.navigateByUrl(returnTree);
+        } else {
+          this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+        }
       } else {
         this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       }

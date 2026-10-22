@@ -61,6 +61,7 @@ describe('UserService', () => {
     initUser: vi.fn(),
     setIsGoogleUser: vi.fn(),
     setIsEmailConfirmed: vi.fn(),
+    setGroupEmailPrompt: vi.fn(),
   };
   const mockSnackBar = { openFromComponent: vi.fn() };
   const mockDialog = { open: vi.fn() };
@@ -425,6 +426,47 @@ describe('UserService', () => {
       expect(firestoreModule.setDoc).not.toHaveBeenCalled();
       expect(mockUserStore.updateUser).not.toHaveBeenCalled();
       expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith();
+    });
+
+    describe('group email update offer (signed-in link path)', () => {
+      it('records the old and new address when the profile email changes', async () => {
+        userSignal.set({ id: 'user-123', email: 'old@test.com' });
+
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(1);
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledWith({
+          uid: 'user-123',
+          oldEmail: 'old@test.com',
+          newEmail: 'new@test.com',
+        });
+      });
+
+      it.each([
+        ['a blank old email', ''],
+        ['an unchanged email', 'new@test.com'],
+        ['a case-only change', 'New@Test.com'],
+      ])('does not offer for %s', async (_label, oldEmail) => {
+        userSignal.set({ id: 'user-123', email: oldEmail });
+
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('does not offer when there is no stored profile yet', async () => {
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('does not offer for an address the profile will not store', async () => {
+        userSignal.set({ id: 'user-123', email: 'old@test.com' });
+
+        await service.updateUserEmailAndLinkMembers('alice@my_domain.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
     });
 
     it('should throw when no authenticated user', async () => {
@@ -1156,6 +1198,72 @@ describe('UserService', () => {
         { merge: true }
       );
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+    });
+
+    // B20: a changed profile email offers to update the group member emails.
+    describe('group email update offer (sign-in path)', () => {
+      it('records the old and new address when the profile email changes', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: 'old@test.com' }) as any
+        );
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(1);
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledWith({
+          uid: 'user-123',
+          oldEmail: 'old@test.com',
+          newEmail: 'alice@test.com',
+        });
+      });
+
+      it('does not offer when a blank profile email is filled in', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: '' }) as any
+        );
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+
+        expect(firestoreModule.setDoc).toHaveBeenCalled();
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('does not offer when the profile email is unchanged', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: 'alice@test.com' }) as any
+        );
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+
+        expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('does not offer for a change of letter case only', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: 'Alice@Test.com' }) as any
+        );
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('does not offer when the profile write fails', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: 'old@test.com' }) as any
+        );
+        vi.spyOn(firestoreModule, 'setDoc').mockRejectedValue(new Error('x'));
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
     });
 
     // I1 (final review): firestore.rules accepts a profile email only when it

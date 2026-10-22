@@ -205,6 +205,15 @@ describe('AccountProfileComponent', () => {
       ).toBeTruthy();
     });
 
+    it('should explain that Sync overwrites addresses set for a group (B20)', () => {
+      const help = fixture.debugElement.query(
+        By.css('[data-testid="sync-member-emails-help"]')
+      );
+      expect(help.nativeElement.textContent.replace(/\s+/g, ' ').trim()).toBe(
+        'Sets the email on every group membership to your login email, including addresses you set for a particular group.'
+      );
+    });
+
     it('should show delete account button', () => {
       expect(
         fixture.debugElement.query(
