@@ -186,6 +186,7 @@ export const AREAS = {
     ],
     // Mail delivery suppression applies to every email the backend sends.
     functions: [
+      'src/log-app-error.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
@@ -260,6 +261,7 @@ export const AREAS = {
       ...CONFIRM_DIALOG,
     ],
     functions: [
+      'src/delete-user-account.spec.ts',
       'src/user-deletion.spec.ts',
       'src/verify-user-email.spec.ts',
       ...EMAIL_LOWER_FUNCTIONS,
@@ -299,10 +301,12 @@ export const AREAS = {
       ...CONFIRM_DIALOG,
     ],
     functions: [
+      'src/delete-group.spec.ts',
       'src/email-formatting.spec.ts',
       'src/email-normalization.spec.ts',
       'src/invite-email.spec.ts',
       ...INVITE_LINKING_FUNCTIONS,
+      'src/send-group-invite.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
@@ -342,6 +346,7 @@ export const AREAS = {
       'src/invite-email.spec.ts',
       ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
+      'src/send-group-invite.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
@@ -479,6 +484,7 @@ export const AREAS = {
     functions: [
       'src/receipt-ocr.spec.ts',
       'src/receipt-parser.spec.ts',
+      'src/scan-receipt.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
@@ -634,7 +640,7 @@ export const AREAS = {
       `${SERVICES}/help-content.service.spec.ts`,
       ...GUIDED_TOUR,
     ],
-    functions: [],
+    functions: ['src/notify-new-issue.spec.ts'],
     tag: '@help',
   },
 
@@ -655,7 +661,11 @@ export const AREAS = {
       ...CONFIRM_DIALOG,
       ...DELETE_DIALOG,
     ],
-    functions: ['src/admin-reports.spec.ts', 'src/common.spec.ts'],
+    functions: [
+      'src/admin-reports.spec.ts',
+      'src/common.spec.ts',
+      'src/sync-auth-emails.spec.ts',
+    ],
     tag: '@admin',
   },
 };
