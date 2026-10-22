@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures';
 import { AccountPage } from '../pages/account.page';
 import { ExpensesPage } from '../pages/expenses.page';
+import { GroupEmailUpdateDialog } from '../pages/group-email-update-dialog';
 import { GroupsPage } from '../pages/groups.page';
 import { getSeedAdmin } from '../seed/admin';
 import { ACCOUNT, NEW_EMAIL, NEW_PASSWORD } from '../seed/datasets/account';
@@ -192,6 +193,17 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
       })
       .toEqual([NEW_EMAIL, NEW_EMAIL]);
     expect((await auth.getUser(user.uid)).emailVerified).toBe(true);
+
+    // The emulator keeps the signed-in session (production revokes it), so
+    // the link page offers to update the group emails over the action page
+    // (B20, I1): the user's one membership is still on the old address. The
+    // modal has to be dealt with before anything behind it can be clicked.
+    const groupEmails = new GroupEmailUpdateDialog(page);
+    await groupEmails.expectOpen();
+    await expect(groupEmails.oldLine).toHaveText(
+      `1 membership still uses your old login email, ${user.email}.`
+    );
+    await groupEmails.choose(groupEmails.notNowButton);
 
     // Only the new address signs in now.
     await account.signOut();

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
 import { AccountPage } from '../pages/account.page';
 import { GroupEmailUpdateDialog } from '../pages/group-email-update-dialog';
+import { MembersPage } from '../pages/members.page';
 import { getSeedAdmin } from '../seed/admin';
 import {
   CUSTOM_EMAIL,
@@ -182,6 +183,7 @@ test.describe(
       const newEmail = newEmailFor('skip');
       const dialog = new GroupEmailUpdateDialog(page);
       const account = new AccountPage(page);
+      const members = new MembersPage(page);
 
       await setCustomEmailInGroupC('skip');
 
@@ -201,7 +203,13 @@ test.describe(
       await account.gotoAccount();
       await account.signOut();
       await signInAs(page, { ...user, email: newEmail });
-      await expect(account.logoutButton).toBeVisible();
+      // An offer would open a modal as soon as the sign-in landed, and a
+      // modal blocks the nav click below, so this fails if one appears; the
+      // members page also shows the membership counting has finished.
+      await members.goto();
+      await expect(members.currentGroupName).toHaveText(
+        GROUP_EMAIL_UPDATE.groups.skip[0]!.name
+      );
       await expect(dialog.dialog).toBeHidden();
       expect(await memberEmails('skip')).toEqual([
         user.email,
