@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { TableFilterService } from '@services/table-filter.service';
 import {
+  B7_LEAKED_FILTER_PANES,
   clickBackdrop,
   disposeOverlays,
   overlayButton,
@@ -38,6 +39,14 @@ const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 describe('TextFilterDirective', () => {
   let fixture: ComponentFixture<HostComponent>;
   let service: TableFilterService<any>;
+  let destroyedWhileOpen = false;
+  // Destroys the host, noting whether its panel was open (the B7 leak case)
+  const destroyHost = () => {
+    destroyedWhileOpen ||= document.querySelector(
+      '.cdk-overlay-container .filter-panel'
+    ) !== null;
+    fixture.destroy();
+  };
 
   const settle = async () => {
     fixture.detectChanges();
@@ -77,10 +86,13 @@ describe('TextFilterDirective', () => {
   });
 
   afterEach(() => {
-    fixture?.destroy();
+    if (fixture) destroyHost();
     vi.restoreAllMocks();
-    disposeOverlays();
-    expect(overlayPanes()).toHaveLength(0);
+    disposeOverlays({
+      // B7: a pane open when the host was destroyed outlives it
+      knownLeakedPanes: destroyedWhileOpen ? B7_LEAKED_FILTER_PANES : 0,
+    });
+    destroyedWhileOpen = false;
   });
 
   it('applies the typed text, case-insensitive by default, and closes the panel', async () => {
@@ -207,17 +219,20 @@ describe('TextFilterDirective', () => {
       await nextTask();
       expect(panel()).not.toBeNull();
 
-      fixture.destroy();
+      destroyHost();
 
       expect(panel()).toBeNull();
     });
 
-    // BUG (B7): text-filter.directive.ts:424-436 - createFilterPanel's
+    // BUG (B7): text-filter.directive.ts:43-55 - createFilterPanel's
     // setTimeout reassigns componentRef from the nonexistent
     // OverlayRef._attachedPortal, so after the first tick the directive no
     // longer tracks the panel component that attach() returned (and its
     // destroy handler has nothing to destroy). The timeout is also dead weight
     // next to the setupComponent() call in openFilterPanel.
+    // The fix may drop componentRef altogether (e.g. the base class owning
+    // panel disposal); if so, remove this marker and keep an equivalent check
+    // that destroying the host destroys the panel component.
     it.fails('still tracks the attached panel component', async () => {
       const attach = vi.spyOn(OverlayRef.prototype, 'attach');
       await openPanel();
@@ -229,7 +244,7 @@ describe('TextFilterDirective', () => {
   });
 
   describe('reopening', () => {
-    // BUG (B7): text-filter.directive.ts:450 - see select-filter.directive.spec
+    // BUG (B7): text-filter.directive.ts:69 - see select-filter.directive.spec
     // (base-filter.directive.ts:179): each open adds a backdropClick()
     // subscription to the same overlay and none is released.
     it.fails('does not accumulate backdrop subscriptions', async () => {
@@ -254,7 +269,7 @@ describe('TextFilterDirective', () => {
       await openPanel();
       expect(overlayPanes()).toHaveLength(1);
 
-      fixture.destroy();
+      destroyHost();
 
       expect(overlayPanes()).toHaveLength(0);
     });

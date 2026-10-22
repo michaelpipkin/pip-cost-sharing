@@ -1,5 +1,6 @@
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { TestBed } from '@angular/core/testing';
+import { expect } from 'vitest';
 
 /**
  * Helpers for specs that open CDK overlays. Unit specs share one jsdom
@@ -12,12 +13,35 @@ export function overlayPanes(): HTMLElement[] {
 }
 
 /**
- * Removes the overlay container (and with it every pane and backdrop) from the
- * document. Call in afterEach, after destroying fixtures and restoring spies;
- * assert `overlayPanes()` is empty afterwards.
+ * The pane a table-filter directive leaves behind when its host is destroyed
+ * with the panel open: BaseFilterDirective only detaches its overlay and never
+ * disposes it (base-filter.directive.ts:99-104), and CDK removes a detached
+ * overlay's host element on a later render, so the pane is still in the
+ * document straight after the destroy. The filter directive specs pass this as
+ * `knownLeakedPanes` after such a test.
+ *
+ * B7: delete this constant and its uses when the directive disposes its
+ * overlay. The check is exact, so the spec fails the moment the leak is fixed.
  */
-export function disposeOverlays(): void {
-  TestBed.inject(OverlayContainer).ngOnDestroy();
+export const B7_LEAKED_FILTER_PANES = 1;
+
+/**
+ * Leak check plus cleanup for the end of a spec that opens overlays. Call it
+ * in afterEach, after destroying fixtures and restoring spies. It counts the
+ * panes still in the document, THEN removes the overlay container (and with it
+ * every pane and backdrop, so nothing reaches other specs in the shared jsdom
+ * context), and fails if the count differs from `knownLeakedPanes` (default 0).
+ * The count must come before the removal, or the check could never fail.
+ */
+export function disposeOverlays(options?: { knownLeakedPanes?: number }): void {
+  const leaked = overlayPanes().length;
+  try {
+    TestBed.inject(OverlayContainer).ngOnDestroy();
+  } finally {
+    expect(leaked, 'overlay panes left open by the test').toBe(
+      options?.knownLeakedPanes ?? 0
+    );
+  }
 }
 
 /** A button inside the open overlay(s), found by its trimmed text. */

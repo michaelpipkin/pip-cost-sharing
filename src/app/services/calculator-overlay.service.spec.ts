@@ -65,13 +65,18 @@ describe('CalculatorOverlayService', () => {
   });
 
   afterEach(() => {
-    service.closeCalculator();
-    formField.remove();
-    hiddenInputs().forEach((i) => i.remove());
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-    disposeOverlays();
-    expect(overlayPanes()).toHaveLength(0);
+    // Each step runs even if an earlier one throws, so a failing test cannot
+    // leave fake timers, spies or a pane behind for the next spec
+    try {
+      service.closeCalculator();
+      formField.remove();
+      hiddenInputs().forEach((i) => i.remove());
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+      // closeCalculator must have disposed the overlay: no pane may remain
+      disposeOverlays();
+    }
   });
 
   describe('opening', () => {
@@ -407,7 +412,7 @@ describe('CalculatorOverlayService', () => {
       expect(key('Enter').defaultPrevented).toBe(true);
     });
 
-    // BUG (B4): calculator-overlay.service.ts:157-159 - every keydown is
+    // BUG (B4): calculator-overlay.service.ts:158-159 - every keydown is
     // preventDefault()ed and stopPropagation()ed before the key is looked at,
     // so Tab cannot move focus out of the open calculator.
     it.fails('does not swallow Tab', () => {

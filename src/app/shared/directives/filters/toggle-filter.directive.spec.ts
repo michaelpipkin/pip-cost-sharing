@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { TableFilterService } from '@services/table-filter.service';
 import {
+  B7_LEAKED_FILTER_PANES,
   clickBackdrop,
   disposeOverlays,
   overlayButton,
@@ -34,6 +35,14 @@ class HostComponent {
 describe('ToggleFilterDirective', () => {
   let fixture: ComponentFixture<HostComponent>;
   let service: TableFilterService<any>;
+  let destroyedWhileOpen = false;
+  // Destroys the host, noting whether its panel was open (the B7 leak case)
+  const destroyHost = () => {
+    destroyedWhileOpen ||= document.querySelector(
+      '.cdk-overlay-container .filter-panel'
+    ) !== null;
+    fixture.destroy();
+  };
 
   const settle = async () => {
     fixture.detectChanges();
@@ -76,10 +85,13 @@ describe('ToggleFilterDirective', () => {
   });
 
   afterEach(() => {
-    fixture?.destroy();
+    if (fixture) destroyHost();
     vi.restoreAllMocks();
-    disposeOverlays();
-    expect(overlayPanes()).toHaveLength(0);
+    disposeOverlays({
+      // B7: a pane open when the host was destroyed outlives it
+      knownLeakedPanes: destroyedWhileOpen ? B7_LEAKED_FILTER_PANES : 0,
+    });
+    destroyedWhileOpen = false;
   });
 
   it('offers All, Yes and No by default, with none chosen and Apply disabled', async () => {
@@ -171,14 +183,14 @@ describe('ToggleFilterDirective', () => {
     await openPanel();
     expect(panel()).not.toBeNull();
 
-    fixture.destroy();
+    destroyHost();
 
     expect(panel()).toBeNull();
   });
 
   // BUG (unassigned - found writing this spec): toggle-filter.directive.ts:34-36
   // and :76-78 pass filterTrueLabel/filterFalseLabel/filterAllLabel to the
-  // panel, but toggle-filter-panel.component.ts:20-39 hard-codes
+  // panel, but toggle-filter-panel.component.ts:26,34,42 hard-codes
   // "All"/"Yes"/"No" and never renders trueLabel()/falseLabel()/allLabel().
   it.fails('shows a custom true label', async () => {
     await create();
@@ -215,7 +227,7 @@ describe('ToggleFilterDirective', () => {
     await openPanel();
     expect(overlayPanes()).toHaveLength(1);
 
-    fixture.destroy();
+    destroyHost();
 
     expect(overlayPanes()).toHaveLength(0);
   });

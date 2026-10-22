@@ -4,6 +4,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { By } from '@angular/platform-browser';
 import { TableFilterService } from '@services/table-filter.service';
 import {
+  B7_LEAKED_FILTER_PANES,
   clickBackdrop,
   disposeOverlays,
   overlayButton,
@@ -33,6 +34,14 @@ class HostComponent {
 describe('DateRangeFilterDirective', () => {
   let fixture: ComponentFixture<HostComponent>;
   let service: TableFilterService<any>;
+  let destroyedWhileOpen = false;
+  // Destroys the host, noting whether its panel was open (the B7 leak case)
+  const destroyHost = () => {
+    destroyedWhileOpen ||= document.querySelector(
+      '.cdk-overlay-container .filter-panel'
+    ) !== null;
+    fixture.destroy();
+  };
 
   const settle = async () => {
     fixture.detectChanges();
@@ -70,10 +79,13 @@ describe('DateRangeFilterDirective', () => {
   });
 
   afterEach(() => {
-    fixture?.destroy();
+    if (fixture) destroyHost();
     vi.restoreAllMocks();
-    disposeOverlays();
-    expect(overlayPanes()).toHaveLength(0);
+    disposeOverlays({
+      // B7: a pane open when the host was destroyed outlives it
+      knownLeakedPanes: destroyedWhileOpen ? B7_LEAKED_FILTER_PANES : 0,
+    });
+    destroyedWhileOpen = false;
   });
 
   it('opens empty, with Apply disabled, when there is no filter', async () => {
@@ -190,12 +202,12 @@ describe('DateRangeFilterDirective', () => {
     await openPanel();
     expect(panel()).not.toBeNull();
 
-    fixture.destroy();
+    destroyHost();
 
     expect(panel()).toBeNull();
   });
 
-  // BUG (B7): date-range-filter.directive.ts:156 (base-filter.directive.ts:179)
+  // BUG (B7): date-range-filter.directive.ts:52 (base-filter.directive.ts:179)
   // - each open adds a backdropClick() subscription that is never released.
   it.fails('does not accumulate backdrop subscriptions', async () => {
     await create();
@@ -221,7 +233,7 @@ describe('DateRangeFilterDirective', () => {
     await openPanel();
     expect(overlayPanes()).toHaveLength(1);
 
-    fixture.destroy();
+    destroyHost();
 
     expect(overlayPanes()).toHaveLength(0);
   });
