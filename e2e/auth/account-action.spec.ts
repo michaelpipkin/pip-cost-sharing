@@ -191,9 +191,10 @@ test.describe('Change email screen', { tag: ['@auth', '@account'] }, () => {
     await action.open(await changeEmailPath(user.email, newEmail));
 
     await expect(action.title).toHaveText('Email Change');
-    await expect(action.successHint).toHaveText(
-      'You can now log in with your new email address.'
+    await expect(action.successMessage).toHaveText(
+      'Your email address has been changed. Please sign in with your new address.'
     );
+    await expect(action.successHint).toBeHidden();
     await expect(action.continueToLogin).toBeVisible();
     expect((await getSeedAdmin().auth.getUser(user.uid)).email).toBe(newEmail);
     // Nobody was signed in to write it yet.

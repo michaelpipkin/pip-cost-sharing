@@ -21,6 +21,7 @@
  *
  * Run: pnpm query backfill-orphaned-registrations [-- --confirm]
  */
+import { profileEmail } from '../../../functions/src/email-identity.ts';
 import { auth, db, writeTable, logCount, NON_USER_AUTH_EMAILS } from '../lib.ts';
 
 const confirmed = process.argv.includes('--confirm');
@@ -73,7 +74,10 @@ for (const u of orphaned) {
       .doc(u.uid)
       .set(
         {
-          email: u.emailVerified && u.email !== '(no email)' ? u.email : '',
+          email: profileEmail({
+            email: u.email === '(no email)' ? undefined : u.email,
+            emailVerified: u.emailVerified,
+          }),
           defaultGroupRef: null,
           receiptPolicy: false,
           emailOptOut: false,

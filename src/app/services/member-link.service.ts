@@ -12,11 +12,11 @@ interface LinkInvitedMembersResponse {
 // linkInvitedMembers callable, which is App Check-enforced. The callable
 // can fire soon after a cold boot (UserService.updateUserEmailAndLinkMembers
 // after verification, GroupsComponent on page load), racing App Check's
-// async first token fetch - the Firebase SDK soft-fails and sends the request with no App
-// Check header if a token isn't ready yet, and the function rejects with
-// 401. Gating on appCheckTokenReady() avoids firing a guaranteed-to-fail
-// request; a skipped attempt is safe because the Groups page tries again on
-// every load.
+// async first token fetch - the Firebase SDK soft-fails and sends the
+// request with no App Check header if a token isn't ready yet, and the
+// function rejects with 401. Gating on appCheckTokenReady() avoids firing a
+// guaranteed-to-fail request; a skipped attempt is safe because the Groups
+// page tries again on every load.
 //
 // The callable links by the caller's own VERIFIED sign-in address, read from
 // the ID token server-side; no email is sent (trusting a client-supplied one

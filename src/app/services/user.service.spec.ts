@@ -198,64 +198,34 @@ describe('UserService', () => {
   });
 
   describe('createUserIfNotExists', () => {
-    it('should return existing user when one already exists', async () => {
+    it('should return existing user when one already exists, writing nothing', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(true, { email: 'alice@test.com' }) as any
       );
 
-      const user = await service.createUserIfNotExists(
-        'user-123',
-        'alice@test.com'
-      );
+      const user = await service.createUserIfNotExists('user-123');
 
       expect(firestoreModule.setDoc).not.toHaveBeenCalled();
       expect(user.email).toBe('alice@test.com');
     });
 
-    it('should update email if existing user has a different email', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
-        makeUserSnap(true, { email: 'old@test.com' }) as any
-      );
-
-      await service.createUserIfNotExists('user-123', 'new@test.com');
-
-      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
-        mockDocRef,
-        { email: 'new@test.com' },
-        { merge: true }
-      );
-    });
-
-    it("should leave an existing user's email alone when given '' (address not verified yet)", async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
-        makeUserSnap(true, { email: 'old@test.com' }) as any
-      );
-
-      const user = await service.createUserIfNotExists('user-123', '');
-
-      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
-      expect(user.email).toBe('old@test.com');
-    });
-
-    it('should create a new user document with default data when user does not exist', async () => {
+    it("should create a new user document with default data and an empty email (the caller stores a verified address)", async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
       );
 
-      await service.createUserIfNotExists('new-user', 'new@test.com');
+      await service.createUserIfNotExists('new-user');
 
-      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
-        mockDocRef,
-        expect.objectContaining({
-          email: 'new@test.com',
-          defaultGroupRef: null,
-          receiptPolicy: false,
-          venmoId: '',
-          paypalId: '',
-          cashAppId: '',
-          zelleId: '',
-        })
-      );
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(mockDocRef, {
+        email: '',
+        defaultGroupRef: null,
+        receiptPolicy: false,
+        emailOptOut: false,
+        venmoId: '',
+        paypalId: '',
+        cashAppId: '',
+        zelleId: '',
+      });
     });
 
     it('should not attempt to link invited members at signup - GroupsComponent handles it on page load instead', async () => {
@@ -263,7 +233,7 @@ describe('UserService', () => {
         makeUserSnap(false) as any
       );
 
-      await service.createUserIfNotExists('new-user', 'alice@test.com');
+      await service.createUserIfNotExists('new-user');
 
       expect(mockMemberLinkService.linkInvitedMembers).not.toHaveBeenCalled();
     });
@@ -680,6 +650,48 @@ describe('UserService', () => {
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
     });
 
+    it('clears the session quietly when account-action expects the sign-out (email change), then reports the next loss again', async () => {
+      userSignal.set({ id: 'user-123' });
+      const callback = await getAuthStateCallback(service);
+
+      service.expectSignOut(true);
+      await callback(null);
+
+      expect(mockGroupService.logout).toHaveBeenCalled();
+      expect(mockUserStore.clearUser).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
+
+      // The expectation is used up by that sign-out.
+      await callback(null);
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('does not report "session expired" from a write that finds the session gone while a sign-out is expected', async () => {
+      (mockAuth as any).currentUser = null;
+      service.expectSignOut(true);
+
+      await expect(
+        service.updateUserEmailAndLinkMembers('new@test.com')
+      ).rejects.toThrow();
+
+      expect(mockUserStore.clearUser).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('reports the loss again once the caller stops expecting a sign-out', async () => {
+      userSignal.set({ id: 'user-123' });
+      const callback = await getAuthStateCallback(service);
+
+      service.expectSignOut(true);
+      service.expectSignOut(false);
+      await callback(null);
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalled();
+    });
+
     it('does not fire on initial load when no user was ever logged in', async () => {
       userSignal.set(null);
       const callback = await getAuthStateCallback(service);
@@ -880,20 +892,40 @@ describe('UserService', () => {
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
     });
 
-    it('falls back to client-side creation when the server trigger does not complete in time', async () => {
+    it('falls back to creating the profile with an empty email, then stores the address from a refreshed token', async () => {
+      // An orphaned registration verified elsewhere: the live user says
+      // verified, but the cached ID token still says unverified, so writing
+      // the address under it would be refused by the rules.
       vi.useFakeTimers();
       vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
         (() => vi.fn()) as any
       );
+      firebaseUser.getIdToken = vi.fn().mockResolvedValue('cached-token');
 
       const callback = await getAuthStateCallback(service);
       const resultPromise = callback(firebaseUser as any);
       await vi.advanceTimersByTimeAsync(8000);
       await resultPromise;
 
-      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+      const setDoc = vi.mocked(firestoreModule.setDoc);
+      expect(setDoc).toHaveBeenCalledTimes(2);
+      expect(setDoc.mock.calls[0]![1]).toMatchObject({ email: '' });
+      expect(setDoc.mock.calls[1]).toEqual([
         mockDocRef,
-        expect.objectContaining({ email: 'alice@test.com' })
+        { email: 'alice@test.com' },
+        { merge: true },
+      ]);
+      // The address went in only after a forced refresh, never under the
+      // cached token.
+      expect(firebaseUser.getIdTokenResult).toHaveBeenCalledWith(true);
+      expect(firebaseUser.getIdTokenResult.mock.invocationCallOrder[0]).toBeLessThan(
+        setDoc.mock.invocationCallOrder[1]!
+      );
+      expect(firebaseUser.getIdToken).not.toHaveBeenCalled();
+      expect(mockUserStore.initUser).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'alice@test.com' }),
+        false,
+        true
       );
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
 
@@ -976,10 +1008,12 @@ describe('UserService', () => {
       await vi.advanceTimersByTimeAsync(8000);
       await resultPromise;
 
+      expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1);
       expect(firestoreModule.setDoc).toHaveBeenCalledWith(
         mockDocRef,
         expect.objectContaining({ email: '' })
       );
+      expect(firebaseUser.getIdTokenResult).not.toHaveBeenCalled();
 
       vi.useRealTimers();
     });

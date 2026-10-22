@@ -47,6 +47,14 @@ function isActionMode(mode: unknown): mode is ActionMode {
   return ACTION_MODES.includes(mode as ActionMode);
 }
 
+// handleError's wording ("Failed to <label>.") and the analytics event of
+// each email link.
+const EMAIL_ACTIONS = {
+  verifyEmail: { label: 'verify email', event: 'email_verified' },
+  verifyAndChangeEmail: { label: 'change email', event: 'email_changed' },
+  recoverEmail: { label: 'recover email', event: 'email_recovered' },
+} as const;
+
 @Component({
   selector: 'app-account-action',
   imports: [
@@ -143,10 +151,8 @@ export class AccountActionComponent {
     this.mode.set(mode);
     this.oobCode.set(oobCode);
 
-    if (mode === 'verifyEmail' || mode === 'verifyAndChangeEmail') {
-      await this.processEmailVerification(mode);
-    } else if (mode === 'recoverEmail') {
-      await this.processEmailRecovery();
+    if (mode !== 'resetPassword') {
+      await this.processEmailAction(mode);
     }
     // For resetPassword, we just show the form
   }
@@ -159,33 +165,64 @@ export class AccountActionComponent {
     this.hideConfirmPassword.update((h) => !h);
   }
 
-  // Both links verify an address the user controls: verifyEmail the current
-  // sign-in address, verifyAndChangeEmail a new one (which also becomes the
-  // sign-in address). Either way the now-verified address is written to the
-  // profile and used to link invited members.
-  private async processEmailVerification(
-    mode: 'verifyEmail' | 'verifyAndChangeEmail'
+  // The three email links. Each applies its code, then (signed in, in this
+  // browser) writes the account's now-verified address to the profile and
+  // links invited members: verifyEmail confirms the current address,
+  // verifyAndChangeEmail makes a new one the sign-in address, recoverEmail
+  // undoes a change.
+  //
+  // Changing (or recovering) the sign-in address is a major account change,
+  // and production Firebase revokes the session's tokens: the reload or token
+  // refresh after the code then fails and the SDK signs out. The code was
+  // applied, so that is still a success: the page says to sign in with the
+  // new address, and UserService is told to expect the sign-out rather than
+  // report "Your session has expired".
+  private async processEmailAction(
+    mode: Exclude<ActionMode, 'resetPassword'>
   ): Promise<void> {
+    const action = EMAIL_ACTIONS[mode];
+    const changesAddress = mode !== 'verifyEmail';
+    if (changesAddress && this.auth.currentUser) {
+      this.userService.expectSignOut(true);
+    }
     this.processing.set(true);
 
     try {
-      await applyActionCode(this.auth, this.oobCode());
-      await this.#syncVerifiedEmail();
+      try {
+        await applyActionCode(this.auth, this.oobCode());
+      } catch (error: any) {
+        this.handleError(action.label, error);
+        return;
+      }
+
+      try {
+        await this.#syncVerifiedEmail();
+      } catch (error) {
+        // Not a failure of the link: the code is applied. The next sign-in
+        // syncs the profile (UserService) and the Groups page links.
+        this.analytics.logError(
+          'Account Action Component',
+          action.label,
+          'Code applied, but the profile could not be updated',
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        if (changesAddress && this.auth.currentUser) {
+          // The session is likely revoked but not yet signed out (e.g.
+          // auth/user-not-found); sign out so the page and the app agree.
+          await this.userService.logout(false);
+        }
+      }
 
       this.success.set(true);
-
-      this.analytics.logEvent(
-        mode === 'verifyEmail' ? 'email_verified' : 'email_changed',
-        { component: 'Account Action Component' }
-      );
-    } catch (error: any) {
-      this.handleError(
-        mode === 'verifyEmail' ? 'verify email' : 'change email',
-        error
-      );
+      this.analytics.logEvent(action.event, {
+        component: 'Account Action Component',
+      });
     } finally {
       this.processing.set(false);
       this.isUserLoggedIn.set(!!this.auth.currentUser);
+      // Still signed in: the expected sign-out didn't happen, so stop
+      // expecting it (signed out, UserService's listener clears it).
+      if (this.auth.currentUser) this.userService.expectSignOut(false);
     }
   }
 
@@ -200,32 +237,12 @@ export class AccountActionComponent {
     try {
       await user.reload();
     } catch (error) {
-      // Changing the sign-in address can revoke the session's tokens; the
-      // SDK then signs out before reload() rejects. The change itself is
-      // done, so that is not a failure: the user signs in with the new
-      // address.
+      // A revoked session: the SDK has signed out before reload() rejects.
       if (!this.auth.currentUser) return;
       throw error;
     }
     await this.userService.updateUserEmailAndLinkMembers(user.email!);
     this.userStore.setIsEmailConfirmed(user.emailVerified);
-  }
-
-  private async processEmailRecovery(): Promise<void> {
-    this.processing.set(true);
-
-    try {
-      await applyActionCode(this.auth, this.oobCode());
-      this.success.set(true);
-
-      this.analytics.logEvent('email_recovered', {
-        component: 'Account Action Component',
-      });
-    } catch (error: any) {
-      this.handleError('recover email', error);
-    } finally {
-      this.processing.set(false);
-    }
   }
 
   async resetPassword(): Promise<void> {
@@ -349,7 +366,9 @@ export class AccountActionComponent {
       case 'verifyEmail':
         return "You've successfully confirmed your email address!";
       case 'verifyAndChangeEmail':
-        return 'Your new email address is confirmed!';
+        return this.isUserLoggedIn()
+          ? 'Your new email address is confirmed!'
+          : 'Your email address has been changed. Please sign in with your new address.';
       case 'resetPassword':
         return 'Your password has been reset successfully!';
       case 'recoverEmail':
@@ -369,8 +388,9 @@ export class AccountActionComponent {
         ? `You now sign in with ${this.auth.currentUser?.email}.`
         : 'You can now access all features of the app.';
     }
+    // The change message already says to sign in with the new address.
     return mode === 'verifyAndChangeEmail'
-      ? 'You can now log in with your new email address.'
+      ? null
       : 'You can now log in to your account.';
   }
 

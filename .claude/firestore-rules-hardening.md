@@ -818,9 +818,23 @@ members.spec.ts` (the hijack test linked the victim's member before the
 fix), and the account / account-action / invites e2e journeys.
 
 Existing data: profiles written before this fix may still hold an
-unverified address (and its `emailLower`), which `member.service`'s lookups
-would still match. A one-off query that clears `email`/`emailLower` on
-profiles whose Auth account is unverified closes that; not run yet.
+unverified or foreign address (and its `emailLower`), which
+`member.service`'s lookups would still match. `pnpm query
+clear-unverified-profile-emails` (logic in `scripts/db/profile-email-audit.ts`)
+sets each such profile to the verified Auth address or '', and lists linked
+members whose email isn't their account's verified address for manual
+review (it never unlinks). Dry-run it before the release; `-- --apply` only
+after B14 is deployed (an old client would rewrite the unverified address);
+run `repairOrphanedMembers` / `link-orphaned-members` only after it. Proved
+on the test emulators only; not yet run against production.
+
+Fix round 1 (2026-10-22): the client's no-profile fallback now creates the
+doc with '' and stores the address through the token-refreshing sync (a
+cached token from before verification was refused); `linkInvitedMembers`
+falls back to the Auth record when the token predates verification; an
+email change that revokes the session (production) is treated as success
+on the account-action page, and UserService doesn't report it as "session
+expired".
 
 ## Sequencing note
 

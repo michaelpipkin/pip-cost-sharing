@@ -27,24 +27,9 @@ export function assertAdmin(request: CallableRequest): string {
   return uid;
 }
 
-// Canonical form for email comparisons - Firestore has no case-insensitive
-// query operator, and email casing isn't meaningful for matching in
-// practice, so every match/lookup normalizes through this first.
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-// The address a users/{uid} profile may store for an Auth account: its email
-// once verified, else ''. Invited members are linked to users by the profile
-// email (users.emailLower), so an unverified address there would let anyone
-// register with someone else's address and be linked to their invites.
-// firestore.rules enforces the same for client writes (userEmailOwned).
-export function profileEmail(user: {
-  email?: string;
-  emailVerified?: boolean;
-}): string {
-  return user.emailVerified === true ? (user.email ?? '') : '';
-}
+// normalizeEmail and profileEmail live in a dependency-free module so the
+// admin scripts can import them too.
+export { normalizeEmail, profileEmail } from './email-identity';
 
 // Auth accounts that will never have (or need) a Firestore users doc, so
 // they're false positives in any "orphaned registration" query rather than

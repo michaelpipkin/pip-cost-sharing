@@ -35,6 +35,10 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  * - email-rules-unverified-creator (no group, unverified) deletes its own
  *   doc, tries creates with its own address and recreates it with '', so it
  *   repeats fine.
+ * - email-rules-late-verify (no group) is the profile-creation fallback:
+ *   signed in while unverified, verified elsewhere (Admin SDK), its stale
+ *   token can't store the address, '' then a refreshed token can. The test
+ *   marks it unverified again first, so it repeats fine.
  */
 
 const SPEC = 'spec:e2e/infra/email-rules.spec.ts' as const;
@@ -68,6 +72,14 @@ const unverifiedCreator: SeedUser = {
   key: 'email-rules-unverified-creator',
   uid: 'u-email-rules-unverified-creator',
   email: 'email-rules-unverified-creator@pipsplit.test',
+  password: PASSWORD,
+  emailVerified: false,
+};
+
+const lateVerify: SeedUser = {
+  key: 'email-rules-late-verify',
+  uid: 'u-email-rules-late-verify',
+  email: 'email-rules-late-verify@pipsplit.test',
   password: PASSWORD,
   emailVerified: false,
 };
@@ -129,6 +141,7 @@ export const EMAIL_RULES = {
   creator,
   unverified,
   unverifiedCreator,
+  lateVerify,
   group,
   target,
   legacyList,
@@ -137,6 +150,13 @@ export const EMAIL_RULES = {
 
 export const EMAIL_RULES_DATASET: SeedDataset = {
   name: 'email-rules',
-  users: [admin, legacyUser, creator, unverified, unverifiedCreator],
+  users: [
+    admin,
+    legacyUser,
+    creator,
+    unverified,
+    unverifiedCreator,
+    lateVerify,
+  ],
   groups: [group],
 };

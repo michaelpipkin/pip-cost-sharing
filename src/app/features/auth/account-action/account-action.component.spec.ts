@@ -22,6 +22,7 @@ describe('AccountActionComponent', () => {
   let mockUserService: {
     updateUserEmailAndLinkMembers: ReturnType<typeof vi.fn>;
     logout: ReturnType<typeof vi.fn>;
+    expectSignOut: ReturnType<typeof vi.fn>;
   };
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockUserStore: ReturnType<typeof createMockUserStore>;
@@ -42,16 +43,21 @@ describe('AccountActionComponent', () => {
     currentUser: null,
   };
 
+  // `configure` adjusts the fresh UserService mock before the page runs its
+  // action (which happens during creation).
   async function createComponent(
     authValue: any,
-    queryParams: Record<string, string>
+    queryParams: Record<string, string>,
+    configure: (userService: typeof mockUserService) => void = () => {}
   ) {
     mockSnackBar = createMockSnackBar();
     mockUserStore = createMockUserStore();
     mockUserService = {
       updateUserEmailAndLinkMembers: vi.fn().mockResolvedValue(undefined),
       logout: vi.fn().mockResolvedValue(undefined),
+      expectSignOut: vi.fn(),
     };
+    configure(mockUserService);
 
     const mockRoute = {
       snapshot: { queryParams },
@@ -127,6 +133,10 @@ describe('AccountActionComponent', () => {
       expect(component.success()).toBe(true);
     });
 
+    it('should not expect a sign-out (verifying keeps the address)', () => {
+      expect(mockUserService.expectSignOut).not.toHaveBeenCalledWith(true);
+    });
+
     it('should write the verified address to the profile and link invites', () => {
       expect(mockAuthWithUser.currentUser.reload).toHaveBeenCalled();
       expect(mockUserService.updateUserEmailAndLinkMembers).toHaveBeenCalledWith(
@@ -188,7 +198,38 @@ describe('AccountActionComponent', () => {
       expect(text('account-action-continue-account')).toBe('Continue to Account');
     });
 
-    it('still succeeds when the change ends the session, and points to login', async () => {
+    const SIGN_IN_AGAIN =
+      'Your email address has been changed. Please sign in with your new address.';
+
+    // Production revokes the session on an email change; the reload or the
+    // token refresh after the code then fails. Each case below fakes one of
+    // those post-apply failures: none may show an error, and UserService
+    // must have been told to expect the sign-out first.
+    async function expectSignInAgain(
+      auth: any,
+      configure?: (userService: typeof mockUserService) => void
+    ): Promise<void> {
+      await createComponent(auth, changeParams, configure);
+      // The sign-out path awaits once more; render what it left.
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(component.success()).toBe(true);
+      expect(component.errorMessage()).toBe('');
+      expect(component.isUserLoggedIn()).toBe(false);
+      expect(text('account-action-success-message')).toBe(SIGN_IN_AGAIN);
+      expect(text('account-action-success-hint')).toBeUndefined();
+      expect(text('account-action-continue-login')).toBe('Continue to Login');
+      expect(fixture.nativeElement.querySelector('[data-testid="account-action-error"]')).toBeNull();
+      expect(mockUserService.expectSignOut).toHaveBeenCalledWith(true);
+      expect(mockUserService.expectSignOut.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(authModule.applyActionCode).mock.invocationCallOrder[0]!
+      );
+      // Signed out: the expectation is left for UserService's listener.
+      expect(mockUserService.expectSignOut).not.toHaveBeenCalledWith(false);
+    }
+
+    it('treats a revoked session on reload (user-token-expired) as success', async () => {
       vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
       const auth: any = signedInChanging();
       // The SDK signs out (user-token-expired) before reload() rejects.
@@ -199,15 +240,49 @@ describe('AccountActionComponent', () => {
         });
       });
 
-      await createComponent(auth, changeParams);
-
+      await expectSignInAgain(auth);
       expect(mockUserService.updateUserEmailAndLinkMembers).not.toHaveBeenCalled();
-      expect(component.success()).toBe(true);
-      expect(component.isUserLoggedIn()).toBe(false);
-      expect(text('account-action-success-hint')).toBe(
-        'You can now log in with your new email address.'
-      );
-      expect(text('account-action-continue-login')).toBe('Continue to Login');
+    });
+
+    it('treats a failed token refresh after a successful reload as success', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      const auth: any = signedInChanging();
+      // reload() works, then getIdToken(true) inside the profile write finds
+      // the refresh token revoked and the SDK signs out.
+      await expectSignInAgain(auth, (userService) => {
+        userService.updateUserEmailAndLinkMembers.mockImplementationOnce(
+          async () => {
+            auth.currentUser = null;
+            throw Object.assign(new Error('expired'), {
+              code: 'auth/user-token-expired',
+            });
+          }
+        );
+      });
+      expect(mockUserService.logout).not.toHaveBeenCalled();
+    });
+
+    it('signs out and treats it as success when the session is dead but the SDK stayed signed in (user-not-found)', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      const auth: any = signedInChanging();
+      await expectSignInAgain(auth, (userService) => {
+        userService.updateUserEmailAndLinkMembers.mockRejectedValueOnce(
+          Object.assign(new Error('gone'), { code: 'auth/user-not-found' })
+        );
+        userService.logout.mockImplementationOnce(async () => {
+          auth.currentUser = null;
+        });
+      });
+      expect(mockUserService.logout).toHaveBeenCalledWith(false);
+    });
+
+    it('stops expecting a sign-out when the session survives the change', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+
+      await createComponent(signedInChanging(), changeParams);
+
+      expect(mockUserService.expectSignOut).toHaveBeenNthCalledWith(1, true);
+      expect(mockUserService.expectSignOut).toHaveBeenLastCalledWith(false);
     });
 
     it('waits for the persisted sign-in before treating the visitor as signed out', async () => {
@@ -254,6 +329,30 @@ describe('AccountActionComponent', () => {
         'Failed to change email. The link is invalid or has expired.'
       );
       expect(mockUserService.updateUserEmailAndLinkMembers).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('in recoverEmail mode', () => {
+    it('restores the profile to the recovered (verified) address when signed in', async () => {
+      vi.spyOn(authModule, 'applyActionCode').mockResolvedValue(undefined);
+      const user: any = {
+        email: 'attacker@example.com',
+        emailVerified: true,
+        reload: vi.fn(async () => {
+          user.email = 'owner@example.com';
+        }),
+      };
+
+      await createComponent(
+        { authStateReady, currentUser: user },
+        { mode: 'recoverEmail', oobCode: 'recover-code' }
+      );
+
+      expect(mockUserService.updateUserEmailAndLinkMembers).toHaveBeenCalledWith(
+        'owner@example.com'
+      );
+      expect(component.success()).toBe(true);
+      expect(mockUserService.expectSignOut).toHaveBeenCalledWith(true);
     });
   });
 

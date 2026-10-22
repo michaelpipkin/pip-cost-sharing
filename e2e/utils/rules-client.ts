@@ -5,6 +5,7 @@ import {
   connectAuthEmulator,
   getAuth,
   signInWithEmailAndPassword,
+  type Auth,
 } from 'firebase/auth';
 import {
   connectFirestoreEmulator,
@@ -65,6 +66,32 @@ export async function withUsers(
     await run(dbs);
   } finally {
     await Promise.all(apps.map((app) => deleteApp(app)));
+  }
+}
+
+/**
+ * Runs `run` with one client signed in as `user`, plus its Auth instance (to
+ * refresh the ID token mid-test), then deletes the app.
+ */
+export async function withSession(
+  user: RulesUser,
+  run: (db: Firestore, auth: Auth) => Promise<void>
+): Promise<void> {
+  const app = initializeApp(
+    { apiKey: 'demo-api-key', projectId: TEST_PROJECT_ID },
+    `rules-${randomUUID()}`
+  );
+  try {
+    const auth = getAuth(app);
+    connectAuthEmulator(auth, `http://127.0.0.1:${TEST_PORTS.auth}`, {
+      disableWarnings: true,
+    });
+    const db = getFirestore(app);
+    connectFirestoreEmulator(db, '127.0.0.1', TEST_PORTS.firestore);
+    await signInWithEmailAndPassword(auth, user.email, user.password);
+    await run(db, auth);
+  } finally {
+    await deleteApp(app);
   }
 }
 

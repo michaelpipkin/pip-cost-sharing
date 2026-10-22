@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type DocumentReference } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 import { linkInvitedMembers, linkInvitedMembersInternal } from './index';
@@ -156,6 +157,47 @@ describe('linkInvitedMembers callable', () => {
     expect(result).toEqual({ membersLinked: 2 });
     expect(await linkedUid(first)).toBe(uid);
     expect(await linkedUid(second)).toBe(uid);
+  });
+
+  it('links by the Auth record when the token predates verification (stale token)', async () => {
+    const own = address('stale');
+    const member = await invitedMember(own);
+    const record = await getAuth().createUser({ email: own, emailVerified: true });
+
+    const result = await call(
+      record.uid,
+      { email: own, email_verified: false },
+      { email: address('victim') }
+    );
+
+    expect(result).toEqual({ membersLinked: 1 });
+    expect(await linkedUid(member)).toBe(record.uid);
+  });
+
+  it('still refuses when neither the token nor the Auth record is verified', async () => {
+    const own = address('never');
+    const member = await invitedMember(own);
+    const record = await getAuth().createUser({ email: own, emailVerified: false });
+
+    await expect(
+      call(record.uid, { email: own, email_verified: false })
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(await linkedUid(member)).toBeNull();
+  });
+
+  it('matches a token address that differs in case from the invite', async () => {
+    const own = address('Case');
+    const member = await invitedMember(own.toLowerCase());
+    const uid = `u-${randomUUID()}`;
+
+    const result = await call(
+      uid,
+      { email: own.toUpperCase(), email_verified: true },
+      { email: address('unrelated') }
+    );
+
+    expect(result).toEqual({ membersLinked: 1 });
+    expect(await linkedUid(member)).toBe(uid);
   });
 
   it('refuses an unauthenticated call', async () => {

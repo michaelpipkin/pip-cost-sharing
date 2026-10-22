@@ -1,6 +1,6 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import * as functionsV1 from 'firebase-functions/v1';
-import { profileEmail } from './common';
+import { profileEmail } from './email-identity';
 
 // Creates the Firestore users/{uid} profile doc as soon as a Firebase Auth
 // account exists, server-side - independent of whether the client's tab

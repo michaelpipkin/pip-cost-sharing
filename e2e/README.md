@@ -49,7 +49,7 @@ pnpm screenshots:feature-tour # feature-tour screenshot capture (separate config
 
 ## Test environment
 
-- Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080, storage 19199, functions 15001, hub 14400, logging 14500; the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
+- Project `demo-pipsplit-test`. Ports: auth 19099, firestore 18080 (websocket 19150), storage 19199, functions 15001, hub 14400, logging 14500, eventarc 19299, tasks 19499 (the last two are started by the functions emulator); the app is on 4300. The source of truth is `scripts/test-env/config.mjs`; the copies in `firebase.test.json`, `environment.e2e.ts`, `functions/vitest.config.ts` and `functions/test/global-setup.ts` are checked by `scripts/test-env/config-agreement.test.mjs` (`pnpm test:scripts`).
 - Never the default emulator ports - those are the dev emulators.
 - Outgoing mail is suppressed under `demo-*` projects (the mail queue records a delivery with `messageId: 'suppressed'`).
 - Playwright runs 2 workers (with a browser launched per worker, 4 concurrent first page loads timed out on the owner's machine: the fresh-browser stall, not the dev server; workers now share one browser, see below. `pnpm e2e --workers 4` passes but is no faster, so it is an occasional order-independence check). No retries. Traces are kept on failure (`pnpm e2e:report`), video is off.

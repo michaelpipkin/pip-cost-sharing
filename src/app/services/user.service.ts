@@ -81,6 +81,11 @@ export class UserService implements IUserService {
 
   #intentionalLogout = false;
   #handlingSessionExpiry = false;
+  // Set by account-action around a confirmed email change or recovery:
+  // production Firebase revokes the session then, and that sign-out is
+  // expected (the page itself says to sign in with the new address), so it
+  // must not be reported as "Your session has expired".
+  #expectingSignOut = false;
 
   constructor() {
     afterNextRender(async () => {
@@ -88,7 +93,20 @@ export class UserService implements IUserService {
     });
   }
 
+  // See #expectingSignOut. Cleared when the sign-out arrives, or by the
+  // caller when the session survived.
+  expectSignOut(expected: boolean): void {
+    this.#expectingSignOut = expected;
+  }
+
   private handleSessionExpired(): void {
+    if (this.#expectingSignOut) {
+      // Clear the signed-in state quietly: no snackbar, no redirect away
+      // from the page that explains what happened.
+      this.groupService.logout();
+      this.userStore.clearUser();
+      return;
+    }
     if (this.#handlingSessionExpiry) return;
     this.#handlingSessionExpiry = true;
     this.groupService.logout();
@@ -200,35 +218,25 @@ export class UserService implements IUserService {
           this.getUserDetails(firebaseUser.uid),
         ]);
 
-        let userData: User;
-        if (existingUser) {
-          userData = existingUser;
-          const email = await this.#syncProfileEmail(
-            firebaseUser,
-            existingUser.email
-          );
-          if (email !== existingUser.email) {
-            userData = new User({ ...existingUser, email });
-          }
-        } else {
-          // Brand-new account: createUserProfileOnSignUp (Cloud
-          // Function, see functions/src/user-onboarding.ts) creates the
-          // doc server-side as soon as the Auth account exists,
-          // independent of whether this tab stays open. Wait for it via
-          // a live listener rather than creating it here ourselves -
-          // client-side creation raced tab-close/backgrounding and left
-          // accounts with no profile doc (see
-          // .claude/orphaned-registrations-investigation.md). Falls
-          // back to the old client-side creation only if the trigger
-          // doesn't complete within the wait (rare - function outage or
-          // a slow cold start).
-          userData =
-            (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
-            (await this.createUserIfNotExists(
-              firebaseUser.uid,
-              verifiedEmail(firebaseUser)
-            ));
-        }
+        // Brand-new account: createUserProfileOnSignUp (Cloud Function, see
+        // functions/src/user-onboarding.ts) creates the doc server-side as
+        // soon as the Auth account exists, independent of whether this tab
+        // stays open. Wait for it via a live listener rather than creating
+        // it here ourselves - client-side creation raced tab-close/
+        // backgrounding and left accounts with no profile doc (see
+        // .claude/orphaned-registrations-investigation.md). Falls back to
+        // client-side creation only if the trigger doesn't complete within
+        // the wait (rare - function outage or a slow cold start).
+        const profile =
+          existingUser ??
+          (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
+          (await this.createUserIfNotExists(firebaseUser.uid));
+
+        // Every path stores the address the same way: from a refreshed
+        // token, once verified (a profile created above starts at '').
+        const email = await this.#syncProfileEmail(firebaseUser, profile.email);
+        const userData =
+          email === profile.email ? profile : new User({ ...profile, email });
 
         const user = new User({
           ...userData,
@@ -323,6 +331,7 @@ export class UserService implements IUserService {
           this.handleSessionExpired();
         }
         this.#intentionalLogout = false;
+        this.#expectingSignOut = false;
       }
     });
   }
@@ -406,23 +415,20 @@ export class UserService implements IUserService {
     }
   }
 
-  // `email` is the verified sign-in address, or '' while it is unverified
-  // (then a new doc stores '' and an existing doc's email is left alone).
-  async createUserIfNotExists(userId: string, email: string): Promise<User> {
+  // The fallback when createUserProfileOnSignUp hasn't created the profile.
+  // It never writes an address: the doc starts at '' (always accepted by
+  // the rules), and the caller then stores the verified address through
+  // #syncProfileEmail, which refreshes the ID token first. Writing the
+  // address here under a cached token failed for a user who had verified
+  // elsewhere since signing in (the token still said unverified).
+  async createUserIfNotExists(userId: string): Promise<User> {
     try {
       const existingUser = await this.getUserDetails(userId);
-      if (existingUser) {
-        if (email && existingUser.email !== email) {
-          const docRef = doc(this.fs, `users/${userId}`);
-          await setDoc(docRef, { email }, { merge: true });
-          existingUser.email = email;
-        }
-        return existingUser;
-      }
+      if (existingUser) return existingUser;
 
       const docRef = doc(this.fs, `users/${userId}`);
       const defaultUserData = {
-        email: email,
+        email: '',
         defaultGroupRef: null,
         receiptPolicy: false,
         emailOptOut: false,

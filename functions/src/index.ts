@@ -631,6 +631,34 @@ export async function linkInvitedMembersInternal(
 }
 
 /**
+ * The caller's verified sign-in address, or null. The ID token's claims are
+ * used when they say verified. Otherwise the Auth record decides: a token
+ * minted before the user verified (on another device, or in their mail app)
+ * keeps saying unverified for up to an hour, and the record is the server's
+ * own current state, so it is as trustworthy as a fresh token. Never the
+ * client's `data`.
+ */
+export async function verifiedCallerEmail(
+  uid: string,
+  token: { email?: unknown; email_verified?: unknown }
+): Promise<string | null> {
+  if (
+    token.email_verified === true &&
+    typeof token.email === 'string' &&
+    token.email
+  ) {
+    return token.email;
+  }
+  try {
+    const record = await getAuth().getUser(uid);
+    return record.emailVerified && record.email ? record.email : null;
+  } catch {
+    // No Auth account (or a transient lookup failure): not verified.
+    return null;
+  }
+}
+
+/**
  * Callable wrapper for linkInvitedMembersInternal. Runs server-side because
  * it's a cross-tenant `collectionGroup('members')` search by a user who may
  * belong to no group yet - no Firestore rule can permit that from the
@@ -640,7 +668,8 @@ export async function linkInvitedMembersInternal(
  * missed it.
  *
  * Links only through the caller's own VERIFIED sign-in address
- * (`request.auth.token.email` with `email_verified`). `data.email` is still
+ * (verifiedCallerEmail: the token's, or the Auth record's when the token
+ * predates verification). `data.email` is still
  * accepted so older clients don't error, but it is never used: trusting it
  * let any signed-in user claim another person's pending invites by passing
  * their address.
@@ -656,8 +685,8 @@ export const linkInvitedMembers = onCall<{ email?: unknown }>(
         'User must be authenticated to link members'
       );
     }
-    const { email, email_verified: emailVerified } = request.auth!.token;
-    if (emailVerified !== true || typeof email !== 'string' || !email) {
+    const email = await verifiedCallerEmail(uid, request.auth!.token);
+    if (!email) {
       throw new HttpsError(
         'failed-precondition',
         'Verify your email address first'

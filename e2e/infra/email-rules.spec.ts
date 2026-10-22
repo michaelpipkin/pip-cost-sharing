@@ -10,11 +10,13 @@ import {
   updateDoc,
   type Firestore,
 } from 'firebase/firestore/lite';
+import { getSeedAdmin } from '../seed/admin';
 import { EMAIL_RULES } from '../seed/datasets/email-rules';
 import {
   expectAllowed,
   expectDenied as denied,
   withDb as withUserDb,
+  withSession,
   type RulesUser,
 } from '../utils/rules-client';
 
@@ -25,8 +27,9 @@ import {
  * stored value, even an invalid or null one, does not block other writes.
  * A user's own profile email must also be the caller's own verified address
  * (the second describe), so the full valid-address table is run on member
- * docs here and on users docs only as denials. The clients come from e2e/utils/rules-client.ts (the web SDK in the
- * Playwright worker; no page is opened).
+ * docs here and on users docs only as denials. The clients come from
+ * e2e/utils/rules-client.ts (the web SDK in the Playwright worker; no page
+ * is opened).
  *
  * Each denial has a positive control on the same doc by the same user, so a
  * denial can only come from the email guard.
@@ -38,6 +41,7 @@ const {
   creator,
   unverified,
   unverifiedCreator,
+  lateVerify,
   group,
   target,
   legacyList,
@@ -326,6 +330,43 @@ test.describe(
         await expectAllowed(setDoc(own, { email: '' }, { merge: true }));
         expect((await getDoc(own)).data()?.['email']).toBe('');
       }, unverified);
+    });
+
+    test('the profile fallback works for a user verified after signing in: create with empty, then store from a refreshed token', async () => {
+      // UserService's no-profile fallback (an orphaned registration). The
+      // session started unverified; the address was verified elsewhere, so
+      // the live user says verified but the cached ID token does not.
+      const { auth: adminAuth } = getSeedAdmin();
+      await adminAuth.updateUser(lateVerify.uid, { emailVerified: false });
+      await withSession(lateVerify, async (db, auth) => {
+        const own = userDoc(db, lateVerify.uid);
+        await expectAllowed(deleteDoc(own));
+        await adminAuth.updateUser(lateVerify.uid, { emailVerified: true });
+
+        // The old fallback: the address under the stale token is refused.
+        await expectDenied(
+          setDoc(own, { email: lateVerify.email }),
+          `stale-token ${lateVerify.email}`
+        );
+        // The fixed fallback: create with '', refresh, then store it.
+        await expectAllowed(
+          setDoc(own, {
+            email: '',
+            defaultGroupRef: null,
+            receiptPolicy: false,
+            emailOptOut: false,
+            venmoId: '',
+            paypalId: '',
+            cashAppId: '',
+            zelleId: '',
+          })
+        );
+        await auth.currentUser!.getIdToken(true);
+        await expectAllowed(
+          setDoc(own, { email: lateVerify.email }, { merge: true })
+        );
+        expect((await getDoc(own)).data()?.['email']).toBe(lateVerify.email);
+      });
     });
 
     test('an unverified user can create their own doc only with an empty email', async () => {
