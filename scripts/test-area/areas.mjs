@@ -135,6 +135,13 @@ const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
 // list wherever USER_SERVICE is in its `unit` list.
 const USER_SERVICE_FUNCTIONS = ['src/group-emails.spec.ts'];
 const LOADING = [`${COMPONENTS}/loading`];
+// The mail queue sender (every email the backend sends goes through it) and
+// the shared helpers it and the callables build on (admin check, delivery
+// shapes, SMTP secret). Run with every area that sends mail.
+const MAIL_QUEUE_FUNCTIONS = ['src/mail-queue.spec.ts', 'src/common.spec.ts'];
+// The triggers that keep users/members emailLower in step with email (the
+// field invite linking and member lookups match on).
+const EMAIL_LOWER_FUNCTIONS = ['src/email-lower-sync.spec.ts'];
 // Invite linking only through a verified address (Plan 4 B14): the
 // linkInvitedMembers callable (token email, verified) and the sign-up
 // trigger's verified-only profile email. Run with every area whose flows
@@ -178,7 +185,11 @@ export const AREAS = {
       `${COMPONENTS}/update-prompt-dialog`,
     ],
     // Mail delivery suppression applies to every email the backend sends.
-    functions: ['src/mail-suppression.spec.ts', ...USER_SERVICE_FUNCTIONS],
+    functions: [
+      'src/mail-suppression.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
+      ...USER_SERVICE_FUNCTIONS,
+    ],
     tag: '@shell',
   },
 
@@ -215,7 +226,9 @@ export const AREAS = {
       'src/email-normalization.spec.ts',
       'src/sync-group-member-uids.spec.ts',
       'src/user-deletion.spec.ts',
+      'src/verify-user-email.spec.ts',
       ...INVITE_LINKING_FUNCTIONS,
+      ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@auth',
@@ -248,7 +261,10 @@ export const AREAS = {
     ],
     functions: [
       'src/user-deletion.spec.ts',
+      'src/verify-user-email.spec.ts',
+      ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
+      ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@account',
@@ -288,6 +304,7 @@ export const AREAS = {
       'src/invite-email.spec.ts',
       ...INVITE_LINKING_FUNCTIONS,
       'src/mail-suppression.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
     ],
     tag: '@groups',
@@ -323,8 +340,10 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/email-normalization.spec.ts',
       'src/invite-email.spec.ts',
+      ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
       'src/mail-suppression.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
     ],
     tag: '@members',
@@ -406,7 +425,7 @@ export const AREAS = {
       ...RENTAL_UTILS,
       ...STRING_UTILS,
     ],
-    functions: [...USER_SERVICE_FUNCTIONS],
+    functions: [...MAIL_QUEUE_FUNCTIONS, ...USER_SERVICE_FUNCTIONS],
     tag: '@expenses',
   },
 
@@ -460,6 +479,7 @@ export const AREAS = {
     functions: [
       'src/receipt-ocr.spec.ts',
       'src/receipt-parser.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@receipts',
@@ -526,6 +546,7 @@ export const AREAS = {
       'src/category-breakdown.spec.ts',
       'src/email-formatting.spec.ts',
       'src/mail-suppression.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
       'src/settle-email.spec.ts',
       ...USER_SERVICE_FUNCTIONS,
     ],
@@ -555,7 +576,11 @@ export const AREAS = {
       ...GUIDED_TOUR,
       ...CONFIRM_DIALOG,
     ],
-    functions: ['src/email-formatting.spec.ts', ...USER_SERVICE_FUNCTIONS],
+    functions: [
+      'src/email-formatting.spec.ts',
+      ...MAIL_QUEUE_FUNCTIONS,
+      ...USER_SERVICE_FUNCTIONS,
+    ],
     tag: '@history',
   },
 
@@ -630,7 +655,7 @@ export const AREAS = {
       ...CONFIRM_DIALOG,
       ...DELETE_DIALOG,
     ],
-    functions: ['src/admin-reports.spec.ts'],
+    functions: ['src/admin-reports.spec.ts', 'src/common.spec.ts'],
     tag: '@admin',
   },
 };

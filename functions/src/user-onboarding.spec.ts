@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { getFirestore } from 'firebase-admin/firestore';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { profileEmail } from './common';
 import { createUserProfileOnSignUp } from './index';
 
 const db = getFirestore();
+
+afterEach(() => vi.restoreAllMocks());
 
 // The trigger is invoked directly (no Auth account is created), with a
 // user record shaped like the one Auth hands it. Every test uses its own uid.
@@ -55,6 +57,76 @@ describe('createUserProfileOnSignUp', () => {
       defaultGroupRef: null,
       emailOptOut: false,
     });
+  });
+});
+
+describe('createUserProfileOnSignUp: defaults and re-runs', () => {
+  const DEFAULTS = {
+    email: '',
+    defaultGroupRef: null,
+    receiptPolicy: false,
+    emailOptOut: false,
+    venmoId: '',
+    paypalId: '',
+    cashAppId: '',
+    zelleId: '',
+  };
+
+  it("writes exactly the 8 default fields, with email '' when the account has no email", async () => {
+    const uid = `u-${randomUUID()}`;
+    await signUp({ uid, emailVerified: false });
+
+    const data = await profile(uid);
+    expect(data).toEqual(DEFAULTS);
+    expect(Object.keys(data!)).toHaveLength(8);
+  });
+
+  it("gives a verified account that has no email an empty email, not 'undefined'", async () => {
+    const uid = `u-${randomUUID()}`;
+    await signUp({ uid, emailVerified: true });
+
+    expect((await profile(uid))?.['email']).toBe('');
+  });
+
+  // B8 (user-onboarding.ts:28-40, a blind overwrite on re-run) is already
+  // fixed: the doc is filled in a transaction that writes only the fields it
+  // lacks. Pinned as a passing test, not it.fails.
+  it('keeps venmoId and receiptPolicy that a profile already has when it re-runs', async () => {
+    const uid = `u-${randomUUID()}`;
+    const email = `rerun-${uid}@example.com`;
+    await db.doc(`users/${uid}`).set({ email, venmoId: 'v', receiptPolicy: true });
+
+    await signUp({ uid, email, emailVerified: true });
+
+    expect(await profile(uid)).toEqual({
+      ...DEFAULTS,
+      email,
+      venmoId: 'v',
+      receiptPolicy: true,
+    });
+  });
+
+  it('is idempotent: a second run changes nothing and does not rewrite the doc', async () => {
+    const uid = `u-${randomUUID()}`;
+    const user = { uid, email: `twice-${uid}@example.com`, emailVerified: true };
+    await signUp(user);
+    const first = await db.doc(`users/${uid}`).get();
+
+    await signUp(user);
+
+    const second = await db.doc(`users/${uid}`).get();
+    expect(second.data()).toEqual(first.data());
+    expect(second.updateTime!.isEqual(first.updateTime!)).toBe(true);
+  });
+
+  it('rethrows when the profile cannot be written, so Auth retries the trigger', async () => {
+    const uid = `u-${randomUUID()}`;
+    vi.spyOn(db, 'runTransaction').mockRejectedValue(new Error('firestore down'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(signUp({ uid, emailVerified: false })).rejects.toThrow(
+      'firestore down'
+    );
   });
 });
 
