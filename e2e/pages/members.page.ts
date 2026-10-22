@@ -29,6 +29,7 @@ export class MembersPage extends BasePage {
   readonly editMemberTitle: Locator;
   readonly editMemberNameInput: Locator;
   readonly editMemberEmailInput: Locator;
+  readonly editMemberEmailHint: Locator;
   readonly editMemberActiveToggle: Locator;
   readonly editMemberAdminToggle: Locator;
   readonly editMemberSaveButton: Locator;
@@ -76,6 +77,7 @@ export class MembersPage extends BasePage {
     this.editMemberTitle = page.getByTestId('edit-member-title');
     this.editMemberNameInput = page.getByTestId('edit-member-name-input');
     this.editMemberEmailInput = page.getByTestId('edit-member-email-input');
+    this.editMemberEmailHint = page.getByTestId('edit-member-email-hint');
     this.editMemberActiveToggle = page.getByTestId('edit-member-active-toggle');
     this.editMemberAdminToggle = page.getByTestId('edit-member-admin-toggle');
     this.editMemberSaveButton = page.getByTestId('edit-member-save-button');
