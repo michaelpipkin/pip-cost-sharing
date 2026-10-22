@@ -203,10 +203,17 @@ test.describe(
           )
         );
         expect(linked.docs.map((d) => d.id)).toEqual([members.emailer.key]);
-        const other = `member-rules-emailer-${randomUUID().slice(0, 8)}@pipsplit.test`;
-        for (const email of [other, users.emailer.email]) {
+        // It writes the profile email, which is the caller's verified
+        // sign-in address; a linked member's email may hold nothing else
+        // (B19: another address goes through requestMemberEmailChange).
+        for (const email of [
+          users.emailer.email.toUpperCase(),
+          users.emailer.email,
+        ]) {
           await expectAllowed(updateDoc(linked.docs[0]!.ref, { email }), email);
         }
+        const other = `member-rules-emailer-${randomUUID().slice(0, 8)}@pipsplit.test`;
+        await expectDenied(updateDoc(linked.docs[0]!.ref, { email: other }));
         // B12's format guard still applies to a self-write.
         await expectDenied(updateDoc(linked.docs[0]!.ref, { email: 'a@b' }));
       });

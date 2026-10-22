@@ -115,6 +115,17 @@ service cloud.firestore {
       allow read, delete: if isAdminUser();
     }
 
+    // Plan 4 B19's group-email change (functions/src/member-email.ts):
+    // pending confirmation tokens (keyed by sha256 of the mailed token) and
+    // per-uid request counters. Server-only: the callables use the Admin
+    // SDK, and no client may read a token or reset its own limit.
+    match /memberEmailChangeTokens/{tokenId} {
+      allow read, write: if false;
+    }
+    match /memberEmailChangeLimits/{uid} {
+      allow read, write: if false;
+    }
+
     // admin_config: admin-only. Cloud Functions use the Admin SDK and bypass
     // these rules; this prevents regular users from reading or modifying
     // alert configuration.
@@ -185,16 +196,19 @@ service cloud.firestore {
       match /members/{memberId} {
         // A non-admin's write to their OWN member doc (userRef is the
         // caller). Every self-write path in the app, and what it changes:
-        //  - edit-member's Save on one's own row (updateMemberWithUserMatching):
-        //    displayName, email; it also sends active and groupAdmin, but
+        //  - edit-member's Save on one's own row (updateMember):
+        //    displayName; it also sends active and groupAdmin, but
         //    unchanged (the toggles are hidden from non-admins and the
-        //    groupAdmin toggle is disabled on one's own row);
+        //    groupAdmin toggle is disabled on one's own row). A changed
+        //    email goes through the requestMemberEmailChange callable
+        //    instead (B19, below);
         //  - leaveGroup() with splits: active false, leftGroup true,
         //    groupAdmin false (without splits it deletes the doc instead);
         //  - rejoinGroup(): leftGroup false, active true;
         //  - updateAllMemberEmails() (Account > Profile): email.
         // So a self-write may change only those five fields (userRef,
-        // emailLower and invite are server- or admin-written), and:
+        // emailLower and invite are server- or admin-written; email is
+        // further limited by memberLinkUpdateValid below), and:
         //  - may never grant groupAdmin: syncGroupMemberUids copies it into
         //    adminUids, which is a full admin (deleteGroup included). Clearing
         //    it (leaveGroup) is fine.
@@ -223,22 +237,113 @@ service cloud.firestore {
                 after.get('active', false) == true));
         }
 
+        // Plan 4 B19: a LINKED member's `email` is always an address the
+        // linked user has proven they own, because all group mail goes to
+        // member.email (functions/src/group-mail-recipient.ts). It holds
+        // because it is only ever:
+        //  - the linked user's profile email when the link is written (the
+        //    profile email is '' or their verified sign-in address, B14):
+        //    add-member's and edit-member's auto-link by email
+        //    (addMemberToGroup / updateMemberWithUserMatching), and the
+        //    creator's own row in addGroup;
+        //  - their verified sign-in address, written by the member themself
+        //    (Account > Profile updateAllMemberEmails);
+        //  - an address they confirmed through a link mailed to it, or their
+        //    verified address, written by the requestMemberEmailChange /
+        //    confirmMemberEmailChange callables (Admin SDK);
+        //  - written with the link by linkInvitedMembers / the admin orphan
+        //    repair (Admin SDK), which match the verified address.
+        // Without this, an admin could create a member with a victim's
+        // userRef and an address of their choosing and have group mail sent
+        // there (final review I2). So:
+        //  - create with userRef set: the email must equal (ignoring case)
+        //    the linked users doc's `email` (not emailLower, which a trigger
+        //    fills in later), which must be non-empty. The caller's own row
+        //    (addGroup's creator) may instead carry '' or their verified
+        //    sign-in address (add-group stores '' for a legacy profile email
+        //    that fails the single-address rule).
+        //  - userRef: an admin may set it from null (the same email match on
+        //    the resulting doc) or clear it; X to Y is denied, and a member
+        //    never touches it (memberSelfUpdateValid).
+        //  - email changed on an unlinked doc: admins only, as before (and
+        //    the match above when the same write links it).
+        //  - email changed on a linked doc: only the member themself, and
+        //    only to their verified sign-in address. An admin editing
+        //    someone else's linked row is denied (the edit-member dialog
+        //    disables the field there).
+        //  - emailLower: no client writes it (syncMemberEmailLower does), but
+        //    a client write that sets it must hold email lowercased, since
+        //    linkInvitedMembers links by it.
+        // userRef must name a users/{uid} doc: r[4] is its last segment, so
+        // any other path (a member doc that also has an `email`) fails.
+        function isUserDocRef(r) {
+          return r is path &&
+            r == /databases/$(database)/documents/users/$(r[4]);
+        }
+        function emailMatchesLinkedUser(data) {
+          let r = data.get('userRef', null);
+          let e = data.get('email', '');
+          return isUserDocRef(r) && e is string && e != '' &&
+            get(r).data.get('email', '') is string &&
+            e.lower() == get(r).data.get('email', '').lower();
+        }
+        function isOwnRowWithOwnEmail(data) {
+          let e = data.get('email', '');
+          return data.get('userRef', null) == ownUserRef() &&
+            (e == '' || isOwnVerifiedEmail(e));
+        }
+        function memberEmailLowerValid(changed) {
+          let after = request.resource.data;
+          return !changed.hasAny(['emailLower']) ||
+            !('emailLower' in after) ||
+            (after.get('email', '') is string &&
+              after.emailLower == after.get('email', '').lower());
+        }
+        function memberLinkCreateValid() {
+          let after = request.resource.data;
+          return after.get('userRef', null) == null ||
+            emailMatchesLinkedUser(after) ||
+            isOwnRowWithOwnEmail(after);
+        }
+        function memberLinkUpdateValid() {
+          let before = resource.data;
+          let after = request.resource.data;
+          let changed = after.diff(before).affectedKeys();
+          let beforeRef = before.get('userRef', null);
+          let afterRef = after.get('userRef', null);
+          return (!changed.hasAny(['userRef']) ||
+              (beforeRef == null && isGroupAdmin(groupId) &&
+                emailMatchesLinkedUser(after)) ||
+              (beforeRef != null && afterRef == null &&
+                isGroupAdmin(groupId))) &&
+            (!changed.hasAny(['email']) ||
+              (beforeRef == null && isGroupAdmin(groupId) &&
+                (afterRef == null || emailMatchesLinkedUser(after))) ||
+              (beforeRef != null && beforeRef == ownUserRef() &&
+                afterRef == beforeRef &&
+                isOwnVerifiedEmail(after.get('email', null)))) &&
+            memberEmailLowerValid(changed);
+        }
+
         allow read: if isActiveMember(groupId);
         // Safe for the very first member of a brand-new group too: addGroup()
         // creates the group doc first (own write, awaited) and only then
         // creates the member doc, so isGroupAdmin(groupId)'s get() always
         // sees a group that genuinely exists by the time this runs - and the
         // creator is already in adminUids from that same group-creation write.
-        allow create: if isGroupAdmin(groupId) && emailCreateValid();
+        allow create: if isGroupAdmin(groupId) && emailCreateValid() &&
+          memberLinkCreateValid() &&
+          memberEmailLowerValid(request.resource.data.keys());
         // The self clause does not require an active membership: it covers
         // self-service writes made *while inactive* - rejoinGroup() (the
         // exact state this write is trying to escape) and
         // updateAllMemberEmails() (syncing an email across every group a
         // user belongs to, active or not) - plus edit-member self-edits and
         // leaveGroup()'s own self-update. Its shape is limited by
-        // memberSelfUpdateValid() above.
+        // memberSelfUpdateValid() above, and every update's userRef, email
+        // and emailLower by memberLinkUpdateValid().
         allow update: if (isGroupAdmin(groupId) || memberSelfUpdateValid()) &&
-          emailUpdateValid();
+          emailUpdateValid() && memberLinkUpdateValid();
         // Self-delete is leaveGroup() for a member with no splits. It only
         // removes the caller's own access (the member can't recreate it;
         // create is admin-only).

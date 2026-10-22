@@ -806,8 +806,8 @@ that address lowercased (no client path writes `emailLower`; the trigger
 does, with admin rights). Unchanged stored values never block other writes
 (same `affectedKeys` pattern as B12). The admin default-group clear (B13)
 changes only `defaultGroupRef`, so the guard is vacuous there. Member docs
-are not covered: a member's email is the invitee's address, set by group
-admins.
+are not covered here: a member's email is the invitee's address, set by
+group admins (until B19, below, limited it once the member is linked).
 
 The app side, so no legitimate path is refused:
 
@@ -854,6 +854,84 @@ falls back to the Auth record when the token predates verification; an
 email change that revokes the session (production) is treated as success
 on the account-action page, and UserService doesn't report it as "session
 expired".
+
+### Verified group emails (2026-10-22, Plan 4 task B19)
+
+Owner decision: all group mail (payment requests, payment / settle notices
+and their reversals) goes to the email on the member's GROUP profile
+(`groups/{gid}/members/{mid}.email`), not the login email; a changed group
+email is verified before it is used. Since final review I2 the group mail
+callables had read `users/{uid}.email` instead, because a member email was
+attacker-chosen: an admin could create a member with a victim's `userRef`
+and any address, and the victim's group mail went there.
+
+The invariant that makes `member.email` safe to mail: **a linked member's
+`email` is always an address the linked user has proven they own.** It is
+only ever written as the user's profile email (verified-only since B14) when
+the link is made, as their verified sign-in address by the member, or as an
+address confirmed through a link mailed to it (Admin SDK). Rules added to
+`groups/{gid}/members/{mid}`, alongside the B12 format guard and
+`memberSelfUpdateValid()` (both unchanged):
+
+- `isUserDocRef(r)`: `r == /databases/$(database)/documents/users/$(r[4])`,
+  so a `userRef` can only name a `users/{uid}` doc (a member doc also has
+  an `email` field).
+- `emailMatchesLinkedUser(data)`: `email` non-empty and equal, ignoring
+  case, to `get(userRef).data.email` (not `emailLower`, which a trigger
+  fills in later). A missing users doc fails the `get()`.
+- create (`memberLinkCreateValid()`): `userRef` null, or the match above,
+  or the caller's own row with '' or their verified token address
+  (addGroup's creator; add-group stores '' for a legacy profile email that
+  fails the single-address rule).
+- update (`memberLinkUpdateValid()`):
+  - `userRef` may change only null to X (admin, with the match on the
+    resulting doc) or X to null (admin). X to Y is denied.
+  - `email` changed on an unlinked doc: admin only (the match applies when
+    the same write links it: `updateMemberWithUserMatching`).
+  - `email` changed on a linked doc: only the member themself, only to
+    `request.auth.token.email` with `email_verified == true` (Account >
+    Profile `updateAllMemberEmails`). An admin editing someone else's linked
+    row is denied; the edit-member dialog disables the field there.
+  - `emailLower` (`memberEmailLowerValid()`, also on create): no client
+    writes it, but a client write that sets it must equal `email`
+    lowercased, because `linkInvitedMembers` links by it.
+- `memberEmailChangeTokens/{id}` and `memberEmailChangeLimits/{uid}`: deny
+  all (server-only).
+
+Write-path inventory (each kept working, each proved on the emulator):
+
+| Path | Writer | Rule that admits it |
+| --- | --- | --- |
+| add-member `addMemberToGroup` (unlinked, or auto-linked by `users.emailLower`) | admin | create: `userRef` null, or `emailMatchesLinkedUser` |
+| add-group `addGroup` (creator's own row) | admin of the new group | create: `emailMatchesLinkedUser`, or own row with '' / verified address |
+| edit-member `updateMemberWithUserMatching` on an unlinked row (may link) | admin | update: unlinked email change; null to X with the match |
+| edit-member Save on a linked row (email unchanged; disabled for others) | admin or self | update: `email` not in `affectedKeys` |
+| edit-member self email change | self | `requestMemberEmailChange` / `confirmMemberEmailChange` (Admin SDK) |
+| Account > Profile `updateAllMemberEmails` | self | update: linked, self, verified token address |
+| `leaveGroup` / `rejoinGroup` / self-delete | self | unchanged (`memberSelfUpdateValid`, delete rule) |
+| `removeMemberFromGroup` | admin | delete rule, unchanged |
+| `linkInvitedMembers`, `repairOrphanedMembers`, account deletion's unlink | Admin SDK | bypasses rules; `linkInvitedMembers` now also requires `email` (not just the possibly stale `emailLower`) to match the verified address |
+
+The callables (`functions/src/member-email.ts`): `requestMemberEmailChange`
+applies the caller's verified Auth address at once and otherwise mails a
+one-time link (32 random bytes, stored only as its sha256, 24 h, earlier
+link replaced, 5 mailed requests per uid per 24 h window) whose text
+contains no user-controlled content (Ruling R18); `confirmMemberEmailChange`
+applies it in a transaction for the same uid while the member is still
+linked, and deletes the token. Expired tokens and windows are deleted by the
+nightly `deleteOldPaidExpenses` schedule. Every group mail sender uses one
+recipient rule (`group-mail-recipient.ts`): linked, users doc exists, not
+opted out, one valid `member.email`.
+
+Proved on the emulator: `e2e/infra/member-email-rules.spec.ts` (6 of its 7
+tests failed against the old rules, 2026-10-22, including the I2 attack),
+`e2e/infra/member-rules.spec.ts` (the Profile-sync test now refuses another
+address), `functions/src/member-email.spec.ts`, the recipient tests in
+`group-emails.spec.ts` / `payment-email.spec.ts`, and the
+`e2e/members/member-email.spec.ts` journey. Existing data needs no
+migration: a read-only production audit
+(`scripts/db/queries/member-email-mismatch.ts`) found 295 linked members, 0
+with a group email different from the linked login email.
 
 ## Sequencing note
 
