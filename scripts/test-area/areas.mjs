@@ -54,7 +54,12 @@ const SORTING = [`${SERVICES}/sorting.service.spec.ts`];
 const MEDIA_QUERY = [`${SERVICES}/media-query.service.spec.ts`];
 const CONFIRM_DIALOG = [`${COMPONENTS}/confirm-dialog`];
 const DELETE_DIALOG = [`${COMPONENTS}/delete-dialog`];
-const CALCULATOR = [`${COMPONENTS}/calculator`];
+// The calculator component plus the overlay service that opens it from the
+// amount fields.
+const CALCULATOR = [
+  `${COMPONENTS}/calculator`,
+  `${SERVICES}/calculator-overlay.service.spec.ts`,
+];
 const ACTIVE_INACTIVE_PIPE = [`${PIPES}/active-inactive.pipe.spec.ts`];
 const FORMAT_CURRENCY_INPUT = [
   `${DIRECTIVES}/format-currency-input.directive.spec.ts`,
@@ -370,6 +375,7 @@ export const AREAS = {
       `${SERVICES}/split.service.spec.ts`,
       `${SERVICES}/table-filter.service.spec.ts`,
       `${COMPONENTS}/filter-panels`,
+      `${DIRECTIVES}/filters`,
       `${PIPES}/yes-no.pipe.spec.ts`,
       `${PIPES}/yes-no-na.pipe.spec.ts`,
       ...RECEIPT_CAPTURE,

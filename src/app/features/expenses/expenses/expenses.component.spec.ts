@@ -375,6 +375,247 @@ describe('ExpensesComponent', () => {
     });
   });
 
+  describe('table filters (filteredExpenses)', () => {
+    let filters: TableFilterService<Expense>;
+
+    const alice = mockDocRef('groups/group-1/members/alice');
+    const bob = mockDocRef('groups/group-1/members/bob');
+    // A different object for the same path as alice, as a store reload gives
+    const aliceReloaded = mockDocRef('groups/group-1/members/alice');
+    const food = mockDocRef('groups/group-1/categories/food');
+
+    function expense(init: Partial<Expense>): Expense {
+      return new Expense({
+        date: new Date(2025, 0, 15),
+        description: 'Item',
+        totalAmount: 10,
+        paid: false,
+        splits: [],
+        paidByMemberRef: alice,
+        categoryRef: food,
+        ...init,
+      });
+    }
+
+    function shown(): string[] {
+      return component.filteredExpenses().map((e) => e.id);
+    }
+
+    beforeEach(() => {
+      // The component provides its own TableFilterService
+      filters = (component as any).expenseFilterService;
+    });
+
+    describe('text', () => {
+      beforeEach(() =>
+        component.expenses.set([
+          expense({ id: 'upper', description: 'Dinner at Luigi' }),
+          expense({ id: 'lower', description: 'dinner at home' }),
+          expense({ id: 'other', description: 'Gas' }),
+          expense({ id: 'none', description: null as any }),
+        ])
+      );
+
+      it('matches a substring case-insensitively by default', () => {
+        filters.setFilter('description', { type: 'text', value: 'DINNER' });
+        expect(shown()).toEqual(['upper', 'lower']);
+      });
+
+      it('matches only the exact case when caseSensitive is set', () => {
+        filters.setFilter('description', {
+          type: 'text',
+          value: 'Dinner',
+          caseSensitive: true,
+        });
+        expect(shown()).toEqual(['upper']);
+      });
+
+      it('never matches a row whose field is null or undefined', () => {
+        // '' is contained in every string, so only the null guard excludes 'none'
+        filters.setFilter('description', { type: 'text', value: '' });
+        expect(shown()).toEqual(['upper', 'lower', 'other']);
+
+        // receiptPath is undefined on every row
+        filters.clearFilter('description');
+        filters.setFilter('receiptPath', { type: 'text', value: '' });
+        expect(shown()).toEqual([]);
+      });
+
+      it('restores every row once the filter is cleared', () => {
+        filters.setFilter('description', { type: 'text', value: 'Gas' });
+        expect(shown()).toEqual(['other']);
+        filters.clearFilter('description');
+        expect(shown()).toEqual(['upper', 'lower', 'other', 'none']);
+      });
+    });
+
+    describe('select', () => {
+      beforeEach(() =>
+        component.expenses.set([
+          expense({ id: 'a1', paidByMemberRef: alice }),
+          expense({ id: 'b1', paidByMemberRef: bob }),
+          expense({ id: 'a2', paidByMemberRef: aliceReloaded }),
+          expense({ id: 'null', receiptPath: null }),
+          expense({ id: 'receipt', receiptPath: 'receipts/r.jpg' }),
+        ])
+      );
+
+      it('matches a DocumentReference by path, not identity', () => {
+        filters.setFilter('paidByMemberRef', {
+          type: 'select',
+          value: mockDocRef('groups/group-1/members/alice'),
+        });
+        expect(shown()).toEqual(['a1', 'a2', 'null', 'receipt']);
+      });
+
+      it('unwraps an object with a ref (a member) to its DocumentReference', () => {
+        filters.setFilter('paidByMemberRef', {
+          type: 'select',
+          value: mockMember({ id: 'bob', ref: bob }),
+        });
+        expect(shown()).toEqual(['b1']);
+      });
+
+      it('matches a primitive value by equality', () => {
+        filters.setFilter('receiptPath', {
+          type: 'select',
+          value: 'receipts/r.jpg',
+        });
+        expect(shown()).toEqual(['receipt']);
+      });
+
+      it('matches value null only against rows holding null', () => {
+        filters.setFilter('receiptPath', { type: 'select', value: null });
+        expect(shown()).toEqual(['null']);
+      });
+
+      it('passes a row matching any value of a multiple select', () => {
+        filters.setFilter('paidByMemberRef', {
+          type: 'select',
+          multiple: true,
+          value: [bob, mockMember({ id: 'carol', ref: mockDocRef('x/carol') })],
+        });
+        expect(shown()).toEqual(['b1']);
+
+        filters.setFilter('paidByMemberRef', {
+          type: 'select',
+          multiple: true,
+          value: [bob, aliceReloaded],
+        });
+        expect(shown()).toEqual(['a1', 'b1', 'a2', 'null', 'receipt']);
+      });
+
+      it('lets nothing through for a multiple select with no values', () => {
+        filters.setFilter('paidByMemberRef', {
+          type: 'select',
+          multiple: true,
+          value: [],
+        });
+        expect(shown()).toEqual([]);
+      });
+    });
+
+    describe('dateRange', () => {
+      beforeEach(() =>
+        component.expenses.set([
+          expense({ id: 'jan9', date: new Date(2025, 0, 9, 23, 59) }),
+          expense({ id: 'jan10', date: new Date(2025, 0, 10, 0, 1) }),
+          expense({ id: 'jan11', date: new Date(2025, 0, 11, 12, 0) }),
+          expense({ id: 'jan12', date: new Date(2025, 0, 12, 22, 0) }),
+          expense({ id: 'jan13', date: new Date(2025, 0, 13, 0, 1) }),
+          expense({ id: 'nodate', date: null as any }),
+        ])
+      );
+
+      it('includes both end days and strips the time of day', () => {
+        filters.setFilter('date', {
+          type: 'dateRange',
+          start: new Date(2025, 0, 10, 23, 59),
+          end: new Date(2025, 0, 12, 0, 1),
+        });
+        expect(shown()).toEqual(['jan10', 'jan11', 'jan12']);
+      });
+
+      it('has no upper bound when only a start is set', () => {
+        filters.setFilter('date', {
+          type: 'dateRange',
+          start: new Date(2025, 0, 12),
+          end: null,
+        });
+        expect(shown()).toEqual(['jan12', 'jan13']);
+      });
+
+      it('has no lower bound when only an end is set', () => {
+        filters.setFilter('date', {
+          type: 'dateRange',
+          start: null,
+          end: new Date(2025, 0, 10),
+        });
+        expect(shown()).toEqual(['jan9', 'jan10']);
+      });
+
+      it('lets every dated row through when both ends are open, but not an undated one', () => {
+        filters.setFilter('date', {
+          type: 'dateRange',
+          start: null,
+          end: null,
+        });
+        expect(shown()).toEqual(['jan9', 'jan10', 'jan11', 'jan12', 'jan13']);
+      });
+    });
+
+    describe('toggle', () => {
+      beforeEach(() =>
+        component.expenses.set([
+          expense({ id: 'paid', paid: true }),
+          expense({ id: 'unpaid', paid: false }),
+          expense({ id: 'unset', paid: undefined as any }),
+        ])
+      );
+
+      it('matches true only against true', () => {
+        filters.setFilter('paid', { type: 'toggle', value: true });
+        expect(shown()).toEqual(['paid']);
+      });
+
+      it('matches false only against false (strict equality)', () => {
+        filters.setFilter('paid', { type: 'toggle', value: false });
+        expect(shown()).toEqual(['unpaid']);
+      });
+    });
+
+    it('combines several filters with AND', () => {
+      component.expenses.set([
+        expense({ id: 'a-dinner-paid', description: 'Dinner', paid: true }),
+        expense({ id: 'a-dinner-open', description: 'Dinner', paid: false }),
+        expense({ id: 'a-gas-paid', description: 'Gas', paid: true }),
+        expense({
+          id: 'b-dinner-paid',
+          description: 'Dinner',
+          paid: true,
+          paidByMemberRef: bob,
+        }),
+      ]);
+      filters.setFilter('description', { type: 'text', value: 'dinner' });
+      filters.setFilter('paid', { type: 'toggle', value: true });
+      filters.setFilter('paidByMemberRef', { type: 'select', value: alice });
+
+      expect(shown()).toEqual(['a-dinner-paid']);
+
+      filters.clearFilter('paid');
+      expect(shown()).toEqual(['a-dinner-paid', 'a-dinner-open']);
+    });
+
+    it('totals only the filtered rows', () => {
+      component.expenses.set([
+        expense({ id: 'a', description: 'Dinner', totalAmount: 12.5 }),
+        expense({ id: 'b', description: 'Gas', totalAmount: 30 }),
+      ]);
+      filters.setFilter('description', { type: 'text', value: 'dinner' });
+      expect(component.expenseTotal()).toBe(12.5);
+    });
+  });
+
   describe('columnsToDisplay', () => {
     it('should show every column separately on wide screens', () => {
       expect(component.columnsToDisplay()).toEqual([
