@@ -428,7 +428,7 @@ describe('RentalGridComponent', () => {
       expect(amounts[2]).toBeCloseTo(33.34, 2);
     });
 
-    // BUG: src/app/utilities/allocation-utils.service.ts:240 adds the leftover
+    // BUG (B15): src/app/utilities/allocation-utils.service.ts:239 adds the leftover
     // cent with `allocatedAmount += increment` and never re-rounds, so the
     // cent-adjusted split is 33.339999999999996, not 33.34 (Phase B item).
     it.fails('gives the cent-adjusted split an exact currency amount', async () => {

@@ -356,6 +356,7 @@ export const AREAS = {
   // and receipt scanning have their own areas but the forms depend on them.
   expenses: {
     unit: [
+      `${FEATURES}/expenses/rental`,
       ...GROUP_STORE,
       ...USER_STORE,
       ...MEMBER_STORE,
