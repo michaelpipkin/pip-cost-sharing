@@ -18,6 +18,7 @@ import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
 import { toIsoFormat } from '@utils/date-utils';
+import { isSingleEmailAddress } from '@utils/email-validation';
 import { FirebaseError } from 'firebase/app';
 import {
   browserLocalPersistence,
@@ -317,6 +318,16 @@ export class UserService implements IUserService {
   // writing it would put the old address back (seen in e2e; the rules
   // refused it). The refresh costs a request only when the live user's
   // verified address differs from the profile.
+  //
+  // A profile email is never worth failing a sign-in over (final review I1):
+  //  - an address that is not one valid address (a legacy Auth account, e.g.
+  //    an underscore in the domain) is not written at all, since the rules
+  //    (isValidEmailOrEmpty) would refuse it on every sign-in;
+  //  - any other failure (a refused or failed write, a failed refresh) is
+  //    logged and the session continues with the stored profile email. The
+  //    next sign-in tries again.
+  // Only a revoked session is rethrown: the session start can't go on, and
+  // initializeUserSession handles an expected revocation (email change).
   async #syncProfileEmail(
     firebaseUser: FirebaseUser,
     profileEmail: string
@@ -324,16 +335,28 @@ export class UserService implements IUserService {
     const liveEmail = verifiedEmail(firebaseUser);
     if (!liveEmail || liveEmail === profileEmail) return profileEmail;
 
-    const { claims } = await firebaseUser.getIdTokenResult(true);
-    const tokenEmail =
-      claims['email_verified'] === true && typeof claims['email'] === 'string'
-        ? claims['email']
-        : '';
-    if (!tokenEmail || tokenEmail === profileEmail) return profileEmail;
+    try {
+      const { claims } = await firebaseUser.getIdTokenResult(true);
+      const tokenEmail =
+        claims['email_verified'] === true && typeof claims['email'] === 'string'
+          ? claims['email']
+          : '';
+      if (!tokenEmail || tokenEmail === profileEmail) return profileEmail;
+      if (!isSingleEmailAddress(tokenEmail)) return profileEmail;
 
-    const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
-    await setDoc(docRef, { email: tokenEmail }, { merge: true });
-    return tokenEmail;
+      const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
+      await setDoc(docRef, { email: tokenEmail }, { merge: true });
+      return tokenEmail;
+    } catch (error) {
+      if (isRevokedSessionError(error)) throw error;
+      this.analytics.logError(
+        'User Service',
+        'syncProfileEmail',
+        'Failed to store the verified email in the profile',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return profileEmail;
+    }
   }
 
   private async initializeAuth(): Promise<void> {
@@ -527,9 +550,13 @@ export class UserService implements IUserService {
       `users/${userId}`
     ) as DocumentReference<User>;
 
-    // Update the email on the user document
-    await setDoc(userDocRef, { email: newEmail }, { merge: true });
-    this.userStore.updateUser({ email: newEmail });
+    // Update the email on the user document. An address that is not one
+    // valid address (a legacy Auth account) is never stored: the rules would
+    // refuse it (see #syncProfileEmail). Linking below still runs.
+    if (isSingleEmailAddress(newEmail)) {
+      await setDoc(userDocRef, { email: newEmail }, { merge: true });
+      this.userStore.updateUser({ email: newEmail });
+    }
 
     // Link any unlinked member records with the verified address
     const membersLinked = await this.memberLinkService.linkInvitedMembers();

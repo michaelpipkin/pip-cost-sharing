@@ -416,6 +416,14 @@ describe('UserService', () => {
       );
     });
 
+    it('skips the profile write for an address that is not one valid address (the rules would refuse it), still linking', async () => {
+      await service.updateUserEmailAndLinkMembers('alice@my_domain.com');
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockUserStore.updateUser).not.toHaveBeenCalled();
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith();
+    });
+
     it('should throw when no authenticated user', async () => {
       (mockAuth as any).currentUser = null;
 
@@ -1149,6 +1157,107 @@ describe('UserService', () => {
         { merge: true }
       );
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+    });
+
+    // I1 (final review): firestore.rules accepts a profile email only when it
+    // is one valid address (B12). A legacy account whose verified Auth
+    // address fails that pattern (an underscore in the domain, no dotted
+    // TLD, ...) would have the write refused on every sign-in, and the
+    // refusal used to end the sign-in: the account was locked out.
+    it.each([
+      ['an underscore in the domain', 'alice@my_domain.com'],
+      ['no dotted TLD', 'alice@localhost'],
+      ['a non-ASCII local part', 'ålice@test.com'],
+    ])(
+      'signs in without writing a verified address that is not one valid address (%s)',
+      async (_label, address) => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: '' }) as any
+        );
+        firebaseUser.email = address;
+        firebaseUser.getIdTokenResult = tokenClaims(address);
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser);
+
+        expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+        expect(mockUserStore.initUser).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'user-123', email: '' }),
+          false,
+          true
+        );
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+        expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      [
+        'a rules refusal',
+        new FirebaseError('permission-denied', 'Missing or insufficient permissions.'),
+        'Missing or insufficient permissions.',
+      ],
+      ['a network failure', new Error('offline'), 'offline'],
+      ['a non-Error', 'boom', 'Unknown error'],
+    ])(
+      'logs %s of the profile email write and still signs in with the stored email',
+      async (_label, thrown, message) => {
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+          makeUserSnap(true, { email: 'old@test.com' }) as any
+        );
+        vi.spyOn(firestoreModule, 'setDoc').mockRejectedValue(thrown);
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser);
+
+        expect(firestoreModule.setDoc).toHaveBeenCalledTimes(1);
+        expect(mockAnalytics.logError).toHaveBeenCalledWith(
+          'User Service',
+          'syncProfileEmail',
+          'Failed to store the verified email in the profile',
+          message
+        );
+        expect(mockUserStore.initUser).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'user-123', email: 'old@test.com' }),
+          false,
+          true
+        );
+        expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+        expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+        expect(mockAnalytics.logError).not.toHaveBeenCalledWith(
+          'User Service',
+          'initializeAuth',
+          'Failed to initialize user',
+          expect.anything()
+        );
+      }
+    );
+
+    it('logs a failed token refresh and still signs in, unless the session was revoked', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
+      firebaseUser.getIdTokenResult = vi
+        .fn()
+        .mockRejectedValue(new Error('network'));
+
+      const callback = await getAuthStateCallback(service);
+      await callback(firebaseUser);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'User Service',
+        'syncProfileEmail',
+        'Failed to store the verified email in the profile',
+        'network'
+      );
+      expect(mockUserStore.initUser).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'old@test.com' }),
+        false,
+        true
+      );
+      // A revoked session is not survivable: see the expected email-change
+      // revocation test above, which still ends the session start.
     });
   });
 
