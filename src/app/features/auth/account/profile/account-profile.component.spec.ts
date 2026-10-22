@@ -132,6 +132,42 @@ describe('AccountProfileComponent', () => {
       ).toBeTruthy();
     });
 
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['a@b', 'new@example.com,other@example.com'])(
+      'should disable Update Email and show the email error for %s',
+      async (email) => {
+        setEmailValue(email);
+        const input = fixture.nativeElement.querySelector(
+          '[data-testid="account-email-input"]'
+        ) as HTMLInputElement;
+        input.dispatchEvent(new Event('blur'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const button = fixture.debugElement.query(
+          By.css('[data-testid="update-email-button"]')
+        ).nativeElement as HTMLButtonElement;
+        expect(button.disabled).toBe(true);
+        expect(
+          fixture.nativeElement.querySelector(
+            '[data-testid="account-email-error-0"]'
+          )?.textContent
+        ).toContain('Invalid email address');
+      }
+    );
+
+    it('should enable Update Email for a new valid address', async () => {
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const button = fixture.debugElement.query(
+        By.css('[data-testid="update-email-button"]')
+      ).nativeElement as HTMLButtonElement;
+      expect(button.disabled).toBe(false);
+    });
+
     it('should show enabled verify email button when email is not verified', () => {
       const btn = fixture.debugElement.query(
         By.css('[data-testid="verify-email-button"]')

@@ -4,6 +4,7 @@ import { ACCOUNT_ACTION_DATASET } from './account-action';
 import { ADMIN_DATASET } from './admin';
 import { AUTH_DATASET } from './auth';
 import { CATEGORIES_DATASET } from './categories';
+import { EMAIL_RULES_DATASET } from './email-rules';
 import { EXPENSES_DATASET } from './expenses';
 import { GROUPS_DATASET } from './groups';
 import { HISTORY_DATASET } from './history';
@@ -38,4 +39,5 @@ export const ALL_DATASETS: SeedDataset[] = [
   INVITES_DATASET,
   TOURS_DATASET,
   ADMIN_DATASET,
+  EMAIL_RULES_DATASET,
 ];

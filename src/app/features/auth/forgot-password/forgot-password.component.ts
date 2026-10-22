@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  email as emailValidator,
   form,
   FormField,
   required,
@@ -17,6 +16,7 @@ import { ForgotPasswordForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { FirebaseError } from 'firebase/app';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
+import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-forgot-password',
@@ -44,7 +44,7 @@ export class ForgotPasswordComponent {
   });
   protected readonly forgotPasswordForm = form(this.forgotPasswordModel, (p) => {
     required(p.email, { message: '*Required' });
-    emailValidator(p.email, { message: 'Invalid email address' });
+    singleEmail(p.email, { message: 'Invalid email address' });
   });
 
   // Guards against a double-click/double-tap firing forgotPassword() twice

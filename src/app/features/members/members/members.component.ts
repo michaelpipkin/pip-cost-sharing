@@ -55,12 +55,12 @@ import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { buildMembersTourSteps } from './members.tour';
 import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
+import { isSingleEmailAddress } from '@utils/email-validation';
 
 // Anti-spam window for invites, mirrored server-side in
 // functions/src/index.ts (INVITE_COOLDOWN_MS). This copy is UX only — the
 // Cloud Function re-checks the cooldown and is the real gate.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
 
 @Component({
   selector: 'app-members',
@@ -184,7 +184,7 @@ export class MembersComponent {
 
   /**
    * A member can be invited when they have never registered, are active,
-   * have a plausible email address, and either have never been invited or
+   * have one valid email address, and either have never been invited or
    * were last invited at a different address or more than 24 hours ago. The
    * server enforces all of this again in sendGroupInvite; this is UX only.
    */
@@ -192,7 +192,7 @@ export class MembersComponent {
     if (member.userRef || !member.active) return false;
 
     const email = (member.email ?? '').trim();
-    if (!INVITE_EMAIL_PATTERN.test(email)) return false;
+    if (!isSingleEmailAddress(email)) return false;
 
     const invite = member.invite;
     if (!invite) return true;

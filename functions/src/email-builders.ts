@@ -5,20 +5,35 @@ import type { DocumentData } from 'firebase-admin/firestore';
 // group-emails.ts is itself re-exported from index.ts, so importing them from
 // index.ts there would be circular.
 
-/** One plausible address (sendGroupInvite's check on an invitee's email). */
-export const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
+/**
+ * Exactly one email address: a dot-atom local part (no quotes, `<`, `>`,
+ * `,`, `;` or whitespace, and no leading, trailing or doubled dot), one `@`,
+ * then dot-separated domain labels (letters, digits, inner hyphens) ending
+ * in a TLD of 2+ letters. Lists such as `a@x.com,b@y.com` never match.
+ *
+ * The same rule is written three times and must stay identical:
+ *  - here (server emails: invites, group emails, payment/settle notices);
+ *  - src/app/utilities/email-validation.ts `SINGLE_EMAIL_PATTERN` (forms);
+ *  - firestore.rules `isValidEmailOrEmpty` (member and user doc writes).
+ * `[.]` is used for a literal dot so the text needs no escaping in the rules.
+ * The 254-character bound is checked separately (RE2 has no lookahead).
+ */
+export const SINGLE_EMAIL_PATTERN =
+  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:[.][A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?[.])+[A-Za-z]{2,}$/;
+
+/** The longest address accepted (RFC 5321's path limit). */
+export const MAX_EMAIL_LENGTH = 254;
 
 /**
- * Whether a stored member `email` is exactly one plausible address, safe to
- * use as a mail doc's `to`: nodemailer also accepts arrays and comma- or
- * semicolon-separated lists, which INVITE_EMAIL_PATTERN alone lets through
- * after the domain (e.g. `a@x.com,b`).
+ * Whether a value (e.g. a stored member `email`) is exactly one valid
+ * address, safe to use as a mail doc's `to`: nodemailer also accepts arrays
+ * and comma- or semicolon-separated lists, none of which pass.
  */
 export function isSingleEmailAddress(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    !/[,;]/.test(value) &&
-    INVITE_EMAIL_PATTERN.test(value)
+    value.length <= MAX_EMAIL_LENGTH &&
+    SINGLE_EMAIL_PATTERN.test(value)
   );
 }
 

@@ -93,16 +93,10 @@ async function seedCallerGroup(
  */
 function badAddresses(): { label: string; email: unknown; parts: string[] }[] {
   const fresh = () => uniqueEmail('list');
-  const [a1, b1, a2, b2, a3, b3, a4, a5] = Array.from({ length: 8 }, fresh) as [
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-  ];
+  const [a1, b1, a2, b2, a3, b3, a4, a5, a6] = Array.from(
+    { length: 9 },
+    fresh
+  ) as [string, string, string, string, string, string, string, string, string];
   return [
     { label: 'a comma list', email: `${a1},${b1}`, parts: [a1, b1] },
     { label: 'a semicolon list', email: `${a2}; ${b2}`, parts: [a2, b2] },
@@ -110,6 +104,13 @@ function badAddresses(): { label: string; email: unknown; parts: string[] }[] {
     { label: 'an inner space', email: a4.replace('@', ' @'), parts: [a4] },
     { label: 'a comma after the domain', email: `${a5},x`, parts: [a5] },
     { label: 'no @', email: 'not-an-email', parts: [] },
+    // Passed the B1 pattern; refused since B12's single-address rule.
+    { label: 'angle brackets', email: `${a6}<b>`, parts: [a6] },
+    {
+      label: 'no dot in the domain',
+      email: `list-${randomUUID()}@group-emails`,
+      parts: [],
+    },
   ];
 }
 

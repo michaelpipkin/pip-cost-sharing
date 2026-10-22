@@ -32,7 +32,7 @@ import {
   buildPaymentMethodsHtml,
   escapeHtml,
   formatAmount,
-  INVITE_EMAIL_PATTERN,
+  isSingleEmailAddress,
 } from './email-builders';
 
 export {
@@ -929,6 +929,21 @@ export const sendPaymentNotificationEmail = onDocumentCreated(
   }
 );
 
+/**
+ * A member's stored `email` if it is exactly one valid address, else ''.
+ * A stored value that is set but invalid (a comma list, an array, `a@b`, ...)
+ * is logged and treated like a missing address, so no mail is queued to it.
+ */
+function mailableMemberEmail(member: DocumentData, context: string): string {
+  const email: unknown = member['email'];
+  if (email === undefined || email === null || email === '') return '';
+  if (isSingleEmailAddress(email)) return email;
+  console.warn(
+    `${context}: skipping member "${member['displayName'] ?? ''}" whose stored email is not a single valid address`
+  );
+  return '';
+}
+
 async function handleMemberPaymentEmail(
   data: DocumentData,
   groupRef: DocumentReference,
@@ -961,8 +976,8 @@ async function handleMemberPaymentEmail(
 
   const payerName: string = payerData['displayName'] ?? 'Someone';
   const payeeName: string = payeeData['displayName'] ?? 'Someone';
-  const payerEmail: string = payerData['email'] ?? '';
-  const payeeEmail: string = payeeData['email'] ?? '';
+  const payerEmail = mailableMemberEmail(payerData, 'handleMemberPaymentEmail');
+  const payeeEmail = mailableMemberEmail(payeeData, 'handleMemberPaymentEmail');
   const groupName: string = groupData['name'] ?? 'your group';
   const currencyCode: string = groupData['currencyCode'] ?? 'USD';
   const currencySymbol: string = groupData['currencySymbol'] ?? '$';
@@ -1277,7 +1292,7 @@ async function handleSettleEmail(
   const mailWrites: Promise<DocumentReference>[] = [];
 
   for (const [memberPath, memberData] of memberDataMap.entries()) {
-    const memberEmail: string = memberData['email'] ?? '';
+    const memberEmail = mailableMemberEmail(memberData, 'handleSettleEmail');
     const memberName: string = memberData['displayName'] ?? 'Member';
     if (!memberEmail) continue;
 
@@ -1632,7 +1647,7 @@ export const sendGroupInvite = onCall<{
       if (member['active'] !== true) return { status: 'inactive' };
 
       const email = String(member['email'] ?? '').trim();
-      if (!INVITE_EMAIL_PATTERN.test(email)) return { status: 'invalid-email' };
+      if (!isSingleEmailAddress(email)) return { status: 'invalid-email' };
 
       const invite = member['invite'] as
         | { lastSentAt?: Timestamp; lastSentTo?: string; sendCount?: number }

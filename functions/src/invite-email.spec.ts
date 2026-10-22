@@ -1,6 +1,11 @@
-import { Timestamp } from 'firebase-admin/firestore';
+import { randomUUID } from 'node:crypto';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
-import { buildGroupInviteEmail, shouldThrottleInvite } from './index';
+import {
+  buildGroupInviteEmail,
+  sendGroupInvite,
+  shouldThrottleInvite,
+} from './index';
 
 describe('buildGroupInviteEmail', () => {
   it('includes the group name in the subject', () => {
@@ -104,5 +109,73 @@ describe('shouldThrottleInvite', () => {
     expect(shouldThrottleInvite(invite, 'alex@example.com', Date.now())).toBe(
       true
     );
+  });
+});
+
+describe('sendGroupInvite: the invitee address', () => {
+  const db = getFirestore();
+
+  /** A group whose admin calls, plus an unregistered active invitee. */
+  async function seedInvite(inviteeEmail: string) {
+    const adminUid = `u-${randomUUID()}`;
+    const groupRef = db.collection('groups').doc(`g-${randomUUID()}`);
+    await groupRef.set({ name: 'Invite Trip' });
+    await groupRef.collection('members').doc().set({
+      displayName: 'Admin',
+      userRef: db.collection('users').doc(adminUid),
+      groupAdmin: true,
+      active: true,
+    });
+    const inviteeRef = groupRef.collection('members').doc();
+    await inviteeRef.set({
+      displayName: 'Invitee',
+      email: inviteeEmail,
+      userRef: null,
+      groupAdmin: false,
+      active: true,
+    });
+    return { adminUid, groupRef, inviteeRef };
+  }
+
+  function invite(uid: string, groupId: string, memberId: string) {
+    return Promise.resolve(
+      sendGroupInvite.run({
+        auth: { uid, token: {} },
+        data: { groupId, memberId },
+      } as any)
+    );
+  }
+
+  async function mailTo(to: string): Promise<number> {
+    return (await db.collection('mail').where('to', '==', to).get()).size;
+  }
+
+  it('sends to one valid address', async () => {
+    const email = `invitee-${randomUUID()}@invite.test`;
+    const { adminUid, groupRef, inviteeRef } = await seedInvite(email);
+
+    await expect(invite(adminUid, groupRef.id, inviteeRef.id)).resolves.toMatchObject(
+      { success: true, sentTo: email }
+    );
+    expect(await mailTo(email)).toBe(1);
+  });
+
+  // `a@x.com,b` and `a@x.com<b>` passed the old INVITE_EMAIL_PATTERN.
+  it.each([
+    ['a comma after the domain', (a: string) => `${a},b`],
+    ['a comma list', (a: string) => `${a},other@invite.test`],
+    ['angle brackets', (a: string) => `${a}<b>`],
+    ['no dot in the domain', () => `invitee-${randomUUID()}@invite`],
+  ])('refuses %s and sends nothing', async (_label, build) => {
+    const valid = `invitee-${randomUUID()}@invite.test`;
+    const stored = build(valid);
+    const { adminUid, groupRef, inviteeRef } = await seedInvite(stored);
+
+    await expect(invite(adminUid, groupRef.id, inviteeRef.id)).rejects.toMatchObject(
+      { code: 'failed-precondition' }
+    );
+    expect(await mailTo(stored)).toBe(0);
+    expect(await mailTo(valid)).toBe(0);
+    expect((await inviteeRef.get()).data()?.['invite']).toBeUndefined();
   });
 });

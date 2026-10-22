@@ -52,6 +52,12 @@ const DEFAULT_BUTTON = [`${DIRECTIVES}/default-button.directive.spec.ts`];
 const ALLOCATION_UTILS = [`${UTILITIES}/allocation-utils.service.spec.ts`];
 const RENTAL_UTILS = [`${UTILITIES}/rental-utils.service.spec.ts`];
 const STRING_UTILS = [`${UTILITIES}/string-utils.service.spec.ts`];
+// The single-email-address rule (and its signal-forms validator) used by every
+// form with an email field: add/edit member, account profile, register,
+// login, forgot password and help. Its server copy is checked in
+// email-formatting.spec.ts, its Firestore-rules copy by the @members/@account
+// e2e spec e2e/infra/email-rules.spec.ts.
+const EMAIL_VALIDATION = [`${UTILITIES}/email-validation.spec.ts`];
 // Receipt capture plumbing shared by the scan-receipt page and the expense forms.
 const RECEIPT_CAPTURE = [
   `${SERVICES}/camera.service.spec.ts`,
@@ -138,6 +144,7 @@ export const AREAS = {
       `${FEATURES}/auth/login`,
       `${FEATURES}/auth/register`,
       `${FEATURES}/auth/reset-password`,
+      ...EMAIL_VALIDATION,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
       `${SERVICES}/member-link.service.spec.ts`,
@@ -164,6 +171,7 @@ export const AREAS = {
       ...USER_SERVICE,
       `${FEATURES}/auth/account`,
       `${FEATURES}/auth/delete-account`,
+      ...EMAIL_VALIDATION,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
       `${COMPONENTS}/account-menu`,
@@ -212,6 +220,7 @@ export const AREAS = {
       ...APP_CHECK_ERRORS,
       `${FEATURES}/members`,
       ...DEFAULT_BUTTON,
+      ...EMAIL_VALIDATION,
       `${SERVICES}/invite.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
       `${SERVICES}/member-link.service.spec.ts`,
@@ -443,6 +452,7 @@ export const AREAS = {
       `${FEATURES}/about`,
       `${FEATURES}/help`,
       ...DEFAULT_BUTTON,
+      ...EMAIL_VALIDATION,
       `${SERVICES}/help.service.spec.ts`,
       `${SERVICES}/help-content.service.spec.ts`,
       ...GUIDED_TOUR,

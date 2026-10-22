@@ -17,6 +17,28 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
+    // An `email` field must be '' or exactly one valid address (no lists,
+    // `<`/`>`, quotes or whitespace; a dotted domain with a 2+ letter TLD).
+    // The same rule is written three times and must stay identical:
+    //  - here;
+    //  - src/app/utilities/email-validation.ts SINGLE_EMAIL_PATTERN (forms);
+    //  - functions/src/email-builders.ts SINGLE_EMAIL_PATTERN (server emails).
+    // RE2 has no lookahead, so the 254-character bound is a size() check.
+    function isValidEmailOrEmpty(e) {
+      return e == '' || (
+        e is string &&
+        e.size() <= 254 &&
+        e.matches("^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:[.][A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?[.])+[A-Za-z]{2,}$")
+      );
+    }
+
+    // Applied to create and update only, alongside each rule's own
+    // authorization condition (which is unchanged).
+    function emailFieldValid() {
+      return !('email' in request.resource.data) ||
+        isValidEmailOrEmpty(request.resource.data.email);
+    }
+
     // Deny all client access to the mail collection.
     // The Firebase Trigger Email extension (Admin SDK) bypasses these rules,
     // so Cloud Functions can still write here. This prevents authenticated
@@ -110,14 +132,16 @@ service cloud.firestore {
         // creates the member doc, so isGroupAdmin(groupId)'s get() always
         // sees a group that genuinely exists by the time this runs - and the
         // creator is already in adminUids from that same group-creation write.
-        allow create: if isGroupAdmin(groupId);
+        allow create: if isGroupAdmin(groupId) && emailFieldValid();
         // The second clause covers self-service writes made *while
         // inactive* - rejoinGroup() (flips leftGroup:false, active:true,
         // the exact state this write is trying to escape) and
         // updateAllMemberEmails() (syncing a display email across every
         // group a user belongs to, active or not) - plus ordinary self-edits
         // (e.g. payment handles) and leaveGroup()'s own self-update/delete.
-        allow update, delete: if isGroupAdmin(groupId) ||
+        allow update: if (isGroupAdmin(groupId) ||
+          resource.data.userRef == ownUserRef()) && emailFieldValid();
+        allow delete: if isGroupAdmin(groupId) ||
           resource.data.userRef == ownUserRef();
       }
 
@@ -180,9 +204,11 @@ service cloud.firestore {
     }
 
     // users: deferred to a later phase (see .claude/firestore-rules-hardening.md,
-    // Phase 3) - not tightened here.
+    // Phase 3) - not tightened here. `write` is split only so create and
+    // update can also check the email field; who may write is unchanged.
     match /users/{userId} {
-      allow read, write, delete: if request.auth != null;
+      allow read, delete: if request.auth != null;
+      allow create, update: if request.auth != null && emailFieldValid();
     }
   }
 }

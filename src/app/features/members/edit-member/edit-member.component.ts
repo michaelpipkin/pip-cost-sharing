@@ -8,7 +8,6 @@ import {
 } from '@angular/core';
 import {
   disabled,
-  email,
   form,
   FormField,
   required,
@@ -40,6 +39,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-edit-member',
@@ -95,7 +95,7 @@ export class EditMemberComponent {
 
   protected readonly editMemberForm = form(this.editMemberModel, (p) => {
     required(p.memberName, { message: '*Required' });
-    email(p.email, { message: '*Not a valid email address' });
+    singleEmail(p.email, { message: '*Not a valid email address' });
     disabled(p.active, {
       when: () =>
         !!this.member.leftGroup ||

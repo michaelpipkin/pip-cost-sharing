@@ -98,20 +98,29 @@ describe('AddMemberComponent', () => {
       expect(saveBtn.disabled).toBe(false);
     });
 
-    it('should disable Save when email is invalid', async () => {
-      const nameInput = query('member-name-input') as HTMLInputElement;
-      nameInput.value = 'Alice';
-      nameInput.dispatchEvent(new Event('input'));
+    // a@b passed Angular's built-in email validator; the app now requires a
+    // dotted domain (utilities/email-validation.ts).
+    it.each(['not-an-email', 'a@b', 'a@x.com,b@y.com'])(
+      'should disable Save and show the email error when email is %s',
+      async (email) => {
+        const nameInput = query('member-name-input') as HTMLInputElement;
+        nameInput.value = 'Alice';
+        nameInput.dispatchEvent(new Event('input'));
 
-      const emailInput = query('member-email-input') as HTMLInputElement;
-      emailInput.value = 'not-an-email';
-      emailInput.dispatchEvent(new Event('input'));
-      await fixture.whenStable();
-      fixture.detectChanges();
+        const emailInput = query('member-email-input') as HTMLInputElement;
+        emailInput.value = email;
+        emailInput.dispatchEvent(new Event('input'));
+        emailInput.dispatchEvent(new Event('blur'));
+        await fixture.whenStable();
+        fixture.detectChanges();
 
-      const saveBtn = query('add-member-save-button') as HTMLButtonElement;
-      expect(saveBtn.disabled).toBe(true);
-    });
+        const saveBtn = query('add-member-save-button') as HTMLButtonElement;
+        expect(saveBtn.disabled).toBe(true);
+        expect(query('member-email-error-0')?.textContent).toContain(
+          'Not a valid email address'
+        );
+      }
+    );
 
     it('should enable Save when name and valid email are provided', async () => {
       const nameInput = query('member-name-input') as HTMLInputElement;

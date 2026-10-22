@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
-  email as emailValidator,
   form,
   FormField,
   maxLength,
@@ -21,6 +20,7 @@ import {
 } from '@services/help-content.service';
 import { HelpService } from '@services/help.service';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { singleEmail } from '@utils/email-validation';
 
 interface IssueForm {
   title: string;
@@ -66,7 +66,7 @@ export class HelpComponent {
     required(p.title, { message: '*Required' });
     required(p.body, { message: '*Required' });
     maxLength(p.body, 2000, { message: 'Maximum 2000 characters' });
-    emailValidator(p.email, { message: '*Invalid email address' });
+    singleEmail(p.email, { message: '*Invalid email address' });
   });
 
   constructor() {

@@ -70,15 +70,20 @@ describe('ForgotPasswordComponent', () => {
       expect(submitBtn.disabled).toBe(true);
     });
 
-    it('should disable submit when email is invalid', async () => {
-      const input = query('forgot-email-input') as HTMLInputElement;
-      input.value = 'notanemail';
-      input.dispatchEvent(new Event('input'));
-      await fixture.whenStable();
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['notanemail', 'a@b', 'test@example.com,other@example.com'])(
+      'should disable submit when email is %s',
+      async (email) => {
+        const input = query('forgot-email-input') as HTMLInputElement;
+        input.value = email;
+        input.dispatchEvent(new Event('input'));
+        await fixture.whenStable();
 
-      const submitBtn = query('forgot-password-submit') as HTMLButtonElement;
-      expect(submitBtn.disabled).toBe(true);
-    });
+        const submitBtn = query('forgot-password-submit') as HTMLButtonElement;
+        expect(submitBtn.disabled).toBe(true);
+      }
+    );
 
     it('should enable submit when valid email is entered', async () => {
       const input = query('forgot-email-input') as HTMLInputElement;

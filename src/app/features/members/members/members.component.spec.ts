@@ -351,7 +351,15 @@ describe('MembersComponent', () => {
       expect(component.canInvite(member)).toBe(false);
     });
 
-    it.each([['nope'], [''], [undefined as unknown as string]])(
+    // 'a@x.com,b' and 'a@x.com<b>' passed the old local pattern; the check now
+    // uses the app-wide single-address rule (utilities/email-validation.ts).
+    it.each([
+      ['nope'],
+      [''],
+      [undefined as unknown as string],
+      ['a@x.com,b'],
+      ['a@x.com<b>'],
+    ])(
       'returns false for a missing or invalid email address (%s)',
       (email) => {
         const member = mockMember({ userRef: null, active: true, email });

@@ -8,7 +8,6 @@ import {
   Signal,
 } from '@angular/core';
 import {
-  email as emailValidator,
   form,
   FormField,
 } from '@angular/forms/signals';
@@ -37,6 +36,7 @@ import {
   sendEmailVerification,
   updateEmail,
 } from 'firebase/auth';
+import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-account-profile',
@@ -74,7 +74,7 @@ export class AccountProfileComponent {
     email: this.currentUser()?.email ?? '',
   });
   protected readonly emailForm = form(this.emailModel, (p) => {
-    emailValidator(p.email, { message: 'Invalid email address' });
+    singleEmail(p.email, { message: 'Invalid email address' });
   });
 
   constructor() {

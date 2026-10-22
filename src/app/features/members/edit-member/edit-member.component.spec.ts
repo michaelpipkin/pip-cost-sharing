@@ -171,6 +171,28 @@ describe('EditMemberComponent', () => {
       expect(saveBtn.disabled).toBe(false);
     });
 
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['a@b', 'alice@example.com,bob@example.com'])(
+      'should disable Save and show the email error when email is %s',
+      async (email) => {
+        const emailInput = query(
+          'edit-member-email-input'
+        ) as HTMLInputElement;
+        emailInput.value = email;
+        emailInput.dispatchEvent(new Event('input'));
+        emailInput.dispatchEvent(new Event('blur'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const saveBtn = query('edit-member-save-button') as HTMLButtonElement;
+        expect(saveBtn.disabled).toBe(true);
+        expect(query('edit-member-email-error-0')?.textContent).toContain(
+          'Not a valid email address'
+        );
+      }
+    );
+
     it('should call memberService.updateMemberWithUserMatching on submit', async () => {
       const nameInput = query('edit-member-name-input') as HTMLInputElement;
       nameInput.value = 'Alicia';

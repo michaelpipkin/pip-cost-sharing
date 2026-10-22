@@ -108,16 +108,23 @@ describe('LoginComponent', () => {
   });
 
   describe('form validation', () => {
-    it('should show email format error for invalid email', async () => {
-      const input = query('email-input') as HTMLInputElement;
-      input.value = 'notanemail';
-      input.dispatchEvent(new Event('input'));
-      input.dispatchEvent(new Event('blur'));
-      await fixture.whenStable();
-      fixture.detectChanges();
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['notanemail', 'a@b', 'test@example.com,other@example.com'])(
+      'should show email format error for %s',
+      async (email) => {
+        const input = query('email-input') as HTMLInputElement;
+        input.value = email;
+        input.dispatchEvent(new Event('input'));
+        input.dispatchEvent(new Event('blur'));
+        await fixture.whenStable();
+        fixture.detectChanges();
 
-      expect(query('email-error-0')).toBeTruthy();
-    });
+        expect(query('email-error-0')?.textContent).toContain(
+          'Invalid email address'
+        );
+      }
+    );
 
     it('should not show email format error for valid email', async () => {
       const input = query('email-input') as HTMLInputElement;
