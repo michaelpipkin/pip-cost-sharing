@@ -13,6 +13,7 @@ import {
   callableAppCheck,
   NON_USER_AUTH_EMAILS,
   normalizeEmail,
+  profileEmail,
 } from './common';
 
 // getFirestore()/getAuth() are called lazily inside each handler/report
@@ -702,7 +703,10 @@ export async function buildOrphanedRegistrationsReport(
   };
 }
 
-/** Creates the missing users/{uid} doc for each given uid, mirroring createUserProfileOnSignUp's shape. */
+/**
+ * Creates the missing users/{uid} doc for each given uid, mirroring
+ * createUserProfileOnSignUp's shape (including its verified-only email).
+ */
 export async function backfillOrphanedRegistrationsInternal(
   db: Firestore,
   auth: Auth,
@@ -736,7 +740,7 @@ export async function backfillOrphanedRegistrationsInternal(
       batch.set(
         db.collection('users').doc(uid),
         {
-          email: record.email ?? '',
+          email: profileEmail(record),
           defaultGroupRef: null,
           receiptPolicy: false,
           emailOptOut: false,

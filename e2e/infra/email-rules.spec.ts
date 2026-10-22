@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 // Plain Playwright, not ../fixtures: this spec needs no page or browser (the
 // suite fixtures would load the login page in a worker for nothing).
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   deleteDoc,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   type Firestore,
@@ -22,15 +23,26 @@ import {
  * the test emulators. A member's or user's `email` must be '' or exactly one
  * valid address when it is set (create) or changed (update); an unchanged
  * stored value, even an invalid or null one, does not block other writes.
- * The clients come from e2e/utils/rules-client.ts (the web SDK in the
+ * A user's own profile email must also be the caller's own verified address
+ * (the second describe), so the full valid-address table is run on member
+ * docs here and on users docs only as denials. The clients come from e2e/utils/rules-client.ts (the web SDK in the
  * Playwright worker; no page is opened).
  *
  * Each denial has a positive control on the same doc by the same user, so a
  * denial can only come from the email guard.
  */
 
-const { admin, legacyUser, creator, group, target, legacyList, legacyNull } =
-  EMAIL_RULES;
+const {
+  admin,
+  legacyUser,
+  creator,
+  unverified,
+  unverifiedCreator,
+  group,
+  target,
+  legacyList,
+  legacyNull,
+} = EMAIL_RULES;
 
 // The same table as src/app/utilities/email-validation.spec.ts and
 // functions/src/email-formatting.spec.ts, so all three copies of the pattern
@@ -101,16 +113,6 @@ test.describe(
   'Firestore rules: single valid email',
   { tag: ['@members', '@account', '@auth'] },
   () => {
-    test('a user can write one valid address to their own users doc', async () => {
-      await withDb(async (db) => {
-        for (const email of VALID) {
-          await expectAllowed(updateDoc(userDoc(db), { email }));
-        }
-        // End on the seeded address.
-        await expectAllowed(updateDoc(userDoc(db), { email: admin.email }));
-      });
-    });
-
     test('a user cannot write an invalid address to their users doc', async () => {
       await withDb(async (db) => {
         for (const email of [...INVALID, null]) {
@@ -129,6 +131,12 @@ test.describe(
         for (const email of [...INVALID, null]) {
           await expectDenied(setDoc(own, { email }), email);
         }
+        // Valid, but not the creator's own verified address (B14).
+        await expectDenied(setDoc(own, { email: VALID[1] }), VALID[1]);
+        await expectDenied(
+          setDoc(own, { email: creator.email, emailLower: VALID[1] }),
+          `emailLower ${VALID[1]}`
+        );
         await expectAllowed(setDoc(own, { email: creator.email }));
       }, creator);
     });
@@ -231,6 +239,121 @@ test.describe(
         );
         await expectAllowed(setDoc(freshMember(db), newMember(atLimit)));
       });
+    });
+  }
+);
+
+/**
+ * Email ownership (Plan 4 B14): invited members are linked to accounts by
+ * users.emailLower, which the syncUserEmailLower trigger copies from
+ * users.email, so a profile may store only '' or the caller's own VERIFIED
+ * sign-in address (case-insensitive), and a client-written emailLower only
+ * '' or that address lowercased. Before this rule any valid address could be
+ * written to one's own profile, and the next invite lookup by that address
+ * linked its member to the writer. Every denial below got through then.
+ */
+test.describe(
+  'Firestore rules: a profile stores only its own verified email',
+  { tag: ['@members', '@groups', '@account', '@auth'] },
+  () => {
+    test('a verified user can store their own address in any casing, or empty', async () => {
+      await withDb(async (db) => {
+        for (const email of [
+          admin.email.toUpperCase(),
+          'Email-Rules-Admin@PipSplit.Test',
+          '',
+          admin.email,
+        ]) {
+          await expectAllowed(updateDoc(userDoc(db), { email }));
+        }
+        // The setDoc-merge shape the session sync and verification use.
+        await expectAllowed(
+          setDoc(userDoc(db), { email: admin.email }, { merge: true })
+        );
+        await expectAllowed(
+          updateDoc(userDoc(db), { emailLower: admin.email.toLowerCase() })
+        );
+      });
+    });
+
+    test("a verified user cannot store someone else's valid address", async () => {
+      await withDb(async (db) => {
+        for (const email of VALID) {
+          await expectDenied(updateDoc(userDoc(db), { email }), email);
+          await expectDenied(
+            setDoc(userDoc(db), { email }, { merge: true }),
+            `merge ${email}`
+          );
+          await expectDenied(
+            updateDoc(userDoc(db), { emailLower: email.toLowerCase() }),
+            `emailLower ${email}`
+          );
+        }
+        // emailLower must be the address lowercased, exactly.
+        await expectDenied(
+          updateDoc(userDoc(db), { emailLower: admin.email.toUpperCase() }),
+          'emailLower upper-case'
+        );
+        // Positive control: the same doc, an unrelated field.
+        await expectAllowed(
+          updateDoc(userDoc(db), { venmoId: `@rules-${randomUUID().slice(0, 8)}` })
+        );
+      });
+    });
+
+    test('an unverified user cannot store any address, even their own', async () => {
+      await withDb(async (db) => {
+        const own = userDoc(db, unverified.uid);
+        for (const email of [
+          unverified.email,
+          unverified.email.toUpperCase(),
+          VALID[1]!,
+        ]) {
+          await expectDenied(updateDoc(own, { email }), email);
+          await expectDenied(
+            setDoc(own, { email }, { merge: true }),
+            `merge ${email}`
+          );
+          await expectDenied(
+            updateDoc(own, { emailLower: email.toLowerCase() }),
+            `emailLower ${email}`
+          );
+        }
+        // Positive controls: unrelated writes and an empty email pass.
+        await expectAllowed(
+          updateDoc(own, { venmoId: `@rules-${randomUUID().slice(0, 8)}` })
+        );
+        await expectAllowed(setDoc(own, { email: '' }, { merge: true }));
+        expect((await getDoc(own)).data()?.['email']).toBe('');
+      }, unverified);
+    });
+
+    test('an unverified user can create their own doc only with an empty email', async () => {
+      // Deletes and recreates its own doc, ending with '' (repeats fine).
+      await withDb(async (db) => {
+        const own = userDoc(db, unverifiedCreator.uid);
+        await expectAllowed(deleteDoc(own));
+        await expectDenied(
+          setDoc(own, { email: unverifiedCreator.email }),
+          unverifiedCreator.email
+        );
+        await expectDenied(
+          setDoc(own, { email: '', emailLower: unverifiedCreator.email }),
+          'emailLower'
+        );
+        await expectAllowed(
+          setDoc(own, {
+            email: '',
+            defaultGroupRef: null,
+            receiptPolicy: false,
+            emailOptOut: false,
+            venmoId: '',
+            paypalId: '',
+            cashAppId: '',
+            zelleId: '',
+          })
+        );
+      }, unverifiedCreator);
     });
   }
 );

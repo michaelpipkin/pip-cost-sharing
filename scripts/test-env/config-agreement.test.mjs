@@ -48,6 +48,8 @@ test('firebase.test.json ports match config.mjs', () => {
   assert.equal(emulators.functions.port, TEST_PORTS.functions);
   assert.equal(emulators.hub.port, TEST_PORTS.hub);
   assert.equal(emulators.logging.port, TEST_PORTS.logging);
+  assert.equal(emulators.eventarc.port, TEST_PORTS.eventarc);
+  assert.equal(emulators.tasks.port, TEST_PORTS.tasks);
 });
 
 test('environment.e2e.ts emulators block matches config.mjs', () => {

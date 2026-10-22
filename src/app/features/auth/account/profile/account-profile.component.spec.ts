@@ -270,50 +270,111 @@ describe('AccountProfileComponent', () => {
       fixture.detectChanges();
     });
 
-    it('should not call updateEmail when email is unchanged', async () => {
-      const spy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
+    const snackbarMessage = () =>
+      mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data?.message;
+    const pendingNote = () =>
+      fixture.nativeElement.querySelector(
+        '[data-testid="pending-email-change"]'
+      ) as HTMLElement | null;
+
+    it('should not send a change link when email is unchanged', async () => {
+      const spy = vi
+        .spyOn(authModule, 'verifyBeforeUpdateEmail')
+        .mockResolvedValue();
       setEmailValue('test@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('should call updateEmail when email changes', async () => {
-      const updateSpy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
-      vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue();
+    it('should email a confirm link to the new address (verify before update) and say so', async () => {
+      const spy = vi
+        .spyOn(authModule, 'verifyBeforeUpdateEmail')
+        .mockResolvedValue();
       setEmailValue('new@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
-      expect(updateSpy).toHaveBeenCalled();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalledWith(
+        mockAuthWithUser.currentUser,
+        'new@example.com',
+        {
+          url: globalThis.location.origin + '/auth/account-action',
+          handleCodeInApp: true,
+        }
+      );
+      expect(snackbarMessage()).toBe(
+        'Check new@example.com for a link to confirm your new email'
+      );
+      expect(pendingNote()?.textContent).toContain('new@example.com');
+      expect(pendingNote()?.textContent).toContain('test@example.com');
+      // The account keeps its current address (and verified status) until
+      // the link is used.
+      expect(mockUserStore.setIsEmailConfirmed).not.toHaveBeenCalled();
+      const input = fixture.nativeElement.querySelector(
+        '[data-testid="account-email-input"]'
+      ) as HTMLInputElement;
+      expect(input.value).toBe('test@example.com');
+    });
+
+    it('should not show the pending-change note before a change is requested', () => {
+      expect(pendingNote()).toBeNull();
     });
 
     it('should show email-already-in-use message for that error code', async () => {
       const error = Object.assign(new Error('already in use'), {
         code: 'auth/email-already-in-use',
       });
-      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(error);
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(error);
       setEmailValue('taken@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
+      fixture.detectChanges();
       expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
         'Account Profile Component',
         'update_email',
         'Failed to update email address',
         expect.any(String)
       );
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('already in use');
+      expect(snackbarMessage()).toBe(
+        'This email address is already in use by another account'
+      );
+      expect(pendingNote()).toBeNull();
+    });
+
+    it('should ask the user to sign in again when Firebase requires a recent login', async () => {
+      const error = Object.assign(new Error('stale'), {
+        code: 'auth/requires-recent-login',
+      });
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(error);
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
+      await component.onSubmitEmail();
+      expect(snackbarMessage()).toContain('sign out and sign back in');
     });
 
     it('should show generic error message for other errors', async () => {
-      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(
         new Error('network error')
       );
       setEmailValue('new@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('could not be updated');
+      expect(snackbarMessage()).toContain('could not be updated');
+    });
+  });
+
+  describe('email field for an unverified account', () => {
+    it('shows the sign-in address even though the profile email is still empty', async () => {
+      await createComponent();
+      mockUserStore.user.set(mockUser({ email: '' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const input = fixture.nativeElement.querySelector(
+        '[data-testid="account-email-input"]'
+      ) as HTMLInputElement;
+      expect(input.value).toBe('test@example.com');
     });
   });
 

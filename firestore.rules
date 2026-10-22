@@ -56,6 +56,46 @@ service cloud.firestore {
         emailCreateValid();
     }
 
+    // Email ownership for users/{uid} (Plan 4 B14), alongside the format
+    // guard above. Invited members are linked to accounts by
+    // users.emailLower (member.service's client lookups, the admin orphan
+    // repair) and by the caller's token (the linkInvitedMembers callable),
+    // so a client may store in a profile only '' or the caller's own
+    // VERIFIED sign-in address (request.auth.token.email with
+    // email_verified == true), compared case-insensitively. Without this,
+    // anyone could write someone else's address into their own profile, the
+    // syncUserEmailLower trigger would copy it into emailLower, and the next
+    // invite lookup would link that person's pending member to them.
+    //  - emailLower is held to the same address, lowercased. No client path
+    //    writes it: the syncUserEmailLower trigger (Admin SDK) maintains it.
+    //  - Like the format guard, a field is checked only when it is set
+    //    (create) or changed (update), so unrelated writes to a doc with an
+    //    older stored value still pass. Removing a field is allowed.
+    //  - '' is how a profile email is cleared (and what an unverified
+    //    sign-up stores, createUserProfileOnSignUp).
+    function isOwnVerifiedEmail(e) {
+      return e is string &&
+        request.auth.token.email_verified == true &&
+        e.lower() == request.auth.token.email.lower();
+    }
+    function userEmailFieldsOwned(changed) {
+      return (!changed.hasAny(['email']) ||
+          !('email' in request.resource.data) ||
+          request.resource.data.email == '' ||
+          isOwnVerifiedEmail(request.resource.data.email)) &&
+        (!changed.hasAny(['emailLower']) ||
+          !('emailLower' in request.resource.data) ||
+          request.resource.data.emailLower == '' ||
+          (request.auth.token.email_verified == true &&
+            request.resource.data.emailLower == request.auth.token.email.lower()));
+    }
+    function userEmailCreateOwned() {
+      return userEmailFieldsOwned(request.resource.data.keys());
+    }
+    function userEmailUpdateOwned() {
+      return userEmailFieldsOwned(request.resource.data.diff(resource.data).affectedKeys());
+    }
+
     // Deny all client access to the mail collection.
     // The Firebase Trigger Email extension (Admin SDK) bypasses these rules,
     // so Cloud Functions can still write here. This prevents authenticated
@@ -238,7 +278,10 @@ service cloud.firestore {
     //    adminUids through get(), which sees the state before the batch;
     //    deactivating or archiving never changes adminUids, so it holds.
     //    Proved on the emulator by e2e/infra/user-rules.spec.ts.
-    // Both keep the email guard (emailCreateValid()/emailUpdateValid()).
+    // Both keep the email format guard (emailCreateValid()/emailUpdateValid())
+    // and add the ownership guard: a set or changed email/emailLower must be
+    // '' or the caller's own verified address (userEmailCreateOwned()/
+    // userEmailUpdateOwned(); proved by e2e/infra/email-rules.spec.ts).
     match /users/{userId} {
       function isOwnUserDoc() {
         return isSignedIn() && request.auth.uid == userId;
@@ -252,9 +295,10 @@ service cloud.firestore {
       }
 
       allow read: if isSignedIn();
-      allow create: if isOwnUserDoc() && emailCreateValid();
+      allow create: if isOwnUserDoc() && emailCreateValid() &&
+        userEmailCreateOwned();
       allow update: if (isOwnUserDoc() || isAdminClearingDefaultGroup()) &&
-        emailUpdateValid();
+        emailUpdateValid() && userEmailUpdateOwned();
       allow delete: if isOwnUserDoc();
     }
   }

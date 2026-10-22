@@ -34,6 +34,18 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// The address a users/{uid} profile may store for an Auth account: its email
+// once verified, else ''. Invited members are linked to users by the profile
+// email (users.emailLower), so an unverified address there would let anyone
+// register with someone else's address and be linked to their invites.
+// firestore.rules enforces the same for client writes (userEmailOwned).
+export function profileEmail(user: {
+  email?: string;
+  emailVerified?: boolean;
+}): string {
+  return user.emailVerified === true ? (user.email ?? '') : '';
+}
+
 // Auth accounts that will never have (or need) a Firestore users doc, so
 // they're false positives in any "orphaned registration" query rather than
 // real sign-ups. play_review@google.com is the account Google Play's review

@@ -2,8 +2,8 @@ import { expect, test } from '../fixtures';
 import { AccountActionPage } from '../pages/account-action.page';
 import { AuthPage } from '../pages/auth.page';
 import { getSeedAdmin } from '../seed/admin';
-import { ACCOUNT_ACTION } from '../seed/datasets/account-action';
-import { verifyEmailPath } from '../utils/auth-emulator';
+import { ACCOUNT_ACTION, CHANGE_EMAILS } from '../seed/datasets/account-action';
+import { changeEmailPath, verifyEmailPath } from '../utils/auth-emulator';
 import { signInAs } from '../utils/session';
 
 // The verify-email screen (/auth/account-action?mode=verifyEmail&oobCode=...)
@@ -135,5 +135,79 @@ test.describe('Verify email screen', { tag: ['@auth'] }, () => {
     ).toBeVisible();
     // Still unverified: resending only issues a new link.
     expect(await isVerified(user.uid)).toBe(false);
+  });
+});
+
+// The change-email screen (/auth/account-action?mode=verifyAndChangeEmail&
+// oobCode=...): the link verifyBeforeUpdateEmail sends to the NEW address.
+// Links come from the Admin SDK (changeEmailPath). Each test moves its own
+// verified user to an address that is never seeded, so each is one-shot per
+// seeding. A verified user with a group is not moved off this page.
+
+async function profileEmails(uid: string): Promise<unknown[]> {
+  const data = (await getSeedAdmin().db.doc(`users/${uid}`).get()).data();
+  return [data?.['email'], data?.['emailLower']];
+}
+
+test.describe('Change email screen', { tag: ['@auth', '@account'] }, () => {
+  test('should move a signed-in user to the new address and update their profile', async ({
+    page,
+  }) => {
+    const action = new AccountActionPage(page);
+    const { changeIn: user } = ACCOUNT_ACTION.users;
+    const newEmail = CHANGE_EMAILS.changeIn;
+
+    await signInAs(page, user);
+    await action.open(await changeEmailPath(user.email, newEmail));
+
+    await expect(action.title).toHaveText('Email Change');
+    await expect(action.successMessage).toHaveText(
+      'Your new email address is confirmed!'
+    );
+    await expect(action.successHint).toHaveText(
+      `You now sign in with ${newEmail}.`
+    );
+    await expect(action.continueToAccount).toBeVisible();
+    const changed = await getSeedAdmin().auth.getUser(user.uid);
+    expect(changed.email).toBe(newEmail);
+    expect(changed.emailVerified).toBe(true);
+    // The app wrote the verified address to the profile (the rules accept
+    // only the caller's verified token address there).
+    await expect
+      .poll(() => profileEmails(user.uid), {
+        message: 'users/{uid} never got the new email',
+        timeout: 30_000,
+      })
+      .toEqual([newEmail, newEmail]);
+  });
+
+  test('should confirm the change for a signed-out visitor, and the next sign-in updates the profile', async ({
+    page,
+  }) => {
+    const action = new AccountActionPage(page);
+    const { changeOut: user } = ACCOUNT_ACTION.users;
+    const newEmail = CHANGE_EMAILS.changeOut;
+
+    await action.open(await changeEmailPath(user.email, newEmail));
+
+    await expect(action.title).toHaveText('Email Change');
+    await expect(action.successHint).toHaveText(
+      'You can now log in with your new email address.'
+    );
+    await expect(action.continueToLogin).toBeVisible();
+    expect((await getSeedAdmin().auth.getUser(user.uid)).email).toBe(newEmail);
+    // Nobody was signed in to write it yet.
+    expect(await profileEmails(user.uid)).toEqual([user.email, user.email]);
+
+    await action.continueToLogin.click();
+    await expect(page).toHaveURL(/\/auth\/login$/);
+    await expect(signInAs(page, user)).rejects.toThrow(/sign-in rejected/);
+    await signInAs(page, { ...user, email: newEmail });
+    await expect
+      .poll(() => profileEmails(user.uid), {
+        message: 'the sign-in never synced the new email',
+        timeout: 30_000,
+      })
+      .toEqual([newEmail, newEmail]);
   });
 });

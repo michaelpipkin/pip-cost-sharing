@@ -381,6 +381,9 @@ function isGroupAdmin(gid) { return isSignedIn() && request.auth.uid in group(gi
   done (see the Phase 3 section). The email-rules spec's users-create
   denials now run as a user creating their own doc.
 
+  **Update (2026-10-22, Plan 4 task B14):** users create/update also run
+  the email-ownership guard (see "Email ownership" under Phase 3).
+
 Also fold in two fixes found along the way (both still outstanding, since
 nothing has touched `firestore.rules` yet):
 
@@ -737,6 +740,87 @@ user's payment IDs, `emailOptOut`, `email`, delete, a create for another
 uid, a plain member's or another group's admin's clear, setting a default
 to a group, a clear combined with another field) each got through under the
 old rule, run against it on the emulator.
+
+### Email ownership (2026-10-22, Plan 4 task B14)
+
+A live hole, owner-approved fix: any signed-in user could claim other
+people's pending group invites, because every path that links an invited
+member (`userRef == null`, matched by email) trusted an address the caller
+controlled:
+
+- the `linkInvitedMembers` callable used `request.data.email`;
+- `member.service` links a new or edited member to `users where emailLower
+  == <member email>`, and a user could write any valid address into their
+  own `users/{uid}.email` (B12 checks format only), which
+  `syncUserEmailLower` copies to `emailLower`;
+- unverified addresses reached the profile anyway: email/password sign-up
+  (`createUserProfileOnSignUp`), the session-start sync in `UserService`,
+  and `updateEmail` (which changed the sign-in address before
+  verification).
+
+Principle: an account is linked to an invited member only through an email
+address it has verified. Rule added to `users/{uid}` create/update,
+alongside B12's format guard and B13's ownership check (both unchanged):
+
+```
+function isOwnVerifiedEmail(e) {
+  return e is string &&
+    request.auth.token.email_verified == true &&
+    e.lower() == request.auth.token.email.lower();
+}
+function userEmailFieldsOwned(changed) {
+  return (!changed.hasAny(['email']) || !('email' in request.resource.data) ||
+      request.resource.data.email == '' ||
+      isOwnVerifiedEmail(request.resource.data.email)) &&
+    (!changed.hasAny(['emailLower']) || !('emailLower' in request.resource.data) ||
+      request.resource.data.emailLower == '' ||
+      (request.auth.token.email_verified == true &&
+        request.resource.data.emailLower == request.auth.token.email.lower()));
+}
+// create: userEmailFieldsOwned(request.resource.data.keys())
+// update: userEmailFieldsOwned(request.resource.data.diff(resource.data).affectedKeys())
+```
+
+So a set or changed profile `email` must be '' or the caller's own verified
+token address (case-insensitive), and a client-written `emailLower` '' or
+that address lowercased (no client path writes `emailLower`; the trigger
+does, with admin rights). Unchanged stored values never block other writes
+(same `affectedKeys` pattern as B12). The admin default-group clear (B13)
+changes only `defaultGroupRef`, so the guard is vacuous there. Member docs
+are not covered: a member's email is the invitee's address, set by group
+admins.
+
+The app side, so no legitimate path is refused:
+
+- `linkInvitedMembers` ignores `data.email` and links by
+  `request.auth.token.email`, refusing (`failed-precondition`) unless
+  `email_verified` is true. Clients no longer send an email.
+- `createUserProfileOnSignUp` stores `email: ''` until the address is
+  verified (and now only fills in missing fields, so a late run can't blank
+  an address written since); the admin backfill/sync paths
+  (`backfillOrphanedRegistrations`, `syncAuthEmailsToUsers`, the
+  `backfill-orphaned-registrations` query) likewise copy only verified
+  addresses.
+- `UserService`'s session sync writes the profile email only when the live
+  user is verified, and writes the address from a freshly refreshed ID token
+  (a stale captured address put the old one back during an email change; the
+  new rule refused it, which is how the race was found).
+- Verification (`account-action`, `updateUserEmailAndLinkMembers`) refreshes
+  the ID token before writing the profile and linking.
+- Email change uses `verifyBeforeUpdateEmail`; the sign-in address changes
+  only when the link sent to the new address is used (account-action mode
+  `verifyAndChangeEmail`).
+
+Proved on the emulator: `e2e/infra/email-rules.spec.ts` ("a profile stores
+only its own verified email"; its four denial tests failed against the old
+rules, 2026-10-22) plus the B12/B13 specs, `functions/src/link-invited-
+members.spec.ts` (the hijack test linked the victim's member before the
+fix), and the account / account-action / invites e2e journeys.
+
+Existing data: profiles written before this fix may still hold an
+unverified address (and its `emailLower`), which `member.service`'s lookups
+would still match. A one-off query that clears `email`/`emailLower` on
+profiles whose Auth account is unverified closes that; not run yet.
 
 ## Sequencing note
 

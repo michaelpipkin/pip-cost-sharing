@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+import * as authModule from 'firebase/auth';
 import * as functionsModule from 'firebase/functions';
 import * as appCheckModule from 'firebase/app-check';
 import { AnalyticsService } from '@services/analytics.service';
@@ -7,6 +8,7 @@ import { initAppCheck, resetAppCheckForTesting } from '../app-check';
 import { MemberLinkService } from './member-link.service';
 
 const mockFunctions = {};
+const mockAuth = { currentUser: { email: 'alice@test.com' } };
 
 // appCheckTokenReady() (app-check.ts) is not directly mockable via vi.spyOn
 // - Vite's ESM live bindings aren't configurable across the app-source/spec
@@ -26,6 +28,7 @@ describe('MemberLinkService', () => {
       providers: [
         MemberLinkService,
         { provide: functionsModule.getFunctions, useValue: mockFunctions },
+        { provide: authModule.getAuth, useValue: mockAuth },
         { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     });
@@ -56,20 +59,19 @@ describe('MemberLinkService', () => {
       } as any);
     });
 
-    it('invokes the callable and returns the linked count', async () => {
+    it('invokes the callable without sending an email (the server reads the verified token) and returns the linked count', async () => {
       linkInvitedMembersFn.mockResolvedValueOnce({
         data: { membersLinked: 3 },
       });
 
-      const result = await service.linkInvitedMembers('alice@test.com');
+      const result = await service.linkInvitedMembers();
 
       expect(functionsModule.httpsCallable).toHaveBeenCalledWith(
         mockFunctions,
         'linkInvitedMembers'
       );
-      expect(linkInvitedMembersFn).toHaveBeenCalledWith({
-        email: 'alice@test.com',
-      });
+      expect(linkInvitedMembersFn).toHaveBeenCalledTimes(1);
+      expect(linkInvitedMembersFn.mock.calls[0]).toEqual([]);
       expect(result).toBe(3);
     });
 
@@ -77,7 +79,7 @@ describe('MemberLinkService', () => {
       linkInvitedMembersFn.mockRejectedValueOnce(new Error('internal'));
 
       await expect(
-        service.linkInvitedMembers('alice@test.com')
+        service.linkInvitedMembers()
       ).rejects.toThrow('internal');
       expect(mockAnalytics.logError).toHaveBeenCalledWith(
         'Member Link Service',
@@ -97,14 +99,14 @@ describe('MemberLinkService', () => {
     });
 
     it('skips the callable entirely and returns null', async () => {
-      const result = await service.linkInvitedMembers('alice@test.com');
+      const result = await service.linkInvitedMembers();
 
       expect(functionsModule.httpsCallable).not.toHaveBeenCalled();
       expect(result).toBeNull();
     });
 
     it('logs the skip so it stays visible in the error log', async () => {
-      await service.linkInvitedMembers('alice@test.com');
+      await service.linkInvitedMembers();
 
       expect(mockAnalytics.logError).toHaveBeenCalledWith(
         'Member Link Service',

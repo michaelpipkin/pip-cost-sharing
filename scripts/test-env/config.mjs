@@ -13,6 +13,11 @@ export const TEST_PORTS = {
   functions: 15001,
   hub: 14400,
   logging: 14500,
+  // Started by the functions emulator for v2 event triggers and task queues.
+  // Left unset they take the dev defaults (9299 / 9499) and collide with the
+  // owner's running dev emulators.
+  eventarc: 19299,
+  tasks: 19499,
 };
 
 // Dev server port for the e2e suite (the dev app uses 4200).

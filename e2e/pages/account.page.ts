@@ -36,6 +36,8 @@ export class AccountPage extends BasePage {
   readonly updateEmailButton: Locator;
   readonly verifyEmailButton: Locator;
   readonly syncMemberEmails: Locator;
+  /** "We sent a link to <new>..." after Update Email (verify before update). */
+  readonly pendingEmailChange: Locator;
 
   // Payments
   readonly venmoInput: Locator;
@@ -82,6 +84,7 @@ export class AccountPage extends BasePage {
     this.updateEmailButton = page.getByTestId('update-email-button');
     this.verifyEmailButton = page.getByTestId('verify-email-button');
     this.syncMemberEmails = page.getByTestId('sync-member-emails');
+    this.pendingEmailChange = page.getByTestId('pending-email-change');
 
     this.venmoInput = page.getByTestId('venmo-input');
     this.paypalInput = page.getByTestId('paypal-input');
@@ -169,8 +172,10 @@ export class AccountPage extends BasePage {
 
   /**
    * Types a new address into the Profile email field (blurred) and presses
-   * Update Email. Returns without waiting for an outcome: the caller asserts
-   * the snackbar the attempt shows.
+   * Update Email, which emails a confirm link to the new address (verify
+   * before update; the account keeps its address until the link is used).
+   * Returns without waiting for an outcome: the caller asserts the snackbar
+   * the attempt shows.
    */
   async submitEmailChange(newEmail: string): Promise<void> {
     await this.fillAndCommit(this.emailInput, newEmail);

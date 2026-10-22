@@ -119,29 +119,37 @@ export class GroupsComponent {
 
     effect(() => {
       // One attempt per page load, regardless of current group count -
-      // catches not just a signup-time miss (see MemberLinkService /
-      // GroupService.getUserGroups, which already retry that case once)
-      // but also an invite that arrived after this account already had
-      // other groups, which neither of those cover.
+      // catches not just a miss right after verification (see
+      // UserService.updateUserEmailAndLinkMembers) but also an invite that
+      // arrived after this account already had other groups.
       if (this.#inviteLinkAttemptStarted) return;
 
-      // Read email as a tracked dependency so this waits for the user to
+      // Read the user as a tracked dependency so this waits for them to
       // actually be known before firing, rather than racing it.
-      const email = this.#user()?.email;
-      if (email) {
-        this.#inviteLinkAttemptStarted = true;
-        void this.linkInvitedMembersOnLoad(email);
+      if (!this.#user()) return;
+      this.#inviteLinkAttemptStarted = true;
+      // The callable links only through a verified sign-in address (and
+      // refuses otherwise), so an unverified account has nothing to try;
+      // the loading gate still has to open.
+      if (this.userStore.isEmailConfirmed()) {
+        void this.linkInvitedMembersOnLoad();
+      } else {
+        this.checkingInvitedMemberLinks.set(false);
       }
     });
   }
 
-  private async linkInvitedMembersOnLoad(email: string): Promise<void> {
+  private async linkInvitedMembersOnLoad(): Promise<void> {
     try {
-      const membersLinked =
-        await this.memberLinkService.linkInvitedMembers(email);
+      const membersLinked = await this.memberLinkService.linkInvitedMembers();
       if (membersLinked !== null && membersLinked > 0) {
-        this.analytics.logEvent('members_linked', { email, membersLinked });
+        this.analytics.logEvent('members_linked', {
+          email: this.#user()?.email ?? '',
+          membersLinked,
+        });
       }
+    } catch {
+      // Already logged by MemberLinkService; the next page load retries.
     } finally {
       this.checkingInvitedMemberLinks.set(false);
     }

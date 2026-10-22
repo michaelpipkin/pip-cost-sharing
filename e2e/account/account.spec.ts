@@ -4,7 +4,7 @@ import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
 import { getSeedAdmin } from '../seed/admin';
 import { ACCOUNT, NEW_EMAIL, NEW_PASSWORD } from '../seed/datasets/account';
-import { verifyEmailViaEmulator } from '../utils/auth-emulator';
+import { confirmEmailChangeViaEmulator } from '../utils/auth-emulator';
 import { signInAs } from '../utils/session';
 
 // Each test signs in as its own user (see e2e/seed/datasets/account.ts): they
@@ -13,9 +13,10 @@ import { signInAs } from '../utils/session';
 // so it is opened by URL once the account page has rendered. Persistence is
 // checked with a real reload, which makes the page read from Firestore.
 //
-// The email tests go through Firebase's updateEmail and the Auth emulator's
-// emailed-link code (verifyEmailViaEmulator), reading the Auth account and
-// users/{uid} back with the Admin SDK on the test emulators.
+// The email tests go through Firebase's verifyBeforeUpdateEmail (the address
+// changes only once the link sent to the new address is used) and the Auth
+// emulator's emailed-link code (confirmEmailChangeViaEmulator), reading the
+// Auth account and users/{uid} back with the Admin SDK on the test emulators.
 
 test.describe('Account settings', { tag: ['@account'] }, () => {
   test('should save payment service IDs', async ({ page }) => {
@@ -140,12 +141,16 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
     await groups.verifyGroupInList(left);
   });
 
-  test('should change the email address and verify the new one', async ({
+  test('should change the email address only once the new one is confirmed', async ({
     page,
   }) => {
     const account = new AccountPage(page);
     const { email: user } = ACCOUNT.users;
     const { auth, db } = getSeedAdmin();
+    const profileEmails = async () => {
+      const data = (await db.doc(`users/${user.uid}`).get()).data();
+      return [data?.['email'], data?.['emailLower']];
+    };
 
     await signInAs(page, user);
     await account.gotoAccount();
@@ -155,29 +160,38 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
 
     await account.submitEmailChange(NEW_EMAIL);
     await expect(
-      account.snackbarWith('Check your email to verify your email address')
-    ).toBeVisible();
-    // The profile now treats the address as unverified: the verified-only
-    // member email sync is gone and the button offers to verify again.
-    await expect(account.syncMemberEmails).toBeHidden();
-    await expect(account.verifyEmailButton).toHaveText('Verify Email');
-    // The Auth account moved to the new address, unverified.
-    const changed = await auth.getUser(user.uid);
-    expect(changed.email).toBe(NEW_EMAIL);
-    expect(changed.emailVerified).toBe(false);
-
-    // The emailed link for the NEW address verifies it, and the app then
-    // writes it to the user doc (the trigger keeps emailLower in step).
-    await verifyEmailViaEmulator(page, NEW_EMAIL);
-    await expect
-      .poll(
-        async () => {
-          const data = (await db.doc(`users/${user.uid}`).get()).data();
-          return [data?.['email'], data?.['emailLower']];
-        },
-        { message: 'users/{uid} never got the new email', timeout: 30_000 }
+      account.snackbarWith(
+        `Check ${NEW_EMAIL} for a link to confirm your new email`
       )
+    ).toBeVisible();
+    await expect(account.pendingEmailChange).toContainText(NEW_EMAIL);
+    // Nothing changes until the link is used: the account keeps its verified
+    // address, and so do the page and the user doc.
+    await expect(account.emailInput).toHaveValue(user.email);
+    await expect(account.verifyEmailButton).toHaveText('Email Verified');
+    await expect(account.syncMemberEmails).toBeVisible();
+    const pending = await auth.getUser(user.uid);
+    expect(pending.email).toBe(user.email);
+    expect(pending.emailVerified).toBe(true);
+    expect(await profileEmails()).toEqual([user.email, user.email]);
+
+    // The old address still signs in, and the profile still shows it.
+    await account.signOut();
+    await signInAs(page, user);
+    await account.gotoAccount();
+    await expect(account.emailInput).toHaveValue(user.email);
+
+    // The link emailed to the NEW address moves the account there, and the
+    // app then writes it to the user doc (the trigger keeps emailLower in
+    // step).
+    await confirmEmailChangeViaEmulator(page, user.uid, user.email, NEW_EMAIL);
+    await expect
+      .poll(profileEmails, {
+        message: 'users/{uid} never got the new email',
+        timeout: 30_000,
+      })
       .toEqual([NEW_EMAIL, NEW_EMAIL]);
+    expect((await auth.getUser(user.uid)).emailVerified).toBe(true);
 
     // Only the new address signs in now.
     await account.signOut();
@@ -206,8 +220,11 @@ test.describe('Account settings', { tag: ['@account'] }, () => {
       )
     ).toBeVisible();
     await expect(
-      account.snackbarWith('Check your email to verify your email address')
+      account.snackbarWith(
+        `Check ${taken.email} for a link to confirm your new email`
+      )
     ).toBeHidden();
+    await expect(account.pendingEmailChange).toBeHidden();
 
     expect((await auth.getUser(user.uid)).email).toBe(user.email);
     expect((await auth.getUser(taken.uid)).email).toBe(taken.email);

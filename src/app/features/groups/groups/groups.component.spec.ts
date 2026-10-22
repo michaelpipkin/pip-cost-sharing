@@ -88,7 +88,7 @@ describe('GroupsComponent', () => {
       // Real app invariant: UserService.initializeAuth() always sets
       // userStore.user() before GroupService.getUserGroups() can flip
       // groupStore.loaded() - checkingInvitedMemberLinks() only resolves
-      // once an email is known, so this must be set for the page to ever
+      // once the user is known, so this must be set for the page to ever
       // finish its loading gate.
       mockUserStore.user.set(mockUser());
       mockGroupStore.loaded.set(true);
@@ -137,17 +137,47 @@ describe('GroupsComponent', () => {
   });
 
   describe('invited-member linking on page load', () => {
-    it('calls linkInvitedMembers once the user email is known', async () => {
+    // initUser sets the user and their verification status together.
+    beforeEach(() => {
+      mockUserStore.isEmailConfirmed.set(true);
+    });
+
+    it('calls linkInvitedMembers, sending no email, once a verified user is known', async () => {
       mockUserStore.user.set(mockUser());
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
-        'test@example.com'
-      );
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith();
       expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledTimes(
         1
       );
+    });
+
+    it('does not call it for an unverified user, and still lets the page finish loading', async () => {
+      mockUserStore.isEmailConfirmed.set(false);
+      mockUserStore.user.set(mockUser());
+      mockGroupStore.loaded.set(true);
+      mockLoadingService.loadingOff.mockClear();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockMemberLinkService.linkInvitedMembers).not.toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('still lets the page finish loading when the link attempt fails', async () => {
+      mockMemberLinkService.linkInvitedMembers.mockRejectedValueOnce(
+        new Error('internal')
+      );
+      mockUserStore.user.set(mockUser());
+      mockGroupStore.loaded.set(true);
+      mockLoadingService.loadingOff.mockClear();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
     it('does not call it again if unrelated signals change afterward', async () => {
@@ -241,8 +271,8 @@ describe('GroupsComponent', () => {
         });
     });
 
-    // The page stays on its loading placeholder until the user's email is
-    // known (see 'should render the group select...')
+    // The page stays on its loading placeholder until the user is known
+    // (see 'should render the group select...')
     const loadPage = async () => {
       mockUserStore.user.set(mockUser());
       mockGroupStore.loaded.set(true);

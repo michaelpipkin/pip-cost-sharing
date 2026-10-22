@@ -226,6 +226,17 @@ describe('UserService', () => {
       );
     });
 
+    it("should leave an existing user's email alone when given '' (address not verified yet)", async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'old@test.com' }) as any
+      );
+
+      const user = await service.createUserIfNotExists('user-123', '');
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(user.email).toBe('old@test.com');
+    });
+
     it('should create a new user document with default data when user does not exist', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(false) as any
@@ -365,8 +376,14 @@ describe('UserService', () => {
   });
 
   describe('updateUserEmailAndLinkMembers', () => {
+    const getIdToken = vi.fn();
+
+    beforeEach(() => {
+      getIdToken.mockResolvedValue('fresh-token');
+      (mockAuth as any).currentUser = { uid: 'user-123', getIdToken };
+    });
+
     it('should update email using auth uid when userStore.user() is null (regression: email verification race)', async () => {
-      (mockAuth as any).currentUser = { uid: 'user-123' };
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
 
@@ -381,14 +398,11 @@ describe('UserService', () => {
     });
 
     it('should ask the server to link unlinked member records after updating email', async () => {
-      (mockAuth as any).currentUser = { uid: 'user-123' };
       mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(2);
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
 
-      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith(
-        'new@test.com'
-      );
+      expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith();
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith(
         'email_verified_members_linked',
         { email: 'new@test.com', membersLinked: 2 }
@@ -396,7 +410,6 @@ describe('UserService', () => {
     });
 
     it('should log the event with a zero count when nothing was unlinked', async () => {
-      (mockAuth as any).currentUser = { uid: 'user-123' };
       mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(0);
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
@@ -408,7 +421,6 @@ describe('UserService', () => {
     });
 
     it('should not log an analytics event when linking was skipped (no App Check token)', async () => {
-      (mockAuth as any).currentUser = { uid: 'user-123' };
       mockMemberLinkService.linkInvitedMembers.mockResolvedValueOnce(null);
 
       await service.updateUserEmailAndLinkMembers('new@test.com');
@@ -416,6 +428,19 @@ describe('UserService', () => {
       expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
         'email_verified_members_linked',
         expect.anything()
+      );
+    });
+
+    it('should refresh the ID token before writing the email or linking, so both see the verified address', async () => {
+      await service.updateUserEmailAndLinkMembers('new@test.com');
+
+      expect(getIdToken).toHaveBeenCalledWith(true);
+      const refreshed = getIdToken.mock.invocationCallOrder[0]!;
+      expect(refreshed).toBeLessThan(
+        vi.mocked(firestoreModule.setDoc).mock.invocationCallOrder[0]!
+      );
+      expect(refreshed).toBeLessThan(
+        mockMemberLinkService.linkInvitedMembers.mock.invocationCallOrder[0]!
       );
     });
 
@@ -819,12 +844,23 @@ describe('UserService', () => {
   });
 
   describe('server-created user profile (new account sign-up)', () => {
-    const firebaseUser = {
-      uid: 'user-123',
-      email: 'alice@test.com',
-      emailVerified: true,
-      providerData: [{ providerId: 'password' }],
-    };
+    // The token the rules check: refreshed before any profile email write.
+    const tokenClaims = (email: string, verified = true) =>
+      vi.fn().mockResolvedValue({
+        token: 't',
+        claims: { email, email_verified: verified },
+      });
+    let firebaseUser: any;
+
+    beforeEach(() => {
+      firebaseUser = {
+        uid: 'user-123',
+        email: 'alice@test.com',
+        emailVerified: true,
+        providerData: [{ providerId: 'password' }],
+        getIdTokenResult: tokenClaims('alice@test.com'),
+      };
+    });
 
     it('uses the doc createUserProfileOnSignUp already created, without writing anything client-side', async () => {
       // beforeEach's default getDoc mock (exists: false) plus its default
@@ -864,6 +900,108 @@ describe('UserService', () => {
       vi.useRealTimers();
     });
 
+    it("writes the refreshed token's address, never a stale one captured at sign-in", async () => {
+      // account-action reloads the user onto a just-confirmed address while
+      // the session starts: the captured address is the old one, the profile
+      // already holds the new one, and the server's token says new.
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'new@test.com' }) as any
+      );
+      firebaseUser.email = 'old@test.com';
+      firebaseUser.getIdTokenResult = tokenClaims('new@test.com');
+
+      const callback = await getAuthStateCallback(service);
+      await callback(firebaseUser);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockUserStore.initUser).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'new@test.com' }),
+        false,
+        true
+      );
+    });
+
+    it('does not write when the refreshed token is not verified', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: '' }) as any
+      );
+      firebaseUser.getIdTokenResult = tokenClaims('alice@test.com', false);
+
+      const callback = await getAuthStateCallback(service);
+      await callback(firebaseUser);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+    });
+
+    it('does not refresh the token when the profile already matches', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: 'alice@test.com' }) as any
+      );
+
+      const callback = await getAuthStateCallback(service);
+      await callback(firebaseUser);
+
+      expect(firebaseUser.getIdTokenResult).not.toHaveBeenCalled();
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+    });
+
+    it('does not write an unverified sign-in address to an existing profile', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: '' }) as any
+      );
+
+      const callback = await getAuthStateCallback(service);
+      await callback({ ...firebaseUser, emailVerified: false } as any);
+
+      expect(firestoreModule.setDoc).not.toHaveBeenCalled();
+      expect(mockUserStore.initUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-123', email: '' }),
+        false,
+        false
+      );
+      expect(mockGroupService.getUserGroups).toHaveBeenCalled();
+    });
+
+    it('falls back to creating the profile with an empty email while the address is unverified', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (() => vi.fn()) as any
+      );
+
+      const callback = await getAuthStateCallback(service);
+      const resultPromise = callback({
+        ...firebaseUser,
+        emailVerified: false,
+      } as any);
+      await vi.advanceTimersByTimeAsync(8000);
+      await resultPromise;
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({ email: '' })
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('writes the address once a Google sign-in (verified) differs from the profile', async () => {
+      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
+        makeUserSnap(true, { email: '' }) as any
+      );
+
+      const callback = await getAuthStateCallback(service);
+      await callback({
+        ...firebaseUser,
+        providerData: [{ providerId: 'google.com' }],
+      } as any);
+
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        { email: 'alice@test.com' },
+        { merge: true }
+      );
+    });
+
     it('syncs the email field for an existing user without waiting on the server trigger', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce(
         makeUserSnap(true, { email: 'old@test.com' }) as any
@@ -874,6 +1012,7 @@ describe('UserService', () => {
       await callback(firebaseUser as any);
 
       expect(onSnapshotSpy).not.toHaveBeenCalled();
+      expect(firebaseUser.getIdTokenResult).toHaveBeenCalledWith(true);
       expect(firestoreModule.setDoc).toHaveBeenCalledWith(
         mockDocRef,
         { email: 'alice@test.com' },

@@ -21,9 +21,10 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *   where the user's member left the group (inactive, leftGroup). The
  *   group's admin is the placeholder user account-leftadmin, who never signs
  *   in. The rejoin test brings the member back.
- * - account-email, "Account – Email": changes the account email to NEW_EMAIL
- *   (never seeded), verifies it and signs in with it. The old address stops
- *   working, so nobody else signs in as them.
+ * - account-email, "Account – Email": requests a change to NEW_EMAIL (never
+ *   seeded), checks nothing changed yet, confirms it with the link sent to
+ *   the new address and signs in with it. The old address stops working, so
+ *   nobody else signs in as them.
  * - account-inuse, "Account – In Use": tries to change the email to
  *   account-taken's address and is refused; nothing about them changes.
  * - account-taken: owns the address account-inuse tries to take. Never signs

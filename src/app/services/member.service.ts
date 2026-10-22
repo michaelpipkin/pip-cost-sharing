@@ -198,6 +198,12 @@ export class MemberService implements IMemberService {
         );
       }
 
+      // Linking by users.emailLower is safe only because a profile email is
+      // always a VERIFIED address of that account: firestore.rules accepts a
+      // client-written email/emailLower only when it is '' or the caller's
+      // verified token email, and the sign-up trigger and session sync store
+      // nothing until the address is verified (Plan 4 B14). Loosen either
+      // and this lookup lets anyone claim someone else's invite.
       const userQuery = query(
         collection(this.fs, 'users'),
         where('emailLower', '==', emailLower)
@@ -260,6 +266,8 @@ export class MemberService implements IMemberService {
       changes.email &&
       this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail)
     ) {
+      // Safe only because profile emails are verified-only (see
+      // addMemberToGroup).
       const userQuery = query(
         collection(this.fs, 'users'),
         where('emailLower', '==', this.#normalizeEmail(changes.email))

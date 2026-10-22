@@ -250,6 +250,21 @@ test.describe('seed', { tag: '@infra' }, () => {
     expect(user.emailVerified).toBe(false);
   });
 
+  test("a verified user's profile stores their address; an unverified one's stays empty", async () => {
+    // createUserProfileOnSignUp stores only a verified address (invites link
+    // by the profile email), and the seed writer follows it.
+    const { db } = getSeedAdmin();
+    const profile = async (uid: string) =>
+      (await db.doc(`users/${uid}`).get()).data();
+    expect(await profile(SHARED.users.alice.uid)).toMatchObject({
+      email: SHARED.users.alice.email,
+      emailLower: SHARED.users.alice.email.toLowerCase(),
+    });
+    const unverified = await profile(ACCOUNT_ACTION.users.resend.uid);
+    expect(unverified?.['email']).toBe('');
+    expect(unverified).not.toHaveProperty('emailLower');
+  });
+
   test('validateDatasets rejects a non-boolean emailVerified', () => {
     const datasets = cloneDatasets();
     const shared = sharedDataset(datasets);

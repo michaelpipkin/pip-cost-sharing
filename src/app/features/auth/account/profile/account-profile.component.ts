@@ -31,10 +31,11 @@ import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
 import { FirebaseError } from 'firebase/app';
 import {
+  ActionCodeSettings,
   User as FirebaseUser,
   getAuth,
   sendEmailVerification,
-  updateEmail,
+  verifyBeforeUpdateEmail,
 } from 'firebase/auth';
 import { singleEmail } from '@utils/email-validation';
 
@@ -69,9 +70,11 @@ export class AccountProfileComponent {
 
   firebaseUser = signal<FirebaseUser | null>(this.auth.currentUser);
   hidePassword = model<boolean>(true);
+  // The address a change was requested to, until its emailed link is used.
+  protected readonly pendingEmail = signal<string>('');
 
   protected readonly emailModel = signal<ProfileForm>({
-    email: this.currentUser()?.email ?? '',
+    email: this.#signInEmail(),
   });
   protected readonly emailForm = form(this.emailModel, (p) => {
     singleEmail(p.email, { message: 'Invalid email address' });
@@ -79,17 +82,29 @@ export class AccountProfileComponent {
 
   constructor() {
     effect(() => {
-      this.emailModel.set({ email: this.currentUser()?.email ?? '' });
+      this.emailModel.set({ email: this.#signInEmail() });
     });
   }
 
-  async verifyEmail(): Promise<void> {
-    const actionCodeSettings = {
+  // The sign-in address, which is what Update Email changes. The profile
+  // copy is '' until the address is verified (see UserService), so it is
+  // only the fallback; reading it also re-runs the effect above whenever
+  // the profile changes (e.g. after a confirmed change).
+  #signInEmail(): string {
+    const profileEmail = this.currentUser()?.email ?? '';
+    return this.auth.currentUser?.email ?? profileEmail;
+  }
+
+  #actionCodeSettings(): ActionCodeSettings {
+    return {
       url: globalThis.location.origin + '/auth/account-action',
       handleCodeInApp: true,
     };
+  }
+
+  async verifyEmail(): Promise<void> {
     const user = this.firebaseUser()!;
-    sendEmailVerification(user, actionCodeSettings)
+    sendEmailVerification(user, this.#actionCodeSettings())
       .then(() => {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Check your email to verify your email address' },
@@ -113,39 +128,44 @@ export class AccountProfileComponent {
       });
   }
 
+  // Verify-before-update: Firebase emails a link to the NEW address, and the
+  // sign-in address changes only when that link is used (account-action,
+  // mode verifyAndChangeEmail). Until then the account, its verified status
+  // and the profile all stay on the current address.
   async onSubmitEmail(): Promise<void> {
     const newEmail = this.emailForm().value().email;
     const user = this.firebaseUser()!;
-    if (newEmail !== user.email) {
-      try {
-        await updateEmail(user, newEmail);
-        this.userStore.setIsEmailConfirmed(false);
-        await this.verifyEmail();
-      } catch (err: any) {
-        if (!(err instanceof FirebaseError)) {
-          this.analytics.logError(
-            'Account Profile Component',
-            'update_email',
-            'Failed to update email address',
-            err instanceof Error ? err.message : 'Unknown error'
-          );
-        }
-        if (err.code === 'auth/email-already-in-use') {
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: {
-              message:
-                'This email address is already in use by another account',
-            },
-          });
-        } else {
-          this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: {
-              message:
-                'Something went wrong - your email address could not be updated',
-            },
-          });
-        }
+    if (newEmail === user.email) return;
+    try {
+      await verifyBeforeUpdateEmail(user, newEmail, this.#actionCodeSettings());
+      this.pendingEmail.set(newEmail);
+      this.emailForm().reset({ email: user.email ?? '' });
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: `Check ${newEmail} for a link to confirm your new email`,
+        },
+      });
+    } catch (err: unknown) {
+      if (!(err instanceof FirebaseError)) {
+        this.analytics.logError(
+          'Account Profile Component',
+          'update_email',
+          'Failed to update email address',
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
+      const code = (err as { code?: string } | null)?.code;
+      let message =
+        'Something went wrong - your email address could not be updated';
+      if (code === 'auth/email-already-in-use') {
+        message = 'This email address is already in use by another account';
+      } else if (code === 'auth/requires-recent-login') {
+        message =
+          'For your security, sign out and sign back in, then change your email';
+      }
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message },
+      });
     }
   }
 

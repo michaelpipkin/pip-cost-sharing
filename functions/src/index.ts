@@ -634,16 +634,21 @@ export async function linkInvitedMembersInternal(
  * Callable wrapper for linkInvitedMembersInternal. Runs server-side because
  * it's a cross-tenant `collectionGroup('members')` search by a user who may
  * belong to no group yet - no Firestore rule can permit that from the
- * client. Called right after account creation, after email verification,
- * and on every Groups page load (see `user.service.ts` / `member-link.
- * service.ts` / `GroupsComponent`) so a pending invite gets picked up
- * eventually even if the earlier automatic attempts all missed it.
+ * client. Called after email verification and on every Groups page load
+ * (see `user.service.ts` / `member-link.service.ts` / `GroupsComponent`) so
+ * a pending invite gets picked up eventually even if an earlier attempt
+ * missed it.
+ *
+ * Links only through the caller's own VERIFIED sign-in address
+ * (`request.auth.token.email` with `email_verified`). `data.email` is still
+ * accepted so older clients don't error, but it is never used: trusting it
+ * let any signed-in user claim another person's pending invites by passing
+ * their address.
  */
-export const linkInvitedMembers = onCall<{ email: string }>(
+export const linkInvitedMembers = onCall<{ email?: unknown }>(
   callableAppCheck,
   async (request) => {
     const uid = request.auth?.uid;
-    const email = request.data?.email;
 
     if (!uid) {
       throw new HttpsError(
@@ -651,8 +656,12 @@ export const linkInvitedMembers = onCall<{ email: string }>(
         'User must be authenticated to link members'
       );
     }
-    if (!email || typeof email !== 'string') {
-      throw new HttpsError('invalid-argument', 'email is required');
+    const { email, email_verified: emailVerified } = request.auth!.token;
+    if (emailVerified !== true || typeof email !== 'string' || !email) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Verify your email address first'
+      );
     }
 
     try {
@@ -675,14 +684,19 @@ interface SyncEmailResults {
   errors: string[];
 }
 
-/** Look up a user's current auth email, updating the results tally as it goes. */
+/**
+ * Look up a user's current auth email, updating the results tally as it goes.
+ * An unverified address is skipped like a missing one: profile emails feed
+ * invite linking (users.emailLower), so only a verified address may be
+ * copied there (see createUserProfileOnSignUp).
+ */
 export async function tryGetAuthEmail(
   uid: string,
   results: SyncEmailResults
 ): Promise<string | null> {
   try {
     const authUser = await getAuth().getUser(uid);
-    if (!authUser.email) {
+    if (!authUser.email || !authUser.emailVerified) {
       results.skipped++;
       return null;
     }

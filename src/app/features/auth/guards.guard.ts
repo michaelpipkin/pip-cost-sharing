@@ -13,7 +13,8 @@ export const APP_OWNER_EMAIL = environment.appOwnerEmail;
 
 // Helper function to wait for initial auth state to be determined
 // This resolves immediately once Firebase has loaded the persisted auth state
-function waitForAuthInit(auth: Auth): Promise<User | null> {
+// (also used by the unguarded account-action page).
+export function waitForAuthInit(auth: Auth): Promise<User | null> {
   return new Promise((resolve) => {
     let settled = false;
     const finish = () => {

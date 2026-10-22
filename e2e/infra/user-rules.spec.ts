@@ -282,10 +282,10 @@ test.describe(
           await expectAllowed(
             updateDoc(ownRef, { venmoId: '@ur-attacker', emailOptOut: true })
           );
+          // A profile may store only its own verified address (B14), so the
+          // owner's email change is to the same address in other casing.
           await expectAllowed(
-            updateDoc(ownRef, {
-              email: 'user-rules-profile-victim-2@pipsplit.test',
-            })
+            updateDoc(ownRef, { email: profileVictim.email.toUpperCase() })
           );
           await expectAllowed(
             updateDoc(ownRef, {

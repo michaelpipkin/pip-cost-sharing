@@ -135,6 +135,14 @@ const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
 // list wherever USER_SERVICE is in its `unit` list.
 const USER_SERVICE_FUNCTIONS = ['src/group-emails.spec.ts'];
 const LOADING = [`${COMPONENTS}/loading`];
+// Invite linking only through a verified address (Plan 4 B14): the
+// linkInvitedMembers callable (token email, verified) and the sign-up
+// trigger's verified-only profile email. Run with every area whose flows
+// register, verify or change an address, or link invited members.
+const INVITE_LINKING_FUNCTIONS = [
+  'src/link-invited-members.spec.ts',
+  'src/user-onboarding.spec.ts',
+];
 
 export const AREAS = {
   // App bootstrap, layout chrome, ads/PWA/theme plumbing and the app-wide
@@ -207,6 +215,7 @@ export const AREAS = {
       'src/email-normalization.spec.ts',
       'src/sync-group-member-uids.spec.ts',
       'src/user-deletion.spec.ts',
+      ...INVITE_LINKING_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@auth',
@@ -237,7 +246,11 @@ export const AREAS = {
       `${COMPONENTS}/account-menu`,
       ...CONFIRM_DIALOG,
     ],
-    functions: ['src/user-deletion.spec.ts', ...USER_SERVICE_FUNCTIONS],
+    functions: [
+      'src/user-deletion.spec.ts',
+      ...INVITE_LINKING_FUNCTIONS,
+      ...USER_SERVICE_FUNCTIONS,
+    ],
     tag: '@account',
   },
 
@@ -273,7 +286,7 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/email-normalization.spec.ts',
       'src/invite-email.spec.ts',
-      'src/link-invited-members.spec.ts',
+      ...INVITE_LINKING_FUNCTIONS,
       'src/mail-suppression.spec.ts',
       'src/sync-group-member-uids.spec.ts',
     ],
@@ -310,7 +323,7 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/email-normalization.spec.ts',
       'src/invite-email.spec.ts',
-      'src/link-invited-members.spec.ts',
+      ...INVITE_LINKING_FUNCTIONS,
       'src/mail-suppression.spec.ts',
       'src/sync-group-member-uids.spec.ts',
     ],

@@ -27,7 +27,8 @@ const EMULATOR_PORT_KEYS = {
   auth: ['auth'],
   firestore: ['firestore', 'firestoreWebsocket'],
   storage: ['storage'],
-  functions: ['functions'],
+  // The functions emulator also starts the eventarc and tasks emulators.
+  functions: ['functions', 'eventarc', 'tasks'],
 };
 
 export function parseArgs(argv) {

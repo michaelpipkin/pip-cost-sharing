@@ -23,7 +23,7 @@ test('emulatorHost rejects an unknown emulator', () => {
 // The literal values, not just their agreement with the other files: a change
 // to any of these ports is deliberate, and must never land on a default
 // emulator port (auth 9099, firestore 8080, storage 9199, functions 5001,
-// hub 4400, logging 4500, app 4200).
+// hub 4400, logging 4500, eventarc 9299, tasks 9499, app 4200).
 test('the test suite keeps its own non-default ports and project id', () => {
   assert.equal(TEST_PROJECT_ID, 'demo-pipsplit-test');
   assert.deepEqual(TEST_PORTS, {
@@ -34,9 +34,11 @@ test('the test suite keeps its own non-default ports and project id', () => {
     functions: 15001,
     hub: 14400,
     logging: 14500,
+    eventarc: 19299,
+    tasks: 19499,
   });
   assert.equal(E2E_APP_PORT, 4300);
-  const defaults = [9099, 8080, 9199, 5001, 4400, 4500, 4200, 9150];
+  const defaults = [9099, 8080, 9199, 5001, 4400, 4500, 4200, 9150, 9299, 9499];
   for (const port of [...Object.values(TEST_PORTS), E2E_APP_PORT]) {
     assert.ok(!defaults.includes(port), `${port} is a default dev port`);
   }

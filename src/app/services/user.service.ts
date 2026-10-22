@@ -51,6 +51,11 @@ const LOGIN_SEQUENCE_RETRY_DELAY_MS = 2000;
 // Firestore doc before falling back to creating it client-side.
 const SERVER_USER_PROFILE_WAIT_TIMEOUT_MS = 8000;
 
+/** The sign-in address once verified, else '' (see #syncProfileEmail). */
+function verifiedEmail(firebaseUser: FirebaseUser): string {
+  return firebaseUser.emailVerified ? (firebaseUser.email ?? '') : '';
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -149,8 +154,6 @@ export class UserService implements IUserService {
   private async initializeUserSession(
     firebaseUser: FirebaseUser
   ): Promise<void> {
-    const email = firebaseUser.email!;
-
     // Checked once per session rather than once per retry below: the
     // result only feeds diagnostics, and a per-attempt check would
     // double-count the app_check_status event and repeat the
@@ -200,9 +203,11 @@ export class UserService implements IUserService {
         let userData: User;
         if (existingUser) {
           userData = existingUser;
-          if (existingUser.email !== email) {
-            const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
-            await setDoc(docRef, { email }, { merge: true });
+          const email = await this.#syncProfileEmail(
+            firebaseUser,
+            existingUser.email
+          );
+          if (email !== existingUser.email) {
             userData = new User({ ...existingUser, email });
           }
         } else {
@@ -219,7 +224,10 @@ export class UserService implements IUserService {
           // a slow cold start).
           userData =
             (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
-            (await this.createUserIfNotExists(firebaseUser.uid, email));
+            (await this.createUserIfNotExists(
+              firebaseUser.uid,
+              verifiedEmail(firebaseUser)
+            ));
         }
 
         const user = new User({
@@ -252,6 +260,39 @@ export class UserService implements IUserService {
         return;
       }
     }
+  }
+
+  // The profile stores the sign-in address only once it is verified (Google
+  // sign-ins are): invited members are linked to accounts by the profile
+  // email (users.emailLower), and firestore.rules accepts a non-empty value
+  // only when it is the caller's verified ID-token address. Writes that
+  // address when it differs from `profileEmail`, and returns what the
+  // profile now holds.
+  //
+  // The address written comes from a freshly refreshed ID token, not from
+  // the User object captured when the session started: on the
+  // account-action page the user is reloaded onto a just-confirmed address
+  // mid-load, so a captured address (or a cached token) can be stale, and
+  // writing it would put the old address back (seen in e2e; the rules
+  // refused it). The refresh costs a request only when the live user's
+  // verified address differs from the profile.
+  async #syncProfileEmail(
+    firebaseUser: FirebaseUser,
+    profileEmail: string
+  ): Promise<string> {
+    const liveEmail = verifiedEmail(firebaseUser);
+    if (!liveEmail || liveEmail === profileEmail) return profileEmail;
+
+    const { claims } = await firebaseUser.getIdTokenResult(true);
+    const tokenEmail =
+      claims['email_verified'] === true && typeof claims['email'] === 'string'
+        ? claims['email']
+        : '';
+    if (!tokenEmail || tokenEmail === profileEmail) return profileEmail;
+
+    const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
+    await setDoc(docRef, { email: tokenEmail }, { merge: true });
+    return tokenEmail;
   }
 
   private async initializeAuth(): Promise<void> {
@@ -365,11 +406,13 @@ export class UserService implements IUserService {
     }
   }
 
+  // `email` is the verified sign-in address, or '' while it is unverified
+  // (then a new doc stores '' and an existing doc's email is left alone).
   async createUserIfNotExists(userId: string, email: string): Promise<User> {
     try {
       const existingUser = await this.getUserDetails(userId);
       if (existingUser) {
-        if (existingUser.email !== email) {
+        if (email && existingUser.email !== email) {
           const docRef = doc(this.fs, `users/${userId}`);
           await setDoc(docRef, { email }, { merge: true });
           existingUser.email = email;
@@ -431,8 +474,14 @@ export class UserService implements IUserService {
     }
   }
 
+  // Called once `newEmail` has just been verified (or verified and made the
+  // sign-in address). The cached ID token still carries the old claims, so
+  // it is refreshed first: the rules accept the profile email only when it
+  // matches a verified token email, and linkInvitedMembers links by the
+  // token's address.
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     const userId = this.#requireUserId();
+    await this.auth.currentUser!.getIdToken(true);
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,
@@ -443,9 +492,8 @@ export class UserService implements IUserService {
     await setDoc(userDocRef, { email: newEmail }, { merge: true });
     this.userStore.updateUser({ email: newEmail });
 
-    // Link any unlinked member records with this email to this user
-    const membersLinked =
-      await this.memberLinkService.linkInvitedMembers(newEmail);
+    // Link any unlinked member records with the verified address
+    const membersLinked = await this.memberLinkService.linkInvitedMembers();
     if (membersLinked !== null) {
       this.analytics.logEvent('email_verified_members_linked', {
         email: newEmail,

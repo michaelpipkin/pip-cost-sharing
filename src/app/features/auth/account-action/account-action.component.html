@@ -23,16 +23,8 @@
             {{ getSuccessMessage() }}
           </h3>
 
-          @if (mode() === 'verifyEmail' || mode() === 'recoverEmail') {
-            @if (!isUserLoggedIn()) {
-              <p data-testid="account-action-success-hint">
-                You can now log in to your account.
-              </p>
-            } @else {
-              <p data-testid="account-action-success-hint">
-                You can now access all features of the app.
-              </p>
-            }
+          @if (getSuccessHint(); as hint) {
+            <p data-testid="account-action-success-hint">{{ hint }}</p>
           }
         </div>
       }

@@ -20,8 +20,21 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   a normal one. Its test only makes unrelated writes and denied changes,
  *   so it repeats fine.
  * - email-rules-creator (no group) deletes their own users doc, tries
- *   invalid creates and recreates it with their address (users may create
- *   only their own doc), so it repeats fine.
+ *   invalid creates and creates with someone else's address, then recreates
+ *   it with their own address (users may create only their own doc), so it
+ *   repeats fine.
+ *
+ * Email ownership (a profile may store only '' or the caller's own verified
+ * address, Plan 4 B14):
+ * - Ezra's own-doc tests write his address in other casings and try other
+ *   valid addresses, ending on the seeded address.
+ * - email-rules-unverified (no group, Auth address unverified; the profile
+ *   email is '' as the sign-up trigger leaves it) tries to store its own and
+ *   other addresses and makes unrelated writes. Nothing it tries is allowed
+ *   to change the email, so it repeats fine.
+ * - email-rules-unverified-creator (no group, unverified) deletes its own
+ *   doc, tries creates with its own address and recreates it with '', so it
+ *   repeats fine.
  */
 
 const SPEC = 'spec:e2e/infra/email-rules.spec.ts' as const;
@@ -41,6 +54,22 @@ const creator: SeedUser = {
   uid: 'u-email-rules-creator',
   email: 'email-rules-creator@pipsplit.test',
   password: PASSWORD,
+};
+
+const unverified: SeedUser = {
+  key: 'email-rules-unverified',
+  uid: 'u-email-rules-unverified',
+  email: 'email-rules-unverified@pipsplit.test',
+  password: PASSWORD,
+  emailVerified: false,
+};
+
+const unverifiedCreator: SeedUser = {
+  key: 'email-rules-unverified-creator',
+  uid: 'u-email-rules-unverified-creator',
+  email: 'email-rules-unverified-creator@pipsplit.test',
+  password: PASSWORD,
+  emailVerified: false,
 };
 
 const LEGACY_LIST_EMAIL =
@@ -98,6 +127,8 @@ export const EMAIL_RULES = {
   admin,
   legacyUser,
   creator,
+  unverified,
+  unverifiedCreator,
   group,
   target,
   legacyList,
@@ -106,6 +137,6 @@ export const EMAIL_RULES = {
 
 export const EMAIL_RULES_DATASET: SeedDataset = {
   name: 'email-rules',
-  users: [admin, legacyUser, creator],
+  users: [admin, legacyUser, creator, unverified, unverifiedCreator],
   groups: [group],
 };
