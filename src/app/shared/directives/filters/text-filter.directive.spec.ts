@@ -204,7 +204,7 @@ describe('TextFilterDirective', () => {
       expect(panel()).toBeNull();
     });
 
-    // Regression for B7: the panel component is destroyed with the host, and opening schedules no timer.
+    // Regression for B7: the panel component is destroyed with the host.
     it('destroys the attached panel component when the host is destroyed', async () => {
       const attach = vi.spyOn(OverlayRef.prototype, 'attach');
       await openPanel();

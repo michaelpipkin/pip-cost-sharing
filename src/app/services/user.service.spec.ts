@@ -164,6 +164,9 @@ describe('UserService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // A test that fails while it has fake timers on must not leave them for the
+    // next spec (all unit specs share one jsdom context).
+    vi.useRealTimers();
   });
 
   describe('getUserDetails', () => {
@@ -1032,8 +1035,6 @@ describe('UserService', () => {
         true
       );
       expect(mockGroupService.getUserGroups).toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
 
     it("writes the refreshed token's address, never a stale one captured at sign-in", async () => {
@@ -1118,8 +1119,6 @@ describe('UserService', () => {
         expect.objectContaining({ email: '' })
       );
       expect(firebaseUser.getIdTokenResult).not.toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
 
     it('writes the address once a Google sign-in (verified) differs from the profile', async () => {

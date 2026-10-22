@@ -78,7 +78,7 @@ describe('UserStore', () => {
   });
 
   describe('clearUser', () => {
-    it('should reset the user, both flags', () => {
+    it('should reset the user and both flags', () => {
       const store = setup();
       store.initUser(mockUser(), true, true);
       expect(store.isValidUser()).toBe(true);

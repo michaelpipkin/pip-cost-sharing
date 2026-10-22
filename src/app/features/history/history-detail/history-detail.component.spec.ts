@@ -11,7 +11,6 @@ import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
-import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -55,7 +54,6 @@ describe('HistoryDetailComponent', () => {
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockDialog: ReturnType<typeof createMockMatDialog>;
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
-  let mockLocaleService: any;
   let mockUserService: ReturnType<typeof createMockUserService>;
   let mockParamGet: ReturnType<typeof vi.fn>;
 
@@ -101,13 +99,6 @@ describe('HistoryDetailComponent', () => {
     mockMemberStore.groupMembers.set([adminMember, regularMember]);
     mockHistoryStore.groupHistory.set([testHistory]);
 
-    mockLocaleService = {
-      // same shape as the real service: symbol, a space, minus before the symbol
-      formatCurrency: vi.fn((amount: number) =>
-        amount < 0 ? `-$ ${(-amount).toFixed(2)}` : `$ ${amount.toFixed(2)}`
-      ),
-    };
-
     mockParamGet = vi.fn((key: string) => (key === 'id' ? testHistoryId : null));
     const mockActivatedRoute = {
       snapshot: { paramMap: { get: mockParamGet } },
@@ -125,7 +116,6 @@ describe('HistoryDetailComponent', () => {
         { provide: CategoryStore, useValue: mockCategoryStore },
         { provide: HistoryService, useValue: mockHistoryService },
         { provide: SortingService, useValue: mockSortingService },
-        { provide: LocaleService, useValue: mockLocaleService },
         { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: LoadingService, useValue: mockLoadingService },
         { provide: MatDialog, useValue: mockDialog },
@@ -167,8 +157,9 @@ describe('HistoryDetailComponent', () => {
     });
 
     it("should format the payment total in the group's currency", () => {
-      mockLocaleService.formatCurrency.mockImplementation(
-        (amount: number) => `€ ${amount.toFixed(2).replace('.', ',')}`
+      // The real LocaleService follows the current group's currency
+      mockGroupStore.currentGroup.set(
+        mockGroup({ currencyCode: 'EUR', currencySymbol: '€' })
       );
       // A fresh record re-renders the OnPush view so the pipe runs again
       component.history.set({ ...testHistory });
@@ -666,14 +657,15 @@ describe('HistoryDetailComponent', () => {
     });
 
     it('should sort by category name when sorting by category', () => {
-      component.paidSplits.set([mockSplit()]);
+      const splits = [mockSplit()];
+      component.paidSplits.set(splits);
       component.sortHistory({ active: 'category', direction: 'asc' });
       mockSortingService.sort.mockClear();
 
       component.sortedPaidSplits();
 
       expect(mockSortingService.sort).toHaveBeenCalledWith(
-        expect.any(Array),
+        splits,
         'category',
         true,
         'name'

@@ -184,9 +184,8 @@ describe('SummaryComponent', () => {
       expect(el.textContent).toContain('Summary');
     });
 
-    it('should render help button', () => {
-      const helpButton = el.querySelector('mat-icon');
-      expect(helpButton).toBeTruthy();
+    it('should render the help button', () => {
+      expect(el.querySelector('[data-testid="summary-help-button"]')).toBeTruthy();
     });
 
     it('should show loading when not loaded', async () => {
@@ -1230,14 +1229,8 @@ describe('SummaryComponent', () => {
         data: { sectionId: 'summary' },
       });
     });
-
-    it('should show help button', () => {
-      const helpButton = el.querySelector(
-        '[data-testid="summary-help-button"]'
-      );
-      expect(helpButton).toBeTruthy();
-    });
   });
+
   describe('guided tour', () => {
     let tourConfig: GuidedTourConfig;
     let startSpy: ReturnType<typeof vi.spyOn>;

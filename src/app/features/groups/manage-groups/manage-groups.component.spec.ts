@@ -5,8 +5,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { OverlayContainer } from '@angular/cdk/overlay';
-import { overlayPanes } from '@testing/overlay-testing';
+import { disposeOverlays } from '@testing/overlay-testing';
 import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { Group } from '@models/group';
 import { FirebaseError } from 'firebase/app';
@@ -48,8 +47,11 @@ describe('ManageGroupsComponent', () => {
   let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
 
   const testGroup = mockGroup({ id: 'group-1', name: 'Test Group' });
+  // Fixtures made by mount(); destroyed in afterEach before the leak check.
+  let mounted: ComponentFixture<ManageGroupsComponent>[] = [];
 
   beforeEach(async () => {
+    mounted = [];
     mockDialogRef = createMockDialogRef();
     mockGroupService = createMockGroupService();
     mockDialog = createMockMatDialog();
@@ -90,6 +92,10 @@ describe('ManageGroupsComponent', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    fixture.destroy();
+    mounted.forEach((fx) => fx.destroy());
+    // Counts panes still open (none allowed), then removes the container.
+    disposeOverlays();
   });
 
   function query(testId: string): HTMLElement | null {
@@ -353,6 +359,7 @@ describe('ManageGroupsComponent', () => {
     }).compileComponents();
 
     const fx = TestBed.createComponent(ManageGroupsComponent);
+    mounted.push(fx);
     await fx.whenStable();
     fx.detectChanges();
     const root = fx.nativeElement as HTMLElement;
@@ -526,33 +533,22 @@ describe('ManageGroupsComponent', () => {
 
     it('switches groups from the dropdown', async () => {
       const m = await mount({ groups: [testGroup, secondGroup] });
-      let leakedPanes: number;
-      try {
-        (
-          m.root.querySelector('.mat-mdc-select-trigger') as HTMLElement
-        ).click();
-        m.fx.detectChanges();
-        await m.fx.whenStable();
-        const option = document.querySelector<HTMLElement>(
-          '[data-testid="manage-group-option-group-2"]'
-        );
-        expect(option, 'group-2 option in the open panel').not.toBeNull();
-        option!.click();
-        m.fx.detectChanges();
-        await m.fx.whenStable();
-        m.fx.detectChanges();
+      (m.root.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+      m.fx.detectChanges();
+      await m.fx.whenStable();
+      const option = document.querySelector<HTMLElement>(
+        '[data-testid="manage-group-option-group-2"]'
+      );
+      expect(option, 'group-2 option in the open panel').not.toBeNull();
+      option!.click();
+      m.fx.detectChanges();
+      await m.fx.whenStable();
+      m.fx.detectChanges();
 
-        expect(m.comp.selectedGroup()).toBe(secondGroup);
-        expect((m.q('manage-group-name-input') as HTMLInputElement).value).toBe(
-          'Second Group'
-        );
-      } finally {
-        m.fx.destroy();
-        // Count before removing the container, or the check could never fail.
-        leakedPanes = overlayPanes().length;
-        TestBed.inject(OverlayContainer).ngOnDestroy();
-      }
-      expect(leakedPanes, 'overlay panes left open by the test').toBe(0);
+      expect(m.comp.selectedGroup()).toBe(secondGroup);
+      expect((m.q('manage-group-name-input') as HTMLInputElement).value).toBe(
+        'Second Group'
+      );
     });
 
     it('does not read Firestore when switching between the tour sample groups', async () => {
