@@ -515,7 +515,7 @@ describe('EditMemberComponent', () => {
     // I1: an unverified login email can't request a change.
     it('should ask for a verified login email (permission-denied)', async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(
-        Object.assign(new Error('Verify your login email first.'), {
+        Object.assign(new Error('Verify your login email first. [403]'), {
           code: 'functions/permission-denied',
         })
       );
@@ -548,9 +548,10 @@ describe('EditMemberComponent', () => {
 
     it("should show the server's message for any other refusal", async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        // The SDK appends the HTTP status; the snackbar shows it without.
         Object.assign(
           new Error(
-            'A member with this email address already exists in the group.'
+            'A member with this email address already exists in the group. [409]'
           ),
           { code: 'functions/already-exists' }
         )

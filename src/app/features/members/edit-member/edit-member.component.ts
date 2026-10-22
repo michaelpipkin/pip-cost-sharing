@@ -40,6 +40,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { callableError } from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
 
 /**
@@ -189,16 +190,18 @@ export class EditMemberComponent {
   }
 
   #reportSaveError(error: unknown): void {
-    const code = this.#callableCode(error);
+    // The server's message, without the HTTP status the SDK appends.
+    const { code, message: serverMessage } = callableError(error);
     let message: string;
     if (code === 'functions/resource-exhausted') {
       message = 'Too many email change requests. Please try again tomorrow.';
-    } else if (code === 'functions/permission-denied' &&
-      error instanceof Error &&
-      error.message === 'Verify your login email first.') {
+    } else if (
+      code === 'functions/permission-denied' &&
+      serverMessage === 'Verify your login email first.'
+    ) {
       message = 'Verify your login email first.';
     } else if (error instanceof Error) {
-      message = error.message;
+      message = serverMessage;
       if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {
         this.analytics.logError(
           'Edit Member Component',
@@ -250,11 +253,6 @@ export class EditMemberComponent {
           }
         : { success: true, operation: 'saved' }
     );
-  }
-
-  #callableCode(error: unknown): string | undefined {
-    const code = (error as { code?: unknown } | null)?.code;
-    return typeof code === 'string' ? code : undefined;
   }
 
   removeMember(): void {

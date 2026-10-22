@@ -13,6 +13,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { MemberService } from '@services/member.service';
+import { callableError } from '@utils/callable-error.util';
 
 type ErrorOutcome =
   | 'invalid'
@@ -114,8 +115,7 @@ export class ConfirmGroupEmailComponent {
       this.email.set(email);
       this.outcome.set('confirmed');
     } catch (error) {
-      const code = (error as { code?: unknown } | null)?.code;
-      const message = error instanceof Error ? error.message : '';
+      const { code, message } = callableError(error);
       // MemberService logs any code it does not expect. An expected code
       // with a message this page doesn't know (only possible from a newer
       // server) is not logged; it shows the generic failure.

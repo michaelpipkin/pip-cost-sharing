@@ -154,6 +154,9 @@ const INVITE_LINKING_FUNCTIONS = [
 // The group-email change callables (Plan 4 B19): edit-member requests a
 // change, the auth confirm-group-email page confirms it.
 const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
+// Reads a callable's code and server message (edit-member, the confirm
+// page): with every area whose code imports it.
+const CALLABLE_ERROR = [`${UTILITIES}/callable-error.util.spec.ts`];
 
 export const AREAS = {
   // App bootstrap, layout chrome, ads/PWA/theme plumbing and the app-wide
@@ -215,6 +218,7 @@ export const AREAS = {
       `${FEATURES}/auth/account-action`,
       `${FEATURES}/auth/auth-main`,
       `${FEATURES}/auth/confirm-group-email`,
+      ...CALLABLE_ERROR,
       `${FEATURES}/auth/delete-account`,
       `${FEATURES}/auth/forgot-password`,
       `${FEATURES}/auth/guards.guard.spec.ts`,
@@ -337,6 +341,7 @@ export const AREAS = {
       `${FEATURES}/members`,
       // Where a member's group email change is confirmed (B19).
       `${FEATURES}/auth/confirm-group-email`,
+      ...CALLABLE_ERROR,
       ...DEFAULT_BUTTON,
       ...EMAIL_VALIDATION,
       `${SERVICES}/invite.service.spec.ts`,

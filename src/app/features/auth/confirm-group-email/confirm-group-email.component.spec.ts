@@ -14,9 +14,12 @@ describe('ConfirmGroupEmailComponent', () => {
   let navigate: ReturnType<typeof vi.fn>;
   let route: unknown;
 
-  /** A callable rejection, as the Functions SDK raises it. */
+  /**
+   * A callable rejection, as the Functions SDK raises it: it appends the
+   * HTTP status to the server's message.
+   */
   const callableError = (code: string, message = 'refused') =>
-    Object.assign(new Error(message), { code: `functions/${code}` });
+    Object.assign(new Error(`${message} [400]`), { code: `functions/${code}` });
 
   async function createComponent(
     queryParams: Record<string, string>,
