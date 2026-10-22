@@ -50,6 +50,21 @@ const EXPECTED_EMAIL_CHANGE_CODES = new Set([
   'functions/permission-denied',
 ]);
 
+/**
+ * updateAllMemberEmails failed after writing some records: `updated` says how
+ * many, so the caller can tell the user and let them retry (the retry skips
+ * what is already written). The message is the underlying failure's.
+ */
+export class MemberEmailUpdateError extends Error {
+  constructor(
+    readonly updated: number,
+    readonly original: unknown
+  ) {
+    super(original instanceof Error ? original.message : 'Unknown error');
+    this.name = 'MemberEmailUpdateError';
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -458,6 +473,14 @@ export class MemberService implements IMemberService {
     );
   }
 
+  /** The member records linked to the user, across every group. */
+  #linkedMembersQuery(userRef: DocumentReference<User>) {
+    return query(
+      collectionGroup(this.fs, 'members'),
+      where('userRef', '==', userRef)
+    );
+  }
+
   /**
    * The email on each member record linked to the user (one per group
    * membership), as stored. Used to tell how many memberships a login-email
@@ -467,12 +490,7 @@ export class MemberService implements IMemberService {
     userRef: DocumentReference<User>
   ): Promise<string[]> {
     try {
-      const membersSnapshot = await getDocs(
-        query(
-          collectionGroup(this.fs, 'members'),
-          where('userRef', '==', userRef)
-        )
-      );
+      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
       return membersSnapshot.docs.map((d) => d.data().email ?? '');
     } catch (error) {
       this.analytics.logError(
@@ -487,37 +505,37 @@ export class MemberService implements IMemberService {
 
   /**
    * Sets `newEmail` on the user's member records and returns how many it
-   * wrote. With `onlyFromEmail`, only records whose email equals it
-   * (case-insensitively) are written, so a deliberate address set for one
-   * group is kept.
+   * wrote. Records already on `newEmail` (case-insensitively) are skipped, so
+   * the count is the number actually changed. With `onlyFromEmail`, only
+   * records whose email equals it (case-insensitively) are written, so a
+   * deliberate address set for one group is kept. A failure after some
+   * records were written throws a MemberEmailUpdateError saying how many.
    */
   async updateAllMemberEmails(
     userRef: DocumentReference<User>,
     newEmail: string,
     onlyFromEmail?: string
   ): Promise<number> {
+    let updated = 0;
     try {
-      const membersQuery = query(
-        collectionGroup(this.fs, 'members'),
-        where('userRef', '==', userRef)
-      );
-      const membersSnapshot = await getDocs(membersQuery);
+      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
+      const to = newEmail.toLowerCase();
       const from = onlyFromEmail?.toLowerCase();
-      const toUpdate = membersSnapshot.docs.filter(
-        (memberDoc) =>
-          from === undefined ||
-          (memberDoc.data().email ?? '').toLowerCase() === from
-      );
+      const toUpdate = membersSnapshot.docs.filter((memberDoc) => {
+        const current = (memberDoc.data().email ?? '').toLowerCase();
+        return current !== to && (from === undefined || current === from);
+      });
 
       for (const memberDoc of toUpdate) {
         await updateDoc(memberDoc.ref, { email: newEmail });
+        updated++;
       }
 
       this.analytics.logEvent('member_emails_updated', {
-        membersUpdated: toUpdate.length,
+        membersUpdated: updated,
       });
 
-      return toUpdate.length;
+      return updated;
     } catch (error) {
       this.analytics.logError(
         'Member Service',
@@ -525,7 +543,7 @@ export class MemberService implements IMemberService {
         'Failed to update member emails',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      throw error;
+      throw updated > 0 ? new MemberEmailUpdateError(updated, error) : error;
     }
   }
 }

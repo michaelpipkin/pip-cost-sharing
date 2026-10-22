@@ -15,15 +15,17 @@ import {
 } from './guards.guard';
 
 describe('loggedInGuard', () => {
+  // M5: the guard redirects with a UrlTree, not router.navigate().
   const mockRouter = {
     navigate: vi.fn().mockResolvedValue(true),
+    createUrlTree: vi.fn((commands: string[]) => ({ urlTree: commands })),
   };
   const mockAuth = {
     currentUser: null as Partial<authModule.User> | null,
     authStateReady: vi.fn().mockResolvedValue(undefined),
   };
 
-  function runGuard(): Promise<boolean> {
+  function runGuard(): Promise<unknown> {
     return TestBed.runInInjectionContext(() =>
       Promise.resolve(loggedInGuard({} as any, {} as any) as any)
     );
@@ -55,6 +57,7 @@ describe('loggedInGuard', () => {
     const result = await runGuard();
 
     expect(result).toBe(true);
+    expect(mockRouter.createUrlTree).not.toHaveBeenCalled();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
@@ -64,11 +67,10 @@ describe('loggedInGuard', () => {
       emailVerified: false,
     });
 
-    await runGuard();
+    const result = await runGuard();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([
-      ROUTE_PATHS.EXPENSES_ROOT,
-    ]);
+    expect(result).toEqual({ urlTree: [ROUTE_PATHS.EXPENSES_ROOT] });
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should redirect a validated (email-confirmed) user to expenses', async () => {
@@ -77,11 +79,10 @@ describe('loggedInGuard', () => {
       emailVerified: true,
     });
 
-    await runGuard();
+    const result = await runGuard();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([
-      ROUTE_PATHS.EXPENSES_ROOT,
-    ]);
+    expect(result).toEqual({ urlTree: [ROUTE_PATHS.EXPENSES_ROOT] });
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should redirect an unverified logged-in user to account', async () => {
@@ -90,11 +91,10 @@ describe('loggedInGuard', () => {
       emailVerified: false,
     });
 
-    await runGuard();
+    const result = await runGuard();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([
-      ROUTE_PATHS.AUTH_ACCOUNT,
-    ]);
+    expect(result).toEqual({ urlTree: [ROUTE_PATHS.AUTH_ACCOUNT] });
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 });
 
@@ -266,6 +266,17 @@ describe('signed-out redirects remember the attempted page (B20)', () => {
 
       expect(await run(guard, '/auth/account')).toBe(false);
     });
+  });
+
+  it('authGuard sends an unverified signed-in user to Account as a UrlTree', async () => {
+    mockAuth.currentUser = {
+      providerData: [{ providerId: 'password' } as authModule.UserInfo],
+      emailVerified: false,
+    };
+
+    const result = await run(authGuard, '/expenses');
+
+    expect(router.serializeUrl(result as any)).toBe(ROUTE_PATHS.AUTH_ACCOUNT);
   });
 
   it('authGuard lets a validated user through', async () => {

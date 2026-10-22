@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
-import { MemberService } from './member.service';
+import { MemberEmailUpdateError, MemberService } from './member.service';
 import { UserStore } from '@store/user.store';
 import { MemberStore } from '@store/member.store';
 import { AnalyticsService } from '@services/analytics.service';
@@ -734,9 +734,13 @@ describe('MemberService', () => {
         expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
       });
 
-      it('writes every record when the parameter is omitted', async () => {
+      it('writes every record that is not already on the new address when the parameter is omitted', async () => {
+        const docs = [
+          ...memberDocs(),
+          makeDocSnap('m4', { email: 'New@Test.com' }, { id: 'm4' }),
+        ];
         vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-          makeSnap(memberDocs()) as any
+          makeSnap(docs) as any
         );
         vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
 
@@ -745,8 +749,89 @@ describe('MemberService', () => {
           'new@test.com'
         );
 
+        // I2: the one already on the new address (any case) is neither
+        // written nor counted.
         expect(count).toBe(3);
         expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(3);
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalledWith(
+          docs[3]!.ref,
+          expect.anything()
+        );
+      });
+
+      it('returns 0 when every record is already on the new address', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap([
+            makeDocSnap('m1', { email: 'new@test.com' }, { id: 'm1' }),
+          ]) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
+
+        expect(
+          await service.updateAllMemberEmails(mockUserRef, 'NEW@test.com')
+        ).toBe(0);
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+      });
+
+      it('skips records already on the new address with onlyFromEmail too', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap([
+            makeDocSnap('m1', { email: 'old@test.com' }, { id: 'm1' }),
+          ]) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
+
+        // The old and the new address are the same one (a case-only change).
+        expect(
+          await service.updateAllMemberEmails(
+            mockUserRef,
+            'OLD@test.com',
+            'old@test.com'
+          )
+        ).toBe(0);
+      });
+    });
+
+    describe('partial failure (M2)', () => {
+      const threeDocs = () => [
+        makeDocSnap('m1', { email: 'a@test.com' }, { id: 'm1' }),
+        makeDocSnap('m2', { email: 'a@test.com' }, { id: 'm2' }),
+        makeDocSnap('m3', { email: 'a@test.com' }, { id: 'm3' }),
+      ];
+
+      it('reports how many were written before the failure', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap(threeDocs()) as any
+        );
+        vi.spyOn(firestoreModule, 'updateDoc')
+          .mockResolvedValueOnce(undefined)
+          .mockRejectedValueOnce(new Error('offline'));
+
+        const failure = await service
+          .updateAllMemberEmails(mockUserRef, 'new@test.com')
+          .catch((e: unknown) => e);
+
+        expect(failure).toBeInstanceOf(MemberEmailUpdateError);
+        expect((failure as MemberEmailUpdateError).updated).toBe(1);
+        expect((failure as Error).message).toBe('offline');
+        expect(mockAnalytics.logError).toHaveBeenCalledWith(
+          'Member Service',
+          'updateAllMemberEmails',
+          'Failed to update member emails',
+          'offline'
+        );
+      });
+
+      it('rethrows the original error when nothing was written', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap(threeDocs()) as any
+        );
+        const boom = new Error('permission-denied');
+        vi.spyOn(firestoreModule, 'updateDoc').mockRejectedValueOnce(boom);
+
+        await expect(
+          service.updateAllMemberEmails(mockUserRef, 'new@test.com')
+        ).rejects.toBe(boom);
       });
     });
 

@@ -78,7 +78,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     if (isGoogleUser || isEmailConfirmed) {
       return true;
     } else {
-      return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      return router.createUrlTree([ROUTE_PATHS.AUTH_ACCOUNT]);
     }
   } else {
     // Don't redirect if we're on the delete account page
@@ -126,9 +126,9 @@ export const loggedInGuard: CanActivateFn = async () => {
     // to offer an authenticated user: validated users go to expenses,
     // unvalidated users go to account.
     if (isGoogleUser || isEmailConfirmed) {
-      return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
+      return router.createUrlTree([ROUTE_PATHS.EXPENSES_ROOT]);
     }
-    return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+    return router.createUrlTree([ROUTE_PATHS.AUTH_ACCOUNT]);
   } else {
     return true;
   }

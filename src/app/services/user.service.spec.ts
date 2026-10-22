@@ -428,9 +428,22 @@ describe('UserService', () => {
       expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalledWith();
     });
 
+    // I1: the old address comes from users/{uid} on the server, not from the
+    // in-memory store, which the cold-loaded action page can reach before the
+    // session start has filled it.
     describe('group email update offer (signed-in link path)', () => {
-      it('records the old and new address when the profile email changes', async () => {
-        userSignal.set({ id: 'user-123', email: 'old@test.com' });
+      const profileHas = (email: string | null) =>
+        vi
+          .spyOn(firestoreModule, 'getDoc')
+          .mockResolvedValue(
+            (email === null
+              ? { exists: () => false }
+              : makeUserSnap(true, { email })) as any
+          );
+
+      it('records the old and new address when the profile email changes, even with the store still empty', async () => {
+        userSignal.set(null);
+        profileHas('old@test.com');
 
         await service.updateUserEmailAndLinkMembers('new@test.com');
 
@@ -442,12 +455,33 @@ describe('UserService', () => {
         });
       });
 
+      it('reads the old address before writing the new one', async () => {
+        profileHas('old@test.com');
+
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(
+          vi.mocked(firestoreModule.getDoc).mock.invocationCallOrder[0]!
+        ).toBeLessThan(
+          vi.mocked(firestoreModule.setDoc).mock.invocationCallOrder[0]!
+        );
+      });
+
+      it('ignores a stale store: the stored profile decides', async () => {
+        userSignal.set({ id: 'user-123', email: 'new@test.com' });
+        profileHas('old@test.com');
+
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(1);
+      });
+
       it.each([
         ['a blank old email', ''],
         ['an unchanged email', 'new@test.com'],
         ['a case-only change', 'New@Test.com'],
       ])('does not offer for %s', async (_label, oldEmail) => {
-        userSignal.set({ id: 'user-123', email: oldEmail });
+        profileHas(oldEmail);
 
         await service.updateUserEmailAndLinkMembers('new@test.com');
 
@@ -455,17 +489,47 @@ describe('UserService', () => {
       });
 
       it('does not offer when there is no stored profile yet', async () => {
+        profileHas(null);
+
         await service.updateUserEmailAndLinkMembers('new@test.com');
 
         expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
       });
 
+      it('still writes the profile and links when the old address cannot be read', async () => {
+        vi.spyOn(firestoreModule, 'getDoc').mockRejectedValue(
+          new Error('offline')
+        );
+
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+
+        expect(firestoreModule.setDoc).toHaveBeenCalled();
+        expect(mockMemberLinkService.linkInvitedMembers).toHaveBeenCalled();
+        expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
       it('does not offer for an address the profile will not store', async () => {
-        userSignal.set({ id: 'user-123', email: 'old@test.com' });
+        profileHas('old@test.com');
 
         await service.updateUserEmailAndLinkMembers('alice@my_domain.com');
 
         expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('ignores a repeat of the same change, but offers a different one', async () => {
+        profileHas('old@test.com');
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+        await service.updateUserEmailAndLinkMembers('new@test.com');
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(1);
+
+        profileHas('new@test.com');
+        await service.updateUserEmailAndLinkMembers('newer@test.com');
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(2);
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenLastCalledWith({
+          uid: 'user-123',
+          oldEmail: 'new@test.com',
+          newEmail: 'newer@test.com',
+        });
       });
     });
 
@@ -1251,6 +1315,21 @@ describe('UserService', () => {
         await callback(firebaseUser as any);
 
         expect(mockUserStore.setGroupEmailPrompt).not.toHaveBeenCalled();
+      });
+
+      it('offers once when the session start and the link path both record the same change', async () => {
+        const stale = makeUserSnap(true, { email: 'old@test.com' }) as any;
+        vi.spyOn(firestoreModule, 'getDoc').mockResolvedValue(stale);
+        (mockAuth as any).currentUser = {
+          uid: 'user-123',
+          getIdToken: vi.fn().mockResolvedValue('t'),
+        };
+
+        const callback = await getAuthStateCallback(service);
+        await callback(firebaseUser as any);
+        await service.updateUserEmailAndLinkMembers('alice@test.com');
+
+        expect(mockUserStore.setGroupEmailPrompt).toHaveBeenCalledTimes(1);
       });
 
       it('does not offer when the profile write fails', async () => {

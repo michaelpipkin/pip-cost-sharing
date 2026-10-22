@@ -3,9 +3,16 @@ import { Router, UrlTree } from '@angular/router';
 /** The login page's query parameter naming where to go after signing in. */
 export const RETURN_URL_PARAM = 'returnUrl';
 
-// Pages a user is never returned to: they redirect signed-in users away, so a
-// returnUrl pointing at one would only bounce.
-const NO_RETURN_PATHS = ['/auth/login', '/auth/register'];
+// Pages a user is never returned to: the logged-out-only auth pages (loggedInGuard
+// bounces a signed-in user off them) and the emailed action links, which are
+// one-time and handled where they are opened.
+const NO_RETURN_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/account-action',
+];
 
 // Control characters and backslashes have no place in an app path.
 // eslint-disable-next-line no-control-regex

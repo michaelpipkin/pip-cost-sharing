@@ -106,6 +106,11 @@ export class UserService implements IUserService {
   protected readonly loading = inject(LoadingService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
+  // The last change offered (uid, old and new address, lower-cased): both the
+  // session start and the account-action page can record the same login
+  // email change, and it must be offered once.
+  #lastOfferedChange = '';
+
   #intentionalLogout = false;
   #handlingSessionExpiry = false;
   // Set by account-action around a confirmed email change or recovery:
@@ -368,6 +373,9 @@ export class UserService implements IUserService {
   #offerGroupEmailUpdate(uid: string, oldEmail: string, newEmail: string): void {
     if (!oldEmail || !newEmail) return;
     if (oldEmail.toLowerCase() === newEmail.toLowerCase()) return;
+    const change = [uid, oldEmail, newEmail].join('|').toLowerCase();
+    if (change === this.#lastOfferedChange) return;
+    this.#lastOfferedChange = change;
     this.userStore.setGroupEmailPrompt({ uid, oldEmail, newEmail });
   }
 
@@ -548,6 +556,17 @@ export class UserService implements IUserService {
     }
   }
 
+  async #storedProfileEmail(
+    userDocRef: DocumentReference<User>
+  ): Promise<string> {
+    try {
+      const snap = await getDoc(userDocRef);
+      return snap.exists() ? (snap.data()?.email ?? '') : '';
+    } catch {
+      return '';
+    }
+  }
+
   // Called once `newEmail` has just been verified (or verified and made the
   // sign-in address). The cached ID token still carries the old claims, so
   // it is refreshed first: the rules accept the profile email only when it
@@ -556,7 +575,6 @@ export class UserService implements IUserService {
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     const userId = this.#requireUserId();
     await this.auth.currentUser!.getIdToken(true);
-    const oldEmail = this.userStore.user()?.email ?? '';
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,
@@ -567,6 +585,10 @@ export class UserService implements IUserService {
     // valid address (a legacy Auth account) is never stored: the rules would
     // refuse it (see #syncProfileEmail). Linking below still runs.
     if (isSingleEmailAddress(newEmail)) {
+      // The address being replaced comes from the stored profile, read just
+      // before the write: the in-memory store may not be filled yet when the
+      // action page loads, and a missed read only skips the offer.
+      const oldEmail = await this.#storedProfileEmail(userDocRef);
       await setDoc(userDocRef, { email: newEmail }, { merge: true });
       this.userStore.updateUser({ email: newEmail });
       this.#offerGroupEmailUpdate(userId, oldEmail, newEmail);

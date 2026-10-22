@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -9,7 +15,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import {
+  MemberEmailUpdateError,
+  MemberService,
+} from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import { verifiedTokenEmail } from '@utils/verified-token-email.util';
 import { getAuth } from 'firebase/auth';
@@ -26,7 +35,9 @@ export interface GroupEmailUpdateDialogData {
 /**
  * Offered after a login-email change (opened by AppComponent): moves the
  * user's group member emails to the new login email, all of them or only
- * those still on the old one. Closes itself once an update finishes or fails.
+ * those still on the old one. Closes itself once an update succeeds, and stays
+ * open after a failure so the user can retry the same choice. Closes quietly if
+ * the session ends while it is open.
  */
 @Component({
   selector: 'app-group-email-update-dialog',
@@ -61,6 +72,12 @@ export class GroupEmailUpdateDialogComponent {
     'a different address you set for that group.'
   );
 
+  constructor() {
+    effect(() => {
+      if (!this.userStore.user()) untracked(() => this.dialogRef.close());
+    });
+  }
+
   #countLine(count: number, singular: string, plural: string, rest: string) {
     const noun = count === 1 ? 'membership' : 'memberships';
     return `${count} ${noun} ${count === 1 ? singular : plural} ${rest}`;
@@ -76,7 +93,11 @@ export class GroupEmailUpdateDialogComponent {
 
   async #update(onlyOld: boolean): Promise<void> {
     this.loading.loadingOn();
+    let finished = true;
     try {
+      const userRef = this.userStore.user()?.ref;
+      // The session ended: there is nobody to update (the dialog closes).
+      if (!userRef) return;
       // The rules accept a linked member email only when it is the caller's
       // verified token address, so take it from a refreshed token, exactly
       // as Account > Profile's Sync does.
@@ -85,7 +106,6 @@ export class GroupEmailUpdateDialogComponent {
         this.#notify('Verify your login email first.');
         return;
       }
-      const userRef = this.userStore.user()!.ref!;
       const count = onlyOld
         ? await this.memberService.updateAllMemberEmails(
             userRef,
@@ -99,16 +119,23 @@ export class GroupEmailUpdateDialogComponent {
           : 'No member records needed updating'
       );
     } catch (error) {
+      finished = false;
       this.analytics.logError(
         'Group Email Update Dialog',
         onlyOld ? 'update_old_email_only' : 'update_all',
         'Failed to update member emails',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      this.#notify('Something went wrong - could not update member emails');
+      this.#notify(
+        error instanceof MemberEmailUpdateError
+          ? `Updated email on ${error.updated} member ${error.updated === 1 ? 'record' : 'records'} before an error. Please try again.`
+          : 'Something went wrong - could not update member emails'
+      );
     } finally {
       this.loading.loadingOff();
-      this.dialogRef.close();
+      // A failure leaves the dialog open so the same choice can be retried
+      // (records already written are skipped the second time).
+      if (finished) this.dialogRef.close();
     }
   }
 

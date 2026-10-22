@@ -990,7 +990,7 @@ mat-dialog-actions {
 
 .small-text {
   font-size: 0.85em;
-  opacity: 0.8;
+  color: tokens.color('on-surface-variant');
 }
 
 .help-dialog-header {

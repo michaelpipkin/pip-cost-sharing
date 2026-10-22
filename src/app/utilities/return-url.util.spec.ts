@@ -46,6 +46,9 @@ describe('safeReturnUrl', () => {
     ['the login page (it would only bounce)', '/auth/login'],
     ['the login page with a query', '/auth/login?returnUrl=%2Fexpenses'],
     ['the register page', '/auth/register'],
+    ['forgot password', '/auth/forgot-password'],
+    ['reset password', '/auth/reset-password?oobCode=abc'],
+    ['an account action link', '/auth/account-action?mode=verifyEmail&oobCode=abc'],
   ])('refuses %s', (_label, raw) => {
     expect(safeReturnUrl(router, raw)).toBeNull();
   });

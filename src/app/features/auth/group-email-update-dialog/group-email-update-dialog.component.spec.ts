@@ -1,14 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   MAT_DIALOG_DATA,
-  MatDialogClose,
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import {
+  MemberEmailUpdateError,
+  MemberService,
+} from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import {
   createMockAnalyticsService,
@@ -181,11 +183,11 @@ describe('GroupEmailUpdateDialogComponent', () => {
     it('closes without updating on Not now', async () => {
       await open(3, 1);
 
-      const close = fixture.debugElement
-        .query(By.css('[data-testid="group-email-update-not-now-button"]'))
-        .injector.get(MatDialogClose, null);
-      expect(close).not.toBeNull();
+      query('group-email-update-not-now-button')!.click();
+
+      expect(mockDialogRef.close).toHaveBeenCalledTimes(1);
       expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
     });
   });
 
@@ -254,7 +256,7 @@ describe('GroupEmailUpdateDialogComponent', () => {
       expect(mockDialogRef.close).toHaveBeenCalled();
     });
 
-    it('shows an error snackbar, logs it and closes when the update fails', async () => {
+    it('shows an error snackbar and logs it when the update fails', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
         new Error('permission-denied')
       );
@@ -271,7 +273,39 @@ describe('GroupEmailUpdateDialogComponent', () => {
         'permission-denied'
       );
       expect(mockLoading.loadingOff).toHaveBeenCalled();
-      expect(mockDialogRef.close).toHaveBeenCalled();
+      // M2: stays open so the user can retry the same choice.
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+
+    it('says how many were updated before a partial failure, and stays open for a retry', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValueOnce(
+        new MemberEmailUpdateError(1, new Error('offline'))
+      );
+
+      await fixture.componentInstance.updateAll();
+
+      expect(snackbarMessage()).toBe(
+        'Updated email on 1 member record before an error. Please try again.'
+      );
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+
+      mockMemberService.updateAllMemberEmails.mockResolvedValueOnce(2);
+      await fixture.componentInstance.updateAll();
+
+      expect(snackbarMessage()).toBe('Updated email on 2 member records');
+      expect(mockDialogRef.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses the plural for several records updated before a partial failure', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValueOnce(
+        new MemberEmailUpdateError(2, new Error('offline'))
+      );
+
+      await fixture.componentInstance.updateAll();
+
+      expect(snackbarMessage()).toBe(
+        'Updated email on 2 member records before an error. Please try again.'
+      );
     });
   });
 
@@ -320,6 +354,43 @@ describe('GroupEmailUpdateDialogComponent', () => {
         'Failed to update member emails',
         'Unknown error'
       );
+    });
+
+    it('stays open after a failure, like Update all', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        new Error('offline')
+      );
+
+      await fixture.componentInstance.updateOldOnly();
+
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+  });
+
+  // M6: a session that ends while the dialog is open leaves nothing to update.
+  describe('when the session ends', () => {
+    beforeEach(async () => {
+      await open(3, 1);
+    });
+
+    it('closes the dialog when the user signs out while it is open', async () => {
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+
+      userStore.user.set(null);
+      await fixture.whenStable();
+
+      expect(mockDialogRef.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes quietly, without a misleading message, when there is no user to update', async () => {
+      userStore.user.set(null);
+
+      await fixture.componentInstance.updateAll();
+
+      expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      expect(mockDialogRef.close).toHaveBeenCalled();
     });
   });
 });
