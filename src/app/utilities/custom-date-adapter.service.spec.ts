@@ -53,11 +53,35 @@ describe('CustomDateAdapter', () => {
     expect(adapter.isValid(result as Date)).toBe(false);
   });
 
-  // BUG (B5): src/app/utilities/custom-date-adapter.service.ts:11-15 parses
-  // loosely with ['MM/DD', 'MM/DD/YYYY']; "1/5/25" matches MM/DD, the "/25" is
-  // ignored, and containsYear (/\d{4}/) is false, so the year is replaced with
-  // the current one (2026). A two-digit year should give 2025.
-  it.fails('should read a two-digit year as that year (B5)', () => {
+  // Regression for B5: "1/5/25" used to match MM/DD with the "/25" ignored, so
+  // the year became the current one (2026) instead of 2025.
+  it('should read a two-digit year as that year (B5)', () => {
     expect(ymd(adapter.parse('1/5/25'))).toEqual([2025, 1, 5]);
+  });
+
+  it('should read a high two-digit year as the 1900s', () => {
+    expect(ymd(adapter.parse('1/5/99'))).toEqual([1999, 1, 5]);
+  });
+
+  it('should read a low two-digit year as the 2000s (moment pivot at 68/69)', () => {
+    expect(ymd(adapter.parse('12/31/30'))).toEqual([2030, 12, 31]);
+    expect(ymd(adapter.parse('1/1/68'))).toEqual([2068, 1, 1]);
+    expect(ymd(adapter.parse('1/1/69'))).toEqual([1969, 1, 1]);
+  });
+
+  it('should return an invalid date, not roll over, for an impossible date with a two-digit year', () => {
+    const result = adapter.parse('2/30/25');
+    expect(result).toBeInstanceOf(Date);
+    expect(adapter.isValid(result as Date)).toBe(false);
+  });
+
+  it('should return an invalid date for an impossible month and day without a year', () => {
+    expect(adapter.isValid(adapter.parse('2/30') as Date)).toBe(false);
+    expect(adapter.isValid(adapter.parse('13/1') as Date)).toBe(false);
+  });
+
+  it('should accept a leap day only in a leap year', () => {
+    expect(ymd(adapter.parse('2/29/24'))).toEqual([2024, 2, 29]);
+    expect(adapter.isValid(adapter.parse('2/29/25') as Date)).toBe(false);
   });
 });
