@@ -162,6 +162,30 @@
   <li><strong>A transient Auth <code>getUser</code> failure in <code>requestMemberEmailChange</code> shows "Verify your login email first."</strong> The callable treats a failed Auth lookup like an unverified login email, so a momentary outage sends the user to the wrong remedy. It should fail with a retryable error instead.</li>
   <li><strong>The members <code>sendInvite</code> snackbar shows the raw callable message</strong>, including the SDK's " [ddd]" status suffix. <code>src/app/utilities/callable-error</code> already strips it elsewhere and would fix it here.</li>
   <li><strong>Phase 3, read half of <code>users</code> (rules hardening):</strong> any signed-in account can still read every user's email, payment handles and <code>emailOptOut</code>. The agreed approach is a callable gatekeeper (<code>.claude/firestore-rules-hardening.md</code>, "Phase 3").</li>
+  <li><strong>Feature, after the Plan 4 release: link members by any verified address (owner idea, 2026-10-22).</strong> Today a new member auto-links only when the admin enters the user's login email. With this feature, every address a user has proven counts. It is its own small plan, possibly paired with the Phase 3 read lockdown above, since both are about what other users can see.
+    <ul>
+      <li><strong>A private index, not an array on the user doc.</strong> <code>verifiedEmails/{lowercased address}</code> holds <code>{ uid, verifiedAt }</code>. Rules deny all client access; <code>get()</code> in the rules can still read it. An array on <code>users/{uid}</code> was considered and rejected: user docs are readable by every signed-in account, so it would expose every address a person has confirmed (a work email, say), and it can't say which account owns an address that two accounts confirmed.</li>
+      <li><strong>One owner per address.</strong> The most recent confirmation takes it over, which covers a recycled work address.</li>
+      <li><strong>Written only by the server.</strong>
+        <ul>
+          <li>Account creation adds the verified login address.</li>
+          <li>A verified login-email change adds the new address.</li>
+          <li><code>confirmMemberEmailChange</code> adds the confirmed group email.</li>
+          <li><code>deleteUserAccount</code> removes the account's entries.</li>
+          <li>A one-time backfill from verified login emails covers existing data. The B19 audit found every linked member's email equals a login email.</li>
+        </ul>
+      </li>
+      <li><strong>Linking moves to the server.</strong>
+        <ul>
+          <li>When an admin adds or edits an unlinked member, a trigger (or the add callable) looks the email up in the index and sets <code>userRef</code>. The client can no longer query for it.</li>
+          <li>The B19 link rule changes from "member email equals the user's profile email" to "<code>verifiedEmails/{member email}</code> belongs to that uid".</li>
+          <li><code>linkInvitedMembers</code> uses the index too.</li>
+        </ul>
+      </li>
+      <li><strong>Cost:</strong> one document read per lookup, and one write per confirmation.</li>
+      <li><strong>Caveat, same as today:</strong> an admin who types a person's secondary address sees it link to that person, so they learn whose address it is.</li>
+    </ul>
+  </li>
 </ul>
 </body>
 </html>
