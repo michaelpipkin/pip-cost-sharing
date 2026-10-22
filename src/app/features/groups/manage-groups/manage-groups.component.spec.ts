@@ -6,6 +6,7 @@ import {
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { OverlayContainer } from '@angular/cdk/overlay';
+import { overlayPanes } from '@testing/overlay-testing';
 import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { Group } from '@models/group';
 import { FirebaseError } from 'firebase/app';
@@ -122,16 +123,18 @@ describe('ManageGroupsComponent', () => {
 
     it('should initialize with currency field enabled when group has no expenses', () => {
       expect(mockExpenseStore.groupHasExpenses()).toBe(false);
-      expect(
-        (component as any).editGroupForm.currencyCode().disabled()
-      ).toBe(false);
+      expect((component as any).editGroupForm.currencyCode().disabled()).toBe(
+        false
+      );
     });
 
     it('should disable currency field when group has expenses', async () => {
       const mockExpenseStoreWithExpenses = createMockExpenseStore();
       mockExpenseStoreWithExpenses.setGroupHasExpenses(true);
       const mockExpenseServiceWithExpenses = createMockExpenseService();
-      mockExpenseServiceWithExpenses.checkGroupHasExpenses.mockResolvedValue(true);
+      mockExpenseServiceWithExpenses.checkGroupHasExpenses.mockResolvedValue(
+        true
+      );
 
       await TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
@@ -523,36 +526,33 @@ describe('ManageGroupsComponent', () => {
 
     it('switches groups from the dropdown', async () => {
       const m = await mount({ groups: [testGroup, secondGroup] });
+      let leakedPanes: number;
       try {
         (
           m.root.querySelector('.mat-mdc-select-trigger') as HTMLElement
         ).click();
-        // The panel renders in a later pass than one whenStable guarantees.
-        let option: HTMLElement | null = null;
-        await vi.waitFor(
-          () => {
-            m.fx.detectChanges();
-            option = document.querySelector(
-              '[data-testid="manage-group-option-group-2"]'
-            );
-            expect(option).not.toBeNull();
-          },
-          { timeout: 3000, interval: 20 }
+        m.fx.detectChanges();
+        await m.fx.whenStable();
+        const option = document.querySelector<HTMLElement>(
+          '[data-testid="manage-group-option-group-2"]'
         );
-        (option as unknown as HTMLElement).click();
+        expect(option, 'group-2 option in the open panel').not.toBeNull();
+        option!.click();
         m.fx.detectChanges();
         await m.fx.whenStable();
         m.fx.detectChanges();
 
         expect(m.comp.selectedGroup()).toBe(secondGroup);
-        expect(
-          (m.q('manage-group-name-input') as HTMLInputElement).value
-        ).toBe('Second Group');
+        expect((m.q('manage-group-name-input') as HTMLInputElement).value).toBe(
+          'Second Group'
+        );
       } finally {
         m.fx.destroy();
+        // Count before removing the container, or the check could never fail.
+        leakedPanes = overlayPanes().length;
         TestBed.inject(OverlayContainer).ngOnDestroy();
       }
-      expect(document.querySelectorAll('.cdk-overlay-pane').length).toBe(0);
+      expect(leakedPanes, 'overlay panes left open by the test').toBe(0);
     });
 
     it('does not read Firestore when switching between the tour sample groups', async () => {
@@ -807,7 +807,9 @@ describe('ManageGroupsComponent', () => {
 
       expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
         expect.anything(),
-        { data: { message: 'Something went wrong - could not unarchive group' } }
+        {
+          data: { message: 'Something went wrong - could not unarchive group' },
+        }
       );
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });

@@ -295,15 +295,23 @@ describe('GuidedTourService', () => {
   describe('dialogs opened by a step', () => {
     it('should re-raise its overlays above a dialog a step opens', async () => {
       // jsdom has no popover API; stub it so the CDK renders the tour's
-      // overlays as popovers (as browsers do) for the length of this test
+      // overlays as popovers (as browsers do) for the length of this test.
+      // Plain vi.fn stubs put back by hand, not vi.spyOn: a spy's restore
+      // stays registered after mockRestore(), so afterEach's restoreAllMocks
+      // redefines the stub after this test has removed it. That left
+      // showPopover on HTMLElement.prototype for every later spec in the
+      // worker (one shared jsdom), where mat-select then renders its panel
+      // inline instead of in the overlay container (account-preferences'
+      // option lookups found nothing). src/testing/popover-guard-setup.ts
+      // fails any test that leaves the stub behind.
       const proto = HTMLElement.prototype as any;
-      const added = !('showPopover' in proto);
-      if (added) {
-        proto.showPopover = function () {};
-        proto.hidePopover = function () {};
-      }
+      const saved = (['showPopover', 'hidePopover'] as const).map(
+        (key) => [key, Object.getOwnPropertyDescriptor(proto, key)] as const
+      );
+      const show = vi.fn();
+      proto.showPopover = show;
+      proto.hidePopover = vi.fn();
       try {
-        const show = vi.spyOn(proto, 'showPopover');
         await service.start(
           config([steps[0]!, { ...steps[1]!, beforeShow: () => {} }])
         );
@@ -320,9 +328,12 @@ describe('GuidedTourService', () => {
         ).toBe(true);
       } finally {
         service.stop('closed');
-        if (added) {
-          delete proto.showPopover;
-          delete proto.hidePopover;
+        for (const [key, descriptor] of saved) {
+          if (descriptor) {
+            Object.defineProperty(proto, key, descriptor);
+          } else {
+            delete proto[key];
+          }
         }
       }
     });

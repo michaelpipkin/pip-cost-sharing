@@ -1,4 +1,3 @@
-import { OverlayContainer } from '@angular/cdk/overlay';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,6 +16,7 @@ import {
   mockGroup,
   mockUser,
 } from '@testing/test-helpers';
+import { disposeOverlays } from '@testing/overlay-testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountPreferencesComponent } from './account-preferences.component';
 
@@ -79,23 +79,22 @@ describe('AccountPreferencesComponent', () => {
     ) as HTMLButtonElement;
   }
 
-  // The panel renders in a later change-detection pass than one
-  // detectChanges + whenStable guarantees, so wait (bounded) for the options
-  // to exist instead of reading them once.
+  // The options of the opened panel. They render in the first pass after
+  // open(). When they are missing, a stale popover stub from an earlier spec
+  // is the usual cause (the panel then renders inline, outside the overlay
+  // container); src/testing/popover-guard-setup.ts names the leaking test.
   async function openOptions(): Promise<HTMLElement[]> {
     fixture.detectChanges();
     await fixture.whenStable();
-    let options: HTMLElement[] = [];
-    await vi.waitFor(
-      () => {
-        fixture.detectChanges();
-        options = Array.from(
-          document.querySelectorAll('.cdk-overlay-container mat-option')
-        ) as HTMLElement[];
-        expect(options.length).toBeGreaterThan(0);
-      },
-      { timeout: 3000, interval: 20 }
+    const options = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.cdk-overlay-container mat-option'
+      )
     );
+    expect(
+      options.length,
+      'mat-options in the overlay container'
+    ).toBeGreaterThan(0);
     return options;
   }
 
@@ -122,9 +121,8 @@ describe('AccountPreferencesComponent', () => {
 
   afterEach(() => {
     fixture?.destroy();
-    TestBed.inject(OverlayContainer).ngOnDestroy();
-    expect(document.querySelectorAll('.cdk-overlay-pane').length).toBe(0);
     vi.restoreAllMocks();
+    disposeOverlays();
     TestBed.resetTestingModule();
   });
 
@@ -217,7 +215,9 @@ describe('AccountPreferencesComponent', () => {
 
     it('should show the Error message, log it and turn loading off when the save fails', async () => {
       await createComponent();
-      mockUserService.updateUser.mockRejectedValue(new Error('Permission denied'));
+      mockUserService.updateUser.mockRejectedValue(
+        new Error('Permission denied')
+      );
       await choose('Group B');
 
       saveButton().click();
