@@ -194,7 +194,7 @@ describe('DateShortcutKeysDirective', () => {
       expect(h.value()).toBeNull();
     });
 
-    // BUG (B4): src/app/shared/directives/date-plus-minus.directive.ts:33,35
+    // BUG (B4): src/app/shared/directives/date-plus-minus.directive.ts:18,41
     // `t` assigns `today = new Date()`, which carries the current time of day,
     // while the other shortcuts give midnight. It should be today at midnight.
     it.fails('should give today at midnight on "t" (B4)', () => {

@@ -215,6 +215,7 @@ export const AREAS = {
   groups: {
     unit: [
       ...DATE_UTILS,
+      ...EXPENSE_MODEL,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
       ...ANALYTICS,
