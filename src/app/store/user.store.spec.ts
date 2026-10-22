@@ -1,7 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { patchState } from '@ngrx/signals';
-import { unprotected } from '@ngrx/signals/testing';
-import { mockDocRef, mockUser } from '@testing/test-helpers';
+import { mockUser } from '@testing/test-helpers';
 import { describe, expect, it } from 'vitest';
 import { UserStore } from './user.store';
 
@@ -80,21 +78,16 @@ describe('UserStore', () => {
   });
 
   describe('clearUser', () => {
-    it('should reset the user, both flags and the default group', () => {
+    it('should reset the user, both flags', () => {
       const store = setup();
       store.initUser(mockUser(), true, true);
-      patchState(unprotected(store), {
-        defaultGroupRef: mockDocRef('groups/g1'),
-      });
       expect(store.isValidUser()).toBe(true);
-      expect(store.defaultGroupRef!()).not.toBeNull();
 
       store.clearUser();
 
       expect(store.user()).toBeNull();
       expect(store.isGoogleUser()).toBe(false);
       expect(store.isEmailConfirmed()).toBe(false);
-      expect(store.defaultGroupRef!()).toBeNull();
       expect(store.isLoggedIn()).toBe(false);
       expect(store.isValidUser()).toBe(false);
     });

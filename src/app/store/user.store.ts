@@ -1,7 +1,5 @@
 import { computed } from '@angular/core';
-import { Group } from '@models/group';
 import { User } from '@models/user';
-import { DocumentReference } from 'firebase/firestore';
 import {
   patchState,
   signalStore,
@@ -14,14 +12,12 @@ type UserState = {
   user: User | null;
   isGoogleUser: boolean;
   isEmailConfirmed: boolean;
-  defaultGroupRef?: DocumentReference<Group> | null;
 };
 
 const initialState: UserState = {
   user: null,
   isGoogleUser: false,
   isEmailConfirmed: false,
-  defaultGroupRef: null,
 };
 
 export const UserStore = signalStore(
@@ -39,7 +35,6 @@ export const UserStore = signalStore(
         user: null,
         isGoogleUser: false,
         isEmailConfirmed: false,
-        defaultGroupRef: null,
       });
     },
     initUser: (

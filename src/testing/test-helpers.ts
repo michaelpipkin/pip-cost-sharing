@@ -199,12 +199,10 @@ export function createMockUserStore() {
   const user = signal<User | null>(null);
   const isGoogleUser = signal(false);
   const isEmailConfirmed = signal(false);
-  const defaultGroupRef = signal<any>(null);
   return {
     user,
     isGoogleUser,
     isEmailConfirmed,
-    defaultGroupRef,
     isLoggedIn: computed(() => !!user()),
     isValidUser: computed(() => isGoogleUser() || isEmailConfirmed()),
     updateUser: vi.fn(),
@@ -212,7 +210,6 @@ export function createMockUserStore() {
       user.set(null);
       isGoogleUser.set(false);
       isEmailConfirmed.set(false);
-      defaultGroupRef.set(null);
     }),
     initUser: vi.fn((u: User, isGoogle: boolean, isEmailConf: boolean) => {
       user.set(u);

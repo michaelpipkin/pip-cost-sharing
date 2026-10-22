@@ -125,15 +125,6 @@ export class Expense {
     if (!this.receiptPath) return null;
     return ref(getStorage(), this.receiptPath);
   }
-  get unpaidAmount(): number {
-    let amount = 0;
-    this.splits.forEach((split) => {
-      if (!split.paid && !split.owedByMemberRef.eq(this.paidByMemberRef)) {
-        amount += split.allocatedAmount;
-      }
-    });
-    return amount;
-  }
 }
 
 export type ExpenseDto = Omit<Expense, 'date'> & { date: string };
