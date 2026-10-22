@@ -702,16 +702,20 @@ against production. Clears the way for the CI deploy.
 ## Phase 3 — `users` collection (write half done 2026-10-21; read half deferred)
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`
-(`user.service.ts:288-323`, `:386-460`, `:515-567`) and **written** cross-user
-for `defaultGroupRef` clearing (`group.service.ts:358-366`,
-`member.service.ts:222-228`). Until this phase lands, any signed-in account
-can read every user's email and Venmo/PayPal/CashApp/Zelle handles.
+(`user.service.ts`: `getUserDetails`, `getPaymentMethods` and the payment
+and settle email paths) and was **written** cross-user for `defaultGroupRef`
+clearing (`group.service.ts` `updateGroup()`, `member.service.ts`
+`removeMemberFromGroup()`; citations by function name, because the line
+numbers have drifted). The write half is done (below). Until the read half
+lands, any signed-in account can read every user's email and
+Venmo/PayPal/CashApp/Zelle handles.
 
 Agreed approach: a **callable Cloud Function gatekeeper** that verifies the
 caller shares a group with the target user and returns only the payment
-fields. The cross-user `defaultGroupRef` writes move server-side too. Then
-`users` rules become read/write own doc only, plus the `email` lookup in
-`member.service.ts:139-146` / `:187-195` (also a candidate to move
+fields. The cross-user `defaultGroupRef` writes were NOT moved server-side:
+the rule allows exactly their shape instead (see "Write half done"). Then
+`users` reads become own doc only, plus the `users.emailLower` lookups in
+`member.service.ts` (the add-member and link paths; also a candidate to move
 server-side).
 
 Left for a separate pass — Phase 2 is the larger win and is independently
@@ -739,7 +743,7 @@ rule allows exactly their shape. A re-grep found two such client paths:
 in the same `writeBatch` as the group update) and `member.service.ts`
 `removeMemberFromGroup()` (an admin removing a linked member clears that
 user's default if it is the group; a single `updateDoc`). The old
-`member.service.ts:222-228` citation above was this path.
+`member.service.ts` citation in the intro was this path.
 
 Batch semantics, proved on the emulator: the rule's `get()` of the group
 sees the pre-batch group doc, and deactivating/archiving never changes
