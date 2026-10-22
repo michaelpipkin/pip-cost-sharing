@@ -1904,20 +1904,22 @@ export const sendMailQueueEmail = onDocumentCreated(
       delivery: { state: 'PROCESSING', attempts: 1, startTime },
     });
 
-    // demo-* projects (isolated test emulators) must never send real email,
-    // but still record a SUCCESS delivery so the admin email log is realistic.
-    if (isDemoProject(process.env.GCLOUD_PROJECT)) {
-      console.log(
-        `Suppressing mail doc ${event.params['docId']}: demo project, not sending.`
-      );
-      await snap.ref.update({
-        delivery: buildSuppressedDelivery(to, startTime),
-        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
-      });
-      return;
-    }
-
     try {
+      // demo-* projects (isolated test emulators) must never send real email,
+      // but still record a SUCCESS delivery so the admin email log is
+      // realistic. Inside the try so a failing write records an ERROR delivery
+      // instead of leaving the doc stuck in PROCESSING.
+      if (isDemoProject(process.env.GCLOUD_PROJECT)) {
+        console.log(
+          `Suppressing mail doc ${event.params['docId']}: demo project, not sending.`
+        );
+        await snap.ref.update({
+          delivery: buildSuppressedDelivery(to, startTime),
+          expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+        });
+        return;
+      }
+
       const transport = await getMailTransport();
       const info = await transport.sendMail({
         from: MAIL_FROM,
