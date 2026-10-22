@@ -743,6 +743,13 @@
     <li>Repair and backfill count duplicate inputs once.</li>
     <li>Admin services keep the doc id over a stored <code>id</code> field.</li>
   </ul></td><td>Tasks 5, 12</td></tr>
+<tr><td>B12</td><td><strong>One valid email address everywhere</strong> (owner request, 2026-10-21; runs right after B1):
+  <ul>
+    <li>A shared strict single-address validator on every app email field: no commas, semicolons, whitespace or lists, and a domain with a dot. Angular's built-in <code>email</code> validator accepts <code>a@b</code>.</li>
+    <li>Firestore rules require a member's <code>email</code> and a user's own <code>email</code> to be <code>''</code> or one valid address (≤ 254 chars) on create and update. The existing authorization logic is unchanged.</li>
+    <li>Server emails check the stored address before sending. B1 covers group emails; <code>sendPaymentNotificationEmail</code> gets the same check.</li>
+    <li>Tests for the validator, the functions path and the rules (a comma list is rejected, a normal address accepted).</li>
+  </ul></td><td>new tests</td></tr>
 <tr><td>B11</td><td>Delete dead code: <code>ClearSelectDirective</code>, <code>passwordMatchValidator</code>, <code>Timestamp.toIsoDateString</code> (and its test-mock stub), <code>Expense.unpaidAmount</code>, <code>UserStore.defaultGroupRef</code>.</td><td>Task 3 list</td></tr>
 </table></div>
 <p class="step">After the approved B items: run every area alone (<code>pnpm test:area &lt;area&gt;</code>, full), then three back-to-back full <code>pnpm e2e</code> runs at 2 workers (the owner-accepted standard). Run the final whole-branch review, then the finishing menu.</p>
