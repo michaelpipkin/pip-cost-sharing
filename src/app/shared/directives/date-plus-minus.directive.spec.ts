@@ -176,28 +176,29 @@ describe('DateShortcutKeysDirective', () => {
       expect(h.value()).toBeNull();
     });
 
-    // BUG (B4): src/app/shared/directives/date-plus-minus.directive.ts:14-16
-    // handles the keys without checking ctrlKey/metaKey/altKey, so browser and
-    // OS shortcuts (Ctrl+T new tab, Ctrl+Y redo, Cmd+M minimize) are swallowed
-    // with preventDefault and overwrite the date. A modified key should be
-    // ignored and not prevented.
-    it.fails('should ignore "t" with ctrlKey and not prevent it (B4)', () => {
+    // Regression for B4: a modified key is a browser or OS shortcut (Ctrl+T new
+    // tab, Ctrl+Y redo, Cmd+M minimize) and must neither change the date nor
+    // be prevented.
+    it('should ignore "t" with ctrlKey and not prevent it (B4)', () => {
       const event = press('t', '3/17/2020', { ctrlKey: true });
       expect(event.defaultPrevented).toBe(false);
       expect(h.value()).toBeNull();
     });
 
-    // BUG (B4): same handler as above, for the Meta key.
-    it.fails('should ignore "t" with metaKey and not prevent it (B4)', () => {
+    it('should ignore "t" with metaKey and not prevent it (B4)', () => {
       const event = press('t', '3/17/2020', { metaKey: true });
       expect(event.defaultPrevented).toBe(false);
       expect(h.value()).toBeNull();
     });
 
-    // BUG (B4): src/app/shared/directives/date-plus-minus.directive.ts:18,41
-    // `t` assigns `today = new Date()`, which carries the current time of day,
-    // while the other shortcuts give midnight. It should be today at midnight.
-    it.fails('should give today at midnight on "t" (B4)', () => {
+    it('should ignore "t" with altKey and not prevent it (B4)', () => {
+      const event = press('t', '3/17/2020', { altKey: true });
+      expect(event.defaultPrevented).toBe(false);
+      expect(h.value()).toBeNull();
+    });
+
+    // Regression for B4: "t" gives today at midnight, like "m" and "y".
+    it('should give today at midnight on "t" (B4)', () => {
       press('t', '3/17/2020');
       expect(h.value()?.getTime()).toBe(new Date(2026, 5, 15).getTime());
     });

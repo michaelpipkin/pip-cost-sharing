@@ -412,24 +412,38 @@ describe('CalculatorOverlayService', () => {
       expect(key('Enter').defaultPrevented).toBe(true);
     });
 
-    // BUG (B4): calculator-overlay.service.ts:158-159 - every keydown is
-    // preventDefault()ed and stopPropagation()ed before the key is looked at,
-    // so Tab cannot move focus out of the open calculator.
-    it.fails('does not swallow Tab', () => {
+    // Regression for B4: only calculator keys are prevented, so Tab keeps
+    // moving focus out of the open calculator.
+    it('does not swallow Tab', () => {
       expect(key('Tab').defaultPrevented).toBe(false);
     });
 
-    // BUG (B4): same lines - browser shortcuts are swallowed too, and the
-    // "c" in Ctrl/Cmd+C is read as the clear key.
-    it.fails('does not swallow Ctrl+C or treat it as clear', () => {
+    it('does not swallow Shift+Tab', () => {
+      expect(key('Tab', { shiftKey: true }).defaultPrevented).toBe(false);
+    });
+
+    // Regression for B4: modifier combinations are browser shortcuts, and the
+    // "c" in Ctrl/Cmd+C is not the clear key.
+    it('does not swallow Ctrl+C or treat it as clear', () => {
       const event = key('c', { ctrlKey: true });
       expect(event.defaultPrevented).toBe(false);
       expect(calls().clear).toHaveLength(0);
     });
 
-    it.fails('does not swallow Cmd+A or Cmd+V', () => {
+    it('does not swallow Cmd+A or Cmd+V', () => {
       expect(key('a', { metaKey: true }).defaultPrevented).toBe(false);
       expect(key('v', { metaKey: true }).defaultPrevented).toBe(false);
+    });
+
+    it('ignores a calculator key held with Alt', () => {
+      expect(key('5', { altKey: true }).defaultPrevented).toBe(false);
+      expect(calls().addNumber).toEqual([]);
+    });
+
+    it('still prevents a plain calculator key', () => {
+      const event = key('7');
+      expect(event.defaultPrevented).toBe(true);
+      expect(calls().addNumber).toEqual([['7']]);
     });
   });
 });

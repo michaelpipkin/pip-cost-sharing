@@ -13,9 +13,12 @@ export class DateShortcutKeysDirective {
 
   @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
+    // Leave browser and OS shortcuts (Ctrl+T, Ctrl+Y, Cmd+M, ...) alone
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (['-', '+', 't', 'm', 'y'].includes(event.key)) {
       const inputDate = new Date(this.#el.nativeElement.value);
-      const today = new Date();
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       if (inputDate.toString() === 'Invalid Date') {
         this.#setValue(today);
       } else {
