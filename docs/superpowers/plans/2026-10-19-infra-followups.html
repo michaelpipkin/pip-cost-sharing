@@ -72,18 +72,18 @@
 <h2>Plan 4 — unit / functions gaps</h2>
 <ul>
   <li><code>findBusyPorts</code>: no negative test; the netstat parsing in the win32 cleanup is untested (extract as a pure function). <code>netstat -p tcp</code> misses IPv6-only listeners.</li>
-  <li>Mail suppression: the suppression <code>update</code> sits outside try/catch; add a test pinning <code>startsWith</code> semantics (e.g. <code>'my-demo-x'</code> → false).</li>
-  <li><code>scripts/db/prune-expenses.ts</code> still has its own duplicate <code>ChunkedBatch</code> — use <code>scripts/db/chunked-batch.ts</code>; export <code>BATCH_LIMIT</code> from there instead of duplicating it as <code>SEED_BATCH_LIMIT</code> in <code>e2e/seed/write.ts</code>.</li>
-  <li><code>src/app/firebase-options.ts:22</code>: unused <code>_measurementId</code> may trip <code>@typescript-eslint/no-unused-vars</code> (only <code>argsIgnorePattern</code> is set).</li>
+  <li>Mail suppression: the suppression <code>update</code> sits outside try/catch; add a test pinning <code>startsWith</code> semantics (e.g. <code>'my-demo-x'</code> → false). <span class="note">— Half done, Plan 4 Task 2: the <code>startsWith</code> test is in <code>mail-suppression.spec.ts</code>. Still open: the "suppression update failure is caught" <code>it.fails</code> pin (Task 9, fix B8).</span></li>
+  <li class="done"><code>scripts/db/prune-expenses.ts</code> still has its own duplicate <code>ChunkedBatch</code> — use <code>scripts/db/chunked-batch.ts</code>; export <code>BATCH_LIMIT</code> from there instead of duplicating it as <code>SEED_BATCH_LIMIT</code> in <code>e2e/seed/write.ts</code>. <span class="note">— Plan 4 Task 2 (the shared <code>ChunkedBatch</code> gained <code>delete</code>; <code>write.ts</code> already imported <code>BATCH_LIMIT</code> and nothing else redefines it).</span></li>
+  <li class="done"><code>src/app/firebase-options.ts:22</code>: unused <code>_measurementId</code> may trip <code>@typescript-eslint/no-unused-vars</code> (only <code>argsIgnorePattern</code> is set). <span class="note">— Plan 4 Task 2 (it did warn; <code>varsIgnorePattern: '^_'</code> added to <code>eslint.config.mjs</code>).</span></li>
   <li><code>test:area</code> polish: <code>--check</code> parses JSON from the first <code>{</code> in stdout (fragile); win32 <code>invocation</code> joins args unquoted; posix quoting doesn't escape embedded quotes / <code>$</code>; <code>%VAR%</code> still expands under cmd.</li>
-  <li><em>From Plan 2:</em> seed validator's percentage-total tolerance borrows the group's money <code>decimalPlaces</code> (a 0-decimal group would accept 99.6–100.4%); no automated tests for the <code>E2E_SEED_TODAY</code> ambient guard or the global-setup probe/clear timeouts; <code>findExpense</code> in <code>seed.spec.ts</code> only searches <code>groups[0]</code>.</li>
+  <li><em>From Plan 2:</em> seed validator's percentage-total tolerance borrows the group's money <code>decimalPlaces</code> (a 0-decimal group would accept 99.6–100.4%); no automated tests for the <code>E2E_SEED_TODAY</code> ambient guard or the global-setup probe/clear timeouts; <code>findExpense</code> in <code>seed.spec.ts</code> only searches <code>groups[0]</code>. <span class="note">— Done in Plan 4 Task 2: fixed 0.01 tolerance plus a 99.6 / 0-decimal test, <code>assertNoAmbientSeedToday</code> extracted and tested, <code>findExpense</code> searches every group. Still open: tests for the global-setup probe/clear timeouts.</span></li>
   <li>Wrapper tests: the <code>commandLine</code> test only checks prefix/suffix; <code>config-agreement.test.mjs</code> doesn't cover hub/logging ports or app port 4300 in <code>environment.e2e.ts</code>.</li>
-  <li>Warm-up passes a possibly-undefined <code>baseURL</code> (add a guard).</li>
+  <li class="done">Warm-up passes a possibly-undefined <code>baseURL</code> (add a guard). <span class="note">— Plan 4 Task 2 (<code>warmUpDevServer</code> throws a clear error; tested in <code>seed.spec.ts</code>).</span></li>
 </ul>
 
 <h2>Owner</h2>
 <ul>
-  <li><code>.claude/settings.local.json</code> still has an allow rule for the removed <code>pnpm e2e:local:*</code> scripts.</li>
+  <li class="done"><code>.claude/settings.local.json</code> still has an allow rule for the removed <code>pnpm e2e:local:*</code> scripts. <span class="note">— Already resolved (checked in Plan 4 Task 2): the file no longer has it, and its <code>pnpm e2e:*</code> rules match the current scripts.</span></li>
 </ul>
 </body>
 </html>

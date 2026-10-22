@@ -238,6 +238,9 @@ function validateGroup(
   }
 }
 
+// Slack allowed when summing percentages (float error only, not rounding).
+const PERCENTAGE_TOLERANCE = 0.01;
+
 const SPLIT_FIELDS = ['assignedAmount', 'percentage', 'shares'] as const;
 const SPLIT_FIELD_OF_METHOD: Record<SeedExpense['splitMethod'], (typeof SPLIT_FIELDS)[number]> = {
   amount: 'assignedAmount',
@@ -296,9 +299,11 @@ function validateSplitMethod(
         problems.push(`${at} split "${split.owedByKey}": percentage is required for splitMethod 'percentage'`);
       }
     }
-    const total = round(expense.splits.reduce((t, s) => t + (s.percentage ?? 0), 0));
-    if (total !== 100) {
-      problems.push(`${at}: percentages total ${total} but must be 100`);
+    // Percentages are not money: a fixed tolerance, not the group's decimalPlaces
+    // (a 0-decimal group would otherwise accept 99.6 to 100.4).
+    const total = expense.splits.reduce((t, s) => t + (s.percentage ?? 0), 0);
+    if (Math.abs(total - 100) > PERCENTAGE_TOLERANCE) {
+      problems.push(`${at}: percentages total ${Number(total.toFixed(4))} but must be 100`);
     }
   } else {
     for (const split of expense.splits) {

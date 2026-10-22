@@ -35,6 +35,10 @@ export class ChunkedBatch {
     this.#current().update(ref, data);
   }
 
+  delete(ref: DocumentReference): void {
+    this.#current().delete(ref);
+  }
+
   async commit(): Promise<void> {
     for (const batch of this.#batches) {
       await batch.commit();

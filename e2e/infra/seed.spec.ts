@@ -3,11 +3,13 @@ import { getSeedAdmin } from '../seed/admin';
 import { ALL_DATASETS } from '../seed/datasets';
 import { ACCOUNT_ACTION } from '../seed/datasets/account-action';
 import { INFRA } from '../seed/datasets/infra';
+import { assertNoAmbientSeedToday } from '../seed/dates';
 import { SHARED } from '../seed/datasets/shared';
 import { storageObjectExists } from '../seed/storage';
 import type { SeedDataset, SeedExpense, SeedGroup } from '../seed/types';
 import { validateDatasets } from '../seed/validate';
 import { signInAs } from '../utils/session';
+import { warmUpDevServer } from '../utils/warm-up';
 
 // The history -> mail -> delivery trigger chain runs on the functions
 // emulator, which cold-starts each function on first use; under a busy run
@@ -46,8 +48,15 @@ function sharedPaymentRecipients(): string[] {
   return [...emails].sort();
 }
 
+/** The expense with this key from any group of the shared dataset. */
 function findExpense(datasets: SeedDataset[], key: string): SeedExpense {
-  return sharedDataset(datasets).groups[0]!.expenses!.find((e) => e.key === key)!;
+  const expense = sharedDataset(datasets)
+    .groups.flatMap((g) => g.expenses ?? [])
+    .find((e) => e.key === key);
+  if (!expense) {
+    throw new Error(`findExpense: no expense "${key}" in the shared dataset`);
+  }
+  return expense;
 }
 
 function infraDataset(datasets: SeedDataset[]): SeedDataset {
@@ -67,6 +76,21 @@ function sharedDataset(datasets: SeedDataset[]): SeedDataset {
 }
 
 test.describe('seed', { tag: '@infra' }, () => {
+  test('global setup refuses an ambient E2E_SEED_TODAY', () => {
+    expect(() => assertNoAmbientSeedToday('2026-01-01')).toThrow(
+      /E2E_SEED_TODAY is set \(2026-01-01\).*unset it/
+    );
+    // Even an empty value is a set variable.
+    expect(() => assertNoAmbientSeedToday('')).toThrow(/E2E_SEED_TODAY is set/);
+    expect(() => assertNoAmbientSeedToday(undefined)).not.toThrow();
+  });
+
+  test('the warm-up refuses to run without a baseURL', async () => {
+    await expect(
+      warmUpDevServer(undefined, 'ws://127.0.0.1:1')
+    ).rejects.toThrow(/baseURL/);
+  });
+
   test('validateDatasets accepts ALL_DATASETS', () => {
     expect(() => validateDatasets(ALL_DATASETS)).not.toThrow();
   });
@@ -117,6 +141,17 @@ test.describe('seed', { tag: '@infra' }, () => {
     expense.splits[0]!.percentage = 41; // 41 + 30 + 20 + 10 = 101
     expect(() => validateDatasets(datasets)).toThrow(
       /e-rental.*percentages total 101.*must be 100/
+    );
+  });
+
+  test('validateDatasets rejects percentages totalling 99.6 in a 0-decimal group', () => {
+    const datasets = cloneDatasets();
+    // The tolerance is a fixed 0.01, not the group's money decimalPlaces:
+    // rounding 99.6 to 0 places would read as 100 and pass.
+    sharedDataset(datasets).groups[0]!.decimalPlaces = 0;
+    findExpense(datasets, 'e-rental').splits[0]!.percentage = 39.6; // 39.6 + 30 + 20 + 10
+    expect(() => validateDatasets(datasets)).toThrow(
+      /e-rental.*percentages total 99\.6.*must be 100/
     );
   });
 
