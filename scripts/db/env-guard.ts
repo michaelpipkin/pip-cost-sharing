@@ -30,13 +30,18 @@ export type QueryTarget =
   | { kind: 'production' }
   | { kind: 'emulators'; hosts: Record<string, string> };
 
-/** Every non-empty `*_EMULATOR_HOST` variable in `env`, sorted. */
+/**
+ * Every non-empty `*_EMULATOR_HOST` variable in `env`, sorted, in any letter
+ * case: Windows env lookups are case-insensitive, so the Admin SDK's
+ * `process.env.FIREBASE_AUTH_EMULATOR_HOST` also finds a variable set as
+ * `firebase_auth_emulator_host`.
+ */
 export function ambientEmulatorHosts(
   env: Record<string, string | undefined>
 ): string[] {
   return Object.keys(env)
-    .filter((key) => key.endsWith('_EMULATOR_HOST') && !!env[key])
-    .sort();
+    .filter((key) => key.toUpperCase().endsWith('_EMULATOR_HOST') && !!env[key])
+    .sort((a, b) => a.localeCompare(b));
 }
 
 export class QueryEnvError extends Error {}

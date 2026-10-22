@@ -147,4 +147,55 @@ describe('deleteUserAccount', () => {
 
     expect((await successor.get()).data()?.['groupAdmin']).toBe(true);
   });
+
+  // Final review M2 (B2 review minor): an inactive admin used to count as
+  // "another admin", so the departing ACTIVE sole admin's group was left with
+  // no active admin.
+  it('promotes the other active members when the only other admin is inactive', async () => {
+    const { uid, userRef } = await makeUser();
+    const group = await makeGroup();
+    const leaving = await makeMember(group, { userRef, groupAdmin: true });
+    const inactiveAdmin = await makeMember(group, {
+      userRef: db.collection('users').doc(uniqueId('old-admin')),
+      groupAdmin: true,
+      active: false,
+    });
+    const successor = await makeMember(group, {
+      userRef: db.collection('users').doc(uniqueId('next')),
+      groupAdmin: false,
+    });
+
+    await call(uid);
+
+    expect((await successor.get()).data()?.['groupAdmin']).toBe(true);
+    // Only active members are promoted; the inactive admin is left as is.
+    expect((await inactiveAdmin.get()).data()).toMatchObject({
+      groupAdmin: true,
+      active: false,
+    });
+    expect((await leaving.get()).data()).toMatchObject({
+      groupAdmin: false,
+      userRef: null,
+    });
+  });
+
+  it('does not promote anyone when another active admin remains', async () => {
+    const { uid, userRef } = await makeUser();
+    const group = await makeGroup();
+    const leaving = await makeMember(group, { userRef, groupAdmin: true });
+    await makeMember(group, {
+      userRef: db.collection('users').doc(uniqueId('co-admin')),
+      groupAdmin: true,
+    });
+    const member = await makeMember(group, {
+      userRef: db.collection('users').doc(uniqueId('member')),
+      groupAdmin: false,
+    });
+
+    await call(uid);
+
+    expect((await member.get()).data()?.['groupAdmin']).toBe(false);
+    // Anonymised, but keeps its admin flag (pre-existing behaviour).
+    expect((await leaving.get()).data()?.['userRef']).toBeNull();
+  });
 });

@@ -11,7 +11,9 @@ import {
 
 // The same table is checked against the server copy
 // (functions/src/email-formatting.spec.ts) and the Firestore rules copy
-// (e2e/infra/email-rules.spec.ts covers its key cases).
+// (e2e/infra/email-rules.spec.ts runs every row on the emulator).
+// scripts/lint/email-pattern-agreement.test.mjs checks all three tables
+// hold the same rows.
 const VALID = [
   'a+b@x.co.uk',
   'alice@example.com',

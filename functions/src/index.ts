@@ -412,27 +412,26 @@ export async function handleUserGroupMembership(
     return true;
   }
 
-  const admins = allMembers.filter((doc) => doc.data().groupAdmin === true);
-  const userIsOnlyAdmin =
-    admins.length === 1 && userMemberData.groupAdmin === true;
-
   const otherActiveMembers = activeMembers.filter(
     (doc) => doc.id !== userMemberDoc.id
   );
+  // Only an ACTIVE admin can run the group (adminUids holds active admins
+  // only), so an inactive admin does not count as another admin.
+  const userIsOnlyActiveAdmin =
+    userMemberData.groupAdmin === true &&
+    !otherActiveMembers.some((doc) => doc.data().groupAdmin === true);
 
-  if (userIsOnlyAdmin && otherActiveMembers.length > 0) {
-    // User is the only admin (active or not) but there are other active members
-    // Promote all other active members to admin and demote/anonymize user
+  if (userIsOnlyActiveAdmin && otherActiveMembers.length > 0) {
+    // No other active admin, but there are other active members: promote
+    // every other active member to admin and demote/anonymize the user.
     console.log(
-      `User is the only admin of group ${groupRef.id} - promoting other members`
+      `User is the only active admin of group ${groupRef.id} - promoting other members`
     );
 
     const batch = db.batch();
-    for (const memberDoc of activeMembers) {
-      if (memberDoc.id !== userMemberDoc.id) {
-        batch.update(memberDoc.ref, { groupAdmin: true });
-        console.log(`Promoting member ${memberDoc.id} to admin`);
-      }
+    for (const memberDoc of otherActiveMembers) {
+      batch.update(memberDoc.ref, { groupAdmin: true });
+      console.log(`Promoting member ${memberDoc.id} to admin`);
     }
     batch.update(userMemberDoc.ref, { groupAdmin: false, userRef: null });
     console.log(`Demoting and anonymizing member: ${userMemberDoc.id}`);

@@ -241,6 +241,10 @@ export class AccountActionComponent {
       if (!this.auth.currentUser) return;
       throw error;
     }
+    // The link was for an address this browser's signed-in account doesn't
+    // have (signed in to a different, unverified account): nothing to sync,
+    // and the rules would refuse the write.
+    if (!user.emailVerified) return;
     await this.userService.updateUserEmailAndLinkMembers(user.email!);
     this.userStore.setIsEmailConfirmed(user.emailVerified);
   }

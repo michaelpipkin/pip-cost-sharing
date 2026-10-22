@@ -50,6 +50,27 @@ test('any *_EMULATOR_HOST refuses, naming every one set', () => {
   );
 });
 
+// Windows env lookups are case-insensitive: the Admin SDK's
+// process.env.FIREBASE_AUTH_EMULATOR_HOST finds a variable the shell set as
+// firebase_auth_emulator_host, so the guard must see it too.
+test('a *_EMULATOR_HOST set in any letter case refuses', () => {
+  for (const name of [
+    'firebase_auth_emulator_host',
+    'Firestore_Emulator_Host',
+    'FIREBASE_STORAGE_emulator_host',
+  ]) {
+    assert.throws(
+      () => resolveQueryTarget({ [name]: '127.0.0.1:1' }, ['q']),
+      (error) => error instanceof QueryEnvError && error.message.includes(name),
+      name
+    );
+  }
+  assert.deepEqual(
+    ambientEmulatorHosts({ firestore_emulator_host: 'x', other_host: 'y' }),
+    ['firestore_emulator_host']
+  );
+});
+
 test('--emulator sets all three dev hosts, overriding a mixed shell', () => {
   const target = resolveQueryTarget(
     { FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:19099' },

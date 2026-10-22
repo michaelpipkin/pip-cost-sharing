@@ -32,14 +32,22 @@ describe('AccountActionComponent', () => {
 
   const authStateReady = () => Promise.resolve();
 
+  // Unverified until reload(), which picks up the verification the applied
+  // code made (as the Auth emulator does). Reset before every test.
   const mockAuthWithUser = {
     authStateReady,
     currentUser: {
       email: 'test@example.com',
       emailVerified: false,
-      reload: vi.fn().mockResolvedValue(undefined),
+      reload: vi.fn(async () => {
+        mockAuthWithUser.currentUser.emailVerified = true;
+      }),
     },
   };
+
+  beforeEach(() => {
+    mockAuthWithUser.currentUser.emailVerified = false;
+  });
 
   const mockAuthWithoutUser = {
     authStateReady,
@@ -151,6 +159,29 @@ describe('AccountActionComponent', () => {
 
     it('should return correct title', () => {
       expect(component.getTitle()).toBe('Email Verification');
+    });
+
+    // Final review M1: a link for another account, opened while signed in
+    // to an account that stays unverified, has nothing to sync, and the
+    // rules would refuse the write (then logged as an error).
+    it('writes nothing when the signed-in account is still unverified after reload', async () => {
+      TestBed.resetTestingModule();
+      const auth = {
+        authStateReady,
+        currentUser: {
+          email: 'other@example.com',
+          emailVerified: false,
+          reload: vi.fn().mockResolvedValue(undefined),
+        },
+      };
+
+      await createComponent(auth, { mode: 'verifyEmail', oobCode: 'c' });
+
+      expect(auth.currentUser.reload).toHaveBeenCalled();
+      expect(mockUserService.updateUserEmailAndLinkMembers).not.toHaveBeenCalled();
+      expect(mockUserStore.setIsEmailConfirmed).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      expect(component.success()).toBe(true);
     });
 
     it('should return correct success message', () => {

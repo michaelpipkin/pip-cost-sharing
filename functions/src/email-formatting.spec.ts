@@ -14,8 +14,9 @@ import {
 } from './email-builders';
 
 // The same table as the app copy's spec (src/app/utilities/
-// email-validation.spec.ts); the rules copy is checked by
-// e2e/infra/email-rules.spec.ts.
+// email-validation.spec.ts); the rules copy runs every row in
+// e2e/infra/email-rules.spec.ts. scripts/lint/email-pattern-agreement.test.mjs
+// checks all three tables hold the same rows.
 describe('isSingleEmailAddress', () => {
   it.each([
     'a+b@x.co.uk',
