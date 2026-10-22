@@ -9,10 +9,15 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *
  * Everyone below is in "Member Email Rules – Main" (their only and default
  * group) unless noted. Each test works on its own member docs and starts by
- * resetting them with the Admin SDK, so every test repeats fine:
- * - mer-admin (group admin): makes every admin write. Creates new members
- *   with unique ids (the create matrix and the addGroup shape, in a new
- *   group of its own with a unique name).
+ * resetting them with the Admin SDK, so every test repeats fine. Nothing is
+ * deleted (Ruling R21); what the tests add at runtime is listed here and no
+ * test counts members, groups or memberships:
+ * - mer-admin (group admin): makes every admin write. Each run of the create
+ *   test adds new members with unique ids to Main (unlinked ones, and ones
+ *   linked to mer-runtime-linkee), and each run of the addGroup test creates
+ *   three groups of mer-admin's own with unique names ("Member Email Rules –
+ *   Created <id>"), so mer-admin gains memberships; its default group stays
+ *   Main.
  * - mer-self: a plain linked member who changes their own email (Account >
  *   Profile's sync shape, and edit-member's self-save of displayName).
  * - mer-target: a plain linked member whose email the admin tries to change.
@@ -20,11 +25,16 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *   null) and tries to relink to someone else (X to Y).
  * - mer-unverified (Auth address unverified): a linked member whose token
  *   says email_verified false, so even their own address is refused.
- * - mer-linkable (no member doc here at first; their default group is
- *   their own "Member Email Rules – Linkable Home"): a registered user the
- *   admin links an unlinked member to, by their profile email.
+ * - mer-linkable (their default group is their own "Member Email Rules –
+ *   Linkable Home"): a registered user the admin links "Unlinked Link" to,
+ *   by their profile email; the test then resets that member to unlinked,
+ *   so mer-linkable is in Main only while that test runs.
+ * - mer-runtime-linkee (no seeded group): the user the create test's
+ *   allowed auto-link points at. It gains one linked member row in Main
+ *   with every run; nothing else reads it.
  * - mer-victim (no group): a registered user the I2 attack tries to link to
- *   a member doc carrying an attacker-chosen email.
+ *   a member doc carrying an attacker-chosen email. Every such write is
+ *   denied, so it never gains a membership.
  * Unlinked placeholders: "Unlinked Edit" (the admin changes its email) and
  * "Unlinked Link" (the admin links it to mer-linkable).
  */
@@ -62,6 +72,7 @@ const users = {
     emailVerified: false,
   }),
   linkable: seedUser('linkable', { defaultGroupKey: LINKABLE_HOME_KEY }),
+  runtimeLinkee: seedUser('runtime-linkee'),
   victim: seedUser('victim'),
 } as const;
 

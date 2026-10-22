@@ -168,13 +168,10 @@ test.describe(
         // Positive controls: add-member's create, unlinked and auto-linked
         // by the profile email (any casing), and a consistent emailLower.
         const unlinkedEmail = randomEmail('unlinked');
-        const unlinked = fresh();
         await expectAllowed(
-          setDoc(unlinked, newMember({ userRef: null, email: unlinkedEmail })),
+          setDoc(fresh(), newMember({ userRef: null, email: unlinkedEmail })),
           'unlinked'
         );
-        // removeMemberFromGroup (no splits): the admin delete is unchanged.
-        await expectAllowed(deleteDoc(unlinked), 'admin removes a member');
         await expectAllowed(
           setDoc(
             fresh(),
@@ -186,12 +183,14 @@ test.describe(
           ),
           'unlinked with emailLower'
         );
+        // Links only the dedicated runtime linkee (never victim), so the
+        // allowed create changes no other user's documented state.
         await expectAllowed(
           setDoc(
             fresh(),
             newMember({
-              userRef: userRef(db, users.victim),
-              email: users.victim.email.toUpperCase(),
+              userRef: userRef(db, users.runtimeLinkee),
+              email: users.runtimeLinkee.email.toUpperCase(),
             })
           ),
           'linked by the profile email'
