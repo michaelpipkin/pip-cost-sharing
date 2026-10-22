@@ -595,7 +595,7 @@ describe('buildDuplicateUsersReport', () => {
     expect(row(other2.uid)).toMatchObject({ lastSignIn: 'Never', providers: '(none)' });
   });
 
-  // BUG (unnumbered, found in Task 12): functions/src/admin-reports.ts:818
+  // BUG (B10, deferred by owner 2026-10-21; folded in by ruling R14): functions/src/admin-reports.ts:818
   // breaks ties between a duplicate email's accounts by comparing their
   // creation times as RFC 1123 strings ("Thu, 22 Oct ..." < "Wed, 21 Oct
   // ..."), so the order follows the weekday name rather than the date
