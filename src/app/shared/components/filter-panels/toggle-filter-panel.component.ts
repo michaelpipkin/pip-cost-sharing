@@ -68,11 +68,11 @@ export interface ToggleFilterValue {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToggleFilterPanelComponent {
-  initialValue = input<ToggleFilterValue>();
-  columnLabel = input<string>();
-  trueLabel = input<string>('Yes');
-  falseLabel = input<string>('No');
-  allLabel = input<string>('All');
+  readonly initialValue = input<ToggleFilterValue>();
+  readonly columnLabel = input<string>();
+  readonly trueLabel = input<string>('Yes');
+  readonly falseLabel = input<string>('No');
+  readonly allLabel = input<string>('All');
 
   apply = output<ToggleFilterValue>();
   clear = output<void>();

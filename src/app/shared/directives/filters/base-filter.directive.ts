@@ -73,11 +73,9 @@ export abstract class BaseFilterDirective<TPanel> {
   constructor() {
     // Watch for filter changes to update icon state
     effect(() => {
-      const service = this.filterService();
-      if (service) {
-        const hasFilter = service.hasFilter(this.filterKey());
-        this.updateIconState(hasFilter);
-      }
+      this.updateIconState(
+        this.filterService().hasFilter(this.filterKey())
+      );
     });
 
     // Reactively show/hide the filter icon based on the enabled input, and
@@ -199,7 +197,7 @@ export abstract class BaseFilterDirective<TPanel> {
   /**
    * Creates the CDK overlay with positioning strategy
    */
-  protected createOverlay(): OverlayRef {
+  private createOverlay(): OverlayRef {
     const overlayRef = this.overlay.create({
       positionStrategy: this.getPositionStrategy(),
       hasBackdrop: true,

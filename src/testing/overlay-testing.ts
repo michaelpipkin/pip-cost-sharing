@@ -17,17 +17,15 @@ export function overlayPanes(): HTMLElement[] {
  * in afterEach, after destroying fixtures and restoring spies. It counts the
  * panes still in the document, THEN removes the overlay container (and with it
  * every pane and backdrop, so nothing reaches other specs in the shared jsdom
- * context), and fails if the count differs from `knownLeakedPanes` (default 0).
+ * context), and fails if any pane was left open.
  * The count must come before the removal, or the check could never fail.
  */
-export function disposeOverlays(options?: { knownLeakedPanes?: number }): void {
+export function disposeOverlays(): void {
   const leaked = overlayPanes().length;
   try {
     TestBed.inject(OverlayContainer).ngOnDestroy();
   } finally {
-    expect(leaked, 'overlay panes left open by the test').toBe(
-      options?.knownLeakedPanes ?? 0
-    );
+    expect(leaked, 'overlay panes left open by the test').toBe(0);
   }
 }
 

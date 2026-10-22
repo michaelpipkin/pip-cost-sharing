@@ -172,8 +172,7 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
       expect(service.hasFilter('other')).toBe(true);
     });
 
-      // the icon exists, and injectFilterIcon only hides the icon, so a directive
-    // created disabled leaves an existing filter applied (and invisible).
+    // Regression for B7: a directive created disabled must clear an existing filter.
     it('clears an existing filter when it is created disabled', async () => {
       service.setFilter('payer', { type: 'select', value: ALICE });
       fixture = TestBed.createComponent(HostComponent);
@@ -353,8 +352,7 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
       expect(panel()).toBeNull();
     });
 
-      // detaches the overlay, it never disposes it, so the pane (and backdrop)
-    // stay in the overlay container for the life of the page.
+    // Regression for B7: destroying the host disposes the overlay, leaving no pane or backdrop.
     it('disposes the overlay, leaving no pane behind', async () => {
       await create();
       await openPanel();
@@ -367,9 +365,7 @@ describe('SelectFilterDirective (and the base filter behaviour)', () => {
   });
 
   describe('reopening', () => {
-      // openFilterPanel) - every open subscribes to the same overlay's
-    // backdropClick() and never unsubscribes, so after N opens one backdrop
-    // click runs the close handler N times.
+    // Regression for B7: backdropClick() is subscribed once per overlay, not once per open.
     it('does not accumulate backdrop subscriptions', async () => {
       await create();
       const close = vi.spyOn(directive() as any, 'closeFilterPanel');

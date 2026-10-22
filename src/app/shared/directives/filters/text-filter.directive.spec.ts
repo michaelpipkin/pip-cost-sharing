@@ -204,14 +204,7 @@ describe('TextFilterDirective', () => {
       expect(panel()).toBeNull();
     });
 
-      // setTimeout reassigns componentRef from the nonexistent
-    // OverlayRef._attachedPortal, so after the first tick the directive no
-    // longer tracks the panel component that attach() returned (and its
-    // destroy handler has nothing to destroy). The timeout is also dead weight
-    // next to the setupComponent() call in openFilterPanel.
-    // The fix may drop componentRef altogether (e.g. the base class owning
-    // panel disposal); if so, remove this marker and keep an equivalent check
-    // that destroying the host destroys the panel component.
+    // Regression for B7: the panel component is destroyed with the host, and opening schedules no timer.
     it('destroys the attached panel component when the host is destroyed', async () => {
       const attach = vi.spyOn(OverlayRef.prototype, 'attach');
       await openPanel();
@@ -226,8 +219,7 @@ describe('TextFilterDirective', () => {
   });
 
   describe('reopening', () => {
-      // (base-filter.directive.ts:179): each open adds a backdropClick()
-    // subscription to the same overlay and none is released.
+    // Regression for B7: backdropClick() is subscribed once per overlay, not once per open.
     it('does not accumulate backdrop subscriptions', async () => {
       const close = vi.spyOn(directive() as any, 'closeFilterPanel');
       for (let i = 0; i < 3; i++) {
@@ -244,7 +236,7 @@ describe('TextFilterDirective', () => {
       expect(close).toHaveBeenCalledTimes(1);
     });
 
-      // but never disposes it, leaving the pane in the overlay container.
+    // Regression for B7: destroying the host disposes the overlay, leaving no pane or backdrop.
     it('disposes the overlay when the host is destroyed', async () => {
       await openPanel();
       expect(overlayPanes()).toHaveLength(1);
