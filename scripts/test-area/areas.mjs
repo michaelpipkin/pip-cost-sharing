@@ -36,7 +36,20 @@ const LOCALE = [
   'app/models/currency-config.spec.ts',
   `${PIPES}/group-currency.pipe.spec.ts`,
 ];
-const GUIDED_TOUR = [`${SERVICES}/guided-tour.service.spec.ts`];
+// The tour engine plus the spotlight and card it renders.
+const GUIDED_TOUR = [
+  `${SERVICES}/guided-tour.service.spec.ts`,
+  `${COMPONENTS}/guided-tour`,
+];
+// The helper the page tours use to switch between the dialogs a step opens
+// (categories, expenses, groups, members and summary).
+const GUIDED_TOUR_DIALOGS = [`${SERVICES}/guided-tour-dialogs.spec.ts`];
+// Signal stores imported directly by an area's code (reports: admin only).
+const GROUP_STORE = ['app/store/group.store.spec.ts'];
+const USER_STORE = ['app/store/user.store.spec.ts'];
+const MEMBER_STORE = ['app/store/member.store.spec.ts'];
+const CATEGORY_STORE = ['app/store/category.store.spec.ts'];
+const REPORTS_STORE = ['app/store/reports.store.spec.ts'];
 const SORTING = [`${SERVICES}/sorting.service.spec.ts`];
 const MEDIA_QUERY = [`${SERVICES}/media-query.service.spec.ts`];
 const CONFIRM_DIALOG = [`${COMPONENTS}/confirm-dialog`];
@@ -123,6 +136,10 @@ export const AREAS = {
   // primitives described above.
   shell: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...CUSTOM_DATE_ADAPTER,
       ...MEDIA_QUERY,
@@ -155,6 +172,10 @@ export const AREAS = {
   // Sign-in, registration, password flows and route guards.
   auth: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...ANALYTICS,
@@ -189,6 +210,10 @@ export const AREAS = {
   // Signed-in user's account: profile, group memberships, account deletion.
   account: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -214,6 +239,11 @@ export const AREAS = {
   // Creating/managing groups, group settings, invitations to join.
   groups: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
+      ...GUIDED_TOUR_DIALOGS,
       ...DATE_UTILS,
       ...EXPENSE_MODEL,
       ...DOC_REF_EXTENSIONS,
@@ -248,6 +278,10 @@ export const AREAS = {
   // Group members and invitations.
   members: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...GUIDED_TOUR_DIALOGS,
       ...DOC_REF_EXTENSIONS,
       ...YES_NO_CHECK_PIPE,
       ...MEDIA_QUERY,
@@ -280,6 +314,10 @@ export const AREAS = {
 
   categories: {
     unit: [
+      ...GROUP_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
+      ...GUIDED_TOUR_DIALOGS,
       ...DOC_REF_EXTENSIONS,
       ...ANALYTICS,
       ...LOADING,
@@ -300,6 +338,11 @@ export const AREAS = {
   // and receipt scanning have their own areas but the forms depend on them.
   expenses: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
+      ...GUIDED_TOUR_DIALOGS,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -349,6 +392,8 @@ export const AREAS = {
   // Rental expense entry and its room-based split grid.
   rental: {
     unit: [
+      ...GROUP_STORE,
+      ...MEMBER_STORE,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
       ...ANALYTICS,
@@ -369,6 +414,10 @@ export const AREAS = {
   // Receipt scanning/OCR from the app side and the OCR/parsing backend.
   receipts: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -398,6 +447,9 @@ export const AREAS = {
   // Memorized (recurring/template) expenses.
   memorized: {
     unit: [
+      ...GROUP_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -427,6 +479,11 @@ export const AREAS = {
   // Balances, payments and settle-up (including the settle-up email).
   summary: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
+      ...GUIDED_TOUR_DIALOGS,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -457,6 +514,10 @@ export const AREAS = {
   // Payment/settlement history and its detail view.
   history: {
     unit: [
+      ...GROUP_STORE,
+      ...USER_STORE,
+      ...MEMBER_STORE,
+      ...CATEGORY_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...DOC_REF_COMPARE,
@@ -480,6 +541,7 @@ export const AREAS = {
   // The standalone split calculator.
   split: {
     unit: [
+      ...GROUP_STORE,
       ...DATE_UTILS,
       ...DOC_REF_EXTENSIONS,
       ...SPLIT_METHOD_TOGGLE,
@@ -503,6 +565,7 @@ export const AREAS = {
 
   home: {
     unit: [
+      ...USER_STORE,
       `${FEATURES}/home`,
       `${SERVICES}/pwa-detection.service.spec.ts`,
       ...ANALYTICS,
@@ -532,6 +595,7 @@ export const AREAS = {
   // Site-admin screens (email log, reports) and their backend.
   admin: {
     unit: [
+      ...REPORTS_STORE,
       ...CUSTOM_DATE_ADAPTER,
       ...MEDIA_QUERY,
       `${FEATURES}/admin`,
