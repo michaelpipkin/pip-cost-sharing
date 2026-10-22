@@ -750,6 +750,7 @@
     <li>Server emails check the stored address before sending. B1 covers group emails; <code>sendPaymentNotificationEmail</code> gets the same check.</li>
     <li>Tests for the validator, the functions path and the rules (a comma list is rejected, a normal address accepted).</li>
   </ul></td><td>new tests</td></tr>
+<tr><td>B13</td><td><strong>User profile writes</strong> (owner-approved 2026-10-21; the write half of the rules-hardening Phase 3; runs after B12): <code>users/{uid}</code> create, update and delete only by the owner. A non-owner may only set <code>defaultGroupRef</code> to null, and only as an admin of the group it currently points at (the group deactivate/archive batch). Reads unchanged. Tested through the client SDK on the emulators.</td><td>new tests</td></tr>
 <tr><td>B11</td><td>Delete dead code: <code>ClearSelectDirective</code>, <code>passwordMatchValidator</code>, <code>Timestamp.toIsoDateString</code> (and its test-mock stub), <code>Expense.unpaidAmount</code>, <code>UserStore.defaultGroupRef</code>.</td><td>Task 3 list</td></tr>
 </table></div>
 <p class="step">After the approved B items: run every area alone (<code>pnpm test:area &lt;area&gt;</code>, full), then three back-to-back full <code>pnpm e2e</code> runs at 2 workers (the owner-accepted standard). Run the final whole-branch review, then the finishing menu.</p>
