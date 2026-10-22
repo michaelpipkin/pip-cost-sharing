@@ -250,6 +250,32 @@ describe('SplitComponent', () => {
       expect(amounts.some((a) => a === 3.34)).toBe(true);
     });
 
+    // Regression for B15: the leftover cent was added with `+= increment`
+    // and never re-rounded (33.339999999999996).
+    it('should give the cent-adjusted split an exact currency amount', async () => {
+      component.addSplit();
+      component.addSplit();
+      component.addSplit();
+
+      patchSplit(0, { owedBy: 'Alice' });
+      patchSplit(1, { owedBy: 'Bob' });
+      patchSplit(2, { owedBy: 'Charlie' });
+
+      patchModel({
+        amount: '100.00',
+        sharedAmount: 100,
+        allocatedAmount: '0.00',
+      });
+
+      component.allocateSharedAmounts();
+      await fixture.whenStable();
+
+      const amounts = getModel()
+        .splits.map((s) => s.allocatedAmount)
+        .sort((a, b) => a - b);
+      expect(amounts).toEqual([33.33, 33.33, 33.34]);
+    });
+
     it('should allocate proportionally with personal amounts', async () => {
       component.addSplit();
       component.addSplit();

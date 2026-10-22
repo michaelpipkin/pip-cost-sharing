@@ -425,13 +425,12 @@ describe('RentalGridComponent', () => {
         .sort((a: number, b: number) => a - b);
       expect(amounts[0]).toBe(33.33);
       expect(amounts[1]).toBe(33.33);
-      expect(amounts[2]).toBeCloseTo(33.34, 2);
+      expect(amounts[2]).toBe(33.34);
     });
 
-    // BUG (B15): src/app/utilities/allocation-utils.service.ts:239 adds the leftover
-    // cent with `allocatedAmount += increment` and never re-rounds, so the
-    // cent-adjusted split is 33.339999999999996, not 33.34 (Phase B item).
-    it.fails('gives the cent-adjusted split an exact currency amount', async () => {
+    // Regression for B15: the leftover cent was added with `+= increment`
+    // and never re-rounded, storing 33.339999999999996 instead of 33.34.
+    it('gives the cent-adjusted split an exact currency amount', async () => {
       fixture.componentRef.setInput('totalAmount', 100);
       await setMembers([
         row(alice, [true, true, true]),
