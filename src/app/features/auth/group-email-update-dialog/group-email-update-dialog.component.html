@@ -12,6 +12,9 @@
   @if (other > 0) {
     <p data-testid="group-email-update-other-line">{{ otherLine }}</p>
   }
+  @if (data.blank > 0) {
+    <p data-testid="group-email-update-blank-line">{{ blankLine }}</p>
+  }
   <p data-testid="group-email-update-all-help">
     <strong>Update all:</strong> Every membership switches to
     {{ data.newEmail }}.

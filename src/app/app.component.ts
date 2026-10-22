@@ -24,7 +24,6 @@ import { FooterComponent } from '@components/footer/footer.component';
 import { LoadingComponent } from '@components/loading/loading.component';
 import { NavigationLoadingService } from '@components/loading/navigation-loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
-import { GroupEmailUpdateDialogComponent } from '@features/auth/group-email-update-dialog/group-email-update-dialog.component';
 import { Group } from '@models/group';
 import { User } from '@models/user';
 import { AdMobService } from '@services/admob.service';
@@ -124,6 +123,11 @@ export class AppComponent {
       const differing = emails.filter((e) => e.toLowerCase() !== newEmail);
       // Nothing to offer: every membership already uses the new address.
       if (differing.length === 0) return;
+      // Needed only right after a login-email change, so keep it out of the
+      // main bundle.
+      const { GroupEmailUpdateDialogComponent } = await import(
+        '@features/auth/group-email-update-dialog/group-email-update-dialog.component'
+      );
       this.dialog.open(GroupEmailUpdateDialogComponent, {
         data: {
           oldEmail: prompt.oldEmail,
@@ -131,6 +135,8 @@ export class AppComponent {
           total: differing.length,
           onOldEmail: differing.filter((e) => e.toLowerCase() === oldEmail)
             .length,
+          // No address at all is neither "old" nor a deliberate choice.
+          blank: differing.filter((e) => e.trim() === '').length,
         },
       });
     } catch {

@@ -47,12 +47,17 @@ describe('GroupEmailUpdateDialogComponent', () => {
   let userStore: ReturnType<typeof createMockUserStore>;
   const userRef = mockDocRef('users/u1');
 
-  async function open(total: number, onOldEmail: number): Promise<void> {
+  async function open(
+    total: number,
+    onOldEmail: number,
+    blank = 0
+  ): Promise<void> {
     const data: GroupEmailUpdateDialogData = {
       oldEmail: OLD,
       newEmail: NEW,
       total,
       onOldEmail,
+      blank,
     };
     TestBed.configureTestingModule({
       imports: [GroupEmailUpdateDialogComponent],
@@ -155,6 +160,67 @@ describe('GroupEmailUpdateDialogComponent', () => {
       expect(query('group-email-update-other-line')).toBeNull();
       expect(text('group-email-update-all-help')).toContain('Update all:');
       expect(query('group-email-update-old-only-help')).toBeNull();
+    });
+  });
+
+  describe('memberships with no email address', () => {
+    it('counts them on their own line, not as an address the user set for the group', async () => {
+      // 4 differ: 1 old, 1 custom, 2 blank
+      await open(4, 1, 2);
+
+      expect(text('group-email-update-old-line')).toBe(
+        `1 membership still uses your old login email, ${OLD}.`
+      );
+      expect(text('group-email-update-other-line')).toBe(
+        '1 membership uses a different address you set for that group.'
+      );
+      expect(text('group-email-update-blank-line')).toBe(
+        '2 memberships have no email address.'
+      );
+    });
+
+    it('uses the singular for one blank membership', async () => {
+      await open(2, 1, 1);
+
+      expect(text('group-email-update-blank-line')).toBe(
+        '1 membership has no email address.'
+      );
+    });
+
+    it('omits the different-address line when every other membership is blank', async () => {
+      await open(3, 1, 2);
+
+      expect(query('group-email-update-other-line')).toBeNull();
+      expect(text('group-email-update-blank-line')).toBe(
+        '2 memberships have no email address.'
+      );
+    });
+
+    it('shows no blank line when none are blank', async () => {
+      await open(3, 2);
+
+      expect(query('group-email-update-blank-line')).toBeNull();
+    });
+
+    it('with only blank memberships, offers just Update all', async () => {
+      await open(2, 0, 2);
+
+      expect(query('group-email-update-old-line')).toBeNull();
+      expect(query('group-email-update-other-line')).toBeNull();
+      expect(query('group-email-update-old-only-button')).toBeNull();
+      expect(query('group-email-update-all-button')).not.toBeNull();
+    });
+
+    it('still offers Update old email only when 0 < M < N because of blank rows', async () => {
+      await open(3, 1, 2);
+
+      expect(query('group-email-update-old-only-button')).not.toBeNull();
+    });
+
+    it('hides Update old email only when every non-blank membership is on the old email and none are blank (M = N)', async () => {
+      await open(2, 2, 0);
+
+      expect(query('group-email-update-old-only-button')).toBeNull();
     });
   });
 

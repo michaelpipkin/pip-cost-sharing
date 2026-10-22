@@ -30,18 +30,18 @@ import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialo
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
-import { DocumentReference } from 'firebase/firestore';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
 import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { callableError } from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
+import { DocumentReference } from 'firebase/firestore';
 
 /**
  * requestMemberEmailChange refusals that are outcomes for the user, shown

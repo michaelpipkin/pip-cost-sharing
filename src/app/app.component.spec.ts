@@ -196,6 +196,35 @@ describe('AppComponent', () => {
             newEmail: 'new@test.com',
             total: 3,
             onOldEmail: 2,
+            blank: 0,
+          },
+        }
+      );
+    });
+
+    it('counts memberships with no email address separately from the old and the custom ones', async () => {
+      mockMemberService.getLinkedMemberEmails.mockResolvedValue([
+        'old@test.com',
+        'work@corp.com',
+        '',
+        '  ',
+        'new@test.com',
+      ]);
+      signIn();
+      userStore.setGroupEmailPrompt(prompt);
+
+      await settle();
+
+      await vi.waitFor(() => expect(mockDialog.open).toHaveBeenCalledTimes(1));
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        GroupEmailUpdateDialogComponent,
+        {
+          data: {
+            oldEmail: 'Old@Test.com',
+            newEmail: 'new@test.com',
+            total: 4,
+            onOldEmail: 1,
+            blank: 2,
           },
         }
       );

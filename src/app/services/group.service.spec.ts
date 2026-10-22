@@ -250,7 +250,7 @@ describe('GroupService', () => {
       });
     });
 
-    it('should delete the group doc if creating the member/category batch fails', async () => {
+    it('should surface the error, without trying to delete the group doc, if creating the member/category batch fails (the rules forbid group deletes)', async () => {
       mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
 
       await expect(
@@ -260,7 +260,7 @@ describe('GroupService', () => {
         )
       ).rejects.toThrow('permission-denied');
 
-      expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockDocRef);
+      expect(firestoreModule.deleteDoc).not.toHaveBeenCalled();
     });
   });
 

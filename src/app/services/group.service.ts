@@ -20,7 +20,6 @@ import { RETURN_URL_PARAM, safeReturnUrl } from '@utils/return-url.util';
 import {
   collection,
   collectionGroup,
-  deleteDoc,
   doc,
   DocumentReference,
   getDoc,
@@ -546,9 +545,10 @@ export class GroupService implements IGroupService {
 
       await batch.commit();
     } catch (error) {
-      // Best-effort cleanup: don't leave an orphaned group with no members
-      // or default category if the second step fails.
-      await deleteDoc(groupRef).catch(() => {});
+      // The rules forbid deleting a group, so the group doc written above
+      // cannot be cleaned up from here. An orphaned group (its creator the
+      // only uid in its arrays) is possible but practically unreachable: the
+      // creator's own member row passes the rules for any normal profile.
       throw error;
     }
 

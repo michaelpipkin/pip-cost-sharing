@@ -252,7 +252,7 @@ describe('AccountActionComponent', () => {
 
       expect(component.success()).toBe(true);
       expect(component.errorMessage()).toBe('');
-      expect(component.isUserLoggedIn()).toBe(false);
+      expect((component as any).isUserLoggedIn()).toBe(false);
       expect(text('account-action-success-message')).toBe(SIGN_IN_AGAIN);
       expect(text('account-action-success-hint')).toBeUndefined();
       expect(text('account-action-continue-login')).toBe('Continue to Login');
@@ -337,7 +337,7 @@ describe('AccountActionComponent', () => {
       expect(mockUserService.updateUserEmailAndLinkMembers).toHaveBeenCalledWith(
         'new@example.com'
       );
-      expect(component.isUserLoggedIn()).toBe(true);
+      expect((component as any).isUserLoggedIn()).toBe(true);
     });
 
     it('confirms the change for a signed-out visitor without writing anything', async () => {
@@ -908,7 +908,7 @@ describe('AccountActionComponent', () => {
       expect(mockAnalytics.logEvent).toHaveBeenCalledWith('verification_email_resent', {
         component: 'Account Action Component',
       });
-      expect(component.resending()).toBe(false);
+      expect((component as any).resending()).toBe(false);
     });
 
     it('shows the SDK reason without logging when Firebase refuses (e.g. too many requests)', async () => {
@@ -926,7 +926,7 @@ describe('AccountActionComponent', () => {
         { data: { message: 'Failed to send verification email: Too many requests' } }
       );
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
-      expect(component.resending()).toBe(false);
+      expect((component as any).resending()).toBe(false);
     });
 
     it.each([
@@ -950,7 +950,7 @@ describe('AccountActionComponent', () => {
         expect.anything(),
         { data: { message: 'Failed to send verification email: socket closed' } }
       );
-      expect(component.resending()).toBe(false);
+      expect((component as any).resending()).toBe(false);
     });
   });
 
@@ -1000,7 +1000,7 @@ describe('AccountActionComponent', () => {
     });
 
     it('tells a signed-out visitor to log in, except after an email change (that message already says so)', () => {
-      component.isUserLoggedIn.set(false);
+      (component as any).isUserLoggedIn.set(false);
       component.mode.set('verifyEmail');
       expect(component.getSuccessHint()).toBe('You can now log in to your account.');
       component.mode.set('recoverEmail');
@@ -1010,7 +1010,7 @@ describe('AccountActionComponent', () => {
     });
 
     it('tells a signed-in user they can use the app', () => {
-      component.isUserLoggedIn.set(true);
+      (component as any).isUserLoggedIn.set(true);
       component.mode.set('verifyEmail');
       expect(component.getSuccessHint()).toBe(
         'You can now access all features of the app.'

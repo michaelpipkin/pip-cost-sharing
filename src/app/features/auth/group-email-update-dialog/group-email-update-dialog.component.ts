@@ -30,6 +30,8 @@ export interface GroupEmailUpdateDialogData {
   total: number;
   /** M: of those, memberships still on the old login email. */
   onOldEmail: number;
+  /** K: of those, memberships with no email address at all. */
+  blank: number;
 }
 
 /**
@@ -55,7 +57,9 @@ export class GroupEmailUpdateDialogComponent {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
 
-  protected readonly other = this.data.total - this.data.onOldEmail;
+  /** Memberships on an address the user set for that group. */
+  protected readonly other =
+    this.data.total - this.data.onOldEmail - this.data.blank;
   /** "Update old email only" differs from "Update all" only in this case. */
   protected readonly showOldOnly =
     this.data.onOldEmail > 0 && this.data.onOldEmail < this.data.total;
@@ -70,6 +74,12 @@ export class GroupEmailUpdateDialogComponent {
     'uses',
     'use',
     'a different address you set for that group.'
+  );
+  protected readonly blankLine = this.#countLine(
+    this.data.blank,
+    'has',
+    'have',
+    'no email address.'
   );
 
   constructor() {

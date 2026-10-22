@@ -55,6 +55,18 @@ const EMAIL_ACTIONS = {
   recoverEmail: { label: 'recover email', event: 'email_recovered' },
 } as const;
 
+// A thrown value's message and (Firebase-style) code, whatever was thrown.
+function errorDetails(error: unknown): { code: string | undefined; message: string } {
+  const { code, message } = (error ?? {}) as {
+    code?: unknown;
+    message?: unknown;
+  };
+  return {
+    code: typeof code === 'string' ? code : undefined,
+    message: typeof message === 'string' ? message : 'Unknown error',
+  };
+}
+
 @Component({
   selector: 'app-account-action',
   imports: [
@@ -88,8 +100,8 @@ export class AccountActionComponent {
   errorMessage = signal<string>('');
   // A signal, refreshed after each action: confirming an email change can
   // end the session (see #syncVerifiedEmail).
-  isUserLoggedIn = signal<boolean>(!!this.auth.currentUser);
-  resending = signal<boolean>(false);
+  protected readonly isUserLoggedIn = signal<boolean>(!!this.auth.currentUser);
+  protected readonly resending = signal<boolean>(false);
 
   hidePassword = model<boolean>(true);
   hideConfirmPassword = model<boolean>(true);
@@ -190,7 +202,7 @@ export class AccountActionComponent {
     try {
       try {
         await applyActionCode(this.auth, this.oobCode());
-      } catch (error: any) {
+      } catch (error) {
         this.handleError(action.label, error);
         return;
       }
@@ -263,7 +275,7 @@ export class AccountActionComponent {
       this.analytics.logEvent('password_reset_success', {
         component: 'Account Action Component',
       });
-    } catch (error: any) {
+    } catch (error) {
       this.handleError('reset password', error);
     } finally {
       this.loading.loadingOff();
@@ -297,10 +309,10 @@ export class AccountActionComponent {
       this.analytics.logEvent('verification_email_resent', {
         component: 'Account Action Component',
       });
-    } catch (error: any) {
+    } catch (error) {
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
-          message: `Failed to send verification email: ${error.message}`,
+          message: `Failed to send verification email: ${errorDetails(error).message}`,
         },
       });
 
@@ -317,21 +329,22 @@ export class AccountActionComponent {
     }
   }
 
-  private handleError(action: string, error: any): void {
+  private handleError(action: string, error: unknown): void {
+    const { code, message } = errorDetails(error);
     let errorMsg = `Failed to ${action}. `;
 
-    if (error.code === 'auth/invalid-action-code') {
+    if (code === 'auth/invalid-action-code') {
       errorMsg += 'The link is invalid or has expired.';
-    } else if (error.code === 'auth/expired-action-code') {
+    } else if (code === 'auth/expired-action-code') {
       errorMsg += 'The link has expired.';
-    } else if (error.code === 'auth/user-disabled') {
+    } else if (code === 'auth/user-disabled') {
       errorMsg += 'This user account has been disabled.';
-    } else if (error.code === 'auth/user-not-found') {
+    } else if (code === 'auth/user-not-found') {
       errorMsg += 'No user found for this link.';
-    } else if (error.code === 'auth/weak-password') {
+    } else if (code === 'auth/weak-password') {
       errorMsg += 'Password is too weak.';
     } else {
-      errorMsg += error.message;
+      errorMsg += message;
     }
 
     this.errorMessage.set(errorMsg);
@@ -340,8 +353,8 @@ export class AccountActionComponent {
       this.analytics.logError(
         'Account Action Component',
         action,
-        error.message,
-        error.code
+        message,
+        code
       );
     }
 
