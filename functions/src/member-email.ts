@@ -8,6 +8,7 @@ import {
   type Firestore,
   type Query,
   type QuerySnapshot,
+  type Transaction,
 } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { APP_BASE_URL, callableAppCheck, normalizeEmail } from './common';
@@ -59,6 +60,13 @@ export const CONFIRM_MEMBER_UNLINKED =
 
 export const DUPLICATE_MEMBER_EMAIL =
   'A member with this email address already exists in the group.';
+/** permission-denied: the caller's own login email is not verified. */
+export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
+/** permission-denied: the token belongs to another account. */
+export const CONFIRM_WRONG_ACCOUNT =
+  'Sign in with the account that requested this change.';
+/** permission-denied: the caller's membership is not active (group-emails.ts). */
+export const NOT_ACTIVE_MEMBER = 'User must be an active member of the group';
 
 export type MemberEmailChangeStatus = 'unchanged' | 'updated' | 'pending';
 
@@ -121,6 +129,45 @@ function isDocId(value: unknown): value is string {
 function isLinkedTo(member: DocumentData | undefined, uid: string): boolean {
   const userRef: unknown = member?.['userRef'];
   return userRef instanceof DocumentReference && userRef.path === `users/${uid}`;
+}
+
+/**
+ * Only an active member may change (or confirm) their group email: someone
+ * who left has no access to the group's data (firestore.rules), so they must
+ * not be able to probe its addresses here either. Same code and message as
+ * group-emails.ts requireActiveMember.
+ */
+function assertActive(member: DocumentData | undefined): void {
+  if (member?.['active'] !== true) {
+    throw new HttpsError('permission-denied', NOT_ACTIVE_MEMBER);
+  }
+}
+
+/**
+ * The caller's verified Auth address, lowercased. Refuses an unverified (or
+ * missing) account: uids are free, so without this the per-uid limit would
+ * not bound the mail an attacker could send (fix round 1, I1). The app's
+ * confirm page is behind authGuard, which requires a verified account too.
+ */
+async function requireVerifiedCaller(uid: string): Promise<string> {
+  const emailLower = await verifiedAuthEmailLower(uid);
+  if (!emailLower) {
+    throw new HttpsError('permission-denied', VERIFY_LOGIN_EMAIL);
+  }
+  return emailLower;
+}
+
+/** The member's pending confirmation tokens, read inside `txn`. */
+async function pendingTokensOf(
+  txn: Transaction,
+  memberRef: DocumentReference
+): Promise<DocumentReference[]> {
+  const snap = await txn.get(
+    getFirestore()
+      .collection(MEMBER_EMAIL_TOKENS)
+      .where('memberRef', '==', memberRef)
+  );
+  return snap.docs.map((d) => d.ref);
 }
 
 /** The caller's Auth address when it is verified, lowercased; else null. */
@@ -191,6 +238,8 @@ async function consumeRequestAllowance(
  *  - updated: it is the caller's verified sign-in address, written now;
  *  - pending: a confirmation link was mailed to it; nothing changes until
  *    the link is used. Each new request replaces the member's earlier link.
+ * The caller must be verified (VERIFY_LOGIN_EMAIL) and an active member
+ * (NOT_ACTIVE_MEMBER), both permission-denied.
  */
 export const requestMemberEmailChange = onCall<{
   groupId?: unknown;
@@ -200,6 +249,7 @@ export const requestMemberEmailChange = onCall<{
   callableAppCheck,
   async (request): Promise<{ status: MemberEmailChangeStatus }> => {
     const uid = requireUid(request.auth?.uid);
+    const verifiedLower = await requireVerifiedCaller(uid);
     const { groupId, memberId, email } = request.data ?? {};
     if (!isSingleEmailAddress(email)) {
       throw new HttpsError(
@@ -221,6 +271,7 @@ export const requestMemberEmailChange = onCall<{
     if (!memberSnap.exists || !isLinkedTo(memberSnap.data(), uid)) {
       throw new HttpsError('permission-denied', 'Not your member record');
     }
+    assertActive(memberSnap.data());
 
     const emailLower = normalizeEmail(email);
     const current: unknown = memberSnap.get('email');
@@ -228,41 +279,55 @@ export const requestMemberEmailChange = onCall<{
       return { status: 'unchanged' };
     }
 
-    if ((await verifiedAuthEmailLower(uid)) === emailLower) {
+    if (verifiedLower === emailLower) {
+      // Applied at once; any link still pending is cancelled with it, so
+      // an older mail can't revert the address later (M1).
       await db.runTransaction(async (txn) => {
         const fresh = await txn.get(memberRef);
         if (!isLinkedTo(fresh.data(), uid)) {
           throw new HttpsError('permission-denied', 'Not your member record');
         }
+        assertActive(fresh.data());
         await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+        const earlier = await pendingTokensOf(txn, memberRef);
+        for (const ref of earlier) txn.delete(ref);
         txn.update(memberRef, { email, emailLower });
       });
       return { status: 'updated' };
     }
 
-    // Checked before the allowance, so a refused duplicate costs nothing.
-    await assertNoOtherMemberHas((q) => q.get(), memberRef, emailLower);
+    // The allowance comes first, so every mailed or refused attempt
+    // (a duplicate address included) counts against it (M2).
     const nowMs = Date.now();
     await consumeRequestAllowance(db, uid, nowMs);
 
-    const tokens = db.collection(MEMBER_EMAIL_TOKENS);
-    const earlier = await tokens.where('memberRef', '==', memberRef).get();
     const token = randomBytes(32).toString('base64url');
-    const batch = db.batch();
-    for (const doc of earlier.docs) batch.delete(doc.ref);
-    batch.set(tokens.doc(hashEmailChangeToken(token)), {
-      uid,
-      memberRef,
-      email,
-      emailLower,
-      createdAt: Timestamp.fromMillis(nowMs),
-      expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
+    const tokenRef = db
+      .collection(MEMBER_EMAIL_TOKENS)
+      .doc(hashEmailChangeToken(token));
+    const mailRef = db.collection('mail').doc();
+    // One transaction, so two concurrent requests can't both leave a live
+    // link behind (M1): the earlier tokens are read and deleted with the
+    // new one's creation.
+    await db.runTransaction(async (txn) => {
+      await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+      const earlier = await pendingTokensOf(txn, memberRef);
+      for (const ref of earlier) txn.delete(ref);
+      txn.set(tokenRef, {
+        uid,
+        memberRef,
+        email,
+        emailLower,
+        createdAt: Timestamp.fromMillis(nowMs),
+        expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
+      });
+      txn.set(mailRef, {
+        to: email,
+        message: buildMemberEmailConfirmationEmail(
+          emailChangeConfirmLink(token)
+        ),
+      });
     });
-    batch.set(db.collection('mail').doc(), {
-      to: email,
-      message: buildMemberEmailConfirmationEmail(emailChangeConfirmLink(token)),
-    });
-    await batch.commit();
     return { status: 'pending' };
   }
 );
@@ -270,14 +335,19 @@ export const requestMemberEmailChange = onCall<{
 /**
  * The confirmation link's page. Applies the requested address to the member
  * doc and deletes the token, in one transaction, so a link works once.
- * Errors: failed-precondition (CONFIRM_LINK_INVALID: unknown, used or
- * expired; CONFIRM_MEMBER_UNLINKED: the member is no longer the caller's),
- * permission-denied (another account asked for it).
+ * Errors, each with a stable message the confirm page maps:
+ *  - failed-precondition: CONFIRM_LINK_INVALID (unknown, used or expired),
+ *    CONFIRM_MEMBER_UNLINKED (the member is no longer the caller's);
+ *  - permission-denied: VERIFY_LOGIN_EMAIL (the caller is not verified),
+ *    CONFIRM_WRONG_ACCOUNT (another account asked for it),
+ *    NOT_ACTIVE_MEMBER (the caller left the group);
+ *  - already-exists: DUPLICATE_MEMBER_EMAIL (another member took it).
  */
 export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
   callableAppCheck,
   async (request): Promise<{ groupId: string; email: string }> => {
     const uid = requireUid(request.auth?.uid);
+    await requireVerifiedCaller(uid);
     const token = request.data?.token;
     if (typeof token !== 'string' || token.length === 0 || token.length > 512) {
       throw new HttpsError('failed-precondition', CONFIRM_LINK_INVALID);
@@ -298,10 +368,7 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
         throw new HttpsError('failed-precondition', CONFIRM_LINK_INVALID);
       }
       if (tokenSnap.get('uid') !== uid) {
-        throw new HttpsError(
-          'permission-denied',
-          'Sign in with the account that requested this change.'
-        );
+        throw new HttpsError('permission-denied', CONFIRM_WRONG_ACCOUNT);
       }
       const memberRef = tokenSnap.get('memberRef') as DocumentReference;
       const email = tokenSnap.get('email') as string;
@@ -310,6 +377,7 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
       if (!memberSnap.exists || !isLinkedTo(memberSnap.data(), uid)) {
         throw new HttpsError('failed-precondition', CONFIRM_MEMBER_UNLINKED);
       }
+      assertActive(memberSnap.data());
       await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
       txn.update(memberRef, { email, emailLower });
       txn.delete(tokenRef);

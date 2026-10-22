@@ -919,7 +919,12 @@ link replaced, 5 mailed requests per uid per 24 h window) whose text
 contains no user-controlled content (Ruling R18); `confirmMemberEmailChange`
 applies it in a transaction for the same uid while the member is still
 linked, and deletes the token. Expired tokens and windows are deleted by the
-nightly `deleteOldPaidExpenses` schedule. Every group mail sender uses one
+nightly `deleteOldPaidExpenses` schedule. Fix round 1: both callables refuse
+a caller whose login email is not verified (`permission-denied`; uids are
+free, so the per-uid limit alone would not bound the mail) or whose
+membership is not active; the duplicate-address check runs after the
+allowance (so it can't be a free probe); and pending tokens are cleared
+inside the transaction that creates a new one or applies an address. Every group mail sender uses one
 recipient rule (`group-mail-recipient.ts`): linked, users doc exists, not
 opted out, one valid `member.email`.
 

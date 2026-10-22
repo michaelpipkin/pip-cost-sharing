@@ -17,9 +17,13 @@ import {
 import {
   CONFIRM_LINK_INVALID,
   CONFIRM_MEMBER_UNLINKED,
+  CONFIRM_WRONG_ACCOUNT,
+  DUPLICATE_MEMBER_EMAIL,
   EMAIL_CHANGE_LIMIT,
   MEMBER_EMAIL_LIMITS,
   MEMBER_EMAIL_TOKENS,
+  NOT_ACTIVE_MEMBER,
+  VERIFY_LOGIN_EMAIL,
 } from './member-email';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
 
@@ -190,15 +194,38 @@ describe('requestMemberEmailChange', () => {
     expect(await mailTo(s.loginEmail.toUpperCase())).toHaveLength(0);
   });
 
-  it('mails a link for the sign-in address while it is unverified', async () => {
-    const s = await seedLinkedMember({ emailVerified: false });
-    await expect(request(s, s.loginEmail)).resolves.toEqual({
-      status: 'pending',
+  // Fix round 1, I1: uids are free, so an unverified account must not be
+  // able to mail anyone (the per-uid limit would not bound it).
+  it('refuses a caller whose login email is not verified, mailing nothing', async () => {
+    const unverified = await seedLinkedMember({ emailVerified: false });
+    const noAuth = await seedLinkedMember({ auth: false });
+    for (const s of [unverified, noAuth]) {
+      const newEmail = uniqueEmail('new');
+      await expect(request(s, newEmail)).rejects.toMatchObject({
+        code: 'permission-denied',
+        message: VERIFY_LOGIN_EMAIL,
+      });
+      expect(await mailTo(newEmail)).toHaveLength(0);
+    }
+    await expect(
+      request(unverified, unverified.loginEmail)
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(await mailTo(unverified.loginEmail)).toHaveLength(0);
+    expect(await memberEmail(unverified.memberRef)).toMatchObject({
+      email: unverified.memberEmail,
     });
-    expect(await memberEmail(s.memberRef)).toMatchObject({
-      email: s.memberEmail,
+  });
+
+  // M2: someone who left the group can't use it (nor probe its addresses).
+  it('refuses a member who is no longer active in the group', async () => {
+    const s = await seedLinkedMember();
+    await s.memberRef.update({ active: false, leftGroup: true });
+    const newEmail = uniqueEmail('new');
+    await expect(request(s, newEmail)).rejects.toMatchObject({
+      code: 'permission-denied',
+      message: NOT_ACTIVE_MEMBER,
     });
-    expect(await mailTo(s.loginEmail)).toHaveLength(1);
+    expect(await mailTo(newEmail)).toHaveLength(0);
   });
 
   it('mails a one-time link to the new address and changes nothing yet', async () => {
@@ -312,8 +339,51 @@ describe('requestMemberEmailChange', () => {
     await makeMember(s.groupRef, { email: taken, emailLower: taken });
     await expect(request(s, taken.toUpperCase())).rejects.toMatchObject({
       code: 'already-exists',
+      message: DUPLICATE_MEMBER_EMAIL,
     });
     expect(await mailTo(taken.toUpperCase())).toHaveLength(0);
+  });
+
+  // M2: the duplicate check runs after the allowance, so probing for
+  // addresses costs requests like any other attempt.
+  it('counts a refused duplicate against the daily limit', async () => {
+    const s = await seedLinkedMember();
+    const taken = uniqueEmail('taken');
+    await makeMember(s.groupRef, { email: taken, emailLower: taken });
+    for (let i = 0; i < EMAIL_CHANGE_LIMIT; i++) {
+      await expect(request(s, taken)).rejects.toMatchObject({
+        code: 'already-exists',
+      });
+    }
+    await expect(request(s, taken)).rejects.toMatchObject({
+      code: 'resource-exhausted',
+    });
+  });
+
+  // M1: an address applied at once cancels any link still pending.
+  it('cancels an earlier pending link when the verified address is applied', async () => {
+    const s = await seedLinkedMember();
+    const first = uniqueEmail('first');
+    await request(s, first);
+    const firstToken = await mailedToken(first);
+
+    await expect(request(s, s.loginEmail)).resolves.toEqual({
+      status: 'updated',
+    });
+
+    expect(
+      (await db.collection(MEMBER_EMAIL_TOKENS).doc(sha256(firstToken)).get())
+        .exists
+    ).toBe(false);
+    await expect(
+      call(confirmMemberEmailChange, s.uid, { token: firstToken })
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: CONFIRM_LINK_INVALID,
+    });
+    expect(await memberEmail(s.memberRef)).toMatchObject({
+      email: s.loginEmail,
+    });
   });
 });
 
@@ -390,13 +460,44 @@ describe('confirmMemberEmailChange', () => {
     const other = await seedLinkedMember();
     await expect(
       call(confirmMemberEmailChange, other.uid, { token: p.token })
-    ).rejects.toMatchObject({ code: 'permission-denied' });
+    ).rejects.toMatchObject({
+      code: 'permission-denied',
+      message: CONFIRM_WRONG_ACCOUNT,
+    });
     expect(await memberEmail(p.memberRef)).toMatchObject({
       email: p.memberEmail,
     });
     await expect(
       call(confirmMemberEmailChange, p.uid, { token: p.token })
     ).resolves.toMatchObject({ email: p.newEmail });
+  });
+
+  it('refuses a caller whose login email is no longer verified', async () => {
+    const p = await pending();
+    await getAuth().updateUser(p.uid, { emailVerified: false });
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).rejects.toMatchObject({
+      code: 'permission-denied',
+      message: VERIFY_LOGIN_EMAIL,
+    });
+    expect(await memberEmail(p.memberRef)).toMatchObject({
+      email: p.memberEmail,
+    });
+  });
+
+  it('refuses when the member left the group meanwhile', async () => {
+    const p = await pending();
+    await p.memberRef.update({ active: false, leftGroup: true });
+    await expect(
+      call(confirmMemberEmailChange, p.uid, { token: p.token })
+    ).rejects.toMatchObject({
+      code: 'permission-denied',
+      message: NOT_ACTIVE_MEMBER,
+    });
+    expect(await memberEmail(p.memberRef)).toMatchObject({
+      email: p.memberEmail,
+    });
   });
 
   it('refuses when the member was unlinked meanwhile', async () => {
@@ -419,7 +520,10 @@ describe('confirmMemberEmailChange', () => {
     await makeMember(p.groupRef, { email: lower, emailLower: lower });
     await expect(
       call(confirmMemberEmailChange, p.uid, { token: p.token })
-    ).rejects.toMatchObject({ code: 'already-exists' });
+    ).rejects.toMatchObject({
+      code: 'already-exists',
+      message: DUPLICATE_MEMBER_EMAIL,
+    });
     expect(await memberEmail(p.memberRef)).toMatchObject({
       email: p.memberEmail,
     });
