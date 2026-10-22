@@ -19,6 +19,9 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   whose stored email is a comma list (`storedEmail`); the Auth address is
  *   a normal one. Its test only makes unrelated writes and denied changes,
  *   so it repeats fine.
+ * - email-rules-creator (no group) deletes their own users doc, tries
+ *   invalid creates and recreates it with their address (users may create
+ *   only their own doc), so it repeats fine.
  */
 
 const SPEC = 'spec:e2e/infra/email-rules.spec.ts' as const;
@@ -31,6 +34,13 @@ const admin: SeedUser = {
   email: 'email-rules-admin@pipsplit.test',
   password: PASSWORD,
   profile: { defaultGroupKey: GROUP_KEY },
+};
+
+const creator: SeedUser = {
+  key: 'email-rules-creator',
+  uid: 'u-email-rules-creator',
+  email: 'email-rules-creator@pipsplit.test',
+  password: PASSWORD,
 };
 
 const LEGACY_LIST_EMAIL =
@@ -87,6 +97,7 @@ const group: SeedGroup = {
 export const EMAIL_RULES = {
   admin,
   legacyUser,
+  creator,
   group,
   target,
   legacyList,
@@ -95,6 +106,6 @@ export const EMAIL_RULES = {
 
 export const EMAIL_RULES_DATASET: SeedDataset = {
   name: 'email-rules',
-  users: [admin, legacyUser],
+  users: [admin, legacyUser, creator],
   groups: [group],
 };

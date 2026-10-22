@@ -377,6 +377,10 @@ function isGroupAdmin(gid) { return isSignedIn() && request.auth.uid in group(gi
   spec is `e2e/infra/email-rules.spec.ts`; its users-create denials rely on
   writes to a foreign uid still being allowed, so Phase 3 must revisit them.
 
+  **Update (2026-10-21, Plan 4 task B13):** the write half of Phase 3 is
+  done (see the Phase 3 section). The email-rules spec's users-create
+  denials now run as a user creating their own doc.
+
 Also fold in two fixes found along the way (both still outstanding, since
 nothing has touched `firestore.rules` yet):
 
@@ -677,7 +681,7 @@ them, backfilling had to happen *before* merging anything, not after.
 `--apply`, then dry run again to confirm idempotence ("nothing to do"), all
 against production. Clears the way for the CI deploy.
 
-## Phase 3 — `users` collection (deferred, tracked here so it isn't lost)
+## Phase 3 — `users` collection (write half done 2026-10-21; read half deferred)
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`
 (`user.service.ts:288-323`, `:386-460`, `:515-567`) and **written** cross-user
@@ -694,6 +698,45 @@ server-side).
 
 Left for a separate pass — Phase 2 is the larger win and is independently
 deployable.
+
+### Write half done (2026-10-21, Plan 4 task B13)
+
+Commit "Restrict user profile writes to the owner (and admins clearing a
+default group)" on branch `unit-gaps`. Not yet deployed (it ships with the
+branch's normal release). `users/{userId}` is now:
+
+- `read`: unchanged, any signed-in user. **The read half is still
+  deferred**: any signed-in account can still read every user's email,
+  payment handles and `emailOptOut` (the gatekeeper function above).
+- `create`, `delete`: own doc only (`request.auth.uid == userId`); create
+  keeps `emailCreateValid()`. No client path creates or deletes another
+  user's doc (new profiles and account deletion run through the Admin SDK).
+- `update`: own doc, or a non-owner whose only change is setting
+  `defaultGroupRef` to null on a doc whose current `defaultGroupRef` is a
+  group listing the caller in `adminUids`; both keep `emailUpdateValid()`.
+
+Instead of moving the cross-user `defaultGroupRef` writes server-side, the
+rule allows exactly their shape. A re-grep found two such client paths:
+`group.service.ts` `updateGroup()` (deactivate or archive; the clears ride
+in the same `writeBatch` as the group update) and `member.service.ts`
+`removeMemberFromGroup()` (an admin removing a linked member clears that
+user's default if it is the group; a single `updateDoc`). The old
+`member.service.ts:222-228` citation above was this path.
+
+Batch semantics, proved on the emulator: the rule's `get()` of the group
+sees the pre-batch group doc, and deactivating/archiving never changes
+`adminUids`, so the admin check holds inside the batch.
+`e2e/infra/user-rules.spec.ts` commits the same batch shape (group update +
+the admin's own clear + another user's clear) through the client SDK for
+both `{active: false}` and `{archived: true, active: false}`; and the app
+paths themselves are covered by `e2e/groups/groups-admin.spec.ts` "should
+toggle group active status" and `e2e/members/members.spec.ts` "should remove
+a registered member and clear their default group", which check the other
+user's `defaultGroupRef` is null afterwards. The spec's denials (another
+user's payment IDs, `emailOptOut`, `email`, delete, a create for another
+uid, a plain member's or another group's admin's clear, setting a default
+to a group, a clear combined with another field) each got through under the
+old rule, run against it on the emulator.
 
 ## Sequencing note
 

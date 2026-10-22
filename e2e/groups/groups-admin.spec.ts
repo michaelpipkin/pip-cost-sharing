@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
 import { GroupsPage } from '../pages/groups.page';
+import { getSeedAdmin } from '../seed/admin';
 import { GROUPS } from '../seed/datasets/groups';
 import type { SeedUser } from '../seed/types';
 import { signInAs } from '../utils/session';
@@ -22,6 +23,7 @@ const {
   switcher,
   renamer,
   activator,
+  activeBystander,
   autoAdder,
 } = GROUPS.users;
 const { viewA, viewB, switchA, switchB, rename, active, autoAdd } =
@@ -292,7 +294,9 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
     await groupsPage.cancelManageGroups();
   });
 
-  test('should cancel manage groups dialog without saving', async ({ page }) => {
+  test('should cancel manage groups dialog without saving', async ({
+    page,
+  }) => {
     const groupsPage = await openGroupsAs(page, viewer);
     await groupsPage.openManageGroupsFor(viewB.name);
 
@@ -325,7 +329,9 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
     const groupsPage = await openGroupsAs(page, activator);
 
     await groupsPage.openManageGroupsFor(active.name);
-    await expect(groupsPage.switchOf(groupsPage.manageActiveToggle)).toBeChecked();
+    await expect(
+      groupsPage.switchOf(groupsPage.manageActiveToggle)
+    ).toBeChecked();
     await groupsPage.setSwitch(groupsPage.manageActiveToggle, false);
     await groupsPage.saveManageGroups();
 
@@ -338,6 +344,16 @@ test.describe('Groups - managing groups', { tag: '@groups' }, () => {
       groupsPage.switchOf(groupsPage.manageActiveToggle)
     ).not.toBeChecked();
     await groupsPage.cancelManageGroups();
+    // The same batch cleared the group as another member's default (read
+    // through the Admin SDK on the test emulator).
+    await expect
+      .poll(async () => {
+        const snap = await getSeedAdmin()
+          .db.doc(`users/${activeBystander.uid}`)
+          .get();
+        return snap.get('defaultGroupRef');
+      })
+      .toBeNull();
   });
 
   test('should toggle auto-add members setting', async ({ page }) => {
