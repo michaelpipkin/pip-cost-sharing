@@ -72,7 +72,7 @@ export class AccountSecurityComponent {
     this.hideConfirm.update((h) => !h);
   }
 
-  onSubmitPassword(): void {
+  async onSubmitPassword(): Promise<void> {
     const f = this.passwordForm().value();
     const user = this.firebaseUser()!;
     this.loading.loadingOn();
@@ -81,29 +81,28 @@ export class AccountSecurityComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Password cannot be empty' },
         });
-      } else {
-        updatePassword(user, f.password)
-          .then(() => {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: { message: 'Your password has been updated' },
-            });
-            this.passwordForm().reset({ password: '', confirmPassword: '' });
-          })
-          .catch(() => {
-            this.snackbar.openFromComponent(CustomSnackbarComponent, {
-              data: {
-                message:
-                  'Something went wrong - your password could not be updated',
-              },
-            });
-          });
+        return;
       }
+      await updatePassword(user, f.password);
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: { message: 'Your password has been updated' },
+      });
+      this.passwordForm().reset({ password: '', confirmPassword: '' });
     } catch (error) {
       this.analytics.logError(
         'Account Security Component',
         'update_password',
         error instanceof Error ? error.message : 'Unknown error'
       );
+      const code = (error as { code?: string } | null)?.code;
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message:
+            code === 'auth/requires-recent-login'
+              ? 'For security, please sign out and sign in again, then change your password.'
+              : 'Something went wrong - your password could not be updated',
+        },
+      });
     } finally {
       this.loading.loadingOff();
     }

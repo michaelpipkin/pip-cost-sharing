@@ -181,10 +181,8 @@ describe('AccountSecurityComponent', () => {
       );
     });
 
-    // BUG (B3): src/app/features/auth/account/security/account-security.component.ts:85
-    // updatePassword() is not awaited, so the finally block's loadingOff() (line 108)
-    // runs before the call settles. Fixed in Phase B (B3); remove it.fails then.
-    it.fails('should call loadingOff only after updatePassword settles', async () => {
+    // Regression for B3: updatePassword() is awaited, so loadingOff() waits for it.
+    it('should call loadingOff only after updatePassword settles', async () => {
       await createComponent();
       let resolveUpdate!: () => void;
       vi.spyOn(authModule, 'updatePassword').mockReturnValue(
@@ -203,11 +201,8 @@ describe('AccountSecurityComponent', () => {
       expect(mockLoading.loadingOff).toHaveBeenCalledTimes(1);
     });
 
-    // BUG (B3): src/app/features/auth/account/security/account-security.component.ts:85-103
-    // The rejection of the un-awaited updatePassword() is swallowed by .catch(), which only
-    // shows the snackbar, so analytics.logError is never called (the try/catch around it
-    // cannot see an async rejection). Fixed in Phase B (B3); remove it.fails then.
-    it.fails('should log an updatePassword rejection through analytics.logError', async () => {
+    // Regression for B3: an updatePassword() rejection reaches analytics.logError.
+    it('should log an updatePassword rejection through analytics.logError', async () => {
       await createComponent();
       vi.spyOn(authModule, 'updatePassword').mockRejectedValue(
         new Error('auth/requires-recent-login')
@@ -224,6 +219,29 @@ describe('AccountSecurityComponent', () => {
         'update_password',
         'auth/requires-recent-login'
       );
+    });
+
+    it('should explain requires-recent-login, log it, and keep the form', async () => {
+      await createComponent();
+      vi.spyOn(authModule, 'updatePassword').mockRejectedValue(
+        Object.assign(
+          new Error('Firebase: Error (auth/requires-recent-login).'),
+          {
+            code: 'auth/requires-recent-login',
+          }
+        )
+      );
+      type('new-password-input', 'newpw');
+      type('confirm-password-input', 'newpw');
+
+      await component.onSubmitPassword();
+
+      expect(messages()).toEqual([
+        'For security, please sign out and sign in again, then change your password.',
+      ]);
+      expect(mockAnalytics.logError).toHaveBeenCalledTimes(1);
+      expect(mockLoading.loadingOff).toHaveBeenCalledTimes(1);
+      expect((component as any).passwordModel().password).toBe('newpw');
     });
   });
 });
