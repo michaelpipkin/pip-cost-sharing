@@ -57,15 +57,16 @@ service cloud.firestore {
     }
 
     // Email ownership for users/{uid} (Plan 4 B14), alongside the format
-    // guard above. Invited members are linked to accounts by
-    // users.emailLower (member.service's client lookups, the admin orphan
-    // repair) and by the caller's token (the linkInvitedMembers callable),
-    // so a client may store in a profile only '' or the caller's own
-    // VERIFIED sign-in address (request.auth.token.email with
-    // email_verified == true), compared case-insensitively. Without this,
-    // anyone could write someone else's address into their own profile, the
-    // syncUserEmailLower trigger would copy it into emailLower, and the next
-    // invite lookup would link that person's pending member to them.
+    // guard above. Invited members are linked on the server through the
+    // verifiedEmails index (Auth-verified addresses only), never through
+    // users.email, but a profile email still reaches member rows: add-group
+    // copies it into the creator's own row (isOwnRowWithOwnEmail below), and
+    // a linked member's email must be one its user proved (B19), because
+    // group mail goes there. So a client may store in a profile only '' or
+    // the caller's own VERIFIED sign-in address (request.auth.token.email
+    // with email_verified == true), compared case-insensitively. Without
+    // this, anyone could write someone else's address into their own
+    // profile, create a group, and have group mail sent there.
     //  - emailLower is held to the same address, lowercased. No client path
     //    writes it: the syncUserEmailLower trigger (Admin SDK) maintains it.
     //  - Like the format guard, a field is checked only when it is set
@@ -133,6 +134,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /groupMailLimits/{uid} {
+      allow read, write: if false;
+    }
+    // The verified-address index (functions/src/verified-emails.ts: every
+    // address a user has proven, one owner per address) and the per-caller
+    // payment-handle lookup allowance (functions/src/payment-methods.ts).
+    // Server-only, the owner of an entry included: a client that could
+    // write the index could claim an address and have its pending invites
+    // linked to them. No rule get()s these.
+    match /verifiedEmails/{id} {
+      allow read, write: if false;
+    }
+    match /paymentLookupLimits/{uid} {
       allow read, write: if false;
     }
 
@@ -252,32 +265,36 @@ service cloud.firestore {
         // linked user has proven they own, because all group mail goes to
         // member.email (functions/src/group-mail-recipient.ts). It holds
         // because it is only ever:
-        //  - the linked user's profile email when the link is written (the
-        //    profile email is '' or their verified sign-in address, B14):
-        //    add-member's and edit-member's auto-link by email
-        //    (addMemberToGroup / updateMemberWithUserMatching), and the
-        //    creator's own row in addGroup;
+        //  - written with the link on the server (Admin SDK): the
+        //    syncMemberEmailLower trigger and linkInvitedMembers link an
+        //    unlinked row to the owner of its address in the verifiedEmails
+        //    index, which holds only proven addresses, and the admin orphan
+        //    repair matches through the same index;
+        //  - the creator's own row in addGroup, the only link a client
+        //    writes: '', their verified sign-in address, or their profile
+        //    email (B14: '' or an address they verified; it can still hold
+        //    the previous one just after a login-email change);
         //  - an address they confirmed through a link mailed to it, or their
         //    verified address, written by the requestMemberEmailChange /
         //    confirmMemberEmailChange / updateMemberEmails callables (Admin
         //    SDK), which also check for duplicates in the group and cancel
-        //    the row's pending confirmation links;
-        //  - written with the link by linkInvitedMembers / the admin orphan
-        //    repair (Admin SDK), which match the verified address.
+        //    the row's pending confirmation links.
         // Without this, an admin could create a member with a victim's
         // userRef and an address of their choosing and have group mail sent
         // there (final review I2). So:
-        //  - create with userRef set: the email must equal (ignoring case)
-        //    the linked users doc's `email` (not emailLower, which a trigger
-        //    fills in later), which must be non-empty. The caller's own row
-        //    (addGroup's creator) may instead carry '' or their verified
-        //    sign-in address (add-group stores '' for a legacy profile email
-        //    that fails the single-address rule).
-        //  - userRef: an admin may set it from null (the same email match on
-        //    the resulting doc) or clear it; X to Y is denied, and a member
-        //    never touches it (memberSelfUpdateValid).
-        //  - email changed on an unlinked doc: admins only, as before (and
-        //    the match above when the same write links it).
+        //  - create with userRef set: only the caller's own row, with '',
+        //    the caller's verified sign-in address, or (ignoring case) the
+        //    `email` of the caller's own users doc (not emailLower, which a
+        //    trigger fills in later). add-group stores '' for a legacy
+        //    profile email that fails the single-address rule. Another
+        //    user's userRef is denied whatever the email: add-member creates
+        //    invited rows unlinked and the trigger links them.
+        //  - userRef: an admin may clear it (X to null). Null to X and X to Y
+        //    are denied to every client, and a member never touches it
+        //    (memberSelfUpdateValid).
+        //  - email changed on an unlinked doc: admins only, and the doc
+        //    stays unlinked in that write (the trigger then links it if the
+        //    new address has an owner in the index).
         //  - email changed on a linked doc: denied to every client, the
         //    member themself and admins alike (the edit-member dialog
         //    disables the field on someone else's linked row, and sends one's
@@ -285,13 +302,6 @@ service cloud.firestore {
         //    the verified address was allowed until 2026-10-23 (Profile
         //    Sync); it skipped the duplicate check and left pending links
         //    alive, so it moved to updateMemberEmails.
-        //    "Linked" means while the row stays linked: an admin can still
-        //    unlink a row (X to null) and, in a second write, relink it to the
-        //    same user with that user's profile email (null to X, the match
-        //    above). The address is still one the user proved, but that path
-        //    has no duplicate check and leaves the row's pending confirmation
-        //    links alive, which work again once it is relinked. Known and
-        //    accepted for now (infra follow-ups doc, Owner).
         //  - emailLower: no client writes it (syncMemberEmailLower does), but
         //    a client write that sets it must hold email lowercased, since
         //    linkInvitedMembers links by it.
@@ -301,6 +311,8 @@ service cloud.firestore {
           return r is path &&
             r == /databases/$(database)/documents/users/$(r[4]);
         }
+        // Called only for the caller's own row (isOwnRowWithOwnEmail), so
+        // its get() reads only the caller's own users doc.
         function emailMatchesLinkedUser(data) {
           let r = data.get('userRef', null);
           let e = data.get('email', '');
@@ -311,7 +323,7 @@ service cloud.firestore {
         function isOwnRowWithOwnEmail(data) {
           let e = data.get('email', '');
           return data.get('userRef', null) == ownUserRef() &&
-            (e == '' || isOwnVerifiedEmail(e));
+            (e == '' || isOwnVerifiedEmail(e) || emailMatchesLinkedUser(data));
         }
         function memberEmailLowerValid(changed) {
           let after = request.resource.data;
@@ -323,7 +335,6 @@ service cloud.firestore {
         function memberLinkCreateValid() {
           let after = request.resource.data;
           return after.get('userRef', null) == null ||
-            emailMatchesLinkedUser(after) ||
             isOwnRowWithOwnEmail(after);
         }
         function memberLinkUpdateValid() {
@@ -333,13 +344,11 @@ service cloud.firestore {
           let beforeRef = before.get('userRef', null);
           let afterRef = after.get('userRef', null);
           return (!changed.hasAny(['userRef']) ||
-              (beforeRef == null && isGroupAdmin(groupId) &&
-                emailMatchesLinkedUser(after)) ||
               (beforeRef != null && afterRef == null &&
                 isGroupAdmin(groupId))) &&
             (!changed.hasAny(['email']) ||
-              (beforeRef == null && isGroupAdmin(groupId) &&
-                (afterRef == null || emailMatchesLinkedUser(after)))) &&
+              (beforeRef == null && afterRef == null &&
+                isGroupAdmin(groupId))) &&
             memberEmailLowerValid(changed);
         }
 
@@ -426,44 +435,41 @@ service cloud.firestore {
     }
 
     // users/{uid}: profile, payment handles (venmoId, paypalId, cashAppId,
-    // zelleId), emailOptOut, email and defaultGroupRef.
-    //  - read: still open to any signed-in user. Members' payment handles
-    //    and emailOptOut are read cross-user (user.service), and
-    //    updateGroup() queries users by defaultGroupRef. Narrowing reads is
-    //    the deferred read half of Phase 3 (.claude/firestore-rules-hardening.md).
-    //  - create/delete: own doc only. No client path creates or deletes
-    //    another user's doc; new profiles (createUserProfileOnSignUp) and
-    //    account deletion run through the Admin SDK, which bypasses rules.
-    //  - update: own doc, or a group admin clearing a default that points at
-    //    their group. Two client paths write another user's doc, and both
-    //    only set defaultGroupRef to null on a doc whose default is the
-    //    caller's group: group.service updateGroup() (deactivate/archive, in
-    //    the same writeBatch as the group update) and member.service
-    //    removeMemberFromGroup(). The admin check reads the group's
-    //    adminUids through get(), which sees the state before the batch;
-    //    deactivating or archiving never changes adminUids, so it holds.
-    //    Proved on the emulator by e2e/infra/user-rules.spec.ts.
-    // Both keep the email format guard (emailCreateValid()/emailUpdateValid())
-    // and add the ownership guard: a set or changed email/emailLower must be
-    // '' or the caller's own verified address (userEmailCreateOwned()/
+    // zelleId), emailOptOut, email and defaultGroupRef. Phase 3
+    // (.claude/firestore-rules-hardening.md): no client reads or writes
+    // another user's doc.
+    //  - get: own doc, or the app admin (parity with mail and app_errors;
+    //    no app path needs it). No resource.data in the rule:
+    //    waitForServerCreatedUser listens to the caller's own doc before
+    //    createUserProfileOnSignUp has written it, and that get must pass. A
+    //    payer gets a payee's handles from the getMemberPaymentMethods
+    //    callable, which checks the caller is an active member of the
+    //    payee's group and returns the four handles only.
+    //  - list: denied to every client. Invited members are linked on the
+    //    server through the verifiedEmails index (syncMemberEmailLower,
+    //    linkInvitedMembers), not by a users query.
+    //  - create/update/delete: own doc only. New profiles
+    //    (createUserProfileOnSignUp), account deletion and the clears of
+    //    other users' defaultGroupRef (syncGroupMemberUids when a member is
+    //    removed, clearDefaultsOnGroupDeactivate when a group is deactivated
+    //    or archived) run through the Admin SDK, which bypasses rules.
+    // Reads proved on the emulator by e2e/infra/users-read-rules.spec.ts,
+    // writes by e2e/infra/user-rules.spec.ts. Create and update keep the
+    // email format guard (emailCreateValid()/emailUpdateValid()) and add the
+    // ownership guard: a set or changed email/emailLower must be '' or the
+    // caller's own verified address (userEmailCreateOwned()/
     // userEmailUpdateOwned(); proved by e2e/infra/email-rules.spec.ts).
     match /users/{userId} {
       function isOwnUserDoc() {
         return isSignedIn() && request.auth.uid == userId;
       }
-      function isAdminClearingDefaultGroup() {
-        return isSignedIn() &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultGroupRef']) &&
-          request.resource.data.defaultGroupRef == null &&
-          resource.data.get('defaultGroupRef', null) != null &&
-          request.auth.uid in get(resource.data.defaultGroupRef).data.adminUids;
-      }
 
-      allow read: if isSignedIn();
+      allow get: if isOwnUserDoc() || isAdminUser();
+      allow list: if false;
       allow create: if isOwnUserDoc() && emailCreateValid() &&
         userEmailCreateOwned();
-      allow update: if (isOwnUserDoc() || isAdminClearingDefaultGroup()) &&
-        emailUpdateValid() && userEmailUpdateOwned();
+      allow update: if isOwnUserDoc() && emailUpdateValid() &&
+        userEmailUpdateOwned();
       allow delete: if isOwnUserDoc();
     }
   }
