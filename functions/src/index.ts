@@ -1919,6 +1919,43 @@ async function getMailTransport(): Promise<nodemailer.Transporter> {
   });
 }
 
+/**
+ * Writes the ERROR delivery for a mail doc whose send (or SUCCESS write)
+ * failed, trying a second time if the write fails. If both fail it logs and
+ * returns, so the trigger still ends cleanly; the doc is then left
+ * PROCESSING, and the log line is the only record.
+ */
+async function recordMailError(
+  ref: DocumentReference,
+  docId: string,
+  startTime: Timestamp,
+  errorMessage: string
+): Promise<void> {
+  const write = () =>
+    ref.update({
+      delivery: {
+        state: 'ERROR',
+        attempts: 1,
+        startTime,
+        endTime: Timestamp.now(),
+        error: errorMessage,
+      },
+      expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+    });
+  try {
+    await write();
+  } catch {
+    try {
+      await write();
+    } catch (writeError) {
+      console.error(
+        `Could not record the ERROR delivery for mail doc ${docId}; it stays PROCESSING:`,
+        writeError
+      );
+    }
+  }
+}
+
 export const sendMailQueueEmail = onDocumentCreated(
   'mail/{docId}',
   async (event) => {
@@ -1985,16 +2022,12 @@ export const sendMailQueueEmail = onDocumentCreated(
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error(`Error sending mail doc ${event.params['docId']}:`, error);
-      await snap.ref.update({
-        delivery: {
-          state: 'ERROR',
-          attempts: 1,
-          startTime,
-          endTime: Timestamp.now(),
-          error: errorMessage,
-        },
-        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
-      });
+      await recordMailError(
+        snap.ref,
+        event.params['docId'],
+        startTime,
+        errorMessage
+      );
     }
   }
 );
