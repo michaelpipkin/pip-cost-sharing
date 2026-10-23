@@ -4,14 +4,14 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * Owned by e2e/account/group-email-update.spec.ts (B20: the offer to update
  * group emails after a login-email change, and Account > Profile's Sync).
  *
- * Four users, one per mutating test, because each of those tests changes the
- * user's member emails, and the first three also the login email (the old
- * address stops working). Each user is the
- * admin of three groups, so they have three linked memberships, all seeded on
- * the login email (the seed requires a linked member's email to equal its
- * user's). The test then gives the member in the group whose key ends `-c` a
- * custom address through the Admin SDK, so the user has 2 memberships on the
- * login email and 1 on a different address.
+ * Four users, one per test, because every test changes its user's member
+ * emails (the skip test only through the Admin SDK, setting up group C), and
+ * the first three also change the login email (the old address stops
+ * working). Each user is the admin of three groups, so they have three linked
+ * memberships, all seeded on the login email (the seed requires a linked
+ * member's email to equal its user's). The test then gives the member in the
+ * group whose key ends `-c` a custom address through the Admin SDK, so the
+ * user has 2 memberships on the login email and 1 on a different address.
  *
  * - group-email-old, "Group Email Sync – Old A/B/C": "Update old email only"
  *   changes the two on the login email and keeps the custom one.

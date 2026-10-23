@@ -52,7 +52,11 @@ const placeholders = {
   edit: { key: 'edit-me', displayName: 'Edit Me', email: '' },
   remove: { key: 'remove-me', displayName: 'Remove Me', email: '' },
   hasSplits: { key: 'has-splits', displayName: 'Has Splits', email: '' },
-  duplicate: { key: 'duplicate-email', displayName: 'Duplicate Email', email: '' },
+  duplicate: {
+    key: 'duplicate-email',
+    displayName: 'Duplicate Email',
+    email: '',
+  },
 } as const;
 
 /** "Members – Main"'s member linked to members-removed; `key` is the row's id. */
