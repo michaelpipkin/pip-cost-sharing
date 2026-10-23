@@ -78,6 +78,7 @@ Disallow: /memorized/
 Disallow: /auth/account
 Disallow: /auth/reset-password
 Disallow: /auth/account-action
+Disallow: /auth/confirm-group-email
 
 # Sitemap location
 Sitemap: ${BASE_URL}/sitemap.xml

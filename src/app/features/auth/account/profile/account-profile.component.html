@@ -61,11 +61,17 @@
           Update Email
         </button>
       </div>
+      @if (pendingEmail()) {
+        <p class="helper-text" data-testid="pending-email-change">
+          We sent a link to {{ pendingEmail() }}. Your email address stays
+          {{ firebaseUser()?.email }} until you open it.
+        </p>
+      }
       @if (isEmailConfirmed()) {
         <div class="sync-member-emails" data-testid="sync-member-emails">
-          <p class="helper-text">
-            Update the email address on all of your member records to match your
-            account email address.
+          <p class="helper-text" data-testid="sync-member-emails-help">
+            Sets the email on every group membership to your login email,
+            including addresses you set for a particular group.
           </p>
           <button
             mat-raised-button

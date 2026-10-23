@@ -67,6 +67,9 @@ export class LoginComponent {
 
   protected readonly loginModel = signal<LoginForm>({ email: '', password: '' });
   protected readonly loginForm = form(this.loginModel, (p) => {
+    // Angular's validator, not the app's singleEmail: this form stores
+    // nothing, and the stricter rule could lock out accounts registered
+    // before it existed (ruling R6; see utilities/email-validation.ts).
     emailValidator(p.email, { message: 'Invalid email address' });
   });
 

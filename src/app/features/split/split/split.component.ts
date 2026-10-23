@@ -404,10 +404,14 @@ export class SplitComponent {
     const increment = this.localeService.getSmallestIncrement();
     for (let i = 0; diff !== 0;) {
       if (diff > 0) {
-        splits[i]!.allocatedAmount += increment;
+        splits[i]!.allocatedAmount = this.localeService.roundToCurrency(
+          splits[i]!.allocatedAmount + increment
+        );
         diff = this.localeService.roundToCurrency(diff - increment);
       } else {
-        splits[i]!.allocatedAmount -= increment;
+        splits[i]!.allocatedAmount = this.localeService.roundToCurrency(
+          splits[i]!.allocatedAmount - increment
+        );
         diff = this.localeService.roundToCurrency(diff + increment);
       }
       i = (i + 1) % splits.length;

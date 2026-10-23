@@ -864,6 +864,15 @@ mat-slide-toggle {
   margin-bottom: 1rem;
 }
 
+// Outcome icons on a placeholder card (e.g. the confirm-group-email page).
+.placeholder-icon.success {
+  color: tokens.color('primary');
+}
+
+.placeholder-icon.error {
+  color: var(--error);
+}
+
 .placeholder-text {
   color: var(--outline);
   font-size: 1rem;
@@ -969,6 +978,19 @@ mat-dialog-actions {
   display: grid !important;
   grid-auto-flow: column;
   justify-items: end;
+}
+
+/* A dialog with three or more buttons: they stack on narrow screens. */
+@media (max-width: 600px) {
+  mat-dialog-actions.dialog-actions-wrap {
+    grid-auto-flow: row;
+    justify-items: stretch;
+  }
+}
+
+.small-text {
+  font-size: 0.85em;
+  color: tokens.color('on-surface-variant');
 }
 
 .help-dialog-header {

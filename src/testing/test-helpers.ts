@@ -10,6 +10,7 @@ import { Split } from '@models/split';
 import { AmountDue } from '@models/amount-due';
 import { ParsedReceipt } from '@models/receipt-scan';
 import { ReceiptFilePickResult } from '@services/receipt-file-selection.service';
+import type { GroupEmailPrompt } from '@store/user.store';
 
 // ---- Mock DocumentReference ----
 
@@ -199,12 +200,15 @@ export function createMockUserStore() {
   const user = signal<User | null>(null);
   const isGoogleUser = signal(false);
   const isEmailConfirmed = signal(false);
-  const defaultGroupRef = signal<any>(null);
+  const groupEmailPrompt = signal<GroupEmailPrompt | null>(null);
   return {
     user,
+    groupEmailPrompt,
+    setGroupEmailPrompt: vi.fn((p: GroupEmailPrompt | null) =>
+      groupEmailPrompt.set(p)
+    ),
     isGoogleUser,
     isEmailConfirmed,
-    defaultGroupRef,
     isLoggedIn: computed(() => !!user()),
     isValidUser: computed(() => isGoogleUser() || isEmailConfirmed()),
     updateUser: vi.fn(),
@@ -212,7 +216,6 @@ export function createMockUserStore() {
       user.set(null);
       isGoogleUser.set(false);
       isEmailConfirmed.set(false);
-      defaultGroupRef.set(null);
     }),
     initUser: vi.fn((u: User, isGoogle: boolean, isEmailConf: boolean) => {
       user.set(u);
@@ -314,6 +317,12 @@ export function createMockUserService() {
     getUserDetails: vi.fn().mockResolvedValue(null),
     createUserIfNotExists: vi.fn().mockResolvedValue(null),
     logout: vi.fn().mockResolvedValue(undefined),
+    sendPaymentRequestEmail: vi.fn().mockResolvedValue('sent'),
+    sendGroupPaymentRequestEmails: vi
+      .fn()
+      .mockResolvedValue({ sent: 0, skipped: 0 }),
+    sendMemberPaymentUnpayEmails: vi.fn().mockResolvedValue(undefined),
+    sendGroupSettleUnpayEmails: vi.fn().mockResolvedValue(undefined),
   };
 }
 

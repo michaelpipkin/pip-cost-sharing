@@ -52,9 +52,16 @@ const ROUTE_TIMEOUT_MS = 30_000;
  * enabled).
  */
 export async function warmUpDevServer(
-  baseURL: string,
+  baseURL: string | undefined,
   wsEndpoint: string
 ): Promise<void> {
+  // config.projects[0].use.baseURL is optional; without this guard the first
+  // page.goto would open "undefined/auth/login".
+  if (!baseURL) {
+    throw new Error(
+      'Dev-server warm-up needs a baseURL, but the Playwright project has none (check use.baseURL in playwright.config.ts).'
+    );
+  }
   const started = Date.now();
   const browser = await chromium.connect(wsEndpoint);
   try {

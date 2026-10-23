@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  email as emailValidator,
   form,
   FormField,
   required,
@@ -20,6 +19,7 @@ import { AddMemberForm, Member } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-add-member',
@@ -49,7 +49,7 @@ export class AddMemberComponent {
   });
   protected readonly addMemberForm = form(this.addMemberModel, (p) => {
     required(p.displayName, { message: '*Required' });
-    emailValidator(p.email, { message: '*Not a valid email address' });
+    singleEmail(p.email, { message: '*Not a valid email address' });
   });
 
   async onSubmit(): Promise<void> {

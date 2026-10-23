@@ -6,7 +6,6 @@ import {
   signal,
 } from '@angular/core';
 import {
-  email as emailValidator,
   form,
   FormField,
   required,
@@ -32,6 +31,7 @@ import {
   sendEmailVerification,
 } from 'firebase/auth';
 import { applyPasswordMatch } from '../auth-main/password-match-schema';
+import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-register',
@@ -79,7 +79,7 @@ export class RegisterComponent {
   });
   protected readonly registerForm = form(this.registerModel, (p) => {
     required(p.email, { message: 'Email is required.' });
-    emailValidator(p.email, { message: 'Invalid email address.' });
+    singleEmail(p.email, { message: 'Invalid email address.' });
     required(p.password, { message: 'Password is required.' });
     required(p.confirmPassword, { message: 'Confirm password is required.' });
     applyPasswordMatch(p);

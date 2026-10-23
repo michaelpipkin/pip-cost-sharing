@@ -1,6 +1,7 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
+import { spawnSync } from 'node:child_process';
 import { EventEmitter, once } from 'node:events';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +42,60 @@ test('parseArgs defaults to all four emulators', () => {
 
 test('parseArgs rejects a missing command', () => {
   assert.throws(() => parseArgs(['--only', 'auth']), /command/);
+});
+
+test('parseArgs rejects --only with no value', () => {
+  assert.throws(() => parseArgs(['--only']), {
+    message: '--only requires a comma-separated list of emulators',
+  });
+  // The "--" must not be swallowed as the value.
+  assert.throws(() => parseArgs(['--only', '--', 'x']), {
+    message: '--only requires a comma-separated list of emulators',
+  });
+});
+
+test('parseArgs rejects an unknown emulator and names only the unknown ones', () => {
+  assert.throws(() => parseArgs(['--only', 'auth,bogus', '--', 'x']), {
+    message: 'Unknown emulator(s): bogus',
+  });
+  assert.throws(
+    () => parseArgs(['--only', 'auth,', '--', 'x']),
+    /Unknown emulator\(s\)/
+  );
+});
+
+test('parseArgs rejects an unknown option', () => {
+  assert.throws(() => parseArgs(['--bogus', '--', 'x']), {
+    message: 'Unknown option: --bogus',
+  });
+});
+
+test('parseArgs rejects an empty command after --', () => {
+  assert.throws(() => parseArgs(['--']), /^Error: Missing command/);
+  assert.throws(() => parseArgs([]), /^Error: Missing command/);
+});
+
+test('parseArgs trims whitespace around emulator names', () => {
+  assert.deepEqual(parseArgs(['--only', ' auth , firestore ', '--', 'x']).only, [
+    'auth',
+    'firestore',
+  ]);
+});
+
+test('parseArgs leaves option-like words after -- in the command', () => {
+  assert.deepEqual(
+    parseArgs(['--only', 'auth', '--', 'vitest', '--only', '--build-functions', '--bogus']),
+    {
+      only: ['auth'],
+      buildFunctions: false,
+      command: ['vitest', '--only', '--build-functions', '--bogus'],
+    }
+  );
+});
+
+test('parseArgs --build-functions sets buildFunctions', () => {
+  assert.equal(parseArgs(['--build-functions', '--', 'x']).buildFunctions, true);
+  assert.equal(parseArgs(['--', 'x']).buildFunctions, false);
 });
 
 test('buildExecPlan puts the functions build first', () => {
@@ -131,6 +186,96 @@ test('quoteInner on posix backslash-escapes the quotes for the outer double quot
   assert.equal(quoteInner(['x', 'a|b', 'a b'], 'linux'), 'x \\"a|b\\" \\"a b\\"');
 });
 
+test('quoteInner gives an empty string for an empty list', () => {
+  for (const platform of ['win32', 'linux']) {
+    assert.equal(quoteInner([], platform), '', platform);
+  }
+});
+
+test('quoteInner keeps an empty-string argument as a quoted empty argument', () => {
+  assert.equal(quoteInner(['x', '', 'y'], 'win32'), 'x "" y');
+  assert.equal(quoteInner(['x', '', 'y'], 'linux'), 'x \\"\\" y');
+  assert.equal(quoteInner([''], 'win32'), '""');
+  assert.equal(quoteInner([''], 'linux'), '\\"\\"');
+});
+
+test('quoteInner quotes shell metacharacters that are not whitespace, on both platforms', () => {
+  for (const char of ["'", ';', '$', '`', '*', '?']) {
+    const arg = `a${char}b`;
+    assert.equal(quoteInner(['x', arg], 'win32'), `x "${arg}"`, `win32 ${char}`);
+    // POSIX: wrapped in the backslash-escaped double quotes. Characters that
+    // stay special inside double quotes ($ and `) are escaped for both shells.
+    const escaped = char === '$' || char === '`' ? `\\\\\\${char}` : char;
+    assert.equal(
+      quoteInner(['x', arg], 'linux'),
+      `x \\"a${escaped}b\\"`,
+      `linux ${char}`
+    );
+  }
+});
+
+test('quoteInner on posix escapes an embedded double quote so it cannot close the quoting', () => {
+  // Inner shell sees "say \"hi\""; the outer double quotes add one more layer.
+  assert.equal(
+    quoteInner(['x', 'say "hi"'], 'linux'),
+    'x \\"say \\\\\\"hi\\\\\\"\\"'
+  );
+});
+
+test('buildExecPlan keeps an empty-string argument as its own argument', () => {
+  const command = ['x', '', 'y'];
+  const lastArg = (platform) =>
+    buildExecPlan({ only: ['auth'], buildFunctions: false, command }, platform).at(-1)
+      .args.at(-1);
+  assert.equal(lastArg('linux'), '"x \\"\\" y"');
+  assert.equal(lastArg('win32'), '"x """" y"');
+});
+
+// Mimics the real chain on POSIX: the shell that launches firebase strips the
+// outer double quotes, firebase hands the resulting string to a shell, and that
+// shell must see the original arguments, whatever characters they hold.
+const probe = spawnSync('sh', ['-c', 'printf ok'], { encoding: 'utf8' });
+const hasSh = !probe.error && probe.stdout === 'ok';
+const throughBothShells = (args) => {
+  const exec = buildExecPlan(
+    { only: ['auth'], buildFunctions: false, command: ['printf', '%s\\0', ...args] },
+    'linux'
+  ).at(-1);
+  // The scripts go in on stdin: passing them as a -c argument would be
+  // re-quoted by Windows' command-line rules before sh ever saw them.
+  const outer = spawnSync('sh', [], {
+    input: `printf %s ${exec.args.at(-1)}`,
+    encoding: 'utf8',
+  });
+  assert.equal(outer.status, 0, outer.stderr);
+  const inner = spawnSync('sh', [], { input: outer.stdout, encoding: 'utf8' });
+  assert.equal(inner.status, 0, inner.stderr);
+  return inner.stdout.split('\0').slice(0, -1);
+};
+
+test(
+  'quoteInner on posix delivers hostile arguments intact through both shells',
+  { skip: hasSh ? false : 'no POSIX sh on PATH' },
+  () => {
+    const args = [
+      'plain',
+      '',
+      'a b',
+      'say "hi"',
+      '"',
+      "it's",
+      'a;b',
+      '$HOME',
+      '`echo bad`',
+      'a*b?',
+      'back\\slash',
+      'end\\',
+      '@a|@b',
+    ];
+    assert.deepEqual(throughBothShells(args), args);
+  }
+);
+
 test('buildExecPlan steps run from the repo root', () => {
   const repoRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
   const plan = buildExecPlan({
@@ -160,6 +305,58 @@ test('findBusyPorts does not report a free port', async () => {
   assert.deepEqual(await findBusyPorts([port]), []);
 });
 
+test('findBusyPorts gives [] for an empty list', async () => {
+  assert.deepEqual(await findBusyPorts([]), []);
+});
+
+// Listens on a random port of the given host; resolves null if that address
+// family is unavailable.
+async function listenOn(host) {
+  const server = net.createServer();
+  server.listen(0, host);
+  try {
+    await once(server, 'listening');
+  } catch {
+    return null;
+  }
+  return server;
+}
+
+async function closeAll(servers) {
+  for (const server of servers) {
+    server.close();
+    await once(server, 'close');
+  }
+}
+
+test('findBusyPorts returns only the busy ports, in input order', async () => {
+  const first = await listenOn('127.0.0.1');
+  const second = await listenOn('127.0.0.1');
+  const free = await listenOn('127.0.0.1');
+  const [busyA, busyB, freePort] = [first, second, free].map((s) => s.address().port);
+  await closeAll([free]);
+  try {
+    assert.deepEqual(await findBusyPorts([busyB, freePort, busyA]), [busyB, busyA]);
+    assert.deepEqual(await findBusyPorts([busyA, freePort, busyB]), [busyA, busyB]);
+  } finally {
+    await closeAll([first, second]);
+  }
+});
+
+test('findBusyPorts reports a port listening only on IPv6 loopback', async (t) => {
+  const server = await listenOn('::1');
+  if (!server) {
+    t.skip('IPv6 loopback (::1) is not available on this machine');
+    return;
+  }
+  const port = server.address().port;
+  try {
+    assert.deepEqual(await findBusyPorts([port]), [port]);
+  } finally {
+    await closeAll([server]);
+  }
+});
+
 const NETSTAT = [
   '  Proto  Local Address          Foreign Address        State           PID',
   '  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1000',
@@ -185,6 +382,63 @@ test('parseListeningPids ignores other ports, non-listening states, UDP and pref
   assert.deepEqual(parseListeningPids(NETSTAT, [50000, 50001]), []);
   assert.deepEqual(parseListeningPids(NETSTAT, [8080]), []);
   assert.deepEqual(parseListeningPids('', [18080]), []);
+});
+
+test('parseListeningPids ignores a non-numeric PID column', () => {
+  const output = [
+    '  TCP    127.0.0.1:18080        0.0.0.0:0              LISTENING       abc',
+    '  TCP    127.0.0.1:18080        0.0.0.0:0              LISTENING       1.5',
+    '  TCP    127.0.0.1:19099        0.0.0.0:0              LISTENING',
+    '  TCP    127.0.0.1:19199        0.0.0.0:0              LISTENING       77',
+  ].join('\r\n');
+  assert.deepEqual(parseListeningPids(output, [18080, 19099, 19199]), [77]);
+});
+
+test('parseListeningPids parses LF-only output', () => {
+  const output = [
+    '  TCP    127.0.0.1:18080        0.0.0.0:0              LISTENING       2001',
+    '  TCP    [::1]:19199            [::]:0                 LISTENING       2003',
+  ].join('\n');
+  assert.deepEqual(parseListeningPids(output, [18080, 19199]), [2001, 2003]);
+});
+
+test('parseListeningPids skips garbage lines and keeps the valid ones', () => {
+  const output = [
+    '',
+    'Active Connections',
+    '   ',
+    'not netstat output at all',
+    'TCP',
+    'TCP LISTENING',
+    '  TCP    127.0.0.1:18080        0.0.0.0:0              LISTENING       2001',
+    '\u0000\u0001 garbage : : :',
+  ].join('\n');
+  assert.deepEqual(parseListeningPids(output, [18080]), [2001]);
+});
+
+test('parseListeningPids reports a PID listening on several ports once', () => {
+  const output = [
+    '  TCP    127.0.0.1:18080        0.0.0.0:0              LISTENING       2001',
+    '  TCP    [::1]:19150            [::]:0                 LISTENING       2001',
+  ].join('\r\n');
+  assert.deepEqual(parseListeningPids(output, [18080, 19150]), [2001]);
+});
+
+test('buildExecPlan commandLine is the whole command: cmd and every arg, in order', () => {
+  const plan = buildExecPlan(
+    {
+      only: ['auth', 'firestore'],
+      buildFunctions: true,
+      command: ['vitest', 'run', 'a b'],
+    },
+    'linux'
+  );
+  assert.equal(plan.length, 2);
+  assert.equal(plan[0].commandLine, 'pnpm --dir functions run build');
+  assert.equal(
+    plan[1].commandLine,
+    'firebase emulators:exec --config firebase.test.json --project demo-pipsplit-test --only auth,firestore "vitest run \\"a b\\""'
+  );
 });
 
 test('buildExecPlan steps carry a single command string for shell: true', () => {
@@ -217,6 +471,74 @@ test('runStep spawns one command string with shell: true and no args array', asy
   assert.equal(typeof calls[0][1], 'object');
   assert.equal(calls[0][1].shell, true);
   assert.equal(calls[0].length, 2);
+});
+
+const stepFixture = { cmd: 'echo', commandLine: 'echo', cwd: '/tmp' };
+
+test('runStep resolves 1 and logs "Failed to run" when the spawn errors', async () => {
+  const errors = mock.method(console, 'error', () => {});
+  try {
+    const code = await runStep(stepFixture, () => {
+      const child = new EventEmitter();
+      queueMicrotask(() => child.emit('error', new Error('ENOENT')));
+      return child;
+    });
+    assert.equal(code, 1);
+    assert.equal(errors.mock.callCount(), 1);
+    assert.equal(errors.mock.calls[0].arguments[0], 'Failed to run echo: ENOENT');
+  } finally {
+    errors.mock.restore();
+  }
+});
+
+test('runStep resolves 1 when the process exits with a null code (killed by a signal)', async () => {
+  const code = await runStep(stepFixture, () => {
+    const child = new EventEmitter();
+    queueMicrotask(() => child.emit('exit', null, 'SIGKILL'));
+    return child;
+  });
+  assert.equal(code, 1);
+});
+
+test('runStep passes a non-zero exit code through', async () => {
+  for (const exitCode of [2, 130]) {
+    const code = await runStep(stepFixture, () => {
+      const child = new EventEmitter();
+      queueMicrotask(() => child.emit('exit', exitCode));
+      return child;
+    });
+    assert.equal(code, exitCode);
+  }
+});
+
+test('runPlan runs cleanup and rethrows when a step rejects', async () => {
+  let cleaned = 0;
+  await assert.rejects(
+    runPlan(['a', 'b'], {
+      run: async () => {
+        throw new Error('boom');
+      },
+      cleanup: async () => {
+        cleaned++;
+      },
+    }),
+    { message: 'boom' }
+  );
+  assert.equal(cleaned, 1);
+});
+
+test('runPlan returns 0 for an empty plan and still runs cleanup', async () => {
+  let cleaned = 0;
+  const code = await runPlan([], {
+    run: async () => {
+      throw new Error('no step should run');
+    },
+    cleanup: async () => {
+      cleaned++;
+    },
+  });
+  assert.equal(code, 0);
+  assert.equal(cleaned, 1);
 });
 
 test('runPlan returns the failing step code and runs cleanup', async () => {

@@ -1,5 +1,4 @@
-import { ComponentPortal } from '@angular/cdk/portal';
-import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
+import { ComponentRef, Directive } from '@angular/core';
 import {
   DateRangeFilterPanelComponent,
   DateRangeFilterValue,
@@ -22,67 +21,36 @@ import { BaseFilterDirective } from './base-filter.directive';
   selector: '[appDateRangeFilter]',
   standalone: true,
 })
-export class DateRangeFilterDirective extends BaseFilterDirective {
-  readonly #destroyRef = inject(DestroyRef);
-  private componentRef: ComponentRef<DateRangeFilterPanelComponent> | null =
-    null;
+export class DateRangeFilterDirective extends BaseFilterDirective<DateRangeFilterPanelComponent> {
+  protected readonly panelType = DateRangeFilterPanelComponent;
 
-  constructor() {
-    super();
-    this.#destroyRef.onDestroy(() => {
-      if (this.componentRef) {
-        this.componentRef.destroy();
-      }
-    });
-  }
-
-  protected override createFilterPanel(): ComponentPortal<any> {
-    return new ComponentPortal(DateRangeFilterPanelComponent);
-  }
-
-  protected override openFilterPanel(): void {
-    this.overlayRef ??= this.createOverlay();
-
-    const portal = this.createFilterPanel();
-    this.componentRef = this.overlayRef.attach(portal);
-
-    this.setupComponent();
-
-    // Close on backdrop click
-    this.overlayRef.backdropClick().subscribe(() => {
-      this.closeFilterPanel();
-    });
-  }
-
-  private setupComponent(): void {
-    if (!this.componentRef) return;
-
+  protected override configurePanel(
+    panel: ComponentRef<DateRangeFilterPanelComponent>
+  ): void {
     // Set inputs using setInput for signal-based inputs
     const columnHeader = this.columnHeader();
     if (columnHeader) {
-      this.componentRef.setInput('columnLabel', columnHeader);
+      panel.setInput('columnLabel', columnHeader);
     }
 
     const currentFilter = this.getCurrentFilter();
     if (currentFilter?.type === 'dateRange') {
-      this.componentRef.setInput('initialValue', {
+      panel.setInput('initialValue', {
         start: currentFilter.start,
         end: currentFilter.end,
       });
     }
 
     // Subscribe to outputs
-    this.componentRef.instance.apply.subscribe(
-      (value: DateRangeFilterValue) => {
-        this.applyFilter({
-          type: 'dateRange',
-          start: value.start,
-          end: value.end,
-        });
-      }
-    );
+    panel.instance.apply.subscribe((value: DateRangeFilterValue) => {
+      this.applyFilter({
+        type: 'dateRange',
+        start: value.start,
+        end: value.end,
+      });
+    });
 
-    this.componentRef.instance.clear.subscribe(() => {
+    panel.instance.clear.subscribe(() => {
       this.clearFilter();
     });
   }

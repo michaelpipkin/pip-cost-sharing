@@ -10,6 +10,7 @@ import { seedDateDaysAgo as daysAgo } from '../seed/dates';
 import { HISTORY } from '../seed/datasets/history';
 import { SHARED } from '../seed/datasets/shared';
 import type { SeedUser } from '../seed/types';
+import { findMail } from '../utils/auth-emulator';
 import { readClipboard } from '../utils/clipboard';
 import { formatMoney, formatShortDate } from '../utils/format';
 import { signInAs } from '../utils/session';
@@ -144,6 +145,28 @@ test.describe('Critical Flow: History', { tag: '@history' }, () => {
     await historyPage.verifyPageLoaded();
     await historyPage.verifyEmptyState();
     await expect(historyPage.historyRows).toHaveCount(0);
+
+    // The reversal notice reached Hana (the one linked member; Ivo is a
+    // placeholder). The unpay swallows notice failures, so only the mail doc
+    // proves it was sent. Matched by subject: the seeded payment's own
+    // "marked as complete" notice also goes to Hana.
+    const { email } = HISTORY.users.historyUser;
+    const reversedSubject =
+      'A payment from Ivo to you in PipSplit has been reversed';
+    await expect
+      .poll(
+        async () => {
+          const mail = await findMail(email, reversedSubject);
+          return mail?.['message']?.text ?? null;
+        },
+        {
+          message: `no payment-reversed mail for ${email}`,
+          timeout: UNPAY_TIMEOUT_MS,
+        }
+      )
+      .toContain(
+        'A payment of $30.00 from Ivo to you in the group "History – Delete" has been reversed in PipSplit.'
+      );
 
     // ...and its split is unpaid again: Ivo owes Hana 30.00.
     const summaryPage = new SummaryPage(page);

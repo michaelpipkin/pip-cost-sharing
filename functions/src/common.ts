@@ -12,6 +12,12 @@ export const callableAppCheck = {
   enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
 } satisfies CallableOptions;
 
+// The app's public origin, for links in emails. Mirrors BASE_URL in
+// src/app/services/page-title-strategy.service.ts: the two projects don't
+// share a path-mapped module, so this one constant is deliberately
+// duplicated rather than imported.
+export const APP_BASE_URL = 'https://pipsplit.com';
+
 export const ADMIN_UID_PROD = 'WUhNUBzjE7TVpU2PgV6ATjsXk9J2';
 export const ADMIN_UID_EMU = 'cgrizSOG69QiNquzKOA69ls8clFm';
 
@@ -21,18 +27,19 @@ export function assertAdmin(request: CallableRequest): string {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  if (uid !== ADMIN_UID_PROD && uid !== ADMIN_UID_EMU) {
+  // The emulator admin uid is a fixed, public constant, so it only counts
+  // inside the Functions emulator.
+  const isEmulatorAdmin =
+    uid === ADMIN_UID_EMU && process.env.FUNCTIONS_EMULATOR === 'true';
+  if (uid !== ADMIN_UID_PROD && !isEmulatorAdmin) {
     throw new HttpsError('permission-denied', 'Admin access required');
   }
   return uid;
 }
 
-// Canonical form for email comparisons - Firestore has no case-insensitive
-// query operator, and email casing isn't meaningful for matching in
-// practice, so every match/lookup normalizes through this first.
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
+// normalizeEmail and profileEmail live in a dependency-free module so the
+// admin scripts can import them too.
+export { normalizeEmail, profileEmail } from './email-identity';
 
 // Auth accounts that will never have (or need) a Firestore users doc, so
 // they're false positives in any "orphaned registration" query rather than

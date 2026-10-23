@@ -24,7 +24,11 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { IMemberService } from './member.service.interface';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import {
+  IMemberService,
+  MemberEmailChangeStatus,
+} from './member.service.interface';
 import { SortingService } from './sorting.service';
 
 /**
@@ -33,6 +37,34 @@ import { SortingService } from './sorting.service';
  */
 const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
 
+/**
+ * Callable error codes that are outcomes the UI reports to the user, not
+ * failures to log: the daily request limit and a duplicate address
+ * (requestMemberEmailChange), and an expired/used link or another account
+ * (confirmMemberEmailChange).
+ */
+const EXPECTED_EMAIL_CHANGE_CODES = new Set([
+  'functions/resource-exhausted',
+  'functions/already-exists',
+  'functions/failed-precondition',
+  'functions/permission-denied',
+]);
+
+/**
+ * updateAllMemberEmails failed after writing some records: `updated` says how
+ * many, so the caller can tell the user and let them retry (the retry skips
+ * what is already written). The message is the underlying failure's.
+ */
+export class MemberEmailUpdateError extends Error {
+  constructor(
+    readonly updated: number,
+    readonly original: unknown
+  ) {
+    super(original instanceof Error ? original.message : 'Unknown error');
+    this.name = 'MemberEmailUpdateError';
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -40,6 +72,7 @@ export class MemberService implements IMemberService {
   protected readonly userStore = inject(UserStore);
   protected readonly memberStore = inject(MemberStore);
   protected readonly fs = inject(getFirestore);
+  protected readonly functions = inject(getFunctions);
   protected readonly sorter = inject(SortingService);
   protected readonly analytics = inject(AnalyticsService);
 
@@ -198,6 +231,12 @@ export class MemberService implements IMemberService {
         );
       }
 
+      // Linking by users.emailLower is safe only because a profile email is
+      // always a VERIFIED address of that account: firestore.rules accepts a
+      // client-written email/emailLower only when it is '' or the caller's
+      // verified token email, and the sign-up trigger and session sync store
+      // nothing until the address is verified (Plan 4 B14). Loosen either
+      // and this lookup lets anyone claim someone else's invite.
       const userQuery = query(
         collection(this.fs, 'users'),
         where('emailLower', '==', emailLower)
@@ -260,6 +299,8 @@ export class MemberService implements IMemberService {
       changes.email &&
       this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail)
     ) {
+      // Safe only because profile emails are verified-only (see
+      // addMemberToGroup).
       const userQuery = query(
         collection(this.fs, 'users'),
         where('emailLower', '==', this.#normalizeEmail(changes.email))
@@ -368,26 +409,133 @@ export class MemberService implements IMemberService {
     await updateDoc(memberRef, { leftGroup: false, active: true });
   }
 
+  /**
+   * A member's change of their OWN linked row's group email (edit-member).
+   * Firestore rules let a linked member's email hold only an address its
+   * user has proven they own, so the server decides (functions/src/
+   * member-email.ts): `updated` (their verified sign-in address, applied),
+   * `unchanged`, or `pending` (a confirmation link was mailed to the new
+   * address; nothing changes until it is used).
+   */
+  async requestMemberEmailChange(
+    groupId: string,
+    memberId: string,
+    email: string
+  ): Promise<MemberEmailChangeStatus> {
+    try {
+      const requestFn = httpsCallable<
+        { groupId: string; memberId: string; email: string },
+        { status: MemberEmailChangeStatus }
+      >(this.functions, 'requestMemberEmailChange');
+      const result = await requestFn({ groupId, memberId, email });
+      return result.data.status;
+    } catch (error) {
+      this.#logUnexpected(
+        error,
+        'requestMemberEmailChange',
+        'Failed to request member email change'
+      );
+      throw error;
+    }
+  }
+
+  /** The confirmation link's page (/auth/confirm-group-email). */
+  async confirmMemberEmailChange(
+    token: string
+  ): Promise<{ groupId: string; email: string }> {
+    try {
+      const confirmFn = httpsCallable<
+        { token: string },
+        { groupId: string; email: string }
+      >(this.functions, 'confirmMemberEmailChange');
+      const result = await confirmFn({ token });
+      return result.data;
+    } catch (error) {
+      this.#logUnexpected(
+        error,
+        'confirmMemberEmailChange',
+        'Failed to confirm member email change'
+      );
+      throw error;
+    }
+  }
+
+  #logUnexpected(error: unknown, action: string, message: string): void {
+    const code = (error as { code?: unknown } | null)?.code;
+    if (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) {
+      return;
+    }
+    this.analytics.logError(
+      'Member Service',
+      action,
+      message,
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+  }
+
+  /** The member records linked to the user, across every group. */
+  #linkedMembersQuery(userRef: DocumentReference<User>) {
+    return query(
+      collectionGroup(this.fs, 'members'),
+      where('userRef', '==', userRef)
+    );
+  }
+
+  /**
+   * The email on each member record linked to the user (one per group
+   * membership), as stored. Used to tell how many memberships a login-email
+   * change would touch.
+   */
+  async getLinkedMemberEmails(
+    userRef: DocumentReference<User>
+  ): Promise<string[]> {
+    try {
+      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
+      return membersSnapshot.docs.map((d) => d.data().email ?? '');
+    } catch (error) {
+      this.analytics.logError(
+        'Member Service',
+        'getLinkedMemberEmails',
+        'Failed to get linked member emails',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Sets `newEmail` on the user's member records and returns how many it
+   * wrote. Records already on `newEmail` (case-insensitively) are skipped, so
+   * the count is the number actually changed. With `onlyFromEmail`, only
+   * records whose email equals it (case-insensitively) are written, so a
+   * deliberate address set for one group is kept. A failure after some
+   * records were written throws a MemberEmailUpdateError saying how many.
+   */
   async updateAllMemberEmails(
     userRef: DocumentReference<User>,
-    newEmail: string
+    newEmail: string,
+    onlyFromEmail?: string
   ): Promise<number> {
+    let updated = 0;
     try {
-      const membersQuery = query(
-        collectionGroup(this.fs, 'members'),
-        where('userRef', '==', userRef)
-      );
-      const membersSnapshot = await getDocs(membersQuery);
+      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
+      const to = newEmail.toLowerCase();
+      const from = onlyFromEmail?.toLowerCase();
+      const toUpdate = membersSnapshot.docs.filter((memberDoc) => {
+        const current = (memberDoc.data().email ?? '').toLowerCase();
+        return current !== to && (from === undefined || current === from);
+      });
 
-      for (const memberDoc of membersSnapshot.docs) {
+      for (const memberDoc of toUpdate) {
         await updateDoc(memberDoc.ref, { email: newEmail });
+        updated++;
       }
 
       this.analytics.logEvent('member_emails_updated', {
-        membersUpdated: membersSnapshot.size,
+        membersUpdated: updated,
       });
 
-      return membersSnapshot.size;
+      return updated;
     } catch (error) {
       this.analytics.logError(
         'Member Service',
@@ -395,7 +543,7 @@ export class MemberService implements IMemberService {
         'Failed to update member emails',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      throw error;
+      throw updated > 0 ? new MemberEmailUpdateError(updated, error) : error;
     }
   }
 }

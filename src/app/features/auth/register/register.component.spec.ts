@@ -88,12 +88,19 @@ describe('RegisterComponent', () => {
       expect(query('register-email-error-0')).toBeTruthy();
     });
 
-    it('should show email format error for invalid email', async () => {
-      setInputValue('register-email-input', 'notanemail');
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(query('register-email-error-0')).toBeTruthy();
-    });
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['notanemail', 'a@b', 'test@example.com,other@example.com'])(
+      'should show email format error for %s',
+      async (email) => {
+        setInputValue('register-email-input', email);
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(query('register-email-error-0')?.textContent).toContain(
+          'Invalid email address.'
+        );
+      }
+    );
 
     it('should not show email errors for valid email', async () => {
       setInputValue('register-email-input', 'test@example.com');

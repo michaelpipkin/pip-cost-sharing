@@ -1,0 +1,49 @@
+<div class="placeholder-content" data-testid="confirm-group-email-page">
+  <mat-card class="placeholder-card" data-testid="confirm-group-email-card">
+    <mat-card-header>
+      <mat-card-title data-testid="confirm-group-email-title">
+        Confirm Group Email
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="placeholder-content">
+      @switch (outcome()) {
+        @case ('confirming') {
+          <p class="placeholder-text">Confirming your group email...</p>
+        }
+        @case ('confirmed') {
+          <mat-icon class="placeholder-icon success">check_circle</mat-icon>
+          <p
+            class="placeholder-card-text"
+            data-testid="confirm-group-email-success"
+          >
+            Your group email is now {{ email() }}.
+          </p>
+          <a
+            mat-raised-button
+            class="btn-secondary"
+            [routerLink]="membersPath"
+            data-testid="confirm-group-email-members-link"
+          >
+            Go to Members
+          </a>
+        }
+        @default {
+          <mat-icon class="placeholder-icon error">error</mat-icon>
+          <p
+            class="placeholder-card-text"
+            data-testid="confirm-group-email-error"
+          >
+            {{ errorMessage() }}
+          </p>
+          <a
+            mat-stroked-button
+            [routerLink]="membersPath"
+            data-testid="confirm-group-email-members-link"
+          >
+            Go to Members
+          </a>
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures';
 import { ExpensesPage } from '../pages/expenses.page';
 import { GroupsPage } from '../pages/groups.page';
 import { MembersPage } from '../pages/members.page';
+import { getSeedAdmin } from '../seed/admin';
 import { MEMBERS } from '../seed/datasets/members';
 import { signInAs } from '../utils/session';
 
@@ -9,7 +10,7 @@ import { signInAs } from '../utils/session';
 // e2e/seed/datasets/members.ts): each works on its own placeholder member,
 // and nobody switches groups. Adding a member is covered in groups-admin.
 
-const { users, groups, placeholders } = MEMBERS;
+const { users, groups, placeholders, removeLinked } = MEMBERS;
 
 test.describe('Members', { tag: ['@members'] }, () => {
   test("should edit a member's name and admin flag", async ({ page }) => {
@@ -53,6 +54,35 @@ test.describe('Members', { tag: ['@members'] }, () => {
     await expect(members.snackbarWith('Member removed')).toBeVisible();
     await expect(members.editMemberTitle).toBeHidden();
     await expect(row).toHaveCount(0);
+  });
+
+  test('should remove a registered member and clear their default group', async ({
+    page,
+  }) => {
+    const members = new MembersPage(page);
+    const row = members.row(removeLinked.key);
+
+    await signInAs(page, users.admin);
+    await members.goto();
+    await expect(row.getByTestId('member-name-cell')).toHaveText(
+      removeLinked.displayName
+    );
+
+    await members.clickMemberRow(removeLinked.key);
+    await members.removeMember();
+    await members.confirmRemove();
+    await expect(members.snackbarWith('Member removed')).toBeVisible();
+    await expect(row).toHaveCount(0);
+    // The removal also cleared the group as the removed user's default
+    // (read through the Admin SDK on the test emulator).
+    await expect
+      .poll(async () => {
+        const snap = await getSeedAdmin()
+          .db.doc(`users/${users.removed.uid}`)
+          .get();
+        return snap.get('defaultGroupRef');
+      })
+      .toBeNull();
   });
 
   test('should not remove a member with splits', async ({ page }) => {

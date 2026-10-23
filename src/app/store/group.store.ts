@@ -26,8 +26,15 @@ export const GroupStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store) => ({
-    setAllUserGroups: (groups: Group[]) => {
-      patchState(store, { allUserGroups: groups, loaded: true });
+    // `markLoaded: false` publishes the list but leaves `loaded` as it is
+    // (GroupService marks it once the auto-selected group has loaded).
+    setAllUserGroups: (groups: Group[], markLoaded = true) => {
+      patchState(
+        store,
+        markLoaded
+          ? { allUserGroups: groups, loaded: true }
+          : { allUserGroups: groups }
+      );
     },
     removeGroup: (groupId: string) => {
       const updatedGroups = store
@@ -42,11 +49,15 @@ export const GroupStore = signalStore(
     // than only after the next full getUserGroups() reload.
     patchGroupMembership: (
       groupId: string,
-      patch: Partial<Pick<Group, 'userActiveInGroup' | 'userLeftGroup' | 'userIsAdmin'>>
+      patch: Partial<
+        Pick<Group, 'userActiveInGroup' | 'userLeftGroup' | 'userIsAdmin'>
+      >
     ) => {
       const updatedGroups = store
         .allUserGroups()
-        .map((group) => (group.id === groupId ? { ...group, ...patch } : group));
+        .map((group) =>
+          group.id === groupId ? { ...group, ...patch } : group
+        );
       patchState(store, { allUserGroups: updatedGroups });
     },
     setLoadedState: (loaded: boolean) => {

@@ -23,10 +23,13 @@ describe('AddGroupComponent', () => {
   let fixture: ComponentFixture<AddGroupComponent>;
   let component: AddGroupComponent;
   let el: HTMLElement;
+  let mockUserStore: ReturnType<typeof createMockUserStore>;
+  let mockGroupService: ReturnType<typeof createMockGroupService>;
 
   beforeEach(async () => {
-    const mockUserStore = createMockUserStore();
+    mockUserStore = createMockUserStore();
     mockUserStore.user.set(mockUser());
+    mockGroupService = createMockGroupService();
 
     await TestBed.configureTestingModule({
       imports: [AddGroupComponent],
@@ -35,7 +38,7 @@ describe('AddGroupComponent', () => {
         { provide: MatSnackBar, useValue: createMockSnackBar() },
         { provide: UserStore, useValue: mockUserStore },
         { provide: LoadingService, useValue: createMockLoadingService() },
-        { provide: GroupService, useValue: createMockGroupService() },
+        { provide: GroupService, useValue: mockGroupService },
         { provide: AnalyticsService, useValue: createMockAnalyticsService() },
       ],
     }).compileComponents();
@@ -126,6 +129,34 @@ describe('AddGroupComponent', () => {
       fixture.detectChanges();
       expect((query('add-group-save-button') as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  describe('onSubmit: the creator member email', () => {
+    async function submitAs(email: string) {
+      mockUserStore.user.set(mockUser({ email }));
+      mockGroupService.addGroup.mockResolvedValue(undefined);
+      setInputValue('group-name-input', 'Trip');
+      setInputValue('display-name-input', 'Me');
+      await fixture.whenStable();
+      await component.onSubmit();
+      expect(mockGroupService.addGroup).toHaveBeenCalledTimes(1);
+      return mockGroupService.addGroup.mock.calls[0]![1];
+    }
+
+    it('copies a valid stored email onto the creator member', async () => {
+      const member = await submitAs('me+trip@example.co.uk');
+      expect(member.email).toBe('me+trip@example.co.uk');
+    });
+
+    // A legacy stored email that fails the single-address rule would make
+    // the member create fail the Firestore rules (R7), so it is left blank.
+    it.each(['a@b', 'a@x.com,b@y.com'])(
+      'writes an empty creator email when the stored email is %s',
+      async (email) => {
+        const member = await submitAs(email);
+        expect(member.email).toBe('');
+      }
+    );
   });
 
   it("should end the form's Enter order on Save", () => {

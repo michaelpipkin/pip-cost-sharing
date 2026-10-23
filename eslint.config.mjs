@@ -19,7 +19,7 @@ export default [
     rules: {
       'unused-imports/no-unused-imports': 'warn',
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-deprecated': 'warn',
       'no-restricted-imports': [
         'error',

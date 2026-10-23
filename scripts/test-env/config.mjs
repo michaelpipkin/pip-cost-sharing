@@ -13,15 +13,20 @@ export const TEST_PORTS = {
   functions: 15001,
   hub: 14400,
   logging: 14500,
+  // Started by the functions emulator for v2 event triggers and task queues.
+  // Left unset they take the dev defaults (9299 / 9499) and collide with the
+  // owner's running dev emulators.
+  eventarc: 19299,
+  tasks: 19499,
 };
 
 // Dev server port for the e2e suite (the dev app uses 4200).
 export const E2E_APP_PORT = 4300;
 
 export function emulatorHost(name) {
-  const port = TEST_PORTS[name];
-  if (port === undefined) {
+  // hasOwn: an inherited key such as "toString" is not an emulator.
+  if (!Object.hasOwn(TEST_PORTS, name)) {
     throw new Error(`Unknown emulator: ${name}`);
   }
-  return `127.0.0.1:${port}`;
+  return `127.0.0.1:${TEST_PORTS[name]}`;
 }

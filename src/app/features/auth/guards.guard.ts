@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { ROUTE_PATHS } from '@constants/routes.constants';
 import { environment } from '@env/environment';
 import { GroupStore } from '@store/group.store';
+import { RETURN_URL_PARAM } from '@utils/return-url.util';
 import { Auth, getAuth, User } from 'firebase/auth';
 
 // AdSense crawler user email - this user should bypass group requirements
@@ -13,7 +14,8 @@ export const APP_OWNER_EMAIL = environment.appOwnerEmail;
 
 // Helper function to wait for initial auth state to be determined
 // This resolves immediately once Firebase has loaded the persisted auth state
-function waitForAuthInit(auth: Auth): Promise<User | null> {
+// (also used by the unguarded account-action page).
+export function waitForAuthInit(auth: Auth): Promise<User | null> {
   return new Promise((resolve) => {
     let settled = false;
     const finish = () => {
@@ -50,7 +52,18 @@ export const groupGuard: CanActivateFn = () => {
   return true;
 };
 
-export const authGuard: CanActivateFn = async () => {
+// The login page, remembering the page the visitor was after so signing in
+// can return them there (see safeReturnUrl). A one-time link's query string
+// (e.g. a group email confirmation token) stays in the stored URL until the
+// page it belongs to reads it. The bare home page is not worth remembering.
+function loginTreeFor(router: Router, attemptedUrl: string) {
+  const returnable = attemptedUrl !== '' && attemptedUrl !== '/';
+  return router.createUrlTree([ROUTE_PATHS.AUTH_LOGIN], {
+    queryParams: returnable ? { [RETURN_URL_PARAM]: attemptedUrl } : undefined,
+  });
+}
+
+export const authGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
   const auth = inject(getAuth);
 
@@ -65,7 +78,7 @@ export const authGuard: CanActivateFn = async () => {
     if (isGoogleUser || isEmailConfirmed) {
       return true;
     } else {
-      return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+      return router.createUrlTree([ROUTE_PATHS.AUTH_ACCOUNT]);
     }
   } else {
     // Don't redirect if we're on the delete account page
@@ -73,11 +86,11 @@ export const authGuard: CanActivateFn = async () => {
     if (router.url.includes('/auth/delete-account')) {
       return false;
     }
-    return router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+    return loginTreeFor(router, state.url);
   }
 };
 
-export const basicAuthGuard: CanActivateFn = async () => {
+export const basicAuthGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
   const auth = inject(getAuth);
 
@@ -93,7 +106,7 @@ export const basicAuthGuard: CanActivateFn = async () => {
     if (router.url.includes('/auth/delete-account')) {
       return false;
     }
-    return router.navigate([ROUTE_PATHS.AUTH_LOGIN]);
+    return loginTreeFor(router, state.url);
   }
 };
 
@@ -113,9 +126,9 @@ export const loggedInGuard: CanActivateFn = async () => {
     // to offer an authenticated user: validated users go to expenses,
     // unvalidated users go to account.
     if (isGoogleUser || isEmailConfirmed) {
-      return router.navigate([ROUTE_PATHS.EXPENSES_ROOT]);
+      return router.createUrlTree([ROUTE_PATHS.EXPENSES_ROOT]);
     }
-    return router.navigate([ROUTE_PATHS.AUTH_ACCOUNT]);
+    return router.createUrlTree([ROUTE_PATHS.AUTH_ACCOUNT]);
   } else {
     return true;
   }

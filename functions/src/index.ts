@@ -18,6 +18,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as nodemailer from 'nodemailer';
 import {
+  APP_BASE_URL,
   assertAdmin,
   buildSuccessDelivery,
   buildSuppressedDelivery,
@@ -26,7 +27,34 @@ import {
   isDemoProject,
   normalizeEmail,
 } from './common';
+import {
+  buildEmailHtml,
+  buildPaymentMethodLines,
+  buildPaymentMethodsHtml,
+  escapeHtml,
+  formatAmount,
+  isSingleEmailAddress,
+} from './email-builders';
+import { memberRecipient } from './group-mail-recipient';
+import { deleteExpiredMemberEmailChanges } from './member-email';
 
+export {
+  buildEmailHtml,
+  buildPaymentMethodLines,
+  buildPaymentMethodsHtml,
+  escapeHtml,
+  formatAmount,
+} from './email-builders';
+export {
+  sendPaymentRequests,
+  sendPaymentReversalEmails,
+  sendSettleReversalEmails,
+} from './group-emails';
+export {
+  confirmMemberEmailChange,
+  deleteExpiredMemberEmailChanges,
+  requestMemberEmailChange,
+} from './member-email';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
 export {
@@ -42,16 +70,11 @@ const storage = getStorage();
 
 const ISSUE_NOTIFY_EMAIL = 'admin@pipsplit.com';
 
-// Mirrors BASE_URL in src/app/services/page-title-strategy.service.ts. The two
-// projects don't share a path-mapped module, so this one constant is
-// deliberately duplicated rather than imported.
-const APP_BASE_URL = 'https://pipsplit.com';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.pipsplit.app';
 // Anti-spam window for sendGroupInvite: one invite per member per address per
 // this many ms, mirrored client-side in members.component.ts for UX only.
 const INVITE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const INVITE_EMAIL_PATTERN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
 
 // SMTP config replicating the retired "Trigger Email from Firestore" extension.
 const SMTP_HOST = 'smtp.office365.com';
@@ -64,56 +87,6 @@ const MAIL_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year, matches the extension'
 // ---------------------------------------------------------------------------
 // Payment Notification Email helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Format a monetary amount using the group's currency settings.
- * Falls back to symbol + toFixed for non-ISO codes (OTH, OT2).
- */
-export function formatAmount(
-  amount: number,
-  currencyCode: string,
-  currencySymbol: string,
-  decimalPlaces: number
-): string {
-  if (currencyCode === 'OTH' || currencyCode === 'OT2') {
-    const plain = amount.toFixed(decimalPlaces);
-    return currencySymbol ? `${currencySymbol}${plain}` : plain;
-  }
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: decimalPlaces,
-      maximumFractionDigits: decimalPlaces,
-    }).format(amount);
-  } catch {
-    const plain = amount.toFixed(decimalPlaces);
-    return currencySymbol ? `${currencySymbol}${plain}` : plain;
-  }
-}
-
-/**
- * Escape HTML special characters in a string for safe embedding in HTML.
- */
-export function escapeHtml(str: string): string {
-  return str
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-/**
- * Wrap email body content in the standard PipSplit HTML email shell.
- * `footerText` defaults to the member opt-out notice; pass a different
- * value for emails that aren't sent to group members (e.g. admin alerts).
- */
-export function buildEmailHtml(
-  content: string,
-  footerText: string = 'You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.'
-): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">${footerText}</p></td></tr></table></td></tr></table></body></html>`;
-}
 
 /**
  * Convert a plain-text category breakdown string to an HTML table.
@@ -133,40 +106,6 @@ export function buildCategoryBreakdownHtml(breakdown: string): string {
     })
     .join('');
   return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #c4c8be;border-radius:8px;border-collapse:collapse;margin:0 0 20px 0;"><tr style="background-color:#2c6b21;"><th style="padding:10px 12px;text-align:left;color:#ffffff;">Category</th><th style="padding:10px 12px;text-align:right;color:#ffffff;">Amount</th></tr>${rows}</table>`;
-}
-
-/**
- * Convert a plain-text payment methods string to HTML paragraphs.
- */
-export function buildPaymentMethodsHtml(methods: string): string {
-  if (methods === '(No payment methods on file)') {
-    return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
-  }
-  return methods
-    .split('\n')
-    .map((line) => `<p style="margin:2px 0;">${escapeHtml(line)}</p>`)
-    .join('');
-}
-
-/**
- * Build a newline-separated list of payment method lines for a user.
- * Returns a fallback string if no payment methods are configured.
- */
-export function buildPaymentMethodLines(
-  userData: DocumentData
-): string {
-  const methods: string[] = [];
-  if (userData['venmoId'])
-    methods.push(
-      `Venmo: @${(userData['venmoId'] as string).replace(/^@/, '')}`
-    );
-  if (userData['paypalId']) methods.push(`PayPal: ${userData['paypalId']}`);
-  if (userData['cashAppId'])
-    methods.push(`Cash App: $${userData['cashAppId']}`);
-  if (userData['zelleId']) methods.push(`Zelle: ${userData['zelleId']}`);
-  return methods.length > 0
-    ? methods.join('\n')
-    : '(No payment methods on file)';
 }
 
 /** Collect the unique category DocumentReferences referenced by a set of split docs. */
@@ -452,6 +391,17 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
   } catch (error) {
     console.error('Error fetching files from storage: ', error);
   }
+
+  // Expired group-email confirmation links and ended rate-limit windows
+  // (member-email.ts). Independent of the receipt cleanup above.
+  try {
+    const deleted = await deleteExpiredMemberEmailChanges();
+    console.log(
+      `Deleted ${deleted.tokens} expired email-change token(s) and ${deleted.limits} rate-limit doc(s)`
+    );
+  } catch (error) {
+    console.error('Error deleting expired email-change tokens: ', error);
+  }
 });
 
 /**
@@ -477,23 +427,26 @@ export async function handleUserGroupMembership(
     return true;
   }
 
-  const admins = allMembers.filter((doc) => doc.data().groupAdmin === true);
-  const userIsOnlyAdmin =
-    admins.length === 1 && userMemberData.groupAdmin === true;
+  const otherActiveMembers = activeMembers.filter(
+    (doc) => doc.id !== userMemberDoc.id
+  );
+  // Only an ACTIVE admin can run the group (adminUids holds active admins
+  // only), so an inactive admin does not count as another admin.
+  const userIsOnlyActiveAdmin =
+    userMemberData.groupAdmin === true &&
+    !otherActiveMembers.some((doc) => doc.data().groupAdmin === true);
 
-  if (userIsOnlyAdmin && activeMembers.length > 1) {
-    // User is the only admin but there are other active members
-    // Promote all other active members to admin and demote/anonymize user
+  if (userIsOnlyActiveAdmin && otherActiveMembers.length > 0) {
+    // No other active admin, but there are other active members: promote
+    // every other active member to admin and demote/anonymize the user.
     console.log(
-      `User is the only admin of group ${groupRef.id} - promoting other members`
+      `User is the only active admin of group ${groupRef.id} - promoting other members`
     );
 
     const batch = db.batch();
-    for (const memberDoc of activeMembers) {
-      if (memberDoc.id !== userMemberDoc.id) {
-        batch.update(memberDoc.ref, { groupAdmin: true });
-        console.log(`Promoting member ${memberDoc.id} to admin`);
-      }
+    for (const memberDoc of otherActiveMembers) {
+      batch.update(memberDoc.ref, { groupAdmin: true });
+      console.log(`Promoting member ${memberDoc.id} to admin`);
     }
     batch.update(userMemberDoc.ref, { groupAdmin: false, userRef: null });
     console.log(`Demoting and anonymizing member: ${userMemberDoc.id}`);
@@ -614,7 +567,6 @@ export const deleteUserAccount = onCall(callableAppCheck, async (request) => {
 
 export const deleteGroup = onCall(callableAppCheck, async (request) => {
   const uid = request.auth?.uid;
-  const groupId = request.data.groupId;
 
   if (!uid) {
     throw new HttpsError(
@@ -623,7 +575,8 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
     );
   }
 
-  if (!groupId) {
+  const groupId: unknown = request.data?.groupId;
+  if (typeof groupId !== 'string' || groupId.length === 0) {
     throw new HttpsError('invalid-argument', 'Group ID is required');
   }
 
@@ -634,6 +587,7 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
       .collection('members')
       .where('userRef', '==', db.collection('users').doc(uid))
       .where('groupAdmin', '==', true)
+      .where('active', '==', true)
       .get();
 
     if (membersSnapshot.empty) {
@@ -683,32 +637,77 @@ export async function linkInvitedMembersInternal(
     .where('userRef', '==', null)
     .get();
 
-  if (!membersSnapshot.empty) {
+  // A linked member's email must be one its user proved they own (B19,
+  // group-mail-recipient.ts), so the email itself must match too: emailLower
+  // lags an email change until syncMemberEmailLower catches up.
+  const emailLower = normalizeEmail(email);
+  const matching = membersSnapshot.docs.filter((memberDoc) => {
+    const memberEmail: unknown = memberDoc.get('email');
+    return (
+      typeof memberEmail === 'string' &&
+      normalizeEmail(memberEmail) === emailLower
+    );
+  });
+  if (matching.length > 0) {
     const userRef = db.collection('users').doc(uid);
     const batch = db.batch();
-    for (const memberDoc of membersSnapshot.docs) {
+    for (const memberDoc of matching) {
       batch.update(memberDoc.ref, { userRef });
     }
     await batch.commit();
   }
 
-  return { membersLinked: membersSnapshot.size };
+  return { membersLinked: matching.length };
+}
+
+/**
+ * The caller's verified sign-in address, or null. The ID token's claims are
+ * used when they say verified. Otherwise the Auth record decides: a token
+ * minted before the user verified (on another device, or in their mail app)
+ * keeps saying unverified for up to an hour, and the record is the server's
+ * own current state, so it is as trustworthy as a fresh token. Never the
+ * client's `data`.
+ */
+export async function verifiedCallerEmail(
+  uid: string,
+  token: { email?: unknown; email_verified?: unknown }
+): Promise<string | null> {
+  if (
+    token.email_verified === true &&
+    typeof token.email === 'string' &&
+    token.email
+  ) {
+    return token.email;
+  }
+  try {
+    const record = await getAuth().getUser(uid);
+    return record.emailVerified && record.email ? record.email : null;
+  } catch {
+    // No Auth account (or a transient lookup failure): not verified.
+    return null;
+  }
 }
 
 /**
  * Callable wrapper for linkInvitedMembersInternal. Runs server-side because
  * it's a cross-tenant `collectionGroup('members')` search by a user who may
  * belong to no group yet - no Firestore rule can permit that from the
- * client. Called right after account creation, after email verification,
- * and on every Groups page load (see `user.service.ts` / `member-link.
- * service.ts` / `GroupsComponent`) so a pending invite gets picked up
- * eventually even if the earlier automatic attempts all missed it.
+ * client. Called after email verification and on every Groups page load
+ * (see `user.service.ts` / `member-link.service.ts` / `GroupsComponent`) so
+ * a pending invite gets picked up eventually even if an earlier attempt
+ * missed it.
+ *
+ * Links only through the caller's own VERIFIED sign-in address
+ * (verifiedCallerEmail: the token's, or the Auth record's when the token
+ * predates verification). `data.email` is still
+ * accepted so older clients don't error, but it is never used: trusting it
+ * let any signed-in user claim another person's pending invites by passing
+ * their address.
  */
-export const linkInvitedMembers = onCall<{ email: string }>(
+export const linkInvitedMembers = onCall<{ email?: unknown }>(
   callableAppCheck,
   async (request) => {
     const uid = request.auth?.uid;
-    const email = request.data?.email;
 
     if (!uid) {
       throw new HttpsError(
@@ -716,8 +715,12 @@ export const linkInvitedMembers = onCall<{ email: string }>(
         'User must be authenticated to link members'
       );
     }
-    if (!email || typeof email !== 'string') {
-      throw new HttpsError('invalid-argument', 'email is required');
+    const email = await verifiedCallerEmail(uid, request.auth!.token);
+    if (!email) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Verify your email address first'
+      );
     }
 
     try {
@@ -740,14 +743,19 @@ interface SyncEmailResults {
   errors: string[];
 }
 
-/** Look up a user's current auth email, updating the results tally as it goes. */
+/**
+ * Look up a user's current auth email, updating the results tally as it goes.
+ * An unverified address is skipped like a missing one: profile emails feed
+ * invite linking (users.emailLower), so only a verified address may be
+ * copied there (see createUserProfileOnSignUp).
+ */
 export async function tryGetAuthEmail(
   uid: string,
   results: SyncEmailResults
 ): Promise<string | null> {
   try {
     const authUser = await getAuth().getUser(uid);
-    if (!authUser.email) {
+    if (!authUser.email || !authUser.emailVerified) {
       results.skipped++;
       return null;
     }
@@ -1026,8 +1034,6 @@ async function handleMemberPaymentEmail(
 
   const payerName: string = payerData['displayName'] ?? 'Someone';
   const payeeName: string = payeeData['displayName'] ?? 'Someone';
-  const payerEmail: string = payerData['email'] ?? '';
-  const payeeEmail: string = payeeData['email'] ?? '';
   const groupName: string = groupData['name'] ?? 'your group';
   const currencyCode: string = groupData['currencyCode'] ?? 'USD';
   const currencySymbol: string = groupData['currencySymbol'] ?? '$';
@@ -1070,17 +1076,27 @@ async function handleMemberPaymentEmail(
 
   const mailWrites: Promise<DocumentReference>[] = [];
 
-  const payerHasAccount = !!payerUserRef;
-  const payeeHasAccount = !!payeeUserRef;
-  const payerOptedOut =
-    payerUserDoc?.exists && payerUserDoc.data()!['emailOptOut'] === true;
-  const payeeOptedOut =
-    payeeUserDoc?.exists && payeeUserDoc.data()!['emailOptOut'] === true;
+  // The one recipient rule for group mail (group-mail-recipient.ts): the
+  // member's group email, for a linked user with a users doc who hasn't
+  // opted out.
+  const recipientEmail = (
+    member: DocumentData,
+    userDoc: DocumentSnapshot | null
+  ): string => {
+    const r = memberRecipient(
+      member,
+      userDoc?.exists ? userDoc.data() : undefined,
+      'handleMemberPaymentEmail'
+    );
+    return r.result === 'sent' ? r.to : '';
+  };
+  const payerEmail = recipientEmail(payerData, payerUserDoc);
+  const payeeEmail = recipientEmail(payeeData, payeeUserDoc);
 
   const categoryBreakdownHtml = buildCategoryBreakdownHtml(categoryBreakdown);
   const paymentMethodsHtml = buildPaymentMethodsHtml(paymentMethodLines);
 
-  if (payerEmail && payerHasAccount && !payerOptedOut) {
+  if (payerEmail) {
     const payerSubject = `A payment from you to ${payeeName} in PipSplit has been marked as complete`;
     const payerText = [
       `Hi ${payerName},`,
@@ -1114,7 +1130,7 @@ async function handleMemberPaymentEmail(
     );
   }
 
-  if (payeeEmail && payeeHasAccount && !payeeOptedOut) {
+  if (payeeEmail) {
     const payeeSubject = `A payment from ${payerName} to you in PipSplit has been marked as complete`;
     const payeeText = [
       `Hi ${payeeName},`,
@@ -1148,31 +1164,9 @@ async function handleMemberPaymentEmail(
 
   await Promise.all(mailWrites);
   console.log(
-    `Member payment emails sent: payer="${payerEmail}", payee="${payeeEmail}"`
+    `Member payment emails sent: ${mailWrites.length} (payer member ${payerMemberRef.id}, payee member ${payeeMemberRef.id})`
   );
 }
-
-// ---------------------------------------------------------------------------
-// Generic email sender — all business logic runs client-side; this function
-// simply writes the pre-built mail document to the Firestore mail collection.
-// ---------------------------------------------------------------------------
-
-export const sendEmail = onCall<{
-  to: string;
-  subject: string;
-  text: string;
-  html: string;
-}>(callableAppCheck, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-  const { to, subject, text, html } = request.data;
-  if (!to || !subject || !text) {
-    throw new HttpsError('invalid-argument', 'Missing required email fields');
-  }
-  await db.collection('mail').add({ to, message: { subject, text, html } });
-  return { success: true };
-});
 
 /**
  * Atomically claim responsibility for sending a settle batch's emails.
@@ -1364,17 +1358,21 @@ async function handleSettleEmail(
   const mailWrites: Promise<DocumentReference>[] = [];
 
   for (const [memberPath, memberData] of memberDataMap.entries()) {
-    const memberEmail: string = memberData['email'] ?? '';
     const memberName: string = memberData['displayName'] ?? 'Member';
-    if (!memberEmail) continue;
-
     const memberUserRef = memberData[
       'userRef'
     ] as DocumentReference | null;
     const memberUserData = memberUserRef
       ? userDataMap.get(memberUserRef.path)
       : undefined;
-    if (!memberUserRef || memberUserData?.['emailOptOut'] === true) continue;
+    // The one recipient rule for group mail (group-mail-recipient.ts).
+    const recipient = memberRecipient(
+      memberData,
+      memberUserData,
+      'handleSettleEmail'
+    );
+    if (recipient.result !== 'sent') continue;
+    const memberEmail = recipient.to;
 
     const { transferLines, transferHtmlBlocks } = buildMemberTransferBlocks(
       memberPath,
@@ -1574,10 +1572,10 @@ export const logAppError = onCall<{
 
 // ---------------------------------------------------------------------------
 // Group Invitation — emails a member who has no PipSplit account yet, asking
-// them to register. Deliberately NOT built on the generic `sendEmail`
-// callable: the recipient address is read server-side from the member
-// document, never taken from the client, so this cannot be used as an open
-// relay to spam arbitrary addresses.
+// them to register. Like the group emails in group-emails.ts, the recipient
+// address is read server-side from the member document, never taken from the
+// client, so this cannot be used as an open relay to spam arbitrary
+// addresses.
 //
 // Anti-spam: one invitation per member per 24 hours, reset early if the
 // member's email address changes (tracked via invite.lastSentTo — comparing
@@ -1682,6 +1680,7 @@ export const sendGroupInvite = onCall<{
       .collection('members')
       .where('userRef', '==', db.collection('users').doc(uid))
       .where('groupAdmin', '==', true)
+      .where('active', '==', true)
       .limit(1)
       .get();
 
@@ -1718,8 +1717,10 @@ export const sendGroupInvite = onCall<{
       if (member['userRef']) return { status: 'already-registered' };
       if (member['active'] !== true) return { status: 'inactive' };
 
-      const email = String(member['email'] ?? '').trim();
-      if (!INVITE_EMAIL_PATTERN.test(email)) return { status: 'invalid-email' };
+      // Not trimmed: the stored address is used as is, like every other
+      // server email (and rules and forms refuse surrounding whitespace).
+      const email: unknown = member['email'];
+      if (!isSingleEmailAddress(email)) return { status: 'invalid-email' };
 
       const invite = member['invite'] as
         | { lastSentAt?: Timestamp; lastSentTo?: string; sendCount?: number }
@@ -1871,10 +1872,11 @@ export const notifyNewIssue = onCall<{
 // ---------------------------------------------------------------------------
 // Mail queue sender — replaces the retired "Trigger Email from Firestore"
 // extension. Watches the `mail` collection (written to by
-// handleMemberPaymentEmail, handleSettleEmail, sendEmail, logAppError, and
-// notifyNewIssue above), delivers each queued message via SMTP, and writes
-// back a `delivery` object in the same shape the extension used to, which
-// src/app/models/mail.ts and the admin email-log UI already expect.
+// handleMemberPaymentEmail, handleSettleEmail, logAppError, sendGroupInvite
+// and notifyNewIssue above, and by the group-emails.ts callables), delivers
+// each queued message via SMTP, and writes back a `delivery` object in the
+// same shape the extension used to, which src/app/models/mail.ts and the
+// admin email-log UI already expect.
 // ---------------------------------------------------------------------------
 
 async function getMailTransport(): Promise<nodemailer.Transporter> {
@@ -1915,20 +1917,22 @@ export const sendMailQueueEmail = onDocumentCreated(
       delivery: { state: 'PROCESSING', attempts: 1, startTime },
     });
 
-    // demo-* projects (isolated test emulators) must never send real email,
-    // but still record a SUCCESS delivery so the admin email log is realistic.
-    if (isDemoProject(process.env.GCLOUD_PROJECT)) {
-      console.log(
-        `Suppressing mail doc ${event.params['docId']}: demo project, not sending.`
-      );
-      await snap.ref.update({
-        delivery: buildSuppressedDelivery(to, startTime),
-        expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
-      });
-      return;
-    }
-
     try {
+      // demo-* projects (isolated test emulators) must never send real email,
+      // but still record a SUCCESS delivery so the admin email log is
+      // realistic. Inside the try so a failing write records an ERROR delivery
+      // instead of leaving the doc stuck in PROCESSING.
+      if (isDemoProject(process.env.GCLOUD_PROJECT)) {
+        console.log(
+          `Suppressing mail doc ${event.params['docId']}: demo project, not sending.`
+        );
+        await snap.ref.update({
+          delivery: buildSuppressedDelivery(to, startTime),
+          expireAt: Timestamp.fromMillis(Date.now() + MAIL_TTL_MS),
+        });
+        return;
+      }
+
       const transport = await getMailTransport();
       const info = await transport.sendMail({
         from: MAIL_FROM,

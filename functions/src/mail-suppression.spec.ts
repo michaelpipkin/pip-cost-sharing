@@ -11,6 +11,9 @@ describe('isDemoProject', () => {
 
   it('treats a missing project ID as not demo', () =>
     expect(isDemoProject(undefined)).toBe(false));
+
+  it('matches only the demo- prefix, not a demo- elsewhere in the ID', () =>
+    expect(isDemoProject('my-demo-x')).toBe(false));
 });
 
 describe('buildSuppressedDelivery', () => {

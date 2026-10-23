@@ -5,6 +5,9 @@ import { getAuth } from 'firebase-admin/auth';
  *
  * Authentication: Application Default Credentials (ADC).
  * One-time setup: run `gcloud auth application-default login`
+ *
+ * Targets PRODUCTION. Refuses to start while any *_EMULATOR_HOST is set;
+ * pass `-- --emulator` to use the dev emulators instead (env-guard.ts).
  */
 import {
   getFirestore,
@@ -14,8 +17,30 @@ import {
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  EMULATOR_FLAG,
+  QueryEnvError,
+  resolveQueryTarget,
+} from './env-guard.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Production unless `-- --emulator` is passed; refuses a shell with any
+// leftover *_EMULATOR_HOST (a mixed environment could, for example, read Auth
+// from an emulator and write production Firestore). See env-guard.ts.
+try {
+  const target = resolveQueryTarget(process.env, process.argv);
+  if (target.kind === 'emulators') {
+    Object.assign(process.env, target.hosts);
+    console.log(
+      `[query] ${EMULATOR_FLAG}: using the dev emulators (${Object.values(target.hosts).join(', ')})`
+    );
+  }
+} catch (error) {
+  if (!(error instanceof QueryEnvError)) throw error;
+  console.error(error.message);
+  process.exit(1);
+}
 
 initializeApp({ projectId: 'pip-cost-sharing' });
 

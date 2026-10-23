@@ -2,8 +2,8 @@ import { vi } from 'vitest';
 
 // ──────────────────────────────────────────────
 // Minimal type definitions compatible with real Firebase
-// (doc-ref-extensions.ts and timestamp-extensions.ts augment these via
-//  `declare module 'firebase/firestore'`, which now points to this file)
+// (doc-ref-extensions.ts augments these via `declare module
+//  'firebase/firestore'`, which now points to this file)
 // ──────────────────────────────────────────────
 
 // Must be a class (not a type alias) so `declare module` interface augmentation

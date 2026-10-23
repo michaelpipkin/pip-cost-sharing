@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AREAS } from './areas.mjs';
+import { quoteInner } from '../test-env/with-test-emulators.mjs';
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const WRAPPER = 'scripts/test-env/with-test-emulators.mjs';
@@ -182,27 +183,76 @@ export function parseCliArgs(argv) {
   return parsed;
 }
 
+// A run that executed nothing is never a pass.
 export function summarize(results) {
   const width = Math.max(...results.map((r) => r.label.length), 4);
   const rows = results.map(
     (r) => `  ${r.label.padEnd(width)}  ${r.code === 0 ? 'PASS' : 'FAIL'}`
   );
   const table = ['Step results:', ...rows].join('\n');
-  return { table, exitCode: results.some((r) => r.code !== 0) ? 1 : 0 };
+  const failed = results.length === 0 || results.some((r) => r.code !== 0);
+  return { table, exitCode: failed ? 1 : 0 };
 }
 
-// --- process plumbing (not unit tested) ------------------------------------
+// Runs the plan's steps in order and returns the exit code. Every step runs
+// even if an earlier one failed, so one run reports it all. A plan with no
+// steps (e.g. --unit for areas that have no unit specs) fails loudly: an empty
+// table that exits 0 would look like a pass for tests that never ran.
+export async function executePlan(
+  plan,
+  names,
+  { unit, e2e },
+  { run = runStep, log = console } = {}
+) {
+  if (plan.length === 0) {
+    const flags = [unit && '--unit', e2e && '--e2e'].filter(Boolean).join(' ');
+    log.error(`Nothing to run for: ${names.join(', ')} (${flags})`);
+    return 1;
+  }
+  const results = [];
+  for (const step of plan) {
+    log.log(`\n=== ${step.label}: ${step.cmd} ${step.args.join(' ')}\n`);
+    results.push({ label: step.label, code: await run(step) });
+  }
+  const { table, exitCode } = summarize(results);
+  log.log(`\n${table}`);
+  return exitCode;
+}
+
+// Pulls the Playwright JSON report out of its stdout. Playwright (or a config
+// it loads) can log lines before the report, and those may contain braces, so
+// parsing starts at each line that begins with "{" in turn, through the end of
+// the output, and the first start that parses wins.
+export function parseJsonReport(stdout) {
+  const lines = stdout.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith('{')) continue;
+    try {
+      return JSON.parse(lines.slice(i).join('\n'));
+    } catch {
+      // Not the report; try the next line that starts with "{".
+    }
+  }
+  throw new Error('No JSON report found in the Playwright output.');
+}
 
 // pnpm is a .cmd shim on Windows and needs a shell; `node` steps carry
 // arguments with shell metacharacters (the grep's "|") and must not use one.
-const needsShell = (cmd) => process.platform === 'win32' && cmd !== 'node';
+const needsShell = (cmd, platform) => platform === 'win32' && cmd !== 'node';
 
 // With a shell, the command goes in as one string (Node only concatenates an
-// args array there, and passing one is deprecated).
-const invocation = (cmd, args) =>
-  needsShell(cmd)
-    ? { file: [cmd, ...args].join(' '), argv: [], shell: true }
+// args array there, and passing one is deprecated). cmd.exe splits that string
+// on whitespace and expands %VAR%, so the arguments are quoted first.
+export const invocation = (cmd, args, platform = process.platform) =>
+  needsShell(cmd, platform)
+    ? {
+        file: [cmd, ...args.map((arg) => quoteInner([arg], 'win32'))].join(' '),
+        argv: [],
+        shell: true,
+      }
     : { file: cmd, argv: args, shell: false };
+
+// --- process plumbing (not unit tested) ------------------------------------
 
 function runStep({ cmd, args }) {
   return new Promise((resolve) => {
@@ -253,7 +303,7 @@ function check() {
   const unitSpecs = parseUnitList(capture('pnpm', ['exec', 'ng', 'test', '--list-tests']));
   const functionsSpecs = globSpecs(path.join(REPO_ROOT, 'functions', 'src'));
   const stdout = capture('pnpm', ['exec', 'playwright', 'test', '--list', '--reporter=json']);
-  const e2eTests = parseE2eList(JSON.parse(stdout.slice(stdout.indexOf('{'))));
+  const e2eTests = parseE2eList(parseJsonReport(stdout));
 
   const unassigned = findUnassigned({ unitSpecs, functionsSpecs, e2eTests }, AREAS);
   const dangling = findDangling({ unitSpecs, functionsSpecs }, AREAS);
@@ -310,15 +360,7 @@ async function main() {
   }
 
   const plan = buildRunPlan(args.names, AREAS, args);
-  const results = [];
-  // Every step runs even if an earlier one failed, so one run reports it all.
-  for (const step of plan) {
-    console.log(`\n=== ${step.label}: ${step.cmd} ${step.args.join(' ')}\n`);
-    results.push({ label: step.label, code: await runStep(step) });
-  }
-  const { table, exitCode } = summarize(results);
-  console.log(`\n${table}`);
-  return exitCode;
+  return executePlan(plan, args.names, args);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

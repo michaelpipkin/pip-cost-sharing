@@ -1,21 +1,23 @@
-import { Directive, ElementRef, HostListener, inject } from '@angular/core';
+import { Directive, ElementRef, inject } from '@angular/core';
 import { NgControl } from '@angular/forms';
 import { FORM_FIELD } from '@angular/forms/signals';
 
 @Directive({
   selector: '[appDateShortcutKeys]',
-  standalone: true,
+  host: { '(keydown)': 'onKeyDown($event)' },
 })
 export class DateShortcutKeysDirective {
   readonly #formField = inject(FORM_FIELD, { optional: true });
   readonly #ngControl = inject(NgControl, { optional: true });
   readonly #el = inject(ElementRef);
 
-  @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
+    // Leave browser and OS shortcuts (Ctrl+T, Ctrl+Y, Cmd+M, ...) alone
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (['-', '+', 't', 'm', 'y'].includes(event.key)) {
       const inputDate = new Date(this.#el.nativeElement.value);
-      const today = new Date();
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       if (inputDate.toString() === 'Invalid Date') {
         this.#setValue(today);
       } else {

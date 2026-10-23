@@ -19,17 +19,26 @@ const AMBIENT_SEED_TODAY = process.env[SEED_TODAY_ENV];
 export const SEED_TODAY: string = AMBIENT_SEED_TODAY ?? toIsoDate(new Date());
 
 /**
- * Called once by global setup: publishes SEED_TODAY through the environment so
- * Playwright workers see the same dates even if the run crosses midnight.
- * Refuses a value that was already set when this module loaded, as a stale one
- * would silently shift every relative seed date (cf. the E2E_TARGET guard).
+ * Global setup's guard, pure so it can be tested: throws if `ambient` (the
+ * value E2E_SEED_TODAY had when this module loaded) is set at all, empty
+ * included. A stale value would silently shift every relative seed date
+ * (cf. the E2E_TARGET guard).
  */
-export function publishSeedToday(): void {
-  if (AMBIENT_SEED_TODAY !== undefined) {
+export function assertNoAmbientSeedToday(ambient: string | undefined): void {
+  if (ambient !== undefined) {
     throw new Error(
-      `${SEED_TODAY_ENV} is set (${AMBIENT_SEED_TODAY}) - global setup publishes it for the workers; unset it before running pnpm e2e.`
+      `${SEED_TODAY_ENV} is set (${ambient}) - global setup publishes it for the workers; unset it before running pnpm e2e.`
     );
   }
+}
+
+/**
+ * Called once by global setup: publishes SEED_TODAY through the environment so
+ * Playwright workers see the same dates even if the run crosses midnight.
+ * Refuses a value that was already set when this module loaded.
+ */
+export function publishSeedToday(): void {
+  assertNoAmbientSeedToday(AMBIENT_SEED_TODAY);
   process.env[SEED_TODAY_ENV] = SEED_TODAY;
 }
 

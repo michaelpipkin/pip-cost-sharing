@@ -86,8 +86,8 @@ export function buildMembersTourSteps(
       id: 'edit-member',
       title: admin ? 'Edit a member' : 'Edit your details',
       text: admin
-        ? "Admins can change a member's name and email for this group."
-        : 'Change the name and email address you use in this group. This email is just for the group; it doesn\'t change your login email.',
+        ? "Admins can change a member's name for this group, and their email until they register. After that, only the member can change it."
+        : "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it.",
       target: 'edit-member-fields',
       placement: 'right',
       beforeShow: inEditMember,

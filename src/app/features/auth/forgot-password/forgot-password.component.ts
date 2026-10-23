@@ -44,6 +44,9 @@ export class ForgotPasswordComponent {
   });
   protected readonly forgotPasswordForm = form(this.forgotPasswordModel, (p) => {
     required(p.email, { message: '*Required' });
+    // Angular's validator, not the app's singleEmail: this form stores
+    // nothing, and the stricter rule could lock out accounts registered
+    // before it existed (ruling R6; see utilities/email-validation.ts).
     emailValidator(p.email, { message: 'Invalid email address' });
   });
 

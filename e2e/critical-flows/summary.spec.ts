@@ -5,12 +5,14 @@ import { seedDateDaysAgo as daysAgo } from '../seed/dates';
 import { SHARED } from '../seed/datasets/shared';
 import { SUMMARY } from '../seed/datasets/summary';
 import type { SeedUser } from '../seed/types';
+import { findMail } from '../utils/auth-emulator';
 import { readClipboard } from '../utils/clipboard';
 import { signInAs } from '../utils/session';
 
-// Data: e2e/seed/datasets/summary.ts for the empty state ("Summary – Empty");
-// every other test reads SHARED ("Shared – Beach House") as alice and changes
-// nothing (the payment dialog is always cancelled). The balances below are
+// Data: e2e/seed/datasets/summary.ts for the empty state ("Summary – Empty")
+// and the payment request ("Summary – Request", whose only mail recipient is
+// summary-payer); every other test reads SHARED ("Shared – Beach House") as
+// alice and changes nothing (the payment dialog is always cancelled). The balances below are
 // the ones documented in e2e/seed/datasets/shared.ts.
 
 // Shared unpaid expenses: Grocery run 20 days ago, Beach house rental 15,
@@ -38,6 +40,11 @@ const DANA_BALANCES: ExpectedBalance[] = [
   { owedBy: 'Dana', owedTo: 'Bob', amount: 40 },
   { owedBy: 'Dana', owedTo: 'Carol', amount: 30 },
 ];
+
+/** The (cold) sendPaymentRequests callable, behind the loading overlay. */
+const REQUEST_CALLABLE_TIMEOUT_MS = 30_000;
+/** Callable -> mail doc -> sendMailQueueEmail delivery, on cold functions. */
+const MAIL_DELIVERY_TIMEOUT_MS = 120_000;
 
 /**
  * Signs in and opens Summary from the nav bar, and checks it is showing the
@@ -183,6 +190,58 @@ test.describe('Critical Flow: Summary', { tag: '@summary' }, () => {
         'Lodging:    $ 160.00',
       ].join('\n')
     );
+  });
+
+  test('should email a payment request to the member who owes', async ({
+    page,
+  }) => {
+    const { summaryPayee, summaryPayer } = SUMMARY.users;
+    const group = SUMMARY.groups.request;
+    const summaryPage = await openSummary(page, summaryPayee, group.name);
+    await summaryPage.expectBalances([
+      { owedBy: 'Pax', owedTo: 'Pia', amount: 20 },
+    ]);
+
+    await summaryPage.requestPayment(0);
+    await expect(
+      summaryPage.snackbarWith('Payment request email sent successfully')
+    ).toBeVisible({ timeout: REQUEST_CALLABLE_TIMEOUT_MS });
+
+    // The server built and addressed it: Pax's stored email, Pia's payment
+    // method, the group-currency amount. sendMailQueueEmail then marks it
+    // SUCCESS (suppressed under the demo- test project).
+    await expect
+      .poll(
+        async () => {
+          const mail = await findMail(summaryPayer.email);
+          return mail
+            ? {
+                subject: mail['message']?.subject,
+                mentionsAmount: mail['message']?.text?.includes(
+                  'requesting payment of $20.00 in'
+                ),
+                listsVenmo: mail['message']?.text?.includes(
+                  `Venmo: @${summaryPayee.profile!.venmoId!}`
+                ),
+                state: mail['delivery']?.state,
+                messageId: mail['delivery']?.info?.messageId,
+              }
+            : null;
+        },
+        {
+          message: `no delivered payment request for ${summaryPayer.email}`,
+          timeout: MAIL_DELIVERY_TIMEOUT_MS,
+        }
+      )
+      .toEqual({
+        subject: `Payment request from Pia for group "${group.name}" in PipSplit`,
+        mentionsAmount: true,
+        listsVenmo: true,
+        state: 'SUCCESS',
+        messageId: 'suppressed',
+      });
+    // Nothing went to the person who asked.
+    expect(await findMail(summaryPayee.email)).toBeNull();
   });
 
   test('should open payment dialog for a payee without payment IDs', async ({

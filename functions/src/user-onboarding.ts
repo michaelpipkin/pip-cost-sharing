@@ -1,5 +1,6 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import * as functionsV1 from 'firebase-functions/v1';
+import { profileEmail } from './email-identity';
 
 // Creates the Firestore users/{uid} profile doc as soon as a Firebase Auth
 // account exists, server-side - independent of whether the client's tab
@@ -16,28 +17,44 @@ import * as functionsV1 from 'firebase-functions/v1';
 // which tops out at the Node runtime declared in functions/package.json's
 // engines.node (currently pinned to 22 for exactly this reason - Gen1
 // rejects 24). If this trigger is ever removed, that pin can go too.
+//
+// The profile email is written only when the Auth address is verified
+// (Google sign-ups are; email/password registrations are not yet; see
+// profileEmail in common.ts). Verifying writes it later (account-action ->
+// UserService.updateUserEmailAndLinkMembers).
 export const createUserProfileOnSignUp = functionsV1.auth
   .user()
   .onCreate(async (user) => {
-    const docRef = getFirestore().doc(`users/${user.uid}`);
+    const db = getFirestore();
+    const docRef = db.doc(`users/${user.uid}`);
+    const defaults: Record<string, unknown> = {
+      email: profileEmail(user),
+      defaultGroupRef: null,
+      receiptPolicy: false,
+      emailOptOut: false,
+      venmoId: '',
+      paypalId: '',
+      cashAppId: '',
+      zelleId: '',
+    };
 
-    // merge: true rather than create() - stays idempotent if this ever
-    // runs more than once for the same uid (a retry, or the client's own
-    // fallback path already created it first).
+    // Fills in only the fields the doc lacks, rather than create() or a
+    // blind merge: stays idempotent if this ever runs more than once for the
+    // same uid (a retry, or the client's own fallback path already created
+    // it first), and a late run can't reset what was written since - in
+    // particular the email that verification writes, which this trigger's
+    // snapshot (taken at sign-up, unverified) would otherwise blank.
     try {
-      await docRef.set(
-        {
-          email: user.email ?? '',
-          defaultGroupRef: null,
-          receiptPolicy: false,
-          emailOptOut: false,
-          venmoId: '',
-          paypalId: '',
-          cashAppId: '',
-          zelleId: '',
-        },
-        { merge: true }
-      );
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        const existing = snap.data() ?? {};
+        const missing = Object.fromEntries(
+          Object.entries(defaults).filter(([field]) => !(field in existing))
+        );
+        if (Object.keys(missing).length > 0) {
+          tx.set(docRef, missing, { merge: true });
+        }
+      });
     } catch (error) {
       console.error(`Error creating user profile for ${user.uid}:`, error);
       throw error;

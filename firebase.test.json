@@ -6,6 +6,8 @@
     "storage": { "port": 19199 },
     "hub": { "port": 14400 },
     "logging": { "port": 14500 },
+    "eventarc": { "port": 19299 },
+    "tasks": { "port": 19499 },
     "ui": { "enabled": false },
     "singleProjectMode": true
   },

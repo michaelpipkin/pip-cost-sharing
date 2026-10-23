@@ -1,6 +1,6 @@
 {
   "name": "pipsplit",
-  "version": "1.26.17",
+  "version": "1.26.18",
   "type": "module",
   "packageManager": "pnpm@12.14.0",
   "scripts": {
@@ -25,6 +25,7 @@
     "build:ci": "node scripts/setBuildDate.js && node scripts/updatePrivacyDate.js && ng build --configuration=production && node scripts/generate-sitemap.js",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
+    "test:coverage": "ng test --watch=false --coverage",
     "test:area": "node scripts/test-area/test-area.mjs",
     "e2e:report": "playwright show-report",
     "e2e:install": "playwright install chromium",

@@ -10,6 +10,9 @@ import {
   parseE2eList,
   parseCliArgs,
   summarize,
+  executePlan,
+  invocation,
+  parseJsonReport,
 } from './test-area.mjs';
 
 const SIXTEEN = [
@@ -319,4 +322,191 @@ test('the about page is covered by help as well as shell', () => {
   for (const name of ['help', 'shell']) {
     assert.ok(covers(name, 'app/features/about/about.component.spec.ts'), name);
   }
+});
+
+test('parseCliArgs --e2e alone runs only e2e', () => {
+  assert.deepEqual(parseCliArgs(['expenses', '--e2e']), {
+    check: false,
+    names: ['expenses'],
+    unit: false,
+    e2e: true,
+  });
+});
+
+test('parseCliArgs --unit --e2e runs both, in either order', () => {
+  for (const argv of [
+    ['expenses', '--unit', '--e2e'],
+    ['--e2e', 'expenses', '--unit'],
+  ]) {
+    assert.deepEqual(parseCliArgs(argv), {
+      check: false,
+      names: ['expenses'],
+      unit: true,
+      e2e: true,
+    });
+  }
+});
+
+test('parseCliArgs rejects an unknown short option', () => {
+  assert.throws(() => parseCliArgs(['expenses', '-x']), {
+    message: 'Unknown option: -x',
+  });
+  assert.throws(() => parseCliArgs(['-u']), /Unknown option: -u/);
+});
+
+test('buildRunPlan with e2e only has no unit step', () => {
+  const plan = buildRunPlan(['receipts'], AREAS, { unit: false, e2e: true });
+  assert.ok(plan.length > 0);
+  assert.ok(plan.every((s) => s.label !== 'unit'));
+  assert.ok(plan.every((s) => !s.args.includes('--include')));
+});
+
+test('buildRunPlan drops duplicate tags from the e2e grep', () => {
+  const e2e = buildRunPlan(['expenses', 'expenses', 'history'], AREAS, {
+    unit: false,
+    e2e: true,
+  }).at(-1);
+  assert.equal(e2e.args.at(-1), '@expenses|@history|@infra');
+});
+
+test('buildRunPlan is empty when a unit-only run selects areas with no unit specs', () => {
+  const areas = { bare: { unit: [], functions: [], tag: '@bare' } };
+  assert.deepEqual(buildRunPlan(['bare'], areas, { unit: true, e2e: false }), []);
+});
+
+test('summarize([]) has just the header and does not pass', () => {
+  const { table, exitCode } = summarize([]);
+  assert.equal(table, 'Step results:');
+  assert.equal(exitCode, 1);
+});
+
+test('summarize pads labels to the widest one', () => {
+  const { table } = summarize([
+    { label: 'unit', code: 0 },
+    { label: 'functions', code: 1 },
+  ]);
+  assert.equal(table, 'Step results:\n  unit       PASS\n  functions  FAIL');
+});
+
+test('parseE2eList gives [] for a report with no suites', () => {
+  assert.deepEqual(parseE2eList({}), []);
+  assert.deepEqual(parseE2eList({ suites: [] }), []);
+});
+
+test('executePlan fails with a clear message when the plan has no steps', async () => {
+  const errors = [];
+  const ran = [];
+  const code = await executePlan([], ['bare', 'other'], { unit: true, e2e: false }, {
+    run: async (step) => {
+      ran.push(step);
+      return 0;
+    },
+    log: { log: () => {}, error: (m) => errors.push(m) },
+  });
+  assert.equal(code, 1);
+  assert.deepEqual(errors, ['Nothing to run for: bare, other (--unit)']);
+  assert.deepEqual(ran, []);
+});
+
+test('executePlan names both flags when both were requested', async () => {
+  const errors = [];
+  await executePlan([], ['bare'], { unit: true, e2e: true }, {
+    log: { log: () => {}, error: (m) => errors.push(m) },
+  });
+  assert.deepEqual(errors, ['Nothing to run for: bare (--unit --e2e)']);
+});
+
+test('executePlan runs every step even after a failure, then reports the failure', async () => {
+  const logged = [];
+  const codes = { unit: 1, e2e: 0 };
+  const ran = [];
+  const code = await executePlan(
+    [
+      { label: 'unit', cmd: 'pnpm', args: ['a'] },
+      { label: 'e2e', cmd: 'node', args: ['b'] },
+    ],
+    ['x'],
+    { unit: true, e2e: true },
+    {
+      run: async (step) => {
+        ran.push(step.label);
+        return codes[step.label];
+      },
+      log: { log: (m) => logged.push(m), error: () => {} },
+    }
+  );
+  assert.equal(code, 1);
+  assert.deepEqual(ran, ['unit', 'e2e']);
+  const table = logged.at(-1);
+  assert.match(table, /unit\s+FAIL/);
+  assert.match(table, /e2e\s+PASS/);
+});
+
+test('executePlan passes when every step passes', async () => {
+  const code = await executePlan(
+    [{ label: 'unit', cmd: 'pnpm', args: [] }],
+    ['x'],
+    { unit: true, e2e: false },
+    { run: async () => 0, log: { log: () => {}, error: () => {} } }
+  );
+  assert.equal(code, 0);
+});
+
+test('invocation on win32 quotes shell arguments with spaces or %VAR%', () => {
+  assert.deepEqual(
+    invocation('pnpm', ['exec', 'ng', 'test', '--include', 'my dir/a.spec.ts', '%TEMP%'], 'win32'),
+    {
+      file: 'pnpm exec ng test --include "my dir/a.spec.ts" "%TEMP%"',
+      argv: [],
+      shell: true,
+    }
+  );
+});
+
+test('invocation on win32 keeps an empty argument and leaves plain ones bare', () => {
+  assert.equal(
+    invocation('pnpm', ['exec', '', '--watch=false'], 'win32').file,
+    'pnpm exec "" --watch=false'
+  );
+});
+
+test('invocation runs node steps without a shell, with the arguments untouched', () => {
+  const args = ['wrapper.mjs', '--grep', '@a|@b c'];
+  for (const platform of ['win32', 'linux']) {
+    assert.deepEqual(invocation('node', args, platform), {
+      file: 'node',
+      argv: args,
+      shell: false,
+    });
+  }
+});
+
+test('invocation does not use a shell for pnpm outside win32', () => {
+  assert.deepEqual(invocation('pnpm', ['a b'], 'linux'), {
+    file: 'pnpm',
+    argv: ['a b'],
+    shell: false,
+  });
+});
+
+test('parseJsonReport reads a report that follows a log line containing a brace', () => {
+  const report = { suites: [{ file: 'a.spec.ts', specs: [] }] };
+  const stdout = `Using config {debug: true}\n${JSON.stringify(report, null, 2)}\n`;
+  assert.deepEqual(parseJsonReport(stdout), report);
+});
+
+test('parseJsonReport reads a report that follows a log line that starts with a brace', () => {
+  const report = { suites: [] };
+  const stdout = `{not json at all}\n${JSON.stringify(report, null, 2)}`;
+  assert.deepEqual(parseJsonReport(stdout), report);
+});
+
+test('parseJsonReport reads a bare report', () => {
+  assert.deepEqual(parseJsonReport('{"suites":[]}'), { suites: [] });
+  assert.deepEqual(parseJsonReport('{\r\n  "suites": []\r\n}\r\n'), { suites: [] });
+});
+
+test('parseJsonReport throws a clear error when there is no report', () => {
+  assert.throws(() => parseJsonReport('no report here {oops}'), /JSON report/);
+  assert.throws(() => parseJsonReport(''), /JSON report/);
 });
