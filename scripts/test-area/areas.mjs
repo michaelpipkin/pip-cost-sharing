@@ -154,6 +154,7 @@ const EMAIL_LOWER_FUNCTIONS = ['src/email-lower-sync.spec.ts'];
 // trigger's verified-only profile email. Run with every area whose flows
 // register, verify or change an address, or link invited members.
 const INVITE_LINKING_FUNCTIONS = [
+  'src/verified-emails.spec.ts',
   'src/link-invited-members.spec.ts',
   'src/user-onboarding.spec.ts',
 ];

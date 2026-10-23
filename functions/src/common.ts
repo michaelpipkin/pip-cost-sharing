@@ -105,9 +105,13 @@ export async function onePerGroupLinks<
   return candidates.filter((_, i) => existing[i]!.empty);
 }
 
-// normalizeEmail and profileEmail live in a dependency-free module so the
-// admin scripts can import them too.
-export { normalizeEmail, profileEmail } from './email-identity';
+// normalizeEmail, profileEmail and verifiedEmailId live in a dependency-free
+// module so the admin scripts can import them too.
+export {
+  normalizeEmail,
+  profileEmail,
+  verifiedEmailId,
+} from './email-identity';
 
 // Auth accounts that will never have (or need) a Firestore users doc, so
 // they're false positives in any "orphaned registration" query rather than
