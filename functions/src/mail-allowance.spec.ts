@@ -3,6 +3,7 @@ import {
   getFirestore,
   Timestamp,
   type DocumentData,
+  type DocumentSnapshot,
   type DocumentReference,
 } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
@@ -221,7 +222,9 @@ describe('group-mail allowance', () => {
 
   it('refuses a whole call that would pass the limit, queueing none of it', async () => {
     const s = await seedGroup(2);
-    await seedUsage(s.uid, [{ hoursAgo: 1, count: GROUP_MAIL_DAILY_LIMIT - 1 }]);
+    await seedUsage(s.uid, [
+      { hoursAgo: 1, count: GROUP_MAIL_DAILY_LIMIT - 1 },
+    ]);
     const [a, b] = s.linked as [
       { id: string; email: string },
       { id: string; email: string },
@@ -244,7 +247,9 @@ describe('group-mail allowance', () => {
   // transaction, so two calls racing for the last recipient can't both pass.
   it('lets only one of two concurrent calls take the last recipient', async () => {
     const s = await seedGroup(2);
-    await seedUsage(s.uid, [{ hoursAgo: 1, count: GROUP_MAIL_DAILY_LIMIT - 1 }]);
+    await seedUsage(s.uid, [
+      { hoursAgo: 1, count: GROUP_MAIL_DAILY_LIMIT - 1 },
+    ]);
     const [a, b] = s.linked as [
       { id: string; email: string },
       { id: string; email: string },
@@ -257,8 +262,7 @@ describe('group-mail allowance', () => {
 
     expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
     const refused = outcomes.find((o) => o.status === 'rejected') as
-      | PromiseRejectedResult
-      | undefined;
+      PromiseRejectedResult | undefined;
     expect(refused?.reason).toMatchObject(LIMIT_REFUSAL);
     expect((await mailCount(a.email)) + (await mailCount(b.email))).toBe(1);
     expect(await used(s.uid)).toBe(GROUP_MAIL_DAILY_LIMIT);
@@ -398,6 +402,55 @@ describe('deleteDocsIfUnchanged', () => {
     expect((await unchanged.get()).exists).toBe(false);
     expect((await renewed.get()).get('hours')).toEqual({
       [String(groupMailHour(Date.now()))]: 1,
+    });
+  });
+
+  // An overlapping cleanup run can delete a doc between this run's read and
+  // its delete; that doc is skipped, and the rest are still deleted.
+  it('skips a doc deleted since it was read, and deletes the rest', async () => {
+    const gone = limitDoc(uniqueId('u'));
+    const unchanged = limitDoc(uniqueId('u'));
+    await gone.set({ hours: {} });
+    await unchanged.set({ hours: {} });
+    const snaps = await Promise.all([gone.get(), unchanged.get()]);
+    await gone.delete();
+
+    await expect(deleteDocsIfUnchanged(snaps)).resolves.toBe(1);
+
+    expect((await unchanged.get()).exists).toBe(false);
+  });
+
+  // The emulator answers that delete with FAILED_PRECONDITION (9), the case
+  // above; production can answer NOT_FOUND (5), which must be skipped too.
+  it('skips a doc whose delete reports NOT_FOUND, and deletes the rest', async () => {
+    const unchanged = limitDoc(uniqueId('u'));
+    await unchanged.set({ hours: {} });
+    const notFound = {
+      ref: {
+        delete: () =>
+          Promise.reject(Object.assign(new Error('gone'), { code: 5 })),
+      },
+      updateTime: Timestamp.now(),
+    } as unknown as DocumentSnapshot;
+
+    await expect(
+      deleteDocsIfUnchanged([notFound, await unchanged.get()])
+    ).resolves.toBe(1);
+
+    expect((await unchanged.get()).exists).toBe(false);
+  });
+
+  it('rethrows any other delete failure', async () => {
+    const failing = {
+      ref: {
+        delete: () =>
+          Promise.reject(Object.assign(new Error('unavailable'), { code: 14 })),
+      },
+      updateTime: Timestamp.now(),
+    } as unknown as DocumentSnapshot;
+
+    await expect(deleteDocsIfUnchanged([failing])).rejects.toMatchObject({
+      code: 14,
     });
   });
 });

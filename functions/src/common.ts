@@ -1,7 +1,10 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { Timestamp, type DocumentSnapshot } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
-import type { CallableOptions, CallableRequest } from 'firebase-functions/v2/https';
+import type {
+  CallableOptions,
+  CallableRequest,
+} from 'firebase-functions/v2/https';
 
 const smsClient = new SecretManagerServiceClient();
 
@@ -37,8 +40,11 @@ export function assertAdmin(request: CallableRequest): string {
   return uid;
 }
 
-/** gRPC FAILED_PRECONDITION, as the Admin SDK reports a failed write precondition. */
-const FAILED_PRECONDITION = 9;
+/**
+ * gRPC codes for a delete whose doc changed (FAILED_PRECONDITION, 9) or is
+ * already gone (NOT_FOUND, 5; the emulator reports a missing doc as 9).
+ */
+const SKIPPED_DELETE_CODES = new Set<unknown>([9, 5]);
 
 /**
  * Deletes each doc only if it is unchanged since `snaps` read it (a
@@ -59,7 +65,7 @@ export async function deleteDocsIfUnchanged(
           await snap.ref.delete({ lastUpdateTime: snap.updateTime! });
           return 1;
         } catch (error) {
-          if ((error as { code?: unknown }).code === FAILED_PRECONDITION) {
+          if (SKIPPED_DELETE_CODES.has((error as { code?: unknown }).code)) {
             return 0;
           }
           throw error;
