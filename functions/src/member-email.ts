@@ -23,6 +23,8 @@ import {
   escapeHtml,
   isSingleEmailAddress,
 } from './email-builders';
+import { linkPendingMembersFor } from './member-linking';
+import { upsertVerifiedEmail } from './verified-emails';
 
 // ---------------------------------------------------------------------------
 // Verified group emails (Plan 4 B19). All group mail goes to the member's
@@ -510,7 +512,7 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
     const tokenRef = db
       .collection(MEMBER_EMAIL_TOKENS)
       .doc(hashEmailChangeToken(token));
-    return db.runTransaction(async (txn) => {
+    const confirmed = await db.runTransaction(async (txn) => {
       const tokenSnap = await txn.get(tokenRef);
       const expiresAt = tokenSnap.get('expiresAt') as Timestamp | undefined;
       if (
@@ -532,10 +534,23 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
       }
       assertActive(memberSnap.data());
       await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+      // All reads are done: a transaction rejects a read after a write.
       txn.update(memberRef, { email, emailLower });
       txn.delete(tokenRef);
+      // Following the link proved the address is the caller's.
+      await upsertVerifiedEmail(db, email, uid, 'group-confirm', txn);
       return { groupId: memberRef.parent.parent!.id, email };
     });
+
+    // The address may be one other groups invited the caller under. The
+    // confirmation stands even if this misses: the Groups page's
+    // linkInvitedMembers call links them later.
+    try {
+      await linkPendingMembersFor(db, uid);
+    } catch (error) {
+      console.error(`Error linking pending members for ${uid}:`, error);
+    }
+    return confirmed;
   }
 );
 

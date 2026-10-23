@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 // index.ts initialises the Admin SDK and exports the callable.
 import { deleteUserAccount } from './index';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
+import { addressesOf, ownerOf, upsertVerifiedEmail } from './verified-emails';
 
 // The callable scans every group for the caller's membership, so each test
 // uses its own uid and asserts only on the documents it created.
@@ -55,6 +56,19 @@ describe('deleteUserAccount', () => {
 
     expect((await userRef.get()).exists).toBe(false);
     expect(await authUserExists(uid)).toBe(false);
+  });
+
+  it('removes every address the user had in the verified-address index', async () => {
+    const { uid, email } = await makeUser();
+    const secondary = `secondary-${uid}@delete-account.test`;
+    await upsertVerifiedEmail(db, email, uid, 'login');
+    await upsertVerifiedEmail(db, secondary, uid, 'group-confirm');
+    expect(await addressesOf(db, uid)).toHaveLength(2);
+
+    await call(uid);
+
+    expect(await addressesOf(db, uid)).toEqual([]);
+    expect(await ownerOf(db, secondary)).toBeNull();
   });
 
   it('keeps a shared group and its member, anonymised with no user link', async () => {

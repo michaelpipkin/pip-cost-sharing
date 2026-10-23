@@ -1,8 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { getFirestore, Transaction } from 'firebase-admin/firestore';
+import {
+  DocumentReference,
+  getFirestore,
+  Transaction,
+} from 'firebase-admin/firestore';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { profileEmail } from './common';
+import { verifiedEmailId } from './email-identity';
 import { createUserProfileOnSignUp } from './index';
+import { addressesOf, ownerOf, VERIFIED_EMAILS } from './verified-emails';
 
 const db = getFirestore();
 
@@ -41,6 +47,45 @@ describe('createUserProfileOnSignUp', () => {
     await signUp({ uid, email, emailVerified: true });
 
     expect((await profile(uid))?.['email']).toBe(email);
+  });
+
+  it("indexes a verified sign-up's address with source 'login'", async () => {
+    const uid = `u-${randomUUID()}`;
+    const email = `Indexed-${uid}@Example.com`;
+    await signUp({ uid, email, emailVerified: true });
+
+    expect(await ownerOf(db, email)).toBe(uid);
+    const entry = await db
+      .collection(VERIFIED_EMAILS)
+      .doc(verifiedEmailId(email))
+      .get();
+    expect(entry.data()?.['source']).toBe('login');
+  });
+
+  it('indexes nothing for an unverified sign-up', async () => {
+    const uid = `u-${randomUUID()}`;
+    const email = `unindexed-${uid}@example.com`;
+    await signUp({ uid, email, emailVerified: false });
+
+    expect(await ownerOf(db, email)).toBeNull();
+    expect(await addressesOf(db, uid)).toEqual([]);
+  });
+
+  it('still creates the profile when the index write fails', async () => {
+    const uid = `u-${randomUUID()}`;
+    const email = `swallowed-${uid}@example.com`;
+    // The profile is written with tx.set, so only the index write uses ref.set.
+    vi.spyOn(DocumentReference.prototype, 'set').mockRejectedValue(
+      new Error('index down')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      signUp({ uid, email, emailVerified: true })
+    ).resolves.toBeUndefined();
+
+    expect((await profile(uid))?.['email']).toBe(email);
+    expect(log).toHaveBeenCalled();
   });
 
   it('only fills in missing fields, so a late run keeps the email verification wrote', async () => {

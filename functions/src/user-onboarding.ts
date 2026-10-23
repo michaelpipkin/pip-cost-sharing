@@ -1,6 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import * as functionsV1 from 'firebase-functions/v1';
 import { profileEmail } from './email-identity';
+import { upsertVerifiedEmail } from './verified-emails';
 
 // Creates the Firestore users/{uid} profile doc as soon as a Firebase Auth
 // account exists, server-side - independent of whether the client's tab
@@ -58,5 +59,20 @@ export const createUserProfileOnSignUp = functionsV1.auth
     } catch (error) {
       console.error(`Error creating user profile for ${user.uid}:`, error);
       throw error;
+    }
+
+    // A verified address is one the account has proven, so invites under it
+    // can link through the index. Best-effort: the profile is what the retry
+    // above protects, and the Groups page's linkInvitedMembers call writes
+    // the entry again if this misses.
+    if (user.emailVerified && user.email) {
+      try {
+        await upsertVerifiedEmail(db, user.email, user.uid, 'login');
+      } catch (error) {
+        console.error(
+          `Error indexing the verified address for ${user.uid}:`,
+          error
+        );
+      }
     }
   });

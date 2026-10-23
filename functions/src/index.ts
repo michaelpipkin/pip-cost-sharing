@@ -26,7 +26,6 @@ import {
   getSmtpPassword,
   isDemoProject,
   normalizeEmail,
-  onePerGroupLinks,
 } from './common';
 import {
   buildEmailHtml,
@@ -43,6 +42,8 @@ import {
   reserveGroupMail,
 } from './mail-allowance';
 import { deleteExpiredMemberEmailChanges } from './member-email';
+import { linkPendingMembersFor } from './member-linking';
+import { removeAllFor, upsertVerifiedEmail } from './verified-emails';
 
 export {
   buildEmailHtml,
@@ -556,6 +557,8 @@ export const deleteUserAccount = onCall(callableAppCheck, async (request) => {
       console.error('Error processing member documents:', error);
     }
 
+    await removeAllFor(db, uid);
+
     if (userDoc.exists) {
       await userDocRef.delete();
       console.log(`Deleted user document: ${userDocRef.path}`);
@@ -636,49 +639,21 @@ export const deleteGroup = onCall(callableAppCheck, async (request) => {
 });
 
 /**
- * Links unlinked (`userRef == null`) member records with a given email to
- * `uid`. Matches on `emailLower` so casing differences between the invite
- * and the registered account don't prevent the link. Links at most one row
- * per group, and none in a group where `uid` already has a row
- * (onePerGroupLinks). Exported separately
- * from the callable wrapper below so it has direct unit test coverage
- * without mocking the callable request shape (mirrors
- * handleUserGroupMembership / deleteGroupInternal).
+ * Records `email` (the caller's verified sign-in address) as one of `uid`'s
+ * proven addresses in the verified-address index, then links every unlinked
+ * (`userRef == null`) member record invited under any address `uid` has
+ * proven (linkPendingMembersFor). Links at most one row per group, and none
+ * in a group where `uid` already has a row. Exported separately from the
+ * callable wrapper below so it has direct unit test coverage without mocking
+ * the callable request shape (mirrors handleUserGroupMembership /
+ * deleteGroupInternal).
  */
 export async function linkInvitedMembersInternal(
   uid: string,
   email: string
 ): Promise<{ membersLinked: number }> {
-  const membersSnapshot = await db
-    .collectionGroup('members')
-    .where('emailLower', '==', normalizeEmail(email))
-    .where('userRef', '==', null)
-    .get();
-
-  // A linked member's email must be one its user proved they own (B19,
-  // group-mail-recipient.ts), so the email itself must match too: emailLower
-  // lags an email change until syncMemberEmailLower catches up.
-  const emailLower = normalizeEmail(email);
-  const matching = membersSnapshot.docs.filter((memberDoc) => {
-    const memberEmail: unknown = memberDoc.get('email');
-    return (
-      typeof memberEmail === 'string' &&
-      normalizeEmail(memberEmail) === emailLower
-    );
-  });
-  const userRef = db.collection('users').doc(uid);
-  const links = await onePerGroupLinks(
-    matching.map((memberDoc) => ({ ref: memberDoc.ref, userRef }))
-  );
-  if (links.length > 0) {
-    const batch = db.batch();
-    for (const link of links) {
-      batch.update(link.ref, { userRef });
-    }
-    await batch.commit();
-  }
-
-  return { membersLinked: links.length };
+  await upsertVerifiedEmail(db, email, uid, 'login');
+  return { membersLinked: await linkPendingMembersFor(db, uid) };
 }
 
 /**
