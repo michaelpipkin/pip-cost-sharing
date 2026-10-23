@@ -42,7 +42,6 @@ describe('EditMemberComponent', () => {
   let mockDialogRef: ReturnType<typeof createMockDialogRef>;
   let mockMemberService: {
     updateMember: ReturnType<typeof vi.fn>;
-    updateMemberWithUserMatching: ReturnType<typeof vi.fn>;
     requestMemberEmailChange: ReturnType<typeof vi.fn>;
     removeMemberFromGroup: ReturnType<typeof vi.fn>;
     leaveGroup: ReturnType<typeof vi.fn>;
@@ -101,7 +100,6 @@ describe('EditMemberComponent', () => {
     mockGroupService = { clearCurrentGroup: vi.fn() };
     mockMemberService = {
       updateMember: vi.fn().mockResolvedValue(undefined),
-      updateMemberWithUserMatching: vi.fn().mockResolvedValue(undefined),
       requestMemberEmailChange: vi.fn().mockResolvedValue('pending'),
       removeMemberFromGroup: vi.fn().mockResolvedValue(undefined),
       leaveGroup: vi.fn().mockResolvedValue(undefined),
@@ -221,29 +219,25 @@ describe('EditMemberComponent', () => {
 
       await component.onSubmit();
 
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).toHaveBeenCalledWith(
+      expect(mockMemberService.updateMember).toHaveBeenCalledWith(
         testMember.ref,
         {
           displayName: 'Alicia',
           active: true,
           groupAdmin: false,
-        },
-        otherUserRef,
-        'alice@example.com'
+        }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
     });
 
-    it('should call memberService.updateMemberWithUserMatching on submit', async () => {
+    it('should call memberService.updateMember on submit', async () => {
       const nameInput = query('edit-member-name-input') as HTMLInputElement;
       nameInput.value = 'Alicia';
       nameInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
 
       await component.onSubmit();
-      expect(mockMemberService.updateMemberWithUserMatching).toHaveBeenCalled();
+      expect(mockMemberService.updateMember).toHaveBeenCalled();
     });
 
     it('should close dialog with saved result on success', async () => {
@@ -299,7 +293,7 @@ describe('EditMemberComponent', () => {
       await component.onSubmit();
 
       const changes =
-        mockMemberService.updateMemberWithUserMatching.mock.calls[0]![1];
+        mockMemberService.updateMember.mock.calls[0]![1];
       expect(changes).toEqual({
         displayName: 'Lena B',
         active: true,
@@ -342,23 +336,19 @@ describe('EditMemberComponent', () => {
       }
     );
 
-    it('should save a new email directly, matching it to a user (no confirmation)', async () => {
+    it('should save a new email directly through updateMember (no confirmation; the server links it)', async () => {
       await typeInto('edit-member-email-input', 'uma.new@example.com');
 
       await component.onSubmit();
 
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).toHaveBeenCalledWith(
+      expect(mockMemberService.updateMember).toHaveBeenCalledWith(
         unlinkedMember.ref,
         {
           displayName: 'Uma',
           email: 'uma.new@example.com',
           active: true,
           groupAdmin: false,
-        },
-        null,
-        'uma@example.com'
+        }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalledWith({
@@ -370,7 +360,7 @@ describe('EditMemberComponent', () => {
     // Another member of the group already has the address. An outcome
     // for the admin, not an app error: shown, not logged, dialog left open.
     it('should show the duplicate-address refusal without logging it', async () => {
-      mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
+      mockMemberService.updateMember.mockRejectedValue(
         new DuplicateMemberEmailError()
       );
       await typeInto('edit-member-email-input', 'taken@example.com');
@@ -443,9 +433,6 @@ describe('EditMemberComponent', () => {
         { displayName: 'Myself', active: true, groupAdmin: false }
       );
       expect(mockMemberService.requestMemberEmailChange).not.toHaveBeenCalled();
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).not.toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalledWith({
         success: true,
         operation: 'saved',
@@ -479,9 +466,6 @@ describe('EditMemberComponent', () => {
         selfMember.ref,
         { displayName: 'Myself', active: true, groupAdmin: false }
       );
-      expect(
-        mockMemberService.updateMemberWithUserMatching
-      ).not.toHaveBeenCalled();
     });
 
     it.each(['updated', 'unchanged'])(

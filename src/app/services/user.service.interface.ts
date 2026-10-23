@@ -1,4 +1,5 @@
 import { Member } from '@models/member';
+import { PaymentMethods } from '@models/payment-methods';
 import { User } from '@models/user';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -18,7 +19,9 @@ export interface GroupEmailOutcome {
 export interface IUserService {
   getUserDetails(userId: string): Promise<User | null>;
   updateUser(changes: Partial<User>): Promise<void>;
-  getPaymentMethods(memberRef: DocumentReference<Member>): Promise<object>;
+  getPaymentMethods(
+    memberRef: DocumentReference<Member>
+  ): Promise<PaymentMethods>;
   sendPaymentRequestEmail(
     groupId: string,
     owedByMemberRef: DocumentReference<Member>,
