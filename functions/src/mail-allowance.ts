@@ -62,7 +62,7 @@ export const GROUP_MAIL_LIMIT_REACHED =
   "You've reached today's limit for group emails. Try again tomorrow.";
 /**
  * resource-exhausted: some allowance is left, but this call needs more
- * (review M1: "reached" would be untrue, since a smaller call still fits).
+ * ("reached" would be untrue, since a smaller call still fits).
  */
 export const GROUP_MAIL_LIMIT_EXCEEDED =
   "This would go over today's limit for group emails. Try again tomorrow.";
@@ -177,8 +177,8 @@ export async function queueGroupMail(
 
 /**
  * Nightly cleanup (index.ts deleteOldPaidExpenses): deletes the counters
- * whose every bucket has ended, skipping any a send renewed after the query
- * (review M4). Returns how many it deleted.
+ * whose every bucket has ended, skipping any a send renewed after the
+ * query. Returns how many it deleted.
  */
 export async function deleteExpiredGroupMailLimits(
   nowMs: number = Date.now()

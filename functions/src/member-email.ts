@@ -193,11 +193,11 @@ function assertActive(member: DocumentData | undefined): void {
 /**
  * The caller's verified Auth address, as stored and lowercased. Refuses an
  * unverified (or missing) account: uids are free, so without this the
- * per-uid limit would not bound the mail an attacker could send (fix round
- * 1, I1). The app's confirm page is behind authGuard, which requires a
- * verified account too. A lookup that fails for any other reason is
- * `unavailable` (AUTH_LOOKUP_UNAVAILABLE): it says nothing about the
- * account, so it must not send the user off to verify their email.
+ * per-uid limit would not bound the mail an attacker could send. The app's
+ * confirm page is behind authGuard, which requires a verified account too.
+ * A lookup that fails for any other reason is `unavailable`
+ * (AUTH_LOOKUP_UNAVAILABLE): it says nothing about the account, so it must
+ * not send the user off to verify their email.
  */
 async function requireVerifiedCaller(
   uid: string
@@ -329,8 +329,8 @@ async function consumeRequestAllowance(
 /**
  * Gives back one request `consumeRequestAllowance` charged in the window
  * that started at or before `nowMs`: used when the send it paid for was
- * refused by the recipient cooldown after all (a lost race, review M2). A
- * window that has rolled over since is left alone.
+ * refused by the recipient cooldown after all (a lost race). A window that
+ * has rolled over since is left alone.
  */
 async function refundRequestAllowance(
   db: Firestore,
@@ -421,7 +421,7 @@ export const requestMemberEmailChange = onCall<{
     // it refuses doesn't use up the caller's requests. It is checked again
     // in the transaction below, which also starts it, so two concurrent
     // requests can't both mail the address; the one that loses that race
-    // was already charged, and gets the request back (review M2).
+    // was already charged, and gets the request back.
     const nowMs = Date.now();
     const cooldownRef = recipientCooldownRef(db, emailLower);
     assertNotCoolingDown(await cooldownRef.get(), nowMs);
@@ -662,7 +662,7 @@ export async function deleteExpiredMemberEmailChanges(
 ): Promise<{ tokens: number; limits: number; cooldowns: number }> {
   const db = getFirestore();
   // Skips a doc written after the query read it, e.g. a limit window a
-  // request just restarted (review M4).
+  // request just restarted.
   const deleteAll = async (query: Query): Promise<number> =>
     deleteDocsIfUnchanged((await query.get()).docs);
   const tokens = await deleteAll(
