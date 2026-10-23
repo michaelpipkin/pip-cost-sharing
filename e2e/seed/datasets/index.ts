@@ -12,6 +12,7 @@ import { HISTORY_DATASET } from './history';
 import { INFRA_DATASET } from './infra';
 import { INVITES_DATASET } from './invites';
 import { MEMBER_EMAIL_DATASET } from './member-email';
+import { MEMBER_LINKING_DATASET } from './member-linking';
 import { MEMBER_EMAIL_RULES_DATASET } from './member-email-rules';
 import { MEMBER_RULES_DATASET } from './member-rules';
 import { MEMBERS_DATASET } from './members';
@@ -51,5 +52,6 @@ export const ALL_DATASETS: SeedDataset[] = [
   MEMBER_RULES_DATASET,
   MEMBER_EMAIL_RULES_DATASET,
   MEMBER_EMAIL_DATASET,
+  MEMBER_LINKING_DATASET,
   GROUP_EMAIL_UPDATE_DATASET,
 ];

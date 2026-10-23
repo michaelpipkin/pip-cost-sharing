@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
 import { SummaryPage, type ExpectedBalance } from '../pages/summary.page';
+import { getSeedAdmin } from '../seed/admin';
 import { seedDateDaysAgo as daysAgo } from '../seed/dates';
 import { SHARED } from '../seed/datasets/shared';
 import { SUMMARY } from '../seed/datasets/summary';
@@ -9,9 +10,9 @@ import { findMail } from '../utils/auth-emulator';
 import { readClipboard } from '../utils/clipboard';
 import { signInAs } from '../utils/session';
 
-// Data: e2e/seed/datasets/summary.ts for the empty state ("Summary – Empty")
-// and the payment request ("Summary – Request", whose only mail recipient is
-// summary-payer); every other test reads SHARED ("Shared – Beach House") as
+// Data: e2e/seed/datasets/summary.ts for the empty state ("Summary – Empty"),
+// the payment request ("Summary – Request", whose only mail recipient is
+// summary-payer) and the payee handles ("Summary – Handles"); every other test reads SHARED ("Shared – Beach House") as
 // alice and changes nothing (the payment dialog is always cancelled). The balances below are
 // the ones documented in e2e/seed/datasets/shared.ts.
 
@@ -295,5 +296,52 @@ test.describe('Critical Flow: Summary', { tag: '@summary' }, () => {
       { owedBy: 'Bob', owedTo: 'Alice', amount: 36 },
       { owedBy: 'Alice', owedTo: 'Carol', amount: 24 },
     ]);
+  });
+
+  // The Pay dialog's handles come from the getMemberPaymentMethods callable,
+  // which answers only for a payee row linked to a user.
+  test('should list a linked payee’s handles and none for an unlinked one', async ({
+    page,
+  }) => {
+    const { handlesPat, handlesLou, handlesUna } = SUMMARY.users;
+    const group = SUMMARY.groups.handles;
+    // Una's row is seeded linked; unlink it (a later write that leaves the
+    // email alone is never re-linked by the member trigger).
+    await getSeedAdmin()
+      .db.doc(`groups/${group.key}/members/una`)
+      .update({ userRef: null });
+
+    const summaryPage = await openSummary(page, handlesPat, group.name);
+    await summaryPage.expectBalances([
+      { owedBy: 'Pat', owedTo: 'Lou', amount: 20 },
+      { owedBy: 'Pat', owedTo: 'Una', amount: 20 },
+    ]);
+
+    // Row 0: Pat owes Lou, whose Venmo and PayPal IDs are on his profile.
+    await summaryPage.openPaymentDialog(0);
+    await expect(summaryPage.paymentInstructions).toContainText(
+      'You can pay Lou with any of the following methods'
+    );
+    await expect(summaryPage.paymentMethods).toHaveCount(2);
+    await expect(summaryPage.paymentMethods.getByTestId('venmo-link')).toBeVisible();
+    await expect(summaryPage.paymentMethods).toContainText([
+      handlesLou.profile!.venmoId!,
+      handlesLou.profile!.paypalId!,
+    ]);
+    await expect(summaryPage.noPaymentMethodsMessage).toHaveCount(0);
+    await summaryPage.cancelPayment();
+
+    // Row 1: Una's row is unlinked, so the dialog has nothing to show even
+    // though her address belongs to a user with a Venmo ID.
+    await summaryPage.openPaymentDialog(1);
+    await expect(summaryPage.noPaymentMethodsMessage).toContainText(
+      'Una does not have any saved payment service IDs'
+    );
+    await expect(summaryPage.paymentInstructions).toHaveCount(0);
+    await expect(summaryPage.paymentMethods).toHaveCount(0);
+    await expect(
+      summaryPage.paymentDialog.getByText(handlesUna.profile!.venmoId!)
+    ).toHaveCount(0);
+    await summaryPage.cancelPayment();
   });
 });
