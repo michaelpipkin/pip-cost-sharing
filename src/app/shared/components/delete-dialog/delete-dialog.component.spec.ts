@@ -33,7 +33,9 @@ describe('DeleteDialogComponent', () => {
 
   describe('initial render', () => {
     it('should display the operation in the title', () => {
-      expect(query('delete-dialog-title')?.textContent?.trim()).toBe(
+      // Untrimmed: a leading space shows as an indent after Material's
+      // inline-block title ::before.
+      expect(query('delete-dialog-title')?.textContent).toBe(
         'Confirm Delete'
       );
     });

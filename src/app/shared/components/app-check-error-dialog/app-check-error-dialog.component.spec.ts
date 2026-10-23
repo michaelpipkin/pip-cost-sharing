@@ -40,7 +40,9 @@ describe('AppCheckErrorDialogComponent', () => {
   });
 
   it('should display the dialog title', () => {
-    expect(query('app-check-error-dialog-title')?.textContent?.trim()).toBe(
+    // Untrimmed: a leading space shows as an indent after Material's
+    // inline-block title ::before.
+    expect(query('app-check-error-dialog-title')?.textContent).toBe(
       "Can't Verify Your Device"
     );
   });

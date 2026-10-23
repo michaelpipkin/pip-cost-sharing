@@ -1,5 +1,5 @@
 <h1 mat-dialog-title data-testid="group-email-update-title">
-  Update your group emails?
+  <span>Update your group emails?</span>
 </h1>
 <mat-dialog-content data-testid="group-email-update-content">
   <p data-testid="group-email-update-intro">
@@ -16,20 +16,24 @@
     <p data-testid="group-email-update-blank-line">{{ blankLine }}</p>
   }
   <p data-testid="group-email-update-all-help">
-    <strong>Update all:</strong> Every membership switches to
-    {{ data.newEmail }}.
+    <strong>Update all:</strong>
+    Every membership switches to {{ data.newEmail }}.
   </p>
   @if (showOldOnly) {
     <p data-testid="group-email-update-old-only-help">
-      <strong>Update old email only:</strong> Only memberships using
-      {{ data.oldEmail }} switch; addresses you set for a group are kept.
+      <strong>Update old email only:</strong>
+      Only memberships using {{ data.oldEmail }} switch; addresses you set for a
+      group are kept.
     </p>
   }
   <p class="small-text" data-testid="group-email-update-later-note">
     You can also update all of them later from Account &gt; Profile.
   </p>
 </mat-dialog-content>
-<mat-dialog-actions class="dialog-actions-wrap" data-testid="group-email-update-actions">
+<mat-dialog-actions
+  class="dialog-actions-wrap"
+  data-testid="group-email-update-actions"
+>
   <button
     mat-stroked-button
     type="button"
