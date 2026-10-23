@@ -317,8 +317,11 @@ test.describe('Critical Flow: Summary', { tag: '@summary' }, () => {
       { owedBy: 'Pat', owedTo: 'Una', amount: 20 },
     ]);
 
-    // Row 0: Pat owes Lou, whose Venmo and PayPal IDs are on his profile.
-    await summaryPage.openPaymentDialog(0);
+    // Pat owes Lou, whose Venmo and PayPal IDs are on his profile.
+    const payees = (await summaryPage.owedToCells.allTextContents()).map((t) =>
+      t.trim()
+    );
+    await summaryPage.openPaymentDialog(payees.indexOf('Lou'));
     await expect(summaryPage.paymentInstructions).toContainText(
       'You can pay Lou with any of the following methods'
     );
@@ -331,9 +334,9 @@ test.describe('Critical Flow: Summary', { tag: '@summary' }, () => {
     await expect(summaryPage.noPaymentMethodsMessage).toHaveCount(0);
     await summaryPage.cancelPayment();
 
-    // Row 1: Una's row is unlinked, so the dialog has nothing to show even
-    // though her address belongs to a user with a Venmo ID.
-    await summaryPage.openPaymentDialog(1);
+    // Una's row is unlinked, so the dialog has nothing to show even though
+    // her address belongs to a user with a Venmo ID.
+    await summaryPage.openPaymentDialog(payees.indexOf('Una'));
     await expect(summaryPage.noPaymentMethodsMessage).toContainText(
       'Una does not have any saved payment service IDs'
     );

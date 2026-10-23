@@ -150,25 +150,27 @@ test.describe('Member linking', { tag: ['@members'] }, () => {
     page,
   }) => {
     const members = new MembersPage(page);
-    const suffix = runSuffix();
-    const dupName = `Twin Alt ${suffix}`;
-    const controlName = `Control ${suffix}`;
+    const dupName = `Twin Alt ${runSuffix()}`;
     const altAddress = await indexSecondAddress(users.twin);
-    await expectLoginIndexed(users.control);
     // The seeded row is the twin's one row in the group.
     expect(await linkedUid(twinRow.key)).toBe(users.twin.uid);
 
     await signInAs(page, users.admin);
     await members.goto();
     await members.addMember(dupName, altAddress);
-    // A positive control added after it: once its trigger has linked it, the
-    // earlier row's trigger has had its turn (a negative can't be awaited).
-    await members.addMember(controlName, users.control.email);
-
-    const controlId = await memberIdByName(controlName);
-    await expectLinkedTo(controlId, users.control);
 
     const dupId = await memberIdByName(dupName);
+    // The client never writes emailLower, and syncMemberEmailLower writes it
+    // after its link attempt when it did not link, so the value appearing
+    // proves the trigger ran and left the row unlinked (a negative cannot be
+    // awaited otherwise).
+    const dupDoc = db().doc(`groups/${group.key}/members/${dupId}`);
+    await expect
+      .poll(async () => (await dupDoc.get()).get('emailLower') ?? '', {
+        message: `syncMemberEmailLower never ran for ${dupId}`,
+        timeout: TRIGGER_TIMEOUT_MS,
+      })
+      .toBe(altAddress.toLowerCase());
     expect(await linkedUid(dupId)).toBe('');
     await expect(inviteButtonOf(members.row(dupId))).toBeVisible();
     // And the person's own row is still the linked one.

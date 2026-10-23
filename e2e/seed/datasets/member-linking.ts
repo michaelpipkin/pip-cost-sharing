@@ -20,8 +20,6 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   - ml-twin: already linked in Main as "Twin"; the test adds a second row
  *     for the same person under another address of theirs, which must stay
  *     unlinked (one row per account per group).
- *   - ml-control: added in the twin test as a positive control, so the
- *     "stays unlinked" check is read only after the trigger has run.
  */
 
 const SPEC = 'spec:e2e/members/member-linking.spec.ts' as const;
@@ -45,7 +43,6 @@ const users = {
   secondary: seedUser('secondary'),
   editee: seedUser('editee'),
   twin: seedUser('twin', { defaultGroupKey: GROUP_KEY }),
-  control: seedUser('control'),
 } as const;
 
 /** The unlinked, email-less row the edit test gives an owned address. */
