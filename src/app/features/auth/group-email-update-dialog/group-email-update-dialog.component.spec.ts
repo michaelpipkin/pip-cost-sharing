@@ -103,7 +103,11 @@ describe('GroupEmailUpdateDialogComponent', () => {
     it('asks the question and says what the new login email means', async () => {
       await open(3, 2);
 
-      expect(text('group-email-update-title')).toBe('Update your group emails?');
+      // Untrimmed: a leading space shows as an indent after Material's
+      // inline-block title ::before.
+      expect(query('group-email-update-title')?.textContent).toBe(
+        'Update your group emails?'
+      );
       expect(text('group-email-update-intro')).toBe(
         `Your login email is now ${NEW}. Group emails, such as payment requests, go to the address on each group membership.`
       );
