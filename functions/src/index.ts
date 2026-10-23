@@ -12,6 +12,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import {
   onDocumentCreated,
+  onDocumentUpdated,
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
@@ -895,13 +896,69 @@ export async function syncGroupMemberUidsInternal(
     sameUids(adminUids, current['adminUids'] ?? []);
   if (unchanged) return;
 
+  // A uid that dropped out of memberUids (row deleted, unlinked or
+  // anonymized) must not keep this group as its default. A member who left
+  // voluntarily stays linked, so stays in memberUids and is not cleared here.
+  const stillMember = new Set(memberUids);
+  const removedUids = ((current['memberUids'] ?? []) as string[]).filter(
+    (uid) => !stillMember.has(uid)
+  );
+  for (const uid of removedUids) {
+    await clearDefaultGroupRefForUser(db.collection('users').doc(uid), groupRef);
+  }
+
   await groupRef.update({ memberUids, activeMemberUids, adminUids });
+}
+
+/** Clears one user's defaultGroupRef, only if it still points at this group. */
+async function clearDefaultGroupRefForUser(
+  userRef: DocumentReference,
+  groupRef: DocumentReference
+): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const userSnapshot = await tx.get(userRef);
+    if (!userSnapshot.exists) return;
+    const defaultGroupRef = userSnapshot.get('defaultGroupRef') as
+      | DocumentReference
+      | null
+      | undefined;
+    if (!defaultGroupRef || !defaultGroupRef.isEqual(groupRef)) return;
+    tx.update(userRef, { defaultGroupRef: null });
+  });
 }
 
 export const syncGroupMemberUids = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
   async (event) => {
     await syncGroupMemberUidsInternal(event.params['groupId']);
+  }
+);
+
+/**
+ * True when a group went from active to inactive or from unarchived to
+ * archived. Reactivating, unarchiving, renaming an already-inactive group and
+ * the membership-array updates syncGroupMemberUids writes are not deactivations.
+ */
+export function isGroupDeactivation(
+  before: DocumentData,
+  after: DocumentData
+): boolean {
+  const wasActive = before['active'] !== false;
+  const isActive = after['active'] !== false;
+  const wasArchived = before['archived'] === true;
+  const isArchived = after['archived'] === true;
+  return (wasActive && !isActive) || (!wasArchived && isArchived);
+}
+
+export const clearDefaultsOnGroupDeactivate = onDocumentUpdated(
+  'groups/{groupId}',
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after || !isGroupDeactivation(before, after)) return;
+    await clearDefaultGroupRefs(
+      db.collection('groups').doc(event.params['groupId'])
+    );
   }
 );
 

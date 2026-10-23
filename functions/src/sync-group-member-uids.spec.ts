@@ -1,6 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 import { computeGroupMemberArrays, syncGroupMemberUidsInternal } from './index';
+import { makeGroup, makeMember, uniqueId } from './test-fixtures';
 
 const db = getFirestore();
 
@@ -111,5 +112,62 @@ describe('syncGroupMemberUidsInternal', () => {
     await expect(
       syncGroupMemberUidsInternal('nonexistent-group-id')
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('syncGroupMemberUidsInternal default-group clears', () => {
+  async function setup() {
+    const groupRef = await makeGroup();
+    const otherGroupRef = await makeGroup();
+    const removedUid = uniqueId('removed');
+    const keptUid = uniqueId('kept');
+    const removedRef = db.collection('users').doc(removedUid);
+    const keptRef = db.collection('users').doc(keptUid);
+    await groupRef.update({ memberUids: [removedUid, keptUid] });
+    const removedMember = await makeMember(groupRef, { userRef: removedRef });
+    await makeMember(groupRef, { userRef: keptRef });
+    return { groupRef, otherGroupRef, removedRef, keptRef, removedMember };
+  }
+
+  it('clears the default of a uid whose row was deleted', async () => {
+    const { groupRef, removedRef, keptRef, removedMember } = await setup();
+    await removedRef.set({ defaultGroupRef: groupRef });
+    await keptRef.set({ defaultGroupRef: groupRef });
+    await removedMember.delete();
+
+    await syncGroupMemberUidsInternal(groupRef.id);
+
+    expect((await removedRef.get()).get('defaultGroupRef')).toBeNull();
+  });
+
+  it("leaves a removed uid's default for another group alone", async () => {
+    const { groupRef, otherGroupRef, removedRef, removedMember } = await setup();
+    await removedRef.set({ defaultGroupRef: otherGroupRef });
+    await removedMember.delete();
+
+    await syncGroupMemberUidsInternal(groupRef.id);
+
+    const stored = (await removedRef.get()).get('defaultGroupRef');
+    expect(stored.isEqual(otherGroupRef)).toBe(true);
+  });
+
+  it("leaves remaining members' defaults alone", async () => {
+    const { groupRef, removedRef, keptRef, removedMember } = await setup();
+    await removedRef.set({ defaultGroupRef: groupRef });
+    await keptRef.set({ defaultGroupRef: groupRef });
+    await removedMember.delete();
+
+    await syncGroupMemberUidsInternal(groupRef.id);
+
+    const stored = (await keptRef.get()).get('defaultGroupRef');
+    expect(stored.isEqual(groupRef)).toBe(true);
+  });
+
+  it('skips a removed uid whose users doc does not exist', async () => {
+    const { groupRef, removedRef, removedMember } = await setup();
+    await removedMember.delete();
+
+    await expect(syncGroupMemberUidsInternal(groupRef.id)).resolves.toBeUndefined();
+    expect((await removedRef.get()).exists).toBe(false);
   });
 });
