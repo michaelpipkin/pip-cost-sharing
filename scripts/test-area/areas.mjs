@@ -163,6 +163,9 @@ const INVITE_LINKING_FUNCTIONS = [
 // change, the auth confirm-group-email page confirms it, and Account >
 // Profile's Sync and the group email update dialog call updateMemberEmails.
 const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
+// The windowed per-uid call allowance behind requestMemberEmailChange and
+// getMemberPaymentMethods (functions/src/call-allowance.ts).
+const CALL_ALLOWANCE_FUNCTIONS = ['src/call-allowance.spec.ts'];
 // Reads a callable's code and server message (edit-member, the confirm
 // page, Profile's Sync, the group email update dialog, member.service, and
 // the daily group-mail limit on Summary, History detail and Members'
@@ -397,6 +400,7 @@ export const AREAS = {
       // Verified group emails (B19): requestMemberEmailChange from
       // edit-member, confirmMemberEmailChange from the auth confirm page.
       ...MEMBER_EMAIL_FUNCTIONS,
+      ...CALL_ALLOWANCE_FUNCTIONS,
       ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
       'src/send-group-invite.spec.ts',
@@ -615,6 +619,10 @@ export const AREAS = {
       'src/email-formatting.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
+      // The Pay dialog's payment handles (getMemberPaymentMethods) and the
+      // allowance it shares with the email-change limit.
+      ...CALL_ALLOWANCE_FUNCTIONS,
+      'src/payment-methods.spec.ts',
       'src/payment-email.spec.ts',
       'src/settle-email.spec.ts',
       ...USER_SERVICE_FUNCTIONS,

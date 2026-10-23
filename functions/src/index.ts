@@ -48,6 +48,11 @@ import {
   linkPendingMembersFor,
 } from './member-linking';
 import { removeAllFor, upsertVerifiedEmail } from './verified-emails';
+import { deleteExpiredAllowanceWindows } from './call-allowance';
+import {
+  PAYMENT_LOOKUP_LIMITS,
+  PAYMENT_LOOKUP_WINDOW_MS,
+} from './payment-methods';
 
 export {
   buildEmailHtml,
@@ -67,6 +72,7 @@ export {
   requestMemberEmailChange,
   updateMemberEmails,
 } from './member-email';
+export { getMemberPaymentMethods } from './payment-methods';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';
 export {
@@ -414,6 +420,19 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
     );
   } catch (error) {
     console.error('Error deleting expired email-change tokens: ', error);
+  }
+
+  // Ended payment-lookup windows (payment-methods.ts).
+  try {
+    const deleted = await deleteExpiredAllowanceWindows(
+      db,
+      PAYMENT_LOOKUP_LIMITS,
+      PAYMENT_LOOKUP_WINDOW_MS,
+      Date.now()
+    );
+    console.log(`Deleted ${deleted} ended payment-lookup limit doc(s)`);
+  } catch (error) {
+    console.error('Error deleting ended payment-lookup limits: ', error);
   }
 
   // Ended group-mail allowance counters (mail-allowance.ts).
