@@ -436,6 +436,24 @@ describe('AccountProfileComponent', () => {
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
+    // Fix round 1, Minor 1.
+    it('explains when the server refuses a login email that is not one valid address', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        Object.assign(
+          new Error(
+            'Your login email is not a single valid email address. [400]'
+          ),
+          { code: 'functions/failed-precondition' }
+        )
+      );
+      await component.syncMemberEmails();
+      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
+      expect(data?.message).toBe(
+        "Your login email is not a single valid email address, so it can't be used as a group email. Change your login email first."
+      );
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
     it('shows an error snackbar on any other failure, leaving the logging to MemberService', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
         Object.assign(new Error('sync failed'), { code: 'functions/internal' })

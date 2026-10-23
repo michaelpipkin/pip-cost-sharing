@@ -35,7 +35,9 @@ export class AccountPage extends BasePage {
   readonly emailInput: Locator;
   readonly updateEmailButton: Locator;
   readonly verifyEmailButton: Locator;
+  /** The Sync Member Emails section (help text and button). */
   readonly syncMemberEmails: Locator;
+  readonly syncMemberEmailsButton: Locator;
   /** The help text above the Sync Member Emails button. */
   readonly syncMemberEmailsHelp: Locator;
   /** "We sent a link to <new>..." after Update Email (verify before update). */
@@ -86,6 +88,7 @@ export class AccountPage extends BasePage {
     this.updateEmailButton = page.getByTestId('update-email-button');
     this.verifyEmailButton = page.getByTestId('verify-email-button');
     this.syncMemberEmails = page.getByTestId('sync-member-emails');
+    this.syncMemberEmailsButton = page.getByTestId('sync-member-emails-button');
     this.syncMemberEmailsHelp = page.getByTestId('sync-member-emails-help');
     this.pendingEmailChange = page.getByTestId('pending-email-change');
 

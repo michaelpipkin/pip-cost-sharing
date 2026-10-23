@@ -32,6 +32,13 @@ import {
 } from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
+import {
+  isInvalidLoginEmailRefusal,
+  isUnverifiedLoginRefusal,
+  LOGIN_EMAIL_INVALID_MESSAGE,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
+import { singleEmail } from '@utils/email-validation';
 import { FirebaseError } from 'firebase/app';
 import {
   ActionCodeSettings,
@@ -40,11 +47,6 @@ import {
   sendEmailVerification,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
-import {
-  isUnverifiedLoginRefusal,
-  VERIFY_LOGIN_EMAIL,
-} from '@utils/callable-error.util';
-import { singleEmail } from '@utils/email-validation';
 
 @Component({
   selector: 'app-account-profile',
@@ -211,13 +213,15 @@ export class AccountProfileComponent {
         data: { message: memberEmailUpdateMessage(result) },
       });
     } catch (error) {
-      // MemberService logs unexpected failures.
+      // MemberService logs the failures worth logging.
+      let message = 'Something went wrong - could not update member emails';
+      if (isUnverifiedLoginRefusal(error)) {
+        message = VERIFY_LOGIN_EMAIL;
+      } else if (isInvalidLoginEmailRefusal(error)) {
+        message = LOGIN_EMAIL_INVALID_MESSAGE;
+      }
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: isUnverifiedLoginRefusal(error)
-            ? VERIFY_LOGIN_EMAIL
-            : 'Something went wrong - could not update member emails',
-        },
+        data: { message },
       });
     } finally {
       this.loading.loadingOff();

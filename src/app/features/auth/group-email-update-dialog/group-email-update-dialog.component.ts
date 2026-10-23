@@ -20,7 +20,9 @@ import {
 } from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import {
+  isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
+  LOGIN_EMAIL_INVALID_MESSAGE,
   VERIFY_LOGIN_EMAIL,
 } from '@utils/callable-error.util';
 
@@ -113,9 +115,11 @@ export class GroupEmailUpdateDialogComponent {
       );
       this.#notify(memberEmailUpdateMessage(result));
     } catch (error) {
+      // Retrying can't help with these two, so the dialog closes.
       if (isUnverifiedLoginRefusal(error)) {
-        // Nothing to retry until the address is verified.
         this.#notify(VERIFY_LOGIN_EMAIL);
+      } else if (isInvalidLoginEmailRefusal(error)) {
+        this.#notify(LOGIN_EMAIL_INVALID_MESSAGE);
       } else {
         // MemberService logs unexpected failures.
         finished = false;

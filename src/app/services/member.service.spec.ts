@@ -715,6 +715,28 @@ describe('MemberService', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
+    // Fix round 1, Minor 1: a legacy login address the server can't write.
+    // The owner should hear about it, so it is logged.
+    it('logs and rethrows the invalid-login-email refusal', async () => {
+      const error = Object.assign(
+        new Error(
+          'Your login email is not a single valid email address. [400]'
+        ),
+        { code: 'functions/failed-precondition' }
+      );
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockRejectedValue(error) as any
+      );
+
+      await expect(service.updateAllMemberEmails()).rejects.toBe(error);
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Member Service',
+        'updateAllMemberEmails',
+        'Failed to update member emails',
+        'Your login email is not a single valid email address.'
+      );
+    });
+
     it('logs and rethrows an unexpected failure', async () => {
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
         vi

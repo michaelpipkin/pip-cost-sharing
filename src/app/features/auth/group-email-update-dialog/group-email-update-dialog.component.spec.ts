@@ -23,6 +23,8 @@ import {
 
 const OLD = 'old@test.com';
 const NEW = 'new@test.com';
+const INVALID_LOGIN_EMAIL_MESSAGE =
+  "Your login email is not a single valid email address, so it can't be used as a group email. Change your login email first.";
 
 describe('GroupEmailUpdateDialogComponent', () => {
   let fixture: ComponentFixture<GroupEmailUpdateDialogComponent>;
@@ -311,6 +313,24 @@ describe('GroupEmailUpdateDialogComponent', () => {
       await fixture.componentInstance.updateAll();
 
       expect(snackbarMessage()).toBe('Verify your login email first.');
+      expect(mockLoading.loadingOff).toHaveBeenCalled();
+      expect(mockDialogRef.close).toHaveBeenCalled();
+    });
+
+    // Fix round 1, Minor 1: a retry can't succeed, so the dialog closes.
+    it('explains, and closes, when the server refuses a login email that is not one valid address', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        Object.assign(
+          new Error(
+            'Your login email is not a single valid email address. [400]'
+          ),
+          { code: 'functions/failed-precondition' }
+        )
+      );
+
+      await fixture.componentInstance.updateAll();
+
+      expect(snackbarMessage()).toBe(INVALID_LOGIN_EMAIL_MESSAGE);
       expect(mockLoading.loadingOff).toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalled();
     });

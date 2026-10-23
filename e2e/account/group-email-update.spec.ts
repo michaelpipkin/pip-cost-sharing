@@ -51,16 +51,31 @@ async function setCustomEmailInGroupC(variant: Variant): Promise<void> {
     });
 }
 
+/** Sets the user's member email in group `index` (0 = a, 1 = b, 2 = c). */
+async function setMemberEmail(
+  variant: Variant,
+  index: number,
+  email: string
+): Promise<void> {
+  const group = GROUP_EMAIL_UPDATE.groups[variant][index]!;
+  await getSeedAdmin()
+    .db.doc(`groups/${group.key}/members/${memberKey}`)
+    .update({ email, emailLower: email.toLowerCase() });
+}
+
 /**
- * Gives another member of the `-b` group the variant's new login address, so
- * updating that membership would duplicate it. The row is linked to an
- * account id that has no users doc, so linkInvitedMembers (which links only
- * unlinked rows) never hands it to the test user when they verify the address.
+ * Gives another member of the `-b` group `email` (by default the variant's
+ * new login address), so updating the user's membership there would
+ * duplicate it. The row is linked to an account id that has no users doc, so
+ * linkInvitedMembers (which links only unlinked rows) never hands it to the
+ * test user when they verify the address.
  */
-async function takeNewEmailInGroupB(variant: Variant): Promise<void> {
+async function takeAddressInGroupB(
+  variant: Variant,
+  email = newEmailFor(variant)
+): Promise<void> {
   const groupB = GROUP_EMAIL_UPDATE.groups[variant][1]!;
   const { db } = getSeedAdmin();
-  const email = newEmailFor(variant);
   await db.doc(`groups/${groupB.key}/members/conflict`).set({
     displayName: 'Address Taken',
     email,
@@ -118,6 +133,37 @@ test.describe(
       await expect(account.syncMemberEmailsHelp).toHaveText(
         'Sets the email on every group membership to your login email, including addresses you set for a particular group.'
       );
+    });
+
+    // Fix round 1, Minor 5: Profile's own button, with no login-email change.
+    test('Profile’s Sync Member Emails moves memberships to the login email and skips a group where it is taken', async ({
+      page,
+    }) => {
+      const user = GROUP_EMAIL_UPDATE.users.sync;
+      const account = new AccountPage(page);
+
+      // Reset to the test's start state, so it repeats: A on the login
+      // email, B and C on a custom address, and another member of B on the
+      // login email.
+      await setMemberEmail('sync', 0, user.email);
+      await setMemberEmail('sync', 1, CUSTOM_EMAIL);
+      await setMemberEmail('sync', 2, CUSTOM_EMAIL);
+      await takeAddressInGroupB('sync', user.email);
+
+      await signInAs(page, user);
+      await account.gotoAccount();
+      await account.syncMemberEmailsButton.click();
+
+      await expect(
+        account.snackbarWith(
+          'Updated email on 1 member record. 1 skipped because another member of that group already uses that address.'
+        )
+      ).toBeVisible();
+      await expect.poll(() => memberEmails('sync')).toEqual([
+        user.email,
+        CUSTOM_EMAIL,
+        user.email,
+      ]);
     });
 
     test('"Update old email only" changes the memberships on the old login email and keeps the custom one', async ({
@@ -179,7 +225,7 @@ test.describe(
       const dialog = new GroupEmailUpdateDialog(page);
 
       await setCustomEmailInGroupC('all');
-      await takeNewEmailInGroupB('all');
+      await takeAddressInGroupB('all');
 
       await changeLoginEmailAndSignIn(page, user, newEmail);
 

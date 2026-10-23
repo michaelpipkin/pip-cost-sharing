@@ -275,6 +275,13 @@ service cloud.firestore {
         //    the verified address was allowed until 2026-10-23 (Profile
         //    Sync); it skipped the duplicate check and left pending links
         //    alive (final re-review M1/M2), so it moved to updateMemberEmails.
+        //    "Linked" means while the row stays linked: an admin can still
+        //    unlink a row (X to null) and, in a second write, relink it to the
+        //    same user with that user's profile email (null to X, the match
+        //    above). The address is still one the user proved, but that path
+        //    has no duplicate check and leaves the row's pending confirmation
+        //    links alive, which work again once it is relinked. Known and
+        //    accepted for now (infra follow-ups doc, Owner).
         //  - emailLower: no client writes it (syncMemberEmailLower does), but
         //    a client write that sets it must hold email lowercased, since
         //    linkInvitedMembers links by it.

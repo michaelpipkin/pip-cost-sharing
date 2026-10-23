@@ -6,7 +6,7 @@ import {
   type DocumentData,
   type DocumentReference,
 } from 'firebase-admin/firestore';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 // Importing from index both initialises the Admin SDK and proves the
 // callables are exported from the functions entry (so they deploy).
 import {
@@ -21,7 +21,9 @@ import {
   CONFIRM_WRONG_ACCOUNT,
   DUPLICATE_MEMBER_EMAIL,
   EMAIL_CHANGE_LIMIT,
+  LOGIN_EMAIL_INVALID,
   MEMBER_EMAIL_LIMITS,
+  MEMBER_EMAILS_PER_TXN,
   MEMBER_EMAIL_TOKENS,
   NOT_ACTIVE_MEMBER,
   VERIFY_LOGIN_EMAIL,
@@ -538,12 +540,21 @@ describe('updateMemberEmails', () => {
     userRef: DocumentReference;
   }
 
-  /** A verified (by default) Auth account and its users doc, no members. */
+  /**
+   * A verified (by default) Auth account and its users doc, no members.
+   * `loginEmail` overrides the Auth address; `profileEmail` gives the users
+   * doc a different (stale) one.
+   */
   async function seedUser(
-    options: { emailVerified?: boolean; auth?: boolean } = {}
+    options: {
+      emailVerified?: boolean;
+      auth?: boolean;
+      loginEmail?: string;
+      profileEmail?: string;
+    } = {}
   ): Promise<Linked> {
     const uid = uniqueId('u');
-    const loginEmail = uniqueEmail('login');
+    const loginEmail = options.loginEmail ?? uniqueEmail('login');
     if (options.auth !== false) {
       await getAuth().createUser({
         uid,
@@ -552,7 +563,11 @@ describe('updateMemberEmails', () => {
       });
     }
     const userRef = db.collection('users').doc(uid);
-    await userRef.set({ email: loginEmail, emailLower: loginEmail });
+    const profileEmail = options.profileEmail ?? loginEmail;
+    await userRef.set({
+      email: profileEmail,
+      emailLower: profileEmail.toLowerCase(),
+    });
     return { uid, loginEmail, userRef };
   }
 
@@ -810,6 +825,102 @@ describe('updateMemberEmails', () => {
   it('returns zeros for a user with no memberships', async () => {
     const user = await seedUser();
     await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+  });
+
+  // A legacy Auth address that fails the single-address rule: no member doc
+  // may hold it, and retrying can't help.
+  it('refuses a verified login email that is not one valid address, writing nothing', async () => {
+    const loginEmail = `login-${randomUUID()}@member_email.test`;
+    const user = await seedUser({ loginEmail });
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+
+    await expect(update(user)).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: LOGIN_EMAIL_INVALID,
+    });
+
+    expect(await memberEmail(row)).toEqual({ email: other, emailLower: other });
+  });
+
+  // Fix round 1, Minor 4a: the address is the Auth account's, never the
+  // users doc's (which can lag a login-email change).
+  it('writes the Auth account’s address even when the users doc is stale', async () => {
+    const stale = uniqueEmail('stale-profile');
+    const user = await seedUser({ profileEmail: stale });
+    const row = await linkedRow(user, uniqueEmail('old'));
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    expect(await memberEmail(row)).toEqual({
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  // Minor 4b: a row unlinked after the query but before the transaction is
+  // re-checked inside it and left alone.
+  it('skips a row that was unlinked between the query and the transaction', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const kept = await linkedRow(user, old);
+    const unlinked = await linkedRow(user, old);
+    const runTransaction = db.runTransaction.bind(db);
+    const spy = vi
+      .spyOn(db, 'runTransaction')
+      .mockImplementationOnce(async (fn: any, options?: any) => {
+        await unlinked.update({ userRef: null });
+        return runTransaction(fn, options);
+      });
+    try {
+      await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(await memberEmail(kept)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(unlinked)).toEqual({ email: old, emailLower: old });
+  });
+
+  // Minor 4c: more rows than one transaction takes are split across
+  // transactions, and every row is still written.
+  it('updates more memberships than one transaction holds, in several transactions', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const count = MEMBER_EMAILS_PER_TXN + 1;
+    const rows: DocumentReference[] = [];
+    const batch = db.batch();
+    for (let i = 0; i < count; i++) {
+      const group = db.collection('groups').doc(uniqueId('g-chunk'));
+      batch.set(group, { name: `Chunk ${i}` });
+      const row = group.collection('members').doc(uniqueId('m'));
+      batch.set(row, {
+        displayName: 'Member',
+        active: true,
+        groupAdmin: false,
+        email: old,
+        emailLower: old,
+        userRef: user.userRef,
+      });
+      rows.push(row);
+    }
+    await batch.commit();
+    const spy = vi.spyOn(db, 'runTransaction');
+    try {
+      await expect(update(user)).resolves.toEqual({
+        updated: count,
+        conflicts: 0,
+      });
+      expect(spy).toHaveBeenCalledTimes(2);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const emails = await Promise.all(
+      rows.map(async (row) => (await memberEmail(row)).email)
+    );
+    expect(new Set(emails)).toEqual(new Set([user.loginEmail]));
   });
 });
 

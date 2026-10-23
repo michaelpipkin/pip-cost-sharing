@@ -29,3 +29,23 @@ export function isUnverifiedLoginRefusal(error: unknown): boolean {
   const { code, message } = callableError(error);
   return code === 'functions/permission-denied' && message === VERIFY_LOGIN_EMAIL;
 }
+
+/**
+ * updateMemberEmails' refusal of a verified login email that is not one
+ * valid address (functions/src/member-email.ts LOGIN_EMAIL_INVALID): a legacy
+ * account. Retrying can't help.
+ */
+export const LOGIN_EMAIL_INVALID =
+  'Your login email is not a single valid email address.';
+
+/** What the app shows for that refusal. */
+export const LOGIN_EMAIL_INVALID_MESSAGE =
+  "Your login email is not a single valid email address, so it can't be used as a group email. Change your login email first.";
+
+/** Whether `error` is that refusal (failed-precondition, LOGIN_EMAIL_INVALID). */
+export function isInvalidLoginEmailRefusal(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return (
+    code === 'functions/failed-precondition' && message === LOGIN_EMAIL_INVALID
+  );
+}

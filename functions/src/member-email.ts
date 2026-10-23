@@ -66,7 +66,8 @@ export const DUPLICATE_MEMBER_EMAIL =
 export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
 /**
  * failed-precondition (updateMemberEmails): the verified login email is not
- * one valid address (a legacy account), so no member doc may hold it.
+ * one valid address (a legacy account), so no member doc may hold it. The
+ * app matches this text (src/app/utilities/callable-error.util.ts).
  */
 export const LOGIN_EMAIL_INVALID =
   'Your login email is not a single valid email address.';
@@ -411,7 +412,7 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
  * commit's 500-write limit. A user realistically has far fewer memberships,
  * so this is one transaction in practice.
  */
-const MEMBER_EMAILS_PER_TXN = 100;
+export const MEMBER_EMAILS_PER_TXN = 100;
 
 /** The longest `onlyFromEmail` accepted (well past any real address). */
 const MAX_FROM_EMAIL_LENGTH = 1000;

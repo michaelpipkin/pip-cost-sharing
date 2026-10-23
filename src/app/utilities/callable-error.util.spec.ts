@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   callableError,
+  isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
 } from './callable-error.util';
 
@@ -67,5 +68,41 @@ describe('isUnverifiedLoginRefusal', () => {
       )
     ).toBe(false);
     expect(isUnverifiedLoginRefusal('nope')).toBe(false);
+  });
+});
+
+describe('isInvalidLoginEmailRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches updateMemberEmails’ invalid-login-email refusal', () => {
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/failed-precondition',
+          'Your login email is not a single valid email address. [400]'
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another failed-precondition refusal or another code', () => {
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/failed-precondition',
+          'This link has expired or was already used. [400]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isInvalidLoginEmailRefusal(
+        refusal(
+          'functions/internal',
+          'Your login email is not a single valid email address.'
+        )
+      )
+    ).toBe(false);
+    expect(isInvalidLoginEmailRefusal(null)).toBe(false);
   });
 });

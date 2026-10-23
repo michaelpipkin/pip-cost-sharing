@@ -5,6 +5,10 @@ import { AnalyticsService } from '@services/analytics.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
+  callableError,
+  isUnverifiedLoginRefusal,
+} from '@utils/callable-error.util';
+import {
   addDoc,
   collection,
   collectionGroup,
@@ -42,7 +46,7 @@ const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
  * Callable error codes that are outcomes the UI reports to the user, not
  * failures to log: the daily request limit and a duplicate address
  * (requestMemberEmailChange), an expired/used link or another account
- * (confirmMemberEmailChange), and an unverified login email (all three).
+ * (confirmMemberEmailChange), and an unverified login email (both).
  */
 const EXPECTED_EMAIL_CHANGE_CODES = new Set([
   'functions/resource-exhausted',
@@ -541,11 +545,17 @@ export class MemberService implements IMemberService {
       });
       return data;
     } catch (error) {
-      this.#logUnexpected(
-        error,
-        'updateAllMemberEmails',
-        'Failed to update member emails'
-      );
+      // Only the unverified-login refusal is an expected outcome here. The
+      // rest, LOGIN_EMAIL_INVALID (a legacy account the owner should hear
+      // about) included, are logged with the server's message.
+      if (!isUnverifiedLoginRefusal(error)) {
+        this.analytics.logError(
+          'Member Service',
+          'updateAllMemberEmails',
+          'Failed to update member emails',
+          callableError(error).message || 'Unknown error'
+        );
+      }
       throw error;
     }
   }
