@@ -392,14 +392,16 @@ The application has three distinct user states that affect navigation:
   - Error: "This member has existing splits and cannot be deleted."
   - **Solution**: Make member inactive instead
 - Member is fully deleted if no splits exist
+- A member who left the group voluntarily can't be removed (see Leave Group)
 
 **Leave Group (`leaveGroup`):**
 - ✅ **Admin requirement**: If leaving member is the only group admin, cannot leave
   - Error: "You are the only group admin. Please assign another member as admin before leaving the group."
   - Must promote another member to admin first
-- ✅ **Smart delete logic**:
-  - If member has splits: Sets `active = false` (preserves data)
-  - If member has no splits: Fully deletes member document
+- ✅ **The member row is always kept**, splits or not: it is marked `active = false`, `leftGroup = true`, `groupAdmin = false`
+  - The group then shows in the user's rejoin list (Account settings), and only they can rejoin it
+  - The kept row stops an admin inviting them back: the server never links a user into a group where they already have a row, under any of their addresses
+  - No one else can change a left member's row except to rename it: an admin can't reactivate, promote, unlink or remove it (the Edit Member dialog locks Active and Group Admin and hides Remove)
 - Clears user's `defaultGroupRef`
 
 **Testable Behaviors**:
@@ -419,8 +421,9 @@ The application has three distinct user states that affect navigation:
 - [ ] Can delete member with no splits successfully
 - [ ] Leave group fails if user is only admin
 - [ ] Error shown when only admin tries to leave
-- [ ] Leave group with splits makes member inactive
-- [ ] Leave group without splits deletes member
+- [ ] Leave group marks the member left and inactive, with or without splits (the row is never deleted)
+- [ ] An admin can't re-invite a member who left (the new row stays unlinked)
+- [ ] An admin can't reactivate, promote or remove a member who left
 - [ ] Leave group clears user's defaultGroupRef
 - [ ] Active/inactive status can be toggled
 - [ ] Inactive members don't appear in expense form dropdowns

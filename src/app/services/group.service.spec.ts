@@ -1213,11 +1213,47 @@ describe('GroupService', () => {
       expectListenersStoppedAndStoresEmpty();
     });
 
-    it('when the user leaves it (clearCurrentGroup)', () => {
+    it('when it is cleared outright (clearCurrentGroup)', () => {
       service.clearCurrentGroup();
 
       expectListenersStoppedAndStoresEmpty();
       expect(mockGroupStore.clearCurrentGroup).toHaveBeenCalledWith(false);
+    });
+
+    // Leaving fires the members listener first, and its auto-select may
+    // already be loading the replacement group. Cancelling that load (as
+    // clearCurrentGroup does) left the app with no group selected.
+    it('when the user leaves it, without cancelling the replacement already loading (releaseLeftGroup)', async () => {
+      const load = deferred<any>();
+      vi.spyOn(firestoreModule, 'getDoc').mockReturnValueOnce(load.promise);
+      const pick = service.getGroup(groupRef('group-2'), userRef);
+
+      service.releaseLeftGroup('group-1');
+
+      listenerServices().forEach((s) =>
+        expect(s.stopListening).toHaveBeenCalled()
+      );
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([]);
+      expect(TestBed.inject(MemberStore).groupMembers()).toEqual([]);
+      expect(mockGroupStore.clearCurrentGroup).not.toHaveBeenCalled();
+
+      load.resolve(groupDocSnap('group-2'));
+      await pick;
+
+      expect(currentGroupSignal()?.id).toBe('group-2');
+      expect(mockCategoryService.getGroupCategories).toHaveBeenCalledWith(
+        'group-2'
+      );
+    });
+
+    it('but releaseLeftGroup leaves a replacement that is already selected alone', () => {
+      service.releaseLeftGroup('group-0');
+
+      expect(currentGroupSignal()?.id).toBe('group-1');
+      expect(mockCategoryService.stopListening).not.toHaveBeenCalled();
+      expect(TestBed.inject(CategoryStore).groupCategories()).toEqual([
+        { id: 'c1' },
+      ]);
     });
 
     it('when the selected group no longer exists', async () => {

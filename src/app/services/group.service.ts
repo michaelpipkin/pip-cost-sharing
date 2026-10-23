@@ -430,6 +430,22 @@ export class GroupService implements IGroupService {
     this.clearCurrentGroupData();
   }
 
+  /**
+   * After the user leaves `groupId`: if it is still the current group, stops
+   * its data listeners and empties the per-group stores, so nothing keeps
+   * reading (or showing) it. Unlike clearCurrentGroup(), it does not cancel a
+   * selection already loading: leaving fires the members listener, whose
+   * auto-select may have started loading the replacement group, and
+   * cancelling that would leave the app with no group until some later
+   * snapshot happened to retry. The auto-select also covers having no
+   * replacement (it clears the selection itself).
+   */
+  releaseLeftGroup(groupId: string): void {
+    if (this.groupStore.currentGroup()?.id === groupId) {
+      this.clearCurrentGroupData();
+    }
+  }
+
   // Makes any in-flight getGroup() call stale, so it can't select its group
   // after the selection was cleared.
   #cancelPendingSelection(): void {

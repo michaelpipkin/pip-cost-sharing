@@ -462,52 +462,34 @@ describe('MemberService', () => {
       ).rejects.toThrow('You are the only group admin.');
     });
 
-    it('should mark the member inactive when they have splits', async () => {
-      const splitDoc = {
-        data: () => ({
-          owedByMemberRef: { eq: () => true },
-          paidByMemberRef: { eq: () => false },
-        }),
-      };
-      // Two admins so not last admin
-      vi.spyOn(firestoreModule, 'getDocs')
+    it('should keep the row and mark it left, splits or not, and clear the default group', async () => {
+      const userRef = { id: 'user-1' };
+      // Two admins so not last admin. Only the admin query is read: whether
+      // the member has splits no longer matters.
+      const getDocsSpy = vi
+        .spyOn(firestoreModule, 'getDocs')
         .mockResolvedValueOnce(
           makeSnap([
             makeDocSnap('member-1', {}),
             makeDocSnap('member-2', {}),
           ]) as any
-        )
-        .mockResolvedValueOnce(makeSnap([splitDoc]) as any);
+        );
+      const deleteSpy = vi.spyOn(firestoreModule, 'deleteDoc');
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValue(undefined);
-      userSignal.set({ ref: { id: 'user-1' } });
+      userSignal.set({ ref: userRef });
 
-      const result = await service.leaveGroup('group-1', mockMemberRef);
+      await service.leaveGroup('group-1', mockMemberRef);
 
+      expect(getDocsSpy).toHaveBeenCalledTimes(1);
+      expect(deleteSpy).not.toHaveBeenCalled();
       expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
         active: false,
         leftGroup: true,
         groupAdmin: false,
       });
-      expect(result).toEqual({ deleted: false });
-    });
-
-    it('should delete the member when they have no splits', async () => {
-      vi.spyOn(firestoreModule, 'getDocs')
-        .mockResolvedValueOnce(
-          makeSnap([
-            makeDocSnap('member-1', {}),
-            makeDocSnap('member-2', {}),
-          ]) as any
-        )
-        .mockResolvedValueOnce(makeSnap([]) as any);
-      vi.spyOn(firestoreModule, 'deleteDoc').mockResolvedValueOnce(undefined);
-      vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
-      userSignal.set({ ref: { id: 'user-1' } });
-
-      const result = await service.leaveGroup('group-1', mockMemberRef);
-
-      expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockMemberRef);
-      expect(result).toEqual({ deleted: true });
+      expect(firestoreModule.updateDoc).toHaveBeenCalledWith(userRef, {
+        defaultGroupRef: null,
+      });
     });
   });
 

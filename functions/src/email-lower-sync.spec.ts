@@ -285,6 +285,27 @@ describe('syncMemberEmailLower linking', () => {
     expect(logged.toLowerCase()).not.toContain(email.toLowerCase());
   });
 
+  // leaveGroup keeps the row (leftGroup), and that row is what stops an
+  // admin inviting the member back, under this address or any other.
+  it('does not link a re-invite of an account that left the group', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const group = await makeGroup();
+    await makeMember(group, {
+      email: `${uniqueId('old')}@example.com`,
+      userRef: db.doc(`users/${owner}`),
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+    });
+    const reinvite = await makeMember(group, { email });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const snap = await runWrite(reinvite, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+  });
+
   it('links only one of two rows created at once for the same account', async () => {
     const owner = uniqueId('owner');
     const first = await ownedAddress(owner);

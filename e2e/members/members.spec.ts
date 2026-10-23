@@ -172,5 +172,18 @@ test.describe('Members', { tag: ['@members'] }, () => {
     await groupsPage.verifyGroupNotInList(leave.name);
     await expenses.navigateToList();
     await expect(expenses.currentGroupName).toHaveText(leaveHome.name);
+
+    // Lee has no splits in the group, and the row is still kept as left:
+    // it is what stops an admin inviting them back.
+    const row = await getSeedAdmin()
+      .db.doc(`groups/${leave.key}/members/${MEMBERS.leaverMemberKey}`)
+      .get();
+    expect(row.exists).toBe(true);
+    expect(row.data()).toMatchObject({
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+    });
+    expect(row.get('userRef')?.id).toBe(users.leaver.uid);
   });
 });

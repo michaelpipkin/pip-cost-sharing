@@ -225,8 +225,8 @@ service cloud.firestore {
         //    groupAdmin toggle is disabled on one's own row). A changed
         //    email goes through the requestMemberEmailChange callable
         //    instead (B19, below);
-        //  - leaveGroup() with splits: active false, leftGroup true,
-        //    groupAdmin false (without splits it deletes the doc instead);
+        //  - leaveGroup(): active false, leftGroup true, groupAdmin false
+        //    (the row is always kept, splits or not);
         //  - rejoinGroup(): leftGroup false, active true.
         // Account > Profile's Sync and the group email update dialog go
         // through the updateMemberEmails callable (Admin SDK), so no
@@ -337,6 +337,23 @@ service cloud.firestore {
           return after.get('userRef', null) == null ||
             isOwnRowWithOwnEmail(after);
         }
+        // A member who left voluntarily keeps their row (leaveGroup never
+        // deletes it), and only they may bring it back (rejoinGroup). The
+        // row is what stops an admin re-inviting them: every server link
+        // path refuses a group where the user already has a row. So anyone
+        // else, admins included, may only rename it - no reactivating,
+        // clearing leftGroup, promoting or unlinking it (an unlinked row no
+        // longer blocks a re-invite) - and may not delete it (below).
+        function isLeftRow(data) {
+          return data.get('leftGroup', false) == true;
+        }
+        function leftRowUpdateValid() {
+          let before = resource.data;
+          return !isLeftRow(before) ||
+            before.get('userRef', null) == ownUserRef() ||
+            request.resource.data.diff(before).affectedKeys()
+              .hasOnly(['displayName']);
+        }
         function memberLinkUpdateValid() {
           let before = resource.data;
           let after = request.resource.data;
@@ -368,12 +385,12 @@ service cloud.firestore {
         // memberSelfUpdateValid() above, and every update's userRef, email
         // and emailLower by memberLinkUpdateValid().
         allow update: if (isGroupAdmin(groupId) || memberSelfUpdateValid()) &&
-          emailUpdateValid() && memberLinkUpdateValid();
-        // Self-delete is leaveGroup() for a member with no splits. It only
-        // removes the caller's own access (the member can't recreate it;
-        // create is admin-only).
-        allow delete: if isGroupAdmin(groupId) ||
-          resource.data.userRef == ownUserRef();
+          emailUpdateValid() && memberLinkUpdateValid() &&
+          leftRowUpdateValid();
+        // Admins only, and never a row whose member left (leftRowUpdateValid).
+        // No member deletes their own row: leaveGroup() keeps it, and a
+        // self-delete would orphan the member's splits in everyone's balances.
+        allow delete: if isGroupAdmin(groupId) && !isLeftRow(resource.data);
       }
 
       // Admin-only in the UI (categories.component.html's Add/Edit gating)
