@@ -1,5 +1,5 @@
 import { getFirestore } from 'firebase-admin/firestore';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computeGroupMemberArrays, syncGroupMemberUidsInternal } from './index';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
 
@@ -116,6 +116,8 @@ describe('syncGroupMemberUidsInternal', () => {
 });
 
 describe('syncGroupMemberUidsInternal default-group clears', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   async function setup() {
     const groupRef = await makeGroup();
     const otherGroupRef = await makeGroup();
@@ -161,6 +163,38 @@ describe('syncGroupMemberUidsInternal default-group clears', () => {
 
     const stored = (await keptRef.get()).get('defaultGroupRef');
     expect(stored.isEqual(groupRef)).toBe(true);
+  });
+
+  it('still writes the arrays and clears the other uids when one clear fails', async () => {
+    const groupRef = await makeGroup();
+    const failUid = uniqueId('fail');
+    const okUid = uniqueId('ok');
+    const failRef = db.collection('users').doc(failUid);
+    const okRef = db.collection('users').doc(okUid);
+    await groupRef.update({ memberUids: [failUid, okUid] });
+    await failRef.set({ defaultGroupRef: groupRef });
+    await okRef.set({ defaultGroupRef: groupRef });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const runTransaction = db.runTransaction.bind(db);
+    let calls = 0;
+    vi.spyOn(db, 'runTransaction').mockImplementation((async (fn: any, options: any) => {
+      if (calls++ === 0) throw new Error('clear failed');
+      return runTransaction(fn, options);
+    }) as any);
+
+    await expect(syncGroupMemberUidsInternal(groupRef.id)).resolves.toBeUndefined();
+
+    expect((await groupRef.get()).get('memberUids')).toEqual([]);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(groupRef.id),
+      expect.anything()
+    );
+    // Exactly one of the two clears failed; the other still ran.
+    const defaults = [
+      (await failRef.get()).get('defaultGroupRef'),
+      (await okRef.get()).get('defaultGroupRef'),
+    ];
+    expect(defaults.filter((d) => d === null)).toHaveLength(1);
   });
 
   it('skips a removed uid whose users doc does not exist', async () => {

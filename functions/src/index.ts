@@ -896,18 +896,32 @@ export async function syncGroupMemberUidsInternal(
     sameUids(adminUids, current['adminUids'] ?? []);
   if (unchanged) return;
 
-  // A uid that dropped out of memberUids (row deleted, unlinked or
-  // anonymized) must not keep this group as its default. A member who left
-  // voluntarily stays linked, so stays in memberUids and is not cleared here.
   const stillMember = new Set(memberUids);
   const removedUids = ((current['memberUids'] ?? []) as string[]).filter(
     (uid) => !stillMember.has(uid)
   );
-  for (const uid of removedUids) {
-    await clearDefaultGroupRefForUser(db.collection('users').doc(uid), groupRef);
-  }
 
+  // Access arrays first: a failed default clear must never leave a removed
+  // member's access in place.
   await groupRef.update({ memberUids, activeMemberUids, adminUids });
+
+  // A uid that dropped out of memberUids (row deleted, unlinked or
+  // anonymized) must not keep this group as its default. A member who left
+  // voluntarily stays linked, so stays in memberUids and is not cleared here.
+  // Best-effort: one failure is logged and does not skip the others.
+  for (const uid of removedUids) {
+    try {
+      await clearDefaultGroupRefForUser(
+        db.collection('users').doc(uid),
+        groupRef
+      );
+    } catch (error) {
+      console.error(
+        `Failed to clear default group for user ${uid} removed from group ${groupId}:`,
+        error
+      );
+    }
+  }
 }
 
 /** Clears one user's defaultGroupRef, only if it still points at this group. */
