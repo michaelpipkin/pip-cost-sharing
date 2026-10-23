@@ -965,7 +965,7 @@ linking, so the app no longer needs to read or write any other user's doc:
   replaces the B13 cross-user write exception.
 - **Payment handles** (`f981ff49`): the new `getMemberPaymentMethods` callable
   checks the caller's membership and returns the payee's handles; 100 lookups
-  per uid per rolling 24 h (`paymentLookupLimits/{uid}`, server-only).
+  per uid per 24 h window from the first lookup (`paymentLookupLimits/{uid}`, server-only).
 - **App** (`98098dff`): no longer reads or writes other users' docs.
 - **Rules** (`29daeaf8`): a `users` get is allowed only to the owner and the
   admin; `users` list queries are denied; the B13 exception is gone; a client

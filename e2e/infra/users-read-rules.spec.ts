@@ -27,8 +27,11 @@ import { notDenied, withDb, withUsers } from '../utils/rules-client';
  * (verifiedEmails) and the payment-lookup counters (paymentLookupLimits) are
  * server-only, the owner of an entry included.
  *
- * Every denial was allowed by the old rule (any signed-in user may read any
- * users doc). Each has a positive control: the same doc read by its owner.
+ * Only two denials are new: a get of another user's doc and any query of
+ * `users` (the old rule let any signed-in user do both). The index and the
+ * counters were already default-denied; their tests pin that. The denial
+ * tests end with a positive control that a permitted read still works (the
+ * owner's get of the same doc, the same caller's own doc, or the admin's get).
  */
 
 const { users, group } = USERS_READ_RULES;
@@ -41,7 +44,7 @@ const exists = async (db: Firestore, uid: string) =>
 
 test.describe(
   'Firestore rules: users docs are read only by their owner and the admin',
-  { tag: ['@account', '@members', '@groups', '@summary'] },
+  { tag: ['@account', '@auth', '@members', '@groups', '@summary'] },
   () => {
     test('a user reads their own doc; the app admin reads any', async () => {
       await withUsers(

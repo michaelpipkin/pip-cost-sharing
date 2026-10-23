@@ -155,7 +155,7 @@ node --experimental-strip-types scripts/db/queries/groups-and-members.ts</code><
     <tr><td><code>mail</code></td><td>Trigger Email extension. Fully locked by security rules.</td></tr>
     <tr><td><code>app_errors</code></td><td>Error log; <code>timestamp</code> is a Firestore <code>Timestamp</code>.</td></tr>
     <tr><td><code>verifiedEmails</code></td><td>Server-only index of every address a user has proven. Doc id is <code>verifiedEmailId(address)</code> (lowercased, <code>%</code> then <code>/</code> escaped); fields <code>uid</code>, <code>email</code>, <code>verifiedAt</code>, <code>source</code> (<code>login</code>, <code>group-confirm</code> or <code>backfill</code>).</td></tr>
-    <tr><td><code>admin_config</code><td>Admin-only config (server-only).</td></tr>
+    <tr><td><code>admin_config</code></td><td>Admin-only config (server-only).</td></tr>
   </tbody>
 </table>
 

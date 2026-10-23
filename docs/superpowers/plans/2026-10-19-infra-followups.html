@@ -159,6 +159,7 @@
   <li><strong>Right after CI</strong>, run <code>pnpm query backfill-verified-emails -- --apply</code>, then the dry run again (expect 0 to create).</li>
   <li><strong>Check the new functions are live</strong>: <code>firebase functions:list --project pip-cost-sharing</code> lists <code>getMemberPaymentMethods</code> and <code>clearDefaultsOnGroupDeactivate</code>.</li>
   <li><strong>Smoke test</strong>: Summary &gt; Pay shows the payee's handles; adding a member by a registered address shows them as registered within a few seconds.</li>
+  <li><strong>Watch the logs</strong>: for the first few days, watch the function logs for <code>getMemberPaymentMethods</code> errors and for "Not linking &hellip; already has a row" warnings.</li>
 </ol>
 <p class="note">Follow-up (low risk, not built): an admin can unlink a row and change its email to another address the same user proved; the member trigger then relinks it, and that user's old pending group-email confirmation links for that row work again (the old client-side relink caveat, now server-side). A follow-up could delete a row's pending confirmation tokens on unlink.</p>
 
