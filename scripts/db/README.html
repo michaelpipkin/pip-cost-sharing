@@ -154,7 +154,8 @@ node --experimental-strip-types scripts/db/queries/groups-and-members.ts</code><
     <tr><td><code>groups/{id}/settleBatches</code></td><td>Subcollection (server-only).</td></tr>
     <tr><td><code>mail</code></td><td>Trigger Email extension. Fully locked by security rules.</td></tr>
     <tr><td><code>app_errors</code></td><td>Error log; <code>timestamp</code> is a Firestore <code>Timestamp</code>.</td></tr>
-    <tr><td><code>admin_config</code></td><td>Admin-only config (server-only).</td></tr>
+    <tr><td><code>verifiedEmails</code></td><td>Server-only index of every address a user has proven. Doc id is <code>verifiedEmailId(address)</code> (lowercased, <code>%</code> then <code>/</code> escaped); fields <code>uid</code>, <code>email</code>, <code>verifiedAt</code>, <code>source</code> (<code>login</code>, <code>group-confirm</code> or <code>backfill</code>).</td></tr>
+    <tr><td><code>admin_config</code><td>Admin-only config (server-only).</td></tr>
   </tbody>
 </table>
 
@@ -206,6 +207,30 @@ do {
 } while (token);
 console.log(`New users in last 7 days: ${count}`);
 </code></pre>
+
+<h2>One-off maintenance queries</h2>
+
+<p>
+  These write only when given <code>--apply</code> and are dry runs otherwise.
+  Always read the dry run first.
+</p>
+
+<h3>backfill-verified-emails</h3>
+<p>
+  Seeds the verified-address index (<code>verifiedEmails</code>) from Firebase Auth
+  for accounts that existed before it. Invited members link to accounts through
+  that index. Logic is in <code>verified-email-backfill.ts</code>
+  (tests: <code>verified-email-backfill.test.mjs</code>, run by <code>pnpm test:scripts</code>).
+</p>
+<pre><code>pnpm query backfill-verified-emails
+pnpm query backfill-verified-emails -- --apply</code></pre>
+<ul>
+  <li>Source: Auth accounts with a verified email, skipping <code>NON_USER_AUTH_EMAILS</code>.</li>
+  <li>Per address: <em>create</em> when the index has no entry, <em>skip</em> when it already names the same uid, <em>conflict</em> when it names another uid (reported, never overwritten).</li>
+  <li><code>--apply</code> creates entries create-only (an existing entry is never overwritten) and refuses when Auth returned zero users.</li>
+  <li>Also lists, report only, unlinked members whose address now has an owner. They link on the owner's next Groups load or through the admin repair.</li>
+  <li>Run the dry run before the release, <code>--apply</code> right after the deploy, then a dry run again (expect 0 to create).</li>
+</ul>
 
 <h2>Notes</h2>
 <ul>
