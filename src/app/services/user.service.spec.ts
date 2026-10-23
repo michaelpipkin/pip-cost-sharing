@@ -1877,8 +1877,8 @@ describe('UserService', () => {
       } as any;
 
       it.each(failure('lookup failed'))(
-        'logs and rethrows a failure for %s',
-        async (_label, thrown, message) => {
+        'rethrows a failure for %s without logging it (the caller logs)',
+        async (_label, thrown) => {
           vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
             vi.fn().mockRejectedValue(thrown) as any
           );
@@ -1887,12 +1887,7 @@ describe('UserService', () => {
             thrown
           );
 
-          expect(mockAnalytics.logError).toHaveBeenCalledWith(
-            'User Service',
-            'getPaymentMethods',
-            'Failed to get payment methods',
-            message
-          );
+          expect(mockAnalytics.logError).not.toHaveBeenCalled();
         }
       );
     });

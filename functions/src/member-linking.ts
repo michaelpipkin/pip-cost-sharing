@@ -96,7 +96,8 @@ function memberAddress(data: DocumentData | undefined): string {
  * or its email has changed again since this write) and checks the row's own
  * group for a row already linked to the owner, so one account never gets
  * two rows in a group, even when two rows are linked at once (logged, as
- * 'already-in-group').
+ * 'already-in-group'), and never to an account whose users doc no longer
+ * exists ('no-owner').
  */
 export async function linkMemberByVerifiedEmail(
   db: Firestore,
@@ -126,9 +127,13 @@ export async function linkMemberByVerifiedEmail(
     ) {
       return 'stale';
     }
-    const existing = await txn.get(
-      memberRef.parent.where('userRef', '==', userRef).limit(1)
-    );
+    const [existing, ownerDoc] = await Promise.all([
+      txn.get(memberRef.parent.where('userRef', '==', userRef).limit(1)),
+      txn.get(userRef),
+    ]);
+    // A deleted account's index entry can come back (a second signed-in
+    // device, or the removeAllFor race): never link to an account that is gone.
+    if (!ownerDoc.exists) return 'no-owner';
     if (!existing.empty) return 'already-in-group';
     txn.update(memberRef, { userRef, emailLower: address });
     return 'linked';

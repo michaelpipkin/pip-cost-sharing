@@ -1045,7 +1045,8 @@ export const syncUserEmailLower = onDocumentWritten('users/{userId}', async (eve
  * Same as syncUserEmailLower, for `groups/{groupId}/members/{memberId}.emailLower`.
  * Also links an unlinked row to the owner of its address in the
  * verified-address index when the write created the row or changed its email
- * (linkMemberByVerifiedEmail); a link writes emailLower itself.
+ * (linkMemberByVerifiedEmail); a link writes emailLower itself. A failed link
+ * is logged and emailLower is still synced; a stale event writes nothing.
  */
 export const syncMemberEmailLower = onDocumentWritten(
   'groups/{groupId}/members/{memberId}',
@@ -1053,13 +1054,29 @@ export const syncMemberEmailLower = onDocumentWritten(
     const after = event.data?.after;
     if (!after?.exists) return;
     const data = after.data()!;
-    const result = await linkMemberByVerifiedEmail(
-      db,
-      after.ref,
-      event.data?.before?.data(),
-      data
-    );
+    let result: Awaited<ReturnType<typeof linkMemberByVerifiedEmail>> | null =
+      null;
+    try {
+      result = await linkMemberByVerifiedEmail(
+        db,
+        after.ref,
+        event.data?.before?.data(),
+        data
+      );
+    } catch (error) {
+      // The trigger has no retry, so a failed link must not skip the
+      // emailLower sync: without emailLower the invite could never be found
+      // by linkPendingMembersFor or the duplicate check. Never log the address.
+      const reason =
+        (error as { code?: unknown } | null)?.code ??
+        (error instanceof Error ? error.name : typeof error);
+      console.error(`Linking member ${after.ref.path} failed: ${reason}`);
+    }
     if (result === 'linked') return;
+    // The event's data is outdated (the row changed again or is gone), so
+    // syncing from it would write a wrong emailLower or hit NOT_FOUND; the
+    // later write's own trigger keeps it right.
+    if (result === 'stale') return;
     await syncEmailLower(after.ref, data);
   }
 );

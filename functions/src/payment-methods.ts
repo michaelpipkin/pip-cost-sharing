@@ -11,7 +11,7 @@ export const PAYMENT_LOOKUP_DAILY_LIMIT = 100;
 export const PAYMENT_LOOKUP_LIMIT_REACHED =
   "You've looked up too many payment details today. Try again tomorrow.";
 
-/** The rolling window the daily limit counts over. */
+/** The fixed window the daily limit counts over, from the first lookup. */
 export const PAYMENT_LOOKUP_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface MemberPaymentMethods {

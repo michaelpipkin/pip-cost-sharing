@@ -564,7 +564,7 @@ export async function buildOrphanedMembersReport(
         title: 'Orphaned Members',
         stats: [
           { label: 'Unlinked Member Records', value: candidates.length },
-          { label: 'Linkable (exact email match)', value: linkable.length },
+          { label: 'Linkable (address has an owner)', value: linkable.length },
           { label: 'No Matching User', value: unmatchedCount },
         ],
       },

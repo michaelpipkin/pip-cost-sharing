@@ -187,6 +187,8 @@ describe('syncMemberEmailLower linking', () => {
 
   async function ownedAddress(owner: string, address?: string) {
     const email = address ?? `${uniqueId('own')}@Example.com`;
+    // The owner's account exists: a link to a deleted account is refused.
+    await db.collection('users').doc(owner).set({ email });
     await upsertVerifiedEmail(db, email, owner, 'login');
     return email;
   }
@@ -313,5 +315,63 @@ describe('syncMemberEmailLower linking', () => {
     const snap = await runWrite(row, { email: old, userRef: null }, after);
 
     expect(snap.get('userRef')).toBeNull();
+  });
+
+  it('writes no emailLower from stale event data', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const later = `${uniqueId('later')}@example.com`;
+    const row = await makeMember(await makeGroup(), { email });
+    const after = await row.get();
+    await row.update({ email: later });
+
+    const snap = await runWrite(row, undefined, after);
+
+    // The stale email must not become emailLower; the later write's own
+    // trigger keeps it right.
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.data()).not.toHaveProperty('emailLower');
+  });
+
+  it('does not throw for a stale event on a deleted row', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+    const after = await row.get();
+    await row.delete();
+
+    await expect(runWrite(row, undefined, after)).resolves.toBeDefined();
+
+    expect((await row.get()).exists).toBe(false);
+  });
+
+  it('still writes emailLower when the link step throws', async () => {
+    const owner = uniqueId('owner');
+    const email = await ownedAddress(owner);
+    const row = await makeMember(await makeGroup(), { email });
+    vi.spyOn(db, 'runTransaction').mockRejectedValue(new Error('firestore down'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
+    expect(error).toHaveBeenCalledTimes(1);
+    const logged = error.mock.calls[0]!.join(' ');
+    expect(logged).toContain(row.path);
+    expect(logged.toLowerCase()).not.toContain(email.toLowerCase());
+  });
+
+  it('does not link to an account whose users doc is gone', async () => {
+    const owner = uniqueId('owner');
+    const email = `${uniqueId('ghost')}@Example.com`;
+    // An index entry that outlived the account (no users/{owner} doc).
+    await upsertVerifiedEmail(db, email, owner, 'login');
+    const row = await makeMember(await makeGroup(), { email });
+
+    const snap = await runWrite(row, undefined);
+
+    expect(snap.get('userRef')).toBeNull();
+    expect(snap.get('emailLower')).toBe(email.toLowerCase());
   });
 });

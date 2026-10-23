@@ -251,8 +251,8 @@ describe('buildOrphanedMembersReport', () => {
       expect(rows.some((r) => r['path'] === ref.path)).toBe(false);
     }
     expect(
-      stat(result, 'Linkable (exact email match)') -
-        stat(before, 'Linkable (exact email match)')
+      stat(result, 'Linkable (address has an owner)') -
+        stat(before, 'Linkable (address has an owner)')
     ).toBe(1);
     expect(stat(result, 'No Matching User') - stat(before, 'No Matching User')).toBe(1);
   });
