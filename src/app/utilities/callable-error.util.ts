@@ -27,7 +27,9 @@ export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
 /** Whether `error` is that refusal (permission-denied, VERIFY_LOGIN_EMAIL). */
 export function isUnverifiedLoginRefusal(error: unknown): boolean {
   const { code, message } = callableError(error);
-  return code === 'functions/permission-denied' && message === VERIFY_LOGIN_EMAIL;
+  return (
+    code === 'functions/permission-denied' && message === VERIFY_LOGIN_EMAIL
+  );
 }
 
 /**
@@ -42,7 +44,9 @@ export const AUTH_LOOKUP_UNAVAILABLE =
 /** Whether `error` is that answer (unavailable, AUTH_LOOKUP_UNAVAILABLE). */
 export function isAuthLookupUnavailable(error: unknown): boolean {
   const { code, message } = callableError(error);
-  return code === 'functions/unavailable' && message === AUTH_LOOKUP_UNAVAILABLE;
+  return (
+    code === 'functions/unavailable' && message === AUTH_LOOKUP_UNAVAILABLE
+  );
 }
 
 /**
@@ -108,5 +112,31 @@ export function isConfirmationCooldownRefusal(error: unknown): boolean {
   return (
     code === 'functions/resource-exhausted' &&
     message === CONFIRMATION_RECENTLY_SENT
+  );
+}
+
+/**
+ * The app's one wording for an address another member of the same group
+ * already has: the client-side checks (member.service
+ * DuplicateMemberEmailError) and the member-email callables' refusal
+ * (DUPLICATE_MEMBER_EMAIL) are both shown with it.
+ */
+export const OTHER_MEMBER_HAS_EMAIL =
+  'Another member of this group already uses that address.';
+
+/**
+ * The member-email callables' refusal of an address another member of the
+ * group already has (functions/src/member-email.ts DUPLICATE_MEMBER_EMAIL).
+ * Old clients show it as is, so the server keeps this text; the app shows
+ * OTHER_MEMBER_HAS_EMAIL instead.
+ */
+export const DUPLICATE_MEMBER_EMAIL =
+  'A member with this email address already exists in the group.';
+
+/** Whether `error` is that refusal (already-exists, DUPLICATE_MEMBER_EMAIL). */
+export function isDuplicateMemberEmailRefusal(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return (
+    code === 'functions/already-exists' && message === DUPLICATE_MEMBER_EMAIL
   );
 }

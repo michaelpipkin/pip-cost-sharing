@@ -3,13 +3,16 @@ import {
   AUTH_LOOKUP_UNAVAILABLE,
   callableError,
   CONFIRMATION_RECENTLY_SENT,
+  DUPLICATE_MEMBER_EMAIL,
   GROUP_MAIL_LIMIT_EXCEEDED,
   GROUP_MAIL_LIMIT_REACHED,
   isAuthLookupUnavailable,
   isConfirmationCooldownRefusal,
+  isDuplicateMemberEmailRefusal,
   isGroupMailLimitRefusal,
   isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
 } from './callable-error.util';
 
 describe('callableError', () => {
@@ -223,5 +226,40 @@ describe('isConfirmationCooldownRefusal', () => {
         refusal('functions/internal', CONFIRMATION_RECENTLY_SENT)
       )
     ).toBe(false);
+  });
+});
+
+describe('isDuplicateMemberEmailRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ duplicate-address refusal', () => {
+    expect(DUPLICATE_MEMBER_EMAIL).toBe(
+      'A member with this email address already exists in the group.'
+    );
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/already-exists', `${DUPLICATE_MEMBER_EMAIL} [409]`)
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another already-exists refusal or another code', () => {
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/already-exists', 'Something else exists. [409]')
+      )
+    ).toBe(false);
+    expect(
+      isDuplicateMemberEmailRefusal(
+        refusal('functions/internal', DUPLICATE_MEMBER_EMAIL)
+      )
+    ).toBe(false);
+  });
+
+  it('is shown in the app’s one wording for a duplicate address', () => {
+    expect(OTHER_MEMBER_HAS_EMAIL).toBe(
+      'Another member of this group already uses that address.'
+    );
   });
 });

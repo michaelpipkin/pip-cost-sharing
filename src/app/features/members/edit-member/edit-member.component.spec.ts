@@ -10,7 +10,10 @@ import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
+import {
+  DuplicateMemberEmailError,
+  MemberService,
+} from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
@@ -368,7 +371,7 @@ describe('EditMemberComponent', () => {
     // for the admin, not an app error: shown, not logged, dialog left open.
     it('should show the duplicate-address refusal without logging it', async () => {
       mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
-        new Error('Another member of this group already uses that address.')
+        new DuplicateMemberEmailError()
       );
       await typeInto('edit-member-email-input', 'taken@example.com');
 
@@ -625,9 +628,12 @@ describe('EditMemberComponent', () => {
       );
     });
 
-    it("should show the server's message for any other refusal", async () => {
+    // The server words its duplicate refusal (DUPLICATE_MEMBER_EMAIL) the
+    // way old clients show it; this dialog shows the app's one wording, the
+    // same as for an unlinked row.
+    it("should show the server's duplicate refusal in the app's wording, without logging it", async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(
-        // The SDK appends the HTTP status; the snackbar shows it without.
+        // The SDK appends the HTTP status.
         Object.assign(
           new Error(
             'A member with this email address already exists in the group. [409]'
@@ -643,9 +649,30 @@ describe('EditMemberComponent', () => {
         expect.anything(),
         {
           data: {
-            message:
-              'A member with this email address already exists in the group.',
+            message: 'Another member of this group already uses that address.',
           },
+        }
+      );
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
+    it("should show the server's message for any other refusal", async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        // The SDK appends the HTTP status; the snackbar shows it without.
+        Object.assign(
+          new Error('A single valid email address is required [400]'),
+          { code: 'functions/invalid-argument' }
+        )
+      );
+      await typeInto('edit-member-email-input', 'taken@example.com');
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: { message: 'A single valid email address is required' },
         }
       );
       expect(mockDialogRef.close).not.toHaveBeenCalled();

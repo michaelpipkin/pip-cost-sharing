@@ -8,6 +8,7 @@ import {
   callableError,
   isAuthLookupUnavailable,
   isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
 } from '@utils/callable-error.util';
 import {
   addDoc,
@@ -59,12 +60,16 @@ const EXPECTED_EMAIL_CHANGE_CODES = new Set([
 ]);
 
 /**
- * updateMemberWithUserMatching's refusal of an address another member of the
- * group already has (an admin's edit of an unlinked member). An outcome the
- * edit dialog shows, not an error to log.
+ * The client-side duplicate checks' refusal of an address another member of
+ * the group already has (add member, and an edit that changes the email).
+ * An outcome the dialogs show, not an error to log.
  */
-export const OTHER_MEMBER_HAS_EMAIL =
-  'Another member of this group already uses that address.';
+export class DuplicateMemberEmailError extends Error {
+  constructor() {
+    super(OTHER_MEMBER_HAS_EMAIL);
+    this.name = 'DuplicateMemberEmailError';
+  }
+}
 
 /**
  * The snackbar text for an updateAllMemberEmails result (Account > Profile's
@@ -74,7 +79,8 @@ export function memberEmailUpdateMessage({
   updated,
   conflicts,
 }: MemberEmailUpdateResult): string {
-  const records = (n: number) => `${n} member ${n === 1 ? 'record' : 'records'}`;
+  const records = (n: number) =>
+    `${n} member ${n === 1 ? 'record' : 'records'}`;
   if (conflicts === 0) {
     return updated > 0
       ? `Updated email on ${records(updated)}`
@@ -252,9 +258,7 @@ export class MemberService implements IMemberService {
       const membersSnapshot = await getDocs(membersQuery);
 
       if (!membersSnapshot.empty) {
-        throw new Error(
-          'A member with this email address already exists in the group.'
-        );
+        throw new DuplicateMemberEmailError();
       }
 
       // Linking by users.emailLower is safe only because a profile email is
@@ -304,9 +308,7 @@ export class MemberService implements IMemberService {
       const snap = await getDocs(q);
 
       if (snap.size > 0) {
-        throw new Error(
-          'A member with this email address already exists in the group.'
-        );
+        throw new DuplicateMemberEmailError();
       }
     }
 
@@ -321,7 +323,8 @@ export class MemberService implements IMemberService {
   ): Promise<void> {
     const emailChanging =
       !!changes.email &&
-      this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail);
+      this.#normalizeEmail(changes.email) !==
+        this.#normalizeEmail(currentEmail);
     // The callables' duplicate check (functions/src/member-email.ts
     // DUPLICATE_MEMBER_EMAIL), for an admin's edit of an unlinked member.
     if (emailChanging) {
@@ -355,7 +358,7 @@ export class MemberService implements IMemberService {
   }
 
   /**
-   * Refuses (OTHER_MEMBER_HAS_EMAIL) an address another member of the same
+   * Refuses (DuplicateMemberEmailError) an address another member of the same
    * group already has, compared case-insensitively through emailLower.
    */
   async #assertNoOtherMemberHas(
@@ -370,7 +373,7 @@ export class MemberService implements IMemberService {
       )
     );
     if (clash.docs.some((d) => d.id !== memberRef.id)) {
-      throw new Error(OTHER_MEMBER_HAS_EMAIL);
+      throw new DuplicateMemberEmailError();
     }
   }
 

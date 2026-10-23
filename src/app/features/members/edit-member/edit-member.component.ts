@@ -32,8 +32,8 @@ import { AnalyticsService } from '@services/analytics.service';
 import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { GroupService } from '@services/group.service';
 import {
+  DuplicateMemberEmailError,
   MemberService,
-  OTHER_MEMBER_HAS_EMAIL,
 } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -44,7 +44,9 @@ import {
   CONFIRMATION_RECENTLY_SENT,
   isAuthLookupUnavailable,
   isConfirmationCooldownRefusal,
+  isDuplicateMemberEmailRefusal,
   isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
   VERIFY_LOGIN_EMAIL,
 } from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
@@ -212,10 +214,12 @@ export class EditMemberComponent {
       // An Auth outage on the server (which logs it); saving again can work.
       message = AUTH_LOOKUP_UNAVAILABLE;
     } else if (
-      error instanceof Error &&
-      error.message === OTHER_MEMBER_HAS_EMAIL
+      error instanceof DuplicateMemberEmailError ||
+      isDuplicateMemberEmailRefusal(error)
     ) {
-      // The client-side duplicate check (unlinked rows): an outcome.
+      // Another member of the group has the address: the client-side check
+      // (unlinked rows) or the server's (one's own row). An outcome, shown
+      // in the app's one wording.
       message = OTHER_MEMBER_HAS_EMAIL;
     } else if (error instanceof Error) {
       message = serverMessage;

@@ -3,7 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
-import { memberEmailUpdateMessage, MemberService } from './member.service';
+import {
+  DuplicateMemberEmailError,
+  memberEmailUpdateMessage,
+  MemberService,
+} from './member.service';
 import { UserStore } from '@store/user.store';
 import { MemberStore } from '@store/member.store';
 import { AnalyticsService } from '@services/analytics.service';
@@ -221,11 +225,13 @@ describe('MemberService', () => {
         makeSnap([makeDocSnap('m1', { email: 'dup@test.com' })]) as any
       );
 
-      await expect(
-        service.addMemberToGroup('group-1', { email: 'dup@test.com' })
-      ).rejects.toThrow(
-        'A member with this email address already exists in the group.'
+      const added = service.addMemberToGroup('group-1', {
+        email: 'dup@test.com',
+      });
+      await expect(added).rejects.toThrow(
+        'Another member of this group already uses that address.'
       );
+      await expect(added).rejects.toBeInstanceOf(DuplicateMemberEmailError);
     });
 
     it('should link userRef when a matching user account exists', async () => {
@@ -327,11 +333,13 @@ describe('MemberService', () => {
         makeSnap([makeDocSnap('other-member', {})]) as any
       );
 
-      await expect(
-        service.updateMember(mockMemberRef, { email: 'dup@test.com' })
-      ).rejects.toThrow(
-        'A member with this email address already exists in the group.'
+      const updated = service.updateMember(mockMemberRef, {
+        email: 'dup@test.com',
+      });
+      await expect(updated).rejects.toThrow(
+        'Another member of this group already uses that address.'
       );
+      await expect(updated).rejects.toBeInstanceOf(DuplicateMemberEmailError);
     });
 
     it('should call updateDoc when the email is unique', async () => {
@@ -382,7 +390,8 @@ describe('MemberService', () => {
     // duplicate check the callables make (DUPLICATE_MEMBER_EMAIL), so two
     // rows of one group could end up on one address.
     describe('the duplicate-address check', () => {
-      const DUPLICATE = 'Another member of this group already uses that address.';
+      const DUPLICATE =
+        'Another member of this group already uses that address.';
 
       it('refuses an address another member of the group has, writing nothing', async () => {
         const getDocs = vi
@@ -391,14 +400,14 @@ describe('MemberService', () => {
             makeSnap([makeDocSnap('other-member', {})]) as any
           );
 
-        await expect(
-          service.updateMemberWithUserMatching(
-            mockMemberRef,
-            { email: 'Taken@Test.com' },
-            null,
-            'old@test.com'
-          )
-        ).rejects.toThrow(DUPLICATE);
+        const saved = service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'Taken@Test.com' },
+          null,
+          'old@test.com'
+        );
+        await expect(saved).rejects.toThrow(DUPLICATE);
+        await expect(saved).rejects.toBeInstanceOf(DuplicateMemberEmailError);
 
         // Case-insensitive: the group's members are queried by emailLower.
         expect(firestoreModule.query).toHaveBeenCalledWith(
@@ -927,7 +936,9 @@ describe('MemberService', () => {
   // verified sign-in address.
   describe('requestMemberEmailChange', () => {
     it('calls the requestMemberEmailChange callable and returns its status', async () => {
-      const callable = vi.fn().mockResolvedValue({ data: { status: 'pending' } });
+      const callable = vi
+        .fn()
+        .mockResolvedValue({ data: { status: 'pending' } });
       const httpsCallable = vi
         .spyOn(functionsModule, 'httpsCallable')
         .mockReturnValue(callable as any);
@@ -959,7 +970,11 @@ describe('MemberService', () => {
         );
 
         await expect(
-          service.requestMemberEmailChange('group-1', 'member-1', 'a@example.com')
+          service.requestMemberEmailChange(
+            'group-1',
+            'member-1',
+            'a@example.com'
+          )
         ).rejects.toBe(error);
         expect(mockAnalytics.logError).not.toHaveBeenCalled();
       }
@@ -979,13 +994,11 @@ describe('MemberService', () => {
 
     it('logs any other unavailable error', async () => {
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
-        vi
-          .fn()
-          .mockRejectedValue(
-            Object.assign(new Error('unavailable'), {
-              code: 'functions/unavailable',
-            })
-          ) as any
+        vi.fn().mockRejectedValue(
+          Object.assign(new Error('unavailable'), {
+            code: 'functions/unavailable',
+          })
+        ) as any
       );
 
       await expect(
@@ -1042,9 +1055,7 @@ describe('MemberService', () => {
         vi.fn().mockRejectedValue(error) as any
       );
 
-      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(
-        error
-      );
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(error);
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
@@ -1054,9 +1065,7 @@ describe('MemberService', () => {
         vi.fn().mockRejectedValue(error) as any
       );
 
-      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(
-        error
-      );
+      await expect(service.confirmMemberEmailChange('tok')).rejects.toBe(error);
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
