@@ -162,7 +162,7 @@ const LIMIT_REFUSAL = {
   code: 'resource-exhausted',
   message: GROUP_MAIL_LIMIT_REACHED,
 };
-/** Refused while some allowance is left, but not enough (review M1). */
+/** Refused while some allowance is left, but not enough. */
 const OVER_LIMIT_REFUSAL = {
   code: 'resource-exhausted',
   message: GROUP_MAIL_LIMIT_EXCEEDED,
@@ -243,7 +243,7 @@ describe('group-mail allowance', () => {
     expect(await used(s.uid)).toBe(GROUP_MAIL_DAILY_LIMIT);
   });
 
-  // Review M5: the limit doc is read and written in the mail's own
+  // The limit doc is read and written in the mail's own
   // transaction, so two calls racing for the last recipient can't both pass.
   it('lets only one of two concurrent calls take the last recipient', async () => {
     const s = await seedGroup(2);
@@ -268,7 +268,7 @@ describe('group-mail allowance', () => {
     expect(await used(s.uid)).toBe(GROUP_MAIL_DAILY_LIMIT);
   });
 
-  // Review M5: the per-member invite cooldown refuses before the allowance
+  // The per-member invite cooldown refuses before the allowance
   // is charged.
   it('does not charge an invite the per-member cooldown refuses', async () => {
     const s = await seedGroup(0);
@@ -386,7 +386,7 @@ describe('liveGroupMailCount', () => {
   });
 });
 
-// Review M4: the nightly cleanup must not delete a doc that was written
+// The nightly cleanup must not delete a doc that was written
 // after its query read it (a counter renewed by a send in between).
 describe('deleteDocsIfUnchanged', () => {
   it('deletes the docs as read, and keeps one written since', async () => {

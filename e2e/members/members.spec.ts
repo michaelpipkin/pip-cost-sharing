@@ -111,7 +111,7 @@ test.describe('Members', { tag: ['@members'] }, () => {
     );
   });
 
-  // T3: an admin's edit of an unlinked member's email gets the same
+  // An admin's edit of an unlinked member's email gets the same
   // duplicate check as the server's (case-insensitive), so two rows of one
   // group can't end up on one address.
   test("should refuse another member's address for an unlinked member", async ({
@@ -131,7 +131,10 @@ test.describe('Members', { tag: ['@members'] }, () => {
 
     await members.clickMemberRow(duplicate.key);
     // Ari's own address, in other casing.
-    await members.fillEditMemberForm(undefined, users.admin.email.toUpperCase());
+    await members.fillEditMemberForm(
+      undefined,
+      users.admin.email.toUpperCase()
+    );
     await members.editMemberSaveButton.click();
     await expect(
       members.snackbarWith(

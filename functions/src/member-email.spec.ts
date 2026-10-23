@@ -217,7 +217,7 @@ describe('requestMemberEmailChange', () => {
     expect(await mailTo(s.loginEmail.toUpperCase())).toHaveLength(0);
   });
 
-  // Fix round 1, I1: uids are free, so an unverified account must not be
+  // Uids are free, so an unverified account must not be
   // able to mail anyone (the per-uid limit would not bound it).
   it('refuses a caller whose login email is not verified, mailing nothing', async () => {
     const unverified = await seedLinkedMember({ emailVerified: false });
@@ -239,7 +239,7 @@ describe('requestMemberEmailChange', () => {
     });
   });
 
-  // T3: a failed Auth lookup is an outage, not an unverified login email,
+  // A failed Auth lookup is an outage, not an unverified login email,
   // so it gets a retryable code and the user is not told to verify.
   it('answers unavailable, mailing nothing, when the Auth lookup fails', async () => {
     const s = await seedLinkedMember();
@@ -462,7 +462,7 @@ describe('requestMemberEmailChange', () => {
       }
     });
 
-    // Review M2: a caller who loses a race for the address (both passed the
+    // A caller who loses a race for the address (both passed the
     // first read; the winner's transaction committed first) is refused by
     // the transaction's re-check, and gets the request it was charged back.
     it('refunds the allowance of a caller who loses the race for an address', async () => {
@@ -1066,7 +1066,7 @@ describe('updateMemberEmails', () => {
     });
   });
 
-  // Ruling (T1): the scope is the client's former #linkedMembersQuery, which
+  // The scope is the client's former #linkedMembersQuery, which
   // has no active filter, so inactive and left memberships move too.
   it('includes inactive and left memberships', async () => {
     const user = await seedUser();
@@ -1106,7 +1106,7 @@ describe('updateMemberEmails', () => {
     expect(await memberEmail(row)).toEqual({ email: other, emailLower: other });
   });
 
-  // Fix round 1, Minor 4a: the address is the Auth account's, never the
+  // The address is the Auth account's, never the
   // users doc's (which can lag a login-email change).
   it('writes the Auth account’s address even when the users doc is stale', async () => {
     const stale = uniqueEmail('stale-profile');
@@ -1121,7 +1121,7 @@ describe('updateMemberEmails', () => {
     });
   });
 
-  // Minor 4b: a row unlinked after the query but before the transaction is
+  // A row unlinked after the query but before the transaction is
   // re-checked inside it and left alone.
   it('skips a row that was unlinked between the query and the transaction', async () => {
     const user = await seedUser();
@@ -1149,7 +1149,7 @@ describe('updateMemberEmails', () => {
     });
   });
 
-  // Minor 4c: more rows than one transaction takes are split across
+  // More rows than one transaction takes are split across
   // transactions, and every row is still written.
   it('updates more memberships than one transaction holds, in several transactions', async () => {
     const user = await seedUser();

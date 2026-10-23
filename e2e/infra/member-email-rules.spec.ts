@@ -116,7 +116,10 @@ test.describe(
           [
             'victim userRef with the email field left out',
             () =>
-              setDoc(fresh(), newMember({ userRef: userRef(db, users.victim) })),
+              setDoc(
+                fresh(),
+                newMember({ userRef: userRef(db, users.victim) })
+              ),
           ],
           [
             'userRef to a user doc that does not exist',
@@ -242,7 +245,10 @@ test.describe(
         // A legacy profile email that fails the single-address rule makes
         // add-group store '' instead.
         await expectAllowed(addOwnRow(''), 'blank');
-        await expectDenied(addOwnRow(randomEmail('creator')), 'another address');
+        await expectDenied(
+          addOwnRow(randomEmail('creator')),
+          'another address'
+        );
       });
     });
 
@@ -304,9 +310,9 @@ test.describe(
           'link by the profile email'
         );
       });
-      expect((await readMember(members.unlinkedLink.key))?.['userRef']?.id).toBe(
-        users.linkable.uid
-      );
+      expect(
+        (await readMember(members.unlinkedLink.key))?.['userRef']?.id
+      ).toBe(users.linkable.uid);
       await resetMember(members.unlinkedLink);
     });
 
@@ -383,8 +389,7 @@ test.describe(
           ],
           [
             'admin sets their own linked email to their verified address, recased',
-            () =>
-              updateDoc(ownRow, { email: users.admin.email.toUpperCase() }),
+            () => updateDoc(ownRow, { email: users.admin.email.toUpperCase() }),
           ],
         ]);
         expect(through).toEqual([]);
@@ -489,7 +494,7 @@ test.describe(
       });
     });
 
-    // Review M7: the access tests below pass on Firestore's default deny
+    // The access tests below pass on Firestore's default deny
     // alone, so they can't notice a server-only block being deleted (and
     // later shadowed by a broad allow). This pins the explicit denies in
     // the rules source, and that no catch-all match exists.

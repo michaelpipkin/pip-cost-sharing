@@ -367,7 +367,7 @@ describe('EditMemberComponent', () => {
       });
     });
 
-    // T3: another member of the group already has the address. An outcome
+    // Another member of the group already has the address. An outcome
     // for the admin, not an app error: shown, not logged, dialog left open.
     it('should show the duplicate-address refusal without logging it', async () => {
       mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
@@ -587,7 +587,7 @@ describe('EditMemberComponent', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
-    // T3: a failed Auth lookup is an outage; the remedy is to try again.
+    // A failed Auth lookup is an outage; the remedy is to try again.
     it('should ask to try again when the account check is unavailable', async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(
         Object.assign(

@@ -1022,7 +1022,7 @@ describe('HistoryDetailComponent', () => {
       );
     });
 
-    // Review I1: an earlier batch went out before a later one was refused.
+    // An earlier batch went out before a later one was refused.
     it.each([
       [3, "Group settle marked as unpaid. Sent 3 emails; the rest would go over today's limit for group emails."],
       [1, "Group settle marked as unpaid. Sent 1 email; the rest would go over today's limit for group emails."],

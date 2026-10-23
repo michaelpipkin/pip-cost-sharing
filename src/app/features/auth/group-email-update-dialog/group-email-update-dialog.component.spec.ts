@@ -320,7 +320,7 @@ describe('GroupEmailUpdateDialogComponent', () => {
       expect(mockDialogRef.close).toHaveBeenCalled();
     });
 
-    // T3: a failed Auth lookup is an outage; a retry can succeed, so the
+    // A failed Auth lookup is an outage; a retry can succeed, so the
     // dialog stays open with the same choice.
     it('asks to try again, and stays open, when the server could not check the account', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
@@ -341,7 +341,7 @@ describe('GroupEmailUpdateDialogComponent', () => {
       expect(mockDialogRef.close).not.toHaveBeenCalled();
     });
 
-    // Fix round 1, Minor 1: a retry can't succeed, so the dialog closes.
+    // A legacy login email: a retry can't succeed, so the dialog closes.
     it('explains, and closes, when the server refuses a login email that is not one valid address', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
         Object.assign(

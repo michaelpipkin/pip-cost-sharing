@@ -1154,7 +1154,7 @@ describe('SummaryComponent', () => {
       expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
     });
 
-    // Review I1: a later batch refused; the earlier ones went out.
+    // A later batch refused; the earlier ones went out.
     it.each([
       [3, "Sent 3 payment requests; the rest would go over today's limit for group emails."],
       [1, "Sent 1 payment request; the rest would go over today's limit for group emails."],

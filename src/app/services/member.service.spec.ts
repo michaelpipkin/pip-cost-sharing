@@ -386,7 +386,7 @@ describe('MemberService', () => {
   describe('updateMemberWithUserMatching', () => {
     const mockMemberRef = { id: 'member-1', parent: { id: 'members' } } as any;
 
-    // T3: an admin's edit of an unlinked member's email used to skip the
+    // An admin's edit of an unlinked member's email used to skip the
     // duplicate check the callables make (DUPLICATE_MEMBER_EMAIL), so two
     // rows of one group could end up on one address.
     describe('the duplicate-address check', () => {
@@ -821,7 +821,7 @@ describe('MemberService', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
-    // T3: the server logs a failed Auth lookup itself; here it is an outcome.
+    // The server logs a failed Auth lookup itself; here it is an outcome.
     it('rethrows the failed-account-check error without logging it', async () => {
       const error = authLookupUnavailable();
       vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
@@ -832,7 +832,7 @@ describe('MemberService', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
-    // Fix round 1, Minor 1: a legacy login address the server can't write.
+    // A legacy login address the server can't write.
     // The owner should hear about it, so it is logged.
     it('logs and rethrows the invalid-login-email refusal', async () => {
       const error = Object.assign(

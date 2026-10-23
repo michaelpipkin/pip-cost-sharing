@@ -93,7 +93,10 @@ describe('sendMailQueueEmail: documents it leaves alone', () => {
 
   it('does nothing when the event carries no snapshot', async () => {
     await expect(
-      (sendMailQueueEmail as any).run({ data: undefined, params: { docId: 'x' } })
+      (sendMailQueueEmail as any).run({
+        data: undefined,
+        params: { docId: 'x' },
+      })
     ).resolves.toBeUndefined();
   });
 });
@@ -164,7 +167,7 @@ describe('sendMailQueueEmail: demo project (the isolated emulators)', () => {
     expect(delivery.attempts).toBe(1);
   });
 
-  // T3: the catch's own ERROR write was not guarded, so when it failed too
+  // The catch's own ERROR write was not guarded, so when it failed too
   // the handler rejected and the doc stayed PROCESSING. It is now tried a
   // second time. Failing calls 2 and 3 fails the suppressed write and the
   // first ERROR write; call 4 (the retry) goes through.
@@ -211,7 +214,9 @@ describe('sendMailQueueEmail: demo project (the isolated emulators)', () => {
     ).resolves.toBeUndefined();
     expect(calls).toBe(4);
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining(`Could not record the ERROR delivery for mail doc ${ref.id}`),
+      expect.stringContaining(
+        `Could not record the ERROR delivery for mail doc ${ref.id}`
+      ),
       expect.objectContaining({ message: 'write 4 failed' })
     );
   });
@@ -322,7 +327,9 @@ describe('sendMailQueueEmail: real project (nodemailer mocked)', () => {
     expect(delivery.endTime).toBeInstanceOf(Timestamp);
     expect(delivery.info).toBeUndefined();
     expect(
-      Math.abs((snap.get('expireAt') as Timestamp).toMillis() - (before + YEAR_MS))
+      Math.abs(
+        (snap.get('expireAt') as Timestamp).toMillis() - (before + YEAR_MS)
+      )
     ).toBeLessThan(60_000);
   });
 

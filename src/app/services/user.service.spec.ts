@@ -681,7 +681,7 @@ describe('UserService', () => {
         expect(httpsCallableSpy).not.toHaveBeenCalled();
       });
 
-      // Review I1: the batches go out one after another, so what was sent
+      // The batches go out one after another, so what was sent
       // before a daily-limit refusal is a known prefix the app can report.
       it('sends the batches one after another, not at once', async () => {
         const { callable } = mockCallable(undefined);
@@ -816,7 +816,7 @@ describe('UserService', () => {
         expect(httpsCallableSpy).not.toHaveBeenCalled();
       });
 
-      // Review I1: one batch after another, reporting a known prefix.
+      // One batch after another, reporting a known prefix.
       it('reports what was sent when a later batch reaches the daily limit', async () => {
         const { callable } = mockCallable(undefined);
         let finishFirst!: (value: unknown) => void;

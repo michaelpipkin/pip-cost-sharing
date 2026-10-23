@@ -102,7 +102,9 @@ async function changeLoginEmailAndSignIn(
   await account.gotoAccount();
   await account.submitEmailChange(newEmail);
   await expect(
-    account.snackbarWith(`Check ${newEmail} for a link to confirm your new email`)
+    account.snackbarWith(
+      `Check ${newEmail} for a link to confirm your new email`
+    )
   ).toBeVisible();
   await account.signOut();
 
@@ -135,7 +137,7 @@ test.describe(
       );
     });
 
-    // Fix round 1, Minor 5: Profile's own button, with no login-email change.
+    // Profile's own button, with no login-email change.
     test('Profile’s Sync Member Emails moves memberships to the login email and skips a group where it is taken', async ({
       page,
     }) => {
@@ -159,11 +161,9 @@ test.describe(
           'Updated email on 1 member record. 1 skipped because another member of that group already uses that address.'
         )
       ).toBeVisible();
-      await expect.poll(() => memberEmails('sync')).toEqual([
-        user.email,
-        CUSTOM_EMAIL,
-        user.email,
-      ]);
+      await expect
+        .poll(() => memberEmails('sync'))
+        .toEqual([user.email, CUSTOM_EMAIL, user.email]);
     });
 
     test('"Update old email only" changes the memberships on the old login email and keeps the custom one', async ({
@@ -210,11 +210,9 @@ test.describe(
       await expect(
         dialog.snackbarWith('Updated email on 2 member records')
       ).toBeVisible();
-      await expect.poll(() => memberEmails('old')).toEqual([
-        newEmail,
-        newEmail,
-        CUSTOM_EMAIL,
-      ]);
+      await expect
+        .poll(() => memberEmails('old'))
+        .toEqual([newEmail, newEmail, CUSTOM_EMAIL]);
     });
 
     test('"Update all" changes every membership, the custom one too, and skips a group where the address is taken', async ({
@@ -239,11 +237,9 @@ test.describe(
           'Updated email on 2 member records. 1 skipped because another member of that group already uses that address.'
         )
       ).toBeVisible();
-      await expect.poll(() => memberEmails('all')).toEqual([
-        newEmail,
-        user.email,
-        newEmail,
-      ]);
+      await expect
+        .poll(() => memberEmails('all'))
+        .toEqual([newEmail, user.email, newEmail]);
     });
 
     test('"Not now" changes nothing, and the dialog is not offered again', async ({

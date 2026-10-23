@@ -161,7 +161,7 @@ describe('isGroupMailLimitRefusal', () => {
         )
       )
     ).toBe(true);
-    // Review M1: the call needs more than is left.
+    // The call needs more than is left.
     expect(GROUP_MAIL_LIMIT_EXCEEDED).toBe(
       "This would go over today's limit for group emails. Try again tomorrow."
     );
