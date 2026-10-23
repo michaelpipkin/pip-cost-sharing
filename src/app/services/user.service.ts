@@ -17,6 +17,8 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { toIsoFormat } from '@utils/date-utils';
+import { isSingleEmailAddress } from '@utils/email-validation';
 import { FirebaseError } from 'firebase/app';
 import {
   browserLocalPersistence,
@@ -37,7 +39,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { appCheckTokenReady } from '../app-check';
 import { GroupService } from './group.service';
-import { IUserService } from './user.service.interface';
+import { IUserService, PaymentRequestResult } from './user.service.interface';
 
 // Total attempts (initial + retries) for the login-time Firestore sequence
 // below, and the fixed delay between them - short, bounded, and only ever
@@ -49,6 +51,37 @@ const LOGIN_SEQUENCE_RETRY_DELAY_MS = 2000;
 // functions/src/user-onboarding.ts) to create a brand-new user's
 // Firestore doc before falling back to creating it client-side.
 const SERVER_USER_PROFILE_WAIT_TIMEOUT_MS = 8000;
+
+// Auth errors meaning the session's tokens were revoked (e.g. by an email
+// change), as opposed to a real failure.
+const REVOKED_SESSION_CODES = new Set([
+  'auth/user-token-expired',
+  'auth/user-not-found',
+  'auth/user-disabled',
+  'auth/invalid-user-token',
+]);
+
+function isRevokedSessionError(error: unknown): boolean {
+  return error instanceof FirebaseError && REVOKED_SESSION_CODES.has(error.code);
+}
+
+// The most requests or member ids one group-email callable accepts
+// (functions/src/group-emails.ts MAX_BATCH); must not exceed it.
+const GROUP_EMAIL_BATCH = 25;
+
+/** `items` in order, split into lists of at most GROUP_EMAIL_BATCH. */
+function inBatches<T>(items: T[]): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += GROUP_EMAIL_BATCH) {
+    batches.push(items.slice(i, i + GROUP_EMAIL_BATCH));
+  }
+  return batches;
+}
+
+/** The sign-in address once verified, else '' (see #syncProfileEmail). */
+function verifiedEmail(firebaseUser: FirebaseUser): string {
+  return firebaseUser.emailVerified ? (firebaseUser.email ?? '') : '';
+}
 
 @Injectable({
   providedIn: 'root',
@@ -73,8 +106,18 @@ export class UserService implements IUserService {
   protected readonly loading = inject(LoadingService);
   protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
+  // The last change offered (uid, old and new address, lower-cased): both the
+  // session start and the account-action page can record the same login
+  // email change, and it must be offered once.
+  #lastOfferedChange = '';
+
   #intentionalLogout = false;
   #handlingSessionExpiry = false;
+  // Set by account-action around a confirmed email change or recovery:
+  // production Firebase revokes the session then, and that sign-out is
+  // expected (the page itself says to sign in with the new address), so it
+  // must not be reported as "Your session has expired".
+  #expectingSignOut = false;
 
   constructor() {
     afterNextRender(async () => {
@@ -82,7 +125,20 @@ export class UserService implements IUserService {
     });
   }
 
+  // See #expectingSignOut. Cleared when the sign-out arrives, or by the
+  // caller when the session survived.
+  expectSignOut(expected: boolean): void {
+    this.#expectingSignOut = expected;
+  }
+
   private handleSessionExpired(): void {
+    if (this.#expectingSignOut) {
+      // Clear the signed-in state quietly: no snackbar, no redirect away
+      // from the page that explains what happened.
+      this.groupService.logout();
+      this.userStore.clearUser();
+      return;
+    }
     if (this.#handlingSessionExpiry) return;
     this.#handlingSessionExpiry = true;
     this.groupService.logout();
@@ -148,8 +204,6 @@ export class UserService implements IUserService {
   private async initializeUserSession(
     firebaseUser: FirebaseUser
   ): Promise<void> {
-    const email = firebaseUser.email!;
-
     // Checked once per session rather than once per retry below: the
     // result only feeds diagnostics, and a per-attempt check would
     // double-count the app_check_status event and repeat the
@@ -196,30 +250,25 @@ export class UserService implements IUserService {
           this.getUserDetails(firebaseUser.uid),
         ]);
 
-        let userData: User;
-        if (existingUser) {
-          userData = existingUser;
-          if (existingUser.email !== email) {
-            const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
-            await setDoc(docRef, { email }, { merge: true });
-            userData = new User({ ...existingUser, email });
-          }
-        } else {
-          // Brand-new account: createUserProfileOnSignUp (Cloud
-          // Function, see functions/src/user-onboarding.ts) creates the
-          // doc server-side as soon as the Auth account exists,
-          // independent of whether this tab stays open. Wait for it via
-          // a live listener rather than creating it here ourselves -
-          // client-side creation raced tab-close/backgrounding and left
-          // accounts with no profile doc (see
-          // .claude/orphaned-registrations-investigation.md). Falls
-          // back to the old client-side creation only if the trigger
-          // doesn't complete within the wait (rare - function outage or
-          // a slow cold start).
-          userData =
-            (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
-            (await this.createUserIfNotExists(firebaseUser.uid, email));
-        }
+        // Brand-new account: createUserProfileOnSignUp (Cloud Function, see
+        // functions/src/user-onboarding.ts) creates the doc server-side as
+        // soon as the Auth account exists, independent of whether this tab
+        // stays open. Wait for it via a live listener rather than creating
+        // it here ourselves - client-side creation raced tab-close/
+        // backgrounding and left accounts with no profile doc (see
+        // .claude/orphaned-registrations-investigation.md). Falls back to
+        // client-side creation only if the trigger doesn't complete within
+        // the wait (rare - function outage or a slow cold start).
+        const profile =
+          existingUser ??
+          (await this.waitForServerCreatedUser(firebaseUser.uid)) ??
+          (await this.createUserIfNotExists(firebaseUser.uid));
+
+        // Every path stores the address the same way: from a refreshed
+        // token, once verified (a profile created above starts at '').
+        const email = await this.#syncProfileEmail(firebaseUser, profile.email);
+        const userData =
+          email === profile.email ? profile : new User({ ...profile, email });
 
         const user = new User({
           ...userData,
@@ -241,6 +290,13 @@ export class UserService implements IUserService {
           await this.delay(LOGIN_SEQUENCE_RETRY_DELAY_MS);
           continue;
         }
+        // A confirmed email change revoked the session mid-start (the
+        // account-action page expects that and explains it): nothing failed
+        // that the generic error would help with.
+        if (this.#expectingSignOut && isRevokedSessionError(error)) {
+          this.loading.loadingOff();
+          return;
+        }
         this.analytics.logError(
           'User Service',
           'initializeAuth',
@@ -251,6 +307,76 @@ export class UserService implements IUserService {
         return;
       }
     }
+  }
+
+  // The profile stores the sign-in address only once it is verified (Google
+  // sign-ins are): invited members are linked to accounts by the profile
+  // email (users.emailLower), and firestore.rules accepts a non-empty value
+  // only when it is the caller's verified ID-token address. Writes that
+  // address when it differs from `profileEmail`, and returns what the
+  // profile now holds.
+  //
+  // The address written comes from a freshly refreshed ID token, not from
+  // the User object captured when the session started: on the
+  // account-action page the user is reloaded onto a just-confirmed address
+  // mid-load, so a captured address (or a cached token) can be stale, and
+  // writing it would put the old address back (seen in e2e; the rules
+  // refused it). The refresh costs a request only when the live user's
+  // verified address differs from the profile.
+  //
+  // A profile email is never worth failing a sign-in over (final review I1):
+  //  - an address that is not one valid address (a legacy Auth account, e.g.
+  //    an underscore in the domain) is not written at all, since the rules
+  //    (isValidEmailOrEmpty) would refuse it on every sign-in;
+  //  - any other failure (a refused or failed write, a failed refresh) is
+  //    logged and the session continues with the stored profile email. The
+  //    next sign-in tries again.
+  // Only a revoked session is rethrown: the session start can't go on, and
+  // initializeUserSession handles an expected revocation (email change).
+  async #syncProfileEmail(
+    firebaseUser: FirebaseUser,
+    profileEmail: string
+  ): Promise<string> {
+    const liveEmail = verifiedEmail(firebaseUser);
+    if (!liveEmail || liveEmail === profileEmail) return profileEmail;
+
+    try {
+      const { claims } = await firebaseUser.getIdTokenResult(true);
+      const tokenEmail =
+        claims['email_verified'] === true && typeof claims['email'] === 'string'
+          ? claims['email']
+          : '';
+      if (!tokenEmail || tokenEmail === profileEmail) return profileEmail;
+      if (!isSingleEmailAddress(tokenEmail)) return profileEmail;
+
+      const docRef = doc(this.fs, `users/${firebaseUser.uid}`);
+      await setDoc(docRef, { email: tokenEmail }, { merge: true });
+      this.#offerGroupEmailUpdate(firebaseUser.uid, profileEmail, tokenEmail);
+      return tokenEmail;
+    } catch (error) {
+      if (isRevokedSessionError(error)) throw error;
+      this.analytics.logError(
+        'User Service',
+        'syncProfileEmail',
+        'Failed to store the verified email in the profile',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return profileEmail;
+    }
+  }
+
+  // The profile email just changed from `oldEmail` to `newEmail`: record it
+  // so the app shell can offer to move the user's group member emails too
+  // (they stay on the old address otherwise, unless the user finds Account >
+  // Profile > Sync). A blank old address is a legacy profile being filled
+  // in, not a change, and a case-only difference is the same address.
+  #offerGroupEmailUpdate(uid: string, oldEmail: string, newEmail: string): void {
+    if (!oldEmail || !newEmail) return;
+    if (oldEmail.toLowerCase() === newEmail.toLowerCase()) return;
+    const change = [uid, oldEmail, newEmail].join('|').toLowerCase();
+    if (change === this.#lastOfferedChange) return;
+    this.#lastOfferedChange = change;
+    this.userStore.setGroupEmailPrompt({ uid, oldEmail, newEmail });
   }
 
   private async initializeAuth(): Promise<void> {
@@ -281,6 +407,7 @@ export class UserService implements IUserService {
           this.handleSessionExpired();
         }
         this.#intentionalLogout = false;
+        this.#expectingSignOut = false;
       }
     });
   }
@@ -364,21 +491,20 @@ export class UserService implements IUserService {
     }
   }
 
-  async createUserIfNotExists(userId: string, email: string): Promise<User> {
+  // The fallback when createUserProfileOnSignUp hasn't created the profile.
+  // It never writes an address: the doc starts at '' (always accepted by
+  // the rules), and the caller then stores the verified address through
+  // #syncProfileEmail, which refreshes the ID token first. Writing the
+  // address here under a cached token failed for a user who had verified
+  // elsewhere since signing in (the token still said unverified).
+  async createUserIfNotExists(userId: string): Promise<User> {
     try {
       const existingUser = await this.getUserDetails(userId);
-      if (existingUser) {
-        if (existingUser.email !== email) {
-          const docRef = doc(this.fs, `users/${userId}`);
-          await setDoc(docRef, { email }, { merge: true });
-          existingUser.email = email;
-        }
-        return existingUser;
-      }
+      if (existingUser) return existingUser;
 
       const docRef = doc(this.fs, `users/${userId}`);
       const defaultUserData = {
-        email: email,
+        email: '',
         defaultGroupRef: null,
         receiptPolicy: false,
         emailOptOut: false,
@@ -430,21 +556,46 @@ export class UserService implements IUserService {
     }
   }
 
+  async #storedProfileEmail(
+    userDocRef: DocumentReference<User>
+  ): Promise<string> {
+    try {
+      const snap = await getDoc(userDocRef);
+      return snap.exists() ? (snap.data()?.email ?? '') : '';
+    } catch {
+      return '';
+    }
+  }
+
+  // Called once `newEmail` has just been verified (or verified and made the
+  // sign-in address). The cached ID token still carries the old claims, so
+  // it is refreshed first: the rules accept the profile email only when it
+  // matches a verified token email, and linkInvitedMembers links by the
+  // token's address.
   async updateUserEmailAndLinkMembers(newEmail: string): Promise<void> {
     const userId = this.#requireUserId();
+    await this.auth.currentUser!.getIdToken(true);
     // prettier-ignore
     const userDocRef = doc( // NOSONAR
       this.fs,
       `users/${userId}`
     ) as DocumentReference<User>;
 
-    // Update the email on the user document
-    await setDoc(userDocRef, { email: newEmail }, { merge: true });
-    this.userStore.updateUser({ email: newEmail });
+    // Update the email on the user document. An address that is not one
+    // valid address (a legacy Auth account) is never stored: the rules would
+    // refuse it (see #syncProfileEmail). Linking below still runs.
+    if (isSingleEmailAddress(newEmail)) {
+      // The address being replaced comes from the stored profile, read just
+      // before the write: the in-memory store may not be filled yet when the
+      // action page loads, and a missed read only skips the offer.
+      const oldEmail = await this.#storedProfileEmail(userDocRef);
+      await setDoc(userDocRef, { email: newEmail }, { merge: true });
+      this.userStore.updateUser({ email: newEmail });
+      this.#offerGroupEmailUpdate(userId, oldEmail, newEmail);
+    }
 
-    // Link any unlinked member records with this email to this user
-    const membersLinked =
-      await this.memberLinkService.linkInvitedMembers(newEmail);
+    // Link any unlinked member records with the verified address
+    const membersLinked = await this.memberLinkService.linkInvitedMembers();
     if (membersLinked !== null) {
       this.analytics.logEvent('email_verified_members_linked', {
         email: newEmail,
@@ -490,274 +641,122 @@ export class UserService implements IUserService {
     }
   }
 
-  private escapeHtml(str: string): string {
-    return str
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-  }
+  // Group emails are built and addressed server-side (functions/src/
+  // group-emails.ts): the client sends only member ids and amounts, and the
+  // server mails each recipient's linked account at its verified profile
+  // address. The server takes at most GROUP_EMAIL_BATCH requests or member
+  // ids per call, so longer lists go out as several calls.
 
-  private buildEmailHtml(content: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f7fbf0;font-family:Arial,sans-serif;color:#191d17;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 16px;"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td style="background-color:#105208;padding:20px 32px;border-radius:8px 8px 0 0;"><h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;">PipSplit</h1></td></tr><tr><td style="background-color:#ffffff;padding:32px;">${content}</td></tr><tr><td style="background-color:#eff2e8;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="margin:0;font-size:12px;color:#5b6058;">You received this email because you are a member of a PipSplit group.<br>To opt out, update your notification preferences in PipSplit.</p></td></tr></table></td></tr></table></body></html>`;
-  }
-
-  private buildPaymentMethodLines(userData: {
-    venmoId?: string;
-    paypalId?: string;
-    cashAppId?: string;
-    zelleId?: string;
-  }): string {
-    const methods: string[] = [];
-    if (userData.venmoId)
-      methods.push(`Venmo: @${userData.venmoId.replace(/^@/, '')}`);
-    if (userData.paypalId) methods.push(`PayPal: ${userData.paypalId}`);
-    if (userData.cashAppId) methods.push(`Cash App: $${userData.cashAppId}`);
-    if (userData.zelleId) methods.push(`Zelle: ${userData.zelleId}`);
-    return methods.length > 0
-      ? methods.join('\n')
-      : '(No payment methods on file)';
-  }
-
-  private buildPaymentMethodsHtml(methods: string): string {
-    if (methods === '(No payment methods on file)') {
-      return `<p style="color:#5b6058;margin:0;font-style:italic;">(No payment methods on file)</p>`;
-    }
-    return methods
-      .split('\n')
-      .map((line) => `<p style="margin:2px 0;">${this.escapeHtml(line)}</p>`)
-      .join('');
-  }
-
-  private async callSendEmail(
-    to: string,
-    subject: string,
-    text: string,
-    html: string
-  ): Promise<void> {
+  async #callSendPaymentRequests(
+    groupId: string,
+    requests: {
+      owedByMemberRef: DocumentReference<Member>;
+      owedToMemberRef: DocumentReference<Member>;
+      amount: number;
+    }[]
+  ): Promise<PaymentRequestResult[]> {
     const fn = httpsCallable<
-      { to: string; subject: string; text: string; html: string },
-      { success: boolean }
-    >(this.functions, 'sendEmail');
-    await fn({ to, subject, text, html });
+      {
+        groupId: string;
+        requests: {
+          owedByMemberId: string;
+          owedToMemberId: string;
+          amount: number;
+        }[];
+      },
+      { results: PaymentRequestResult[] }
+    >(this.functions, 'sendPaymentRequests');
+    const { data } = await fn({
+      groupId,
+      requests: requests.map((r) => ({
+        owedByMemberId: r.owedByMemberRef.id,
+        owedToMemberId: r.owedToMemberRef.id,
+        amount: r.amount,
+      })),
+    });
+    return data.results;
   }
 
   async sendPaymentRequestEmail(
-    owedByMember: Member,
-    owedToMember: Member,
-    groupName: string,
-    formattedAmount: string
-  ): Promise<'sent' | 'not_registered' | 'opted_out'> {
-    if (!owedByMember.userRef) {
-      return 'not_registered';
-    }
-    const owedByUserDoc = await getDoc(owedByMember.userRef);
-    if (
-      owedByUserDoc.exists() &&
-      owedByUserDoc.data()?.['emailOptOut'] === true
-    ) {
-      return 'opted_out';
-    }
-    let paymentMethodLines = '(No payment methods on file)';
-    if (owedToMember.userRef) {
-      const owedToUserDoc = await getDoc(owedToMember.userRef);
-      if (owedToUserDoc.exists()) {
-        paymentMethodLines = this.buildPaymentMethodLines(
-          owedToUserDoc.data() as {
-            venmoId?: string;
-            paypalId?: string;
-            cashAppId?: string;
-            zelleId?: string;
-          }
-        );
-      }
-    }
-    const subject = `Payment request from ${owedToMember.displayName} for group "${groupName}" in PipSplit`;
-    const text = [
-      `Hi ${owedByMember.displayName},`,
-      '',
-      `${owedToMember.displayName} is requesting payment of ${formattedAmount} in the "${groupName}" group via PipSplit.`,
-      '',
-      `Please log in to PipSplit to mark this balance as paid, or send the payment directly to ${owedToMember.displayName} using one of the following:`,
-      paymentMethodLines,
-    ].join('\n');
-    const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
-    const html = this.buildEmailHtml(
-      `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-        `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(owedByMember.displayName)}</strong>,</p>` +
-        `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-        `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(formattedAmount)}</span></div>` +
-        `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-        `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(owedToMember.displayName)}</strong> using one of the following:</p>` +
-        `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
-    );
-    await this.callSendEmail(owedByMember.email, subject, text, html);
-    return 'sent';
+    groupId: string,
+    owedByMemberRef: DocumentReference<Member>,
+    owedToMemberRef: DocumentReference<Member>,
+    amount: number
+  ): Promise<PaymentRequestResult> {
+    const [result] = await this.#callSendPaymentRequests(groupId, [
+      { owedByMemberRef, owedToMemberRef, amount },
+    ]);
+    return result!;
   }
 
   async sendGroupPaymentRequestEmails(
+    groupId: string,
     transfers: {
-      owedByMember: Member;
-      owedToMember: Member;
-      formattedAmount: string;
-    }[],
-    groupName: string
+      owedByMemberRef: DocumentReference<Member>;
+      owedToMemberRef: DocumentReference<Member>;
+      amount: number;
+    }[]
   ): Promise<{ sent: number; skipped: number }> {
-    const eligible = transfers.filter((t) => !!t.owedByMember.userRef);
-    const skippedNoAccount = transfers.length - eligible.length;
-
-    const owedByUserDocs = await Promise.all(
-      eligible.map((t) => {
-        const userRef = t.owedByMember.userRef!;
-        return getDoc(userRef);
-      })
-    );
-
-    const notOptedOut = eligible.filter((_, i) => {
-      const doc = owedByUserDocs[i];
-      return !doc?.exists() || doc.data()?.['emailOptOut'] !== true;
-    });
-    const skippedOptedOut = eligible.length - notOptedOut.length;
-
-    const owedToUserDocs = await Promise.all(
-      notOptedOut.map((t) =>
-        t.owedToMember.userRef
-          ? getDoc(t.owedToMember.userRef)
-          : Promise.resolve(null)
+    if (transfers.length === 0) {
+      return { sent: 0, skipped: 0 };
+    }
+    const results = (
+      await Promise.all(
+        inBatches(transfers).map((batch) =>
+          this.#callSendPaymentRequests(groupId, batch)
+        )
       )
-    );
-
-    await Promise.all(
-      notOptedOut.map((t, i) => {
-        const owedToDoc = owedToUserDocs[i];
-        const paymentMethodLines = owedToDoc?.exists()
-          ? this.buildPaymentMethodLines(
-              owedToDoc.data() as {
-                venmoId?: string;
-                paypalId?: string;
-                cashAppId?: string;
-                zelleId?: string;
-              }
-            )
-          : '(No payment methods on file)';
-        const subject = `Payment request from ${t.owedToMember.displayName} for group "${groupName}" in PipSplit`;
-        const text = [
-          `Hi ${t.owedByMember.displayName},`,
-          '',
-          `${t.owedToMember.displayName} is requesting payment of ${t.formattedAmount} in the "${groupName}" group via PipSplit.`,
-          '',
-          `Please log in to PipSplit to mark this balance as paid, or send the payment directly to ${t.owedToMember.displayName} using one of the following:`,
-          paymentMethodLines,
-        ].join('\n');
-        const pmHtml = this.buildPaymentMethodsHtml(paymentMethodLines);
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#105208;margin:0 0 20px 0;">Payment Request</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(t.owedByMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;"><strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> is requesting payment of:</p>` +
-            `<div style="background-color:#cdebbf;border-radius:8px;padding:20px;text-align:center;margin:0 0 20px 0;"><span style="font-size:28px;font-weight:bold;color:#105208;">${this.escapeHtml(t.formattedAmount)}</span></div>` +
-            `<p style="margin:0 0 16px 0;">in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group via PipSplit.</p>` +
-            `<p style="margin:0 0 16px 0;">Please log in to PipSplit to mark this balance as paid, or send the payment directly to <strong>${this.escapeHtml(t.owedToMember.displayName)}</strong> using one of the following:</p>` +
-            `<div style="background-color:#f7fbf0;border:1px solid #c4c8be;border-radius:8px;padding:16px;">${pmHtml}</div>`
-        );
-        return this.callSendEmail(t.owedByMember.email, subject, text, html);
-      })
-    );
-
-    return {
-      sent: notOptedOut.length,
-      skipped: skippedNoAccount + skippedOptedOut,
-    };
+    ).flat();
+    const sent = results.filter((r) => r === 'sent').length;
+    return { sent, skipped: results.length - sent };
   }
 
   async sendMemberPaymentUnpayEmails(
-    paidByMember: Member | undefined,
-    paidToMember: Member | undefined,
-    groupName: string,
-    formattedAmount: string,
+    groupId: string,
+    paidByMemberRef: DocumentReference<Member>,
+    paidToMemberRef: DocumentReference<Member>,
+    amount: number,
     splitCount: number
   ): Promise<void> {
-    const expenseWord = splitCount === 1 ? 'expense' : 'expenses';
-    const sends: Promise<void>[] = [];
-
-    if (paidByMember?.userRef && paidByMember.email) {
-      const userDoc = await getDoc(paidByMember.userRef);
-      if (!userDoc.exists() || userDoc.data()?.['emailOptOut'] !== true) {
-        const paidToName = paidToMember?.displayName ?? 'another member';
-        const subject = `A payment from you to ${paidToName} in PipSplit has been reversed`;
-        const text = [
-          `Hi ${paidByMember.displayName},`,
-          '',
-          `A payment of ${formattedAmount} from you to ${paidToName} in the group "${groupName}" has been reversed in PipSplit.`,
-          '',
-          `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.`,
-        ].join('\n');
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidByMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from you to <strong>${this.escapeHtml(paidToName)}</strong> in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in your outstanding balance again.</p>`
-        );
-        sends.push(this.callSendEmail(paidByMember.email, subject, text, html));
-      }
-    }
-
-    if (paidToMember?.userRef && paidToMember.email) {
-      const userDoc = await getDoc(paidToMember.userRef);
-      if (!userDoc.exists() || userDoc.data()?.['emailOptOut'] !== true) {
-        const paidByName = paidByMember?.displayName ?? 'another member';
-        const subject = `A payment from ${paidByName} to you in PipSplit has been reversed`;
-        const text = [
-          `Hi ${paidToMember.displayName},`,
-          '',
-          `A payment of ${formattedAmount} from ${paidByName} to you in the group "${groupName}" has been reversed in PipSplit.`,
-          '',
-          `The ${splitCount} shared ${expenseWord} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.`,
-        ].join('\n');
-        const html = this.buildEmailHtml(
-          `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Payment Reversed</h2>` +
-            `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(paidToMember.displayName)}</strong>,</p>` +
-            `<p style="margin:0 0 16px 0;">A payment of <strong>${this.escapeHtml(formattedAmount)}</strong> from <strong>${this.escapeHtml(paidByName)}</strong> to you in the <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> group has been reversed in PipSplit.</p>` +
-            `<p style="margin:0;">The ${splitCount} shared ${this.escapeHtml(expenseWord)} covered by this payment have been marked as unpaid and will appear in the outstanding balance again.</p>`
-        );
-        sends.push(this.callSendEmail(paidToMember.email, subject, text, html));
-      }
-    }
-
-    await Promise.all(sends);
+    const fn = httpsCallable<
+      {
+        groupId: string;
+        paidByMemberId: string;
+        paidToMemberId: string;
+        amount: number;
+        splitCount: number;
+      },
+      { sent: number }
+    >(this.functions, 'sendPaymentReversalEmails');
+    await fn({
+      groupId,
+      paidByMemberId: paidByMemberRef.id,
+      paidToMemberId: paidToMemberRef.id,
+      amount,
+      splitCount,
+    });
   }
 
   async sendGroupSettleUnpayEmails(
-    members: Member[],
-    groupName: string,
-    settleDate: string
+    groupId: string,
+    memberRefs: DocumentReference<Member>[],
+    settleDate: Date
   ): Promise<void> {
-    const eligible = members.filter((m) => !!m.userRef && !!m.email);
-    const userDocs = await Promise.all(
-      eligible.map((m) => {
-        const userRef = m.userRef!;
-        return getDoc(userRef);
-      })
-    );
+    if (memberRefs.length === 0) {
+      return;
+    }
+    const fn = httpsCallable<
+      { groupId: string; memberIds: string[]; settleDate: string },
+      { sent: number }
+    >(this.functions, 'sendSettleReversalEmails');
     await Promise.all(
-      eligible
-        .filter((_, i) => userDocs[i]?.data()?.['emailOptOut'] !== true)
-        .map((m) => {
-          const subject = `The group settle for "${groupName}" has been reversed in PipSplit`;
-          const text = [
-            `Hi ${m.displayName},`,
-            '',
-            `A group admin has reversed the group settlement for "${groupName}" that was recorded on ${settleDate}.`,
-            '',
-            'All outstanding balances have been restored. Please check your current balance in PipSplit.',
-          ].join('\n');
-          const html = this.buildEmailHtml(
-            `<h2 style="color:#ba1a1a;margin:0 0 20px 0;">Group Settlement Reversed</h2>` +
-              `<p style="margin:0 0 16px 0;">Hi <strong>${this.escapeHtml(m.displayName)}</strong>,</p>` +
-              `<p style="margin:0 0 16px 0;">A group admin has reversed the group settlement for <strong>&ldquo;${this.escapeHtml(groupName)}&rdquo;</strong> that was recorded on <strong>${this.escapeHtml(settleDate)}</strong>.</p>` +
-              `<p style="margin:0;">All outstanding balances have been restored. Please check your current balance in PipSplit.</p>`
-          );
-          return this.callSendEmail(m.email, subject, text, html);
+      inBatches(memberRefs).map((batch) =>
+        fn({
+          groupId,
+          memberIds: batch.map((ref) => ref.id),
+          settleDate: toIsoFormat(settleDate),
         })
+      )
     );
   }
 

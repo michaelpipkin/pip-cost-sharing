@@ -23,7 +23,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === null"
             (click)="selectAll()"
           >
-            All
+            {{ allLabel() }}
           </button>
           <button
             matButton="elevated"
@@ -31,7 +31,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === true"
             (click)="selectTrue()"
           >
-            Yes
+            {{ trueLabel() }}
           </button>
           <button
             matButton="elevated"
@@ -39,7 +39,7 @@ export interface ToggleFilterValue {
             [class.active]="selectedValue === false"
             (click)="selectFalse()"
           >
-            No
+            {{ falseLabel() }}
           </button>
         </div>
       </div>
@@ -68,11 +68,11 @@ export interface ToggleFilterValue {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToggleFilterPanelComponent {
-  initialValue = input<ToggleFilterValue>();
-  columnLabel = input<string>();
-  trueLabel = input<string>('Yes');
-  falseLabel = input<string>('No');
-  allLabel = input<string>('All');
+  readonly initialValue = input<ToggleFilterValue>();
+  readonly columnLabel = input<string>();
+  readonly trueLabel = input<string>('Yes');
+  readonly falseLabel = input<string>('No');
+  readonly allLabel = input<string>('All');
 
   apply = output<ToggleFilterValue>();
   clear = output<void>();

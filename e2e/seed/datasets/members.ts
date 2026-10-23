@@ -10,7 +10,12 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   own placeholder member (no email, never signs in):
  *   - "Edit Me": renamed and made a group admin by the edit test;
  *   - "Remove Me" (no splits): removed by the remove test;
- *   - "Has Splits": in the one seeded expense, so removing them is refused.
+ *   - "Has Splits": in the one seeded expense, so removing them is refused;
+ *   - "Remove Linked" (no splits), linked to members-removed, whose default
+ *     is "Members – Main": removed by the linked-remove test, which checks
+ *     that the admin's removal cleared that user's default (a cross-user
+ *     write the users rule allows only to the group's admins).
+ *     members-removed never signs in. One-shot per seeding.
  * - members-leaver in "Members – Leave" (default) as Lee, a non-admin. The
  *   group's admin is Dana, a placeholder member, so Lee is not the only
  *   admin. Lee has no splits, so leaving deletes their member doc. Lee's
@@ -34,6 +39,7 @@ function makeUser(name: string, defaultGroupKey: string): SeedUser {
 const users = {
   admin: makeUser('admin', 'g-members-main'),
   leaver: makeUser('leaver', 'g-members-leave'),
+  removed: makeUser('removed', 'g-members-main'),
 };
 
 const categories = [{ key: 'general', name: 'General' }];
@@ -43,6 +49,14 @@ const placeholders = {
   edit: { key: 'edit-me', displayName: 'Edit Me', email: '' },
   remove: { key: 'remove-me', displayName: 'Remove Me', email: '' },
   hasSplits: { key: 'has-splits', displayName: 'Has Splits', email: '' },
+} as const;
+
+/** "Members – Main"'s member linked to members-removed; `key` is the row's id. */
+const removeLinked = {
+  key: 'remove-linked',
+  displayName: 'Remove Linked',
+  email: users.removed.email,
+  userKey: users.removed.key,
 } as const;
 
 const main: SeedGroup = {
@@ -58,6 +72,7 @@ const main: SeedGroup = {
       groupAdmin: true,
     },
     ...Object.values(placeholders),
+    removeLinked,
   ],
   categories,
   expenses: [
@@ -113,6 +128,7 @@ export const MEMBERS = {
   users,
   groups: { main, leave, leaveHome },
   placeholders,
+  removeLinked,
   /** Lee's member in "Members – Leave" (its row id). */
   leaverMemberKey: 'lee',
 } as const;

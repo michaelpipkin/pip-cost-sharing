@@ -16,10 +16,10 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { RETURN_URL_PARAM, safeReturnUrl } from '@utils/return-url.util';
 import {
   collection,
   collectionGroup,
-  deleteDoc,
   doc,
   DocumentReference,
   getDoc,
@@ -236,20 +236,29 @@ export class GroupService implements IGroupService {
       });
     });
 
-    this.groupStore.setAllUserGroups(groups);
+    // Published at once, but not counted as loaded until the selection below
+    // has loaded too (see #markGroupsLoaded).
+    this.groupStore.setAllUserGroups(groups, false);
 
     const user = this.userStore.user();
     const userRef = user?.ref;
-    if (!userRef) return;
+    if (!userRef) {
+      this.#markGroupsLoaded();
+      return;
+    }
 
-    const defaultGroupRef = await this.resolveDefaultGroupRef(
-      user?.defaultGroupRef ?? null,
-      groups,
-      userRef
-    );
+    try {
+      const defaultGroupRef = await this.resolveDefaultGroupRef(
+        user?.defaultGroupRef ?? null,
+        groups,
+        userRef
+      );
 
-    if (!this.groupStore.skipAutoSelect()) {
-      await this.autoSelectGroup(groups, defaultGroupRef, userRef);
+      if (!this.groupStore.skipAutoSelect()) {
+        await this.autoSelectGroup(groups, defaultGroupRef, userRef);
+      }
+    } finally {
+      this.#markGroupsLoaded();
     }
 
     // Handle auto-navigation for bookmarked/direct home page visits
@@ -258,20 +267,45 @@ export class GroupService implements IGroupService {
     // menu itself, and a validated user there must not be bounced to
     // Expenses whenever a groups snapshot lands (unvalidated users never get
     // here - getUserGroups returns early for them).
+    // The login page may carry a returnUrl (the page the authGuard sent the
+    // visitor away from), so only its path decides whether this is a redirect
+    // page; a validated sign-in then returns to that page.
     const currentUrl = this.#effectiveUrl();
+    const currentPath = currentUrl.split(/[?#]/)[0];
+    const isLoginPage = currentPath === ROUTE_PATHS.AUTH_LOGIN;
     const isRedirectPage =
-      currentUrl === '/home' ||
-      currentUrl === '/' ||
-      currentUrl === '/auth/login';
+      isLoginPage || currentUrl === '/home' || currentUrl === '/';
 
     if (isRedirectPage) {
-      // Validated users go to expenses, unvalidated users go to account
+      // Validated users go to expenses (or back to where they were headed),
+      // unvalidated users go to account
       if (this.userStore.isValidUser()) {
-        this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+        const returnTree = isLoginPage
+          ? safeReturnUrl(
+              this.router,
+              this.router.parseUrl(currentUrl).queryParams[RETURN_URL_PARAM]
+            )
+          : null;
+        if (returnTree) {
+          this.router.navigateByUrl(returnTree);
+        } else {
+          this.router.navigateByUrl(ROUTE_PATHS.EXPENSES_ROOT);
+        }
       } else {
         this.router.navigateByUrl(ROUTE_PATHS.AUTH_ACCOUNT);
       }
     }
+  }
+
+  // groupGuard reads "groups loaded, no current group" as "this user has no
+  // group" and sends them to Groups. A session start empties the current
+  // group and the groups list arrives before the auto-selected group's own
+  // read, so the groups count as loaded only once no selection is still
+  // loading; otherwise a navigation in between (e.g. right after a full page
+  // load) landed on Groups. A selection still loading marks them itself when
+  // it finishes (getGroup).
+  #markGroupsLoaded(): void {
+    if (this.#pendingGroupId === null) this.groupStore.setLoadedState(true);
   }
 
   // Where the user is: router.url, or - while a navigation is in flight -
@@ -481,7 +515,10 @@ export class GroupService implements IGroupService {
       );
       throw error;
     } finally {
-      if (!isSuperseded()) this.#pendingGroupId = null;
+      if (!isSuperseded()) {
+        this.#pendingGroupId = null;
+        this.groupStore.setLoadedState(true);
+      }
     }
   }
 
@@ -531,9 +568,10 @@ export class GroupService implements IGroupService {
 
       await batch.commit();
     } catch (error) {
-      // Best-effort cleanup: don't leave an orphaned group with no members
-      // or default category if the second step fails.
-      await deleteDoc(groupRef).catch(() => {});
+      // The rules forbid deleting a group, so the group doc written above
+      // cannot be cleaned up from here. An orphaned group (its creator the
+      // only uid in its arrays) is possible but practically unreachable: the
+      // creator's own member row passes the rules for any normal profile.
       throw error;
     }
 

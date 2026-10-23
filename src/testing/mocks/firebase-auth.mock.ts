@@ -23,6 +23,11 @@ export interface User {
   providerData: UserInfo[];
   isAnonymous: boolean;
   metadata: { creationTime?: string; lastSignInTime?: string };
+  reload(): Promise<void>;
+  getIdToken(forceRefresh?: boolean): Promise<string>;
+  getIdTokenResult(
+    forceRefresh?: boolean
+  ): Promise<{ token: string; claims: Record<string, unknown> }>;
 }
 
 export interface Auth {
@@ -111,9 +116,18 @@ export const sendEmailVerification: (
   actionCodeSettings?: any
 ) => Promise<void> = vi.fn().mockResolvedValue(undefined) as any;
 
-export const updateEmail: (user: User, newEmail: string) => Promise<void> = vi
-  .fn()
-  .mockResolvedValue(undefined) as any;
+/** The subset of the real ActionCodeSettings the app passes. */
+export interface ActionCodeSettings {
+  url: string;
+  handleCodeInApp?: boolean;
+}
+
+// vi.fn(impl), so a vi.resetAllMocks() elsewhere can't strip the default.
+export const verifyBeforeUpdateEmail: (
+  user: User,
+  newEmail: string,
+  actionCodeSettings?: ActionCodeSettings | null
+) => Promise<void> = vi.fn(() => Promise.resolve()) as any;
 
 export const updatePassword: (
   user: User,

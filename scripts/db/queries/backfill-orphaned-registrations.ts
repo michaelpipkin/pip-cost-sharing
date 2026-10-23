@@ -10,7 +10,10 @@
  * plus the write - this backfill just does it directly, server-side, now.
  *
  * Default field shape mirrors createUserProfileOnSignUp's - keep both in
- * sync if the default user doc shape ever changes.
+ * sync if the default user doc shape ever changes. Like the trigger, it
+ * stores the Auth address only once verified (else ''): invited members are
+ * linked by the profile email, so an unverified address there could claim
+ * someone else's invites (Plan 4 B14).
  *
  * DRY RUN BY DEFAULT - only lists what it would create. Pass --confirm to
  * actually write. This touches real production data (no emulator env set,
@@ -18,11 +21,17 @@
  *
  * Run: pnpm query backfill-orphaned-registrations [-- --confirm]
  */
+import { profileEmail } from '../../../functions/src/email-identity.ts';
 import { auth, db, writeTable, logCount, NON_USER_AUTH_EMAILS } from '../lib.ts';
 
 const confirmed = process.argv.includes('--confirm');
 
-const allUsers: { uid: string; email: string; created: string }[] = [];
+const allUsers: {
+  uid: string;
+  email: string;
+  emailVerified: boolean;
+  created: string;
+}[] = [];
 let pageToken: string | undefined;
 
 do {
@@ -32,6 +41,7 @@ do {
     allUsers.push({
       uid: user.uid,
       email: user.email ?? '(no email)',
+      emailVerified: user.emailVerified,
       created: user.metadata.creationTime,
     });
   }
@@ -40,7 +50,7 @@ do {
 
 logCount('Total Auth users', allUsers.length);
 
-const orphaned: { uid: string; email: string; created: string }[] = [];
+const orphaned: typeof allUsers = [];
 for (const u of allUsers) {
   const doc = await db.collection('users').doc(u.uid).get();
   if (!doc.exists) {
@@ -64,7 +74,10 @@ for (const u of orphaned) {
       .doc(u.uid)
       .set(
         {
-          email: u.email === '(no email)' ? '' : u.email,
+          email: profileEmail({
+            email: u.email === '(no email)' ? undefined : u.email,
+            emailVerified: u.emailVerified,
+          }),
           defaultGroupRef: null,
           receiptPolicy: false,
           emailOptOut: false,

@@ -27,6 +27,10 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  * - groups-renamer: "Groups – Rename" (default), renamed by its test.
  * - groups-activator: "Groups – Active Home" (default) plus "Groups – Active",
  *   which its test deactivates (the home group keeps the select on screen).
+ * - groups-active-bystander: a plain member of "Groups – Active" whose
+ *   default it is. Never signs in; the deactivate test checks that the
+ *   app's batch cleared their default (a cross-user write the users rule
+ *   allows only to the group's admins). One-shot per seeding.
  * - groups-autoadder: "Groups – AutoAdd" (default), auto-add turned on.
  */
 
@@ -87,6 +91,7 @@ const viewer = seedUser('groups-viewer', 'g-groups-view-a');
 const switcher = seedUser('groups-switcher', 'g-groups-switch-a');
 const renamer = seedUser('groups-renamer', 'g-groups-rename');
 const activator = seedUser('groups-activator', 'g-groups-active-home');
+const activeBystander = seedUser('groups-active-bystander', 'g-groups-active');
 const autoAdder = seedUser('groups-autoadder', 'g-groups-autoadd');
 
 const autoAddCreatorHome = soloGroup(
@@ -119,9 +124,21 @@ const activeHome = soloGroup(
   activator
 );
 /** Deactivated by "should toggle group active status". */
-const active = soloGroup('g-groups-active', 'Groups – Active', activator, {
+const activeSolo = soloGroup('g-groups-active', 'Groups – Active', activator, {
   active: true,
 });
+const active: SeedGroup = {
+  ...activeSolo,
+  members: [
+    ...activeSolo.members,
+    {
+      key: activeBystander.key,
+      displayName: `Member ${activeBystander.key}`,
+      email: activeBystander.email,
+      userKey: activeBystander.key,
+    },
+  ],
+};
 /** Auto-add turned on by "should toggle auto-add members setting". */
 const autoAdd = soloGroup('g-groups-autoadd', 'Groups – AutoAdd', autoAdder, {
   autoAddMembers: false,
@@ -139,6 +156,7 @@ export const GROUPS = {
     switcher,
     renamer,
     activator,
+    activeBystander,
     autoAdder,
   },
   groups: {

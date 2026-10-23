@@ -21,6 +21,7 @@ import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
 import { UserStore } from '@store/user.store';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { isSingleEmailAddress } from '@utils/email-validation';
 
 @Component({
   selector: 'app-add-group',
@@ -79,7 +80,11 @@ export class AddGroupComponent {
       const newMember: Partial<Member> = {
         userRef: this.user()!.ref,
         displayName: val.displayName,
-        email: this.user()!.email,
+        // A legacy stored email that fails the single-address rule would be
+        // refused by the Firestore rules on this create, so it is left blank.
+        email: isSingleEmailAddress(this.user()!.email)
+          ? this.user()!.email
+          : '',
         active: true,
         groupAdmin: true,
       };

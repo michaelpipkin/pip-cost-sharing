@@ -5,7 +5,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
-import { ExpenseForm, ExpenseSplitItemForm } from '@models/expense';
+import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
+import {
+  ExpenseForm,
+  ExpenseSplitItemForm,
+  RentalDetails,
+  SerializableRentalPayload,
+} from '@models/expense';
+import { SerializableMemorized } from '@models/memorized';
 import { GuidedTourConfig } from '@models/guided-tour';
 import { AnalyticsService } from '@services/analytics.service';
 import { CalculatorOverlayService } from '@services/calculator-overlay.service';
@@ -15,7 +22,12 @@ import { ExpenseService } from '@services/expense.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { LocaleService } from '@services/locale.service';
 import { MemorizedService } from '@services/memorized.service';
-import { ReceiptScanPayload } from '@services/receipt-scan-handoff.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
+import { ReceiptFileSelectionService } from '@services/receipt-file-selection.service';
+import {
+  ReceiptScanHandoffService,
+  ReceiptScanPayload,
+} from '@services/receipt-scan-handoff.service';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
@@ -43,7 +55,7 @@ import {
 import { AllocationUtilsService } from '@utils/allocation-utils.service';
 import { StringUtils } from '@utils/string-utils.service';
 import { getStorage } from 'firebase/storage';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddExpenseComponent } from './add-expense.component';
 import { expectEnterEndsOnSave } from '@testing/default-button';
 
@@ -58,6 +70,8 @@ describe('AddExpenseComponent', () => {
   let mockExpenseService: ReturnType<typeof createMockExpenseService>;
   let mockLoadingService: ReturnType<typeof createMockLoadingService>;
   let mockRouter: Router;
+  let mockSnackBar: ReturnType<typeof createMockSnackBar>;
+  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
 
   function getModel(): ExpenseForm {
     return {
@@ -94,6 +108,8 @@ describe('AddExpenseComponent', () => {
     mockUserStore = createMockUserStore();
     mockExpenseService = createMockExpenseService();
     mockLoadingService = createMockLoadingService();
+    mockSnackBar = createMockSnackBar();
+    mockAnalytics = createMockAnalyticsService();
 
     const testGroup = mockGroup({ currencyCode: 'USD', autoAddMembers: false });
     const testMember = mockMember({ displayName: 'Alice', groupAdmin: true });
@@ -132,9 +148,9 @@ describe('AddExpenseComponent', () => {
         { provide: MemberStore, useValue: mockMemberStore },
         { provide: CategoryStore, useValue: mockCategoryStore },
         { provide: UserStore, useValue: mockUserStore },
-        { provide: AnalyticsService, useValue: createMockAnalyticsService() },
+        { provide: AnalyticsService, useValue: mockAnalytics },
         { provide: LoadingService, useValue: mockLoadingService },
-        { provide: MatSnackBar, useValue: createMockSnackBar() },
+        { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: MatDialog, useValue: createMockMatDialog() },
         {
           provide: CalculatorOverlayService,
@@ -156,6 +172,10 @@ describe('AddExpenseComponent', () => {
     mockRouter = TestBed.inject(Router);
     el = fixture.nativeElement;
     await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   function query(testId: string): HTMLElement | null {
@@ -828,6 +848,823 @@ describe('AddExpenseComponent', () => {
       component.splitMethod.set('percentage');
 
       expect(component.remainderValid()).toBe(true);
+    });
+  });
+
+  const catFood = mockDocRef('groups/group-1/categories/cat-1');
+  const catTransport = mockDocRef('groups/group-1/categories/cat-2');
+  const catLodging = mockDocRef('groups/group-1/categories/cat-4');
+
+  // The tests below that start from another page (receipt scan, rental
+  // wizard, memorized expense) need the navigation state in place before the
+  // component is constructed.
+  async function openWith(
+    state: { rental?: SerializableRentalPayload; expense?: SerializableMemorized } | null,
+    scan?: ReceiptScanPayload
+  ): Promise<void> {
+    if (scan) TestBed.inject(ReceiptScanHandoffService).setPayload(scan);
+    vi.spyOn(mockRouter, 'currentNavigation').mockReturnValue(
+      state ? ({ extras: { state } } as any) : null
+    );
+    fixture = TestBed.createComponent(AddExpenseComponent);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+  }
+
+  function useDistinctCategories(): void {
+    mockCategoryStore.groupCategories.set([
+      mockCategory({ id: 'cat-1', name: 'Food', ref: catFood }),
+      mockCategory({ id: 'cat-2', name: 'Transport', ref: catTransport }),
+      mockCategory({ id: 'cat-4', name: 'Lodging', ref: catLodging }),
+      mockCategory({
+        id: 'cat-3',
+        name: 'Old',
+        active: false,
+        ref: mockDocRef('groups/group-1/categories/cat-3'),
+      }),
+    ]);
+  }
+
+  describe('arriving from another page', () => {
+    const memberRef1 = mockDocRef('groups/group-1/members/member-1');
+    const memberRef2 = mockDocRef('groups/group-1/members/member-2');
+
+    function scanPayload(): ReceiptScanPayload {
+      return {
+        file: new File(['bytes'], 'receipt.jpg', { type: 'image/jpeg' }),
+        fileName: 'receipt.jpg',
+        totalAmount: 60,
+        description: 'Corner Cafe',
+        sharedAmount: 0,
+        proportionalAmount: 0,
+        splits: [
+          { memberRef: memberRef1, assignedAmount: 20 },
+          { memberRef: memberRef2, assignedAmount: 40 },
+        ],
+      };
+    }
+
+    function rentalPayload(
+      overrides: Partial<SerializableRentalPayload> = {}
+    ): SerializableRentalPayload {
+      return {
+        totalAmount: 300,
+        description: 'Beach house',
+        nightCount: 2,
+        stays: [
+          { memberId: 'member-1', nights: [0, 1] },
+          { memberId: 'member-2', nights: [0] },
+        ],
+        ...overrides,
+      };
+    }
+
+    function memorized(
+      overrides: Partial<SerializableMemorized> = {}
+    ): SerializableMemorized {
+      return {
+        id: 'mem-1',
+        description: 'Rent',
+        categoryId: 'cat-2',
+        paidByMemberId: 'member-2',
+        sharedAmount: 90,
+        allocatedAmount: 0,
+        totalAmount: 100,
+        splitMethod: 'amount',
+        splits: [
+          {
+            owedByMemberId: 'member-1',
+            assignedAmount: 10,
+            percentage: 0,
+            shares: 0,
+            allocatedAmount: 55,
+          },
+          {
+            owedByMemberId: 'member-2',
+            assignedAmount: 0,
+            percentage: 0,
+            shares: 0,
+            allocatedAmount: 45,
+          },
+        ],
+        ...overrides,
+      };
+    }
+
+    it('should load a scanned receipt: file attached, payer defaulted, splits by item', async () => {
+      mockCategoryStore.groupCategories.set([
+        mockCategory({ id: 'cat-1', name: 'Food', ref: catFood }),
+      ]);
+      const payload = scanPayload();
+
+      await openWith(null, payload);
+
+      expect(component.receiptScanPayload()).toEqual(payload);
+      expect(component.receiptFile()).toBe(payload.file);
+      expect(component.fileName()).toBe('receipt.jpg');
+      expect(getModel().description).toBe('Corner Cafe');
+      expect(getModel().amount).toBe('60.00');
+      expect(getModel().paidByMember).toBe(mockMemberStore.currentMember()!.ref);
+      // the only active category is chosen for the user
+      expect(getModel().category).toBe(catFood);
+      expect(getModel().splits.map((s) => s.owedByMemberRef)).toEqual([
+        memberRef1,
+        memberRef2,
+      ]);
+      expect(getModel().splits.map((s) => s.assignedAmount)).toEqual([
+        '20.00',
+        '40.00',
+      ]);
+      expect(getModel().splits.map((s) => s.allocatedAmount)).toEqual([20, 40]);
+    });
+
+    it('should leave the category empty for a scan when several are active', async () => {
+      useDistinctCategories();
+
+      await openWith(null, scanPayload());
+
+      expect(getModel().category).toBeNull();
+    });
+
+    it('should not apply the blank-expense defaults on top of a scanned receipt', async () => {
+      mockGroupStore.currentGroup.set(
+        mockGroup({ currencyCode: 'USD', autoAddMembers: true })
+      );
+
+      await openWith(null, scanPayload());
+
+      // auto-add would have added Alice and Bob a second time
+      expect(getModel().splits).toHaveLength(2);
+    });
+
+    it('should turn a rental into a shares split from who stayed which nights', async () => {
+      await openWith({ rental: rentalPayload() });
+
+      expect(component.splitMethod()).toBe('shares');
+      // Alice stayed both nights (1 + 2 shares), Bob one night (1 share)
+      expect(getModel().splits.map((s) => s.shares)).toEqual([3, 1]);
+      expect(getModel().splits.map((s) => s.allocatedAmount)).toEqual([225, 75]);
+      expect(getModel().amount).toBe('300.00');
+      expect(getModel().description).toBe('Beach house');
+      expect(getModel().allocatedAmount).toBe('0.00');
+      expect(getModel().paidByMember).toBe(mockMemberStore.currentMember()!.ref);
+      expect(component.rentalDetails()).toEqual({
+        nightCount: 2,
+        stays: [
+          { memberRef: expect.objectContaining({ id: 'member-1' }), nights: [0, 1] },
+          { memberRef: expect.objectContaining({ id: 'member-2' }), nights: [0] },
+        ],
+      });
+      expect(component.rentalDetails()).not.toHaveProperty('rooms');
+    });
+
+    it('should drop rental guests who are not active members of the group', async () => {
+      await openWith({
+        rental: rentalPayload({
+          stays: [
+            { memberId: 'member-1', nights: [0, 1] },
+            { memberId: 'member-3', nights: [0, 1] },
+            { memberId: 'no-such-member', nights: [0] },
+          ],
+        }),
+      });
+
+      expect(component.rentalDetails()!.stays).toHaveLength(1);
+      expect(getModel().splits).toHaveLength(1);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(300);
+    });
+
+    it('should keep rental rooms, a guest\'s room and guess the lodging category', async () => {
+      useDistinctCategories();
+      const rooms = [{ id: 'r1', name: 'Master', rate: 1.5 }];
+
+      await openWith({
+        rental: rentalPayload({
+          rooms,
+          stays: [
+            { memberId: 'member-1', nights: [0, 1], roomId: 'r1' },
+            { memberId: 'member-2', nights: [0] },
+          ],
+        }),
+      });
+
+      const rental = component.rentalDetails() as RentalDetails;
+      expect(rental.rooms).toEqual(rooms);
+      expect(rental.stays[0]!.roomId).toBe('r1');
+      expect(rental.stays[1]).not.toHaveProperty('roomId');
+      expect(getModel().category).toBe(catLodging);
+    });
+
+    it('should pick the only active category for a rental whatever it is called', async () => {
+      mockCategoryStore.groupCategories.set([
+        mockCategory({ id: 'cat-1', name: 'Food', ref: catFood }),
+      ]);
+
+      await openWith({ rental: rentalPayload() });
+
+      expect(getModel().category).toBe(catFood);
+    });
+
+    it('should leave the rental category empty when nothing looks like lodging', async () => {
+      await openWith({ rental: rentalPayload() });
+
+      expect(getModel().category).toBeNull();
+    });
+
+    it('should load a memorized expense with its payer, category and splits', async () => {
+      useDistinctCategories();
+
+      await openWith({ expense: memorized() });
+
+      expect(getModel().description).toBe('Rent');
+      expect(getModel().amount).toBe('100.00');
+      expect(getModel().sharedAmount).toBe(90);
+      expect(getModel().paidByMember!.path).toBe(memberRef2.path);
+      expect(getModel().category).toBe(catTransport);
+      expect(getModel().splits.map((s) => s.owedByMemberRef!.path)).toEqual([
+        memberRef1.path,
+        memberRef2.path,
+      ]);
+      expect(getModel().splits.map((s) => s.assignedAmount)).toEqual([
+        '10.00',
+        '0.00',
+      ]);
+      expect(getModel().date!.toDateString()).toBe(new Date().toDateString());
+    });
+
+    it('should keep the memorized payer instead of defaulting to the current member', async () => {
+      await openWith({ expense: memorized() });
+
+      expect(getModel().paidByMember!.path).toBe(memberRef2.path);
+    });
+
+    it('should leave a memorized split without a member when that member is no longer active', async () => {
+      await openWith({
+        expense: memorized({
+          paidByMemberId: 'gone',
+          categoryId: 'gone',
+          splits: [
+            {
+              owedByMemberId: 'member-3',
+              assignedAmount: 5,
+              percentage: 0,
+              shares: 0,
+              allocatedAmount: 5,
+            },
+          ],
+        }),
+      });
+
+      expect(getModel().splits[0]!.owedByMemberRef).toBeNull();
+      expect(getModel().paidByMember).toBeNull();
+      expect(getModel().category).toBeNull();
+      expect((component as any).paidByMemberValid()).toBe(false);
+      expect((component as any).splitsValid()).toBe(false);
+    });
+
+    it('should prefer a scanned receipt over a rental, and a rental over a memorized expense', async () => {
+      await openWith(
+        { rental: rentalPayload(), expense: memorized() },
+        scanPayload()
+      );
+      expect(getModel().description).toBe('Corner Cafe');
+      expect(component.rentalPayload()).toBeNull();
+      expect(component.memorizedExpense()).toBeNull();
+
+      await openWith({ rental: rentalPayload(), expense: memorized() });
+      expect(getModel().description).toBe('Beach house');
+      expect(component.memorizedExpense()).toBeNull();
+    });
+
+    it('should only hand a scanned receipt over once', async () => {
+      await openWith(null, scanPayload());
+
+      expect(TestBed.inject(ReceiptScanHandoffService).takePayload()).toBeNull();
+    });
+  });
+
+  describe('split rows', () => {
+    it('should only add the members who do not already have a split', () => {
+      component.addSplit();
+      const existing = getModel().splits[0]!.owedByMemberRef;
+
+      component.addAllActiveGroupMembers();
+
+      expect(getModel().splits).toHaveLength(2);
+      expect(getModel().splits[0]!.owedByMemberRef).toBe(existing);
+    });
+
+    it('should do nothing when every active member already has a split', () => {
+      component.addAllActiveGroupMembers();
+      const before = (component as any).expenseModel();
+
+      component.addAllActiveGroupMembers();
+
+      expect((component as any).expenseModel()).toBe(before);
+    });
+
+    it('should leave a new split without a member once everyone has one', () => {
+      component.addAllActiveGroupMembers();
+      component.addSplit();
+
+      expect(getModel().splits[2]!.owedByMemberRef).toBeNull();
+    });
+
+    it('should not offer a member already chosen in another split', () => {
+      component.addAllActiveGroupMembers();
+
+      expect(
+        component.availableMembersForSplit(0).map((m) => m.displayName)
+      ).toEqual(['Alice']);
+      expect(
+        component.availableMembersForSplit(1).map((m) => m.displayName)
+      ).toEqual(['Bob']);
+    });
+
+    it("should work out each row's share of the total shares", () => {
+      component.addAllActiveGroupMembers();
+      patchSplit(0, { shares: 1 });
+      patchSplit(1, { shares: 3 });
+
+      expect((component as any).effectivePercentage(0)).toBe(25);
+      expect((component as any).effectivePercentage(1)).toBe(75);
+    });
+
+    it('should show 0% when nobody has any shares', () => {
+      component.addSplit();
+
+      expect((component as any).effectivePercentage(0)).toBe(0);
+    });
+
+    it('should only treat the last row as automatic in the percentage method', () => {
+      component.addAllActiveGroupMembers();
+
+      expect(component.isLastSplit(1)).toBe(false);
+
+      component.splitMethod.set('percentage');
+
+      expect(component.isLastSplit(0)).toBe(false);
+      expect(component.isLastSplit(1)).toBe(true);
+    });
+
+    it('should change one field of one row and leave the rest alone', () => {
+      component.addAllActiveGroupMembers();
+
+      (component as any).updateSplit(1, 'assignedAmount', '7.00');
+
+      expect(getModel().splits.map((s) => s.assignedAmount)).toEqual([
+        '0.00',
+        '7.00',
+      ]);
+    });
+
+    it('should require a payer and a category', () => {
+      (component as any).expenseModel.update((m: any) => ({
+        ...m,
+        paidByMember: null,
+      }));
+
+      expect((component as any).paidByMemberValid()).toBe(false);
+      expect((component as any).categoryValid()).toBe(false);
+
+      patchModel({ paidByMember: mockMemberStore.currentMember()!.ref!, category: catFood });
+
+      expect((component as any).paidByMemberValid()).toBe(true);
+      expect((component as any).categoryValid()).toBe(true);
+    });
+
+    it('should flag a zero total', () => {
+      const amountErrors = () =>
+        (component as any)
+          .expenseForm.amount()
+          .errors()
+          .map((e: { kind: string }) => e.kind);
+
+      expect(amountErrors()).toContain('zeroAmount');
+
+      patchFormData({ amount: '12.00' });
+
+      expect(amountErrors()).not.toContain('zeroAmount');
+    });
+  });
+
+  describe('allocation by split method', () => {
+    function twoSplits(): void {
+      component.addAllActiveGroupMembers();
+      patchFormData({ amount: '100.00', allocatedAmount: '0.00' });
+    }
+
+    it('should share the remainder after fixed amounts in the amount method', () => {
+      twoSplits();
+      patchSplit(0, { assignedAmount: '20.00' });
+
+      component.updateTotalAmount();
+
+      expect(getModel().splits.map((s) => s.allocatedAmount)).toEqual([60, 40]);
+      expect(getModel().sharedAmount).toBe(80);
+    });
+
+    it('should recalculate by percentage when the split method changes', () => {
+      twoSplits();
+      patchSplit(0, { percentage: 30 });
+      component.splitMethod.set('percentage');
+
+      component.onSplitMethodChange();
+
+      expect(getModel().splits.map((s) => s.percentage)).toEqual([30, 70]);
+      expect(getModel().splits.map((s) => s.allocatedAmount)).toEqual([30, 70]);
+    });
+
+    it('should recalculate by shares when the total changes', () => {
+      twoSplits();
+      component.splitMethod.set('shares');
+      patchSplit(0, { shares: 1 });
+      patchSplit(1, { shares: 3 });
+      patchFormData({ amount: '200.00' });
+
+      component.updateTotalAmount();
+
+      expect(getModel().splits.map((s) => s.allocatedAmount)).toEqual([50, 150]);
+    });
+
+    it('should give the remaining row everything when a percentage row is removed', () => {
+      twoSplits();
+      component.splitMethod.set('percentage');
+      patchSplit(0, { percentage: 30 });
+      component.updateTotalAmount();
+
+      component.removeSplit(0);
+
+      expect(getModel().splits).toHaveLength(1);
+      expect(getModel().splits[0]!.percentage).toBe(100);
+      expect(getModel().splits[0]!.allocatedAmount).toBe(100);
+    });
+
+    it('should not allocate by percentage or shares when there are no splits', () => {
+      const before = (component as any).expenseModel();
+
+      component.allocateByPercentage();
+      component.allocateByShares();
+
+      expect((component as any).expenseModel()).toBe(before);
+    });
+
+    it('should report the assigned and allocated totals and whether they add up', () => {
+      twoSplits();
+      patchSplit(0, { assignedAmount: '20.00' });
+      component.updateTotalAmount();
+
+      expect(component.assignedTotal()).toBe(20);
+      expect(component.allocatedTotal()).toBe(100);
+      expect(component.expenseFullyAllocated()).toBe(true);
+
+      patchFormData({ amount: '120.00' });
+
+      expect(component.expenseFullyAllocated()).toBe(false);
+    });
+  });
+
+  describe('calculator results', () => {
+    function openWithCalculator(field: 'amount' | 'allocatedAmount', index?: number) {
+      const overlay = TestBed.inject(CalculatorOverlayService) as any;
+      const target = document.createElement('input');
+      component.openCalculator({ target } as unknown as Event, field, index);
+      expect(overlay.openCalculator).toHaveBeenCalledWith(
+        target,
+        expect.any(Function)
+      );
+      return overlay.openCalculator.mock.lastCall[1] as (n: number) => void;
+    }
+
+    it('should put a calculated total in the form, formatted, and reallocate', () => {
+      component.addSplit();
+      const done = openWithCalculator('amount');
+
+      done(60.5);
+
+      expect(getModel().amount).toBe('60.50');
+      expect(getModel().splits[0]!.allocatedAmount).toBe(60.5);
+    });
+
+    it('should put a calculated proportional amount in its own field', () => {
+      const done = openWithCalculator('allocatedAmount');
+
+      done(15);
+
+      expect(getModel().allocatedAmount).toBe('15.00');
+      expect(getModel().amount).toBe('0.00');
+    });
+
+    it('should put a calculated amount in the split row it was opened for', () => {
+      component.addAllActiveGroupMembers();
+      const done = openWithCalculator('amount', 1);
+
+      done(12);
+
+      expect(getModel().splits[1]!.assignedAmount).toBe('12.00');
+      expect(getModel().splits[0]!.assignedAmount).toBe('0.00');
+      expect(getModel().amount).toBe('0.00');
+    });
+  });
+
+  describe('attaching a receipt', () => {
+    const pdf = () => new File(['pdf'], 'receipt.pdf', { type: 'application/pdf' });
+    let selection: ReceiptFileSelectionService;
+
+    beforeEach(() => {
+      selection = TestBed.inject(ReceiptFileSelectionService);
+    });
+
+    it('should ignore a file-picker change that selected nothing', () => {
+      component.onFileSelected({ target: { files: [] } } as unknown as Event);
+
+      expect(component.receiptFile()).toBeNull();
+      expect(component.fileName()).toBe('');
+    });
+
+    it('should stop when the receipt policy is not accepted', async () => {
+      vi.spyOn(selection, 'ensureReceiptPolicyAccepted').mockResolvedValue(false);
+      const pick = vi.spyOn(selection, 'pickSource');
+
+      await component.openFileSelectionDialog();
+
+      expect(pick).not.toHaveBeenCalled();
+    });
+
+    it('should attach the file the user picked, telling the picker whether the camera is available', async () => {
+      const cameraService = TestBed.inject(CameraService) as any;
+      cameraService.isAvailable.mockReturnValue(true);
+      vi.spyOn(selection, 'ensureReceiptPolicyAccepted').mockResolvedValue(true);
+      const file = pdf();
+      const pick = vi
+        .spyOn(selection, 'pickSource')
+        .mockResolvedValue({ type: 'selected', file });
+
+      await component.openFileSelectionDialog();
+
+      expect(pick).toHaveBeenCalledWith(true);
+      expect(component.receiptFile()).toBe(file);
+      expect(component.fileName()).toBe('receipt.pdf');
+    });
+
+    it('should attach nothing when the picker is cancelled', async () => {
+      vi.spyOn(selection, 'ensureReceiptPolicyAccepted').mockResolvedValue(true);
+      vi.spyOn(selection, 'pickSource').mockResolvedValue({ type: 'cancelled' });
+
+      await component.openFileSelectionDialog();
+
+      expect(component.receiptFile()).toBeNull();
+    });
+
+    it('should open the page\'s own file input for the browse-files option', async () => {
+      vi.spyOn(selection, 'ensureReceiptPolicyAccepted').mockResolvedValue(true);
+      vi.spyOn(selection, 'pickSource').mockResolvedValue({ type: 'browseFiles' });
+      const click = vi
+        .spyOn(HTMLInputElement.prototype, 'click')
+        .mockImplementation(() => {});
+
+      await component.openFileSelectionDialog();
+
+      expect(click).toHaveBeenCalledOnce();
+      expect((click.mock.contexts[0] as HTMLInputElement).type).toBe('file');
+      expect(component.receiptFile()).toBeNull();
+    });
+
+    it('should not attach a file the selection service rejects', () => {
+      vi.spyOn(selection, 'validateFile').mockReturnValue(null);
+
+      component.onFileSelected({ target: { files: [pdf()] } } as unknown as Event);
+
+      expect(component.receiptFile()).toBeNull();
+      expect(component.fileName()).toBe('');
+    });
+  });
+
+  describe('saving the expense', () => {
+    const groupAdmin = () => mockMemberStore.currentMember()!.ref!;
+    let navigateSpy: ReturnType<typeof vi.spyOn>;
+
+    // Alice (current member) paid 90 for Alice and Bob
+    function fillValidExpense(): void {
+      component.addAllActiveGroupMembers();
+      patchModel({ category: catFood });
+      patchFormData({
+        date: new Date(2024, 5, 15),
+        amount: '90.00',
+        description: 'Dinner',
+        allocatedAmount: '0.00',
+      });
+      component.updateTotalAmount();
+    }
+
+    const addExpenseArgs = () =>
+      mockExpenseService.addExpense.mock.calls[0] as unknown as any[];
+
+    beforeEach(() => {
+      navigateSpy = vi.spyOn(mockRouter, 'navigate').mockResolvedValue(true);
+    });
+
+    it('should save the expense and one split per member with the real document references', async () => {
+      fillValidExpense();
+
+      await component.onSubmit();
+
+      expect(mockExpenseService.addExpense).toHaveBeenCalledOnce();
+      const [groupId, expense, splits, receipt] = addExpenseArgs();
+      expect(groupId).toBe('group-1');
+      expect(expense).toEqual({
+        date: '2024-06-15',
+        description: 'Dinner',
+        categoryRef: catFood,
+        paidByMemberRef: groupAdmin(),
+        paid: false,
+        sharedAmount: 90,
+        allocatedAmount: 0,
+        totalAmount: 90,
+        splitMethod: 'amount',
+      });
+      expect(splits).toHaveLength(2);
+      expect(splits[0]).toEqual({
+        date: '2024-06-15',
+        categoryRef: catFood,
+        assignedAmount: 0,
+        percentage: 0,
+        shares: 0,
+        allocatedAmount: 45,
+        paidByMemberRef: groupAdmin(),
+        owedByMemberRef: mockMemberStore.groupMembers()[0]!.ref,
+        // the payer owes their own share, so it is already settled
+        paid: true,
+      });
+      expect(splits[1]).toMatchObject({
+        owedByMemberRef: mockMemberStore.groupMembers()[1]!.ref,
+        allocatedAmount: 45,
+        paid: false,
+      });
+      expect(receipt).toBeNull();
+    });
+
+    it('should skip splits that come to nothing', async () => {
+      fillValidExpense();
+      (component as any).expenseModel.update((m: any) => ({
+        ...m,
+        splits: [
+          ...m.splits,
+          {
+            owedByMemberRef: mockDocRef('groups/group-1/members/member-3'),
+            assignedAmount: '0.00',
+            percentage: 0,
+            shares: 0,
+            allocatedAmount: 0,
+          },
+        ],
+      }));
+
+      await component.onSubmit();
+
+      expect(addExpenseArgs()[2]).toHaveLength(2);
+    });
+
+    it('should pass along the split method and the attached receipt', async () => {
+      fillValidExpense();
+      component.splitMethod.set('shares');
+      const file = new File(['pdf'], 'receipt.pdf');
+      component.receiptFile.set(file);
+
+      await component.onSubmit();
+
+      expect(addExpenseArgs()[1].splitMethod).toBe('shares');
+      expect(addExpenseArgs()[3]).toBe(file);
+    });
+
+    it('should keep the rental details for an expense that came from the rental wizard', async () => {
+      fillValidExpense();
+      const rental: RentalDetails = {
+        nightCount: 1,
+        stays: [{ memberRef: groupAdmin(), nights: [0] }],
+      };
+      component.rentalDetails.set(rental);
+
+      await component.onSubmit();
+
+      expect(addExpenseArgs()[1].rental).toBe(rental);
+    });
+
+    it('should confirm, log the event and go back to the list', async () => {
+      fillValidExpense();
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        CustomSnackbarComponent,
+        { data: { message: 'Expense added.' } }
+      );
+      expect(mockAnalytics.logEvent).toHaveBeenCalledWith('expense_created');
+      expect(navigateSpy).toHaveBeenCalledWith(['/expenses']);
+      expect(mockLoadingService.loadingOn).toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('should clear the form for the next expense on Save and Add, keeping the payer', async () => {
+      mockGroupStore.currentGroup.set(
+        mockGroup({ currencyCode: 'USD', autoAddMembers: true })
+      );
+      fillValidExpense();
+      component.rentalDetails.set({ nightCount: 1, stays: [] });
+      component.fileName.set('receipt.pdf');
+      component.receiptFile.set(new File(['pdf'], 'receipt.pdf'));
+
+      await component.onSubmit(true);
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(getModel().description).toBe('');
+      expect(getModel().amount).toBe('0.00');
+      expect(getModel().allocatedAmount).toBe('0.00');
+      expect(getModel().paidByMember).toBe(groupAdmin());
+      expect(getModel().sharedAmount).toBe(0);
+      expect(getModel().category).toBeNull();
+      expect(component.rentalDetails()).toBeNull();
+      expect(component.fileName()).toBe('');
+      expect(component.receiptFile()).toBeNull();
+      // autoAddMembers puts a row per member back
+      expect(getModel().splits).toHaveLength(2);
+    });
+
+    it('should leave the member rows empty on Save and Add without auto-add, and keep a sole category', async () => {
+      mockCategoryStore.groupCategories.set([
+        mockCategory({ id: 'cat-1', name: 'Food', ref: catFood }),
+      ]);
+      fillValidExpense();
+
+      await component.onSubmit(true);
+
+      expect(getModel().splits).toHaveLength(0);
+      expect(getModel().category).toBe(catFood);
+    });
+
+    it('should show the failure, log it, and stay on the page when the save fails', async () => {
+      const handle = vi
+        .spyOn(TestBed.inject(AppCheckErrorHandlerService), 'handle')
+        .mockImplementation(() => {});
+      mockExpenseService.addExpense.mockRejectedValue(new Error('write failed'));
+      fillValidExpense();
+      mockLoadingService.loadingOff.mockClear();
+
+      await component.onSubmit();
+
+      expect(handle).toHaveBeenCalledWith(expect.any(Error), 'write failed');
+      expect(mockAnalytics.logError).toHaveBeenCalledWith(
+        'Add Expense Component',
+        'add_expense',
+        'write failed'
+      );
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith('expense_created');
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalledOnce();
+    });
+
+    it('should use a generic message and skip logging for a non-Error failure', async () => {
+      const handle = vi
+        .spyOn(TestBed.inject(AppCheckErrorHandlerService), 'handle')
+        .mockImplementation(() => {});
+      mockExpenseService.addExpense.mockRejectedValue('boom');
+      fillValidExpense();
+
+      await component.onSubmit();
+
+      expect(handle).toHaveBeenCalledWith(
+        'boom',
+        'Something went wrong - could not save expense.'
+      );
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tour hooks', () => {
+    let tourConfig: GuidedTourConfig;
+
+    beforeEach(() => {
+      vi.spyOn(TestBed.inject(GuidedTourService), 'start').mockImplementation(
+        async (config) => {
+          tourConfig = config;
+        }
+      );
+    });
+
+    it('should only mention choosing a category when the group has more than one', () => {
+      const text = () =>
+        tourConfig.steps.find((s) => s.id === 'description')!.text;
+
+      component.startTour();
+      expect(text()).toContain('choose a category');
+
+      mockCategoryStore.groupCategories.set([
+        mockCategory({ id: 'cat-1', name: 'Food', active: true }),
+      ]);
+      component.startTour();
+
+      expect(text()).not.toContain('category');
     });
   });
 });

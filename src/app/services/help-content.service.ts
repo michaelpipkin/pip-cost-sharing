@@ -27,9 +27,9 @@ export class HelpContentService {
       id: 'members',
       title: 'Members',
       content: [
-        'Group members can click on their own name in the members list to update their display name and email address for the group. By default, your email address is set to your login email address. However, this can be updated individually for each group without affecting your login email address.',
+        'Group members can click on their own name in the members list to update their display name and email address for the group. By default, your email address is set to your login email address. However, this can be updated individually for each group without affecting your login email address. A new group email takes effect once you confirm it through the link we email to that address, and group emails (payment requests and payment notices) go to it.',
         'Group admins can add members by clicking the Add Member button. Enter the display name and email address for the new member. If someone registers for the app with the same email address, their account will be automatically linked to the member record.',
-        'Group admins can edit all group members, change their active status, and give or remove admin rights to other members. An admin may not remove their own admin rights - another admin must perform that update.',
+        "Group admins can edit all group members, change their active status, and give or remove admin rights to other members. An admin may not remove their own admin rights - another admin must perform that update. Once a member is linked to their account, only that member can change their email address.",
         "Group members can only be removed if they don't have any expenses/splits assigned to them. Group members who are made inactive will no longer show up in the dropdown list when creating a new expense.",
         "Group admins can invite members who haven't registered yet by clicking the send-email icon in the Invite to App column. The icon only appears for active members with a valid email address who have no account yet, and is hidden again for 24 hours after an invitation is sent (or until the member's email address changes).",
       ],

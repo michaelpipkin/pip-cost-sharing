@@ -133,12 +133,19 @@ describe('HelpComponent', () => {
       );
     });
 
-    it('should show email error for invalid format', async () => {
-      setInputValue('issue-email-input', 'not-an-email');
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(query('issue-email-error-0')).toBeTruthy();
-    });
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['not-an-email', 'a@b', 'user@example.com,other@example.com'])(
+      'should show email error for %s',
+      async (email) => {
+        setInputValue('issue-email-input', email);
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(query('issue-email-error-0')?.textContent).toContain(
+          'Invalid email address'
+        );
+      }
+    );
 
     it('should not show email error for valid format', async () => {
       setInputValue('issue-email-input', 'user@example.com');

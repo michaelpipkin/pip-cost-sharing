@@ -86,7 +86,12 @@ export async function writeDatasets(
   await createAuthUsers(db, auth, users);
   const userBatch = new GroupBatch(db, 'users');
   for (const user of users) {
-    userBatch.update(db.doc(`users/${user.uid}`), userProfileFields(db, user));
+    const fields = userProfileFields(db, user);
+    // An update needs at least one field (an unverified user with no profile
+    // values has none to add).
+    if (Object.keys(fields).length > 0) {
+      userBatch.update(db.doc(`users/${user.uid}`), fields);
+    }
   }
   await commit(userBatch);
 
@@ -224,8 +229,13 @@ async function waitForProfileDocs(db: Firestore, users: SeedUser[]): Promise<voi
 }
 
 function userProfileFields(db: Firestore, user: SeedUser): DocumentData {
-  const { defaultGroupKey, ...profile } = user.profile ?? {};
-  const fields: DocumentData = { emailLower: normalizeEmail(user.email) };
+  const { defaultGroupKey, storedEmail, ...profile } = user.profile ?? {};
+  // The sign-up trigger stores the Auth address only once it is verified, so
+  // an unverified user's profile email is '' (and has no emailLower).
+  const email = storedEmail ?? (user.emailVerified === false ? '' : user.email);
+  const fields: DocumentData = {};
+  if (email) fields['emailLower'] = normalizeEmail(email);
+  if (storedEmail !== undefined) fields['email'] = storedEmail;
   for (const [field, value] of Object.entries(profile)) {
     if (value !== undefined) fields[field] = value;
   }

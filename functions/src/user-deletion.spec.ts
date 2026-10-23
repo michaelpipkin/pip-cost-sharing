@@ -213,7 +213,10 @@ describe('deleteGroupInternal', () => {
 
 describe('tryGetAuthEmail', () => {
   it('returns the email and increments synced when the auth user exists with an email', async () => {
-    const user = await getAuth().createUser({ email: 'sync-me@example.com' });
+    const user = await getAuth().createUser({
+      email: 'sync-me@example.com',
+      emailVerified: true,
+    });
     try {
       const results = { synced: 0, skipped: 0, errors: [] as string[] };
       const email = await tryGetAuthEmail(user.uid, results);
@@ -229,6 +232,23 @@ describe('tryGetAuthEmail', () => {
   it('returns null and increments skipped when the auth user has no email', async () => {
     const user = await getAuth().createUser({
       phoneNumber: `+1555${Math.floor(1000000 + Math.random() * 8999999)}`,
+    });
+    try {
+      const results = { synced: 0, skipped: 0, errors: [] as string[] };
+      const email = await tryGetAuthEmail(user.uid, results);
+
+      expect(email).toBeNull();
+      expect(results.skipped).toBe(1);
+      expect(results.synced).toBe(0);
+    } finally {
+      await getAuth().deleteUser(user.uid);
+    }
+  });
+
+  it('returns null and increments skipped when the auth email is unverified', async () => {
+    const user = await getAuth().createUser({
+      email: `sync-unverified-${Math.random().toString(36).slice(2, 10)}@example.com`,
+      emailVerified: false,
     });
     try {
       const results = { synced: 0, skipped: 0, errors: [] as string[] };

@@ -8,7 +8,6 @@ import {
 } from '@angular/core';
 import {
   disabled,
-  email,
   form,
   FormField,
   required,
@@ -31,6 +30,7 @@ import { ConfirmDialogComponent } from '@components/confirm-dialog/confirm-dialo
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { DeleteDialogComponent } from '@components/delete-dialog/delete-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
@@ -39,7 +39,20 @@ import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { DefaultButtonDirective } from '@directives/default-button.directive';
+import { callableError } from '@utils/callable-error.util';
+import { singleEmail } from '@utils/email-validation';
+import { DocumentReference } from 'firebase/firestore';
+
+/**
+ * requestMemberEmailChange refusals that are outcomes for the user, shown
+ * with the server's message and not logged as errors.
+ */
+const EXPECTED_CALLABLE_CODES = new Set([
+  'functions/already-exists',
+  'functions/invalid-argument',
+  'functions/permission-denied',
+  'functions/resource-exhausted',
+]);
 
 @Component({
   selector: 'app-edit-member',
@@ -79,10 +92,22 @@ export class EditMemberComponent {
   private readonly activeMemberCount =
     this.memberStore.activeGroupMembers().length;
 
-  protected readonly activeTooltip: string = this.#computeActiveTooltip();
-  protected readonly groupAdminTooltip: string = this.member.userRef?.eq(
+  /** This row is the signed-in user's own member record. */
+  protected readonly isOwnRow: boolean = !!this.member.userRef?.eq(
     this.userStore.user()!.ref!
-  )
+  );
+  /**
+   * A linked member's email may hold only an address its user has proven
+   * they own (firestore.rules, Plan 4 B19), so once a member is linked to
+   * someone else's profile, only that member can change it.
+   */
+  protected readonly emailLocked: boolean =
+    !!this.member.userRef && !this.isOwnRow;
+  protected readonly lockedEmailHint =
+    'Only the member can change their email address once it is linked to their profile.';
+
+  protected readonly activeTooltip: string = this.#computeActiveTooltip();
+  protected readonly groupAdminTooltip: string = this.isOwnRow
     ? 'You cannot remove yourself as a group admin'
     : '';
 
@@ -95,15 +120,20 @@ export class EditMemberComponent {
 
   protected readonly editMemberForm = form(this.editMemberModel, (p) => {
     required(p.memberName, { message: '*Required' });
-    email(p.email, { message: '*Not a valid email address' });
+    // Group mail goes to your own group email, so it can't be cleared (the
+    // server refuses '' too). A row that is already blank stays savable.
+    required(p.email, {
+      message: "*Your group email can't be blank",
+      when: () => this.isOwnRow && !!this.member.email,
+    });
+    singleEmail(p.email, { message: '*Not a valid email address' });
+    disabled(p.email, { when: () => this.emailLocked });
     disabled(p.active, {
       when: () =>
         !!this.member.leftGroup ||
         (this.activeMemberCount === 1 && !!this.editMemberModel().active),
     });
-    disabled(p.groupAdmin, {
-      when: () => !!this.member.userRef?.eq(this.userStore.user()!.ref!),
-    });
+    disabled(p.groupAdmin, { when: () => this.isOwnRow });
   });
 
   #computeActiveTooltip(): string {
@@ -130,13 +160,21 @@ export class EditMemberComponent {
     try {
       this.loading.loadingOn();
       const val = this.editMemberForm().value();
+      const memberRef = this.member.ref!;
+      if (this.isOwnRow) {
+        await this.#saveOwnRow(memberRef, val);
+        return;
+      }
+      // Someone else's row, or an unlinked one. An unlinked member's email
+      // is written directly (and may link it). A linked member's is locked
+      // and left out: the rules refuse any change to it, and a legacy doc
+      // with no (or a null) email would otherwise gain ''.
       const changes: Partial<Member> = {
         displayName: val.memberName,
-        email: val.email,
         active: val.active,
         groupAdmin: val.groupAdmin,
       };
-      const memberRef = this.member.ref!;
+      if (!this.emailLocked) changes.email = val.email;
       await this.memberService.updateMemberWithUserMatching(
         memberRef,
         changes,
@@ -145,23 +183,76 @@ export class EditMemberComponent {
       );
       this.dialogRef.close({ success: true, operation: 'saved' });
     } catch (error) {
-      if (error instanceof Error) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: error.message },
-        });
+      this.#reportSaveError(error);
+    } finally {
+      this.loading.loadingOff();
+    }
+  }
+
+  #reportSaveError(error: unknown): void {
+    // The server's message, without the HTTP status the SDK appends.
+    const { code, message: serverMessage } = callableError(error);
+    let message: string;
+    if (code === 'functions/resource-exhausted') {
+      message = 'Too many email change requests. Please try again tomorrow.';
+    } else if (
+      code === 'functions/permission-denied' &&
+      serverMessage === 'Verify your login email first.'
+    ) {
+      message = 'Verify your login email first.';
+    } else if (error instanceof Error) {
+      message = serverMessage;
+      if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {
         this.analytics.logError(
           'Edit Member Component',
           'edit_member',
           error.message
         );
-      } else {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Something went wrong - could not edit member' },
-        });
       }
-    } finally {
-      this.loading.loadingOff();
+    } else {
+      message = 'Something went wrong - could not edit member';
     }
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message },
+    });
+  }
+
+  /**
+   * One's own linked row. The other fields are written first, as usual;
+   * then a changed email goes through the server (requestMemberEmailChange),
+   * which applies the verified sign-in address at once and otherwise mails a
+   * confirmation link to the new address. If that request is refused (the
+   * daily limit, a duplicate address), only the refusal is reported and the
+   * dialog stays open; the other fields are already saved.
+   */
+  async #saveOwnRow(
+    memberRef: DocumentReference<Member>,
+    val: EditMemberForm
+  ): Promise<void> {
+    const emailChanged =
+      val.email.trim().toLowerCase() !==
+      (this.member.email ?? '').trim().toLowerCase();
+    await this.memberService.updateMember(memberRef, {
+      displayName: val.memberName,
+      active: val.active,
+      groupAdmin: val.groupAdmin,
+    });
+    const status = emailChanged
+      ? await this.memberService.requestMemberEmailChange(
+          this.data.groupId,
+          this.member.id,
+          val.email
+        )
+      : 'unchanged';
+    this.dialogRef.close(
+      status === 'pending'
+        ? {
+            success: true,
+            operation: 'saved',
+            message: `We sent a confirmation link to ${val.email}. Your group email will change once you confirm it.`,
+          }
+        : { success: true, operation: 'saved' }
+    );
   }
 
   removeMember(): void {

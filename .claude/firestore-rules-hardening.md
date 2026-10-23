@@ -367,6 +367,23 @@ function isGroupAdmin(gid) { return isSignedIn() && request.auth.uid in group(gi
   `allow read, write, delete: if request.auth != null` — explicitly Phase 3,
   not touched here.
 
+  **Update (2026-10-21, Plan 4 task B12):** who may write `users` is still
+  the blanket `request.auth != null`, but `write` is now split into
+  `read, delete` / `create` / `update` so create and update also run the
+  email guard (`emailCreateValid()` / `emailUpdateValid()`: an email that is
+  set or changed must be '' or one valid address; see the comment above
+  `isValidEmailOrEmpty`). Members create/update carry the same guard. Phase 3
+  must keep both guards when it narrows who may write. The client-SDK rules
+  spec is `e2e/infra/email-rules.spec.ts`; its users-create denials rely on
+  writes to a foreign uid still being allowed, so Phase 3 must revisit them.
+
+  **Update (2026-10-21, Plan 4 task B13):** the write half of Phase 3 is
+  done (see the Phase 3 section). The email-rules spec's users-create
+  denials now run as a user creating their own doc.
+
+  **Update (2026-10-22, Plan 4 task B14):** users create/update also run
+  the email-ownership guard (see "Email ownership" under Phase 3).
+
 Also fold in two fixes found along the way (both still outstanding, since
 nothing has touched `firestore.rules` yet):
 
@@ -500,14 +517,29 @@ mutating methods, not just the UI gating:
   `edit-member.component.html`'s `groupAdmin` toggle), again zero
   defense-in-depth. This one mattered most: the old rule
   (`isActiveMember(groupId) || self`) let *any* active member write to
-  *any other* member's doc via the SDK - including flipping their own
-  `groupAdmin` to `true`, a real privilege-escalation path, or removing
+  *any other* member's doc via the SDK, e.g. promoting or removing
   someone else. **Tightened: `create` now requires `isGroupAdmin(groupId)`;
   `update, delete` now require `isGroupAdmin(groupId) || self` (dropped the
   "any active member" clause, kept the self-write carve-out for
   leave/rejoin/self-edit).** Verified this doesn't break `addGroup()`'s
   sequential-write fix - the creator is already in `adminUids` from the
   group doc's own creation, before the member/category batch runs.
+  - **Correction (2026-10-22, Plan 4 final review C1):** Phase 2 did NOT
+    close self-promotion. The self clause (`resource.data.userRef ==
+    ownUserRef()`) limited no fields, so any linked member, even one who
+    had left, could write `{groupAdmin: true}` (or change `userRef`) on
+    their OWN member doc; `syncGroupMemberUids` then copied them into
+    `adminUids`, a full admin (including `deleteGroup`). It was live in
+    production. Fixed by `memberSelfUpdateValid()` in `firestore.rules`: a
+    non-admin self-write may change only `displayName`, `email`, `active`,
+    `leftGroup` and `groupAdmin`; may never set `groupAdmin` to true when
+    it wasn't; may set `active` to true only when rejoining after leaving
+    (`leftGroup == true`, so a member an admin deactivated can't
+    reactivate themselves); and may set `leftGroup` to true only when
+    leaving an active membership (with `active: false`). The app's
+    self-write paths (edit-member self-edit, `leaveGroup`, `rejoinGroup`,
+    `updateAllMemberEmails`) all fit; self-delete (leaving with no splits)
+    is unchanged. Emulator tests: `e2e/infra/member-rules.spec.ts`.
 - **history** - cleanly separable, unlike splits (below): a history doc is
   *only* ever created via the legitimate settle-up flow
   (`split.service.ts`'s `paySplitsBetweenMembers`/`settleGroup`, any active
@@ -667,23 +699,244 @@ them, backfilling had to happen *before* merging anything, not after.
 `--apply`, then dry run again to confirm idempotence ("nothing to do"), all
 against production. Clears the way for the CI deploy.
 
-## Phase 3 — `users` collection (deferred, tracked here so it isn't lost)
+## Phase 3 — `users` collection (write half done 2026-10-21; read half deferred)
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`
-(`user.service.ts:288-323`, `:386-460`, `:515-567`) and **written** cross-user
-for `defaultGroupRef` clearing (`group.service.ts:358-366`,
-`member.service.ts:222-228`). Until this phase lands, any signed-in account
-can read every user's email and Venmo/PayPal/CashApp/Zelle handles.
+(`user.service.ts`: `getUserDetails`, `getPaymentMethods` and the payment
+and settle email paths) and was **written** cross-user for `defaultGroupRef`
+clearing (`group.service.ts` `updateGroup()`, `member.service.ts`
+`removeMemberFromGroup()`; citations by function name, because the line
+numbers have drifted). The write half is done (below). Until the read half
+lands, any signed-in account can read every user's email and
+Venmo/PayPal/CashApp/Zelle handles.
 
 Agreed approach: a **callable Cloud Function gatekeeper** that verifies the
 caller shares a group with the target user and returns only the payment
-fields. The cross-user `defaultGroupRef` writes move server-side too. Then
-`users` rules become read/write own doc only, plus the `email` lookup in
-`member.service.ts:139-146` / `:187-195` (also a candidate to move
+fields. The cross-user `defaultGroupRef` writes were NOT moved server-side:
+the rule allows exactly their shape instead (see "Write half done"). Then
+`users` reads become own doc only, plus the `users.emailLower` lookups in
+`member.service.ts` (the add-member and link paths; also a candidate to move
 server-side).
 
 Left for a separate pass — Phase 2 is the larger win and is independently
 deployable.
+
+### Write half done (2026-10-21, Plan 4 task B13)
+
+Commit "Restrict user profile writes to the owner (and admins clearing a
+default group)" on branch `unit-gaps`. Not yet deployed (it ships with the
+branch's normal release). `users/{userId}` is now:
+
+- `read`: unchanged, any signed-in user. **The read half is still
+  deferred**: any signed-in account can still read every user's email,
+  payment handles and `emailOptOut` (the gatekeeper function above).
+- `create`, `delete`: own doc only (`request.auth.uid == userId`); create
+  keeps `emailCreateValid()`. No client path creates or deletes another
+  user's doc (new profiles and account deletion run through the Admin SDK).
+- `update`: own doc, or a non-owner whose only change is setting
+  `defaultGroupRef` to null on a doc whose current `defaultGroupRef` is a
+  group listing the caller in `adminUids`; both keep `emailUpdateValid()`.
+
+Instead of moving the cross-user `defaultGroupRef` writes server-side, the
+rule allows exactly their shape. A re-grep found two such client paths:
+`group.service.ts` `updateGroup()` (deactivate or archive; the clears ride
+in the same `writeBatch` as the group update) and `member.service.ts`
+`removeMemberFromGroup()` (an admin removing a linked member clears that
+user's default if it is the group; a single `updateDoc`). The old
+`member.service.ts` citation in the intro was this path.
+
+Batch semantics, proved on the emulator: the rule's `get()` of the group
+sees the pre-batch group doc, and deactivating/archiving never changes
+`adminUids`, so the admin check holds inside the batch.
+`e2e/infra/user-rules.spec.ts` commits the same batch shape (group update +
+the admin's own clear + another user's clear) through the client SDK for
+both `{active: false}` and `{archived: true, active: false}`; and the app
+paths themselves are covered by `e2e/groups/groups-admin.spec.ts` "should
+toggle group active status" and `e2e/members/members.spec.ts` "should remove
+a registered member and clear their default group", which check the other
+user's `defaultGroupRef` is null afterwards. The spec's denials (another
+user's payment IDs, `emailOptOut`, `email`, delete, a create for another
+uid, a plain member's or another group's admin's clear, setting a default
+to a group, a clear combined with another field) each got through under the
+old rule, run against it on the emulator.
+
+### Email ownership (2026-10-22, Plan 4 task B14)
+
+A live hole, owner-approved fix: any signed-in user could claim other
+people's pending group invites, because every path that links an invited
+member (`userRef == null`, matched by email) trusted an address the caller
+controlled:
+
+- the `linkInvitedMembers` callable used `request.data.email`;
+- `member.service` links a new or edited member to `users where emailLower
+  == <member email>`, and a user could write any valid address into their
+  own `users/{uid}.email` (B12 checks format only), which
+  `syncUserEmailLower` copies to `emailLower`;
+- unverified addresses reached the profile anyway: email/password sign-up
+  (`createUserProfileOnSignUp`), the session-start sync in `UserService`,
+  and `updateEmail` (which changed the sign-in address before
+  verification).
+
+Principle: an account is linked to an invited member only through an email
+address it has verified. Rule added to `users/{uid}` create/update,
+alongside B12's format guard and B13's ownership check (both unchanged):
+
+```
+function isOwnVerifiedEmail(e) {
+  return e is string &&
+    request.auth.token.email_verified == true &&
+    e.lower() == request.auth.token.email.lower();
+}
+function userEmailFieldsOwned(changed) {
+  return (!changed.hasAny(['email']) || !('email' in request.resource.data) ||
+      request.resource.data.email == '' ||
+      isOwnVerifiedEmail(request.resource.data.email)) &&
+    (!changed.hasAny(['emailLower']) || !('emailLower' in request.resource.data) ||
+      request.resource.data.emailLower == '' ||
+      (request.auth.token.email_verified == true &&
+        request.resource.data.emailLower == request.auth.token.email.lower()));
+}
+// create: userEmailFieldsOwned(request.resource.data.keys())
+// update: userEmailFieldsOwned(request.resource.data.diff(resource.data).affectedKeys())
+```
+
+So a set or changed profile `email` must be '' or the caller's own verified
+token address (case-insensitive), and a client-written `emailLower` '' or
+that address lowercased (no client path writes `emailLower`; the trigger
+does, with admin rights). Unchanged stored values never block other writes
+(same `affectedKeys` pattern as B12). The admin default-group clear (B13)
+changes only `defaultGroupRef`, so the guard is vacuous there. Member docs
+are not covered here: a member's email is the invitee's address, set by
+group admins (until B19, below, limited it once the member is linked).
+
+The app side, so no legitimate path is refused:
+
+- `linkInvitedMembers` ignores `data.email` and links by
+  `request.auth.token.email`, refusing (`failed-precondition`) unless
+  `email_verified` is true. Clients no longer send an email.
+- `createUserProfileOnSignUp` stores `email: ''` until the address is
+  verified (and now only fills in missing fields, so a late run can't blank
+  an address written since); the admin backfill/sync paths
+  (`backfillOrphanedRegistrations`, `syncAuthEmailsToUsers`, the
+  `backfill-orphaned-registrations` query) likewise copy only verified
+  addresses.
+- `UserService`'s session sync writes the profile email only when the live
+  user is verified, and writes the address from a freshly refreshed ID token
+  (a stale captured address put the old one back during an email change; the
+  new rule refused it, which is how the race was found).
+- Verification (`account-action`, `updateUserEmailAndLinkMembers`) refreshes
+  the ID token before writing the profile and linking.
+- Email change uses `verifyBeforeUpdateEmail`; the sign-in address changes
+  only when the link sent to the new address is used (account-action mode
+  `verifyAndChangeEmail`).
+
+Proved on the emulator: `e2e/infra/email-rules.spec.ts` ("a profile stores
+only its own verified email"; its four denial tests failed against the old
+rules, 2026-10-22) plus the B12/B13 specs, `functions/src/link-invited-
+members.spec.ts` (the hijack test linked the victim's member before the
+fix), and the account / account-action / invites e2e journeys.
+
+Existing data: profiles written before this fix may still hold an
+unverified or foreign address (and its `emailLower`), which
+`member.service`'s lookups would still match. `pnpm query
+clear-unverified-profile-emails` (logic in `scripts/db/profile-email-audit.ts`)
+sets each such profile to the verified Auth address or '', and lists linked
+members whose email isn't their account's verified address for manual
+review (it never unlinks). Dry-run it before the release; `-- --apply` only
+after B14 is deployed (an old client would rewrite the unverified address);
+run `repairOrphanedMembers` / `link-orphaned-members` only after it. Proved
+on the test emulators only; not yet run against production.
+
+Fix round 1 (2026-10-22): the client's no-profile fallback now creates the
+doc with '' and stores the address through the token-refreshing sync (a
+cached token from before verification was refused); `linkInvitedMembers`
+falls back to the Auth record when the token predates verification; an
+email change that revokes the session (production) is treated as success
+on the account-action page, and UserService doesn't report it as "session
+expired".
+
+### Verified group emails (2026-10-22, Plan 4 task B19)
+
+Owner decision: all group mail (payment requests, payment / settle notices
+and their reversals) goes to the email on the member's GROUP profile
+(`groups/{gid}/members/{mid}.email`), not the login email; a changed group
+email is verified before it is used. Since final review I2 the group mail
+callables had read `users/{uid}.email` instead, because a member email was
+attacker-chosen: an admin could create a member with a victim's `userRef`
+and any address, and the victim's group mail went there.
+
+The invariant that makes `member.email` safe to mail: **a linked member's
+`email` is always an address the linked user has proven they own.** It is
+only ever written as the user's profile email (verified-only since B14) when
+the link is made, as their verified sign-in address by the member, or as an
+address confirmed through a link mailed to it (Admin SDK). Rules added to
+`groups/{gid}/members/{mid}`, alongside the B12 format guard and
+`memberSelfUpdateValid()` (both unchanged):
+
+- `isUserDocRef(r)`: `r == /databases/$(database)/documents/users/$(r[4])`,
+  so a `userRef` can only name a `users/{uid}` doc (a member doc also has
+  an `email` field).
+- `emailMatchesLinkedUser(data)`: `email` non-empty and equal, ignoring
+  case, to `get(userRef).data.email` (not `emailLower`, which a trigger
+  fills in later). A missing users doc fails the `get()`.
+- create (`memberLinkCreateValid()`): `userRef` null, or the match above,
+  or the caller's own row with '' or their verified token address
+  (addGroup's creator; add-group stores '' for a legacy profile email that
+  fails the single-address rule).
+- update (`memberLinkUpdateValid()`):
+  - `userRef` may change only null to X (admin, with the match on the
+    resulting doc) or X to null (admin). X to Y is denied.
+  - `email` changed on an unlinked doc: admin only (the match applies when
+    the same write links it: `updateMemberWithUserMatching`).
+  - `email` changed on a linked doc: only the member themself, only to
+    `request.auth.token.email` with `email_verified == true` (Account >
+    Profile `updateAllMemberEmails`). An admin editing someone else's linked
+    row is denied; the edit-member dialog disables the field there.
+  - `emailLower` (`memberEmailLowerValid()`, also on create): no client
+    writes it, but a client write that sets it must equal `email`
+    lowercased, because `linkInvitedMembers` links by it.
+- `memberEmailChangeTokens/{id}` and `memberEmailChangeLimits/{uid}`: deny
+  all (server-only).
+
+Write-path inventory (each kept working, each proved on the emulator):
+
+| Path | Writer | Rule that admits it |
+| --- | --- | --- |
+| add-member `addMemberToGroup` (unlinked, or auto-linked by `users.emailLower`) | admin | create: `userRef` null, or `emailMatchesLinkedUser` |
+| add-group `addGroup` (creator's own row) | admin of the new group | create: `emailMatchesLinkedUser`, or own row with '' / verified address |
+| edit-member `updateMemberWithUserMatching` on an unlinked row (may link) | admin | update: unlinked email change; null to X with the match |
+| edit-member Save on a linked row (email unchanged; disabled for others) | admin or self | update: `email` not in `affectedKeys` |
+| edit-member self email change | self | `requestMemberEmailChange` / `confirmMemberEmailChange` (Admin SDK) |
+| Account > Profile `updateAllMemberEmails` | self | update: linked, self, verified token address |
+| `leaveGroup` / `rejoinGroup` / self-delete | self | unchanged (`memberSelfUpdateValid`, delete rule) |
+| `removeMemberFromGroup` | admin | delete rule, unchanged |
+| `linkInvitedMembers`, `repairOrphanedMembers`, account deletion's unlink | Admin SDK | bypasses rules; `linkInvitedMembers` now also requires `email` (not just the possibly stale `emailLower`) to match the verified address |
+
+The callables (`functions/src/member-email.ts`): `requestMemberEmailChange`
+applies the caller's verified Auth address at once and otherwise mails a
+one-time link (32 random bytes, stored only as its sha256, 24 h, earlier
+link replaced, 5 mailed requests per uid per 24 h window) whose text
+contains no user-controlled content (Ruling R18); `confirmMemberEmailChange`
+applies it in a transaction for the same uid while the member is still
+linked, and deletes the token. Expired tokens and windows are deleted by the
+nightly `deleteOldPaidExpenses` schedule. Fix round 1: both callables refuse
+a caller whose login email is not verified (`permission-denied`; uids are
+free, so the per-uid limit alone would not bound the mail) or whose
+membership is not active; the duplicate-address check runs after the
+allowance (so it can't be a free probe); and pending tokens are cleared
+inside the transaction that creates a new one or applies an address. Every group mail sender uses one
+recipient rule (`group-mail-recipient.ts`): linked, users doc exists, not
+opted out, one valid `member.email`.
+
+Proved on the emulator: `e2e/infra/member-email-rules.spec.ts` (6 of its 7
+tests failed against the old rules, 2026-10-22, including the I2 attack),
+`e2e/infra/member-rules.spec.ts` (the Profile-sync test now refuses another
+address), `functions/src/member-email.spec.ts`, the recipient tests in
+`group-emails.spec.ts` / `payment-email.spec.ts`, and the
+`e2e/members/member-email.spec.ts` journey. Existing data needs no
+migration: a read-only production audit
+(`scripts/db/queries/member-email-mismatch.ts`) found 295 linked members, 0
+with a group email different from the linked login email.
 
 ## Sequencing note
 

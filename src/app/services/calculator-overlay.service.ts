@@ -154,27 +154,32 @@ export class CalculatorOverlayService {
   private handleKeyboardInput(event: KeyboardEvent): void {
     if (!this.calculatorRef?.instance) return;
 
-    // Prevent default to stop input from reaching underlying form fields
+    // Browser and OS shortcuts (Ctrl/Cmd/Alt combinations) are not calculator
+    // input; Tab and any other non-calculator key also pass through untouched.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    if (!this.applyKey(event.key)) return;
+
+    // Only a key the calculator used is kept from the underlying form fields
     event.preventDefault();
     event.stopPropagation();
+  }
 
-    const calc = this.calculatorRef.instance;
-    const key = event.key;
+  /** Applies a calculator key; returns false when the key is not one. */
+  private applyKey(key: string): boolean {
+    const calc = this.calculatorRef!.instance;
 
     // Handle numbers
-    if (key >= '0' && key <= '9') {
+    if (key.length === 1 && key >= '0' && key <= '9') {
       calc.addNumber(key);
-      return;
+      return true;
     }
 
-    // Handle decimal point
-    if (key === '.' || key === ',') {
-      calc.addNumber('.');
-      return;
-    }
-
-    // Handle operations
     switch (key) {
+      case '.':
+      case ',':
+        calc.addNumber('.');
+        break;
       case '+':
         calc.addOperation('+');
         break;
@@ -211,9 +216,9 @@ export class CalculatorOverlayService {
         calc.clear();
         break;
       default:
-        // Ignore other keys
-        break;
+        return false;
     }
+    return true;
   }
 
   private getOverlayConfig(triggerElement: HTMLElement): OverlayConfig {

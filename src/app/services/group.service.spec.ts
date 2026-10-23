@@ -1,8 +1,14 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { DefaultUrlSerializer, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  DefaultUrlSerializer,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 import { LoadingService } from '@components/loading/loading.service';
 import { ROUTE_PATHS } from '@constants/routes.constants';
+import { groupGuard } from '@features/auth/guards.guard';
 import { AnalyticsService } from '@services/analytics.service';
 import { CategoryStore } from '@store/category.store';
 import { ExpenseStore } from '@store/expense.store';
@@ -12,6 +18,7 @@ import { MemberStore } from '@store/member.store';
 import { MemorizedStore } from '@store/memorized.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import * as authModule from 'firebase/auth';
 import * as firestoreModule from 'firebase/firestore';
 import * as functionsModule from 'firebase/functions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -99,6 +106,7 @@ describe('GroupService', () => {
     navigated: true,
     currentNavigation: signal<any>(null),
     serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
+    parseUrl: (url: string) => serializer.parse(url),
     navigate: vi.fn(),
     navigateByUrl: vi.fn(),
   };
@@ -249,7 +257,7 @@ describe('GroupService', () => {
       });
     });
 
-    it('should delete the group doc if creating the member/category batch fails', async () => {
+    it('should surface the error, without trying to delete the group doc, if creating the member/category batch fails (the rules forbid group deletes)', async () => {
       mockBatch.commit.mockRejectedValueOnce(new Error('permission-denied'));
 
       await expect(
@@ -259,7 +267,7 @@ describe('GroupService', () => {
         )
       ).rejects.toThrow('permission-denied');
 
-      expect(firestoreModule.deleteDoc).toHaveBeenCalledWith(mockDocRef);
+      expect(firestoreModule.deleteDoc).not.toHaveBeenCalled();
     });
   });
 
@@ -625,6 +633,7 @@ describe('GroupService', () => {
           navigated: pending === null,
           currentNavigation: signal(pending),
           serializeUrl: (tree: UrlTree) => serializer.serialize(tree),
+          parseUrl: (url: string) => serializer.parse(url),
         };
       }
 
@@ -717,6 +726,82 @@ describe('GroupService', () => {
         expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
           ROUTE_PATHS.EXPENSES_ROOT
         );
+      });
+
+      // B20: the authGuard sends a signed-out visitor to
+      // /auth/login?returnUrl=<the page they wanted>.
+      describe('after a sign-in from the login page', () => {
+        const loginUrl = (returnUrl?: string) =>
+          returnUrl === undefined
+            ? '/auth/login'
+            : `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+
+        it('goes to Expenses when there is no returnUrl', async () => {
+          useRouter('/auth/login', null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+            ROUTE_PATHS.EXPENSES_ROOT
+          );
+        });
+
+        it('returns to the page the visitor was after', async () => {
+          useRouter(loginUrl('/administration/members'), null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledTimes(1);
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe('/administration/members');
+        });
+
+        it("keeps a one-time link's token in the URL it returns to", async () => {
+          useRouter(
+            loginUrl('/auth/confirm-group-email?token=abc123'),
+            null
+          );
+
+          await deliverOneActiveGroup();
+
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe(
+            '/auth/confirm-group-email?token=abc123'
+          );
+        });
+
+        it('judges a pending navigation to the login page the same way', async () => {
+          useRouter('/', loginUrl('/analysis/summary'));
+
+          await deliverOneActiveGroup();
+
+          const target = mockRouter.navigateByUrl.mock.calls[0]![0] as UrlTree;
+          expect(serializer.serialize(target)).toBe('/analysis/summary');
+        });
+
+        it.each([
+          ['a protocol-relative URL', '//evil.com'],
+          ['an absolute URL', 'https://evil.com'],
+          ['a backslash host', '/\\evil.com'],
+          ['a javascript: URL', 'javascript:alert(1)'],
+        ])('falls back to Expenses for %s', async (_label, returnUrl) => {
+          useRouter(loginUrl(returnUrl), null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledTimes(1);
+          expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(
+            ROUTE_PATHS.EXPENSES_ROOT
+          );
+        });
+
+        it('ignores a returnUrl on any other redirect page', async () => {
+          useRouter('/home?returnUrl=%2Fadministration%2Fmembers', null);
+
+          await deliverOneActiveGroup();
+
+          expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+        });
       });
 
       it('does not redirect a validated user on the Account menu', async () => {
@@ -1274,6 +1359,129 @@ describe('GroupService', () => {
       service.logout();
 
       expect(mockGroupStore.setLoadedState).toHaveBeenCalledWith(false);
+    });
+  });
+
+  // groupGuard sends a user whose groups have loaded but who has no current
+  // group to Groups. A session start empties the current group, and the
+  // groups list arrives before the auto-selected group's own read does, so a
+  // navigation in between (e.g. confirm-group-email's Go to Members, right
+  // after a full page load) used to land on Groups instead.
+  describe('groupGuard while the auto-selected group is loading', () => {
+    let store: InstanceType<typeof GroupStore>;
+
+    function createServiceWithRealGroupStore(): GroupService {
+      TestBed.configureTestingModule({
+        providers: [
+          GroupService,
+          { provide: firestoreModule.getFirestore, useValue: mockFs },
+          { provide: functionsModule.getFunctions, useValue: mockFunctions },
+          { provide: authModule.getAuth, useValue: { currentUser: null } },
+          { provide: UserStore, useValue: mockUserStore },
+          { provide: CategoryService, useValue: mockCategoryService },
+          { provide: MemberService, useValue: mockMemberService },
+          { provide: ExpenseService, useValue: mockExpenseService },
+          { provide: SplitService, useValue: mockSplitService },
+          { provide: MemorizedService, useValue: mockMemorizedService },
+          { provide: HistoryService, useValue: mockHistoryService },
+          { provide: LoadingService, useValue: mockLoading },
+          { provide: AnalyticsService, useValue: mockAnalytics },
+        ],
+      });
+      const svc = TestBed.inject(GroupService);
+      (svc as any).router = mockRouter;
+      store = TestBed.inject(GroupStore);
+      return svc;
+    }
+
+    function runGroupGuard(): unknown {
+      return TestBed.runInInjectionContext(() =>
+        groupGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot)
+      );
+    }
+
+    const membership = {
+      ref: { parent: { parent: { id: 'group-1' } } },
+      data: () => ({ active: true, groupAdmin: false }),
+    };
+    const groupInList = {
+      id: 'group-1',
+      data: () => ({ name: 'Test Group', active: true }),
+      ref: groupRef('group-1'),
+    };
+
+    async function deliverGroups(user: any) {
+      const callbacks: ((snap: any) => unknown)[] = [];
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          callbacks.push(onNext);
+          return vi.fn();
+        }
+      );
+      const groupRead = deferred<any>();
+      vi.spyOn(firestoreModule, 'getDoc').mockReturnValue(groupRead.promise);
+      userSignal.set(user);
+
+      service = createServiceWithRealGroupStore();
+      await service.getUserGroups(user);
+      await callbacks[0]!(makeSnap([membership]));
+      const handled = callbacks[1]!(makeSnap([groupInList]));
+      // Let the handler run up to the group read it is waiting on.
+      await Promise.resolve();
+      await Promise.resolve();
+      return { groupRead, handled };
+    }
+
+    it('lets a navigation through until the selection has loaded', async () => {
+      const user = {
+        id: 'user-1',
+        ref: { id: 'user-1' },
+        defaultGroupRef: groupRef('group-1'),
+      } as any;
+      const { groupRead, handled } = await deliverGroups(user);
+
+      expect(firestoreModule.getDoc).toHaveBeenCalled();
+      expect(store.currentGroup()).toBeNull();
+      expect(runGroupGuard()).toBe(true);
+
+      groupRead.resolve(groupDocSnap('group-1', 'Test Group'));
+      await handled;
+
+      expect(store.currentGroup()?.id).toBe('group-1');
+      expect(store.loaded()).toBe(true);
+      expect(runGroupGuard()).toBe(true);
+    });
+
+    it('still sends a user left with no group to Groups once the groups have loaded', async () => {
+      // Two groups, neither the default: nothing is auto-selected.
+      const callbacks: ((snap: any) => unknown)[] = [];
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, onNext: any) => {
+          callbacks.push(onNext);
+          return vi.fn();
+        }
+      );
+      const user = { id: 'user-1', ref: { id: 'user-1' }, defaultGroupRef: null } as any;
+      userSignal.set(user);
+      service = createServiceWithRealGroupStore();
+
+      await service.getUserGroups(user);
+      await callbacks[0]!(
+        makeSnap([
+          membership,
+          { ...membership, ref: { parent: { parent: { id: 'group-2' } } } },
+        ])
+      );
+      await callbacks[1]!(
+        makeSnap([
+          groupInList,
+          { ...groupInList, id: 'group-2', ref: groupRef('group-2') },
+        ])
+      );
+
+      expect(store.loaded()).toBe(true);
+      expect(store.currentGroup()).toBeNull();
+      expect(runGroupGuard()).toBeInstanceOf(UrlTree);
     });
   });
 });

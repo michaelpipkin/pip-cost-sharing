@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthMainComponent } from '@features/auth/auth-main/auth-main.component';
-import { basicAuthGuard, loggedInGuard } from './guards.guard';
+import { authGuard, basicAuthGuard, loggedInGuard } from './guards.guard';
 
 export const authRoutes: Routes = [
   {
@@ -119,6 +119,19 @@ export const authRoutes: Routes = [
           import('@features/auth/account-action/account-action.component').then(
             (m) => m.AccountActionComponent
           ),
+      },
+      {
+        // The link requestMemberEmailChange mails to a new group email
+        // (functions/src/member-email.ts). A route of its own: account-action
+        // belongs to Firebase's own action links. The token is tied to the
+        // account that asked, so the page needs a signed-in, verified user.
+        path: 'confirm-group-email',
+        title: 'Confirm Group Email',
+        loadComponent: () =>
+          import('@features/auth/confirm-group-email/confirm-group-email.component').then(
+            (m) => m.ConfirmGroupEmailComponent
+          ),
+        canActivate: [authGuard],
       },
       {
         path: 'delete-account',

@@ -424,6 +424,19 @@ export class SummaryComponent {
     try {
       paymentMethods =
         await this.userService.getPaymentMethods(owedToMemberRef);
+    } catch (error) {
+      this.analytics.logError(
+        'Summary Component',
+        'load_payment_methods',
+        'Failed to load payment methods',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      this.snackbar.openFromComponent(CustomSnackbarComponent, {
+        data: {
+          message: 'Could not load payment methods. Please try again.',
+        },
+      });
+      return;
     } finally {
       this.loading.loadingOff();
     }
@@ -768,10 +781,10 @@ export class SummaryComponent {
     try {
       this.loading.loadingOn();
       const result = await this.userService.sendPaymentRequestEmail(
-        owedByMember,
-        amountDue.owedToMember!,
-        this.currentGroup()!.name,
-        this.formatCurrency(amountDue.amount)
+        this.currentGroup()!.id,
+        amountDue.owedByMemberRef,
+        amountDue.owedToMemberRef,
+        amountDue.amount
       );
       let message: string;
       if (result === 'not_registered') {
@@ -802,15 +815,15 @@ export class SummaryComponent {
 
   async requestAllPayments(): Promise<void> {
     const transfers = this.leastTransfers().map((t) => ({
-      owedByMember: t.owedByMember!,
-      owedToMember: t.owedToMember!,
-      formattedAmount: this.formatCurrency(t.amount),
+      owedByMemberRef: t.owedByMemberRef,
+      owedToMemberRef: t.owedToMemberRef,
+      amount: t.amount,
     }));
     try {
       this.loading.loadingOn();
       const { sent } = await this.userService.sendGroupPaymentRequestEmails(
-        transfers,
-        this.currentGroup()!.name
+        this.currentGroup()!.id,
+        transfers
       );
       const message =
         sent === 0

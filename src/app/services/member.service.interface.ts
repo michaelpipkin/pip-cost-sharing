@@ -2,6 +2,9 @@ import { Member } from '@models/member';
 import { User } from '@models/user';
 import { DocumentReference } from 'firebase/firestore';
 
+/** requestMemberEmailChange's outcome (functions/src/member-email.ts). */
+export type MemberEmailChangeStatus = 'unchanged' | 'updated' | 'pending';
+
 export interface IMemberService {
   getMemberByUserRef(
     groupId: string,
@@ -19,6 +22,14 @@ export interface IMemberService {
     currentUserRef: DocumentReference<User> | null,
     currentEmail: string
   ): Promise<void>;
+  requestMemberEmailChange(
+    groupId: string,
+    memberId: string,
+    email: string
+  ): Promise<MemberEmailChangeStatus>;
+  confirmMemberEmailChange(
+    token: string
+  ): Promise<{ groupId: string; email: string }>;
   removeMemberFromGroup(
     groupId: string,
     memberRef: DocumentReference<Member>

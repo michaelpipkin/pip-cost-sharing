@@ -199,6 +199,47 @@ describe('AllocationUtilsService', () => {
       );
       expect(total).toBe(99.99);
     });
+
+    // Regression for B15: the leftover cent was added with `+= increment`
+    // and never re-rounded. The sum check above rounds, which masked the
+    // 33.339999999999996 that reached Firestore, so compare exactly.
+    it('stores exact currency amounts for every method after the cent adjustment', () => {
+      const members = () => [
+        makeSplit({ id: 'member1' }),
+        makeSplit({ id: 'member2' }),
+        makeSplit({ id: 'member3' }),
+      ];
+      const amounts = (splits: AllocationSplit[]) =>
+        splits.map((s) => s.allocatedAmount).sort((a, b) => a - b);
+
+      const shared = service.allocateSharedAmounts({
+        totalAmount: 100,
+        sharedAmount: 100,
+        allocatedAmount: 0,
+        splits: members(),
+      });
+      expect(amounts(shared.splits)).toEqual([33.33, 33.33, 33.34]);
+
+      const byPercentage = service.allocateByPercentage({
+        totalAmount: 10,
+        splits: members().map((s) => ({ ...s, percentage: 33.33 })),
+      });
+      expect(amounts(byPercentage.splits)).toEqual([3.33, 3.33, 3.34]);
+
+      const byShares = service.allocateByShares({
+        totalAmount: 100,
+        splits: members().map((s) => ({ ...s, shares: 1 })),
+      });
+      expect(amounts(byShares.splits)).toEqual([33.33, 33.33, 33.34]);
+
+      const negative = service.allocateSharedAmounts({
+        totalAmount: -100,
+        sharedAmount: -100,
+        allocatedAmount: 0,
+        splits: members(),
+      });
+      expect(amounts(negative.splits)).toEqual([-33.34, -33.33, -33.33]);
+    });
   });
 
   describe('allocateByPercentage', () => {

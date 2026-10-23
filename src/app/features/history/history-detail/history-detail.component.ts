@@ -422,28 +422,30 @@ export class HistoryDetailComponent {
 
   private async notifyMemberPaymentUnpay(h: History): Promise<void> {
     await this.userService.sendMemberPaymentUnpayEmails(
-      h.paidByMember,
-      h.paidToMember,
-      this.currentGroup()!.name,
-      this.localeService.formatCurrency(h.totalPaid),
+      this.currentGroup()!.id,
+      h.paidByMemberRef,
+      h.paidToMemberRef,
+      h.totalPaid,
       h.splitsPaid?.length ?? 0
     );
   }
 
   private async notifyGroupSettleUnpay(h: History): Promise<void> {
-    const memberMap = new Map<string, Member>();
+    // Only members still known to the store: the server rejects an unknown
+    // member id, which would drop every other member's notice.
+    const memberRefs = new Map<string, DocumentReference<Member>>();
     for (const transfer of this.batchTransfers()) {
       if (transfer.paidByMember) {
-        memberMap.set(transfer.paidByMemberRef.path, transfer.paidByMember);
+        memberRefs.set(transfer.paidByMemberRef.path, transfer.paidByMemberRef);
       }
       if (transfer.paidToMember) {
-        memberMap.set(transfer.paidToMemberRef.path, transfer.paidToMember);
+        memberRefs.set(transfer.paidToMemberRef.path, transfer.paidToMemberRef);
       }
     }
     await this.userService.sendGroupSettleUnpayEmails(
-      [...memberMap.values()],
-      this.currentGroup()!.name,
-      h.date.toLocaleDateString()
+      this.currentGroup()!.id,
+      [...memberRefs.values()],
+      h.date
     );
   }
 

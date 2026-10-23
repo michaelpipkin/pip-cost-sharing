@@ -230,6 +230,10 @@ export class ExpenseService implements IExpenseService {
   ): Promise<DocumentReference<Expense>> {
     const batch = writeBatch(this.fs);
     const expenseRef = doc(collection(this.fs, `/groups/${groupId}/expenses`));
+    // True once this call has stored a receipt file. The expense is new, so
+    // nothing else can live at that path, and a failure after this point must
+    // remove the file or it is orphaned (no expense will ever point at it).
+    let receiptUploaded = false;
 
     try {
       // Upload receipt if provided
@@ -240,6 +244,7 @@ export class ExpenseService implements IExpenseService {
         );
         expense.receiptPath = storageRef.fullPath;
         await uploadBytes(storageRef, receipt);
+        receiptUploaded = true;
         this.analytics.logEvent('receipt_uploaded');
       }
 
@@ -255,8 +260,9 @@ export class ExpenseService implements IExpenseService {
       await this.doesGroupHaveExpenses(groupId);
       return expenseRef as DocumentReference<Expense>; // NOSONAR - Type assertion is necessary here to satisfy Firestore query constraints
     } catch (error) {
-      // Clean up uploaded receipt if batch commit fails
-      if (receipt) {
+      // Clean up the uploaded receipt if a later step fails. A failed upload
+      // wrote nothing, so there is nothing to delete.
+      if (receiptUploaded) {
         const storageRef = ref(
           this.storage,
           `groups/${groupId}/receipts/${expenseRef.id}`
@@ -288,6 +294,17 @@ export class ExpenseService implements IExpenseService {
     splits: Partial<SplitDto>[],
     receipt: File | null = null
   ): Promise<void> {
+    // True only when this call created a receipt file for an expense that had
+    // none. Only then is the file ours to remove if a later step fails.
+    //
+    // A replacement overwrites the expense's existing file at the same path,
+    // and the expense document already points at that path. If the upload
+    // fails, the old file is untouched and must stay. If the upload succeeds
+    // and the document write then fails, the path still holds a receipt (now
+    // the new one) and the document still references it, so deleting it would
+    // leave a dangling reference. The old bytes cannot be restored either way,
+    // so the new file stays.
+    let createdReceipt = false;
     try {
       // Upload receipt if provided
       if (receipt) {
@@ -295,8 +312,11 @@ export class ExpenseService implements IExpenseService {
           this.storage,
           `groups/${groupId}/receipts/${expenseRef.id}`
         );
+        const existing = await getDoc(expenseRef);
+        const hadReceipt = existing.exists() && !!existing.data()?.receiptPath;
         try {
           await uploadBytes(storageRef, receipt);
+          createdReceipt = !hadReceipt;
           changes.receiptPath = storageRef.fullPath;
           this.analytics.logEvent('receipt_uploaded');
         } catch (error) {
@@ -328,8 +348,7 @@ export class ExpenseService implements IExpenseService {
 
       await batch.commit();
     } catch (error) {
-      // Clean up uploaded receipt if batch commit fails
-      if (receipt) {
+      if (createdReceipt) {
         const storageRef = ref(
           this.storage,
           `groups/${groupId}/receipts/${expenseRef.id}`

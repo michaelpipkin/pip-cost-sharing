@@ -1,5 +1,4 @@
-import { ComponentPortal } from '@angular/cdk/portal';
-import { ComponentRef, DestroyRef, Directive, inject } from '@angular/core';
+import { ComponentRef, Directive } from '@angular/core';
 import {
   TextFilterPanelComponent,
   TextFilterValue,
@@ -22,74 +21,28 @@ import { BaseFilterDirective } from './base-filter.directive';
   selector: '[appTextFilter]',
   standalone: true,
 })
-export class TextFilterDirective extends BaseFilterDirective {
-  readonly #destroyRef = inject(DestroyRef);
-  private componentRef: ComponentRef<TextFilterPanelComponent> | null = null;
+export class TextFilterDirective extends BaseFilterDirective<TextFilterPanelComponent> {
+  protected readonly panelType = TextFilterPanelComponent;
 
-  constructor() {
-    super();
-    this.#destroyRef.onDestroy(() => {
-      if (this.componentRef) {
-        this.componentRef.destroy();
-      }
-    });
-  }
-
-  protected override createFilterPanel(): ComponentPortal<any> {
-    const portal = new ComponentPortal(TextFilterPanelComponent);
-
-    // We need to attach the portal and configure the component after attachment
-    // This happens in openFilterPanel after attach() is called
-    setTimeout(() => {
-      if (this.overlayRef?.hasAttached()) {
-        this.componentRef = this.overlayRef.overlayElement.querySelector(
-          'app-text-filter-panel'
-        )
-          ? (this.overlayRef as any)._attachedPortal?.componentRef
-          : null;
-
-        if (this.componentRef) {
-          this.setupComponent();
-        }
-      }
-    });
-
-    return portal;
-  }
-
-  protected override openFilterPanel(): void {
-    this.overlayRef ??= this.createOverlay();
-
-    const portal = this.createFilterPanel();
-    this.componentRef = this.overlayRef.attach(portal);
-
-    this.setupComponent();
-
-    // Close on backdrop click
-    this.overlayRef.backdropClick().subscribe(() => {
-      this.closeFilterPanel();
-    });
-  }
-
-  private setupComponent(): void {
-    if (!this.componentRef) return;
-
+  protected override configurePanel(
+    panel: ComponentRef<TextFilterPanelComponent>
+  ): void {
     // Set inputs using setInput for signal-based inputs
     const columnHeader = this.columnHeader();
     if (columnHeader) {
-      this.componentRef.setInput('columnLabel', columnHeader);
+      panel.setInput('columnLabel', columnHeader);
     }
 
     const currentFilter = this.getCurrentFilter();
     if (currentFilter?.type === 'text') {
-      this.componentRef.setInput('initialValue', {
+      panel.setInput('initialValue', {
         value: currentFilter.value,
         caseSensitive: currentFilter.caseSensitive || false,
       });
     }
 
     // Subscribe to outputs
-    this.componentRef.instance.apply.subscribe((value: TextFilterValue) => {
+    panel.instance.apply.subscribe((value: TextFilterValue) => {
       this.applyFilter({
         type: 'text',
         value: value.value,
@@ -97,7 +50,7 @@ export class TextFilterDirective extends BaseFilterDirective {
       });
     });
 
-    this.componentRef.instance.clear.subscribe(() => {
+    panel.instance.clear.subscribe(() => {
       this.clearFilter();
     });
   }

@@ -7,6 +7,71 @@ import {
   escapeHtml,
   formatAmount,
 } from './index';
+import {
+  isSingleEmailAddress,
+  MAX_EMAIL_LENGTH,
+  SINGLE_EMAIL_PATTERN,
+} from './email-builders';
+
+// The same table as the app copy's spec (src/app/utilities/
+// email-validation.spec.ts); the rules copy runs every row in
+// e2e/infra/email-rules.spec.ts. scripts/lint/email-pattern-agreement.test.mjs
+// checks all three tables hold the same rows.
+describe('isSingleEmailAddress', () => {
+  it.each([
+    'a+b@x.co.uk',
+    'alice@example.com',
+    'Alice.Smith@Example.COM',
+    "o'brien@x.io",
+    'first.last@sub-domain.example.org',
+    'a@x1.co',
+    'A@X.COM',
+    'user@example.xn--p1ai',
+    'user@xn--80ak6aa92e.com',
+  ])('accepts %s', (email) => {
+    expect(isSingleEmailAddress(email)).toBe(true);
+  });
+
+  it.each([
+    ['no dot in the domain', 'a@b'],
+    ['a comma list', 'a@x.com,b@y.com'],
+    ['a semicolon list', 'a@x.com;b'],
+    ['a space before the @', 'a @x.com'],
+    ['angle brackets', 'a@x.com<b>'],
+    ['a quoted local part', '"a"@x.com'],
+    ['two @', 'a@b@x.com'],
+    ['no local part', '@x.com'],
+    ['a leading dot', '.a@x.com'],
+    ['a doubled dot', 'a..b@x.com'],
+    ['a trailing dot in the local part', 'a.@x.com'],
+    ['a one-letter TLD', 'a@x.c'],
+    ['a numeric TLD', 'a@x.123'],
+    ['a label starting with a hyphen', 'a@-x.com'],
+    ['a label ending with a hyphen', 'a@x-.com'],
+    ['an empty label', 'a@x..com'],
+    ['a trailing newline', 'a@x.com\n'],
+    ['a display name', 'Al <a@x.com>'],
+    ['an empty string', ''],
+    ['a non-ASCII local part', 'ü@x.com'],
+    ['a non-ASCII domain', 'a@bücher.de'],
+    ['an unfinished punycode TLD', 'a@x.xn--'],
+  ])('rejects %s (%s)', (_label, email) => {
+    expect(isSingleEmailAddress(email)).toBe(false);
+  });
+
+  it('rejects non-strings, arrays included', () => {
+    expect(isSingleEmailAddress(undefined)).toBe(false);
+    expect(isSingleEmailAddress(['a@x.com'])).toBe(false);
+  });
+
+  it('enforces the 254-character bound separately from the pattern', () => {
+    const domain = '@example.com';
+    const atLimit = 'a'.repeat(MAX_EMAIL_LENGTH - domain.length) + domain;
+    expect(isSingleEmailAddress(atLimit)).toBe(true);
+    expect(isSingleEmailAddress('a' + atLimit)).toBe(false);
+    expect(SINGLE_EMAIL_PATTERN.test('a' + atLimit)).toBe(true);
+  });
+});
 
 describe('formatAmount', () => {
   it('formats a standard ISO currency using Intl.NumberFormat', () => {

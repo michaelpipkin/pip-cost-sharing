@@ -153,13 +153,15 @@ function validateGroup(
     const at = `${where} member "${member.key}"`;
     claim(problems, memberKeys, member.key, `${at}: duplicate member key`);
     checkDocId(problems, at, member.key);
-    if (member.email.trim() !== '') {
-      checkEmail(at, member.email);
+    // A null email (legacy shape, rules tests only) is treated as blank.
+    const memberEmail = member.email ?? '';
+    if (memberEmail.trim() !== '') {
+      checkEmail(at, memberEmail);
       claim(
         problems,
         memberEmails,
-        member.email.trim().toLowerCase(),
-        `${at}: duplicate member email "${member.email}" (compared case-insensitively)`
+        memberEmail.trim().toLowerCase(),
+        `${at}: duplicate member email "${memberEmail}" (compared case-insensitively)`
       );
     }
     validateMemberState(problems, at, member);
@@ -167,7 +169,7 @@ function validateGroup(
       const user = usersByKey.get(member.userKey);
       if (user === undefined) {
         problems.push(`${at}: unknown userKey "${member.userKey}"`);
-      } else if (member.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+      } else if (memberEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
         problems.push(
           `${at}: email "${member.email}" does not match user "${user.key}" email "${user.email}"`
         );
@@ -236,6 +238,9 @@ function validateGroup(
   }
 }
 
+// Slack allowed when summing percentages (float error only, not rounding).
+const PERCENTAGE_TOLERANCE = 0.01;
+
 const SPLIT_FIELDS = ['assignedAmount', 'percentage', 'shares'] as const;
 const SPLIT_FIELD_OF_METHOD: Record<SeedExpense['splitMethod'], (typeof SPLIT_FIELDS)[number]> = {
   amount: 'assignedAmount',
@@ -294,9 +299,11 @@ function validateSplitMethod(
         problems.push(`${at} split "${split.owedByKey}": percentage is required for splitMethod 'percentage'`);
       }
     }
-    const total = round(expense.splits.reduce((t, s) => t + (s.percentage ?? 0), 0));
-    if (total !== 100) {
-      problems.push(`${at}: percentages total ${total} but must be 100`);
+    // Percentages are not money: a fixed tolerance, not the group's decimalPlaces
+    // (a 0-decimal group would otherwise accept 99.6 to 100.4).
+    const total = expense.splits.reduce((t, s) => t + (s.percentage ?? 0), 0);
+    if (Math.abs(total - 100) > PERCENTAGE_TOLERANCE) {
+      problems.push(`${at}: percentages total ${Number(total.toFixed(4))} but must be 100`);
     }
   } else {
     for (const split of expense.splits) {
@@ -382,7 +389,7 @@ function validateMemberState(problems: string[], at: string, member: SeedMember)
   if (!Number.isInteger(invite.sendCount) || invite.sendCount < 1) {
     problems.push(`${at}: invite.sendCount must be a positive integer (got ${invite.sendCount})`);
   }
-  if (member.email.trim() === '') {
+  if ((member.email ?? '').trim() === '') {
     problems.push(`${at}: invite needs a member email (it is recorded as lastSentTo)`);
   }
 }

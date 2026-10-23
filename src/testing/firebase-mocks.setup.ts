@@ -26,9 +26,6 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(),
   writeBatch: vi.fn(),
   setDoc: vi.fn(),
-  Timestamp: class {
-    toIsoDateString = () => '2025-01-01';
-  },
 }));
 
 vi.mock('firebase/auth', () => ({

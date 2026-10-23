@@ -1,0 +1,64 @@
+<h1 mat-dialog-title data-testid="group-email-update-title">
+  Update your group emails?
+</h1>
+<mat-dialog-content data-testid="group-email-update-content">
+  <p data-testid="group-email-update-intro">
+    Your login email is now {{ data.newEmail }}. Group emails, such as payment
+    requests, go to the address on each group membership.
+  </p>
+  @if (data.onOldEmail > 0) {
+    <p data-testid="group-email-update-old-line">{{ oldLine }}</p>
+  }
+  @if (other > 0) {
+    <p data-testid="group-email-update-other-line">{{ otherLine }}</p>
+  }
+  @if (data.blank > 0) {
+    <p data-testid="group-email-update-blank-line">{{ blankLine }}</p>
+  }
+  <p data-testid="group-email-update-all-help">
+    <strong>Update all:</strong> Every membership switches to
+    {{ data.newEmail }}.
+  </p>
+  @if (showOldOnly) {
+    <p data-testid="group-email-update-old-only-help">
+      <strong>Update old email only:</strong> Only memberships using
+      {{ data.oldEmail }} switch; addresses you set for a group are kept.
+    </p>
+  }
+  <p class="small-text" data-testid="group-email-update-later-note">
+    You can also update all of them later from Account &gt; Profile.
+  </p>
+</mat-dialog-content>
+<mat-dialog-actions class="dialog-actions-wrap" data-testid="group-email-update-actions">
+  <button
+    mat-stroked-button
+    type="button"
+    mat-dialog-close
+    data-testid="group-email-update-not-now-button"
+    aria-label="Not now"
+  >
+    Not now
+  </button>
+  @if (showOldOnly) {
+    <button
+      mat-raised-button
+      class="btn-secondary"
+      type="button"
+      (click)="updateOldOnly()"
+      data-testid="group-email-update-old-only-button"
+      aria-label="Update old email only"
+    >
+      Update old email only
+    </button>
+  }
+  <button
+    mat-raised-button
+    class="btn-primary"
+    type="button"
+    (click)="updateAll()"
+    data-testid="group-email-update-all-button"
+    aria-label="Update all"
+  >
+    Update all
+  </button>
+</mat-dialog-actions>

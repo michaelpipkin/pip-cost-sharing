@@ -81,6 +81,17 @@
 </p>
 <pre><code>pnpm query active-groups.ts</code></pre>
 
+<h3>Production or the dev emulators, never both</h3>
+<p>
+  Queries target <strong>production</strong>. <code>lib.ts</code> refuses to start while any
+  <code>*_EMULATOR_HOST</code> variable is set in the shell: the Admin SDK reads each one
+  separately, so a leftover one would mix an emulator with production (for example Auth
+  from the emulator, Firestore from production). Unset it, or pass
+  <code>-- --emulator</code> to run against the dev emulators (8080/9099/9199), which sets
+  all three hosts itself (<code>env-guard.ts</code>).
+</p>
+<pre><code>pnpm query active-groups -- --emulator</code></pre>
+
 <h3>Add a new query</h3>
 <p>
   Create a <code>.ts</code> file in <code>scripts/db/queries/</code>.

@@ -65,6 +65,18 @@ describe('buildMembersTourSteps', () => {
     expect(step('edit-member-actions').title).toBe('Leave the group');
   });
 
+  // B19: only the member changes a linked member's email, and a new address
+  // takes effect once confirmed.
+  it("should say who can change a member's email", () => {
+    expect(step('edit-member').text).toBe(
+      "Admins can change a member's name for this group, and their email until they register. After that, only the member can change it."
+    );
+    hooks.isAdmin.mockReturnValue(false);
+    expect(step('edit-member').text).toBe(
+      "Change the name and email address you use in this group. This email is just for the group; it doesn't change your login email. A new address takes effect once you confirm the link we send to it."
+    );
+  });
+
   it('should mention the samples only when showing them', () => {
     expect(step('intro').text).not.toContain('samples');
     hooks.usingSample.mockReturnValue(true);

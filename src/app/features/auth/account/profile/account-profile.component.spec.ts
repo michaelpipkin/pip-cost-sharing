@@ -132,6 +132,42 @@ describe('AccountProfileComponent', () => {
       ).toBeTruthy();
     });
 
+    // a@b passed Angular's built-in email validator; the app now requires one
+    // address with a dotted domain (utilities/email-validation.ts).
+    it.each(['a@b', 'new@example.com,other@example.com'])(
+      'should disable Update Email and show the email error for %s',
+      async (email) => {
+        setEmailValue(email);
+        const input = fixture.nativeElement.querySelector(
+          '[data-testid="account-email-input"]'
+        ) as HTMLInputElement;
+        input.dispatchEvent(new Event('blur'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const button = fixture.debugElement.query(
+          By.css('[data-testid="update-email-button"]')
+        ).nativeElement as HTMLButtonElement;
+        expect(button.disabled).toBe(true);
+        expect(
+          fixture.nativeElement.querySelector(
+            '[data-testid="account-email-error-0"]'
+          )?.textContent
+        ).toContain('Invalid email address');
+      }
+    );
+
+    it('should enable Update Email for a new valid address', async () => {
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const button = fixture.debugElement.query(
+        By.css('[data-testid="update-email-button"]')
+      ).nativeElement as HTMLButtonElement;
+      expect(button.disabled).toBe(false);
+    });
+
     it('should show enabled verify email button when email is not verified', () => {
       const btn = fixture.debugElement.query(
         By.css('[data-testid="verify-email-button"]')
@@ -167,6 +203,15 @@ describe('AccountProfileComponent', () => {
       expect(
         fixture.debugElement.query(By.css('[data-testid="sync-member-emails"]'))
       ).toBeTruthy();
+    });
+
+    it('should explain that Sync overwrites addresses set for a group (B20)', () => {
+      const help = fixture.debugElement.query(
+        By.css('[data-testid="sync-member-emails-help"]')
+      );
+      expect(help.nativeElement.textContent.replace(/\s+/g, ' ').trim()).toBe(
+        'Sets the email on every group membership to your login email, including addresses you set for a particular group.'
+      );
     });
 
     it('should show delete account button', () => {
@@ -234,56 +279,147 @@ describe('AccountProfileComponent', () => {
       fixture.detectChanges();
     });
 
-    it('should not call updateEmail when email is unchanged', async () => {
-      const spy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
+    const snackbarMessage = () =>
+      mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data?.message;
+    const pendingNote = () =>
+      fixture.nativeElement.querySelector(
+        '[data-testid="pending-email-change"]'
+      ) as HTMLElement | null;
+
+    it('should not send a change link when email is unchanged', async () => {
+      const spy = vi
+        .spyOn(authModule, 'verifyBeforeUpdateEmail')
+        .mockResolvedValue();
       setEmailValue('test@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('should call updateEmail when email changes', async () => {
-      const updateSpy = vi.spyOn(authModule, 'updateEmail').mockResolvedValue();
-      vi.spyOn(authModule, 'sendEmailVerification').mockResolvedValue();
+    it('should email a confirm link to the new address (verify before update) and say so', async () => {
+      const spy = vi
+        .spyOn(authModule, 'verifyBeforeUpdateEmail')
+        .mockResolvedValue();
       setEmailValue('new@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
-      expect(updateSpy).toHaveBeenCalled();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalledWith(
+        mockAuthWithUser.currentUser,
+        'new@example.com',
+        {
+          url: globalThis.location.origin + '/auth/account-action',
+          handleCodeInApp: true,
+        }
+      );
+      expect(snackbarMessage()).toBe(
+        'Check new@example.com for a link to confirm your new email'
+      );
+      expect(pendingNote()?.textContent).toContain('new@example.com');
+      expect(pendingNote()?.textContent).toContain('test@example.com');
+      // The account keeps its current address (and verified status) until
+      // the link is used.
+      expect(mockUserStore.setIsEmailConfirmed).not.toHaveBeenCalled();
+      const input = fixture.nativeElement.querySelector(
+        '[data-testid="account-email-input"]'
+      ) as HTMLInputElement;
+      expect(input.value).toBe('test@example.com');
+    });
+
+    it('should not show the pending-change note before a change is requested', () => {
+      expect(pendingNote()).toBeNull();
     });
 
     it('should show email-already-in-use message for that error code', async () => {
       const error = Object.assign(new Error('already in use'), {
         code: 'auth/email-already-in-use',
       });
-      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(error);
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(error);
       setEmailValue('taken@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
+      fixture.detectChanges();
       expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
         'Account Profile Component',
         'update_email',
         'Failed to update email address',
         expect.any(String)
       );
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('already in use');
+      expect(snackbarMessage()).toBe(
+        'This email address is already in use by another account'
+      );
+      expect(pendingNote()).toBeNull();
+    });
+
+    it('should ask the user to sign in again when Firebase requires a recent login', async () => {
+      const error = Object.assign(new Error('stale'), {
+        code: 'auth/requires-recent-login',
+      });
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(error);
+      setEmailValue('new@example.com');
+      await fixture.whenStable();
+      await component.onSubmitEmail();
+      expect(snackbarMessage()).toContain('sign out and sign back in');
     });
 
     it('should show generic error message for other errors', async () => {
-      vi.spyOn(authModule, 'updateEmail').mockRejectedValue(
+      vi.spyOn(authModule, 'verifyBeforeUpdateEmail').mockRejectedValue(
         new Error('network error')
       );
       setEmailValue('new@example.com');
       await fixture.whenStable();
       await component.onSubmitEmail();
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('could not be updated');
+      expect(snackbarMessage()).toContain('could not be updated');
+    });
+  });
+
+  describe('email field for an unverified account', () => {
+    it('shows the sign-in address even though the profile email is still empty', async () => {
+      await createComponent();
+      mockUserStore.user.set(mockUser({ email: '' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const input = fixture.nativeElement.querySelector(
+        '[data-testid="account-email-input"]'
+      ) as HTMLInputElement;
+      expect(input.value).toBe('test@example.com');
     });
   });
 
   describe('syncMemberEmails()', () => {
+    // M8: the address comes from a freshly refreshed ID token (only a
+    // verified one), not the possibly stale profile email.
+    let tokenClaims: Record<string, unknown>;
+    const syncAuth = {
+      currentUser: {
+        email: 'test@example.com',
+        emailVerified: true,
+        getIdTokenResult: vi.fn(async () => ({ claims: tokenClaims })),
+      },
+    };
+
     beforeEach(async () => {
-      await createComponent();
+      tokenClaims = { email: 'token@example.com', email_verified: true };
+      await createComponent(syncAuth as any);
+    });
+
+    it('should write the verified token email, not the profile email', async () => {
+      await component.syncMemberEmails();
+      expect(syncAuth.currentUser.getIdTokenResult).toHaveBeenCalledWith(true);
+      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
+        mockUserStore.user()!.ref,
+        'token@example.com'
+      );
+    });
+
+    it('should skip, asking for verification, without a verified token email', async () => {
+      tokenClaims = { email: 'token@example.com', email_verified: false };
+      await component.syncMemberEmails();
+      expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
+      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
+      expect(data?.message).toBe('Verify your login email first.');
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
     it('should call loadingOn and updateAllMemberEmails', async () => {

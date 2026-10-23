@@ -41,9 +41,16 @@
           data-testid="edit-member-email-input"
           aria-label="Member email"
         />
-        <mat-hint>
-          Optional. A member can only access and interact with this group if
-          this matches the email address they used to register for the app.
+        <mat-hint data-testid="edit-member-email-hint">
+          @if (emailLocked) {
+            {{ lockedEmailHint }}
+          } @else if (isOwnRow) {
+            This email is just for this group. A new address takes effect
+            once you confirm the link we send to it.
+          } @else {
+            Optional. A member can only access and interact with this group if
+            this matches the email address they used to register for the app.
+          }
         </mat-hint>
         @for (
           error of editMemberForm.email().errors();

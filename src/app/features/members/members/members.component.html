@@ -113,7 +113,13 @@
             </ng-container>
             <ng-container matColumnDef="email">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
-              <td mat-cell *matCellDef="let member">{{ member.email }}</td>
+              <td
+                mat-cell
+                *matCellDef="let member"
+                data-testid="member-email-cell"
+              >
+                {{ member.email }}
+              </td>
             </ng-container>
             <ng-container matColumnDef="nameEmail">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>

@@ -5,7 +5,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { TEST_PORTS, TEST_PROJECT_ID, TEST_STORAGE_BUCKET } from './config.mjs';
+import {
+  E2E_APP_PORT,
+  TEST_PORTS,
+  TEST_PROJECT_ID,
+  TEST_STORAGE_BUCKET,
+} from './config.mjs';
 
 const read = (relative) =>
   readFileSync(
@@ -43,6 +48,8 @@ test('firebase.test.json ports match config.mjs', () => {
   assert.equal(emulators.functions.port, TEST_PORTS.functions);
   assert.equal(emulators.hub.port, TEST_PORTS.hub);
   assert.equal(emulators.logging.port, TEST_PORTS.logging);
+  assert.equal(emulators.eventarc.port, TEST_PORTS.eventarc);
+  assert.equal(emulators.tasks.port, TEST_PORTS.tasks);
 });
 
 test('environment.e2e.ts emulators block matches config.mjs', () => {
@@ -54,6 +61,16 @@ test('environment.e2e.ts emulators block matches config.mjs', () => {
   assert.equal(numberProp(emulators, 'firestore'), TEST_PORTS.firestore);
   assert.equal(numberProp(emulators, 'storage'), TEST_PORTS.storage);
   assert.equal(numberProp(emulators, 'functions'), TEST_PORTS.functions);
+});
+
+// The e2e app port (4300) has one literal copy outside config.mjs: the
+// `ng serve --port` Playwright starts. environment.e2e.ts carries no app port.
+test('playwright.config.ts serves the app on E2E_APP_PORT', () => {
+  const text = read('playwright.config.ts');
+  const port = /ng serve[^'"`]*--port\s+(\d+)/.exec(text);
+  assert.ok(port, 'ng serve --port not found');
+  assert.equal(Number(port[1]), E2E_APP_PORT);
+  assert.equal(E2E_APP_PORT, 4300);
 });
 
 test('functions/vitest.config.ts env matches config.mjs', () => {

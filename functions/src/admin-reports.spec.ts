@@ -4,6 +4,7 @@ import type {
   QueryDocumentSnapshot,
   QuerySnapshot,
 } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 // Side-effect import: index.ts calls initializeApp() at module scope, which
@@ -12,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import './index';
 import {
   aggregateGroupStats,
+  backfillOrphanedRegistrationsInternal,
   buildActiveGroupsReport,
   buildDaysAgoIso,
   buildOrphanedMembersReport,
@@ -269,5 +271,35 @@ describe('repairOrphanedMembersInternal', () => {
 
     const alreadyLinkedDoc = await alreadyLinked.get();
     expect((alreadyLinkedDoc.data()!['userRef'] as DocumentReference).id).toBe(someUser.id);
+  });
+});
+
+describe('backfillOrphanedRegistrationsInternal', () => {
+  it('copies only a verified Auth address into the new profile', async () => {
+    const auth = getAuth();
+    const id = Math.random().toString(36).slice(2, 10);
+    const verified = await auth.createUser({
+      email: `backfill-verified-${id}@example.com`,
+      emailVerified: true,
+    });
+    const unverified = await auth.createUser({
+      email: `backfill-unverified-${id}@example.com`,
+      emailVerified: false,
+    });
+    // The onCreate trigger isn't running here (no functions emulator), so
+    // neither has a profile yet; drop any just in case.
+    await db.doc(`users/${verified.uid}`).delete();
+    await db.doc(`users/${unverified.uid}`).delete();
+
+    const result = await backfillOrphanedRegistrationsInternal(db, auth, [
+      verified.uid,
+      unverified.uid,
+    ]);
+
+    expect(result.createdCount).toBe(2);
+    expect((await db.doc(`users/${verified.uid}`).get()).data()?.['email']).toBe(
+      verified.email
+    );
+    expect((await db.doc(`users/${unverified.uid}`).get()).data()?.['email']).toBe('');
   });
 });

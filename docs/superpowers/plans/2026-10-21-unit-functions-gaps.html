@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit and Functions Gaps Plan</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; --warn:#b3542f; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; --warn:#ee9a7f; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .3rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.6rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  .step { margin: .35rem 0; }
+  .step::before { content: "☐ "; color: var(--accent); }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  .pin { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Unit and Cloud Functions Gaps — Implementation Plan (Plan 4 of 4)</h1>
+
+<div class="box">
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: use <code>superpowers:subagent-driven-development</code> (recommended) or <code>superpowers:executing-plans</code>. Steps marked ☐ are checkboxes.</p>
+<p>Load the <code>pip-angular-testing</code> skill first. Its unit-test section (jsdom limits, mocks, <code>vi.spyOn</code> patterns, never <code>vi.resetAllMocks()</code>) is binding, and so is its E2E section wherever e2e is touched.</p>
+<p>The behaviour inventory behind this plan (file-by-file notes, harness tips, file:line for every suspected bug) is in the appendix at the end. Read your task's entries there before starting.</p>
+</div>
+
+<p><strong>Goal:</strong> The substantive app code and Cloud Functions that have no tests today get unit and functions tests that would fail if their behaviour broke. Files that have specs but leave large branches untested get those branches covered. Every bug the tests expose is pinned and reported, and fixed only with the owner's go-ahead.</p>
+<p><strong>Architecture:</strong> Phase A (Tasks 1–15) writes tests only. Shared test plumbing goes in <code>src/testing/test-helpers.ts</code> and <code>functions/test/</code>. Cloud Function handlers are driven through their own <code>.run(request|event)</code> against the isolated emulators, so no handler is restructured just to make it testable. Phase B (owner-approved fixes) changes app or functions code one fix at a time, and each fix flips its pinned test from <code>it.fails</code> to <code>it</code>.</p>
+<p><strong>Tech stack:</strong>
+  <ul>
+    <li>App: Angular 22 (zoneless, signal forms), Vitest via <code>@angular/build:unit-test</code> on jsdom, <code>@vitest/coverage-v8</code>.</li>
+    <li>Cloud Functions: functions Vitest on the auth/firestore/storage emulators (<code>pnpm --dir functions test</code>).</li>
+    <li>Scripts: <code>node:test</code> for <code>scripts/</code> (<code>pnpm test:scripts</code>).</li>
+  </ul>
+</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-10-19-test-suite-design.html</code>: §2 (goal 3 and anti-goals), §5 (areas), §6d (unit-test gaps, functions in scope, use the coverage report), §7 (definition of done).</p>
+<p><strong>Inputs:</strong> <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>, section "Plan 4 — unit / functions gaps". Folded into Tasks 1 and 2.</p>
+<p><strong>Baseline</strong> (2026-10-21, <code>dev</code> 6e125942):
+  <ul>
+    <li>Unit suite: 118 files, 1573 tests.</li>
+    <li>App coverage: 72.1% statements, 65.5% branches, 64.8% functions, 74.3% lines.</li>
+    <li>90 app <code>.ts</code> files have no spec. About 40 of them are substantive; the rest are interfaces, route tables, config and data.</li>
+    <li>Functions: 12 spec files cover helpers. Most exported handlers are untested.</li>
+  </ul>
+</p>
+<p><strong>Branch:</strong> <code>unit-gaps</code>, created from <code>dev</code>.</p>
+
+<h2>Global Constraints</h2>
+<ul>
+  <li><strong>Phase A changes no app or functions logic.</strong>
+    <ul>
+      <li>Allowed in <code>src/</code> and <code>functions/src/</code>: new <code>*.spec.ts</code> files and changes to existing specs, test helpers, and exporting an existing private helper only where a task says so.</li>
+      <li>Tooling under <code>scripts/</code>, <code>e2e/</code> infra and config files may be fixed. That is our own test infrastructure.</li>
+    </ul>
+  </li>
+  <li><strong>Bug triage (spec §2 anti-goal "tests bent to match bugs"):</strong> when code looks wrong:
+    <ul>
+      <li>write the test that asserts the <em>correct</em> behaviour;</li>
+      <li>mark it <code>it.fails(...)</code> (Vitest) with a <code>// BUG:</code> comment naming the file:line and the Phase B item;</li>
+      <li>list it in the task report.</li>
+    </ul>
+    Never assert the broken behaviour as if it were intended. The suspected bugs in the appendix are leads, not verdicts: confirm each against the code before pinning, and report any that turn out to be wrong.
+  </li>
+  <li><strong>Unit specs</strong> run in one shared jsdom context (<code>isolate: false</code>).
+    <ul>
+      <li>Never <code>vi.resetAllMocks()</code>. Use <code>vi.spyOn</code> plus <code>vi.restoreAllMocks()</code> in <code>afterEach</code>.</li>
+      <li><code>vi.mock</code> is not available in app specs.</li>
+      <li>Restore real timers after <code>vi.useFakeTimers()</code>.</li>
+      <li>Remove any CDK overlay pane a test created. Destroy the fixture, and if needed call <code>TestBed.inject(OverlayContainer).ngOnDestroy()</code>.</li>
+    </ul>
+  </li>
+  <li><strong>Functions specs</strong> run against the shared isolated emulators. Global setup clears them once per run, never per test.
+    <ul>
+      <li>Every test uses its own random ids, emails and group ids, and asserts only on its own documents. Never count a whole collection; take deltas where a builder counts globally.</li>
+      <li><code>vi.mock</code> <em>is</em> allowed in functions specs (plain Node Vitest), e.g. for <code>nodemailer</code>.</li>
+      <li>Handlers are invoked with <code>handler.run({ auth, data } as any)</code> or <code>trigger.run({ data, params } as any)</code>. Errors are <code>HttpsError</code>; assert <code>.code</code>.</li>
+    </ul>
+  </li>
+  <li><strong>Every new spec is registered</strong> in <code>scripts/test-area/areas.mjs</code> under the area(s) whose code it covers. Shared code goes in every area that imports it (follow the existing <code>...MEDIA_QUERY</code> / <code>...ALLOCATION_UTILS</code> pattern). <code>pnpm test:area --check</code> must pass.</li>
+  <li><strong>Isolated emulators only</strong> (project <code>demo-pipsplit-test</code>, ports 19099/18080/19199/15001). Never the default ports. Set <code>*_EMULATOR_HOST</code> before any firebase-admin initialisation. No <code>pnpm install</code>/<code>add</code> or downloads; hand those to the owner.</li>
+  <li><strong>Conventions</strong> (CLAUDE.md) apply to every spec and any touched file:
+    <ul>
+      <li>signals, <code>protected readonly</code> injects, <code>@if</code>/<code>@for</code>, no rxjs in new code;</li>
+      <li>pnpm only;</li>
+      <li>docs in HTML.</li>
+    </ul>
+  </li>
+  <li><strong>Tests must bite:</strong> every test fails if the behaviour it names broke. No assertion that passes on any value, no test that only checks <code>toBeTruthy()</code> on a created component, and no assertion on mock call counts that the test itself arranged.</li>
+  <li><strong>Commits:</strong> Phase A messages end with <code>[no-deploy]</code> (tests and tooling only). Phase B fix commits do not, because they change app behaviour. Every message ends with the <code>Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;</code> trailer.</li>
+  <li><strong>After each task:</strong>
+    <ul>
+      <li><code>pnpm test:area &lt;areas touched&gt; --unit</code> passes, for app specs.</li>
+      <li><code>pnpm --dir functions test</code> passes, for functions specs.</li>
+      <li><code>pnpm test:scripts</code> passes, for scripts.</li>
+      <li><code>pnpm test:area --check</code> passes.</li>
+      <li>Each new spec file passes alone and as part of the full <code>pnpm test</code> run. That catches leaks in the shared jsdom context.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>Review Focus</h2>
+<ol>
+  <li><strong>Leaks in the shared jsdom context:</strong> a spec that leaves a CDK overlay pane, a fake timer, a <code>globalThis.matchMedia</code> override or an unrestored spy makes unrelated specs fail depending on file order. Pinned by Task 7, where each overlay spec asserts <code>.cdk-overlay-container</code> has no panes after the test, and by every task's "passes alone and in the full run" check.</li>
+  <li><strong>Shared emulator data in functions specs:</strong> handlers such as <code>deleteUserAccount</code>, <code>syncAuthEmailsToUsers</code>, <code>deleteOldPaidExpenses</code>, <code>logAppError</code> and the reports scan whole collections. A test that counts globally flakes as other specs add data. Pinned by Tasks 9–12, which assert on own ids and use before/after deltas.</li>
+  <li><strong>Clock- and locale-dependent logic:</strong>
+    <ul>
+      <li>date shortcuts (<code>t</code>);</li>
+      <li>the custom date adapter's "current year";</li>
+      <li>the 90-day receipt cutoff;</li>
+      <li>the 30-day and monthly report windows;</li>
+      <li>the invite 24 h cooldown.</li>
+    </ul>
+    Any of these tests passes or fails depending on the day it runs. Pinned by fixed system time (<code>vi.setSystemTime</code>), dates relative to "now" in emulator data, and named boundary tests in Tasks 3, 11 and 12.
+  </li>
+  <li><strong>Mocks that diverge from the real API:</strong> a unit test green against a mock that behaves unlike Firebase (mock <code>Timestamp</code>, mock <code>DocumentReference</code> paths) proves nothing. Pinned by the coverage-pass tasks (13, 14), which assert service calls with real argument shapes (collection paths, <code>where</code> fields), and by functions tests, which run against the real emulator.</li>
+  <li><strong>Pinned bugs left behind after a fix:</strong> an <code>it.fails</code> whose bug is fixed makes the run fail, which is the point. A Phase B fix that forgets to flip its pin, or deletes the test, loses the coverage. Pinned by each Phase B task removing exactly its markers and keeping the assertion.</li>
+</ol>
+
+<!-- ===================================================================== -->
+<h2>Phase A — tests</h2>
+
+<h3>Task 1: Test-runner tooling gaps (<code>scripts/</code>)</h3>
+<p><strong>Files:</strong> <code>scripts/test-env/with-test-emulators.mjs</code> (+<code>.test.mjs</code>), <code>scripts/test-env/config.mjs</code> (+ new <code>config.test.mjs</code> or an addition to <code>config-agreement.test.mjs</code>), <code>scripts/test-area/test-area.mjs</code> (+<code>.test.mjs</code>).</p>
+<p class="step"><code>parseArgs</code>: <code>['--only']</code> throws "--only requires a comma-separated list of emulators"; <code>['--only','auth,bogus','--','x']</code> throws "Unknown emulator(s): bogus"; <code>['--bogus','--','x']</code> throws "Unknown option: --bogus"; <code>['--']</code> throws "Missing command"; <code>' auth , firestore '</code> is trimmed; option-like words after <code>--</code> stay in <code>command</code>; <code>--build-functions</code> sets <code>buildFunctions: true</code>.</p>
+<p class="step"><code>quoteInner</code>:
+  <ul>
+    <li>Fix: an empty-string argument is emitted as <code>""</code> and not dropped. <code>quoteInner(['x','','y'])</code> keeps three arguments on both platforms.</li>
+    <li>Fix: on POSIX, an embedded <code>"</code> is escaped so it can't close the quoting.</li>
+    <li>Tests cover <code>' ; $ ` * ?</code> on both platforms.</li>
+    <li>An empty list gives <code>''</code>.</li>
+  </ul>
+</p>
+<p class="step"><code>runStep</code> and <code>runPlan</code>:
+  <ul>
+    <li>A spawn <code>error</code> resolves 1 and logs "Failed to run".</li>
+    <li>A <code>null</code> exit code resolves 1.</li>
+    <li>A non-zero code passes through.</li>
+    <li>A step that rejects still runs cleanup, then rethrows.</li>
+    <li>An empty plan returns 0.</li>
+  </ul>
+</p>
+<p class="step"><code>findBusyPorts</code>:
+  <ul>
+    <li>An empty list gives <code>[]</code>.</li>
+    <li>Of several ports, only the busy subset is returned, in input order.</li>
+    <li>A port listening only on <code>::1</code> is reported. Skip with a reason if IPv6 is unavailable. If it is not reported, fix the probe; the follow-ups doc notes <code>netstat -p tcp</code> misses IPv6-only listeners.</li>
+  </ul>
+</p>
+<p class="step"><code>parseListeningPids</code>: a non-numeric PID column is ignored, LF-only input is parsed, and garbage lines are skipped.</p>
+<p class="step"><code>emulatorHost('firestore') === '127.0.0.1:18080'</code>; <code>emulatorHost('nope')</code> throws "Unknown emulator: nope".</p>
+<p class="step"><code>test-area.mjs</code>:
+  <ul>
+    <li>Fix: a run whose plan has no steps exits non-zero with "Nothing to run for: &lt;areas&gt; (&lt;flags&gt;)" instead of printing an empty table and passing.</li>
+    <li>Fix: <code>--check</code> extracts the Playwright JSON report robustly (parse from the first line that starts with <code>{</code> through the end, or ask Playwright to write the report to a temp file), with a test feeding it stdout that has a log line containing <code>{</code> before the report.</li>
+    <li>Tests:
+      <ul>
+        <li><code>parseCliArgs</code>: <code>--e2e</code> alone; <code>--unit --e2e</code>; an unknown short option throws.</li>
+        <li><code>buildRunPlan</code>: <code>{unit:false,e2e:true}</code> has no unit step; the e2e <code>--grep</code> drops duplicate tags.</li>
+        <li><code>summarize([])</code>.</li>
+        <li><code>parseE2eList({})</code> gives <code>[]</code>.</li>
+      </ul>
+    </li>
+    <li>Win32 invocation: arguments containing spaces or <code>%VAR%</code> are quoted; test the exported quoting helper. If quoting lives inside <code>invocation</code>, export <code>invocation</code> and test it.</li>
+  </ul>
+</p>
+<p class="step">The <code>buildExecPlan</code> commandLine test asserts the whole string, not just its prefix and suffix. <code>config-agreement.test.mjs</code> also checks the hub (14400) and logging (14500) ports, and the app port 4300 in <code>environment.e2e.ts</code>.</p>
+<p class="step"><code>pnpm test:scripts</code> passes. Commit <code>Cover test-runner edge cases; fix arg quoting and the empty-plan pass [no-deploy]</code>.</p>
+
+<h3>Task 2: Remaining follow-ups (seed, e2e infra, scripts/db, lint)</h3>
+<p><strong>Files:</strong> <code>scripts/db/prune-expenses.ts</code>, <code>scripts/db/chunked-batch.ts</code>, <code>e2e/seed/validate.ts</code>, <code>e2e/infra/seed.spec.ts</code>, <code>e2e/global-setup.ts</code>, <code>e2e/utils/warm-up.ts</code>, <code>src/app/firebase-options.ts</code>, <code>functions/src/common.ts</code> (only for the mail-suppression item, which is a functions behaviour fix; see the note).</p>
+<p class="step"><code>prune-expenses.ts</code> uses the shared <code>ChunkedBatch</code> from <code>scripts/db/chunked-batch.ts</code> and drops its own copy. The seeder already imports <code>BATCH_LIMIT</code> from there, so confirm nothing else redefines it.</p>
+<p class="step">The seed validator's percentage-total tolerance becomes a fixed 0.01 (not the group currency's decimal places). Add a test that a 0-decimal group with percentages summing to 99.6 is rejected.</p>
+<p class="step">Add an automated test that global setup refuses an ambient <code>E2E_SEED_TODAY</code>. Extract the guard as a pure function if needed, and test it with <code>node:test</code> or the e2e infra spec.</p>
+<p class="step"><code>findExpense</code> in <code>seed.spec.ts</code> searches every group of the dataset, not just <code>groups[0]</code>.</p>
+<p class="step">The warm-up throws a clear error if <code>baseURL</code> is undefined, instead of opening <code>undefined/auth/login</code>.</p>
+<p class="step">In <code>firebase-options.ts</code>, the unused <code>_measurementId</code> destructure passes ESLint. Either set <code>varsIgnorePattern: '^_'</code> or remove the binding with a rest-omit helper; check with <code>pnpm exec eslint src/app/firebase-options.ts</code>.</p>
+<p class="step">Mail suppression: this one changes functions logic, so it is held for Phase B item B8. Write the test now: <code>isDemoProject('my-demo-x') === false</code> (<code>startsWith</code> semantics) passes today. The "suppression update failure is caught" test is pinned <code>it.fails</code>.</p>
+<p class="step">The follow-ups doc's owner item about a stale <code>pnpm e2e:local:*</code> allow rule is already resolved: <code>.claude/settings.local.json</code> no longer has it, and its <code>pnpm e2e:*</code> rules match current scripts. Tick it in the follow-ups doc with that note; don't edit the settings file.</p>
+<p class="step"><code>pnpm e2e e2e/infra/seed.spec.ts</code>, <code>pnpm test:scripts</code> and the functions suite pass. Commit <code>Close the remaining test-infra follow-ups [no-deploy]</code>.</p>
+
+<h3>Task 3: Small pure units and directives</h3>
+<p><strong>New specs</strong> next to each file:</p>
+<ul>
+  <li><code>utilities/date-utils</code>:
+    <ul>
+      <li><code>toIsoFormat(new Date(2026,0,5)) === '2026-01-05'</code>; Dec 31 works.</li>
+      <li><code>parseDate</code> gives local midnight.</li>
+      <li>Round trip on <code>'2024-02-29'</code>.</li>
+      <li><code>parseDate('garbage')</code> is Invalid Date.</li>
+    </ul>
+  </li>
+  <li><code>features/auth/auth-main/password-match-schema</code>: a mismatch gives <code>{kind:'passwordMismatch', message:'Passwords do not match.'}</code>; equal values or both empty give no error.</li>
+  <li><code>extensions/doc-ref-extensions</code>: equal path on a distinct instance is true; a different path is false; <code>null</code> and <code>undefined</code> are false; it is reflexive.</li>
+  <li><code>shared/pipes/yes-no-check.pipe</code>: <code>true</code> gives <code>'✔'</code>; <code>false</code> gives <code>' '</code>.</li>
+  <li><code>models/expense</code> (new <code>expense.spec.ts</code>):
+    <ul>
+      <li>Defaults are <code>splitMethod 'amount'</code> and <code>paid false</code>; init fields are assigned.</li>
+      <li><code>hasReceipt</code> is false for undefined, null and <code>''</code>, and true for a path.</li>
+      <li><code>receiptRef</code> is null without a path and calls <code>ref(getStorage(), path)</code> with one.</li>
+    </ul>
+  </li>
+  <li><code>features/home/feature-tour-dialog/feature-tour-slides</code>: <code>featureTourImagePath({id:'expenses'},'desktop') === '/assets/images/feature-tour/expenses-desktop.png'</code>. Slide ids are unique; title, text and alt are non-empty.</li>
+  <li><code>shared/components/split-method-toggle</code>: the default is <code>'amount'</code>. Clicking the Shares toggle sets the model to <code>'shares'</code> and emits <code>methodChanged</code> exactly once (count pattern from the skill).</li>
+  <li><code>shared/directives/doc-ref-compare.directive</code>: the host <code>mat-select</code>'s <code>compareWith</code> is true for two instances with the same path and false for different paths; null vs null is true; null vs a ref is false.</li>
+  <li><code>utilities/custom-date-adapter.service</code> (<code>MAT_DATE_LOCALE 'en-US'</code>, <code>vi.setSystemTime(new Date(2026,5,15))</code>):
+    <ul>
+      <li><code>parse('3/17')</code> is 17 Mar 2026.</li>
+      <li><code>parse('03/17/2025')</code> is 17 Mar 2025.</li>
+      <li><code>parse('')</code> is null; <code>parse('abc')</code> is null.</li>
+      <li><span class="pin">Pin (B5):</span> <code>parse('1/5/25')</code> is 5 Jan 2025.</li>
+    </ul>
+  </li>
+  <li><code>shared/directives/date-plus-minus.directive</code> (<code>DateShortcutKeysDirective</code>; a host with <code>[formControl]</code> and one with signal <code>[formField]</code>):
+    <ul>
+      <li><code>'-'</code> and <code>'+'</code> step a day, including month rollover (1/31 → 2/1, 3/1 → 2/28).</li>
+      <li><code>'m'</code> gives the first of the month; <code>'y'</code> gives January 1.</li>
+      <li><code>'t'</code> gives today at midnight.</li>
+      <li>Empty or unparseable input plus a shortcut gives today.</li>
+      <li>Handled keys are <code>preventDefault</code>ed; <code>'5'</code> is not.</li>
+      <li><span class="pin">Pin (B4):</span> <code>'t'</code> with <code>ctrlKey</code> or <code>metaKey</code> is ignored and not prevented.</li>
+      <li><span class="pin">Pin (B4):</span> <code>'t'</code> yields midnight, not the current time of day.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register the specs in <code>areas.mjs</code>:
+  <ul>
+    <li>Shared directives, pipes and utilities go under every area whose features use them; grep the templates.</li>
+    <li>The expense model goes under <code>expenses</code> and <code>receipts</code>.</li>
+    <li>Feature-tour slides go under <code>home</code>.</li>
+  </ul>
+  Commit <code>Unit-test small utilities, pipes and directives [no-deploy]</code>.</p>
+<p class="step">Dead code is not tested: <code>ClearSelectDirective</code>, <code>passwordMatchValidator</code>, <code>Timestamp.prototype.toIsoDateString</code>, <code>Expense.unpaidAmount</code> and <code>UserStore.defaultGroupRef</code>. Confirm each has no caller and list them for B11.</p>
+
+<h3>Task 4: Stores, loading and tour-dialog plumbing</h3>
+<ul>
+  <li><code>store/group.store</code>:
+    <ul>
+      <li><code>setAllUserGroups</code> marks loaded.</li>
+      <li><code>clearAllUserGroups</code> leaves <code>skipAutoSelect</code> alone.</li>
+      <li><code>removeGroup</code> removes only the matching group.</li>
+      <li><code>patchGroupMembership</code> touches only that group, which then moves from active to left.</li>
+      <li><code>activeUserGroups</code>: test each of <code>active</code>, <code>userActiveInGroup</code> and <code>!archived</code> on its own.</li>
+      <li><code>clearCurrentGroup()</code> and <code>clearCurrentGroup(true)</code> set <code>skipAutoSelect</code>; <code>resetSkipAutoSelect</code> clears it.</li>
+    </ul>
+  </li>
+  <li><code>store/user.store</code>:
+    <ul>
+      <li><code>updateUser</code> merges, and is a no-op when the user is null.</li>
+      <li><code>isValidUser</code>: four-row truth table.</li>
+      <li><code>clearUser</code> resets everything.</li>
+    </ul>
+  </li>
+  <li><code>store/member.store</code>, <code>store/category.store</code>:
+    <ul>
+      <li><code>get…ByRef</code> matches by path on a different instance, and gives undefined for null, undefined and unknown refs.</li>
+      <li><code>active…</code> filters.</li>
+      <li>Clear resets <code>loaded</code> (and, for members, <code>currentMember</code>).</li>
+    </ul>
+  </li>
+  <li><code>store/reports.store</code>: <code>setResult</code> keeps other keys; <code>clearResult</code> removes one key; <code>clearAll</code> empties; updates are immutable.</li>
+  <li><code>shared/components/loading/loading.service</code>:
+    <ul>
+      <li>Two sources, <code>off('a')</code>: still loading.</li>
+      <li><code>off</code> for a source never turned on is harmless.</li>
+      <li><span class="pin">Pin (B6):</span> two concurrent <code>loadingOn()</code> callers with the default source, one <code>loadingOff()</code>: still loading.</li>
+    </ul>
+  </li>
+  <li><code>shared/components/loading/navigation-loading.service</code> (real Router with a lazy route that rejects):
+    <ul>
+      <li><code>NavigationStart</code> turns <code>'navigation'</code> on; <code>NavigationEnd</code> and <code>NavigationCancel</code> turn it off.</li>
+      <li>A "Failed to fetch dynamically imported module" error opens ConfirmDialog with <code>dialogTitle 'App Update Available'</code> and <code>disableClose: true</code>, and does not log.</li>
+      <li>Any other <code>NavigationError</code> logs <code>('Navigation Loading Service','navigation', url, msg)</code> and opens no dialog.</li>
+      <li>Never let <code>location.reload</code> run.</li>
+    </ul>
+  </li>
+  <li><code>shared/components/guided-tour/guided-tour-spotlight.component</code> (fake <code>GuidedTourService</code> with a <code>targetRect</code> signal):
+    <ul>
+      <li>No rect: no hole, and the <code>.no-target</code> class is set.</li>
+      <li>A rect of top 100, left 100, 120×40 with padding <code>GUIDED_TOUR_SPOTLIGHT_PADDING</code> (8) gives a hole of top 92, left 92, 136×56, and the styles reflect it.</li>
+    </ul>
+    <code>guided-tour-card.component</code>: renders nothing when <code>step()</code> is null; the primary button calls <code>next()</code>, or <code>stop('completed')</code> on the last step. Back, Done, close and full help are already covered through <code>guided-tour.service.spec.ts</code>, so don't duplicate them.
+  </li>
+  <li><code>services/guided-tour-dialogs</code> (plain class):
+    <ul>
+      <li><code>open</code> resolves after <code>afterOpened</code>.</li>
+      <li>The same key while open does not reopen.</li>
+      <li>A different key closes the first dialog once.</li>
+      <li><code>close()</code> twice is a no-op.</li>
+      <li><span class="pin">Pin (B9):</span> <code>open</code> resolves even if the dialog closes before <code>afterOpened</code> (bounded by <code>afterClosed</code>).</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">The four trivial stores (history, memorized, split, expense) get no spec; record that in the report. Register the specs, and the loading spec under every area that uses <code>LOADING</code>. Commit <code>Unit-test stores, loading services and tour dialogs [no-deploy]</code>.</p>
+
+<h3>Task 5: Admin screens and services</h3>
+<ul>
+  <li><code>features/admin/error-log/error-log.component</code> (model on <code>email-log.component.spec.ts</code>). Behaviours:
+    <ul>
+      <li>Initial load uses a 7-day default range; a null date skips the load.</li>
+      <li>The error path shows a snackbar with the message, or "Failed to load error log".</li>
+      <li><code>groupedErrors</code> collapses on <code>component|action|message</code> (different <code>error</code> text doesn't split a group).</li>
+      <li>Sorting: by default and per column, and the grouped view resets the sort to <code>count</code> desc and clears the selection.</li>
+      <li><code>columnsToDisplay</code> for mobile, grouped and desktop.</li>
+      <li>Selection: all, some, and toggling a grouped row.</li>
+      <li><code>deleteError</code> deletes one id ungrouped or all ids grouped.</li>
+      <li><code>clearErrors</code> and <code>deleteSelected</code> on confirm and on cancel.</li>
+      <li><code>onRowClick</code> → detail → confirm → delete.</li>
+    </ul>
+  </li>
+  <li><code>error-detail-dialog</code> and <code>email-detail-dialog</code>: <code>isGrouped()</code>; <code>formatRecipient</code> for a string, an array and <code>[]</code>; the Delete button's <code>MatDialogClose</code> result is <code>true</code>, read via the injector as the skill says.</li>
+  <li><code>services/admin-error-log.service</code>, <code>services/admin-mail.service</code>:
+    <ul>
+      <li>Exact query shape: collection, <code>where</code> fields, <code>orderBy</code>, limits 500 and 200.</li>
+      <li>The end date is moved to 23:59:59.999 on a copy; the caller's Date is not mutated.</li>
+      <li>Single and batch delete commit once.</li>
+      <li>Failures are logged with the documented component/action and rethrown.</li>
+      <li><span class="pin">Pin (B10):</span> a stored <code>id</code> field does not override the doc id.</li>
+    </ul>
+  </li>
+  <li><code>services/admin-reports.service</code>: each method calls the right callable name with the right payload and returns <code>result.data</code>; a rejection propagates.</li>
+</ul>
+<p class="step">Register under <code>admin</code>. Commit <code>Unit-test the admin error log, dialogs and admin services [no-deploy]</code>.</p>
+
+<h3>Task 6: Account pages and edit resolvers</h3>
+<ul>
+  <li><code>account-security.component</code>:
+    <ul>
+      <li>A Google user navigates to Profile.</li>
+      <li>Mismatched passwords give <code>passwordMismatch</code>.</li>
+      <li>An empty password gives the snackbar "Password cannot be empty" and no call.</li>
+      <li>Success: <code>updatePassword(user,'newpw')</code> is called, the snackbar "Your password has been updated" shows and the form resets.</li>
+      <li>Failure: the snackbar "Something went wrong - your password could not be updated" shows and the form is kept.</li>
+      <li><span class="pin">Pin (B3):</span> <code>loadingOff</code> is called only after <code>updatePassword</code> settles.</li>
+      <li><span class="pin">Pin (B3):</span> a rejection is logged through <code>analytics.logError</code>.</li>
+    </ul>
+  </li>
+  <li><code>account-payments.component</code>:
+    <ul>
+      <li>The form is seeded from the user store and re-seeded when it changes.</li>
+      <li>Save sends all four IDs and shows "Payment service IDs updated".</li>
+      <li>An <code>Error</code> shows its message and is logged; a non-Error shows the generic message.</li>
+      <li>Loading on and off are paired.</li>
+    </ul>
+  </li>
+  <li><code>account-preferences.component</code>:
+    <ul>
+      <li>The form is seeded from <code>defaultGroupRef</code>.</li>
+      <li>Save is disabled until a selection changes.</li>
+      <li>Saving sends the ref (or null) and shows "Default group updated".</li>
+      <li>Error path as above.</li>
+    </ul>
+  </li>
+  <li><code>account-legal.component</code>: Accept is disabled until acknowledged; success calls <code>updateUser({receiptPolicy:true})</code> and shows the snackbar; error path as above.</li>
+  <li><code>edit-expense.resolver</code>, <code>edit-memorized.resolver</code> (<code>TestBed.runInInjectionContext</code>):
+    <ul>
+      <li>They call <code>getExpense</code> / <code>getMemorized</code> with the current group id and the route id.</li>
+      <li>A rejection propagates.</li>
+      <li><span class="pin">Pin (B9):</span> with no current group they redirect to Expenses / Memorized instead of throwing.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register under <code>account</code>, <code>expenses</code> and <code>memorized</code>. Commit <code>Unit-test the account pages and edit resolvers [no-deploy]</code>.</p>
+
+<h3>Task 7: Table filters and the calculator overlay</h3>
+<ul>
+  <li><strong>Filter directives</strong> (one spec per directive plus a shared host; the base behaviour is tested once, through <code>SelectFilterDirective</code>):
+    <ul>
+      <li>The icon is injected into <code>.mat-sort-header-content</code> or the host.</li>
+      <li><code>enabled=false</code> hides it; flipping to false clears an existing filter.</li>
+      <li>The <code>filter-active</code> class follows the service.</li>
+      <li>An icon click stops propagation and toggles the panel; a backdrop click closes it.</li>
+      <li>Apply and clear write to the service and close the panel.</li>
+      <li>Destroying the host removes the icon and the pane.</li>
+    </ul>
+    Per type:
+    <ul>
+      <li>select: initial value and apply.</li>
+      <li>text: caseSensitive round-trips.</li>
+      <li>toggle: <code>null</code> clears; default labels Yes/No/All.</li>
+      <li>dateRange: start/end round-trip.</li>
+    </ul>
+    Pins:
+    <ul>
+      <li><span class="pin">(B7)</span> Opening the text filter twice does not double-subscribe, and destroy removes its panel component.</li>
+      <li><span class="pin">(B7)</span> Re-opening any filter does not accumulate backdrop subscriptions, and destroy disposes the overlay. Assert no leftover panes.</li>
+      <li><span class="pin">(B7)</span> A directive created with <code>enabled=false</code> while a filter exists clears it.</li>
+    </ul>
+  </li>
+  <li><strong>Row matching</strong> in the existing <code>expenses.component.spec.ts</code>, through <code>filteredExpenses()</code> after <code>expenseFilterService.setFilter</code>:
+    <ul>
+      <li>text matches case-insensitively, and case-sensitively when set;</li>
+      <li>a null field never matches;</li>
+      <li>select by value and by DocumentReference path;</li>
+      <li>select <code>value:null</code> matches only null rows;</li>
+      <li>multiple select: any match passes; an empty array lets nothing through;</li>
+      <li>dateRange: inclusive, open on either end, time stripped;</li>
+      <li>toggle: strict equality;</li>
+      <li>several filters combine with AND.</li>
+    </ul>
+  </li>
+  <li><strong><code>services/calculator-overlay.service</code></strong> (real Overlay, fake timers):
+    <ul>
+      <li>One overlay at a time.</li>
+      <li>A result calls back with the value, disposes the overlay, and focuses then blurs the field's input on the next tick.</li>
+      <li>Close and backdrop give no callback.</li>
+      <li>The input is <code>readOnly</code> while open and restored after 300 ms.</li>
+      <li>iOS user agent: <code>scrollTo(0,0)</code>.</li>
+      <li>Key mapping: digits, <code>. ,</code>, <code>+ - * x X /</code>, <code>( )</code>, Enter and <code>=</code>, Backspace, Delete and <code>c</code>, Escape.</li>
+      <li><code>closeCalculator</code> when nothing is open is a no-op.</li>
+      <li><span class="pin">Pin (B4):</span> Tab and Ctrl/Cmd combinations are not swallowed (<code>defaultPrevented</code> false).</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register the filters under <code>expenses</code> (their only consumer), and the calculator overlay under every area whose forms open it (<code>CALCULATOR</code> group). Commit <code>Unit-test the table filters and calculator overlay [no-deploy]</code>.</p>
+
+<h3>Task 8: Rental grid</h3>
+<p class="step"><code>rental-grid.component</code> (<code>setInput</code> for the required inputs; real <code>RentalUtilsService</code> and <code>AllocationUtilsService</code>; model the setup on <code>split-rental-grid.component.spec.ts</code>):
+  <ul>
+    <li>Changing <code>nightCount</code> from 3 to 5 pads every row with <code>true</code>; from 5 to 2 truncates.</li>
+    <li>Adding the selected member and adding all remaining members; <code>remainingMembers</code> excludes rows already present.</li>
+    <li><code>removeMember</code> and <code>toggleNight</code> affect only their target.</li>
+    <li><code>setAllForNight</code>.</li>
+    <li><code>isNightFull</code> and <code>isNightPartial</code>, including zero members.</li>
+    <li><code>occupancyByNight</code> and <code>emptyNightLabel</code> (<code>'2, 4'</code>).</li>
+    <li>Shares come from room assignments.</li>
+    <li><code>previewSplits</code>: 100 over shares 2:1 gives 66.67/33.33, and the total equals the amount.</li>
+    <li><code>roomNameFor</code> for an unknown room is null.</li>
+  </ul>
+</p>
+<p class="step">Register under <code>rental</code>. Commit <code>Unit-test the rental grid [no-deploy]</code>.</p>
+
+<h3>Task 9: Functions — common helpers, onboarding, email triggers, mail queue</h3>
+<p><strong>New specs</strong> in <code>functions/src/</code>; where a shared fixture helps, add <code>functions/test/fixtures.ts</code> with <code>uniqueId()</code>, <code>makeGroup()</code> and <code>makeMember()</code>.</p>
+<ul>
+  <li><code>common.ts</code>:
+    <ul>
+      <li><code>assertAdmin</code>: no auth gives <code>unauthenticated</code>; another uid gives <code>permission-denied</code>; the prod and emulator admin uids each return the uid.</li>
+      <li><code>buildSuccessDelivery</code> shape.</li>
+      <li><code>getSmtpPassword</code> emulator branch returns <code>process.env.SMTP_PASSWORD</code>.</li>
+      <li><span class="pin">Pin (B2):</span> <code>assertAdmin</code> rejects the emulator uid when <code>FUNCTIONS_EMULATOR</code> is not <code>'true'</code>.</li>
+    </ul>
+  </li>
+  <li><code>createUserProfileOnSignUp</code> (user-onboarding):
+    <ul>
+      <li>A new user gets <code>users/{uid}</code> with the 8 default fields and the email; no email gives <code>''</code>.</li>
+      <li><span class="pin">Pin (B8):</span> a re-run on an existing doc keeps <code>venmoId:'v'</code> and <code>receiptPolicy:true</code>.</li>
+    </ul>
+  </li>
+  <li><code>syncUserEmailLower</code>, <code>syncMemberEmailLower</code>:
+    <ul>
+      <li>Delete: no write.</li>
+      <li><code>'Alice@Example.COM'</code> writes <code>emailLower 'alice@example.com'</code>.</li>
+      <li>An already-matching value gives no write; assert <code>updateTime</code> is unchanged. This is what stops trigger loops.</li>
+      <li>A blank email with a stale <code>emailLower</code> deletes the field.</li>
+    </ul>
+  </li>
+  <li><code>verifyUserEmail</code>: no uid gives <code>invalid-argument</code>; an existing user ends up <code>emailVerified</code>; an unknown uid gives <code>internal</code>.</li>
+  <li><code>sendMailQueueEmail</code>:
+    <ul>
+      <li>A doc that already has <code>delivery</code>, or lacks <code>to</code> or a subject, is unchanged.</li>
+      <li>Demo project: SUCCESS, <code>messageId 'suppressed'</code>, <code>expireAt</code> about 365 days out.</li>
+      <li>Non-demo (<code>vi.stubEnv('GCLOUD_PROJECT','pipsplit')</code> plus a mocked <code>nodemailer</code>):
+        <ul>
+          <li>sends with from <code>'PipSplit &lt;admin@pipsplit.com&gt;'</code> and replyTo <code>'no-reply@pipsplit.com'</code>;</li>
+          <li>goes through PROCESSING and ends at SUCCESS;</li>
+          <li>a <code>sendMail</code> rejection gives ERROR with the message and <code>attempts:1</code>.</li>
+        </ul>
+      </li>
+      <li><span class="pin">Pin (B8):</span> a failure while writing the suppressed delivery is caught.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register in <code>areas.mjs</code> under the owning areas:
+  <ul>
+    <li>onboarding: <code>auth</code>;</li>
+    <li>email syncs: <code>account</code> and <code>members</code>;</li>
+    <li>mail queue: every area that sends mail (follow the existing functions entries);</li>
+    <li>common: everywhere it's imported.</li>
+  </ul>
+  Commit <code>Test common helpers, onboarding, email-lower triggers and the mail queue [no-deploy]</code>.</p>
+
+<h3>Task 10: Functions — callable handlers' guards and outcomes</h3>
+<ul>
+  <li><code>deleteUserAccount</code>:
+    <ul>
+      <li>No auth gives <code>unauthenticated</code>.</li>
+      <li>Success: the user doc and Auth user are gone; a shared group keeps the member with <code>userRef</code> null; a sole-member group is deleted.</li>
+      <li>A missing user doc still deletes the Auth user.</li>
+      <li>A uid not in Auth gives <code>internal</code>, "Error deleting account:".</li>
+      <li><span class="pin">Pin (B2):</span> an inactive sole admin with one other active member promotes that member.</li>
+    </ul>
+  </li>
+  <li><code>deleteGroup</code>:
+    <ul>
+      <li>No auth gives <code>unauthenticated</code>; no groupId gives <code>invalid-argument</code>.</li>
+      <li>A plain member, or an admin of another group, gives <code>permission-denied</code> and the group is untouched.</li>
+      <li>An admin's call succeeds and removes the group with its subcollections.</li>
+      <li><span class="pin">Pin (B2):</span> <code>data: null</code> gives <code>unauthenticated</code> or <code>invalid-argument</code>, not a TypeError.</li>
+      <li><span class="pin">Pin (B2):</span> an inactive admin gets <code>permission-denied</code>.</li>
+    </ul>
+  </li>
+  <li><code>linkInvitedMembers</code>:
+    <ul>
+      <li>No auth gives <code>unauthenticated</code>; a missing, empty or non-string email gives <code>invalid-argument</code>.</li>
+      <li>Two groups with the same invited email (different case) are both linked, and the call returns <code>{membersLinked: 2}</code>.</li>
+    </ul>
+  </li>
+  <li><code>syncAuthEmailsToUsers</code>:
+    <ul>
+      <li><code>assertAdmin</code> guards it.</li>
+      <li>For your own users: the email is synced; an Auth user with no email is skipped; a user doc with no Auth account appears in <code>errors</code>.</li>
+    </ul>
+  </li>
+  <li><code>sendGroupInvite</code>:
+    <ul>
+      <li>Guards: no auth gives <code>unauthenticated</code>; a missing id gives <code>invalid-argument</code>; a non-admin gives <code>permission-denied</code>; a missing member gives <code>not-found</code>.</li>
+      <li><code>failed-precondition</code> for a member that already has an account, an inactive member, and each bad email (<code>''</code>, <code>'not-an-email'</code>, <code>'a@b'</code>).</li>
+      <li>Success: <code>{success, sentTo, sendCount:1}</code>, one mail with subject "You're invited to join &lt;group&gt; on PipSplit", and the member's <code>invite</code> is set.</li>
+      <li>A repeat within 24 h gives <code>resource-exhausted</code> and no second mail.</li>
+      <li>A changed email, or <code>lastSentAt</code> older than 24 h, is allowed and <code>sendCount</code> becomes 2.</li>
+      <li>Name fallbacks: <code>'A group admin'</code>, <code>'a PipSplit group'</code>.</li>
+      <li><span class="pin">Pin (B2):</span> an inactive admin gets <code>permission-denied</code>.</li>
+    </ul>
+  </li>
+  <li><code>notifyNewIssue</code>:
+    <ul>
+      <li>A missing number, url or title gives <code>invalid-argument</code>.</li>
+      <li>Success writes a mail to <code>admin@pipsplit.com</code> with subject "New PipSplit issue #N: &lt;title&gt;", HTML-escaped. The optional reporter and body sections appear only when given. It works without auth.</li>
+    </ul>
+  </li>
+  <li><code>logAppError</code>:
+    <ul>
+      <li>Missing fields give <code>invalid-argument</code>.</li>
+      <li>The doc is written with optional fields only when present.</li>
+      <li>No alert config, <code>enabled:false</code> or no <code>adminEmail</code>: no mail.</li>
+      <li>Threshold reached inside the window: one mail with subject "PipSplit Error Alert: N errors in the last M minutes", escaped rows, and <code>lastAlertSent</code> set.</li>
+      <li>Within the cooldown: no second mail.</li>
+    </ul>
+    Use a unique component name and a threshold far above the global count for "no mail" cases. Overwrite the config doc per test; never delete collections.
+  </li>
+  <li><code>sendEmail</code>: test today's guards only:
+    <ul>
+      <li>no auth gives <code>unauthenticated</code>;</li>
+      <li>a missing <code>to</code>, subject or text gives <code>invalid-argument</code>.</li>
+    </ul>
+    B1 replaces this callable and brings its own tests, so nothing is pinned here. The open-relay finding goes in the report.
+  </li>
+  <li><code>scanReceipt</code> (no tesseract; early-exit and PDF paths only):
+    <ul>
+      <li>Guards: <code>unauthenticated</code>, <code>invalid-argument</code>, and <code>permission-denied</code> for a non-member or inactive member.</li>
+      <li>Empty decoded image gives "Image data is empty".</li>
+      <li>Over 6 MiB gives "too large".</li>
+      <li>A PDF with a text layer gives <code>total 4.89</code>.</li>
+      <li>An image-only PDF gives <code>failed-precondition</code> with <code>details.reason 'pdf-not-readable'</code>.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register each spec under its area (<code>account</code>, <code>groups</code>, <code>members</code>, <code>admin</code>, <code>receipts</code>, <code>help</code> for notifyNewIssue, <code>shell</code> for logAppError). Commit <code>Test callable handlers' guards and outcomes [no-deploy]</code>.</p>
+
+<h3>Task 11: Functions — scheduled receipt cleanup and payment emails</h3>
+<ul>
+  <li><code>deleteOldPaidExpenses</code> (storage emulator, unique group ids). Dates are relative to today:
+    <ul>
+      <li>paid, 91 days old: file deleted and <code>receiptPath</code> null;</li>
+      <li>paid, 89 days old: kept;</li>
+      <li>unpaid and old: kept;</li>
+      <li>no date: kept;</li>
+      <li>no expense doc: kept without error;</li>
+      <li>one malformed object name doesn't stop the others;</li>
+      <li>a <code>getFiles</code> failure is logged and the run resolves.</li>
+    </ul>
+    Document the UTC boundary at exactly 90 days in a comment.
+  </li>
+  <li><code>sendPaymentNotificationEmail</code>, member payment:
+    <ul>
+      <li>An empty event or null <code>splitsPaid</code> gives no mail.</li>
+      <li>Payer and payee both eligible: two mails with the documented subjects; the body has the amount in the group currency and "1 shared expense" (singular) or "N shared expenses".</li>
+      <li>An opted-out payer, or a payee without <code>userRef</code> or email, gets no mail.</li>
+      <li>A missing payer, payee or group: no mail, and the handler resolves.</li>
+      <li>Payee payment methods are listed, or "(No payment methods on file)".</li>
+    </ul>
+  </li>
+  <li><code>sendPaymentNotificationEmail</code>, settle batch:
+    <ul>
+      <li>A missing <code>batchId</code> or <code>batchSize</code> is skipped.</li>
+      <li>Fewer history docs than <code>batchSize</code> are skipped.</li>
+      <li>A complete batch sends one mail per eligible member, and only once.</li>
+      <li><span class="pin">Pin (B9):</span> a failure after the batch is claimed releases the claim so a retry can send.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register under <code>receipts</code> (cleanup) and <code>summary</code> and <code>history</code> (payment emails). Commit <code>Test the receipt cleanup schedule and payment emails [no-deploy]</code>.</p>
+
+<h3>Task 12: Functions — admin report callables and builders</h3>
+<ul>
+  <li><code>runAdminReport</code>:
+    <ul>
+      <li><code>unauthenticated</code>; non-admin <code>permission-denied</code>.</li>
+      <li>Unknown or missing <code>reportId</code> gives <code>invalid-argument</code> "Unknown reportId".</li>
+      <li>Each of the 7 ids returns a result with the matching <code>reportId</code>.</li>
+    </ul>
+  </li>
+  <li><code>repairOrphanedMembers</code>, <code>backfillOrphanedRegistrations</code>: admin first; empty or non-array input gives <code>invalid-argument</code>; 501 items gives "Too many targets (max 500)"; a bad path or uid gives <code>invalid-argument</code>; a valid call returns the count.</li>
+  <li>Builders (own data, before/after deltas):
+    <ul>
+      <li><code>buildOverviewReport</code>: totals, active, archived and inactive counts, the 2+-members and with-expenses counts, and the average to 2 dp.</li>
+      <li><code>buildUsersReport</code>: new and signed-in in the last 30 days, "Never", "(no email)", newest 25.</li>
+      <li><code>buildOrphanedRegistrationsReport</code>: lists an Auth user with no doc; excludes <code>play_review@google.com</code>.</li>
+      <li><code>backfillOrphanedRegistrationsInternal</code>: creates the doc with defaults; leaves an existing doc untouched; skips a uid not in Auth.</li>
+      <li><code>buildDuplicateUsersReport</code>: if the Auth emulator rejects case-variant duplicates, test the empty-state message and zero stats, and say so.</li>
+      <li><code>buildExpenseActivityReport</code>: expenses dated today, 8, 40 and 100 days ago move the 7/30/90-day deltas correctly; 6 month rows, newest first; the current month's label is <code>toLocaleString('en-US',{month:'long',year:'numeric'})</code>.</li>
+      <li><span class="pin">Pin (B10):</span> overview "Total Users" doesn't subtract 1 when the admin has no user doc.</li>
+      <li><span class="pin">Pin (B10):</span> duplicate paths or uids are counted once.</li>
+    </ul>
+  </li>
+</ul>
+<p class="step">Register under <code>admin</code>. Commit <code>Test the admin report callables and builders [no-deploy]</code>.</p>
+
+<h3>Task 13: Coverage pass A — expense pages</h3>
+<p class="step">Run <code>pnpm test --coverage --include &lt;spec&gt;</code> for each target and read its uncovered branches. Add tests for the ones that encode behaviour a user would notice: guards, error paths, and branches by split method, receipt state, paid state or role. Skip template-only noise.</p>
+<p class="step">Targets, with lines/branches covered today:
+  <ul>
+    <li><code>edit-expense.component.ts</code> 51%/32%;</li>
+    <li><code>expenses.component.ts</code> 53%/42% (Task 7 already adds the filter matching);</li>
+    <li><code>add-expense.component.ts</code> 70%/50%;</li>
+    <li><code>history-detail.component.ts</code> 48%/40%.</li>
+  </ul>
+</p>
+<p class="step">Report before/after percentages per file. There is no numeric target (spec §2 non-goal). The goal is that every branch left uncovered is uncovered for a stated reason, listed in the report. Commit <code>Cover untested branches in the expense and history pages [no-deploy]</code>.</p>
+
+<h3>Task 14: Coverage pass B — services and auth pages</h3>
+<p class="step">Same method as Task 13 for:
+  <ul>
+    <li><code>services/user.service.ts</code> 64%/45%;</li>
+    <li><code>services/expense.service.ts</code> 60%/61%;</li>
+    <li><code>features/auth/account-action</code> 69%/53%;</li>
+    <li><code>features/groups/manage-groups</code> 65%/50%;</li>
+    <li><code>features/auth/login</code> 56%/67%;</li>
+    <li><code>features/summary/summary</code> 72%/64%.</li>
+  </ul>
+  Assert service calls with real argument shapes (Review Focus 4).</p>
+<p class="step">Commit <code>Cover untested branches in core services and auth pages [no-deploy]</code>.</p>
+
+<h3>Task 15: Close-out (Phase A)</h3>
+<p class="step">Skill: update the unit section with:
+  <ul>
+    <li>the new helpers (<code>createMockMediaQueryService</code> is already in; add any from this plan);</li>
+    <li>the functions <code>.run()</code> pattern and own-ids rule;</li>
+    <li>the overlay-cleanup rule;</li>
+    <li>the pin/<code>it.fails</code> convention;</li>
+    <li>the coverage command.</li>
+  </ul>
+  Add a <code>"test:coverage"</code> script to <code>package.json</code> (<code>ng test --coverage</code>) and mention it.</p>
+<p class="step">Follow-ups doc: tick each Plan 4 item with its commit. Add every pinned bug with its B id and evidence as an owner decision.</p>
+<p class="step">Verification:
+  <ul>
+    <li>full <code>pnpm test</code>, plus the coverage summary before and after;</li>
+    <li>full <code>pnpm --dir functions test</code>;</li>
+    <li><code>pnpm test:scripts</code>;</li>
+    <li><code>pnpm test:area &lt;area&gt; --unit</code> for each of the 16 areas;</li>
+    <li><code>pnpm test:area --check</code>;</li>
+    <li>one full <code>pnpm e2e</code>, because Task 2 touched the e2e infra.</li>
+  </ul>
+  Record the counts. Commit <code>Close out Plan 4 Phase A: docs and verification [no-deploy]</code>.</p>
+
+<!-- ===================================================================== -->
+<h2>Phase B — owner-approved fixes</h2>
+<div class="box">
+<p><strong>Owner decisions (2026-10-21):</strong></p>
+<ul>
+  <li>Approved: B1, B2, B3, B4, B5, B7, B8, B11.</li>
+  <li>Deferred: B6, B9, B10. Their pins stay as <code>it.fails</code> and are listed in the follow-ups doc.</li>
+  <li><strong>Order:</strong> B1 runs first, before Phase A, because the hole is live in production. Then Phase A Tasks 1–15, then the remaining approved B items in id order.</li>
+</ul>
+</div>
+<p>Each item runs only if the owner approves it. Each fix:
+  <ul>
+    <li>changes the smallest code that resolves the bug;</li>
+    <li>flips its pinned <code>it.fails</code> to <code>it</code>;</li>
+    <li>adds an e2e assertion where the behaviour is user-visible and an e2e spec already covers that screen;</li>
+    <li>runs <code>pnpm test:area &lt;area&gt;</code> (unit + functions + e2e).</li>
+  </ul>
+  Unapproved items stay pinned and are listed as deferred.</p>
+<div class="table-wrap"><table>
+<tr><th>Id</th><th>Fix</th><th>Pinned in</th></tr>
+<tr><td>B1</td><td><strong>Security:</strong> replace the open <code>sendEmail</code> callable with a server-built payment request.
+  <ul>
+    <li>The new callable <code>sendPaymentRequest({groupId, owedByMemberId, owedToMemberId, amount})</code> checks the caller is an active member of that group.</li>
+    <li>The server reads both members, the payee's payment methods and the opt-out, then builds the email (move the builders out of <code>user.service.ts</code>).</li>
+    <li>Remove <code>sendEmail</code>. Deploy the client and server together; the release workflow deploys both.</li>
+    <li>The client's <code>sendPaymentRequestEmail</code> keeps its return values (<code>'sent' | 'not_registered' | 'opted_out'</code>).</li>
+    <li>Tests:
+      <ul>
+        <li>a non-member caller gets <code>permission-denied</code>;</li>
+        <li>the recipient is always the owing member's email;</li>
+        <li>an opted-out member gets no mail;</li>
+        <li>the body is HTML-escaped;</li>
+        <li>plus the summary e2e for "request payment".</li>
+      </ul>
+    </li>
+  </ul></td><td>new tests (Task 10 documents today's guards)</td></tr>
+<tr><td>B2</td><td>Server permission checks:
+  <ul>
+    <li><code>deleteGroup</code> and <code>sendGroupInvite</code> require an <em>active</em> admin.</li>
+    <li><code>deleteGroup</code> validates <code>data</code> before reading it.</li>
+    <li><code>assertAdmin</code> accepts the emulator uid only under the emulator.</li>
+    <li>Account deletion promotes a member when the leaving admin was inactive.</li>
+  </ul></td><td>Tasks 9, 10</td></tr>
+<tr><td>B3</td><td>Password change awaits <code>updatePassword</code> (the loading overlay stays up until it finishes). Failures are logged, and <code>auth/requires-recent-login</code> gets a clear "sign in again" message.</td><td>Task 6</td></tr>
+<tr><td>B4</td><td>Keyboard:
+  <ul>
+    <li>The calculator overlay lets Tab and modifier shortcuts through.</li>
+    <li>Date shortcut keys ignore Ctrl/Cmd/Alt combinations.</li>
+    <li><code>'t'</code> gives midnight.</li>
+  </ul></td><td>Tasks 3, 7</td></tr>
+<tr><td>B5</td><td>The date adapter respects a typed 2-digit year (<code>1/5/25</code> → 2025).</td><td>Task 3</td></tr>
+<tr><td>B6</td><td>The loading overlay stays up until every caller of the shared default source has finished (counted sources). <strong>Risk:</strong> an unbalanced <code>loadingOn</code> would then leave the overlay stuck, so audit every caller for paired on/off first. Recommended only if that audit is clean.</td><td>Task 4</td></tr>
+<tr><td>B7</td><td>Table-filter cleanup:
+  <ul>
+    <li>remove the text filter's dead <code>setTimeout</code>;</li>
+    <li>subscribe to backdrop clicks once;</li>
+    <li>dispose the overlay on destroy;</li>
+    <li>clear a filter on a directive created disabled.</li>
+  </ul></td><td>Task 7</td></tr>
+<tr><td>B8</td><td>Onboarding writes defaults only for missing fields, so a re-run never resets a user's settings. The mail-suppression update gets error handling.</td><td>Tasks 2, 9</td></tr>
+<tr><td>B9</td><td>Robustness:
+  <ul>
+    <li>Edit resolvers redirect when no group is selected (and the store wait is bounded).</li>
+    <li>A settle-email failure after the claim releases the claim.</li>
+    <li>The tour-dialog <code>open</code> can't hang.</li>
+  </ul></td><td>Tasks 4, 6, 11</td></tr>
+<tr><td>B10</td><td>Admin report accuracy:
+  <ul>
+    <li>Overview "Total Users" counts correctly.</li>
+    <li>Repair and backfill count duplicate inputs once.</li>
+    <li>Admin services keep the doc id over a stored <code>id</code> field.</li>
+  </ul></td><td>Tasks 5, 12</td></tr>
+<tr><td>B12</td><td><strong>One valid email address everywhere</strong> (owner request, 2026-10-21; runs right after B1):
+  <ul>
+    <li>A shared strict single-address validator on every app email field: no commas, semicolons, whitespace or lists, and a domain with a dot. Angular's built-in <code>email</code> validator accepts <code>a@b</code>.</li>
+    <li>Firestore rules require a member's <code>email</code> and a user's own <code>email</code> to be <code>''</code> or one valid address (≤ 254 chars) on create and update. The existing authorization logic is unchanged.</li>
+    <li>Server emails check the stored address before sending. B1 covers group emails; <code>sendPaymentNotificationEmail</code> gets the same check.</li>
+    <li>Tests for the validator, the functions path and the rules (a comma list is rejected, a normal address accepted).</li>
+  </ul></td><td>new tests</td></tr>
+<tr><td>B13</td><td><strong>User profile writes</strong> (owner-approved 2026-10-21; the write half of the rules-hardening Phase 3; runs after B12): <code>users/{uid}</code> create, update and delete only by the owner. A non-owner may only set <code>defaultGroupRef</code> to null, and only as an admin of the group it currently points at (the group deactivate/archive batch). Reads unchanged. Tested through the client SDK on the emulators.</td><td>new tests</td></tr>
+<tr><td>B14</td><td><strong>Invite hijack</strong> (owner-approved 2026-10-21; runs right after Task 7): <code>linkInvitedMembers</code> trusts a caller-supplied email, so any user can claim anyone's pending invites. Fix: link only through the caller's <em>verified</em> token email; a profile email is written only once verified; the rules require the profile email to equal the verified token email; email change uses <code>verifyBeforeUpdateEmail</code>.</td><td>new tests</td></tr>
+<tr><td>B19</td><td><strong>Verified group emails</strong> (owner decision 2026-10-22; the last feature before the closing gate): all group mail goes to the member's group email (<code>groups/{gid}/members/{mid}.email</code>), not the login email. Invariant: a linked member's email is always an address the linked user has proven they own. Rules: a link (create, or <code>userRef</code> null to X) needs the email to equal the linked <code>users</code> doc's email; <code>userRef</code> X to Y is denied; on a linked doc only the member may change the email, and only to their verified token address; a client-written <code>emailLower</code> must match. New callables <code>requestMemberEmailChange</code> (the verified login address at once, else a one-time link mailed to the new address with no user text, 24 h, 5 per uid per day) and <code>confirmMemberEmailChange</code> (page <code>/auth/confirm-group-email</code>). One recipient rule for every group mail (<code>group-mail-recipient.ts</code>). Edit-member locks the email of someone else's linked row. Commits <code>4136e78b</code> (rules), <code>b31e7c9b</code> (functions), <code>caba347b</code> (app), <code>0227cce1</code> (e2e); tests <code>e2e/infra/member-email-rules.spec.ts</code>, <code>functions/src/member-email.spec.ts</code>, <code>e2e/members/member-email.spec.ts</code>.</td><td>new tests</td></tr>
+<tr><td>B20</td><td><strong>Group email update offer, sign-in returnUrl, sync help text</strong> (owner request 2026-10-22; rulings R19, R20): after a login-email change (the signed-in link path, or the next sign-in when the link ended the session), a dialog "Update your group emails?" offers Not now / Update old email only (shown only when some, not all, linked member records use the old address) / Update all. Both updates take the address from the refreshed verified token and skip records already on it (case-insensitive). A safe internal <code>returnUrl</code> (no open redirect; login, register and the auth-flow pages excluded) sends a signed-out deep link back to its page after sign-in. The Profile sync button gets help text. Commits <code>cf43bf0b</code> (app, unit), <code>b4d9bec8</code> (review fixes), <code>2df1d6ef</code> and <code>9a85c647</code> (e2e); tests <code>e2e/account/group-email-update.spec.ts</code>, <code>e2e/auth/return-url.spec.ts</code>.</td><td>new tests</td></tr>
+<tr><td>B11</td><td>Delete dead code: <code>ClearSelectDirective</code>, <code>passwordMatchValidator</code>, <code>Timestamp.toIsoDateString</code> (and its test-mock stub), <code>Expense.unpaidAmount</code>, <code>UserStore.defaultGroupRef</code>.</td><td>Task 3 list</td></tr>
+</table></div>
+<p class="step">After the approved B items: run every area alone (<code>pnpm test:area &lt;area&gt;</code>, full), then three back-to-back full <code>pnpm e2e</code> runs at 2 workers (the owner-accepted standard). Run the final whole-branch review, then the finishing menu.</p>
+
+<!-- ===================================================================== -->
+<h2>Appendix — behaviour inventory</h2>
+<p>The full file-by-file inventory (harness notes, existing coverage, suspected bugs with file:line) was produced while planning. Its contents are condensed into the tasks above; the details an implementer needs follow.</p>
+<ul>
+  <li><strong>Harness facts:</strong>
+    <ul>
+      <li><code>src/testing/extensions-setup.ts</code> installs <code>.eq()</code> and <code>toIsoDateString</code> on the mock classes.</li>
+      <li><code>src/testing/test-helpers.ts</code> has <code>mockDocRef</code>, <code>mock*</code> factories, <code>createMock*Store</code>, <code>createMockLoadingService</code>, <code>createMockAnalyticsService</code>, <code>createMockMatDialog</code>, <code>createMockSnackBar</code> and <code>createMockMediaQueryService</code>.</li>
+      <li>Service specs follow <code>history.service.spec.ts</code> (spy on <code>firestoreModule</code> functions; provide <code>getFirestore</code> as <code>{}</code>).</li>
+      <li>The <code>email-log.component.spec.ts</code> setup is the template for the error log.</li>
+      <li>Filter panels already have specs in <code>shared/components/filter-panels/</code>.</li>
+    </ul>
+  </li>
+  <li><strong>Functions:</strong>
+    <ul>
+      <li>Triggers and callables expose <code>.run</code>. The vitest emulator set (<code>--only auth,firestore,storage</code>) runs no triggers, so docs a handler writes stay exactly as written.</li>
+      <li><code>verifyUserEmail</code> exists only when <code>FUNCTIONS_EMULATOR==='true'</code> (true under vitest).</li>
+      <li><code>scanReceipt</code>'s image path needs tesseract language data from the network. Never test it.</li>
+    </ul>
+  </li>
+  <li><strong>Suspected bugs</strong> (confirm before pinning):
+    <ul>
+      <li><code>text-filter.directive.ts:43-56</code>;</li>
+      <li><code>base-filter.directive.ts:79-90, 179</code>;</li>
+      <li><code>account-security.component.ts:77-103</code>;</li>
+      <li><code>loading.service.ts</code> (Set semantics);</li>
+      <li><code>calculator-overlay.service.ts:149-156</code>;</li>
+      <li><code>date-plus-minus.directive.ts:14-16,33,35</code>;</li>
+      <li><code>custom-date-adapter.service.ts:11-15</code>;</li>
+      <li><code>edit-expense.resolver.ts:10</code>, <code>edit-memorized.resolver.ts:10</code>, <code>expense.service.ts:161</code>, <code>memorized.service.ts:99</code>;</li>
+      <li><code>user-onboarding.ts:28-40</code>;</li>
+      <li><code>index.ts:1160</code> (sendEmail), <code>:617</code> (deleteGroup), <code>:1681-1686</code> (invite admin check), <code>:484</code> (inactive sole admin), <code>:1475</code> (logAppError count cap);</li>
+      <li><code>common.ts:15-31</code> (assertAdmin);</li>
+      <li><code>admin-reports.ts:312, 621-652, 717-754</code>;</li>
+      <li>the admin services' <code>{id, ...data}</code> spread;</li>
+      <li>settle-email claim not released;</li>
+      <li><code>guided-tour-dialogs.ts</code> <code>open</code> hang.</li>
+    </ul>
+  </li>
+  <li><strong>Not worth testing</strong> (record, don't test):
+    <ul>
+      <li>route tables, interfaces, config files and <code>currency-config</code> (already specced);</li>
+      <li>the four plain stores;</li>
+      <li><code>kill-test-ports.mjs</code>;</li>
+      <li><code>areas.mjs</code> data;</li>
+      <li><code>scanReceipt</code>'s OCR path;</li>
+      <li>the dead code listed in B11.</li>
+    </ul>
+  </li>
+</ul>
+
+</body>
+</html>

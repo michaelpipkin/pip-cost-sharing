@@ -15,6 +15,7 @@
  *   node --experimental-strip-types prune-expenses.ts --before=2026-01-01
  *   node --experimental-strip-types prune-expenses.ts --before=2026-01-01 --apply
  */
+import { ChunkedBatch } from './chunked-batch.ts';
 import { db } from './emulator-lib.ts';
 import type { DocumentReference } from 'firebase-admin/firestore';
 
@@ -25,32 +26,6 @@ const cutoff = beforeArg?.slice('--before='.length);
 if (!cutoff || !/^\d{4}-\d{2}-\d{2}$/.test(cutoff)) {
   console.error('Usage: node --experimental-strip-types prune-expenses.ts --before=YYYY-MM-DD [--apply]');
   process.exit(1);
-}
-
-const BATCH_LIMIT = 400;
-
-class ChunkedBatch {
-  #batches: FirebaseFirestore.WriteBatch[] = [db.batch()];
-  #count = 0;
-
-  #current(): FirebaseFirestore.WriteBatch {
-    if (this.#count >= BATCH_LIMIT) {
-      this.#batches.push(db.batch());
-      this.#count = 0;
-    }
-    this.#count++;
-    return this.#batches[this.#batches.length - 1]!;
-  }
-
-  delete(ref: DocumentReference): void {
-    this.#current().delete(ref);
-  }
-
-  async commit(): Promise<void> {
-    for (const batch of this.#batches) {
-      await batch.commit();
-    }
-  }
 }
 
 async function pruneGroup(
@@ -95,7 +70,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const batch = new ChunkedBatch();
+  const batch = new ChunkedBatch(db);
   let totals = { expenses: 0, splits: 0, history: 0 };
 
   for (const groupDoc of groupsSnap.docs) {
