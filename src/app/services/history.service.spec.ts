@@ -63,7 +63,63 @@ describe('HistoryService', () => {
   });
 
   afterEach(() => {
+    mockMemberStore.loaded.set(true);
     vi.restoreAllMocks();
+  });
+
+  describe('getHistoryForGroup', () => {
+    function startListening(): (snap: any) => void {
+      let onNext!: (snap: any) => void;
+      vi.spyOn(firestoreModule, 'onSnapshot').mockImplementation(
+        (_query: any, next: any) => {
+          onNext = next;
+          return vi.fn() as any;
+        }
+      );
+      service.getHistoryForGroup('group-1');
+      return onNext;
+    }
+
+    beforeEach(() => {
+      mockHistoryStore.setHistory.mockClear();
+    });
+
+    it('publishes the history at once when the members have loaded', () => {
+      const deliver = startListening();
+
+      deliver({ docs: [] });
+
+      expect(mockHistoryStore.setHistory).toHaveBeenCalledWith([]);
+    });
+
+    // An empty history is the first result Firestore sends, often before the
+    // group's members have loaded, and it is not sent again until the history
+    // changes: dropping it left the History page loading forever.
+    it('publishes a history that arrived before the members once they load', () => {
+      mockMemberStore.loaded.set(false);
+      const deliver = startListening();
+
+      deliver({ docs: [] });
+      TestBed.tick();
+      expect(mockHistoryStore.setHistory).not.toHaveBeenCalled();
+
+      mockMemberStore.loaded.set(true);
+      TestBed.tick();
+
+      expect(mockHistoryStore.setHistory).toHaveBeenCalledExactlyOnceWith([]);
+    });
+
+    it('drops a held-back history when listening stops', () => {
+      mockMemberStore.loaded.set(false);
+      const deliver = startListening();
+
+      deliver({ docs: [] });
+      service.stopListening();
+      mockMemberStore.loaded.set(true);
+      TestBed.tick();
+
+      expect(mockHistoryStore.setHistory).not.toHaveBeenCalled();
+    });
   });
 
   describe('unpayHistory', () => {

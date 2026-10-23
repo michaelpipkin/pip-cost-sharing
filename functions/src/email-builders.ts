@@ -116,7 +116,9 @@ export function buildPaymentMethodLines(
     );
   if (userData['paypalId']) methods.push(`PayPal: ${userData['paypalId']}`);
   if (userData['cashAppId'])
-    methods.push(`Cash App: $${userData['cashAppId']}`);
+    methods.push(
+      `Cash App: $${(userData['cashAppId'] as string).replace(/^\$/, '')}`
+    );
   if (userData['zelleId']) methods.push(`Zelle: ${userData['zelleId']}`);
   return methods.length > 0
     ? methods.join('\n')
