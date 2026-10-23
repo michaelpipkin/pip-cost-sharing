@@ -18,7 +18,11 @@ import {
   deleteDocsIfUnchanged,
   normalizeEmail,
 } from './common';
-import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builders';
+import {
+  buildEmailHtml,
+  escapeHtml,
+  isSingleEmailAddress,
+} from './email-builders';
 
 // ---------------------------------------------------------------------------
 // Verified group emails (Plan 4 B19). All group mail goes to the member's
@@ -169,7 +173,9 @@ function isDocId(value: unknown): value is string {
 
 function isLinkedTo(member: DocumentData | undefined, uid: string): boolean {
   const userRef: unknown = member?.['userRef'];
-  return userRef instanceof DocumentReference && userRef.path === `users/${uid}`;
+  return (
+    userRef instanceof DocumentReference && userRef.path === `users/${uid}`
+  );
 }
 
 /**
@@ -273,10 +279,7 @@ function recipientCooldownRef(
 }
 
 /** Refuses an address whose cooldown (if any) has not ended at `nowMs`. */
-function assertNotCoolingDown(
-  snap: DocumentSnapshot,
-  nowMs: number
-): void {
+function assertNotCoolingDown(snap: DocumentSnapshot, nowMs: number): void {
   const expiresAt: unknown = snap.get('expiresAt');
   if (expiresAt instanceof Timestamp && expiresAt.toMillis() > nowMs) {
     throw new HttpsError('resource-exhausted', CONFIRMATION_RECENTLY_SENT);
@@ -435,37 +438,47 @@ export const requestMemberEmailChange = onCall<{
     // One transaction, so two concurrent requests can't both leave a live
     // link behind (M1): the earlier tokens are read and deleted with the
     // new one's creation.
-    await db.runTransaction(async (txn) => {
-      await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
-      assertNotCoolingDown(await txn.get(cooldownRef), nowMs);
-      const earlier = await pendingTokensOf(txn, memberRef);
-      for (const ref of earlier) txn.delete(ref);
-      txn.set(cooldownRef, {
-        sentAt: Timestamp.fromMillis(nowMs),
-        expiresAt: Timestamp.fromMillis(nowMs + RECIPIENT_COOLDOWN_MS),
+    await db
+      .runTransaction(async (txn) => {
+        await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+        assertNotCoolingDown(await txn.get(cooldownRef), nowMs);
+        const earlier = await pendingTokensOf(txn, memberRef);
+        for (const ref of earlier) txn.delete(ref);
+        txn.set(cooldownRef, {
+          sentAt: Timestamp.fromMillis(nowMs),
+          expiresAt: Timestamp.fromMillis(nowMs + RECIPIENT_COOLDOWN_MS),
+        });
+        txn.set(tokenRef, {
+          uid,
+          memberRef,
+          email,
+          emailLower,
+          createdAt: Timestamp.fromMillis(nowMs),
+          expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
+        });
+        txn.set(mailRef, {
+          to: email,
+          message: buildMemberEmailConfirmationEmail(
+            emailChangeConfirmLink(token)
+          ),
+        });
+      })
+      .catch(async (error: unknown) => {
+        // Only the re-check above throws this: another caller's mail to the
+        // address committed after our first read. A failed refund is
+        // logged, never thrown: the caller must still see the refusal.
+        if (isCooldownRefusal(error)) {
+          try {
+            await refundRequestAllowance(db, uid, nowMs);
+          } catch (refundError) {
+            console.error(
+              `Email change allowance refund failed for ${uid}:`,
+              refundError
+            );
+          }
+        }
+        throw error;
       });
-      txn.set(tokenRef, {
-        uid,
-        memberRef,
-        email,
-        emailLower,
-        createdAt: Timestamp.fromMillis(nowMs),
-        expiresAt: Timestamp.fromMillis(nowMs + EMAIL_CHANGE_TOKEN_TTL_MS),
-      });
-      txn.set(mailRef, {
-        to: email,
-        message: buildMemberEmailConfirmationEmail(
-          emailChangeConfirmLink(token)
-        ),
-      });
-    }).catch(async (error: unknown) => {
-      // Only the re-check above throws this: another caller's mail to the
-      // address committed after our first read.
-      if (isCooldownRefusal(error)) {
-        await refundRequestAllowance(db, uid, nowMs);
-      }
-      throw error;
-    });
     return { status: 'pending' };
   }
 );
@@ -608,7 +621,8 @@ export const updateMemberEmails = onCall<{ onlyFromEmail?: unknown }>(
         for (const snap of snaps) {
           if (!snap.exists || !isLinkedTo(snap.data(), uid)) continue;
           const stored: unknown = snap.get('email');
-          const current = typeof stored === 'string' ? normalizeEmail(stored) : '';
+          const current =
+            typeof stored === 'string' ? normalizeEmail(stored) : '';
           if (current === emailLower) continue;
           if (fromLower !== null && current !== fromLower) continue;
           const group = snap.ref.parent.path;

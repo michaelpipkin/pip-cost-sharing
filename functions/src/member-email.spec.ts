@@ -428,9 +428,9 @@ describe('requestMemberEmailChange', () => {
         status: 'pending',
       });
       // Another account, another group, the address in another casing.
-      await expect(
-        request(second, target.toUpperCase())
-      ).rejects.toMatchObject(COOLDOWN_REFUSAL);
+      await expect(request(second, target.toUpperCase())).rejects.toMatchObject(
+        COOLDOWN_REFUSAL
+      );
       expect(await mailTo(target)).toHaveLength(1);
       expect(await mailTo(target.toUpperCase())).toHaveLength(0);
       // The same caller again is refused the same way.
@@ -492,6 +492,43 @@ describe('requestMemberEmailChange', () => {
       expect(limit.get('count') ?? 0).toBe(0);
     });
 
+    // A refund that fails is logged, and the caller still sees the cooldown
+    // refusal rather than the refund's error.
+    it('still answers a lost race with the cooldown when the refund fails', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('raced-refund');
+      const runTransaction = db.runTransaction.bind(db);
+      const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+      // Transactions in order: the allowance, the send (refused by the
+      // re-check), then the refund, which fails here.
+      const spy = vi
+        .spyOn(db, 'runTransaction')
+        .mockImplementationOnce(async (fn: any, options?: any) => {
+          await cooldownDoc(target).set({
+            sentAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + RECIPIENT_COOLDOWN_MS),
+          });
+          return runTransaction(fn, options);
+        })
+        .mockImplementationOnce(runTransaction as any)
+        .mockImplementationOnce(async () => {
+          throw new Error('refund write failed');
+        });
+      try {
+        await expect(request(s, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+        expect(errorLog).toHaveBeenCalledWith(
+          expect.stringContaining(s.uid),
+          expect.objectContaining({ message: 'refund write failed' })
+        );
+      } finally {
+        spy.mockRestore();
+        errorLog.mockRestore();
+      }
+      expect(await mailTo(target)).toHaveLength(0);
+    });
+
     it('stores only a hash of the lowercased address, with an expiry', async () => {
       const s = await seedLinkedMember();
       const target = uniqueEmail('Target');
@@ -504,9 +541,7 @@ describe('requestMemberEmailChange', () => {
       expect(JSON.stringify(snap.data())).not.toContain(target);
       const expiresAt = (snap.get('expiresAt') as Timestamp).toMillis();
       expect(expiresAt).toBeGreaterThanOrEqual(before + RECIPIENT_COOLDOWN_MS);
-      expect(expiresAt).toBeLessThanOrEqual(
-        Date.now() + RECIPIENT_COOLDOWN_MS
-      );
+      expect(expiresAt).toBeLessThanOrEqual(Date.now() + RECIPIENT_COOLDOWN_MS);
     });
 
     it('allows the address again once the hour has passed', async () => {
@@ -567,7 +602,9 @@ describe('requestMemberEmailChange', () => {
 });
 
 describe('confirmMemberEmailChange', () => {
-  async function pending(): Promise<Seeded & { newEmail: string; token: string }> {
+  async function pending(): Promise<
+    Seeded & { newEmail: string; token: string }
+  > {
     const s = await seedLinkedMember();
     const newEmail = uniqueEmail('New');
     await request(s, newEmail);
@@ -851,7 +888,12 @@ describe('updateMemberEmails', () => {
     const user = await seedUser();
     const other = uniqueEmail('other');
     const row = await linkedRow(user, other);
-    for (const onlyFromEmail of [42, ['a@b.test'], { a: 1 }, 'x'.repeat(1001)]) {
+    for (const onlyFromEmail of [
+      42,
+      ['a@b.test'],
+      { a: 1 },
+      'x'.repeat(1001),
+    ]) {
       await expect(update(user, { onlyFromEmail })).rejects.toMatchObject({
         code: 'invalid-argument',
       });
@@ -913,9 +955,10 @@ describe('updateMemberEmails', () => {
     const row = await linkedRow(user, upper);
 
     await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
-    await expect(
-      update(user, { onlyFromEmail: upper })
-    ).resolves.toEqual({ updated: 0, conflicts: 0 });
+    await expect(update(user, { onlyFromEmail: upper })).resolves.toEqual({
+      updated: 0,
+      conflicts: 0,
+    });
 
     expect(await memberEmail(row)).toEqual({
       email: upper,
@@ -1013,8 +1056,14 @@ describe('updateMemberEmails', () => {
     await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
 
     expect(await memberEmail(own)).toMatchObject({ email: user.loginEmail });
-    expect(await memberEmail(othersRow)).toEqual({ email: old, emailLower: old });
-    expect(await memberEmail(unlinked)).toEqual({ email: old, emailLower: old });
+    expect(await memberEmail(othersRow)).toEqual({
+      email: old,
+      emailLower: old,
+    });
+    expect(await memberEmail(unlinked)).toEqual({
+      email: old,
+      emailLower: old,
+    });
   });
 
   // Ruling (T1): the scope is the client's former #linkedMembersQuery, which
@@ -1094,7 +1143,10 @@ describe('updateMemberEmails', () => {
     }
 
     expect(await memberEmail(kept)).toMatchObject({ email: user.loginEmail });
-    expect(await memberEmail(unlinked)).toEqual({ email: old, emailLower: old });
+    expect(await memberEmail(unlinked)).toEqual({
+      email: old,
+      emailLower: old,
+    });
   });
 
   // Minor 4c: more rows than one transaction takes are split across
