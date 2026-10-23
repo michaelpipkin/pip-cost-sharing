@@ -30,7 +30,9 @@ import {
  * self-service paths use (memberSelfUpdateValid): never granting themselves
  * groupAdmin (syncGroupMemberUids would copy it into adminUids, a full
  * admin), never changing userRef, and reactivating only by rejoining after
- * leaving voluntarily.
+ * leaving voluntarily. No member deletes their own doc (leaving keeps it),
+ * and a row whose member left can only be renamed by anyone else - not
+ * reopened, promoted, unlinked or deleted (leftRowUpdateValid).
  *
  * Every denial below got through the old self clause (`userRef == caller`,
  * any field). Each has a positive control on the same doc by the same user.
@@ -158,50 +160,84 @@ test.describe(
       });
     });
 
-    test('a member with no splits can leave by deleting their own doc', async () => {
+    // leaveGroup keeps the row whether or not the member has splits; a
+    // self-delete would orphan their splits in everyone's balances.
+    test('a member cannot delete their own doc (leaving keeps it)', async () => {
       await resetMember(members.deleter, users.deleter);
       await withDb(users.deleter, async (db) => {
-        await expectAllowed(deleteDoc(memberDoc(db, members.deleter)));
-      });
-      expect(await readMember(members.deleter)).toBeUndefined();
-      // Not recreatable by the member: create is admin-only.
-      await withDb(users.deleter, async (db) => {
-        await expectDenied(
-          setDoc(memberDoc(db, members.deleter), {
-            userRef: userRef(db, users.deleter),
-            displayName: members.deleter.displayName,
-            email: users.deleter.email,
-            active: true,
-            groupAdmin: false,
-          })
-        );
-      });
-      // Nor by the admin with the member's userRef: a client links no one
-      // but itself (invited rows are created unlinked and linked on the
-      // server through the verified-address index).
-      await withDb(users.admin, async (db) => {
-        const relink = {
-          userRef: userRef(db, users.deleter),
-          displayName: members.deleter.displayName,
-          email: users.deleter.email,
-          active: true,
-          groupAdmin: false,
-        };
-        await expectDenied(
-          setDoc(memberDoc(db, members.deleter), relink),
-          'admin recreates it linked'
-        );
-        // Positive control: the admin recreates it unlinked. A late
-        // syncMemberEmailLower run for this create can only link it to the
-        // deleter (the owner of that address) and set its emailLower, which
-        // is what the reset below writes anyway.
+        const own = memberDoc(db, members.deleter);
+        await expectDenied(deleteDoc(own), 'self-delete');
+        // Positive control: leaving, as leaveGroup does, on the same doc.
         await expectAllowed(
-          setDoc(memberDoc(db, members.deleter), { ...relink, userRef: null }),
-          'admin recreates it unlinked'
+          updateDoc(own, { active: false, leftGroup: true, groupAdmin: false }),
+          'leave'
+        );
+        // Still not deletable once left.
+        await expectDenied(deleteDoc(own), 'self-delete after leaving');
+      });
+      expect(await readMember(members.deleter)).toMatchObject({
+        leftGroup: true,
+      });
+      await resetMember(members.deleter, users.deleter);
+    });
+
+    // The kept row is what stops a re-invite: every server link path refuses
+    // a group where the user already has a row. So no one else may reopen,
+    // unlink or delete it - firestore.rules leftRowUpdateValid.
+    test('an admin cannot reopen, promote, unlink or delete a row whose member left', async () => {
+      await resetMember(members.frozen, users.frozen);
+      await withDb(users.admin, async (db) => {
+        const target = memberDoc(db, members.frozen);
+        const through = await notDenied([
+          ['active true', () => updateDoc(target, { active: true })],
+          ['leftGroup false', () => updateDoc(target, { leftGroup: false })],
+          [
+            'the rejoin shape',
+            () => updateDoc(target, { leftGroup: false, active: true }),
+          ],
+          [
+            "edit-member's Save with Active on",
+            () =>
+              updateDoc(target, {
+                displayName: members.frozen.displayName,
+                email: users.frozen.email,
+                active: true,
+                groupAdmin: false,
+              }),
+          ],
+          ['groupAdmin true', () => updateDoc(target, { groupAdmin: true })],
+          ['userRef to null', () => updateDoc(target, { userRef: null })],
+          ['delete', () => deleteDoc(target)],
+        ]);
+        expect(through).toEqual([]);
+
+        // Positive controls: a rename, and edit-member's Save with only the
+        // name changed (it sends the other fields unchanged).
+        await expectAllowed(
+          updateDoc(target, {
+            displayName: `Frozen ${randomUUID().slice(0, 8)}`,
+          }),
+          'rename'
+        );
+        await expectAllowed(
+          updateDoc(target, {
+            displayName: members.frozen.displayName,
+            email: users.frozen.email,
+            active: false,
+            groupAdmin: false,
+          }),
+          'Save with only the name changed'
         );
       });
-      // Back to the seeded (linked) state.
-      await resetMember(members.deleter, users.deleter);
+      expect(await readMember(members.frozen)).toMatchObject({
+        displayName: members.frozen.displayName,
+        active: false,
+        leftGroup: true,
+        groupAdmin: false,
+      });
+      expect((await readMember(members.frozen))?.['userRef']?.id).toBe(
+        users.frozen.uid
+      );
     });
 
     // M1/M2 (2026-10-23): Account > Profile's Sync used to write the

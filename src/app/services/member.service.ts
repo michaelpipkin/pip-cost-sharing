@@ -313,15 +313,16 @@ export class MemberService implements IMemberService {
   }
 
   /**
-   * Returns whether the member doc was deleted outright (no historical
-   * splits) versus kept and re-tagged left/inactive (has history) - callers
-   * need this to know whether the group should disappear entirely from
-   * their group list or just be re-tagged as a rejoin candidate.
+   * Marks the caller's own member row as left, splits or not: the row is
+   * never deleted. It keeps the group in the caller's rejoin list, and it
+   * stops an admin re-inviting them (no server link path links a user into
+   * a group where they already have a row, and the rules let no one else
+   * reopen, unlink or delete a left row).
    */
   async leaveGroup(
     groupId: string,
     memberRef: DocumentReference<Member>
-  ): Promise<{ deleted: boolean }> {
+  ): Promise<void> {
     const userRef = this.userStore.user()!.ref!;
     const c = collection(this.fs, `groups/${groupId}/members`);
     const q = query(c, where('groupAdmin', '==', true));
@@ -332,29 +333,12 @@ export class MemberService implements IMemberService {
       );
     }
 
-    const splits = await getDocs(
-      collection(this.fs, `groups/${groupId}/splits`)
-    );
-    const memberSplit = splits.docs.some(
-      (doc) =>
-        doc.data().owedByMemberRef.eq(memberRef) ||
-        doc.data().paidByMemberRef.eq(memberRef)
-    );
-
-    let deleted: boolean;
-    if (memberSplit) {
-      await updateDoc(memberRef, {
-        active: false,
-        leftGroup: true,
-        groupAdmin: false,
-      });
-      deleted = false;
-    } else {
-      await deleteDoc(memberRef);
-      deleted = true;
-    }
+    await updateDoc(memberRef, {
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+    });
     await updateDoc(userRef, { defaultGroupRef: null });
-    return { deleted };
   }
 
   // Self-service counterpart to leaveGroup(): the member's own action to

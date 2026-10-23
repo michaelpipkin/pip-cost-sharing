@@ -143,7 +143,11 @@ export class EditMemberComponent {
         !!this.member.leftGroup ||
         (this.activeMemberCount === 1 && !!this.editMemberModel().active),
     });
-    disabled(p.groupAdmin, { when: () => this.isOwnRow });
+    // Only the member may change a row they left (firestore.rules
+    // leftRowUpdateValid): an admin can rename it, nothing else.
+    disabled(p.groupAdmin, {
+      when: () => this.isOwnRow || !!this.member.leftGroup,
+    });
   });
 
   #computeActiveTooltip(): string {
@@ -331,26 +335,18 @@ export class EditMemberComponent {
         try {
           this.loading.loadingOn();
           const memberRef = this.member.ref!;
-          const { deleted } = await this.memberService.leaveGroup(
-            this.data.groupId,
-            memberRef
-          );
-          // Also stops the left group's data listeners, not just unselects it
-          this.groupService.clearCurrentGroup();
-          if (deleted) {
-            // No historical splits - the member doc is gone entirely, so
-            // there's nothing left to rejoin; drop the group from the list.
-            this.groupStore.removeGroup(this.data.groupId);
-          } else {
-            // Member doc kept (has history) - re-tag it as left rather than
-            // removing it, so it correctly appears as a rejoin candidate
-            // immediately instead of only after the next full reload.
-            this.groupStore.patchGroupMembership(this.data.groupId, {
-              userActiveInGroup: false,
-              userLeftGroup: true,
-              userIsAdmin: false,
-            });
-          }
+          await this.memberService.leaveGroup(this.data.groupId, memberRef);
+          // Stops the left group's data listeners. The replacement selection
+          // is the groups listener's: the leave write already fired it.
+          this.groupService.releaseLeftGroup(this.data.groupId);
+          // The member doc is kept (leaveGroup never deletes it): re-tag it
+          // as left so it appears as a rejoin candidate straight away
+          // instead of only after the next full reload.
+          this.groupStore.patchGroupMembership(this.data.groupId, {
+            userActiveInGroup: false,
+            userLeftGroup: true,
+            userIsAdmin: false,
+          });
           this.userStore.updateUser({ defaultGroupRef: null });
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
             data: { message: 'You have left the group successfully.' },

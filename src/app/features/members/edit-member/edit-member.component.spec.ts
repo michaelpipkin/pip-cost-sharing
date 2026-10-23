@@ -52,7 +52,10 @@ describe('EditMemberComponent', () => {
   let mockUserStore: ReturnType<typeof createMockUserStore>;
   let mockMemberStore: ReturnType<typeof createMockMemberStore>;
   let mockGroupStore: ReturnType<typeof createMockGroupStore>;
-  let mockGroupService: { clearCurrentGroup: ReturnType<typeof vi.fn> };
+  let mockGroupService: {
+    clearCurrentGroup: ReturnType<typeof vi.fn>;
+    releaseLeftGroup: ReturnType<typeof vi.fn>;
+  };
 
   const userRef = mockDocRef('users/user-1');
   const testUser = mockUser({ id: 'user-1', ref: userRef });
@@ -97,7 +100,10 @@ describe('EditMemberComponent', () => {
     mockUserStore = createMockUserStore();
     mockMemberStore = createMockMemberStore();
     mockGroupStore = createMockGroupStore();
-    mockGroupService = { clearCurrentGroup: vi.fn() };
+    mockGroupService = {
+      clearCurrentGroup: vi.fn(),
+      releaseLeftGroup: vi.fn(),
+    };
     mockMemberService = {
       updateMember: vi.fn().mockResolvedValue(undefined),
       requestMemberEmailChange: vi.fn().mockResolvedValue('pending'),
@@ -706,6 +712,18 @@ describe('EditMemberComponent', () => {
         'This member left the group voluntarily. They can rejoin from their own account settings.'
       );
     });
+
+    // firestore.rules leftRowUpdateValid: an admin may only rename the row.
+    it('should disable the Group Admin toggle', () => {
+      expect((component as any).editMemberForm.groupAdmin().disabled()).toBe(
+        true
+      );
+    });
+
+    it('should hide Remove, since no one else may delete the row', () => {
+      expect(query('remove-member-button')).toBeFalsy();
+      expect(query('leave-group-button')).toBeFalsy();
+    });
   });
 
   describe('when a member was merely deactivated by an admin (not leftGroup)', () => {
@@ -725,6 +743,13 @@ describe('EditMemberComponent', () => {
 
     it('should not show the leftGroup tooltip', () => {
       expect((component as any).activeTooltip).toBe('');
+    });
+
+    it('should still offer Remove and the Group Admin toggle', () => {
+      expect(query('remove-member-button')).toBeTruthy();
+      expect((component as any).editMemberForm.groupAdmin().disabled()).toBe(
+        false
+      );
     });
   });
 
@@ -752,8 +777,7 @@ describe('EditMemberComponent', () => {
       expect(dialogSpy).toHaveBeenCalled();
     });
 
-    it('should remove the group from the store when leaving deletes the member doc (no history)', async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: true });
+    it("should stop the left group's data listeners without cancelling the replacement selection", async () => {
       vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
         true
       );
@@ -770,33 +794,13 @@ describe('EditMemberComponent', () => {
       component.leaveGroup();
       await confirmCallback(true);
 
-      expect(mockGroupStore.removeGroup).toHaveBeenCalledWith(groupId);
-      expect(mockGroupStore.patchGroupMembership).not.toHaveBeenCalled();
-    });
-
-    it("should stop the left group's data listeners, not just unselect it", async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
-      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
-        true
+      expect(mockGroupService.releaseLeftGroup).toHaveBeenCalledExactlyOnceWith(
+        groupId
       );
-      let confirmCallback!: (confirm: boolean) => Promise<void>;
-      vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
-        afterClosed: () => ({
-          subscribe: (cb: (confirm: boolean) => Promise<void>) => {
-            confirmCallback = cb;
-            return { unsubscribe: vi.fn() };
-          },
-        }),
-      });
-
-      component.leaveGroup();
-      await confirmCallback(true);
-
-      expect(mockGroupService.clearCurrentGroup).toHaveBeenCalledOnce();
+      expect(mockGroupService.clearCurrentGroup).not.toHaveBeenCalled();
     });
 
-    it('should re-tag the group as left in the store when leaving keeps the member doc (has history)', async () => {
-      mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
+    it('should re-tag the group as left in the store (the member doc is always kept)', async () => {
       vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
         true
       );

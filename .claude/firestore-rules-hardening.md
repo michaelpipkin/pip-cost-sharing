@@ -977,6 +977,26 @@ linking, so the app no longer needs to read or write any other user's doc:
 - **Tests** (`957fe461`, `93340f76`): e2e journeys for server-side linking and
   payment handles; `e2e/infra/users-read-rules.spec.ts` covers the rules.
 
+### Left members stay left (2026-10-23, branch `left-member-lockdown`)
+
+Two ways an admin could pull back a member who had left, found while checking
+direct-SDK attacks after the read half merged:
+
+- **Reopening the row.** The edit-member dialog locked a left member's Active
+  toggle, but the rules let any admin update set `active: true, leftGroup:
+  false`. Now `leftRowUpdateValid` lets only the member themself change a
+  left row (rejoinGroup). Anyone else may only rename it: no reactivating,
+  clearing `leftGroup`, promoting or unlinking. Delete is denied too.
+- **Re-inviting after a no-splits leave.** `leaveGroup()` deleted the row
+  when the member had no splits, so an admin could add the address again and
+  the server would re-link it. Now `leaveGroup()` always keeps the row, marked
+  left. Every server link path (`linkMemberByVerifiedEmail`,
+  `onePerGroupLinks`) already refuses a group where the user has a row, so the
+  kept row blocks a re-invite under any of the user's addresses.
+
+The self-delete clause on `members` is gone as well. Nothing in the app uses
+it any more, and a direct self-delete would orphan the member's splits.
+
 ## Sequencing note
 
 Phases 0 and 1 are safe to deploy on any normal day; they change no

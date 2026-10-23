@@ -120,6 +120,35 @@ describe('linkInvitedMembersInternal', () => {
     );
   });
 
+  it('does not link a re-invite into a group the caller left', async () => {
+    const address = `left-${randomUUID()}@example.com`;
+    const userRef = db.collection('users').doc();
+    const group = db.collection('groups').doc();
+    await group.collection('members').doc().set({
+      displayName: 'Me',
+      email: address,
+      emailLower: address,
+      active: false,
+      leftGroup: true,
+      groupAdmin: false,
+      userRef,
+    });
+    const reinvite = group.collection('members').doc();
+    await reinvite.set({
+      displayName: 'Me again',
+      email: address,
+      emailLower: address,
+      active: true,
+      groupAdmin: false,
+      userRef: null,
+    });
+
+    const result = await linkInvitedMembersInternal(userRef.id, address);
+
+    expect(result.membersLinked).toBe(0);
+    expect((await reinvite.get()).data()?.['userRef']).toBeNull();
+  });
+
   it('links only one of two invited rows in the same group', async () => {
     const address = `two-${randomUUID()}@example.com`;
     const userRef = db.collection('users').doc();

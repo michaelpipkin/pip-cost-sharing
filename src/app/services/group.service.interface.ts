@@ -15,5 +15,6 @@ export interface IGroupService {
     changes: Partial<Group>
   ): Promise<any>;
   clearCurrentGroup(skipAutoSelect?: boolean): void;
+  releaseLeftGroup(groupId: string): void;
   logout(): void;
 }

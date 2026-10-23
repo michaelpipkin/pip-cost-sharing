@@ -139,7 +139,8 @@ export async function linkMemberByVerifiedEmail(
     return 'linked';
   });
   if (result === 'already-in-group') {
-    // An admin added one person twice under two of their addresses.
+    // An admin added one person twice under two of their addresses, or
+    // re-invited someone who left (leaveGroup keeps their row).
     console.warn(
       `Not linking ${memberRef.path}: user ${owner} already has a row in its group`
     );

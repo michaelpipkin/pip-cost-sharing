@@ -114,7 +114,8 @@
       >
         Leave Group
       </button>
-    } @else {
+    } @else if (!member.leftGroup) {
+      <!-- A member who left keeps their row, which no one else may delete -->
       <button
         mat-raised-button
         type="button"
