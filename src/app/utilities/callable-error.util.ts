@@ -49,3 +49,37 @@ export function isInvalidLoginEmailRefusal(error: unknown): boolean {
     code === 'functions/failed-precondition' && message === LOGIN_EMAIL_INVALID
   );
 }
+
+/**
+ * The group-mail callables' refusal once the caller has reached their daily
+ * allowance (functions/src/mail-allowance.ts GROUP_MAIL_LIMIT_REACHED),
+ * shown as is. Payment requests, unpay notices and invites share it.
+ */
+export const GROUP_MAIL_LIMIT_REACHED =
+  "You've reached today's limit for group emails. Try again tomorrow.";
+
+/** Whether `error` is that refusal (resource-exhausted, GROUP_MAIL_LIMIT_REACHED). */
+export function isGroupMailLimitRefusal(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return (
+    code === 'functions/resource-exhausted' &&
+    message === GROUP_MAIL_LIMIT_REACHED
+  );
+}
+
+/**
+ * requestMemberEmailChange's refusal of an address that got a confirmation
+ * mail within the hour, from any account (functions/src/member-email.ts
+ * CONFIRMATION_RECENTLY_SENT), shown as is.
+ */
+export const CONFIRMATION_RECENTLY_SENT =
+  'A confirmation email was sent to that address recently. Try again in an hour.';
+
+/** Whether `error` is that refusal (resource-exhausted, CONFIRMATION_RECENTLY_SENT). */
+export function isConfirmationCooldownRefusal(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return (
+    code === 'functions/resource-exhausted' &&
+    message === CONFIRMATION_RECENTLY_SENT
+  );
+}

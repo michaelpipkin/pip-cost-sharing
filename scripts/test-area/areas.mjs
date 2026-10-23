@@ -130,10 +130,17 @@ const APP_CHECK_ERRORS = [
   `${UTILITIES}/app-check-error.util.spec.ts`,
 ];
 const USER_SERVICE = [`${SERVICES}/user.service.spec.ts`];
+// The per-caller daily allowance every group-mail callable charges
+// (functions/src/mail-allowance.ts): the group-email callables below and
+// sendGroupInvite (groups, members).
+const MAIL_ALLOWANCE_FUNCTIONS = ['src/mail-allowance.spec.ts'];
 // The server side of the user service's group emails (payment requests and
 // unpay notices): a functions spec, so it goes in each area's `functions`
 // list wherever USER_SERVICE is in its `unit` list.
-const USER_SERVICE_FUNCTIONS = ['src/group-emails.spec.ts'];
+const USER_SERVICE_FUNCTIONS = [
+  'src/group-emails.spec.ts',
+  ...MAIL_ALLOWANCE_FUNCTIONS,
+];
 const LOADING = [`${COMPONENTS}/loading`];
 // The mail queue sender (every email the backend sends goes through it) and
 // the shared helpers it and the callables build on (admin check, delivery
@@ -156,8 +163,9 @@ const INVITE_LINKING_FUNCTIONS = [
 // Profile's Sync and the group email update dialog call updateMemberEmails.
 const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
 // Reads a callable's code and server message (edit-member, the confirm
-// page, Profile's Sync, the group email update dialog): with every area
-// whose code imports it.
+// page, Profile's Sync, the group email update dialog, and the daily
+// group-mail limit on Summary, History detail and Members' invite): with
+// every area whose code imports it.
 const CALLABLE_ERROR = [`${UTILITIES}/callable-error.util.spec.ts`];
 // The safe sign-in returnUrl (B20): the auth guards put the attempted page on
 // the login URL, and the group service returns the user there after sign-in.
@@ -341,6 +349,7 @@ export const AREAS = {
       'src/invite-email.spec.ts',
       ...INVITE_LINKING_FUNCTIONS,
       'src/send-group-invite.spec.ts',
+      ...MAIL_ALLOWANCE_FUNCTIONS,
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
@@ -387,6 +396,7 @@ export const AREAS = {
       ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
       'src/send-group-invite.spec.ts',
+      ...MAIL_ALLOWANCE_FUNCTIONS,
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
       'src/sync-group-member-uids.spec.ts',
@@ -584,6 +594,8 @@ export const AREAS = {
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
       `${FEATURES}/summary`,
+      // The daily group-mail limit refusal (Request Payment / Request All).
+      ...CALLABLE_ERROR,
       `${SERVICES}/history.service.spec.ts`,
       `${SERVICES}/split.service.spec.ts`,
       ...LOCALE,
@@ -618,6 +630,8 @@ export const AREAS = {
       ...APP_CHECK_ERRORS,
       ...USER_SERVICE,
       `${FEATURES}/history`,
+      // The daily group-mail limit refusal (the unpay notices).
+      ...CALLABLE_ERROR,
       `${SERVICES}/history.service.spec.ts`,
       ...LOCALE,
       ...SORTING,

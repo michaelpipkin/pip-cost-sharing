@@ -35,6 +35,7 @@ import {
   mockSplit,
 } from '@testing/test-helpers';
 import { UserService } from '@services/user.service';
+import { GROUP_MAIL_LIMIT_REACHED } from '@utils/callable-error.util';
 import * as firestoreModule from 'firebase/firestore';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryDetailComponent } from './history-detail.component';
@@ -460,6 +461,11 @@ describe('HistoryDetailComponent', () => {
     CustomSnackbarComponent,
     { data: { message } },
   ];
+  // The server's per-caller daily allowance (functions/src/mail-allowance.ts).
+  const limitRefusal = () =>
+    Object.assign(new Error(`${GROUP_MAIL_LIMIT_REACHED} [429]`), {
+      code: 'functions/resource-exhausted',
+    });
 
   function splitSnapshot(id: string, data: Record<string, unknown> | null) {
     return {
@@ -847,6 +853,26 @@ describe('HistoryDetailComponent', () => {
       expect(navigate).toHaveBeenCalledWith(['/analysis/history']);
     });
 
+    it('should unpay and say no one was emailed when the daily group-mail limit is reached', async () => {
+      const h = paidTwo();
+      component.history.set(h);
+      mockUserService.sendMemberPaymentUnpayEmails.mockRejectedValueOnce(
+        limitRefusal()
+      );
+      const dialog = pendingConfirm();
+      component.onUnpayAll();
+
+      await dialog.close(true);
+
+      expect(mockHistoryService.unpayHistory).toHaveBeenCalledWith(h);
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        ...snackbarMessage(
+          "Payment marked as unpaid. No one was emailed: you've reached today's limit for group emails."
+        )
+      );
+      expect(navigate).toHaveBeenCalledWith(['/analysis/history']);
+    });
+
     it('should show and log the error and stay on the page when unpaying fails', async () => {
       component.history.set(paidTwo());
       mockHistoryService.unpayHistory.mockRejectedValueOnce(new Error('denied'));
@@ -970,6 +996,29 @@ describe('HistoryDetailComponent', () => {
       expect(mockHistoryService.unpayGroupSettle).toHaveBeenCalledWith(
         groupId,
         'batch-1'
+      );
+    });
+
+    it('should unpay and say no one was emailed when the daily group-mail limit is reached', async () => {
+      const h = settle();
+      mockHistoryStore.groupHistory.set([h]);
+      component.history.set(h);
+      mockUserService.sendGroupSettleUnpayEmails.mockRejectedValueOnce(
+        limitRefusal()
+      );
+      const dialog = pendingConfirm();
+      component.onUnpayGroupSettle();
+
+      await dialog.close(true);
+
+      expect(mockHistoryService.unpayGroupSettle).toHaveBeenCalledWith(
+        groupId,
+        'batch-1'
+      );
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        ...snackbarMessage(
+          "Group settle marked as unpaid. No one was emailed: you've reached today's limit for group emails."
+        )
       );
     });
 

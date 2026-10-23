@@ -59,6 +59,10 @@ import {
   HelpDialogComponent,
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
+import {
+  GROUP_MAIL_LIMIT_REACHED,
+  isGroupMailLimitRefusal,
+} from '@utils/callable-error.util';
 import { toIsoFormat } from '@utils/date-utils';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { SettleGroupDialogComponent } from '../settle-group-dialog/settle-group-dialog.component';
@@ -798,6 +802,7 @@ export class SummaryComponent {
         data: { message },
       });
     } catch (error) {
+      if (this.#showGroupMailLimit(error)) return;
       this.analytics.logError(
         'Summary Component',
         'request_payment',
@@ -833,6 +838,7 @@ export class SummaryComponent {
         data: { message },
       });
     } catch (error) {
+      if (this.#showGroupMailLimit(error)) return;
       this.analytics.logError(
         'Summary Component',
         'request_all_payments',
@@ -846,6 +852,19 @@ export class SummaryComponent {
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  /**
+   * The caller's daily group-mail allowance is used up (functions/src/
+   * mail-allowance.ts): an outcome for the user, not an error, so it is
+   * shown and not logged. Returns whether `error` was that refusal.
+   */
+  #showGroupMailLimit(error: unknown): boolean {
+    if (!isGroupMailLimitRefusal(error)) return false;
+    this.snackbar.openFromComponent(CustomSnackbarComponent, {
+      data: { message: GROUP_MAIL_LIMIT_REACHED },
+    });
+    return true;
   }
 
   // Helper method to format currency

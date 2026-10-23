@@ -41,6 +41,8 @@ import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
   callableError,
+  CONFIRMATION_RECENTLY_SENT,
+  isConfirmationCooldownRefusal,
   isUnverifiedLoginRefusal,
   VERIFY_LOGIN_EMAIL,
 } from '@utils/callable-error.util';
@@ -197,7 +199,10 @@ export class EditMemberComponent {
     // The server's message, without the HTTP status the SDK appends.
     const { code, message: serverMessage } = callableError(error);
     let message: string;
-    if (code === 'functions/resource-exhausted') {
+    if (isConfirmationCooldownRefusal(error)) {
+      // The address got a confirmation mail within the hour (from anyone).
+      message = CONFIRMATION_RECENTLY_SENT;
+    } else if (code === 'functions/resource-exhausted') {
       message = 'Too many email change requests. Please try again tomorrow.';
     } else if (isUnverifiedLoginRefusal(error)) {
       message = VERIFY_LOGIN_EMAIL;
@@ -223,8 +228,9 @@ export class EditMemberComponent {
    * then a changed email goes through the server (requestMemberEmailChange),
    * which applies the verified sign-in address at once and otherwise mails a
    * confirmation link to the new address. If that request is refused (the
-   * daily limit, a duplicate address), only the refusal is reported and the
-   * dialog stays open; the other fields are already saved.
+   * daily limit, the address's hourly cooldown, a duplicate address), only
+   * the refusal is reported and the dialog stays open; the other fields are
+   * already saved.
    */
   async #saveOwnRow(
     memberRef: DocumentReference<Member>,

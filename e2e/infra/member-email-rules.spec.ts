@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 // Plain Playwright, not ../fixtures: this spec needs no page or browser.
 import { expect, test } from '@playwright/test';
 import {
@@ -41,7 +41,8 @@ import {
  * - email on an unlinked doc: admins, as before (edit-member's
  *   updateMemberWithUserMatching, which may link in the same write).
  * - emailLower, when a client writes it, must equal email lowercased.
- * - the callable's token and rate-limit collections are server-only.
+ * - the callable's token, rate-limit and recipient-cooldown collections,
+ *   and the group-mail callables' per-caller limits, are server-only.
  * Every denial has a positive control on the same doc by the same user.
  */
 
@@ -481,6 +482,39 @@ test.describe(
           ['delete a token', () => deleteDoc(token)],
           ['read own rate limit', () => getDoc(limit)],
           ['reset own rate limit', () => setDoc(limit, { count: 0 })],
+        ]);
+        expect(through).toEqual([]);
+      });
+    });
+
+    test('the recipient cooldowns and group-mail limits are server-only', async () => {
+      const { db: adminDb } = getSeedAdmin();
+      const hash = createHash('sha256')
+        .update(randomEmail('cooldown'))
+        .digest('hex');
+      await adminDb.doc(`memberEmailRecipientCooldown/${hash}`).set({
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      await adminDb.doc(`groupMailLimits/${users.self.uid}`).set({
+        hours: {},
+      });
+      await withDb(users.self, async (db) => {
+        const cooldown = doc(db, 'memberEmailRecipientCooldown', hash);
+        const limit = doc(db, 'groupMailLimits', users.self.uid);
+        const newCooldown = doc(
+          db,
+          'memberEmailRecipientCooldown',
+          `c-${randomUUID()}`
+        );
+        // Positive control: the same user can still read their own profile.
+        expect((await getDoc(userRef(db, users.self))).exists()).toBe(true);
+        const through = await notDenied([
+          ['read a cooldown', () => getDoc(cooldown)],
+          ['clear a cooldown', () => deleteDoc(cooldown)],
+          ['write a cooldown', () => setDoc(newCooldown, { expiresAt: 0 })],
+          ['read own group-mail limit', () => getDoc(limit)],
+          ['reset own group-mail limit', () => setDoc(limit, { hours: {} })],
+          ['delete own group-mail limit', () => deleteDoc(limit)],
         ]);
         expect(through).toEqual([]);
       });

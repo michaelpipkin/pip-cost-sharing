@@ -22,6 +22,7 @@ import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { SplitStore } from '@store/split.store';
 import { UserStore } from '@store/user.store';
+import { GROUP_MAIL_LIMIT_REACHED } from '@utils/callable-error.util';
 import {
   createMockAnalyticsService,
   createMockCategoryStore,
@@ -1103,6 +1104,36 @@ describe('SummaryComponent', () => {
         'Something went wrong - could not send payment requests'
       );
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    // The server's per-caller daily allowance (functions/src/mail-allowance.ts).
+    const limitRefusal = () =>
+      new FirebaseError(
+        'functions/resource-exhausted',
+        `${GROUP_MAIL_LIMIT_REACHED} [429]`
+      );
+
+    it('says the daily group-mail limit was reached, without logging an error (one request)', async () => {
+      mockUserService.sendPaymentRequestEmail = vi
+        .fn()
+        .mockRejectedValue(limitRefusal());
+
+      await component.requestPayment(component.summaryData()[0]!);
+
+      expect(lastSnackbar()).toBe(GROUP_MAIL_LIMIT_REACHED);
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('says the daily group-mail limit was reached, without logging an error (request all)', async () => {
+      mockUserService.sendGroupPaymentRequestEmails = vi
+        .fn()
+        .mockRejectedValue(limitRefusal());
+
+      await component.requestAllPayments();
+
+      expect(lastSnackbar()).toBe(GROUP_MAIL_LIMIT_REACHED);
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
     });
 
     it('opens the App Check dialog instead when the callable is refused as unauthenticated', async () => {

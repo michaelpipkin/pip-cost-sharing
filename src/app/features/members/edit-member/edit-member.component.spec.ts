@@ -512,6 +512,34 @@ describe('EditMemberComponent', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
+    // The per-recipient cooldown (one confirmation per address per hour).
+    it('should say the address got a confirmation recently and keep the dialog open', async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        Object.assign(
+          new Error(
+            'A confirmation email was sent to that address recently. Try again in an hour. [429]'
+          ),
+          { code: 'functions/resource-exhausted' }
+        )
+      );
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message:
+              'A confirmation email was sent to that address recently. Try again in an hour.',
+          },
+        }
+      );
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledOnce();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
+
     // I1: an unverified login email can't request a change.
     it('should ask for a verified login email (permission-denied)', async () => {
       mockMemberService.requestMemberEmailChange.mockRejectedValue(

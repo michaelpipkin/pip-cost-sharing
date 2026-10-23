@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   callableError,
+  CONFIRMATION_RECENTLY_SENT,
+  GROUP_MAIL_LIMIT_REACHED,
+  isConfirmationCooldownRefusal,
+  isGroupMailLimitRefusal,
   isInvalidLoginEmailRefusal,
   isUnverifiedLoginRefusal,
 } from './callable-error.util';
@@ -104,5 +108,77 @@ describe('isInvalidLoginEmailRefusal', () => {
       )
     ).toBe(false);
     expect(isInvalidLoginEmailRefusal(null)).toBe(false);
+  });
+});
+
+describe('isGroupMailLimitRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the group-mail callables’ daily-limit refusal', () => {
+    expect(GROUP_MAIL_LIMIT_REACHED).toBe(
+      "You've reached today's limit for group emails. Try again tomorrow."
+    );
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${GROUP_MAIL_LIMIT_REACHED} [429]`
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another resource-exhausted refusal or another code', () => {
+    // sendGroupInvite's own per-member cooldown.
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          'An invitation was already sent to this address recently. Try again in 3 hour(s). [429]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isGroupMailLimitRefusal(
+        refusal('functions/internal', GROUP_MAIL_LIMIT_REACHED)
+      )
+    ).toBe(false);
+    expect(isGroupMailLimitRefusal(undefined)).toBe(false);
+  });
+});
+
+describe('isConfirmationCooldownRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches requestMemberEmailChange’s per-recipient cooldown refusal', () => {
+    expect(CONFIRMATION_RECENTLY_SENT).toBe(
+      'A confirmation email was sent to that address recently. Try again in an hour.'
+    );
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${CONFIRMATION_RECENTLY_SENT} [429]`
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match the per-account daily limit or another code', () => {
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          'Too many email change requests. Please try again tomorrow. [429]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isConfirmationCooldownRefusal(
+        refusal('functions/internal', CONFIRMATION_RECENTLY_SENT)
+      )
+    ).toBe(false);
   });
 });

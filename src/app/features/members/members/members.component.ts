@@ -55,6 +55,11 @@ import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { buildMembersTourSteps } from './members.tour';
 import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
+import {
+  callableError,
+  GROUP_MAIL_LIMIT_REACHED,
+  isGroupMailLimitRefusal,
+} from '@utils/callable-error.util';
 import { isSingleEmailAddress } from '@utils/email-validation';
 
 // Anti-spam window for invites, mirrored server-side in
@@ -229,10 +234,19 @@ export class MembersComponent {
           data: { message: `Invitation sent to ${member.email}` },
         });
       } catch (error) {
+        // The daily group-mail allowance (functions/src/mail-allowance.ts)
+        // is an outcome for the user, not an error: shown, not logged.
+        if (isGroupMailLimitRefusal(error)) {
+          this.snackbar.openFromComponent(CustomSnackbarComponent, {
+            data: { message: GROUP_MAIL_LIMIT_REACHED },
+          });
+          return;
+        }
+        // The server's message, without the HTTP status the SDK appends.
         this.appCheckErrorHandler.handle(
           error,
           error instanceof Error
-            ? error.message
+            ? callableError(error).message
             : 'Something went wrong - could not send invitation'
         );
         if (error instanceof Error) {

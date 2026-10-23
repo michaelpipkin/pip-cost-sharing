@@ -12,7 +12,7 @@ import { signInAs } from '../utils/session';
 // An admin can no longer change it; the member changes it through a link
 // mailed to the new address. See e2e/seed/datasets/member-email.ts.
 
-const { users, groups, selfMember } = MEMBER_EMAIL;
+const { users, groups, selfMember, cooldownMember } = MEMBER_EMAIL;
 
 /** The confirmation link's path (the mailed link points at production). */
 function confirmPath(mailText: string): string {
@@ -111,5 +111,44 @@ test.describe('Member group email', { tag: ['@members', '@auth'] }, () => {
     await expect(page.getByTestId('confirm-group-email-error')).toHaveText(
       "This link has expired or was already used. Request a new one from the group's Members page."
     );
+  });
+
+  test('a second confirmation to the same address within the hour is refused', async ({
+    page,
+  }) => {
+    const members = new MembersPage(page);
+    const target = `member-email-cooldown-${randomUUID().slice(0, 8)}@pipsplit.test`;
+
+    await signInAs(page, users.cooldown);
+    await members.goto();
+    await expect(members.currentGroupName).toHaveText(groups.cooldown.name);
+
+    await members.editMember(cooldownMember.key, { email: target });
+    await expect(
+      members.snackbarWith(
+        `We sent a confirmation link to ${target}. Your group email will change once you confirm it.`
+      )
+    ).toBeVisible();
+
+    // The same address again: refused by the per-recipient cooldown, with
+    // the dialog left open.
+    await members.clickMemberRow(cooldownMember.key);
+    await members.fillEditMemberForm(undefined, target);
+    await members.editMemberSaveButton.click();
+    await expect(
+      members.snackbarWith(
+        'A confirmation email was sent to that address recently. Try again in an hour.'
+      )
+    ).toBeVisible();
+    await members.waitForLoadingComplete();
+    await expect(members.editMemberDialog).toBeVisible();
+    await members.cancelEditMember();
+
+    // Only the first request queued a mail.
+    const mail = await getSeedAdmin()
+      .db.collection('mail')
+      .where('to', '==', target)
+      .get();
+    expect(mail.size).toBe(1);
   });
 });

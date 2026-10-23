@@ -5,6 +5,7 @@ import {
   getFirestore,
   Timestamp,
   type DocumentData,
+  type DocumentSnapshot,
   type Firestore,
   type Query,
   type QuerySnapshot,
@@ -32,7 +33,9 @@ import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builde
 // group name or other address): the request can name any address, so
 // anything the caller controls in the mail would make this a spam relay
 // (Ruling R18). Requests are capped per uid (EMAIL_CHANGE_LIMIT per fixed
-// window) for the same reason.
+// window) for the same reason, and per recipient (one confirmation mail per
+// address per RECIPIENT_COOLDOWN_MS, from any caller), so throwaway accounts
+// can't multiply the per-uid cap against one address.
 //
 // getFirestore() is called inside each handler rather than at module scope:
 // index.ts imports (and so evaluates) this module before it calls
@@ -43,6 +46,13 @@ import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builde
 export const MEMBER_EMAIL_TOKENS = 'memberEmailChangeTokens';
 /** Per-uid request counters. Server-only (rules deny all). */
 export const MEMBER_EMAIL_LIMITS = 'memberEmailChangeLimits';
+/**
+ * Per-recipient cooldowns, keyed by sha256 of the lowercased address so no
+ * raw address is a doc id: { sentAt, expiresAt }. Server-only (rules deny
+ * all). The nightly cleanup deletes ended ones; a Firestore TTL policy on
+ * expiresAt could do the same (not configured in production).
+ */
+export const MEMBER_EMAIL_RECIPIENT_COOLDOWNS = 'memberEmailRecipientCooldown';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Requests that mail a link, per uid per fixed window. */
@@ -50,6 +60,8 @@ export const EMAIL_CHANGE_LIMIT = 5;
 export const EMAIL_CHANGE_WINDOW_MS = DAY_MS;
 /** How long a confirmation link works. */
 export const EMAIL_CHANGE_TOKEN_TTL_MS = DAY_MS;
+/** One confirmation mail per address per this long, from any caller. */
+export const RECIPIENT_COOLDOWN_MS = 60 * 60 * 1000;
 
 /**
  * The stable failed-precondition messages the confirm page tells apart
@@ -59,6 +71,10 @@ export const CONFIRM_LINK_INVALID =
   'This link has expired or was already used.';
 export const CONFIRM_MEMBER_UNLINKED =
   'This group membership is no longer linked to your account.';
+
+/** resource-exhausted: the address got a confirmation mail within the hour. */
+export const CONFIRMATION_RECENTLY_SENT =
+  'A confirmation email was sent to that address recently. Try again in an hour.';
 
 export const DUPLICATE_MEMBER_EMAIL =
   'A member with this email address already exists in the group.';
@@ -79,9 +95,13 @@ export const NOT_ACTIVE_MEMBER = 'User must be an active member of the group';
 
 export type MemberEmailChangeStatus = 'unchanged' | 'updated' | 'pending';
 
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 /** The token's doc id: its sha256, hex. The token itself is never stored. */
 export function hashEmailChangeToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+  return sha256Hex(token);
 }
 
 export function emailChangeConfirmLink(token: string): string {
@@ -219,6 +239,27 @@ async function assertNoOtherMemberHas(
   }
 }
 
+/** The address's cooldown doc: sha256 of the lowercased address. */
+function recipientCooldownRef(
+  db: Firestore,
+  emailLower: string
+): DocumentReference {
+  return db
+    .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+    .doc(sha256Hex(emailLower));
+}
+
+/** Refuses an address whose cooldown (if any) has not ended at `nowMs`. */
+function assertNotCoolingDown(
+  snap: DocumentSnapshot,
+  nowMs: number
+): void {
+  const expiresAt: unknown = snap.get('expiresAt');
+  if (expiresAt instanceof Timestamp && expiresAt.toMillis() > nowMs) {
+    throw new HttpsError('resource-exhausted', CONFIRMATION_RECENTLY_SENT);
+  }
+}
+
 /** Counts one mailed request against the caller's window, or refuses it. */
 async function consumeRequestAllowance(
   db: Firestore,
@@ -315,9 +356,16 @@ export const requestMemberEmailChange = onCall<{
       return { status: 'updated' };
     }
 
-    // The allowance comes first, so every mailed or refused attempt
-    // (a duplicate address included) counts against it (M2).
+    // The recipient's cooldown is checked before the allowance, so a send
+    // it refuses doesn't use up the caller's requests. It is checked again
+    // in the transaction below, which also starts it, so two concurrent
+    // requests can't both mail the address.
     const nowMs = Date.now();
+    const cooldownRef = recipientCooldownRef(db, emailLower);
+    assertNotCoolingDown(await cooldownRef.get(), nowMs);
+
+    // The allowance comes next, so every other mailed or refused attempt
+    // (a duplicate address included) counts against it (M2).
     await consumeRequestAllowance(db, uid, nowMs);
 
     const token = randomBytes(32).toString('base64url');
@@ -330,8 +378,13 @@ export const requestMemberEmailChange = onCall<{
     // new one's creation.
     await db.runTransaction(async (txn) => {
       await assertNoOtherMemberHas((q) => txn.get(q), memberRef, emailLower);
+      assertNotCoolingDown(await txn.get(cooldownRef), nowMs);
       const earlier = await pendingTokensOf(txn, memberRef);
       for (const ref of earlier) txn.delete(ref);
+      txn.set(cooldownRef, {
+        sentAt: Timestamp.fromMillis(nowMs),
+        expiresAt: Timestamp.fromMillis(nowMs + RECIPIENT_COOLDOWN_MS),
+      });
       txn.set(tokenRef, {
         uid,
         memberRef,
@@ -518,12 +571,12 @@ export const updateMemberEmails = onCall<{ onlyFromEmail?: unknown }>(
 
 /**
  * Nightly cleanup (index.ts deleteOldPaidExpenses): deletes expired
- * confirmation tokens and rate-limit docs whose window has ended. Returns
- * how many of each it deleted.
+ * confirmation tokens, rate-limit docs whose window has ended and ended
+ * recipient cooldowns. Returns how many of each it deleted.
  */
 export async function deleteExpiredMemberEmailChanges(
   nowMs: number = Date.now()
-): Promise<{ tokens: number; limits: number }> {
+): Promise<{ tokens: number; limits: number; cooldowns: number }> {
   const db = getFirestore();
   const deleteAll = async (query: Query): Promise<number> => {
     const snap = await query.get();
@@ -548,5 +601,10 @@ export async function deleteExpiredMemberEmailChanges(
         Timestamp.fromMillis(nowMs - EMAIL_CHANGE_WINDOW_MS)
       )
   );
-  return { tokens, limits };
+  const cooldowns = await deleteAll(
+    db
+      .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+      .where('expiresAt', '<=', Timestamp.fromMillis(nowMs))
+  );
+  return { tokens, limits, cooldowns };
 }

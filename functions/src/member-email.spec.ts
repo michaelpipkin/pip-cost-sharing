@@ -18,12 +18,15 @@ import {
 import {
   CONFIRM_LINK_INVALID,
   CONFIRM_MEMBER_UNLINKED,
+  CONFIRMATION_RECENTLY_SENT,
   CONFIRM_WRONG_ACCOUNT,
   DUPLICATE_MEMBER_EMAIL,
   EMAIL_CHANGE_LIMIT,
   LOGIN_EMAIL_INVALID,
   MEMBER_EMAIL_LIMITS,
+  MEMBER_EMAIL_RECIPIENT_COOLDOWNS,
   MEMBER_EMAILS_PER_TXN,
+  RECIPIENT_COOLDOWN_MS,
   MEMBER_EMAIL_TOKENS,
   NOT_ACTIVE_MEMBER,
   VERIFY_LOGIN_EMAIL,
@@ -360,6 +363,110 @@ describe('requestMemberEmailChange', () => {
     }
     await expect(request(s, taken)).rejects.toMatchObject({
       code: 'resource-exhausted',
+    });
+  });
+
+  describe('per-recipient cooldown', () => {
+    const cooldownDoc = (address: string) =>
+      db
+        .collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS)
+        .doc(sha256(address.toLowerCase()));
+    const COOLDOWN_REFUSAL = {
+      code: 'resource-exhausted',
+      message: CONFIRMATION_RECENTLY_SENT,
+    };
+
+    it('is one confirmation mail per address per hour', () => {
+      expect(RECIPIENT_COOLDOWN_MS).toBe(60 * 60 * 1000);
+    });
+
+    it('refuses a second confirmation to the same address from another caller', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+
+      await expect(request(first, target)).resolves.toEqual({
+        status: 'pending',
+      });
+      // Another account, another group, the address in another casing.
+      await expect(
+        request(second, target.toUpperCase())
+      ).rejects.toMatchObject(COOLDOWN_REFUSAL);
+      expect(await mailTo(target)).toHaveLength(1);
+      expect(await mailTo(target.toUpperCase())).toHaveLength(0);
+      // The same caller again is refused the same way.
+      await expect(request(first, target)).rejects.toMatchObject(
+        COOLDOWN_REFUSAL
+      );
+      expect(await mailTo(target)).toHaveLength(1);
+    });
+
+    it('does not use up the caller’s daily allowance when it refuses', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+      await request(first, target);
+
+      for (let i = 0; i < EMAIL_CHANGE_LIMIT + 1; i++) {
+        await expect(request(second, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+      }
+      expect(
+        (await db.collection(MEMBER_EMAIL_LIMITS).doc(second.uid).get()).exists
+      ).toBe(false);
+      // All of the second caller's requests are still there to use.
+      for (let i = 0; i < EMAIL_CHANGE_LIMIT; i++) {
+        await expect(
+          request(second, uniqueEmail(`after-${i}`))
+        ).resolves.toEqual({ status: 'pending' });
+      }
+    });
+
+    it('stores only a hash of the lowercased address, with an expiry', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('Target');
+      const before = Date.now();
+      await request(s, target);
+
+      const snap = await cooldownDoc(target).get();
+      expect(snap.exists).toBe(true);
+      expect(JSON.stringify(snap.data())).not.toContain(target.toLowerCase());
+      expect(JSON.stringify(snap.data())).not.toContain(target);
+      const expiresAt = (snap.get('expiresAt') as Timestamp).toMillis();
+      expect(expiresAt).toBeGreaterThanOrEqual(before + RECIPIENT_COOLDOWN_MS);
+      expect(expiresAt).toBeLessThanOrEqual(
+        Date.now() + RECIPIENT_COOLDOWN_MS
+      );
+    });
+
+    it('allows the address again once the hour has passed', async () => {
+      const first = await seedLinkedMember();
+      const second = await seedLinkedMember();
+      const target = uniqueEmail('target');
+      await request(first, target);
+      await cooldownDoc(target).update({
+        expiresAt: Timestamp.fromMillis(Date.now() - 1000),
+      });
+
+      await expect(request(second, target)).resolves.toEqual({
+        status: 'pending',
+      });
+      expect(await mailTo(target)).toHaveLength(2);
+    });
+
+    it('leaves no cooldown when nothing was mailed', async () => {
+      const s = await seedLinkedMember();
+      const taken = uniqueEmail('taken');
+      await makeMember(s.groupRef, { email: taken, emailLower: taken });
+      await expect(request(s, taken)).rejects.toMatchObject({
+        code: 'already-exists',
+      });
+      await expect(request(s, s.loginEmail)).resolves.toEqual({
+        status: 'updated',
+      });
+      expect((await cooldownDoc(taken).get()).exists).toBe(false);
+      expect((await cooldownDoc(s.loginEmail).get()).exists).toBe(false);
     });
   });
 
@@ -925,7 +1032,7 @@ describe('updateMemberEmails', () => {
 });
 
 describe('deleteExpiredMemberEmailChanges', () => {
-  it('deletes expired tokens and ended rate-limit windows only', async () => {
+  it('deletes expired tokens, ended rate-limit windows and cooldowns only', async () => {
     const nowMs = Date.now();
     const tokens = db.collection(MEMBER_EMAIL_TOKENS);
     const limits = db.collection(MEMBER_EMAIL_LIMITS);
@@ -943,6 +1050,11 @@ describe('deleteExpiredMemberEmailChanges', () => {
       windowStart: Timestamp.fromMillis(nowMs - 60_000),
       count: 5,
     });
+    const cooldowns = db.collection(MEMBER_EMAIL_RECIPIENT_COOLDOWNS);
+    const endedCooldown = cooldowns.doc(sha256(uniqueId('ended')));
+    const liveCooldown = cooldowns.doc(sha256(uniqueId('live')));
+    await endedCooldown.set({ expiresAt: Timestamp.fromMillis(nowMs - 1000) });
+    await liveCooldown.set({ expiresAt: Timestamp.fromMillis(nowMs + 60_000) });
 
     const deleted = await deleteExpiredMemberEmailChanges(nowMs);
 
@@ -953,5 +1065,8 @@ describe('deleteExpiredMemberEmailChanges', () => {
     expect((await live.get()).exists).toBe(true);
     expect((await oldWindow.get()).exists).toBe(false);
     expect((await currentWindow.get()).exists).toBe(true);
+    expect(deleted.cooldowns).toBeGreaterThanOrEqual(1);
+    expect((await endedCooldown.get()).exists).toBe(false);
+    expect((await liveCooldown.get()).exists).toBe(true);
   });
 });

@@ -36,6 +36,11 @@ import {
   isSingleEmailAddress,
 } from './email-builders';
 import { memberRecipient } from './group-mail-recipient';
+import {
+  deleteExpiredGroupMailLimits,
+  groupMailLimitError,
+  reserveGroupMail,
+} from './mail-allowance';
 import { deleteExpiredMemberEmailChanges } from './member-email';
 
 export {
@@ -393,15 +398,24 @@ export const deleteOldPaidExpenses = onSchedule('0 0 * * *', async () => {
     console.error('Error fetching files from storage: ', error);
   }
 
-  // Expired group-email confirmation links and ended rate-limit windows
-  // (member-email.ts). Independent of the receipt cleanup above.
+  // Expired group-email confirmation links, ended rate-limit windows and
+  // recipient cooldowns (member-email.ts). Independent of the receipt
+  // cleanup above.
   try {
     const deleted = await deleteExpiredMemberEmailChanges();
     console.log(
-      `Deleted ${deleted.tokens} expired email-change token(s) and ${deleted.limits} rate-limit doc(s)`
+      `Deleted ${deleted.tokens} expired email-change token(s), ${deleted.limits} rate-limit doc(s) and ${deleted.cooldowns} recipient cooldown(s)`
     );
   } catch (error) {
     console.error('Error deleting expired email-change tokens: ', error);
+  }
+
+  // Ended group-mail allowance counters (mail-allowance.ts).
+  try {
+    const deleted = await deleteExpiredGroupMailLimits();
+    console.log(`Deleted ${deleted} ended group-mail limit doc(s)`);
+  } catch (error) {
+    console.error('Error deleting ended group-mail limits: ', error);
   }
 });
 
@@ -967,6 +981,10 @@ export const syncMemberEmailLower = onDocumentWritten(
 
 // ---------------------------------------------------------------------------
 // Payment notification email trigger
+//
+// Exempt from the per-caller group-mail allowance (mail-allowance.ts): a
+// trigger has no caller to charge, and the history write behind it is
+// already gated by the rules (active members of the group only).
 // ---------------------------------------------------------------------------
 
 export const sendPaymentNotificationEmail = onDocumentCreated(
@@ -1651,7 +1669,8 @@ type InviteTxnResult =
   | { status: 'already-registered' }
   | { status: 'inactive' }
   | { status: 'invalid-email' }
-  | { status: 'cooldown'; retryAfterMs: number };
+  | { status: 'cooldown'; retryAfterMs: number }
+  | { status: 'daily-limit' };
 
 export const sendGroupInvite = onCall<{
   groupId: string;
@@ -1745,6 +1764,13 @@ export const sendGroupInvite = onCall<{
 
       const sendCount = (invite?.sendCount ?? 0) + 1;
 
+      // The caller's daily group-mail allowance (mail-allowance.ts), charged
+      // in this transaction so the invite is queued and counted together.
+      // Its read comes after every other read here (it writes).
+      if (!(await reserveGroupMail(txn, db, uid, 1, now.toMillis()))) {
+        return { status: 'daily-limit' };
+      }
+
       txn.create(mailRef, { to: email, message: { subject, text, html } });
       txn.update(memberRef, {
         invite: { lastSentAt: now, lastSentTo: email, sendCount },
@@ -1787,6 +1813,8 @@ export const sendGroupInvite = onCall<{
           `An invitation was already sent to this address recently. Try again in ${hours} hour(s).`
         );
       }
+      case 'daily-limit':
+        throw groupMailLimitError();
     }
   } catch (error: unknown) {
     console.error('Error sending group invite:', error);
@@ -1817,7 +1845,8 @@ export const sendGroupInvite = onCall<{
 // the exact users who most need it - anyone hitting an App Check failure
 // themselves. Same low-risk profile as logAppError: hardcoded recipient,
 // no auth check to bypass, nothing here an unenforced caller can abuse
-// beyond sending the admin an email.
+// beyond sending the admin an email. For the same reason it is exempt from
+// the per-caller group-mail allowance (mail-allowance.ts).
 // ---------------------------------------------------------------------------
 
 export const notifyNewIssue = onCall<{

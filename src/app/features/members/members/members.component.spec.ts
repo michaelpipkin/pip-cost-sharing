@@ -13,6 +13,7 @@ import { SortingService } from '@services/sorting.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
+import { GROUP_MAIL_LIMIT_REACHED } from '@utils/callable-error.util';
 import {
   createMockAnalyticsService,
   createMockGroupStore,
@@ -623,6 +624,56 @@ describe('MembersComponent', () => {
         'send_group_invite',
         'Failed to send group invite',
         'An invitation was already sent to this address recently.'
+      );
+    });
+
+    const confirmed = () =>
+      mockDialog.open.mockReturnValueOnce({
+        afterClosed: () => ({
+          subscribe: (cb: (result: boolean) => void) => cb(true),
+        }),
+      } as any);
+    const lastSnackbar = () =>
+      (
+        (TestBed.inject(MatSnackBar) as unknown as ReturnType<
+          typeof createMockSnackBar
+        >).openFromComponent.mock.calls.at(-1) as any
+      )?.[1]?.data?.message;
+
+    it('shows the server message without the HTTP status the SDK appends', async () => {
+      confirmed();
+      mockInviteService.sendGroupInvite.mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            'An invitation was already sent to this address recently. Try again in 3 hour(s). [429]'
+          ),
+          { code: 'functions/resource-exhausted' }
+        )
+      );
+
+      component.sendInvite(invitableMember());
+      await fixture.whenStable();
+
+      expect(lastSnackbar()).toBe(
+        'An invitation was already sent to this address recently. Try again in 3 hour(s).'
+      );
+    });
+
+    it('says the daily group-mail limit was reached, without logging an error', async () => {
+      confirmed();
+      mockInviteService.sendGroupInvite.mockRejectedValueOnce(
+        Object.assign(new Error(`${GROUP_MAIL_LIMIT_REACHED} [429]`), {
+          code: 'functions/resource-exhausted',
+        })
+      );
+
+      component.sendInvite(invitableMember());
+      await fixture.whenStable();
+
+      expect(lastSnackbar()).toBe(GROUP_MAIL_LIMIT_REACHED);
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      expect(mockAnalytics.logEvent).not.toHaveBeenCalledWith(
+        'group_invite_sent'
       );
     });
   });

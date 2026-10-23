@@ -125,6 +125,16 @@ service cloud.firestore {
     match /memberEmailChangeLimits/{uid} {
       allow read, write: if false;
     }
+    // The confirmation mail's per-recipient cooldown (keyed by sha256 of the
+    // lowercased address) and the per-caller daily allowance for group mail
+    // (functions/src/mail-allowance.ts). Server-only, like the above: no
+    // client may read when an address was mailed or reset its own count.
+    match /memberEmailRecipientCooldown/{addressHash} {
+      allow read, write: if false;
+    }
+    match /groupMailLimits/{uid} {
+      allow read, write: if false;
+    }
 
     // admin_config: admin-only. Cloud Functions use the Admin SDK and bypass
     // these rules; this prevents regular users from reading or modifying

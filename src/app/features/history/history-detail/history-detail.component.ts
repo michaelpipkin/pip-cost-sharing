@@ -27,6 +27,7 @@ import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
 import { HistoryStore } from '@store/history.store';
 import { MemberStore } from '@store/member.store';
+import { isGroupMailLimitRefusal } from '@utils/callable-error.util';
 import { parseDate } from '@utils/date-utils';
 import { DocumentReference, getDoc } from 'firebase/firestore';
 import {
@@ -44,6 +45,16 @@ import {
   HelpDialogData,
 } from '@features/help/help-dialog/help-dialog.component';
 import { buildHistoryDetailTourSteps } from './history-detail.tour';
+
+/** The unpay snackbar, saying when no one was emailed over the daily limit. */
+function unpaidMessage(
+  what: 'Payment' | 'Group settle',
+  mailLimitReached: boolean
+): string {
+  return mailLimitReached
+    ? `${what} marked as unpaid. No one was emailed: you've reached today's limit for group emails.`
+    : `${what} marked as unpaid`;
+}
 
 @Component({
   selector: 'app-history-detail',
@@ -267,15 +278,13 @@ export class HistoryDetailComponent {
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        try {
-          await this.notifyMemberPaymentUnpay(h);
-        } catch {
-          // notification failure should not block unpay
-        }
+        const mailLimitReached = await this.notifyUnpay(() =>
+          this.notifyMemberPaymentUnpay(h)
+        );
         try {
           await this.historyService.unpayHistory(h);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Payment marked as unpaid' },
+            data: { message: unpaidMessage('Payment', mailLimitReached) },
           });
           this.goBack();
         } catch (error) {
@@ -317,18 +326,16 @@ export class HistoryDetailComponent {
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        try {
-          await this.notifyGroupSettleUnpay(h);
-        } catch {
-          // notification failure should not block unpay
-        }
+        const mailLimitReached = await this.notifyUnpay(() =>
+          this.notifyGroupSettleUnpay(h)
+        );
         try {
           await this.historyService.unpayGroupSettle(
             this.currentGroup()!.id,
             h.batchId!
           );
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: 'Group settle marked as unpaid' },
+            data: { message: unpaidMessage('Group settle', mailLimitReached) },
           });
           this.goBack();
         } catch (error) {
@@ -418,6 +425,20 @@ export class HistoryDetailComponent {
         this.loading.loadingOff();
       }
     });
+  }
+
+  /**
+   * Sends the unpay notices. A failure never blocks the unpay itself; the
+   * one the user is told about is the daily group-mail allowance being used
+   * up (functions/src/mail-allowance.ts). Returns whether that was it.
+   */
+  private async notifyUnpay(send: () => Promise<void>): Promise<boolean> {
+    try {
+      await send();
+      return false;
+    } catch (error) {
+      return isGroupMailLimitRefusal(error);
+    }
   }
 
   private async notifyMemberPaymentUnpay(h: History): Promise<void> {
