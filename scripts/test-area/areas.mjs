@@ -163,9 +163,9 @@ const INVITE_LINKING_FUNCTIONS = [
 // Profile's Sync and the group email update dialog call updateMemberEmails.
 const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
 // Reads a callable's code and server message (edit-member, the confirm
-// page, Profile's Sync, the group email update dialog, and the daily
-// group-mail limit on Summary, History detail and Members' invite): with
-// every area whose code imports it.
+// page, Profile's Sync, the group email update dialog, member.service, and
+// the daily group-mail limit on Summary, History detail and Members'
+// invite): with every area whose code imports it.
 const CALLABLE_ERROR = [`${UTILITIES}/callable-error.util.spec.ts`];
 // The safe sign-in returnUrl (B20): the auth guards put the attempted page on
 // the login URL, and the group service returns the user there after sign-in.
@@ -337,6 +337,8 @@ export const AREAS = {
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/invite.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
+      // member.service reads the callables' refusals.
+      ...CALLABLE_ERROR,
       `${SERVICES}/member-link.service.spec.ts`,
       ...LOCALE,
       ...GUIDED_TOUR,
