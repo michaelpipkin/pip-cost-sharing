@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight Hardening</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin-bottom: .2rem; }
+  h2 { margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  .meta { color: var(--muted); margin-top: 0; }
+  li { margin: .25rem 0; }
+  .note { color: var(--muted); font-size: .92em; }
+  table { border-collapse: collapse; width: 100%; font-size: .88em; margin: .6rem 0 1rem; }
+  th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .tablewrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Overnight Hardening (2026-10-22 → 23)</h1>
+<p class="meta">Branch <code>overnight-hardening</code>, off <code>dev</code> at <code>ac58d573</code>. Not merged, pushed or deployed, and production was not touched. Each task went through an implementer, a review and fix rounds; then came one final review of the whole branch, one fix pass, a re-review and the closing test run.</p>
+
+<h2>What was built</h2>
+<div class="tablewrap"><table>
+<tr><th>Task</th><th>What changed</th><th>Main commits</th></tr>
+<tr><td>T1: group-email bulk updates</td><td>Profile Sync and the "Update your group emails?" dialog now call a new <code>updateMemberEmails</code> callable:
+<ul>
+  <li>The address it writes is the caller's verified Auth email, read on the server.</li>
+  <li>It skips an address another member of that group already uses, and counts those as conflicts.</li>
+  <li>It deletes the pending confirmation links of the rows it updates.</li>
+</ul>
+<code>firestore.rules</code> no longer lets any client change a linked member's email (fixing final re-review M1 and M2). There's a new Profile Sync e2e test.</td><td><code>0f87437e</code>, <code>ba29656f</code></td></tr>
+<tr><td>T2: group-mail rate limits</td><td><ul>
+  <li><strong>A daily cap per account:</strong> 100 group-mail recipients per account per rolling 24 hours, shared by payment requests, payment and settle-reversal emails, and invites.</li>
+  <li><strong>A cooldown per address:</strong> one group-email confirmation per address per hour.</li>
+  <li><strong>Large batches:</strong> Request All and the settle notices send their batches one after another, and the snackbar says how many went out if the cap stops a later batch.</li>
+</ul></td><td><code>6ab1e700</code>, <code>edd5a366</code></td></tr>
+<tr><td>T3: small fixes</td><td><ul>
+  <li>A failed Auth lookup now gives a retryable error instead of "Verify your login email first."</li>
+  <li>A pasted ISO date is read as a local date, so it no longer lands a day early.</li>
+  <li>The mail-queue's ERROR write is guarded and retried once.</li>
+  <li>An admin's edit of an unlinked member's email checks for a duplicate address.</li>
+  <li>The invite snackbar strips the " [ddd]" suffix (done in T2).</li>
+</ul></td><td><code>7c83d0fa</code>, <code>130e6795</code>, <code>d744726f</code>, <code>ef9b46f1</code></td></tr>
+<tr><td>Final fix pass</td><td><ul>
+  <li>removed review-process labels from code comments;</li>
+  <li>App Check help on the new callable's callers;</li>
+  <li>one wording for the duplicate-address message ("Another member of this group already uses that address.");</li>
+  <li>small edge fixes in the rate-limit cleanup and refund.</li>
+</ul></td><td><code>740a7ae3</code> … <code>e2db39f4</code></td></tr>
+<tr><td>Owner follow-ups (after the morning review)</td><td><ul>
+  <li><code>isLikelyAppCheckError</code> no longer treats a bare Firestore <code>permission-denied</code> as App Check (Firestore isn't enforced), so a rules denial shows the caller's own message.</li>
+  <li>Invite linking and the admin's orphan repair keep each user on at most one row per group (<code>onePerGroupLinks</code> in <code>functions/src/common.ts</code>). This also fixed B10's repeated member path in repair, so ten <code>it.fails</code> pins remain.</li>
+</ul></td><td><code>91de5475</code>, <code>3387f2e6</code></td></tr>
+<tr><td>T4: design only</td><td>A design for the Phase 3 lockdown of <code>users</code> reads together with the verified-address index: <code>docs/superpowers/specs/2026-10-23-users-read-lockdown-design.html</code>. It contains no code and ends with 6 questions for you.</td><td><code>1d68606c</code></td></tr>
+</table></div>
+
+<h2>Closing gate</h2>
+<p id="gate">Every step passed on <code>e2db39f4</code>, with no re-runs (the two follow-up commits were tested separately; see the follow-ups doc):</p>
+<ul>
+  <li><strong>Unit:</strong> <code>pnpm test --coverage</code> ran 2820 tests in 161 files, with 6 expected fails (the <code>it.fails</code> pins). Coverage: 83.99% statements, 81.95% branches, 79.05% functions, 86.72% lines.</li>
+  <li><strong>Functions:</strong> <code>pnpm --dir functions test</code> ran 561 tests in 31 files, with 5 expected fails.</li>
+  <li><strong>Scripts:</strong> <code>pnpm test:scripts</code>, 128 passed.</li>
+  <li><strong>Area check:</strong> <code>pnpm test:area --check</code> passed (161 unit specs, 31 functions specs and 248 e2e tests, all assigned).</li>
+  <li><strong>Builds:</strong> <code>ng build</code> and the functions build were clean.</li>
+  <li><strong>Areas:</strong> <code>pnpm test:area</code> passed in full for all 16 areas.</li>
+  <li><strong>Full e2e, twice:</strong> 248 of 248 passed both times (12.6 and 12.7 minutes), with 0 flaky.</li>
+</ul>
+
+<h2>Questions for you (most important first)</h2>
+<p class="note">Answered by the owner on 2026-10-23: 1 keep the limits (revisit if usage grows); 2 narrow it (done, <code>91de5475</code>); 3 yes, skip groups already linked (done, <code>3387f2e6</code>); 4 and 5 accept for now; 6 the wording is fine. 7 is still open.</p>
+<ol>
+  <li><strong>Are the limits right?</strong> 100 group-mail recipients per account per day, and one confirmation email per address per hour. Each is a single constant. <span class="note">My recommendation: keep both for now, and look at real usage after a few weeks.</span></li>
+  <li><strong>The App Check error classification is out of date.</strong> <code>isLikelyAppCheckError</code> treats a bare Firestore <code>permission-denied</code> as an App Check failure, but you turned off Firestore App Check enforcement on 8/19. A rules denial therefore opens the App Check help dialog, and with this branch edit-member does too. <span class="note">My recommendation: narrow it to <code>functions/unauthenticated</code> and <code>storage/unauthenticated</code> while Firestore stays unenforced. It's a small follow-up.</span></li>
+  <li><strong>Invite linking can link one user to two rows in the same group.</strong> When <code>linkInvitedMembers</code> finds an unlinked placeholder in a group where you're already linked, it links you there anyway. <code>updateMemberEmails</code> copes by counting one row as a conflict. Should invite linking skip groups where the caller is already linked? <span class="note">My recommendation: yes.</span></li>
+  <li><strong>A retried Request All after a partial send re-requests everyone.</strong> This only happens in groups of 27 or more members when the caller is near the cap. The snackbar says how many went out. <span class="note">My recommendation: accept it for now.</span></li>
+  <li><strong>The cooldown's trade-offs.</strong> A group member can learn whether an address got a confirmation email in the last hour, and someone could keep an address in cooldown to block its confirmations. Both are documented in the follow-ups doc. <span class="note">My recommendation: accept them for now.</span></li>
+  <li><strong>Wording.</strong> The retry message is "Couldn't check your account right now. Please try again." (or "...try the link again." on the confirm page). The duplicate-address message is now the same everywhere.</li>
+  <li><strong>The Phase 3 design's own 6 questions.</strong> The top one is whether to ship in two releases, with the rules change 7 days after the code. See section 11 of the design doc.</li>
+</ol>
+
+<h2>Releasing this branch</h2>
+<ul>
+  <li><strong>The checklist:</strong> follow the "Next release (branch overnight-hardening): checklist" in <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>. It covers the deploy-order window, old tabs, the merge rules and the user-visible changes.</li>
+  <li><strong>What deploys:</strong> new functions (<code>updateMemberEmails</code> and the allowance), new rules (linked emails are server-only, plus two server-only collections) and the app. All three go out in one release.</li>
+  <li><strong>Firestore TTL:</strong> optional. A TTL policy on the new limit collections' <code>expiresAt</code> would add another cleanup; a nightly job already handles it.</li>
+</ul>
+</body>
+</html>

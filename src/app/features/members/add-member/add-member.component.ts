@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
-  form,
-  FormField,
-  required,
-} from '@angular/forms/signals';
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
+import { form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -17,7 +18,10 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { AddMemberForm, Member } from '@models/member';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import {
+  DuplicateMemberEmailError,
+  MemberService,
+} from '@services/member.service';
 import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { singleEmail } from '@utils/email-validation';
 
@@ -71,11 +75,14 @@ export class AddMemberComponent {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: error.message },
         });
-        this.analytics.logError(
-          'Add Member Component',
-          'add_member',
-          error.message
-        );
+        // A duplicate address is an outcome for the admin, not an app error.
+        if (!(error instanceof DuplicateMemberEmailError)) {
+          this.analytics.logError(
+            'Add Member Component',
+            'add_member',
+            error.message
+          );
+        }
       } else {
         this.snackbar.openFromComponent(CustomSnackbarComponent, {
           data: { message: 'Something went wrong - could not add member.' },

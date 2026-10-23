@@ -907,12 +907,9 @@ describe('ManageGroupsComponent', () => {
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
-    it('opens the App Check dialog instead of a snackbar when the delete is refused as permission-denied', async () => {
+    it('opens the App Check dialog instead of a snackbar when the delete callable is refused as unauthenticated', async () => {
       vi.mocked(mockGroupService.deleteGroup).mockRejectedValueOnce(
-        new FirebaseError(
-          'permission-denied',
-          'Missing or insufficient permissions.'
-        )
+        new FirebaseError('functions/unauthenticated', 'Unauthenticated')
       );
       const d = answerDialog(component, true);
 

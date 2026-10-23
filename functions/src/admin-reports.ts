@@ -13,6 +13,7 @@ import {
   callableAppCheck,
   NON_USER_AUTH_EMAILS,
   normalizeEmail,
+  onePerGroupLinks,
   profileEmail,
 } from './common';
 
@@ -613,7 +614,8 @@ export async function buildOrphanedMembersReport(
  * user id - the client only ever supplies which member paths to act on.
  * Skips any doc that's no longer unlinked, has no email, or no longer
  * resolves to exactly one user (defends against a race since the report
- * was generated).
+ * was generated), and keeps each user on at most one row per group
+ * (onePerGroupLinks).
  */
 export async function repairOrphanedMembersInternal(
   db: Firestore,
@@ -624,7 +626,7 @@ export async function repairOrphanedMembersInternal(
   const memberRefs = memberPaths.map((p) => db.doc(p));
   const memberDocs = await getAllChunked(db, memberRefs);
 
-  const links = (
+  const candidates = (
     await Promise.all(
       memberDocs.map(async (doc) => {
         if (!doc.exists) return null;
@@ -641,6 +643,7 @@ export async function repairOrphanedMembersInternal(
       })
     )
   ).filter((l): l is NonNullable<typeof l> => l !== null);
+  const links = await onePerGroupLinks(candidates);
 
   for (const group of chunkArray(links, 500)) {
     const batch = db.batch();

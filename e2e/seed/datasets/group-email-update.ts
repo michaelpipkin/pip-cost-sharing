@@ -2,25 +2,34 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
 
 /**
  * Owned by e2e/account/group-email-update.spec.ts (B20: the offer to update
- * group emails after a login-email change).
+ * group emails after a login-email change, and Account > Profile's Sync).
  *
- * Three users, one per test, because each test changes the user's login email
- * (the old address stops working) and their member emails. Each user is the
- * admin of three groups, so they have three linked memberships, all seeded on
- * the login email (the seed requires a linked member's email to equal its
- * user's). The test then gives the member in the group whose key ends `-c` a
- * custom address through the Admin SDK, so the user has 2 memberships on the
- * login email and 1 on a different address.
+ * Four users, one per test, because every test changes its user's member
+ * emails (the skip test only through the Admin SDK, setting up group C), and
+ * the first three also change the login email (the old address stops
+ * working). Each user is the admin of three groups, so they have three linked
+ * memberships, all seeded on the login email (the seed requires a linked
+ * member's email to equal its user's). The test then gives the member in the
+ * group whose key ends `-c` a custom address through the Admin SDK, so the
+ * user has 2 memberships on the login email and 1 on a different address.
  *
  * - group-email-old, "Group Email Sync – Old A/B/C": "Update old email only"
  *   changes the two on the login email and keeps the custom one.
- * - group-email-all, "Group Email Sync – All A/B/C": "Update all" changes all
- *   three.
+ * - group-email-all, "Group Email Sync – All A/B/C": "Update all" changes A
+ *   and C. The test first adds a member "conflict" to B (linked to an id
+ *   with no users doc) on the new login address, so B is skipped as a
+ *   duplicate (M2).
  * - group-email-skip, "Group Email Sync – Skip A/B/C": "Not now" changes none.
+ * - group-email-sync, "Group Email Sync – Profile A/B/C": Account > Profile's
+ *   Sync Member Emails, with no login-email change. The test gives B and C a
+ *   custom address and adds a member "conflict" to B (linked to an id with
+ *   no users doc) on the login address, so Sync moves C back, skips B as a
+ *   duplicate and leaves A (already on it) alone. It resets those docs first,
+ *   so it repeats fine.
  *
  * The new login addresses (`newEmailFor`) are never seeded, so each is free
- * until its test claims it: every test here is one-shot per seeding, like the
- * account email test.
+ * until its test claims it: the three login-change tests are one-shot per
+ * seeding, like the account email test.
  */
 
 const SPEC = 'spec:e2e/account/group-email-update.spec.ts' as const;
@@ -29,11 +38,12 @@ const PASSWORD = 'Seed-Pass-123!';
 /** The custom address the `-c` member is given. */
 export const CUSTOM_EMAIL = 'group-email-custom@pipsplit.test';
 
-type Variant = 'old' | 'all' | 'skip';
+type Variant = 'old' | 'all' | 'skip' | 'sync';
 const TITLES: Record<Variant, string> = {
   old: 'Old',
   all: 'All',
   skip: 'Skip',
+  sync: 'Profile',
 };
 
 /** The address a variant's user moves their login to (never seeded). */
@@ -74,12 +84,14 @@ const users = {
   old: makeUser('old'),
   all: makeUser('all'),
   skip: makeUser('skip'),
+  sync: makeUser('sync'),
 };
 
 const groups = {
   old: makeGroups('old', users.old),
   all: makeGroups('all', users.all),
   skip: makeGroups('skip', users.skip),
+  sync: makeGroups('sync', users.sync),
 };
 
 export const GROUP_EMAIL_UPDATE = {

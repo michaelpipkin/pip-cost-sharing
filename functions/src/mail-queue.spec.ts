@@ -93,7 +93,10 @@ describe('sendMailQueueEmail: documents it leaves alone', () => {
 
   it('does nothing when the event carries no snapshot', async () => {
     await expect(
-      (sendMailQueueEmail as any).run({ data: undefined, params: { docId: 'x' } })
+      (sendMailQueueEmail as any).run({
+        data: undefined,
+        params: { docId: 'x' },
+      })
     ).resolves.toBeUndefined();
   });
 });
@@ -162,6 +165,60 @@ describe('sendMailQueueEmail: demo project (the isolated emulators)', () => {
     expect(delivery.state).toBe('ERROR');
     expect(delivery.error).toBe('write failed');
     expect(delivery.attempts).toBe(1);
+  });
+
+  // The catch's own ERROR write was not guarded, so when it failed too
+  // the handler rejected and the doc stayed PROCESSING. It is now tried a
+  // second time. Failing calls 2 and 3 fails the suppressed write and the
+  // first ERROR write; call 4 (the retry) goes through.
+  it('retries the ERROR write once when it fails', async () => {
+    const ref = await queue({ to: 'a@mail-queue.test', message });
+    const snap = await ref.get();
+    const realUpdate = snap.ref.update.bind(snap.ref);
+    let calls = 0;
+    vi.spyOn(snap.ref, 'update').mockImplementation((...args: any[]) => {
+      calls++;
+      return calls === 2 || calls === 3
+        ? Promise.reject(new Error(`write ${calls} failed`))
+        : (realUpdate as any)(...args);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      (sendMailQueueEmail as any).run({ data: snap, params: { docId: ref.id } })
+    ).resolves.toBeUndefined();
+    expect(calls).toBe(4);
+    const delivery = (await ref.get()).get('delivery');
+    expect(delivery.state).toBe('ERROR');
+    expect(delivery.error).toBe('write 2 failed');
+  });
+
+  // When the retry fails as well, nothing more can be written: the handler
+  // logs it and still ends cleanly (no unhandled rejection). The doc is left
+  // PROCESSING, which is all the emulator can show for this case.
+  it('logs and ends cleanly when the ERROR write fails twice', async () => {
+    const ref = await queue({ to: 'a@mail-queue.test', message });
+    const snap = await ref.get();
+    const realUpdate = snap.ref.update.bind(snap.ref);
+    let calls = 0;
+    vi.spyOn(snap.ref, 'update').mockImplementation((...args: any[]) => {
+      calls++;
+      return calls === 1
+        ? (realUpdate as any)(...args)
+        : Promise.reject(new Error(`write ${calls} failed`));
+    });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      (sendMailQueueEmail as any).run({ data: snap, params: { docId: ref.id } })
+    ).resolves.toBeUndefined();
+    expect(calls).toBe(4);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Could not record the ERROR delivery for mail doc ${ref.id}`
+      ),
+      expect.objectContaining({ message: 'write 4 failed' })
+    );
   });
 });
 
@@ -270,7 +327,9 @@ describe('sendMailQueueEmail: real project (nodemailer mocked)', () => {
     expect(delivery.endTime).toBeInstanceOf(Timestamp);
     expect(delivery.info).toBeUndefined();
     expect(
-      Math.abs((snap.get('expireAt') as Timestamp).toMillis() - (before + YEAR_MS))
+      Math.abs(
+        (snap.get('expireAt') as Timestamp).toMillis() - (before + YEAR_MS)
+      )
     ).toBeLessThan(60_000);
   });
 

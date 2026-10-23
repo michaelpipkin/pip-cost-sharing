@@ -1,7 +1,14 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { Timestamp } from 'firebase-admin/firestore';
+import {
+  Timestamp,
+  type DocumentReference,
+  type DocumentSnapshot,
+} from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
-import type { CallableOptions, CallableRequest } from 'firebase-functions/v2/https';
+import type {
+  CallableOptions,
+  CallableRequest,
+} from 'firebase-functions/v2/https';
 
 const smsClient = new SecretManagerServiceClient();
 
@@ -35,6 +42,67 @@ export function assertAdmin(request: CallableRequest): string {
     throw new HttpsError('permission-denied', 'Admin access required');
   }
   return uid;
+}
+
+/**
+ * gRPC codes for a delete whose doc changed (FAILED_PRECONDITION, 9) or is
+ * already gone (NOT_FOUND, 5; the emulator reports a missing doc as 9).
+ */
+const SKIPPED_DELETE_CODES = new Set<unknown>([9, 5]);
+
+/**
+ * Deletes each doc only if it is unchanged since `snaps` read it (a
+ * lastUpdateTime precondition), so a cleanup can't erase a doc that was
+ * renewed between its query and its delete (e.g. a rate-limit counter a
+ * send just wrote). A changed or already-deleted doc is skipped. Returns how
+ * many it deleted. One delete per doc, not a batch: a batch fails whole when
+ * any precondition does.
+ */
+export async function deleteDocsIfUnchanged(
+  snaps: DocumentSnapshot[]
+): Promise<number> {
+  let deleted = 0;
+  for (let i = 0; i < snaps.length; i += 100) {
+    const results = await Promise.all(
+      snaps.slice(i, i + 100).map(async (snap): Promise<number> => {
+        try {
+          await snap.ref.delete({ lastUpdateTime: snap.updateTime! });
+          return 1;
+        } catch (error) {
+          if (SKIPPED_DELETE_CODES.has((error as { code?: unknown }).code)) {
+            return 0;
+          }
+          throw error;
+        }
+      })
+    );
+    deleted += results.reduce((a, b) => a + b, 0);
+  }
+  return deleted;
+}
+
+/**
+ * The links (an unlinked member doc and the user it would be linked to)
+ * that keep each user on at most one row per group: a link is dropped when
+ * its user already has a row in that group, or when an earlier link in the
+ * list already claims that group for the user. One user on two rows would
+ * count twice in the group's balances and splits.
+ */
+export async function onePerGroupLinks<
+  T extends { ref: DocumentReference; userRef: DocumentReference },
+>(links: T[]): Promise<T[]> {
+  const firstPerGroup = new Map<string, T>();
+  for (const link of links) {
+    const key = `${link.ref.parent.path}|${link.userRef.path}`;
+    if (!firstPerGroup.has(key)) firstPerGroup.set(key, link);
+  }
+  const candidates = [...firstPerGroup.values()];
+  const existing = await Promise.all(
+    candidates.map((link) =>
+      link.ref.parent.where('userRef', '==', link.userRef).limit(1).get()
+    )
+  );
+  return candidates.filter((_, i) => existing[i]!.empty);
 }
 
 // normalizeEmail and profileEmail live in a dependency-free module so the

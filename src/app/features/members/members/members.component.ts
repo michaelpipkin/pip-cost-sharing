@@ -55,6 +55,7 @@ import { AddMemberComponent } from '../add-member/add-member.component';
 import { EditMemberComponent } from '../edit-member/edit-member.component';
 import { buildMembersTourSteps } from './members.tour';
 import { doc, DocumentReference, getFirestore } from 'firebase/firestore';
+import { callableError } from '@utils/callable-error.util';
 import { isSingleEmailAddress } from '@utils/email-validation';
 
 // Anti-spam window for invites, mirrored server-side in
@@ -229,13 +230,18 @@ export class MembersComponent {
           data: { message: `Invitation sent to ${member.email}` },
         });
       } catch (error) {
+        // The server's message, without the HTTP status the SDK appends.
+        const { code, message } = callableError(error);
         this.appCheckErrorHandler.handle(
           error,
           error instanceof Error
-            ? error.message
+            ? message
             : 'Something went wrong - could not send invitation'
         );
-        if (error instanceof Error) {
+        // resource-exhausted (this member's 24-hour invite cooldown, or the
+        // caller's daily group-mail limit, functions/src/mail-allowance.ts)
+        // is an outcome for the user, not an app error: shown, not logged.
+        if (error instanceof Error && code !== 'functions/resource-exhausted') {
           this.analytics.logError(
             'Members Component',
             'send_group_invite',

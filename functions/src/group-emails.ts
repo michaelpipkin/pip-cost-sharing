@@ -15,6 +15,7 @@ import {
   formatAmount,
 } from './email-builders';
 import { memberRecipient, type MemberRecipient } from './group-mail-recipient';
+import { queueGroupMail, type QueuedMail } from './mail-allowance';
 
 // ---------------------------------------------------------------------------
 // Group emails the app sends on a member's behalf: payment requests (Summary)
@@ -33,7 +34,10 @@ import { memberRecipient, type MemberRecipient } from './group-mail-recipient';
 // choosing, final review I2), and a new address is applied only once
 // confirmed through a link mailed to it (member-email.ts). The member-id
 // cap (MAX_BATCH) and the membership checks below still bound who can be
-// mailed and how often.
+// mailed, and the caller's daily allowance (mail-allowance.ts) how often:
+// each callable queues all of its mail, charged to the caller, in one
+// transaction, or none of it (resource-exhausted) when it would pass the
+// allowance.
 //
 // getFirestore() is called inside each handler rather than at module scope:
 // index.ts imports (and so evaluates) this module before it calls
@@ -82,11 +86,7 @@ export interface SendSettleReversalEmailsData {
   settleDate: string;
 }
 
-interface MailMessage {
-  subject: string;
-  text: string;
-  html: string;
-}
+type MailMessage = QueuedMail['message'];
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -285,15 +285,6 @@ function displayName(member: DocumentData): string {
   return member['displayName'] ?? 'Someone';
 }
 
-/** Queue a mail doc in the shape sendMailQueueEmail delivers. */
-async function queueMail(
-  db: Firestore,
-  to: string,
-  message: MailMessage
-): Promise<void> {
-  await db.collection('mail').add({ to, message });
-}
-
 // ---------------------------------------------------------------------------
 // Content (the copy the client used to build, unchanged)
 // ---------------------------------------------------------------------------
@@ -442,17 +433,16 @@ export const sendPaymentRequests = onCall<SendPaymentRequestsData>(
     const recipients = requests.map((r) =>
       recipient(members.get(r.owedByMemberId)!, users)
     );
-    await Promise.all(
-      requests.map((r, i) => {
-        const owedByRecipient = recipients[i]!;
-        if (owedByRecipient.result !== 'sent') return Promise.resolve();
-        const owedBy = members.get(r.owedByMemberId)!;
-        const owedTo = members.get(r.owedToMemberId)!;
-        const owedToUser = linkedUser(owedTo, users);
-        return queueMail(
-          db,
-          owedByRecipient.to,
-          buildPaymentRequestEmail({
+    const mails = requests.flatMap((r, i): QueuedMail[] => {
+      const owedByRecipient = recipients[i]!;
+      if (owedByRecipient.result !== 'sent') return [];
+      const owedBy = members.get(r.owedByMemberId)!;
+      const owedTo = members.get(r.owedToMemberId)!;
+      const owedToUser = linkedUser(owedTo, users);
+      return [
+        {
+          to: owedByRecipient.to,
+          message: buildPaymentRequestEmail({
             owedByName: displayName(owedBy),
             owedToName: displayName(owedTo),
             groupName: format.groupName,
@@ -460,10 +450,11 @@ export const sendPaymentRequests = onCall<SendPaymentRequestsData>(
             paymentMethodLines: owedToUser
               ? buildPaymentMethodLines(owedToUser)
               : NO_PAYMENT_METHODS,
-          })
-        );
-      })
-    );
+          }),
+        },
+      ];
+    });
+    await queueGroupMail(db, uid, mails);
     return { results: recipients.map((r) => r.result) };
   }
 );
@@ -513,7 +504,7 @@ export const sendPaymentReversalEmails = onCall<SendPaymentReversalEmailsData>(
       splitCount: splitCount as number,
     };
 
-    const mails: { to: string; message: MailMessage }[] = [];
+    const mails: QueuedMail[] = [];
     const paidByRecipient = recipient(paidBy, users);
     if (paidByRecipient.result === 'sent') {
       mails.push({
@@ -538,7 +529,7 @@ export const sendPaymentReversalEmails = onCall<SendPaymentReversalEmailsData>(
         }),
       });
     }
-    await Promise.all(mails.map((m) => queueMail(db, m.to, m.message)));
+    await queueGroupMail(db, uid, mails);
     return { sent: mails.length };
   }
 );
@@ -569,23 +560,22 @@ export const sendSettleReversalEmails = onCall<SendSettleReversalEmailsData>(
       getGroupFormat(groupRef),
     ]);
 
-    const mails = [...members.values()].flatMap((member) => {
+    const mails = [...members.values()].flatMap((member): QueuedMail[] => {
       const r = recipient(member, users);
-      return r.result === 'sent' ? [{ member, to: r.to }] : [];
+      return r.result === 'sent'
+        ? [
+            {
+              to: r.to,
+              message: buildSettleReversalEmail({
+                recipientName: displayName(member),
+                groupName: format.groupName,
+                settleDate,
+              }),
+            },
+          ]
+        : [];
     });
-    await Promise.all(
-      mails.map(({ member, to }) =>
-        queueMail(
-          db,
-          to,
-          buildSettleReversalEmail({
-            recipientName: displayName(member),
-            groupName: format.groupName,
-            settleDate,
-          })
-        )
-      )
-    );
+    await queueGroupMail(db, uid, mails);
     return { sent: mails.length };
   }
 );

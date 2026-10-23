@@ -7,10 +7,7 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import {
-  form,
-  FormField,
-} from '@angular/forms/signals';
+import { form, FormField } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -26,9 +23,22 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { ProfileForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
+import {
+  memberEmailUpdateMessage,
+  MemberService,
+} from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
+import {
+  AUTH_LOOKUP_UNAVAILABLE,
+  isAuthLookupUnavailable,
+  isInvalidLoginEmailRefusal,
+  isUnverifiedLoginRefusal,
+  LOGIN_EMAIL_INVALID_MESSAGE,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
+import { singleEmail } from '@utils/email-validation';
 import { FirebaseError } from 'firebase/app';
 import {
   ActionCodeSettings,
@@ -37,8 +47,6 @@ import {
   sendEmailVerification,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
-import { singleEmail } from '@utils/email-validation';
-import { verifiedTokenEmail } from '@utils/verified-token-email.util';
 
 @Component({
   selector: 'app-account-profile',
@@ -64,6 +72,7 @@ export class AccountProfileComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
@@ -198,45 +207,36 @@ export class AccountProfileComponent {
   async syncMemberEmails(): Promise<void> {
     this.loading.loadingOn();
     try {
-      // The rules accept a linked member email only when it is the caller's
-      // verified token address, so take it from a freshly refreshed token
-      // (as UserService #syncProfileEmail does), not the profile copy,
-      // which can lag a login-email change.
-      const tokenEmail = await verifiedTokenEmail(this.auth);
-      if (!tokenEmail) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Verify your login email first.' },
-        });
-        return;
-      }
-      const userRef = this.currentUser()!.ref!;
-      const count = await this.memberService.updateAllMemberEmails(
-        userRef,
-        tokenEmail
-      );
-      const recordText = count === 1 ? 'record' : 'records';
+      // The server moves every membership to the account's verified login
+      // email (updateMemberEmails); the client never supplies the address.
+      const result = await this.memberService.updateAllMemberEmails();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message:
-            count > 0
-              ? `Updated email on ${count} member ${recordText}`
-              : 'No member records needed updating',
-        },
+        data: { message: memberEmailUpdateMessage(result) },
       });
     } catch (error) {
-      this.analytics.logError(
-        'Account Profile Component',
-        'sync_member_emails',
-        'Failed to sync member emails',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message: 'Something went wrong - could not update member emails',
-        },
-      });
+      // MemberService logs the failures worth logging. Anything else may be
+      // the callable's App Check refusal, which gets the help dialog.
+      const message = this.#syncRefusalMessage(error);
+      if (message) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message },
+        });
+      } else {
+        this.appCheckErrorHandler.handle(
+          error,
+          'Something went wrong - could not update member emails'
+        );
+      }
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  /** The message for a refusal the server explains, or null for any other failure. */
+  #syncRefusalMessage(error: unknown): string | null {
+    if (isUnverifiedLoginRefusal(error)) return VERIFY_LOGIN_EMAIL;
+    if (isInvalidLoginEmailRefusal(error)) return LOGIN_EMAIL_INVALID_MESSAGE;
+    if (isAuthLookupUnavailable(error)) return AUTH_LOOKUP_UNAVAILABLE;
+    return null;
   }
 }

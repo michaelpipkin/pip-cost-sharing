@@ -3,12 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { isLikelyAppCheckError } from './app-check-error.util';
 
 describe('isLikelyAppCheckError', () => {
-  it('returns true for a Firestore permission-denied error', () => {
+  it('returns false for a Firestore permission-denied error (a rules denial; Firestore App Check is not enforced)', () => {
     const error = new FirebaseError(
       'permission-denied',
       'Missing or insufficient permissions.'
     );
-    expect(isLikelyAppCheckError(error)).toBe(true);
+    expect(isLikelyAppCheckError(error)).toBe(false);
+  });
+
+  it('returns false for a Functions permission-denied error', () => {
+    const error = new FirebaseError(
+      'functions/permission-denied',
+      'Verify your login email first.'
+    );
+    expect(isLikelyAppCheckError(error)).toBe(false);
   });
 
   it('returns true for a Functions unauthenticated error', () => {

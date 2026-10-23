@@ -5,6 +5,12 @@ import { AnalyticsService } from '@services/analytics.service';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
 import {
+  callableError,
+  isAuthLookupUnavailable,
+  isUnverifiedLoginRefusal,
+  OTHER_MEMBER_HAS_EMAIL,
+} from '@utils/callable-error.util';
+import {
   addDoc,
   collection,
   collectionGroup,
@@ -28,6 +34,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   IMemberService,
   MemberEmailChangeStatus,
+  MemberEmailUpdateResult,
 } from './member.service.interface';
 import { SortingService } from './sorting.service';
 
@@ -40,8 +47,10 @@ const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
 /**
  * Callable error codes that are outcomes the UI reports to the user, not
  * failures to log: the daily request limit and a duplicate address
- * (requestMemberEmailChange), and an expired/used link or another account
- * (confirmMemberEmailChange).
+ * (requestMemberEmailChange), an expired/used link or another account
+ * (confirmMemberEmailChange), and an unverified login email (both). A failed
+ * Auth lookup (unavailable, AUTH_LOOKUP_UNAVAILABLE) is not logged either,
+ * matched by its message: the server logs it.
  */
 const EXPECTED_EMAIL_CHANGE_CODES = new Set([
   'functions/resource-exhausted',
@@ -51,18 +60,41 @@ const EXPECTED_EMAIL_CHANGE_CODES = new Set([
 ]);
 
 /**
- * updateAllMemberEmails failed after writing some records: `updated` says how
- * many, so the caller can tell the user and let them retry (the retry skips
- * what is already written). The message is the underlying failure's.
+ * The client-side duplicate checks' refusal of an address another member of
+ * the group already has (add member, and an edit that changes the email).
+ * An outcome the dialogs show, not an error to log.
  */
-export class MemberEmailUpdateError extends Error {
-  constructor(
-    readonly updated: number,
-    readonly original: unknown
-  ) {
-    super(original instanceof Error ? original.message : 'Unknown error');
-    this.name = 'MemberEmailUpdateError';
+export class DuplicateMemberEmailError extends Error {
+  constructor() {
+    super(OTHER_MEMBER_HAS_EMAIL);
+    this.name = 'DuplicateMemberEmailError';
   }
+}
+
+/**
+ * The snackbar text for an updateAllMemberEmails result (Account > Profile's
+ * Sync and the group email update dialog).
+ */
+export function memberEmailUpdateMessage({
+  updated,
+  conflicts,
+}: MemberEmailUpdateResult): string {
+  const records = (n: number) =>
+    `${n} member ${n === 1 ? 'record' : 'records'}`;
+  if (conflicts === 0) {
+    return updated > 0
+      ? `Updated email on ${records(updated)}`
+      : 'No member records needed updating';
+  }
+  const updatedPart =
+    updated > 0
+      ? `Updated email on ${records(updated)}.`
+      : 'No member records were updated.';
+  const skipped =
+    conflicts === 1
+      ? '1 skipped because another member of that group already uses that address.'
+      : `${conflicts} skipped because another member of each of those groups already uses that address.`;
+  return `${updatedPart} ${skipped}`;
 }
 
 @Injectable({
@@ -226,9 +258,7 @@ export class MemberService implements IMemberService {
       const membersSnapshot = await getDocs(membersQuery);
 
       if (!membersSnapshot.empty) {
-        throw new Error(
-          'A member with this email address already exists in the group.'
-        );
+        throw new DuplicateMemberEmailError();
       }
 
       // Linking by users.emailLower is safe only because a profile email is
@@ -278,9 +308,7 @@ export class MemberService implements IMemberService {
       const snap = await getDocs(q);
 
       if (snap.size > 0) {
-        throw new Error(
-          'A member with this email address already exists in the group.'
-        );
+        throw new DuplicateMemberEmailError();
       }
     }
 
@@ -293,17 +321,22 @@ export class MemberService implements IMemberService {
     currentUserRef: DocumentReference<User> | null,
     currentEmail: string
   ): Promise<void> {
+    const emailChanging =
+      !!changes.email &&
+      this.#normalizeEmail(changes.email) !==
+        this.#normalizeEmail(currentEmail);
+    // The callables' duplicate check (functions/src/member-email.ts
+    // DUPLICATE_MEMBER_EMAIL), for an admin's edit of an unlinked member.
+    if (emailChanging) {
+      await this.#assertNoOtherMemberHas(memberRef, changes.email!);
+    }
     // Only search for user if member is not already linked and email is changing
-    if (
-      !currentUserRef &&
-      changes.email &&
-      this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail)
-    ) {
+    if (!currentUserRef && emailChanging) {
       // Safe only because profile emails are verified-only (see
       // addMemberToGroup).
       const userQuery = query(
         collection(this.fs, 'users'),
-        where('emailLower', '==', this.#normalizeEmail(changes.email))
+        where('emailLower', '==', this.#normalizeEmail(changes.email!))
       );
       const userSnapshot = await getDocs(userQuery);
       if (userSnapshot.size === 1) {
@@ -316,12 +349,32 @@ export class MemberService implements IMemberService {
           'Member Service',
           'updateMemberWithUserMatching',
           'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
-          this.#normalizeEmail(changes.email)
+          this.#normalizeEmail(changes.email!)
         );
       }
     }
 
     await updateDoc(memberRef, changes);
+  }
+
+  /**
+   * Refuses (DuplicateMemberEmailError) an address another member of the same
+   * group already has, compared case-insensitively through emailLower.
+   */
+  async #assertNoOtherMemberHas(
+    memberRef: DocumentReference<Member>,
+    email: string
+  ): Promise<void> {
+    const clash = await getDocs(
+      query(
+        memberRef.parent,
+        where('emailLower', '==', this.#normalizeEmail(email)),
+        limit(2)
+      )
+    );
+    if (clash.docs.some((d) => d.id !== memberRef.id)) {
+      throw new DuplicateMemberEmailError();
+    }
   }
 
   async removeMemberFromGroup(
@@ -462,7 +515,11 @@ export class MemberService implements IMemberService {
 
   #logUnexpected(error: unknown, action: string, message: string): void {
     const code = (error as { code?: unknown } | null)?.code;
-    if (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) {
+    if (
+      (typeof code === 'string' && EXPECTED_EMAIL_CHANGE_CODES.has(code)) ||
+      // The server logs its own failed Auth lookup.
+      isAuthLookupUnavailable(error)
+    ) {
       return;
     }
     this.analytics.logError(
@@ -504,46 +561,45 @@ export class MemberService implements IMemberService {
   }
 
   /**
-   * Sets `newEmail` on the user's member records and returns how many it
-   * wrote. Records already on `newEmail` (case-insensitively) are skipped, so
-   * the count is the number actually changed. With `onlyFromEmail`, only
-   * records whose email equals it (case-insensitively) are written, so a
-   * deliberate address set for one group is kept. A failure after some
-   * records were written throws a MemberEmailUpdateError saying how many.
+   * Moves the user's member records to their verified login email, through
+   * the updateMemberEmails callable (functions/src/member-email.ts): the
+   * server reads the address from the Auth account (never from the client),
+   * skips records already on it, and with `onlyFromEmail` writes only the
+   * records on that address (case-insensitively), so an address set for one
+   * group is kept. A record whose group already has another member on the
+   * address is left alone and counted in `conflicts`. All or nothing: a
+   * failure writes nothing, so the caller can simply retry.
    */
   async updateAllMemberEmails(
-    userRef: DocumentReference<User>,
-    newEmail: string,
     onlyFromEmail?: string
-  ): Promise<number> {
-    let updated = 0;
+  ): Promise<MemberEmailUpdateResult> {
     try {
-      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
-      const to = newEmail.toLowerCase();
-      const from = onlyFromEmail?.toLowerCase();
-      const toUpdate = membersSnapshot.docs.filter((memberDoc) => {
-        const current = (memberDoc.data().email ?? '').toLowerCase();
-        return current !== to && (from === undefined || current === from);
-      });
-
-      for (const memberDoc of toUpdate) {
-        await updateDoc(memberDoc.ref, { email: newEmail });
-        updated++;
-      }
-
-      this.analytics.logEvent('member_emails_updated', {
-        membersUpdated: updated,
-      });
-
-      return updated;
-    } catch (error) {
-      this.analytics.logError(
-        'Member Service',
-        'updateAllMemberEmails',
-        'Failed to update member emails',
-        error instanceof Error ? error.message : 'Unknown error'
+      const updateFn = httpsCallable<
+        { onlyFromEmail?: string },
+        MemberEmailUpdateResult
+      >(this.functions, 'updateMemberEmails');
+      const { data } = await updateFn(
+        onlyFromEmail === undefined ? {} : { onlyFromEmail }
       );
-      throw updated > 0 ? new MemberEmailUpdateError(updated, error) : error;
+      this.analytics.logEvent('member_emails_updated', {
+        membersUpdated: data.updated,
+        memberConflicts: data.conflicts,
+      });
+      return data;
+    } catch (error) {
+      // Only the unverified-login refusal and the failed Auth lookup (which
+      // the server logs) are expected outcomes here. The rest,
+      // LOGIN_EMAIL_INVALID (a legacy account the owner should hear about)
+      // included, are logged with the server's message.
+      if (!isUnverifiedLoginRefusal(error) && !isAuthLookupUnavailable(error)) {
+        this.analytics.logError(
+          'Member Service',
+          'updateAllMemberEmails',
+          'Failed to update member emails',
+          callableError(error).message || 'Unknown error'
+        );
+      }
+      throw error;
     }
   }
 }

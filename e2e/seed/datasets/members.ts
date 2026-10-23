@@ -5,12 +5,15 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  * Owned by e2e/members/members.spec.ts.
  *
  * - members-admin (Ari, group admin) in "Members – Main", their only and
- *   default group. The three admin tests share the group and the user
+ *   default group. The admin tests share the group and the user
  *   (nobody switches groups or changes user-level state); each works on its
  *   own placeholder member (no email, never signs in):
  *   - "Edit Me": renamed and made a group admin by the edit test;
  *   - "Remove Me" (no splits): removed by the remove test;
  *   - "Has Splits": in the one seeded expense, so removing them is refused;
+ *   - "Duplicate Email": given Ari's address (in other casing) by the
+ *     duplicate-email test, which the app refuses, so it keeps its blank
+ *     email (the test repeats);
  *   - "Remove Linked" (no splits), linked to members-removed, whose default
  *     is "Members – Main": removed by the linked-remove test, which checks
  *     that the admin's removal cleared that user's default (a cross-user
@@ -49,6 +52,11 @@ const placeholders = {
   edit: { key: 'edit-me', displayName: 'Edit Me', email: '' },
   remove: { key: 'remove-me', displayName: 'Remove Me', email: '' },
   hasSplits: { key: 'has-splits', displayName: 'Has Splits', email: '' },
+  duplicate: {
+    key: 'duplicate-email',
+    displayName: 'Duplicate Email',
+    email: '',
+  },
 } as const;
 
 /** "Members – Main"'s member linked to members-removed; `key` is the row's id. */

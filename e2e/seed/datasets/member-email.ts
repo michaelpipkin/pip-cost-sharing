@@ -13,12 +13,22 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   (Admin SDK), so it repeats, up to the callable's limit of 5 mailed
  *   requests per uid per day within one seeding.
  *
+ * - member-email-cooldown (Cleo) in "Member Email – Cooldown", her only and
+ *   default group (admin: Otto, a placeholder). The cooldown test asks
+ *   twice for the same new address, unique to the run: the first request
+ *   mails a link, the second is refused by the per-recipient cooldown (one
+ *   confirmation per address per hour). Her own user and group because each
+ *   request replaces her pending link, which would break the journey test's
+ *   link if they shared Mae. Repeats up to 5 times per seeding (the per-uid
+ *   limit; the refused request is not counted).
+ *
  * The admin-side check (a linked member's email is locked) reads the shared
  * group as SHARED.users.alice and writes nothing.
  */
 
 const SPEC = 'spec:e2e/members/member-email.spec.ts' as const;
 const GROUP_KEY = 'g-member-email-main';
+const COOLDOWN_GROUP_KEY = 'g-member-email-cooldown';
 
 const self: SeedUser = {
   key: 'member-email-self',
@@ -46,14 +56,41 @@ const main: SeedGroup = {
   categories: [{ key: 'member-email-general', name: 'General' }],
 };
 
+const cooldownUser: SeedUser = {
+  key: 'member-email-cooldown',
+  uid: 'u-member-email-cooldown',
+  email: 'member-email-cooldown@pipsplit.test',
+  password: 'Seed-Pass-123!',
+  profile: { defaultGroupKey: COOLDOWN_GROUP_KEY },
+};
+
+const cooldownMember = {
+  key: 'cleo',
+  displayName: 'Cleo',
+  email: cooldownUser.email,
+  userKey: cooldownUser.key,
+} as const;
+
+const cooldown: SeedGroup = {
+  key: COOLDOWN_GROUP_KEY,
+  owner: SPEC,
+  name: 'Member Email – Cooldown',
+  members: [
+    { key: 'otto', displayName: 'Otto', email: '', groupAdmin: true },
+    cooldownMember,
+  ],
+  categories: [{ key: 'member-email-cooldown-general', name: 'General' }],
+};
+
 export const MEMBER_EMAIL = {
-  users: { self },
-  groups: { main },
+  users: { self, cooldown: cooldownUser },
+  groups: { main, cooldown },
   selfMember,
+  cooldownMember,
 } as const;
 
 export const MEMBER_EMAIL_DATASET: SeedDataset = {
   name: 'member-email',
-  users: [self],
-  groups: [main],
+  users: [self, cooldownUser],
+  groups: [main, cooldown],
 };
