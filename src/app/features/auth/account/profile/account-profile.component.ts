@@ -26,7 +26,10 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { ProfileForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
-import { MemberService } from '@services/member.service';
+import {
+  memberEmailUpdateMessage,
+  MemberService,
+} from '@services/member.service';
 import { UserService } from '@services/user.service';
 import { UserStore } from '@store/user.store';
 import { FirebaseError } from 'firebase/app';
@@ -37,8 +40,11 @@ import {
   sendEmailVerification,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
+import {
+  isUnverifiedLoginRefusal,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
-import { verifiedTokenEmail } from '@utils/verified-token-email.util';
 
 @Component({
   selector: 'app-account-profile',
@@ -198,41 +204,19 @@ export class AccountProfileComponent {
   async syncMemberEmails(): Promise<void> {
     this.loading.loadingOn();
     try {
-      // The rules accept a linked member email only when it is the caller's
-      // verified token address, so take it from a freshly refreshed token
-      // (as UserService #syncProfileEmail does), not the profile copy,
-      // which can lag a login-email change.
-      const tokenEmail = await verifiedTokenEmail(this.auth);
-      if (!tokenEmail) {
-        this.snackbar.openFromComponent(CustomSnackbarComponent, {
-          data: { message: 'Verify your login email first.' },
-        });
-        return;
-      }
-      const userRef = this.currentUser()!.ref!;
-      const count = await this.memberService.updateAllMemberEmails(
-        userRef,
-        tokenEmail
-      );
-      const recordText = count === 1 ? 'record' : 'records';
+      // The server moves every membership to the account's verified login
+      // email (updateMemberEmails); the client never supplies the address.
+      const result = await this.memberService.updateAllMemberEmails();
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: {
-          message:
-            count > 0
-              ? `Updated email on ${count} member ${recordText}`
-              : 'No member records needed updating',
-        },
+        data: { message: memberEmailUpdateMessage(result) },
       });
     } catch (error) {
-      this.analytics.logError(
-        'Account Profile Component',
-        'sync_member_emails',
-        'Failed to sync member emails',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      // MemberService logs unexpected failures.
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: {
-          message: 'Something went wrong - could not update member emails',
+          message: isUnverifiedLoginRefusal(error)
+            ? VERIFY_LOGIN_EMAIL
+            : 'Something went wrong - could not update member emails',
         },
       });
     } finally {

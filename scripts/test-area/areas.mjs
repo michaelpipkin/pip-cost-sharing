@@ -152,18 +152,17 @@ const INVITE_LINKING_FUNCTIONS = [
 ];
 
 // The group-email change callables (Plan 4 B19): edit-member requests a
-// change, the auth confirm-group-email page confirms it.
+// change, the auth confirm-group-email page confirms it, and Account >
+// Profile's Sync and the group email update dialog call updateMemberEmails.
 const MEMBER_EMAIL_FUNCTIONS = ['src/member-email.spec.ts'];
 // Reads a callable's code and server message (edit-member, the confirm
-// page): with every area whose code imports it.
+// page, Profile's Sync, the group email update dialog): with every area
+// whose code imports it.
 const CALLABLE_ERROR = [`${UTILITIES}/callable-error.util.spec.ts`];
 // The safe sign-in returnUrl (B20): the auth guards put the attempted page on
 // the login URL, and the group service returns the user there after sign-in.
 // With every area that lists the guards or the group service.
 const RETURN_URL = [`${UTILITIES}/return-url.util.spec.ts`];
-// The verified ID-token address that member email syncs write (B20): the
-// Account > Profile sync and the group email update dialog.
-const VERIFIED_TOKEN_EMAIL = [`${UTILITIES}/verified-token-email.util.spec.ts`];
 // The dialog the app shell opens after a login-email change (B20).
 const GROUP_EMAIL_UPDATE_DIALOG = [
   `${FEATURES}/auth/group-email-update-dialog`,
@@ -188,8 +187,8 @@ export const AREAS = {
       ...USER_SERVICE,
       'app/app.component.spec.ts',
       ...GROUP_EMAIL_UPDATE_DIALOG,
+      ...CALLABLE_ERROR,
       ...RETURN_URL,
-      ...VERIFIED_TOKEN_EMAIL,
       `${SERVICES}/member.service.spec.ts`,
       'app/app-check.spec.ts',
       'app/firebase-options.spec.ts',
@@ -211,6 +210,8 @@ export const AREAS = {
       'src/log-app-error.spec.ts',
       'src/mail-suppression.spec.ts',
       ...MAIL_QUEUE_FUNCTIONS,
+      // The group email update dialog the shell opens (updateMemberEmails).
+      ...MEMBER_EMAIL_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],
     tag: '@shell',
@@ -236,7 +237,6 @@ export const AREAS = {
       ...CALLABLE_ERROR,
       ...GROUP_EMAIL_UPDATE_DIALOG,
       ...RETURN_URL,
-      ...VERIFIED_TOKEN_EMAIL,
       `${FEATURES}/auth/delete-account`,
       `${FEATURES}/auth/forgot-password`,
       `${FEATURES}/auth/guards.guard.spec.ts`,
@@ -283,8 +283,8 @@ export const AREAS = {
       `${FEATURES}/auth/account`,
       `${FEATURES}/auth/delete-account`,
       ...GROUP_EMAIL_UPDATE_DIALOG,
+      ...CALLABLE_ERROR,
       ...RETURN_URL,
-      ...VERIFIED_TOKEN_EMAIL,
       ...EMAIL_VALIDATION,
       `${SERVICES}/group.service.spec.ts`,
       `${SERVICES}/member.service.spec.ts`,
@@ -297,6 +297,8 @@ export const AREAS = {
       'src/verify-user-email.spec.ts',
       ...EMAIL_LOWER_FUNCTIONS,
       ...INVITE_LINKING_FUNCTIONS,
+      // Profile's Sync and the group email update dialog (updateMemberEmails).
+      ...MEMBER_EMAIL_FUNCTIONS,
       ...MAIL_QUEUE_FUNCTIONS,
       ...USER_SERVICE_FUNCTIONS,
     ],

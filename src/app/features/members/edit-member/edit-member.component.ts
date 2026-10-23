@@ -39,7 +39,11 @@ import { MemberService } from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
-import { callableError } from '@utils/callable-error.util';
+import {
+  callableError,
+  isUnverifiedLoginRefusal,
+  VERIFY_LOGIN_EMAIL,
+} from '@utils/callable-error.util';
 import { singleEmail } from '@utils/email-validation';
 import { DocumentReference } from 'firebase/firestore';
 
@@ -195,11 +199,8 @@ export class EditMemberComponent {
     let message: string;
     if (code === 'functions/resource-exhausted') {
       message = 'Too many email change requests. Please try again tomorrow.';
-    } else if (
-      code === 'functions/permission-denied' &&
-      serverMessage === 'Verify your login email first.'
-    ) {
-      message = 'Verify your login email first.';
+    } else if (isUnverifiedLoginRefusal(error)) {
+      message = VERIFY_LOGIN_EMAIL;
     } else if (error instanceof Error) {
       message = serverMessage;
       if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {

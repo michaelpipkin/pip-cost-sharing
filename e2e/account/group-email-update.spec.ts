@@ -52,6 +52,26 @@ async function setCustomEmailInGroupC(variant: Variant): Promise<void> {
 }
 
 /**
+ * Gives another member of the `-b` group the variant's new login address, so
+ * updating that membership would duplicate it. The row is linked to an
+ * account id that has no users doc, so linkInvitedMembers (which links only
+ * unlinked rows) never hands it to the test user when they verify the address.
+ */
+async function takeNewEmailInGroupB(variant: Variant): Promise<void> {
+  const groupB = GROUP_EMAIL_UPDATE.groups[variant][1]!;
+  const { db } = getSeedAdmin();
+  const email = newEmailFor(variant);
+  await db.doc(`groups/${groupB.key}/members/conflict`).set({
+    displayName: 'Address Taken',
+    email,
+    emailLower: email,
+    active: true,
+    groupAdmin: false,
+    userRef: db.doc(`users/u-group-email-${variant}-conflict`),
+  });
+}
+
+/**
  * Changes the user's login email the way production does and signs in with
  * the new address; the app then offers the update.
  */
@@ -151,7 +171,7 @@ test.describe(
       ]);
     });
 
-    test('"Update all" changes every membership, the custom one too', async ({
+    test('"Update all" changes every membership, the custom one too, and skips a group where the address is taken', async ({
       page,
     }) => {
       const user = GROUP_EMAIL_UPDATE.users.all;
@@ -159,6 +179,7 @@ test.describe(
       const dialog = new GroupEmailUpdateDialog(page);
 
       await setCustomEmailInGroupC('all');
+      await takeNewEmailInGroupB('all');
 
       await changeLoginEmailAndSignIn(page, user, newEmail);
 
@@ -166,12 +187,15 @@ test.describe(
       await expect(dialog.oldOnlyButton).toBeVisible();
       await dialog.choose(dialog.updateAllButton);
 
+      // M2: the server's duplicate check leaves group B on the old address.
       await expect(
-        dialog.snackbarWith('Updated email on 3 member records')
+        dialog.snackbarWith(
+          'Updated email on 2 member records. 1 skipped because another member of that group already uses that address.'
+        )
       ).toBeVisible();
       await expect.poll(() => memberEmails('all')).toEqual([
         newEmail,
-        newEmail,
+        user.email,
         newEmail,
       ]);
     });

@@ -18,14 +18,16 @@ import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builde
 // Verified group emails (Plan 4 B19). All group mail goes to the member's
 // group email (groups/{gid}/members/{mid}.email), so a LINKED member's email
 // must always be an address the linked user has proven they own
-// (group-mail-recipient.ts). firestore.rules lets a member write their own
-// linked email only when it is their verified sign-in address; any other
-// address goes through these two callables:
+// (group-mail-recipient.ts). firestore.rules lets no client change a linked
+// member's email at all; every change goes through these callables:
 //  - requestMemberEmailChange: the member asks for a new group email. Their
 //    verified sign-in address is applied at once; any other address gets a
 //    one-time confirmation link, mailed to that address.
 //  - confirmMemberEmailChange: the link's page (/auth/confirm-group-email)
 //    applies the address, once, for the account that asked.
+//  - updateMemberEmails: Account > Profile's Sync and the "Update your group
+//    emails?" dialog move every linked membership to the verified sign-in
+//    address, with the same duplicate check and link cancellation.
 // The confirmation mail holds no user-controlled text (no display name,
 // group name or other address): the request can name any address, so
 // anything the caller controls in the mail would make this a spam relay
@@ -62,6 +64,12 @@ export const DUPLICATE_MEMBER_EMAIL =
   'A member with this email address already exists in the group.';
 /** permission-denied: the caller's own login email is not verified. */
 export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
+/**
+ * failed-precondition (updateMemberEmails): the verified login email is not
+ * one valid address (a legacy account), so no member doc may hold it.
+ */
+export const LOGIN_EMAIL_INVALID =
+  'Your login email is not a single valid email address.';
 /** permission-denied: the token belongs to another account. */
 export const CONFIRM_WRONG_ACCOUNT =
   'Sign in with the account that requested this change.';
@@ -144,17 +152,20 @@ function assertActive(member: DocumentData | undefined): void {
 }
 
 /**
- * The caller's verified Auth address, lowercased. Refuses an unverified (or
- * missing) account: uids are free, so without this the per-uid limit would
- * not bound the mail an attacker could send (fix round 1, I1). The app's
- * confirm page is behind authGuard, which requires a verified account too.
+ * The caller's verified Auth address, as stored and lowercased. Refuses an
+ * unverified (or missing) account: uids are free, so without this the
+ * per-uid limit would not bound the mail an attacker could send (fix round
+ * 1, I1). The app's confirm page is behind authGuard, which requires a
+ * verified account too.
  */
-async function requireVerifiedCaller(uid: string): Promise<string> {
-  const emailLower = await verifiedAuthEmailLower(uid);
-  if (!emailLower) {
+async function requireVerifiedCaller(
+  uid: string
+): Promise<{ email: string; emailLower: string }> {
+  const email = await verifiedAuthEmail(uid);
+  if (!email) {
     throw new HttpsError('permission-denied', VERIFY_LOGIN_EMAIL);
   }
-  return emailLower;
+  return { email, emailLower: normalizeEmail(email) };
 }
 
 /** The member's pending confirmation tokens, read inside `txn`. */
@@ -170,32 +181,39 @@ async function pendingTokensOf(
   return snap.docs.map((d) => d.ref);
 }
 
-/** The caller's Auth address when it is verified, lowercased; else null. */
-async function verifiedAuthEmailLower(uid: string): Promise<string | null> {
+/** The caller's Auth address (as stored) when it is verified; else null. */
+async function verifiedAuthEmail(uid: string): Promise<string | null> {
   try {
     const record = await getAuth().getUser(uid);
-    return record.emailVerified && record.email
-      ? normalizeEmail(record.email)
-      : null;
+    return record.emailVerified && record.email ? record.email : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Refuses an address another member of the same group already has (the
+ * Whether another member of the same group already has the address (the
  * app's own duplicate check, member.service updateMember). `read` runs the
  * query: a transaction's get inside one, else a plain get.
  */
+async function otherMemberHas(
+  read: (query: Query) => Promise<QuerySnapshot>,
+  memberRef: DocumentReference,
+  emailLower: string
+): Promise<boolean> {
+  const clash = await read(
+    memberRef.parent.where('emailLower', '==', emailLower).limit(2)
+  );
+  return clash.docs.some((d) => d.id !== memberRef.id);
+}
+
+/** Refuses an address another member of the same group already has. */
 async function assertNoOtherMemberHas(
   read: (query: Query) => Promise<QuerySnapshot>,
   memberRef: DocumentReference,
   emailLower: string
 ): Promise<void> {
-  const clash = await read(
-    memberRef.parent.where('emailLower', '==', emailLower).limit(2)
-  );
-  if (clash.docs.some((d) => d.id !== memberRef.id)) {
+  if (await otherMemberHas(read, memberRef, emailLower)) {
     throw new HttpsError('already-exists', DUPLICATE_MEMBER_EMAIL);
   }
 }
@@ -249,7 +267,7 @@ export const requestMemberEmailChange = onCall<{
   callableAppCheck,
   async (request): Promise<{ status: MemberEmailChangeStatus }> => {
     const uid = requireUid(request.auth?.uid);
-    const verifiedLower = await requireVerifiedCaller(uid);
+    const { emailLower: verifiedLower } = await requireVerifiedCaller(uid);
     const { groupId, memberId, email } = request.data ?? {};
     if (!isSingleEmailAddress(email)) {
       throw new HttpsError(
@@ -383,6 +401,117 @@ export const confirmMemberEmailChange = onCall<{ token?: unknown }>(
       txn.delete(tokenRef);
       return { groupId: memberRef.parent.parent!.id, email };
     });
+  }
+);
+
+/**
+ * Linked rows per updateMemberEmails transaction. Each row costs one update
+ * plus the deletes of its pending links (at most one in practice, since each
+ * request replaces the member's earlier link), so 100 rows stay far below a
+ * commit's 500-write limit. A user realistically has far fewer memberships,
+ * so this is one transaction in practice.
+ */
+const MEMBER_EMAILS_PER_TXN = 100;
+
+/** The longest `onlyFromEmail` accepted (well past any real address). */
+const MAX_FROM_EMAIL_LENGTH = 1000;
+
+/**
+ * Account > Profile's Sync and the "Update your group emails?" dialog: moves
+ * every member doc linked to the caller (active or not, the app's former
+ * client query) to the caller's VERIFIED Auth address, never one the client
+ * supplies. Skips, comparing case-insensitively:
+ *  - rows already on that address;
+ *  - with `onlyFromEmail`, rows whose email is not that address;
+ *  - rows whose group already has another member on that address, counted
+ *    as `conflicts` (the callables' DUPLICATE_MEMBER_EMAIL check).
+ * Each updated row gets `email` and `emailLower`, and its pending
+ * confirmation links are deleted with it, so an older link can't put the
+ * row back (M1).
+ *
+ * Atomic: one transaction per MEMBER_EMAILS_PER_TXN rows, which is every row
+ * for any real user. Past that, a failure can leave earlier chunks written.
+ * That is acceptable because every row is still written whole (email,
+ * emailLower and its links together), and a retry skips the rows already on
+ * the address.
+ *
+ * Errors: unauthenticated; permission-denied VERIFY_LOGIN_EMAIL (no verified
+ * Auth address); invalid-argument (`onlyFromEmail` not a string);
+ * failed-precondition LOGIN_EMAIL_INVALID (the Auth address is not one valid
+ * address, which a member doc may not hold).
+ */
+export const updateMemberEmails = onCall<{ onlyFromEmail?: unknown }>(
+  callableAppCheck,
+  async (request): Promise<{ updated: number; conflicts: number }> => {
+    const uid = requireUid(request.auth?.uid);
+    const { email, emailLower } = await requireVerifiedCaller(uid);
+    const onlyFromEmail = request.data?.onlyFromEmail ?? null;
+    if (
+      onlyFromEmail !== null &&
+      (typeof onlyFromEmail !== 'string' ||
+        onlyFromEmail.length > MAX_FROM_EMAIL_LENGTH)
+    ) {
+      throw new HttpsError(
+        'invalid-argument',
+        'onlyFromEmail must be an email address'
+      );
+    }
+    if (!isSingleEmailAddress(email)) {
+      throw new HttpsError('failed-precondition', LOGIN_EMAIL_INVALID);
+    }
+    const fromLower =
+      onlyFromEmail === null ? null : normalizeEmail(onlyFromEmail);
+
+    const db = getFirestore();
+    const linked = await db
+      .collectionGroup('members')
+      .where('userRef', '==', db.collection('users').doc(uid))
+      .get();
+    const refs = linked.docs.map((d) => d.ref);
+
+    let updated = 0;
+    let conflicts = 0;
+    for (let i = 0; i < refs.length; i += MEMBER_EMAILS_PER_TXN) {
+      const chunk = refs.slice(i, i + MEMBER_EMAILS_PER_TXN);
+      const result = await db.runTransaction(async (txn) => {
+        const snaps = await txn.getAll(...chunk);
+        const writes: { ref: DocumentReference; links: DocumentReference[] }[] =
+          [];
+        // Groups this transaction gives the address to: a second row of the
+        // caller's in the same group would be a duplicate the query below
+        // can't see yet (the first write is not committed).
+        const claimed = new Set<string>();
+        let clashes = 0;
+        for (const snap of snaps) {
+          if (!snap.exists || !isLinkedTo(snap.data(), uid)) continue;
+          const stored: unknown = snap.get('email');
+          const current = typeof stored === 'string' ? normalizeEmail(stored) : '';
+          if (current === emailLower) continue;
+          if (fromLower !== null && current !== fromLower) continue;
+          const group = snap.ref.parent.path;
+          if (
+            claimed.has(group) ||
+            (await otherMemberHas((q) => txn.get(q), snap.ref, emailLower))
+          ) {
+            clashes++;
+            continue;
+          }
+          claimed.add(group);
+          writes.push({
+            ref: snap.ref,
+            links: await pendingTokensOf(txn, snap.ref),
+          });
+        }
+        for (const { ref, links } of writes) {
+          for (const link of links) txn.delete(link);
+          txn.update(ref, { email, emailLower });
+        }
+        return { updated: writes.length, conflicts: clashes };
+      });
+      updated += result.updated;
+      conflicts += result.conflicts;
+    }
+    return { updated, conflicts };
   }
 );
 

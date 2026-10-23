@@ -19,8 +19,9 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * - member-rules-leaver: leaves (the update leaveGroup makes when the
  *   member has splits) and rejoins.
  * - member-rules-deleter: leaves with no splits (deletes their own doc).
- * - member-rules-emailer: changes their member email the way Account >
- *   Profile's updateAllMemberEmails does.
+ * - member-rules-emailer: tries to change their own member email directly
+ *   (Account > Profile's Sync used to; it is now the updateMemberEmails
+ *   callable).
  * - member-rules-deactivated: seeded inactive, as an admin deactivates a
  *   member (not leftGroup); tries to reactivate themselves.
  * - member-rules-left: seeded as having left (leftGroup); tries to rejoin as

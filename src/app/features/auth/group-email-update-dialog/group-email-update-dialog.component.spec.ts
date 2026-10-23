@@ -6,21 +6,15 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { LoadingService } from '@components/loading/loading.service';
-import { AnalyticsService } from '@services/analytics.service';
-import {
-  MemberEmailUpdateError,
-  MemberService,
-} from '@services/member.service';
+import { MemberService } from '@services/member.service';
 import { UserStore } from '@store/user.store';
 import {
-  createMockAnalyticsService,
   createMockLoadingService,
   createMockSnackBar,
   createMockUserStore,
   mockDocRef,
   mockUser,
 } from '@testing/test-helpers';
-import * as authModule from 'firebase/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   GroupEmailUpdateDialogComponent,
@@ -33,18 +27,16 @@ const NEW = 'new@test.com';
 describe('GroupEmailUpdateDialogComponent', () => {
   let fixture: ComponentFixture<GroupEmailUpdateDialogComponent>;
   let el: HTMLElement;
-  let tokenClaims: Record<string, unknown>;
-  const mockAuth = {
-    currentUser: {
-      getIdTokenResult: vi.fn(async () => ({ claims: tokenClaims })),
-    },
-  };
   const mockMemberService = { updateAllMemberEmails: vi.fn() };
   const mockDialogRef = { close: vi.fn() };
   let mockSnackBar: ReturnType<typeof createMockSnackBar>;
   let mockLoading: ReturnType<typeof createMockLoadingService>;
-  let mockAnalytics: ReturnType<typeof createMockAnalyticsService>;
   let userStore: ReturnType<typeof createMockUserStore>;
+  /** The callable's refusal of an unverified login email, as the SDK throws it. */
+  const unverifiedRefusal = () =>
+    Object.assign(new Error('Verify your login email first. [403]'), {
+      code: 'functions/permission-denied',
+    });
   const userRef = mockDocRef('users/u1');
 
   async function open(
@@ -64,12 +56,10 @@ describe('GroupEmailUpdateDialogComponent', () => {
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: mockDialogRef },
-        { provide: authModule.getAuth, useValue: mockAuth },
         { provide: MemberService, useValue: mockMemberService },
         { provide: UserStore, useValue: userStore },
         { provide: LoadingService, useValue: mockLoading },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     });
     fixture = TestBed.createComponent(GroupEmailUpdateDialogComponent);
@@ -86,13 +76,14 @@ describe('GroupEmailUpdateDialogComponent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    tokenClaims = { email: NEW, email_verified: true };
     mockSnackBar = createMockSnackBar();
     mockLoading = createMockLoadingService();
-    mockAnalytics = createMockAnalyticsService();
     userStore = createMockUserStore();
     userStore.user.set(mockUser({ ref: userRef as any }));
-    mockMemberService.updateAllMemberEmails.mockResolvedValue(2);
+    mockMemberService.updateAllMemberEmails.mockResolvedValue({
+      updated: 2,
+      conflicts: 0,
+    });
   });
 
   afterEach(() => {
@@ -266,13 +257,13 @@ describe('GroupEmailUpdateDialogComponent', () => {
       await open(3, 1);
     });
 
-    it('updates every membership to the verified token email, behind the loading overlay', async () => {
+    it('asks the server to update every membership, behind the loading overlay', async () => {
       await fixture.componentInstance.updateAll();
 
-      expect(mockAuth.currentUser.getIdTokenResult).toHaveBeenCalledWith(true);
+      // The server takes the address from the Auth account (M1/M2): the
+      // dialog names none, and no onlyFromEmail.
       expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-        userRef,
-        NEW
+        undefined
       );
       expect(mockLoading.loadingOn).toHaveBeenCalled();
       expect(mockLoading.loadingOff).toHaveBeenCalled();
@@ -286,49 +277,47 @@ describe('GroupEmailUpdateDialogComponent', () => {
 
       await vi.waitFor(() =>
         expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-          userRef,
-          NEW
+          undefined
         )
       );
     });
 
-    it('writes the token address even if it differs from the one the dialog was opened with', async () => {
-      tokenClaims = { email: 'changed-again@test.com', email_verified: true };
-
-      await fixture.componentInstance.updateAll();
-
-      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-        userRef,
-        'changed-again@test.com'
-      );
-    });
-
     it.each([
-      [1, 'Updated email on 1 member record'],
-      [2, 'Updated email on 2 member records'],
-      [0, 'No member records needed updating'],
-    ])('reports %s updated record(s)', async (count, message) => {
-      mockMemberService.updateAllMemberEmails.mockResolvedValue(count);
+      [{ updated: 1, conflicts: 0 }, 'Updated email on 1 member record'],
+      [{ updated: 2, conflicts: 0 }, 'Updated email on 2 member records'],
+      [{ updated: 0, conflicts: 0 }, 'No member records needed updating'],
+      [
+        { updated: 2, conflicts: 1 },
+        'Updated email on 2 member records. 1 skipped because another member of that group already uses that address.',
+      ],
+      [
+        { updated: 1, conflicts: 2 },
+        'Updated email on 1 member record. 2 skipped because another member of each of those groups already uses that address.',
+      ],
+    ])('reports %o', async (result, message) => {
+      mockMemberService.updateAllMemberEmails.mockResolvedValue(result);
 
       await fixture.componentInstance.updateAll();
 
       expect(snackbarMessage()).toBe(message);
+      expect(mockDialogRef.close).toHaveBeenCalled();
     });
 
-    it('asks for verification, writing nothing, when the token email is not verified', async () => {
-      tokenClaims = { email: NEW, email_verified: false };
+    it('asks for verification and closes when the server refuses an unverified login email', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        unverifiedRefusal()
+      );
 
       await fixture.componentInstance.updateAll();
 
-      expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
       expect(snackbarMessage()).toBe('Verify your login email first.');
       expect(mockLoading.loadingOff).toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalled();
     });
 
-    it('shows an error snackbar and logs it when the update fails', async () => {
-      mockMemberService.updateAllMemberEmails.mockRejectedValue(
-        new Error('permission-denied')
+    it('shows an error snackbar and stays open for a retry when the update fails', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValueOnce(
+        Object.assign(new Error('internal'), { code: 'functions/internal' })
       );
 
       await fixture.componentInstance.updateAll();
@@ -336,46 +325,15 @@ describe('GroupEmailUpdateDialogComponent', () => {
       expect(snackbarMessage()).toBe(
         'Something went wrong - could not update member emails'
       );
-      expect(mockAnalytics.logError).toHaveBeenCalledWith(
-        'Group Email Update Dialog',
-        'update_all',
-        'Failed to update member emails',
-        'permission-denied'
-      );
       expect(mockLoading.loadingOff).toHaveBeenCalled();
-      // M2: stays open so the user can retry the same choice.
-      expect(mockDialogRef.close).not.toHaveBeenCalled();
-    });
-
-    it('says how many were updated before a partial failure, and stays open for a retry', async () => {
-      mockMemberService.updateAllMemberEmails.mockRejectedValueOnce(
-        new MemberEmailUpdateError(1, new Error('offline'))
-      );
-
-      await fixture.componentInstance.updateAll();
-
-      expect(snackbarMessage()).toBe(
-        'Updated email on 1 member record before an error. Please try again.'
-      );
+      // Stays open so the user can retry the same choice (the callable is
+      // all or nothing, so the retry starts from scratch).
       expect(mockDialogRef.close).not.toHaveBeenCalled();
 
-      mockMemberService.updateAllMemberEmails.mockResolvedValueOnce(2);
       await fixture.componentInstance.updateAll();
 
       expect(snackbarMessage()).toBe('Updated email on 2 member records');
       expect(mockDialogRef.close).toHaveBeenCalledTimes(1);
-    });
-
-    it('uses the plural for several records updated before a partial failure', async () => {
-      mockMemberService.updateAllMemberEmails.mockRejectedValueOnce(
-        new MemberEmailUpdateError(2, new Error('offline'))
-      );
-
-      await fixture.componentInstance.updateAll();
-
-      expect(snackbarMessage()).toBe(
-        'Updated email on 2 member records before an error. Please try again.'
-      );
     });
   });
 
@@ -387,11 +345,7 @@ describe('GroupEmailUpdateDialogComponent', () => {
     it('passes the old login email as onlyFromEmail', async () => {
       await fixture.componentInstance.updateOldOnly();
 
-      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-        userRef,
-        NEW,
-        OLD
-      );
+      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(OLD);
       expect(snackbarMessage()).toBe('Updated email on 2 member records');
       expect(mockDialogRef.close).toHaveBeenCalled();
     });
@@ -403,26 +357,31 @@ describe('GroupEmailUpdateDialogComponent', () => {
 
       await vi.waitFor(() =>
         expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-          userRef,
-          NEW,
           OLD
         )
       );
     });
 
-    it('shows an error snackbar and logs it when the update fails', async () => {
+    it('reports a conflict the same way as Update all', async () => {
+      mockMemberService.updateAllMemberEmails.mockResolvedValue({
+        updated: 0,
+        conflicts: 1,
+      });
+
+      await fixture.componentInstance.updateOldOnly();
+
+      expect(snackbarMessage()).toBe(
+        'No member records were updated. 1 skipped because another member of that group already uses that address.'
+      );
+    });
+
+    it('shows an error snackbar when the update fails', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue('boom');
 
       await fixture.componentInstance.updateOldOnly();
 
       expect(snackbarMessage()).toBe(
         'Something went wrong - could not update member emails'
-      );
-      expect(mockAnalytics.logError).toHaveBeenCalledWith(
-        'Group Email Update Dialog',
-        'update_old_email_only',
-        'Failed to update member emails',
-        'Unknown error'
       );
     });
 
@@ -459,7 +418,6 @@ describe('GroupEmailUpdateDialogComponent', () => {
 
       expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
       expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
-      expect(mockAnalytics.logError).not.toHaveBeenCalled();
       expect(mockDialogRef.close).toHaveBeenCalled();
     });
   });

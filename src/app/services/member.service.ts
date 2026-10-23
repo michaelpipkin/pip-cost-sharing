@@ -28,6 +28,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   IMemberService,
   MemberEmailChangeStatus,
+  MemberEmailUpdateResult,
 } from './member.service.interface';
 import { SortingService } from './sorting.service';
 
@@ -40,8 +41,8 @@ const GROUP_MEMBERS_SYNC_TIMEOUT_MS = 2000;
 /**
  * Callable error codes that are outcomes the UI reports to the user, not
  * failures to log: the daily request limit and a duplicate address
- * (requestMemberEmailChange), and an expired/used link or another account
- * (confirmMemberEmailChange).
+ * (requestMemberEmailChange), an expired/used link or another account
+ * (confirmMemberEmailChange), and an unverified login email (all three).
  */
 const EXPECTED_EMAIL_CHANGE_CODES = new Set([
   'functions/resource-exhausted',
@@ -51,18 +52,28 @@ const EXPECTED_EMAIL_CHANGE_CODES = new Set([
 ]);
 
 /**
- * updateAllMemberEmails failed after writing some records: `updated` says how
- * many, so the caller can tell the user and let them retry (the retry skips
- * what is already written). The message is the underlying failure's.
+ * The snackbar text for an updateAllMemberEmails result (Account > Profile's
+ * Sync and the group email update dialog).
  */
-export class MemberEmailUpdateError extends Error {
-  constructor(
-    readonly updated: number,
-    readonly original: unknown
-  ) {
-    super(original instanceof Error ? original.message : 'Unknown error');
-    this.name = 'MemberEmailUpdateError';
+export function memberEmailUpdateMessage({
+  updated,
+  conflicts,
+}: MemberEmailUpdateResult): string {
+  const records = (n: number) => `${n} member ${n === 1 ? 'record' : 'records'}`;
+  if (conflicts === 0) {
+    return updated > 0
+      ? `Updated email on ${records(updated)}`
+      : 'No member records needed updating';
   }
+  const updatedPart =
+    updated > 0
+      ? `Updated email on ${records(updated)}.`
+      : 'No member records were updated.';
+  const skipped =
+    conflicts === 1
+      ? '1 skipped because another member of that group already uses that address.'
+      : `${conflicts} skipped because another member of each of those groups already uses that address.`;
+  return `${updatedPart} ${skipped}`;
 }
 
 @Injectable({
@@ -504,46 +515,38 @@ export class MemberService implements IMemberService {
   }
 
   /**
-   * Sets `newEmail` on the user's member records and returns how many it
-   * wrote. Records already on `newEmail` (case-insensitively) are skipped, so
-   * the count is the number actually changed. With `onlyFromEmail`, only
-   * records whose email equals it (case-insensitively) are written, so a
-   * deliberate address set for one group is kept. A failure after some
-   * records were written throws a MemberEmailUpdateError saying how many.
+   * Moves the user's member records to their verified login email, through
+   * the updateMemberEmails callable (functions/src/member-email.ts): the
+   * server reads the address from the Auth account (never from the client),
+   * skips records already on it, and with `onlyFromEmail` writes only the
+   * records on that address (case-insensitively), so an address set for one
+   * group is kept. A record whose group already has another member on the
+   * address is left alone and counted in `conflicts`. All or nothing: a
+   * failure writes nothing, so the caller can simply retry.
    */
   async updateAllMemberEmails(
-    userRef: DocumentReference<User>,
-    newEmail: string,
     onlyFromEmail?: string
-  ): Promise<number> {
-    let updated = 0;
+  ): Promise<MemberEmailUpdateResult> {
     try {
-      const membersSnapshot = await getDocs(this.#linkedMembersQuery(userRef));
-      const to = newEmail.toLowerCase();
-      const from = onlyFromEmail?.toLowerCase();
-      const toUpdate = membersSnapshot.docs.filter((memberDoc) => {
-        const current = (memberDoc.data().email ?? '').toLowerCase();
-        return current !== to && (from === undefined || current === from);
-      });
-
-      for (const memberDoc of toUpdate) {
-        await updateDoc(memberDoc.ref, { email: newEmail });
-        updated++;
-      }
-
-      this.analytics.logEvent('member_emails_updated', {
-        membersUpdated: updated,
-      });
-
-      return updated;
-    } catch (error) {
-      this.analytics.logError(
-        'Member Service',
-        'updateAllMemberEmails',
-        'Failed to update member emails',
-        error instanceof Error ? error.message : 'Unknown error'
+      const updateFn = httpsCallable<
+        { onlyFromEmail?: string },
+        MemberEmailUpdateResult
+      >(this.functions, 'updateMemberEmails');
+      const { data } = await updateFn(
+        onlyFromEmail === undefined ? {} : { onlyFromEmail }
       );
-      throw updated > 0 ? new MemberEmailUpdateError(updated, error) : error;
+      this.analytics.logEvent('member_emails_updated', {
+        membersUpdated: data.updated,
+        memberConflicts: data.conflicts,
+      });
+      return data;
+    } catch (error) {
+      this.#logUnexpected(
+        error,
+        'updateAllMemberEmails',
+        'Failed to update member emails'
+      );
+      throw error;
     }
   }
 }

@@ -14,8 +14,10 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *
  * - group-email-old, "Group Email Sync – Old A/B/C": "Update old email only"
  *   changes the two on the login email and keeps the custom one.
- * - group-email-all, "Group Email Sync – All A/B/C": "Update all" changes all
- *   three.
+ * - group-email-all, "Group Email Sync – All A/B/C": "Update all" changes A
+ *   and C. The test first adds a member "conflict" to B (linked to an id
+ *   with no users doc) on the new login address, so B is skipped as a
+ *   duplicate (M2).
  * - group-email-skip, "Group Email Sync – Skip A/B/C": "Not now" changes none.
  *
  * The new login addresses (`newEmailFor`) are never seeded, so each is free

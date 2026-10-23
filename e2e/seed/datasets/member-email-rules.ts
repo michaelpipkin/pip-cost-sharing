@@ -18,9 +18,11 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  *   three groups of mer-admin's own with unique names ("Member Email Rules –
  *   Created <id>"), so mer-admin gains memberships; its default group stays
  *   Main.
- * - mer-self: a plain linked member who changes their own email (Account >
- *   Profile's sync shape, and edit-member's self-save of displayName).
- * - mer-target: a plain linked member whose email the admin tries to change.
+ * - mer-self: a plain linked member who tries to change their own userRef
+ *   and to reach the email-change token and rate-limit docs.
+ * - mer-target: a plain linked member whose email the admin, and the member
+ *   themself, try to change; also makes edit-member's self-save of
+ *   displayName.
  * - mer-unlinkee: a plain linked member the admin unlinks (userRef X to
  *   null) and tries to relink to someone else (X to Y).
  * - mer-unverified (Auth address unverified): a linked member whose token

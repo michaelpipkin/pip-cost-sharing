@@ -40,7 +40,11 @@ describe('AccountProfileComponent', () => {
     mockLoadingService = createMockLoadingService();
     mockAnalyticsService = createMockAnalyticsService();
     mockSnackbar = { openFromComponent: vi.fn() };
-    mockMemberService = { updateAllMemberEmails: vi.fn().mockResolvedValue(0) };
+    mockMemberService = {
+      updateAllMemberEmails: vi
+        .fn()
+        .mockResolvedValue({ updated: 0, conflicts: 0 }),
+    };
 
     await TestBed.configureTestingModule({
       imports: [AccountProfileComponent],
@@ -388,87 +392,60 @@ describe('AccountProfileComponent', () => {
   });
 
   describe('syncMemberEmails()', () => {
-    // M8: the address comes from a freshly refreshed ID token (only a
-    // verified one), not the possibly stale profile email.
-    let tokenClaims: Record<string, unknown>;
-    const syncAuth = {
-      currentUser: {
-        email: 'test@example.com',
-        emailVerified: true,
-        getIdTokenResult: vi.fn(async () => ({ claims: tokenClaims })),
-      },
-    };
-
+    // M1/M2: the server (updateMemberEmails) takes the address from the Auth
+    // account, so the component names none.
     beforeEach(async () => {
-      tokenClaims = { email: 'token@example.com', email_verified: true };
-      await createComponent(syncAuth as any);
+      await createComponent();
     });
 
-    it('should write the verified token email, not the profile email', async () => {
+    it('asks the server to update every membership, behind the loading overlay', async () => {
       await component.syncMemberEmails();
-      expect(syncAuth.currentUser.getIdTokenResult).toHaveBeenCalledWith(true);
-      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith(
-        mockUserStore.user()!.ref,
-        'token@example.com'
+      expect(mockLoadingService.loadingOn).toHaveBeenCalled();
+      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalledWith();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ updated: 1, conflicts: 0 }, 'Updated email on 1 member record'],
+      [{ updated: 3, conflicts: 0 }, 'Updated email on 3 member records'],
+      [{ updated: 0, conflicts: 0 }, 'No member records needed updating'],
+      [
+        { updated: 2, conflicts: 1 },
+        'Updated email on 2 member records. 1 skipped because another member of that group already uses that address.',
+      ],
+      [
+        { updated: 0, conflicts: 2 },
+        'No member records were updated. 2 skipped because another member of each of those groups already uses that address.',
+      ],
+    ])('reports %o', async (result, message) => {
+      mockMemberService.updateAllMemberEmails.mockResolvedValue(result);
+      await component.syncMemberEmails();
+      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
+      expect(data?.message).toBe(message);
+    });
+
+    it('asks for verification when the server refuses an unverified login email', async () => {
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        Object.assign(new Error('Verify your login email first. [403]'), {
+          code: 'functions/permission-denied',
+        })
       );
-    });
-
-    it('should skip, asking for verification, without a verified token email', async () => {
-      tokenClaims = { email: 'token@example.com', email_verified: false };
       await component.syncMemberEmails();
-      expect(mockMemberService.updateAllMemberEmails).not.toHaveBeenCalled();
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
       expect(data?.message).toBe('Verify your login email first.');
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
 
-    it('should call loadingOn and updateAllMemberEmails', async () => {
-      await component.syncMemberEmails();
-      expect(mockLoadingService.loadingOn).toHaveBeenCalled();
-      expect(mockMemberService.updateAllMemberEmails).toHaveBeenCalled();
-    });
-
-    it('should show snackbar with count when records are updated', async () => {
-      mockMemberService.updateAllMemberEmails.mockResolvedValue(3);
-      await component.syncMemberEmails();
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('3 member record');
-    });
-
-    it('should use plural form when count is greater than 1', async () => {
-      mockMemberService.updateAllMemberEmails.mockResolvedValue(2);
-      await component.syncMemberEmails();
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('records');
-    });
-
-    it('should show no-update snackbar when count is 0', async () => {
-      mockMemberService.updateAllMemberEmails.mockResolvedValue(0);
-      await component.syncMemberEmails();
-      const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('No member records');
-    });
-
-    it('should log analytics error and show error snackbar on failure', async () => {
+    it('shows an error snackbar on any other failure, leaving the logging to MemberService', async () => {
       mockMemberService.updateAllMemberEmails.mockRejectedValue(
-        new Error('sync failed')
+        Object.assign(new Error('sync failed'), { code: 'functions/internal' })
       );
       await component.syncMemberEmails();
-      expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
-        'Account Profile Component',
-        'sync_member_emails',
-        'Failed to sync member emails',
-        expect.any(String)
-      );
       const data = mockSnackbar.openFromComponent.mock.calls[0]?.[1]?.data;
-      expect(data?.message).toContain('could not update member emails');
-    });
-
-    it('should always call loadingOff even on error', async () => {
-      mockMemberService.updateAllMemberEmails.mockRejectedValue(
-        new Error('sync failed')
+      expect(data?.message).toBe(
+        'Something went wrong - could not update member emails'
       );
-      await component.syncMemberEmails();
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
   });

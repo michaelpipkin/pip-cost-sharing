@@ -17,3 +17,15 @@ export function callableError(error: unknown): {
     message: raw.replace(/ \[\d{3}\]$/, ''),
   };
 }
+
+/**
+ * The member-email callables' refusal of an unverified login email
+ * (functions/src/member-email.ts VERIFY_LOGIN_EMAIL), shown as is.
+ */
+export const VERIFY_LOGIN_EMAIL = 'Verify your login email first.';
+
+/** Whether `error` is that refusal (permission-denied, VERIFY_LOGIN_EMAIL). */
+export function isUnverifiedLoginRefusal(error: unknown): boolean {
+  const { code, message } = callableError(error);
+  return code === 'functions/permission-denied' && message === VERIFY_LOGIN_EMAIL;
+}

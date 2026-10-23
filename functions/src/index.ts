@@ -54,6 +54,7 @@ export {
   confirmMemberEmailChange,
   deleteExpiredMemberEmailChanges,
   requestMemberEmailChange,
+  updateMemberEmails,
 } from './member-email';
 export { scanReceipt } from './receipt-ocr';
 export { createUserProfileOnSignUp } from './user-onboarding';

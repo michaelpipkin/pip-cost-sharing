@@ -20,6 +20,7 @@ import {
   expectDenied,
   notDenied,
   withDb,
+  withSession,
 } from '../utils/rules-client';
 
 /**
@@ -192,10 +193,18 @@ test.describe(
       });
     });
 
-    test('a member can change their own member email (Account > Profile sync)', async () => {
+    // M1/M2 (2026-10-23): Account > Profile's Sync used to write the
+    // verified address straight onto these docs; it now goes through the
+    // updateMemberEmails callable, so no self-write changes email.
+    test('a member cannot change their own member email directly (Profile Sync is a callable)', async () => {
       await resetMember(members.emailer, users.emailer);
-      await withDb(users.emailer, async (db) => {
-        // updateAllMemberEmails(): every member doc linked to the user.
+      await withSession(users.emailer, async (db, auth) => {
+        // A fresh token carries the verified address, which the old rule
+        // accepted: the denials below come from the email rule alone.
+        const { claims } = await auth.currentUser!.getIdTokenResult(true);
+        expect(claims['email_verified']).toBe(true);
+        // getLinkedMemberEmails() (the login-email change offer) still
+        // lists every member doc linked to the user.
         const linked = await getDocs(
           query(
             collectionGroup(db, 'members'),
@@ -203,19 +212,25 @@ test.describe(
           )
         );
         expect(linked.docs.map((d) => d.id)).toEqual([members.emailer.key]);
-        // It writes the profile email, which is the caller's verified
-        // sign-in address; a linked member's email may hold nothing else
-        // (B19: another address goes through requestMemberEmailChange).
-        for (const email of [
-          users.emailer.email.toUpperCase(),
-          users.emailer.email,
-        ]) {
-          await expectAllowed(updateDoc(linked.docs[0]!.ref, { email }), email);
-        }
+        const own = linked.docs[0]!.ref;
         const other = `member-rules-emailer-${randomUUID().slice(0, 8)}@pipsplit.test`;
-        await expectDenied(updateDoc(linked.docs[0]!.ref, { email: other }));
-        // B12's format guard still applies to a self-write.
-        await expectDenied(updateDoc(linked.docs[0]!.ref, { email: 'a@b' }));
+        const through = await notDenied([
+          [
+            'own verified address, recased',
+            () => updateDoc(own, { email: users.emailer.email.toUpperCase() }),
+          ],
+          ['another address', () => updateDoc(own, { email: other })],
+          ['a malformed address', () => updateDoc(own, { email: 'a@b' })],
+        ]);
+        expect(through).toEqual([]);
+        // Positive control: the same doc, the same user, a legal self-write.
+        await expectAllowed(
+          updateDoc(own, {
+            displayName: members.emailer.displayName,
+            email: users.emailer.email,
+          }),
+          'self-save with the email unchanged'
+        );
       });
       expect((await readMember(members.emailer))?.['email']).toBe(
         users.emailer.email

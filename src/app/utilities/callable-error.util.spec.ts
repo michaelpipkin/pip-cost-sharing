@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { callableError } from './callable-error.util';
+import {
+  callableError,
+  isUnverifiedLoginRefusal,
+} from './callable-error.util';
 
 describe('callableError', () => {
   // The Functions SDK builds a server refusal as
@@ -34,5 +37,35 @@ describe('callableError', () => {
   it('handles values that are not errors', () => {
     expect(callableError('nope')).toEqual({ code: undefined, message: '' });
     expect(callableError(null)).toEqual({ code: undefined, message: '' });
+  });
+});
+
+describe('isUnverifiedLoginRefusal', () => {
+  const refusal = (code: string, message: string) =>
+    Object.assign(new Error(message), { code });
+
+  it('matches the member-email callables’ unverified-login refusal', () => {
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal(
+          'functions/permission-denied',
+          'Verify your login email first. [403]'
+        )
+      )
+    ).toBe(true);
+  });
+
+  it('does not match another permission-denied refusal or another code', () => {
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal('functions/permission-denied', 'Not your member record [403]')
+      )
+    ).toBe(false);
+    expect(
+      isUnverifiedLoginRefusal(
+        refusal('functions/internal', 'Verify your login email first.')
+      )
+    ).toBe(false);
+    expect(isUnverifiedLoginRefusal('nope')).toBe(false);
   });
 });

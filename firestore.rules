@@ -204,11 +204,12 @@ service cloud.firestore {
         //    instead (B19, below);
         //  - leaveGroup() with splits: active false, leftGroup true,
         //    groupAdmin false (without splits it deletes the doc instead);
-        //  - rejoinGroup(): leftGroup false, active true;
-        //  - updateAllMemberEmails() (Account > Profile): email.
-        // So a self-write may change only those five fields (userRef,
-        // emailLower and invite are server- or admin-written; email is
-        // further limited by memberLinkUpdateValid below), and:
+        //  - rejoinGroup(): leftGroup false, active true.
+        // Account > Profile's Sync and the group email update dialog go
+        // through the updateMemberEmails callable (Admin SDK), so no
+        // self-write changes email. A self-write may change only those four
+        // fields (userRef, email, emailLower and invite are server- or
+        // admin-written), and:
         //  - may never grant groupAdmin: syncGroupMemberUids copies it into
         //    adminUids, which is a full admin (deleteGroup included). Clearing
         //    it (leaveGroup) is fine.
@@ -225,7 +226,7 @@ service cloud.firestore {
           let after = request.resource.data;
           return before.get('userRef', null) == ownUserRef() &&
             after.diff(before).affectedKeys()
-              .hasOnly(['displayName', 'email', 'active', 'leftGroup', 'groupAdmin']) &&
+              .hasOnly(['displayName', 'active', 'leftGroup', 'groupAdmin']) &&
             !(after.get('groupAdmin', false) == true &&
               before.get('groupAdmin', false) != true) &&
             !(after.get('active', false) == true &&
@@ -246,11 +247,11 @@ service cloud.firestore {
         //    add-member's and edit-member's auto-link by email
         //    (addMemberToGroup / updateMemberWithUserMatching), and the
         //    creator's own row in addGroup;
-        //  - their verified sign-in address, written by the member themself
-        //    (Account > Profile updateAllMemberEmails);
         //  - an address they confirmed through a link mailed to it, or their
         //    verified address, written by the requestMemberEmailChange /
-        //    confirmMemberEmailChange callables (Admin SDK);
+        //    confirmMemberEmailChange / updateMemberEmails callables (Admin
+        //    SDK), which also check for duplicates in the group and cancel
+        //    the row's pending confirmation links;
         //  - written with the link by linkInvitedMembers / the admin orphan
         //    repair (Admin SDK), which match the verified address.
         // Without this, an admin could create a member with a victim's
@@ -267,10 +268,13 @@ service cloud.firestore {
         //    never touches it (memberSelfUpdateValid).
         //  - email changed on an unlinked doc: admins only, as before (and
         //    the match above when the same write links it).
-        //  - email changed on a linked doc: only the member themself, and
-        //    only to their verified sign-in address. An admin editing
-        //    someone else's linked row is denied (the edit-member dialog
-        //    disables the field there).
+        //  - email changed on a linked doc: denied to every client, the
+        //    member themself and admins alike (the edit-member dialog
+        //    disables the field on someone else's linked row, and sends one's
+        //    own change to requestMemberEmailChange). A direct self-write of
+        //    the verified address was allowed until 2026-10-23 (Profile
+        //    Sync); it skipped the duplicate check and left pending links
+        //    alive (final re-review M1/M2), so it moved to updateMemberEmails.
         //  - emailLower: no client writes it (syncMemberEmailLower does), but
         //    a client write that sets it must hold email lowercased, since
         //    linkInvitedMembers links by it.
@@ -318,10 +322,7 @@ service cloud.firestore {
                 isGroupAdmin(groupId))) &&
             (!changed.hasAny(['email']) ||
               (beforeRef == null && isGroupAdmin(groupId) &&
-                (afterRef == null || emailMatchesLinkedUser(after))) ||
-              (beforeRef != null && beforeRef == ownUserRef() &&
-                afterRef == beforeRef &&
-                isOwnVerifiedEmail(after.get('email', null)))) &&
+                (afterRef == null || emailMatchesLinkedUser(after)))) &&
             memberEmailLowerValid(changed);
         }
 
@@ -335,11 +336,9 @@ service cloud.firestore {
           memberLinkCreateValid() &&
           memberEmailLowerValid(request.resource.data.keys());
         // The self clause does not require an active membership: it covers
-        // self-service writes made *while inactive* - rejoinGroup() (the
-        // exact state this write is trying to escape) and
-        // updateAllMemberEmails() (syncing an email across every group a
-        // user belongs to, active or not) - plus edit-member self-edits and
-        // leaveGroup()'s own self-update. Its shape is limited by
+        // a self-service write made *while inactive*: rejoinGroup() (the
+        // exact state this write is trying to escape) - plus edit-member
+        // self-edits and leaveGroup()'s own self-update. Its shape is limited by
         // memberSelfUpdateValid() above, and every update's userRef, email
         // and emailLower by memberLinkUpdateValid().
         allow update: if (isGroupAdmin(groupId) || memberSelfUpdateValid()) &&

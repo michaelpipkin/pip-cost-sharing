@@ -13,6 +13,7 @@ import {
   confirmMemberEmailChange,
   deleteExpiredMemberEmailChanges,
   requestMemberEmailChange,
+  updateMemberEmails,
 } from './index';
 import {
   CONFIRM_LINK_INVALID,
@@ -527,6 +528,288 @@ describe('confirmMemberEmailChange', () => {
     expect(await memberEmail(p.memberRef)).toMatchObject({
       email: p.memberEmail,
     });
+  });
+});
+
+describe('updateMemberEmails', () => {
+  interface Linked {
+    uid: string;
+    loginEmail: string;
+    userRef: DocumentReference;
+  }
+
+  /** A verified (by default) Auth account and its users doc, no members. */
+  async function seedUser(
+    options: { emailVerified?: boolean; auth?: boolean } = {}
+  ): Promise<Linked> {
+    const uid = uniqueId('u');
+    const loginEmail = uniqueEmail('login');
+    if (options.auth !== false) {
+      await getAuth().createUser({
+        uid,
+        email: loginEmail,
+        emailVerified: options.emailVerified ?? true,
+      });
+    }
+    const userRef = db.collection('users').doc(uid);
+    await userRef.set({ email: loginEmail, emailLower: loginEmail });
+    return { uid, loginEmail, userRef };
+  }
+
+  /** A member of a fresh group (or `group`) linked to `user`, on `email`. */
+  async function linkedRow(
+    user: Linked,
+    email: string,
+    fields: DocumentData = {},
+    group?: DocumentReference
+  ): Promise<DocumentReference> {
+    const groupRef = group ?? (await makeGroup({ name: `G ${randomUUID()}` }));
+    return makeMember(groupRef, {
+      email,
+      emailLower: email.toLowerCase(),
+      userRef: user.userRef,
+      ...fields,
+    });
+  }
+
+  function update(user: Linked | null, data: unknown = {}): Promise<any> {
+    return call(updateMemberEmails, user?.uid ?? null, data);
+  }
+
+  /** A pending confirmation link for `memberRef`, as edit-member makes one. */
+  async function pendingLink(
+    user: Linked,
+    memberRef: DocumentReference
+  ): Promise<string> {
+    const to = uniqueEmail('pending');
+    await expect(
+      call(requestMemberEmailChange, user.uid, {
+        groupId: memberRef.parent.parent!.id,
+        memberId: memberRef.id,
+        email: to,
+      })
+    ).resolves.toEqual({ status: 'pending' });
+    return mailedToken(to);
+  }
+
+  const tokenExists = async (token: string) =>
+    (await db.collection(MEMBER_EMAIL_TOKENS).doc(sha256(token)).get()).exists;
+
+  it('rejects a signed-out caller', async () => {
+    await expect(update(null)).rejects.toMatchObject({
+      code: 'unauthenticated',
+    });
+  });
+
+  it('refuses a caller whose login email is not verified, writing nothing', async () => {
+    const unverified = await seedUser({ emailVerified: false });
+    const noAuth = await seedUser({ auth: false });
+    for (const user of [unverified, noAuth]) {
+      const other = uniqueEmail('other');
+      const row = await linkedRow(user, other);
+      await expect(update(user)).rejects.toMatchObject({
+        code: 'permission-denied',
+        message: VERIFY_LOGIN_EMAIL,
+      });
+      expect(await memberEmail(row)).toEqual({
+        email: other,
+        emailLower: other,
+      });
+    }
+  });
+
+  it('refuses an onlyFromEmail that is not a string', async () => {
+    const user = await seedUser();
+    const other = uniqueEmail('other');
+    const row = await linkedRow(user, other);
+    for (const onlyFromEmail of [42, ['a@b.test'], { a: 1 }, 'x'.repeat(1001)]) {
+      await expect(update(user, { onlyFromEmail })).rejects.toMatchObject({
+        code: 'invalid-argument',
+      });
+    }
+    expect(await memberEmail(row)).toMatchObject({ email: other });
+  });
+
+  it('moves every linked row to the verified login email (all mode)', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const custom = uniqueEmail('custom');
+    const rows = [
+      await linkedRow(user, old),
+      await linkedRow(user, custom),
+      await linkedRow(user, ''),
+    ];
+
+    await expect(update(user)).resolves.toEqual({ updated: 3, conflicts: 0 });
+
+    for (const row of rows) {
+      expect(await memberEmail(row)).toEqual({
+        email: user.loginEmail,
+        emailLower: user.loginEmail,
+      });
+    }
+    // Nothing left to do the second time.
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+  });
+
+  it('moves only the rows on onlyFromEmail, ignoring case (old-only mode)', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const custom = uniqueEmail('custom');
+    const onOld = await linkedRow(user, old);
+    const onOldUpper = await linkedRow(user, old.toUpperCase());
+    const onCustom = await linkedRow(user, custom);
+    const blank = await linkedRow(user, '');
+
+    await expect(
+      update(user, { onlyFromEmail: ` ${old.toUpperCase()} ` })
+    ).resolves.toEqual({ updated: 2, conflicts: 0 });
+
+    for (const row of [onOld, onOldUpper]) {
+      expect(await memberEmail(row)).toEqual({
+        email: user.loginEmail,
+        emailLower: user.loginEmail,
+      });
+    }
+    expect(await memberEmail(onCustom)).toEqual({
+      email: custom,
+      emailLower: custom,
+    });
+    expect(await memberEmail(blank)).toMatchObject({ email: '' });
+  });
+
+  it('skips a row already on the login email in another casing, leaving it as is', async () => {
+    const user = await seedUser();
+    const upper = user.loginEmail.toUpperCase();
+    const row = await linkedRow(user, upper);
+
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
+    await expect(
+      update(user, { onlyFromEmail: upper })
+    ).resolves.toEqual({ updated: 0, conflicts: 0 });
+
+    expect(await memberEmail(row)).toEqual({
+      email: upper,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  // M2: the duplicate check the callables enforce applies here too.
+  it('counts a row whose group already has the address as a conflict and leaves it', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const free = await linkedRow(user, old);
+    const crowded = await linkedRow(user, old);
+    // Someone else in that group already uses the login address.
+    await makeMember(crowded.parent.parent!, {
+      email: user.loginEmail.toUpperCase(),
+      emailLower: user.loginEmail,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 1 });
+
+    expect(await memberEmail(free)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(crowded)).toEqual({ email: old, emailLower: old });
+  });
+
+  it('gives the address to only one of two rows linked in the same group', async () => {
+    const user = await seedUser();
+    const group = await makeGroup();
+    const a = await linkedRow(user, uniqueEmail('a'), {}, group);
+    const b = await linkedRow(user, uniqueEmail('b'), {}, group);
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 1 });
+
+    const emails = [(await memberEmail(a)).email, (await memberEmail(b)).email];
+    expect(emails.filter((e) => e === user.loginEmail)).toHaveLength(1);
+  });
+
+  // M1: an update cancels the row's pending confirmation link, and only the
+  // updated rows'.
+  it('deletes the pending links of the rows it updates, and only theirs', async () => {
+    const user = await seedUser();
+    const old = uniqueEmail('old');
+    const updatedRow = await linkedRow(user, old);
+    const keptRow = await linkedRow(user, uniqueEmail('kept'));
+    const conflictRow = await linkedRow(user, old);
+    await makeMember(conflictRow.parent.parent!, {
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+    const updatedToken = await pendingLink(user, updatedRow);
+    const keptToken = await pendingLink(user, keptRow);
+    const conflictToken = await pendingLink(user, conflictRow);
+
+    await expect(update(user, { onlyFromEmail: old })).resolves.toEqual({
+      updated: 1,
+      conflicts: 1,
+    });
+
+    expect(await tokenExists(updatedToken)).toBe(false);
+    expect(await tokenExists(keptToken)).toBe(true);
+    expect(await tokenExists(conflictToken)).toBe(true);
+  });
+
+  it('makes an old confirmation link fail after the update (M1)', async () => {
+    const user = await seedUser();
+    const row = await linkedRow(user, uniqueEmail('old'));
+    const token = await pendingLink(user, row);
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    await expect(
+      call(confirmMemberEmailChange, user.uid, { token })
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: CONFIRM_LINK_INVALID,
+    });
+    expect(await memberEmail(row)).toEqual({
+      email: user.loginEmail,
+      emailLower: user.loginEmail,
+    });
+  });
+
+  it('leaves rows linked to another user, and unlinked rows, untouched', async () => {
+    const user = await seedUser();
+    const other = await seedUser();
+    const old = uniqueEmail('old');
+    const group = await makeGroup();
+    const own = await linkedRow(user, old, {}, group);
+    const othersRow = await linkedRow(other, old);
+    const unlinked = await makeMember(await makeGroup(), {
+      email: old,
+      emailLower: old,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 1, conflicts: 0 });
+
+    expect(await memberEmail(own)).toMatchObject({ email: user.loginEmail });
+    expect(await memberEmail(othersRow)).toEqual({ email: old, emailLower: old });
+    expect(await memberEmail(unlinked)).toEqual({ email: old, emailLower: old });
+  });
+
+  // Ruling (T1): the scope is the client's former #linkedMembersQuery, which
+  // has no active filter, so inactive and left memberships move too.
+  it('includes inactive and left memberships', async () => {
+    const user = await seedUser();
+    const deactivated = await linkedRow(user, uniqueEmail('d'), {
+      active: false,
+    });
+    const left = await linkedRow(user, uniqueEmail('l'), {
+      active: false,
+      leftGroup: true,
+    });
+
+    await expect(update(user)).resolves.toEqual({ updated: 2, conflicts: 0 });
+
+    for (const row of [deactivated, left]) {
+      expect(await memberEmail(row)).toMatchObject({ email: user.loginEmail });
+    }
+  });
+
+  it('returns zeros for a user with no memberships', async () => {
+    const user = await seedUser();
+    await expect(update(user)).resolves.toEqual({ updated: 0, conflicts: 0 });
   });
 });
 
