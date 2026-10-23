@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   callableError,
   CONFIRMATION_RECENTLY_SENT,
+  GROUP_MAIL_LIMIT_EXCEEDED,
   GROUP_MAIL_LIMIT_REACHED,
   isConfirmationCooldownRefusal,
   isGroupMailLimitRefusal,
@@ -124,6 +125,18 @@ describe('isGroupMailLimitRefusal', () => {
         refusal(
           'functions/resource-exhausted',
           `${GROUP_MAIL_LIMIT_REACHED} [429]`
+        )
+      )
+    ).toBe(true);
+    // Review M1: the call needs more than is left.
+    expect(GROUP_MAIL_LIMIT_EXCEEDED).toBe(
+      "This would go over today's limit for group emails. Try again tomorrow."
+    );
+    expect(
+      isGroupMailLimitRefusal(
+        refusal(
+          'functions/resource-exhausted',
+          `${GROUP_MAIL_LIMIT_EXCEEDED} [429]`
         )
       )
     ).toBe(true);

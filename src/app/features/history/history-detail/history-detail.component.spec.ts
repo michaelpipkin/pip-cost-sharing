@@ -867,7 +867,7 @@ describe('HistoryDetailComponent', () => {
       expect(mockHistoryService.unpayHistory).toHaveBeenCalledWith(h);
       expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
         ...snackbarMessage(
-          "Payment marked as unpaid. No one was emailed: you've reached today's limit for group emails."
+          "Payment marked as unpaid. No one was emailed: that would go over today's limit for group emails."
         )
       );
       expect(navigate).toHaveBeenCalledWith(['/analysis/history']);
@@ -1017,8 +1017,32 @@ describe('HistoryDetailComponent', () => {
       );
       expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
         ...snackbarMessage(
-          "Group settle marked as unpaid. No one was emailed: you've reached today's limit for group emails."
+          "Group settle marked as unpaid. No one was emailed: that would go over today's limit for group emails."
         )
+      );
+    });
+
+    // Review I1: an earlier batch went out before a later one was refused.
+    it.each([
+      [3, "Group settle marked as unpaid. Sent 3 emails; the rest would go over today's limit for group emails."],
+      [1, "Group settle marked as unpaid. Sent 1 email; the rest would go over today's limit for group emails."],
+      [0, "Group settle marked as unpaid. No one was emailed: that would go over today's limit for group emails."],
+    ])('should say how many were emailed before the daily limit (%i)', async (sent, message) => {
+      const h = settle();
+      mockHistoryStore.groupHistory.set([h]);
+      component.history.set(h);
+      mockUserService.sendGroupSettleUnpayEmails.mockResolvedValueOnce({
+        sent,
+        limitReached: true,
+      });
+      const dialog = pendingConfirm();
+      component.onUnpayGroupSettle();
+
+      await dialog.close(true);
+
+      expect(mockHistoryService.unpayGroupSettle).toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        ...snackbarMessage(message)
       );
     });
 

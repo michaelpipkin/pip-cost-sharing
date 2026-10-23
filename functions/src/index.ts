@@ -1670,7 +1670,7 @@ type InviteTxnResult =
   | { status: 'inactive' }
   | { status: 'invalid-email' }
   | { status: 'cooldown'; retryAfterMs: number }
-  | { status: 'daily-limit' };
+  | { status: 'daily-limit'; used: number };
 
 export const sendGroupInvite = onCall<{
   groupId: string;
@@ -1767,9 +1767,8 @@ export const sendGroupInvite = onCall<{
       // The caller's daily group-mail allowance (mail-allowance.ts), charged
       // in this transaction so the invite is queued and counted together.
       // Its read comes after every other read here (it writes).
-      if (!(await reserveGroupMail(txn, db, uid, 1, now.toMillis()))) {
-        return { status: 'daily-limit' };
-      }
+      const reserved = await reserveGroupMail(txn, db, uid, 1, now.toMillis());
+      if (!reserved.ok) return { status: 'daily-limit', used: reserved.used };
 
       txn.create(mailRef, { to: email, message: { subject, text, html } });
       txn.update(memberRef, {
@@ -1814,7 +1813,7 @@ export const sendGroupInvite = onCall<{
         );
       }
       case 'daily-limit':
-        throw groupMailLimitError();
+        throw groupMailLimitError(result.used);
     }
   } catch (error: unknown) {
     console.error('Error sending group invite:', error);

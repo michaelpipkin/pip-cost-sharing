@@ -12,7 +12,12 @@ import {
   type Transaction,
 } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { APP_BASE_URL, callableAppCheck, normalizeEmail } from './common';
+import {
+  APP_BASE_URL,
+  callableAppCheck,
+  deleteDocsIfUnchanged,
+  normalizeEmail,
+} from './common';
 import { buildEmailHtml, escapeHtml, isSingleEmailAddress } from './email-builders';
 
 // ---------------------------------------------------------------------------
@@ -260,6 +265,14 @@ function assertNotCoolingDown(
   }
 }
 
+function isCooldownRefusal(error: unknown): boolean {
+  return (
+    error instanceof HttpsError &&
+    error.code === 'resource-exhausted' &&
+    error.message === CONFIRMATION_RECENTLY_SENT
+  );
+}
+
 /** Counts one mailed request against the caller's window, or refuses it. */
 async function consumeRequestAllowance(
   db: Firestore,
@@ -289,6 +302,32 @@ async function consumeRequestAllowance(
       );
     }
     txn.update(limitRef, { count: count + 1 });
+  });
+}
+
+/**
+ * Gives back one request `consumeRequestAllowance` charged in the window
+ * that started at or before `nowMs`: used when the send it paid for was
+ * refused by the recipient cooldown after all (a lost race, review M2). A
+ * window that has rolled over since is left alone.
+ */
+async function refundRequestAllowance(
+  db: Firestore,
+  uid: string,
+  nowMs: number
+): Promise<void> {
+  const limitRef = db.collection(MEMBER_EMAIL_LIMITS).doc(uid);
+  await db.runTransaction(async (txn) => {
+    const snap = await txn.get(limitRef);
+    const windowStart = snap.get('windowStart') as Timestamp | undefined;
+    const count = (snap.get('count') as number | undefined) ?? 0;
+    if (
+      count > 0 &&
+      windowStart instanceof Timestamp &&
+      windowStart.toMillis() <= nowMs
+    ) {
+      txn.update(limitRef, { count: count - 1 });
+    }
   });
 }
 
@@ -359,7 +398,8 @@ export const requestMemberEmailChange = onCall<{
     // The recipient's cooldown is checked before the allowance, so a send
     // it refuses doesn't use up the caller's requests. It is checked again
     // in the transaction below, which also starts it, so two concurrent
-    // requests can't both mail the address.
+    // requests can't both mail the address; the one that loses that race
+    // was already charged, and gets the request back (review M2).
     const nowMs = Date.now();
     const cooldownRef = recipientCooldownRef(db, emailLower);
     assertNotCoolingDown(await cooldownRef.get(), nowMs);
@@ -399,6 +439,13 @@ export const requestMemberEmailChange = onCall<{
           emailChangeConfirmLink(token)
         ),
       });
+    }).catch(async (error: unknown) => {
+      // Only the re-check above throws this: another caller's mail to the
+      // address committed after our first read.
+      if (isCooldownRefusal(error)) {
+        await refundRequestAllowance(db, uid, nowMs);
+      }
+      throw error;
     });
     return { status: 'pending' };
   }
@@ -578,15 +625,10 @@ export async function deleteExpiredMemberEmailChanges(
   nowMs: number = Date.now()
 ): Promise<{ tokens: number; limits: number; cooldowns: number }> {
   const db = getFirestore();
-  const deleteAll = async (query: Query): Promise<number> => {
-    const snap = await query.get();
-    for (let i = 0; i < snap.docs.length; i += 400) {
-      const batch = db.batch();
-      for (const doc of snap.docs.slice(i, i + 400)) batch.delete(doc.ref);
-      await batch.commit();
-    }
-    return snap.size;
-  };
+  // Skips a doc written after the query read it, e.g. a limit window a
+  // request just restarted (review M4).
+  const deleteAll = async (query: Query): Promise<number> =>
+    deleteDocsIfUnchanged((await query.get()).docs);
   const tokens = await deleteAll(
     db
       .collection(MEMBER_EMAIL_TOKENS)

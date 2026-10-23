@@ -1,5 +1,5 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, type DocumentSnapshot } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { CallableOptions, CallableRequest } from 'firebase-functions/v2/https';
 
@@ -35,6 +35,40 @@ export function assertAdmin(request: CallableRequest): string {
     throw new HttpsError('permission-denied', 'Admin access required');
   }
   return uid;
+}
+
+/** gRPC FAILED_PRECONDITION, as the Admin SDK reports a failed write precondition. */
+const FAILED_PRECONDITION = 9;
+
+/**
+ * Deletes each doc only if it is unchanged since `snaps` read it (a
+ * lastUpdateTime precondition), so a cleanup can't erase a doc that was
+ * renewed between its query and its delete (e.g. a rate-limit counter a
+ * send just wrote). A changed or already-deleted doc is skipped. Returns how
+ * many it deleted. One delete per doc, not a batch: a batch fails whole when
+ * any precondition does.
+ */
+export async function deleteDocsIfUnchanged(
+  snaps: DocumentSnapshot[]
+): Promise<number> {
+  let deleted = 0;
+  for (let i = 0; i < snaps.length; i += 100) {
+    const results = await Promise.all(
+      snaps.slice(i, i + 100).map(async (snap): Promise<number> => {
+        try {
+          await snap.ref.delete({ lastUpdateTime: snap.updateTime! });
+          return 1;
+        } catch (error) {
+          if ((error as { code?: unknown }).code === FAILED_PRECONDITION) {
+            return 0;
+          }
+          throw error;
+        }
+      })
+    );
+    deleted += results.reduce((a, b) => a + b, 0);
+  }
+  return deleted;
 }
 
 // normalizeEmail and profileEmail live in a dependency-free module so the

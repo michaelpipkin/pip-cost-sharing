@@ -5,6 +5,16 @@ import { DocumentReference } from 'firebase/firestore';
 /** sendPaymentRequests' per-request outcome (functions/src/group-emails.ts). */
 export type PaymentRequestResult = 'sent' | 'not_registered' | 'opted_out';
 
+/**
+ * What a multi-call group email sent. `limitReached`: a later call was
+ * refused by the caller's daily group-mail limit, so the rest went unsent
+ * (`sent` counts only the calls before it).
+ */
+export interface GroupEmailOutcome {
+  sent: number;
+  limitReached: boolean;
+}
+
 export interface IUserService {
   getUserDetails(userId: string): Promise<User | null>;
   updateUser(changes: Partial<User>): Promise<void>;
@@ -22,7 +32,7 @@ export interface IUserService {
       owedToMemberRef: DocumentReference<Member>;
       amount: number;
     }[]
-  ): Promise<{ sent: number; skipped: number }>;
+  ): Promise<GroupEmailOutcome & { skipped: number }>;
   sendMemberPaymentUnpayEmails(
     groupId: string,
     paidByMemberRef: DocumentReference<Member>,
@@ -34,6 +44,6 @@ export interface IUserService {
     groupId: string,
     memberRefs: DocumentReference<Member>[],
     settleDate: Date
-  ): Promise<void>;
+  ): Promise<GroupEmailOutcome>;
   logout(): Promise<void>;
 }

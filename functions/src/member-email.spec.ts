@@ -423,6 +423,36 @@ describe('requestMemberEmailChange', () => {
       }
     });
 
+    // Review M2: a caller who loses a race for the address (both passed the
+    // first read; the winner's transaction committed first) is refused by
+    // the transaction's re-check, and gets the request it was charged back.
+    it('refunds the allowance of a caller who loses the race for an address', async () => {
+      const s = await seedLinkedMember();
+      const target = uniqueEmail('raced');
+      const runTransaction = db.runTransaction.bind(db);
+      // The first transaction is consumeRequestAllowance: the winner's
+      // cooldown lands just before it, after the plain read.
+      const spy = vi
+        .spyOn(db, 'runTransaction')
+        .mockImplementationOnce(async (fn: any, options?: any) => {
+          await cooldownDoc(target).set({
+            sentAt: Timestamp.now(),
+            expiresAt: Timestamp.fromMillis(Date.now() + RECIPIENT_COOLDOWN_MS),
+          });
+          return runTransaction(fn, options);
+        });
+      try {
+        await expect(request(s, target)).rejects.toMatchObject(
+          COOLDOWN_REFUSAL
+        );
+      } finally {
+        spy.mockRestore();
+      }
+      expect(await mailTo(target)).toHaveLength(0);
+      const limit = await db.collection(MEMBER_EMAIL_LIMITS).doc(s.uid).get();
+      expect(limit.get('count') ?? 0).toBe(0);
+    });
+
     it('stores only a hash of the lowercased address, with an expiry', async () => {
       const s = await seedLinkedMember();
       const target = uniqueEmail('Target');

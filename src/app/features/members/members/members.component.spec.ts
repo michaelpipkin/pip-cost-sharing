@@ -657,6 +657,8 @@ describe('MembersComponent', () => {
       expect(lastSnackbar()).toBe(
         'An invitation was already sent to this address recently. Try again in 3 hour(s).'
       );
+      // Review M6: a cooldown is an outcome for the user, not an app error.
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
 
     it('says the daily group-mail limit was reached, without logging an error', async () => {

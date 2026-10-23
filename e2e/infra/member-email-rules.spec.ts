@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 // Plain Playwright, not ../fixtures: this spec needs no page or browser.
 import { expect, test } from '@playwright/test';
 import {
@@ -485,6 +487,30 @@ test.describe(
         ]);
         expect(through).toEqual([]);
       });
+    });
+
+    // Review M7: the access tests below pass on Firestore's default deny
+    // alone, so they can't notice a server-only block being deleted (and
+    // later shadowed by a broad allow). This pins the explicit denies in
+    // the rules source, and that no catch-all match exists.
+    test('the rules declare every server-only collection explicitly', () => {
+      const rules = readFileSync(
+        fileURLToPath(new URL('../../firestore.rules', import.meta.url)),
+        'utf8'
+      );
+      const missing = [
+        'memberEmailChangeTokens/{tokenId}',
+        'memberEmailChangeLimits/{uid}',
+        'memberEmailRecipientCooldown/{addressHash}',
+        'groupMailLimits/{uid}',
+      ].filter((path) => {
+        const escaped = path.replace(/[{}/]/g, '\\$&');
+        return !new RegExp(
+          `match /${escaped} \\{\\s*allow read, write: if false;\\s*\\}`
+        ).test(rules);
+      });
+      expect(missing).toEqual([]);
+      expect(rules).not.toMatch(/match \/\{document=\*\*\}/);
     });
 
     test('the recipient cooldowns and group-mail limits are server-only', async () => {

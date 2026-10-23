@@ -1136,6 +1136,40 @@ describe('SummaryComponent', () => {
       expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
     });
 
+    it("shows the server's wording when a call would only go over the limit", async () => {
+      mockUserService.sendGroupPaymentRequestEmails = vi
+        .fn()
+        .mockRejectedValue(
+          new FirebaseError(
+            'functions/resource-exhausted',
+            "This would go over today's limit for group emails. Try again tomorrow. [429]"
+          )
+        );
+
+      await component.requestAllPayments();
+
+      expect(lastSnackbar()).toBe(
+        "This would go over today's limit for group emails. Try again tomorrow."
+      );
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+    });
+
+    // Review I1: a later batch refused; the earlier ones went out.
+    it.each([
+      [3, "Sent 3 payment requests; the rest would go over today's limit for group emails."],
+      [1, "Sent 1 payment request; the rest would go over today's limit for group emails."],
+      [0, "No payment requests were sent: that would go over today's limit for group emails."],
+    ])('says how many requests went out before the limit (%i)', async (sent, message) => {
+      mockUserService.sendGroupPaymentRequestEmails = vi
+        .fn()
+        .mockResolvedValue({ sent, skipped: 0, limitReached: true });
+
+      await component.requestAllPayments();
+
+      expect(lastSnackbar()).toBe(message);
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+    });
+
     it('opens the App Check dialog instead when the callable is refused as unauthenticated', async () => {
       mockUserService.sendPaymentRequestEmail = vi
         .fn()

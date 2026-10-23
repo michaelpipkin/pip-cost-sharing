@@ -6,6 +6,7 @@ import {
   type Transaction,
 } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { deleteDocsIfUnchanged } from './common';
 
 // ---------------------------------------------------------------------------
 // The per-caller daily allowance for group mail (owner follow-up: "No
@@ -31,9 +32,12 @@ import { HttpsError } from 'firebase-functions/v2/https';
 // hour, and a recipient counts while its hour is within the last 24 full
 // hours plus the current one, so it counts for at least 24 hours (at most
 // 25). A call that would take the caller past the limit is refused whole
-// (resource-exhausted, GROUP_MAIL_LIMIT_REACHED) before anything is queued:
-// each callable already sends all of its recipients or none, so sending a
-// part would leave the caller unable to tell who was told.
+// (resource-exhausted) before anything is queued: GROUP_MAIL_LIMIT_REACHED
+// once nothing is left, GROUP_MAIL_LIMIT_EXCEEDED while a smaller call would
+// still fit. Each callable already sends all of its recipients or none, so
+// sending a part would leave the caller unable to tell who was told. (The
+// app sends a long list as several calls, one after another, and reports
+// what went out before a refusal: src/app/services/user.service.ts.)
 //
 // Storage: groupMailLimits/{uid} = { hours: { "<utc hour>": count }, expiresAt },
 // server-only (firestore.rules denies every client). expiresAt is the moment
@@ -53,13 +57,28 @@ const HOUR_MS = 60 * 60 * 1000;
 /** Earlier hours still counted besides the current one (so >= 24 hours). */
 const WINDOW_HOURS = 24;
 
-/** resource-exhausted: the call would pass the caller's daily allowance. */
+/** resource-exhausted: the caller's daily allowance is used up. */
 export const GROUP_MAIL_LIMIT_REACHED =
   "You've reached today's limit for group emails. Try again tomorrow.";
+/**
+ * resource-exhausted: some allowance is left, but this call needs more
+ * (review M1: "reached" would be untrue, since a smaller call still fits).
+ */
+export const GROUP_MAIL_LIMIT_EXCEEDED =
+  "This would go over today's limit for group emails. Try again tomorrow.";
 
-export function groupMailLimitError(): HttpsError {
-  return new HttpsError('resource-exhausted', GROUP_MAIL_LIMIT_REACHED);
+/** The refusal for a caller who has already used `used` recipients. */
+export function groupMailLimitError(used: number): HttpsError {
+  return new HttpsError(
+    'resource-exhausted',
+    used >= GROUP_MAIL_DAILY_LIMIT
+      ? GROUP_MAIL_LIMIT_REACHED
+      : GROUP_MAIL_LIMIT_EXCEEDED
+  );
 }
+
+/** reserveGroupMail's answer: charged, or refused with the count so far. */
+export type GroupMailReservation = { ok: true } | { ok: false; used: number };
 
 /** The UTC hour `nowMs` falls in, as a whole number of hours since 1970. */
 export function groupMailHour(nowMs: number): number {
@@ -99,7 +118,7 @@ export function liveGroupMailCount(
 /**
  * Reserves `count` recipients of the caller's allowance inside `txn`: reads
  * the caller's doc and, when they fit, writes the new count (dropping ended
- * buckets). Returns false, writing nothing, when they don't. Any reads the
+ * buckets). Refuses, writing nothing, when they don't. Any reads the
  * caller's transaction needs must come before this call (it writes).
  */
 export async function reserveGroupMail(
@@ -108,20 +127,20 @@ export async function reserveGroupMail(
   uid: string,
   count: number,
   nowMs: number
-): Promise<boolean> {
-  if (count <= 0) return true;
+): Promise<GroupMailReservation> {
+  if (count <= 0) return { ok: true };
   const ref = db.collection(GROUP_MAIL_LIMITS).doc(uid);
   const snap = await txn.get(ref);
   const hours = liveBuckets(snap.data(), nowMs);
   const used = Object.values(hours).reduce((a, b) => a + b, 0);
-  if (used + count > GROUP_MAIL_DAILY_LIMIT) return false;
+  if (used + count > GROUP_MAIL_DAILY_LIMIT) return { ok: false, used };
   const nowHour = groupMailHour(nowMs);
   hours[String(nowHour)] = (hours[String(nowHour)] ?? 0) + count;
   txn.set(ref, {
     hours,
     expiresAt: Timestamp.fromMillis((nowHour + WINDOW_HOURS + 1) * HOUR_MS),
   });
-  return true;
+  return { ok: true };
 }
 
 export interface QueuedMail {
@@ -132,8 +151,8 @@ export interface QueuedMail {
 /**
  * Queues `mails` (in the shape sendMailQueueEmail delivers) and charges them
  * to the caller, in one transaction: all of them, or (over the allowance)
- * none, with GROUP_MAIL_LIMIT_REACHED. An empty list queues and charges
- * nothing, and is never refused.
+ * none, with groupMailLimitError. An empty list queues and charges nothing,
+ * and is never refused.
  */
 export async function queueGroupMail(
   db: Firestore,
@@ -142,37 +161,31 @@ export async function queueGroupMail(
   nowMs: number = Date.now()
 ): Promise<void> {
   if (mails.length === 0) return;
-  const reserved = await db.runTransaction(async (txn) => {
-    if (!(await reserveGroupMail(txn, db, uid, mails.length, nowMs))) {
-      return false;
-    }
+  const reservation = await db.runTransaction(async (txn) => {
+    const reserved = await reserveGroupMail(txn, db, uid, mails.length, nowMs);
+    if (!reserved.ok) return reserved;
     for (const mail of mails) {
       txn.create(db.collection('mail').doc(), {
         to: mail.to,
         message: mail.message,
       });
     }
-    return true;
+    return reserved;
   });
-  if (!reserved) throw groupMailLimitError();
+  if (!reservation.ok) throw groupMailLimitError(reservation.used);
 }
 
 /**
  * Nightly cleanup (index.ts deleteOldPaidExpenses): deletes the counters
- * whose every bucket has ended. Returns how many it deleted.
+ * whose every bucket has ended, skipping any a send renewed after the query
+ * (review M4). Returns how many it deleted.
  */
 export async function deleteExpiredGroupMailLimits(
   nowMs: number = Date.now()
 ): Promise<number> {
-  const db = getFirestore();
-  const snap = await db
+  const snap = await getFirestore()
     .collection(GROUP_MAIL_LIMITS)
     .where('expiresAt', '<=', Timestamp.fromMillis(nowMs))
     .get();
-  for (let i = 0; i < snap.docs.length; i += 400) {
-    const batch = db.batch();
-    for (const doc of snap.docs.slice(i, i + 400)) batch.delete(doc.ref);
-    await batch.commit();
-  }
-  return snap.size;
+  return deleteDocsIfUnchanged(snap.docs);
 }

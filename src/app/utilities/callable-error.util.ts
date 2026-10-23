@@ -58,12 +58,24 @@ export function isInvalidLoginEmailRefusal(error: unknown): boolean {
 export const GROUP_MAIL_LIMIT_REACHED =
   "You've reached today's limit for group emails. Try again tomorrow.";
 
-/** Whether `error` is that refusal (resource-exhausted, GROUP_MAIL_LIMIT_REACHED). */
+/**
+ * The same callables' refusal of a call that needs more than the caller has
+ * left today (functions/src/mail-allowance.ts GROUP_MAIL_LIMIT_EXCEEDED).
+ */
+export const GROUP_MAIL_LIMIT_EXCEEDED =
+  "This would go over today's limit for group emails. Try again tomorrow.";
+
+/**
+ * Whether `error` is either refusal (resource-exhausted with
+ * GROUP_MAIL_LIMIT_REACHED or GROUP_MAIL_LIMIT_EXCEEDED). Callers show the
+ * server's message (`callableError(error).message`), which is one of them.
+ */
 export function isGroupMailLimitRefusal(error: unknown): boolean {
   const { code, message } = callableError(error);
   return (
     code === 'functions/resource-exhausted' &&
-    message === GROUP_MAIL_LIMIT_REACHED
+    (message === GROUP_MAIL_LIMIT_REACHED ||
+      message === GROUP_MAIL_LIMIT_EXCEEDED)
   );
 }
 

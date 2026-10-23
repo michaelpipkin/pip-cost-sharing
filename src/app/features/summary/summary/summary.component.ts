@@ -60,7 +60,7 @@ import {
   HelpDialogData,
 } from '../../help/help-dialog/help-dialog.component';
 import {
-  GROUP_MAIL_LIMIT_REACHED,
+  callableError,
   isGroupMailLimitRefusal,
 } from '@utils/callable-error.util';
 import { toIsoFormat } from '@utils/date-utils';
@@ -826,14 +826,24 @@ export class SummaryComponent {
     }));
     try {
       this.loading.loadingOn();
-      const { sent } = await this.userService.sendGroupPaymentRequestEmails(
-        this.currentGroup()!.id,
-        transfers
-      );
-      const message =
-        sent === 0
-          ? 'No eligible members to request payment from'
-          : `Payment request(s) sent to ${sent} member(s)`;
+      const { sent, limitReached } =
+        await this.userService.sendGroupPaymentRequestEmails(
+          this.currentGroup()!.id,
+          transfers
+        );
+      let message: string;
+      if (limitReached) {
+        // A later batch was refused by the daily limit; earlier ones went.
+        message =
+          sent === 0
+            ? "No payment requests were sent: that would go over today's limit for group emails."
+            : `Sent ${sent} payment ${sent === 1 ? 'request' : 'requests'}; the rest would go over today's limit for group emails.`;
+      } else {
+        message =
+          sent === 0
+            ? 'No eligible members to request payment from'
+            : `Payment request(s) sent to ${sent} member(s)`;
+      }
       this.snackbar.openFromComponent(CustomSnackbarComponent, {
         data: { message },
       });
@@ -855,14 +865,15 @@ export class SummaryComponent {
   }
 
   /**
-   * The caller's daily group-mail allowance is used up (functions/src/
-   * mail-allowance.ts): an outcome for the user, not an error, so it is
-   * shown and not logged. Returns whether `error` was that refusal.
+   * The caller's daily group-mail allowance can't cover the call (functions/
+   * src/mail-allowance.ts): an outcome for the user, not an error, so the
+   * server's message is shown and not logged. Returns whether `error` was
+   * that refusal.
    */
   #showGroupMailLimit(error: unknown): boolean {
     if (!isGroupMailLimitRefusal(error)) return false;
     this.snackbar.openFromComponent(CustomSnackbarComponent, {
-      data: { message: GROUP_MAIL_LIMIT_REACHED },
+      data: { message: callableError(error).message },
     });
     return true;
   }

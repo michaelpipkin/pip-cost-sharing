@@ -13,9 +13,11 @@ import {
   sendPaymentReversalEmails,
   sendSettleReversalEmails,
 } from './index';
+import { deleteDocsIfUnchanged } from './common';
 import {
   deleteExpiredGroupMailLimits,
   GROUP_MAIL_DAILY_LIMIT,
+  GROUP_MAIL_LIMIT_EXCEEDED,
   GROUP_MAIL_LIMIT_REACHED,
   GROUP_MAIL_LIMITS,
   groupMailHour,
@@ -159,6 +161,11 @@ const LIMIT_REFUSAL = {
   code: 'resource-exhausted',
   message: GROUP_MAIL_LIMIT_REACHED,
 };
+/** Refused while some allowance is left, but not enough (review M1). */
+const OVER_LIMIT_REFUSAL = {
+  code: 'resource-exhausted',
+  message: GROUP_MAIL_LIMIT_EXCEEDED,
+};
 
 describe('group-mail allowance', () => {
   it('is 100 recipients per caller', () => {
@@ -221,7 +228,7 @@ describe('group-mail allowance', () => {
     ];
 
     await expect(paymentReversal(s, a.id, b.id)).rejects.toMatchObject(
-      LIMIT_REFUSAL
+      OVER_LIMIT_REFUSAL
     );
     expect(await mailCount(a.email)).toBe(0);
     expect(await mailCount(b.email)).toBe(0);
@@ -231,6 +238,44 @@ describe('group-mail allowance', () => {
     await expect(settleReversal(s, [a.id])).resolves.toEqual({ sent: 1 });
     expect(await mailCount(a.email)).toBe(1);
     expect(await used(s.uid)).toBe(GROUP_MAIL_DAILY_LIMIT);
+  });
+
+  // Review M5: the limit doc is read and written in the mail's own
+  // transaction, so two calls racing for the last recipient can't both pass.
+  it('lets only one of two concurrent calls take the last recipient', async () => {
+    const s = await seedGroup(2);
+    await seedUsage(s.uid, [{ hoursAgo: 1, count: GROUP_MAIL_DAILY_LIMIT - 1 }]);
+    const [a, b] = s.linked as [
+      { id: string; email: string },
+      { id: string; email: string },
+    ];
+
+    const outcomes = await Promise.allSettled([
+      settleReversal(s, [a.id]),
+      settleReversal(s, [b.id]),
+    ]);
+
+    expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
+    const refused = outcomes.find((o) => o.status === 'rejected') as
+      | PromiseRejectedResult
+      | undefined;
+    expect(refused?.reason).toMatchObject(LIMIT_REFUSAL);
+    expect((await mailCount(a.email)) + (await mailCount(b.email))).toBe(1);
+    expect(await used(s.uid)).toBe(GROUP_MAIL_DAILY_LIMIT);
+  });
+
+  // Review M5: the per-member invite cooldown refuses before the allowance
+  // is charged.
+  it('does not charge an invite the per-member cooldown refuses', async () => {
+    const s = await seedGroup(0);
+    const inv = await invitee(s);
+    await expect(invite(s, inv.id)).resolves.toMatchObject({ success: true });
+    await expect(invite(s, inv.id)).rejects.toMatchObject({
+      code: 'resource-exhausted',
+      message: expect.stringContaining('An invitation was already sent'),
+    });
+    expect(await mailCount(inv.email)).toBe(1);
+    expect(await used(s.uid)).toBe(1);
   });
 
   it('does not count skipped recipients', async () => {
@@ -334,6 +379,26 @@ describe('liveGroupMailCount', () => {
     expect(
       liveGroupMailCount({ hours: { [String(nowHour)]: 'x' } }, nowMs)
     ).toBe(0);
+  });
+});
+
+// Review M4: the nightly cleanup must not delete a doc that was written
+// after its query read it (a counter renewed by a send in between).
+describe('deleteDocsIfUnchanged', () => {
+  it('deletes the docs as read, and keeps one written since', async () => {
+    const unchanged = limitDoc(uniqueId('u'));
+    const renewed = limitDoc(uniqueId('u'));
+    await unchanged.set({ hours: {} });
+    await renewed.set({ hours: {} });
+    const snaps = await Promise.all([unchanged.get(), renewed.get()]);
+    await renewed.set({ hours: { [String(groupMailHour(Date.now()))]: 1 } });
+
+    await expect(deleteDocsIfUnchanged(snaps)).resolves.toBe(1);
+
+    expect((await unchanged.get()).exists).toBe(false);
+    expect((await renewed.get()).get('hours')).toEqual({
+      [String(groupMailHour(Date.now()))]: 1,
+    });
   });
 });
 

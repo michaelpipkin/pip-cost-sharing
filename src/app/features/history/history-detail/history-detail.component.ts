@@ -22,6 +22,7 @@ import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
 import { SortingService } from '@services/sorting.service';
 import { UserService } from '@services/user.service';
+import { GroupEmailOutcome } from '@services/user.service.interface';
 import { GroupCurrencyPipe } from '@shared/pipes/group-currency.pipe';
 import { CategoryStore } from '@store/category.store';
 import { GroupStore } from '@store/group.store';
@@ -46,14 +47,19 @@ import {
 } from '@features/help/help-dialog/help-dialog.component';
 import { buildHistoryDetailTourSteps } from './history-detail.tour';
 
-/** The unpay snackbar, saying when no one was emailed over the daily limit. */
+/**
+ * The unpay snackbar. Over the daily group-mail limit it says how many were
+ * emailed before it (a later batch refused) or that no one was.
+ */
 function unpaidMessage(
   what: 'Payment' | 'Group settle',
-  mailLimitReached: boolean
+  notices: GroupEmailOutcome
 ): string {
-  return mailLimitReached
-    ? `${what} marked as unpaid. No one was emailed: you've reached today's limit for group emails.`
-    : `${what} marked as unpaid`;
+  if (!notices.limitReached) return `${what} marked as unpaid`;
+  const { sent } = notices;
+  return sent === 0
+    ? `${what} marked as unpaid. No one was emailed: that would go over today's limit for group emails.`
+    : `${what} marked as unpaid. Sent ${sent} ${sent === 1 ? 'email' : 'emails'}; the rest would go over today's limit for group emails.`;
 }
 
 @Component({
@@ -278,13 +284,13 @@ export class HistoryDetailComponent {
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        const mailLimitReached = await this.notifyUnpay(() =>
+        const notices = await this.notifyUnpay(() =>
           this.notifyMemberPaymentUnpay(h)
         );
         try {
           await this.historyService.unpayHistory(h);
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: unpaidMessage('Payment', mailLimitReached) },
+            data: { message: unpaidMessage('Payment', notices) },
           });
           this.goBack();
         } catch (error) {
@@ -326,7 +332,7 @@ export class HistoryDetailComponent {
     dialogRef.afterClosed().subscribe(async (confirm) => {
       if (confirm) {
         this.loading.loadingOn();
-        const mailLimitReached = await this.notifyUnpay(() =>
+        const notices = await this.notifyUnpay(() =>
           this.notifyGroupSettleUnpay(h)
         );
         try {
@@ -335,7 +341,7 @@ export class HistoryDetailComponent {
             h.batchId!
           );
           this.snackbar.openFromComponent(CustomSnackbarComponent, {
-            data: { message: unpaidMessage('Group settle', mailLimitReached) },
+            data: { message: unpaidMessage('Group settle', notices) },
           });
           this.goBack();
         } catch (error) {
@@ -429,15 +435,17 @@ export class HistoryDetailComponent {
 
   /**
    * Sends the unpay notices. A failure never blocks the unpay itself; the
-   * one the user is told about is the daily group-mail allowance being used
-   * up (functions/src/mail-allowance.ts). Returns whether that was it.
+   * one the user is told about is the daily group-mail limit (functions/
+   * src/mail-allowance.ts): refused outright (no one emailed), or after
+   * earlier batches went out (the outcome `send` returns).
    */
-  private async notifyUnpay(send: () => Promise<void>): Promise<boolean> {
+  private async notifyUnpay(
+    send: () => Promise<GroupEmailOutcome | void>
+  ): Promise<GroupEmailOutcome> {
     try {
-      await send();
-      return false;
+      return (await send()) ?? { sent: 0, limitReached: false };
     } catch (error) {
-      return isGroupMailLimitRefusal(error);
+      return { sent: 0, limitReached: isGroupMailLimitRefusal(error) };
     }
   }
 
@@ -451,7 +459,9 @@ export class HistoryDetailComponent {
     );
   }
 
-  private async notifyGroupSettleUnpay(h: History): Promise<void> {
+  private async notifyGroupSettleUnpay(
+    h: History
+  ): Promise<GroupEmailOutcome> {
     // Only members still known to the store: the server rejects an unknown
     // member id, which would drop every other member's notice.
     const memberRefs = new Map<string, DocumentReference<Member>>();
@@ -463,7 +473,7 @@ export class HistoryDetailComponent {
         memberRefs.set(transfer.paidToMemberRef.path, transfer.paidToMemberRef);
       }
     }
-    await this.userService.sendGroupSettleUnpayEmails(
+    return this.userService.sendGroupSettleUnpayEmails(
       this.currentGroup()!.id,
       [...memberRefs.values()],
       h.date
