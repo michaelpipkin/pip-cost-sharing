@@ -42,11 +42,6 @@ function mockOrphanedMembersResult(rowCount: number): AdminReportResult {
           path: `groups/g1/members/m${i}`,
         })),
       },
-      {
-        title: 'Needs review',
-        columns: [{ key: 'displayName', label: 'Member' }],
-        rows: [],
-      },
     ],
   };
 }

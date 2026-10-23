@@ -176,7 +176,8 @@ export class EditMemberComponent {
         return;
       }
       // Someone else's row, or an unlinked one. An unlinked member's email
-      // is written directly (and may link it). A linked member's is locked
+      // is written directly (the server links the row to the account that
+      // has proven the address). A linked member's is locked
       // and left out: the rules refuse any change to it, and a legacy doc
       // with no (or a null) email would otherwise gain ''.
       const changes: Partial<Member> = {
@@ -185,12 +186,7 @@ export class EditMemberComponent {
         groupAdmin: val.groupAdmin,
       };
       if (!this.emailLocked) changes.email = val.email;
-      await this.memberService.updateMemberWithUserMatching(
-        memberRef,
-        changes,
-        this.member.userRef,
-        this.member.email
-      );
+      await this.memberService.updateMember(memberRef, changes);
       this.dialogRef.close({ success: true, operation: 'saved' });
     } catch (error) {
       this.#reportSaveError(error);

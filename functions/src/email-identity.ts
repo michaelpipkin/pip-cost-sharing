@@ -10,6 +10,13 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// The verifiedEmails/{id} doc id for an address: the normalized address with
+// '%' escaped first and then '/' (a doc id can't contain '/'). Escaping '%'
+// first keeps the mapping one-to-one, so two addresses never share an id.
+export function verifiedEmailId(address: string): string {
+  return normalizeEmail(address).replace(/%/g, '%25').replace(/\//g, '%2F');
+}
+
 // The address a users/{uid} profile may store for an Auth account: its email
 // once verified, else ''. Invited members are linked to users by the profile
 // email (users.emailLower), so an unverified address there would let anyone

@@ -12,7 +12,8 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * test ends with its member back in the seeded state (each starts by
  * resetting it with the Admin SDK), so all of them repeat fine:
  * - member-rules-admin: the group admin. Promotes and demotes "Promotee",
- *   and recreates "Deleter" after the self-delete test.
+ *   and recreates "Deleter" unlinked after the self-delete test (which then
+ *   resets it to linked with the Admin SDK).
  * - member-rules-promoter: a plain member who tries to make themselves
  *   admin and to change their own userRef.
  * - member-rules-promotee: a plain member the admin promotes.

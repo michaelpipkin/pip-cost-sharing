@@ -11,6 +11,7 @@ import {
   type AdminReportId,
 } from './admin-reports';
 import { makeGroup, makeMember, uniqueId } from './test-fixtures';
+import { upsertVerifiedEmail } from './verified-emails';
 
 const db = getFirestore();
 
@@ -164,10 +165,10 @@ describe('repairOrphanedMembers: guards', () => {
 });
 
 describe('repairOrphanedMembers: a valid call', () => {
-  it('links the member that matches one user and returns the linked count', async () => {
+  it('links the member whose address has an owner and returns the linked count', async () => {
     const email = `${uniqueId('ok')}@repair.test`;
     const user = db.collection('users').doc(uniqueId('u'));
-    await user.set({ emailLower: email });
+    await upsertVerifiedEmail(db, email, user.id, 'login');
     const group = await makeGroup();
     const linkable = await makeMember(group, { email });
     const noMatch = await makeMember(group, { email: `${uniqueId('none')}@repair.test` });

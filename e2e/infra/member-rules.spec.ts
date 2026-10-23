@@ -90,10 +90,7 @@ test.describe(
             'emailLower',
             () => updateDoc(own, { emailLower: 'someone@pipsplit.test' }),
           ],
-          [
-            'invite',
-            () => updateDoc(own, { invite: { sendCount: 0 } }),
-          ],
+          ['invite', () => updateDoc(own, { invite: { sendCount: 0 } })],
         ]);
         expect(through).toEqual([]);
 
@@ -167,8 +164,7 @@ test.describe(
         await expectAllowed(deleteDoc(memberDoc(db, members.deleter)));
       });
       expect(await readMember(members.deleter)).toBeUndefined();
-      // Not recreatable by the member: create is admin-only. The admin puts
-      // it back (the seeded state is restored by the next run's reset).
+      // Not recreatable by the member: create is admin-only.
       await withDb(users.deleter, async (db) => {
         await expectDenied(
           setDoc(memberDoc(db, members.deleter), {
@@ -180,17 +176,32 @@ test.describe(
           })
         );
       });
+      // Nor by the admin with the member's userRef: a client links no one
+      // but itself (invited rows are created unlinked and linked on the
+      // server through the verified-address index).
       await withDb(users.admin, async (db) => {
+        const relink = {
+          userRef: userRef(db, users.deleter),
+          displayName: members.deleter.displayName,
+          email: users.deleter.email,
+          active: true,
+          groupAdmin: false,
+        };
+        await expectDenied(
+          setDoc(memberDoc(db, members.deleter), relink),
+          'admin recreates it linked'
+        );
+        // Positive control: the admin recreates it unlinked. A late
+        // syncMemberEmailLower run for this create can only link it to the
+        // deleter (the owner of that address) and set its emailLower, which
+        // is what the reset below writes anyway.
         await expectAllowed(
-          setDoc(memberDoc(db, members.deleter), {
-            userRef: userRef(db, users.deleter),
-            displayName: members.deleter.displayName,
-            email: users.deleter.email,
-            active: true,
-            groupAdmin: false,
-          })
+          setDoc(memberDoc(db, members.deleter), { ...relink, userRef: null }),
+          'admin recreates it unlinked'
         );
       });
+      // Back to the seeded (linked) state.
+      await resetMember(members.deleter, users.deleter);
     });
 
     // M1/M2 (2026-10-23): Account > Profile's Sync used to write the

@@ -14,6 +14,17 @@ import type { SeedDataset, SeedGroup, SeedUser } from '../types';
  *   that mail (no payments are seeded, so nothing else mails either user).
  *   Each is linked only to this group, which is their default.
  *
+ * - summary-handles-pat (Pat), "Summary – Handles": owes 20.00 to each of two
+ *   payees who both have payment handles, so Pay opens one dialog per payee
+ *   (the handles come from the getMemberPaymentMethods callable). Pat signs
+ *   in; the payees never do. Everything is read-only except the unlink below.
+ *   - summary-handles-lou (Lou): a linked member; the dialog lists his handles.
+ *   - summary-handles-una (Una): seeded linked too, but the Pay test unlinks
+ *     her row through the Admin SDK first (idempotent; userRef null does not
+ *     re-link, the trigger only links on create or an email change), so the
+ *     row is an unlinked member whose address belongs to a user with
+ *     handles: the dialog must show none for her.
+ *
  * Every other summary test reads SHARED ("Shared – Beach House") as alice.
  */
 
@@ -42,6 +53,34 @@ const summaryPayer: SeedUser = {
   email: 'summary-payer@pipsplit.test',
   password: PASSWORD,
   profile: { defaultGroupKey: 'g-summary-request' },
+};
+
+const handlesPat: SeedUser = {
+  key: 'summary-handles-pat',
+  uid: 'u-summary-handles-pat',
+  email: 'summary-handles-pat@pipsplit.test',
+  password: PASSWORD,
+  profile: { defaultGroupKey: 'g-summary-handles' },
+};
+
+const handlesLou: SeedUser = {
+  key: 'summary-handles-lou',
+  uid: 'u-summary-handles-lou',
+  email: 'summary-handles-lou@pipsplit.test',
+  password: PASSWORD,
+  profile: {
+    defaultGroupKey: 'g-summary-handles',
+    venmoId: 'lou-venmo',
+    paypalId: 'lou-paypal@pipsplit.test',
+  },
+};
+
+const handlesUna: SeedUser = {
+  key: 'summary-handles-una',
+  uid: 'u-summary-handles-una',
+  email: 'summary-handles-una@pipsplit.test',
+  password: PASSWORD,
+  profile: { defaultGroupKey: 'g-summary-handles', venmoId: 'una-venmo' },
 };
 
 const empty: SeedGroup = {
@@ -98,9 +137,72 @@ const request: SeedGroup = {
   ],
 };
 
+const handles: SeedGroup = {
+  key: 'g-summary-handles',
+  owner: SPEC,
+  name: 'Summary – Handles',
+  members: [
+    {
+      key: 'pat',
+      displayName: 'Pat',
+      email: handlesPat.email,
+      userKey: handlesPat.key,
+      groupAdmin: true,
+    },
+    {
+      key: 'lou',
+      displayName: 'Lou',
+      email: handlesLou.email,
+      userKey: handlesLou.key,
+    },
+    {
+      key: 'una',
+      displayName: 'Una',
+      email: handlesUna.email,
+      userKey: handlesUna.key,
+    },
+  ],
+  categories: [{ key: 'food', name: 'Food' }],
+  expenses: [
+    {
+      key: 'e-summary-handles-lou-lunch',
+      date: seedDaysAgo(4),
+      description: 'Summary – Handles lou lunch',
+      categoryKey: 'food',
+      paidByKey: 'lou',
+      totalAmount: 40,
+      splitMethod: 'amount',
+      splits: [
+        { owedByKey: 'lou', assignedAmount: 20 },
+        { owedByKey: 'pat', assignedAmount: 20 },
+      ],
+    },
+    {
+      key: 'e-summary-handles-una-lunch',
+      date: seedDaysAgo(3),
+      description: 'Summary – Handles una lunch',
+      categoryKey: 'food',
+      paidByKey: 'una',
+      totalAmount: 40,
+      splitMethod: 'amount',
+      splits: [
+        { owedByKey: 'una', assignedAmount: 20 },
+        { owedByKey: 'pat', assignedAmount: 20 },
+      ],
+    },
+  ],
+};
+
 export const SUMMARY = {
-  users: { summaryUser, summaryPayee, summaryPayer },
-  groups: { empty, request },
+  users: {
+    summaryUser,
+    summaryPayee,
+    summaryPayer,
+    handlesPat,
+    handlesLou,
+    handlesUna,
+  },
+  groups: { empty, request, handles },
 } as const;
 
 export const SUMMARY_DATASET: SeedDataset = {

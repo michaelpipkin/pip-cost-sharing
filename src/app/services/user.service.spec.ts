@@ -246,64 +246,45 @@ describe('UserService', () => {
   });
 
   describe('getPaymentMethods', () => {
-    const memberRef = { id: 'member-1' } as any;
+    const memberRef = {
+      id: 'member-1',
+      parent: { parent: { id: 'group-1' } },
+    } as any;
+    const handles = {
+      venmoId: '@alice',
+      paypalId: 'alice@pp.com',
+      cashAppId: '',
+      zelleId: 'alice@zelle.com',
+    };
 
-    it('should return empty object when member document does not exist', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
-        exists: () => false,
-      } as any);
-
-      const result = await service.getPaymentMethods(memberRef);
-
-      expect(result).toEqual({});
-    });
-
-    it('should return empty object when member has no userRef', async () => {
-      vi.spyOn(firestoreModule, 'getDoc').mockResolvedValueOnce({
-        exists: () => true,
-        data: () => ({ userRef: null }),
-      } as any);
-
-      const result = await service.getPaymentMethods(memberRef);
-
-      expect(result).toEqual({});
-    });
-
-    it('should return payment methods from user document', async () => {
-      const userRef = { id: 'user-1' };
-      vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({
-          exists: () => true,
-          data: () => ({ userRef }),
-        } as any)
-        .mockResolvedValueOnce({
-          exists: () => true,
-          data: () => ({
-            venmoId: '@alice',
-            paypalId: 'alice@pp.com',
-            cashAppId: '',
-            zelleId: '',
-          }),
-        } as any);
-
-      const result = (await service.getPaymentMethods(memberRef)) as any;
-
-      expect(result.venmoId).toBe('@alice');
-      expect(result.paypalId).toBe('alice@pp.com');
-    });
-
-    it('should return empty object when user document does not exist', async () => {
-      const userRef = { id: 'user-1' };
-      vi.spyOn(firestoreModule, 'getDoc')
-        .mockResolvedValueOnce({
-          exists: () => true,
-          data: () => ({ userRef }),
-        } as any)
-        .mockResolvedValueOnce({ exists: () => false } as any);
+    it('asks the getMemberPaymentMethods callable with the group and member ids and returns its data', async () => {
+      const callable = vi.fn().mockResolvedValue({ data: handles });
+      const httpsCallableSpy = vi
+        .spyOn(functionsModule, 'httpsCallable')
+        .mockReturnValue(callable as any);
 
       const result = await service.getPaymentMethods(memberRef);
 
-      expect(result).toEqual({});
+      expect(httpsCallableSpy).toHaveBeenCalledWith(
+        mockFunctions,
+        'getMemberPaymentMethods'
+      );
+      expect(callable).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        memberId: 'member-1',
+      });
+      expect(result).toEqual(handles);
+    });
+
+    it('never reads a member or user document', async () => {
+      vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+        vi.fn().mockResolvedValue({ data: handles }) as any
+      );
+      const getDoc = vi.spyOn(firestoreModule, 'getDoc');
+
+      await service.getPaymentMethods(memberRef);
+
+      expect(getDoc).not.toHaveBeenCalled();
     });
   });
 
@@ -1890,49 +1871,23 @@ describe('UserService', () => {
     });
 
     describe('getPaymentMethods', () => {
-      const memberRef = { id: 'member-1' } as any;
+      const memberRef = {
+        id: 'member-1',
+        parent: { parent: { id: 'group-1' } },
+      } as any;
 
-      it('reads the member, then the user it points at, and answers empty strings for payment ids the user never set', async () => {
-        const userRef = { id: 'user-1' };
-        vi.spyOn(firestoreModule, 'getDoc')
-          .mockResolvedValueOnce({
-            exists: () => true,
-            data: () => ({ userRef }),
-          } as any)
-          .mockResolvedValueOnce({
-            exists: () => true,
-            data: () => ({}),
-          } as any);
-
-        const result = await service.getPaymentMethods(memberRef);
-
-        expect(vi.mocked(firestoreModule.getDoc).mock.calls).toEqual([
-          [memberRef],
-          [userRef],
-        ]);
-        expect(result).toEqual({
-          venmoId: '',
-          paypalId: '',
-          cashAppId: '',
-          zelleId: '',
-        });
-      });
-
-      it.each(failure('read failed'))(
-        'logs and rethrows a failure for %s',
-        async (_label, thrown, message) => {
-          vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(thrown);
+      it.each(failure('lookup failed'))(
+        'rethrows a failure for %s without logging it (the caller logs)',
+        async (_label, thrown) => {
+          vi.spyOn(functionsModule, 'httpsCallable').mockReturnValue(
+            vi.fn().mockRejectedValue(thrown) as any
+          );
 
           await expect(service.getPaymentMethods(memberRef)).rejects.toBe(
             thrown
           );
 
-          expect(mockAnalytics.logError).toHaveBeenCalledWith(
-            'User Service',
-            'getPaymentMethods',
-            'Failed to get payment methods',
-            message
-          );
+          expect(mockAnalytics.logError).not.toHaveBeenCalled();
         }
       );
     });

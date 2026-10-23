@@ -13,11 +13,10 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * deleted (Ruling R21); what the tests add at runtime is listed here and no
  * test counts members, groups or memberships:
  * - mer-admin (group admin): makes every admin write. Each run of the create
- *   test adds new members with unique ids to Main (unlinked ones, and ones
- *   linked to mer-runtime-linkee), and each run of the addGroup test creates
- *   three groups of mer-admin's own with unique names ("Member Email Rules –
- *   Created <id>"), so mer-admin gains memberships; its default group stays
- *   Main.
+ *   test adds new unlinked members with unique ids and addresses nobody owns
+ *   to Main, and each run of the addGroup test creates three groups of
+ *   mer-admin's own with unique names ("Member Email Rules – Created <id>"),
+ *   so mer-admin gains memberships; its default group stays Main.
  * - mer-self: a plain linked member who tries to change their own userRef
  *   and to reach the email-change token and rate-limit docs.
  * - mer-target: a plain linked member whose email the admin, and the member
@@ -28,17 +27,18 @@ import type { SeedDataset, SeedGroup, SeedMember, SeedUser } from '../types';
  * - mer-unverified (Auth address unverified): a linked member whose token
  *   says email_verified false, so even their own address is refused.
  * - mer-linkable (their default group is their own "Member Email Rules –
- *   Linkable Home"): a registered user the admin links "Unlinked Link" to,
- *   by their profile email; the test then resets that member to unlinked,
- *   so mer-linkable is in Main only while that test runs.
- * - mer-runtime-linkee (no seeded group): the user the create test's
- *   allowed auto-link points at. It gains one linked member row in Main
- *   with every run; nothing else reads it.
+ *   Linkable Home"): a registered user the admin tries to link "Unlinked
+ *   Link" to, and to move mer-unlinkee's row to. Every such write is
+ *   denied, so it never joins Main.
+ * - mer-lagging (no seeded group): the addGroup test sets its users doc's
+ *   email (Admin SDK) to an older address than its Auth one, then creates
+ *   three groups of its own ("Member Email Rules – Created <id>"; the denied
+ *   try leaves its group without a member row). Nothing else reads it.
  * - mer-victim (no group): a registered user the I2 attack tries to link to
- *   a member doc carrying an attacker-chosen email. Every such write is
- *   denied, so it never gains a membership.
+ *   a member doc, with an attacker-chosen email or its own. Every such write
+ *   is denied, so it never gains a membership.
  * Unlinked placeholders: "Unlinked Edit" (the admin changes its email) and
- * "Unlinked Link" (the admin links it to mer-linkable).
+ * "Unlinked Link" (the admin tries to link it to mer-linkable).
  */
 
 const SPEC = 'spec:e2e/infra/member-email-rules.spec.ts' as const;
@@ -74,7 +74,7 @@ const users = {
     emailVerified: false,
   }),
   linkable: seedUser('linkable', { defaultGroupKey: LINKABLE_HOME_KEY }),
-  runtimeLinkee: seedUser('runtime-linkee'),
+  lagging: seedUser('lagging'),
   victim: seedUser('victim'),
 } as const;
 

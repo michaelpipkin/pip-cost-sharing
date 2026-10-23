@@ -1,6 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import * as functionsV1 from 'firebase-functions/v1';
 import { profileEmail } from './email-identity';
+import { upsertVerifiedEmail } from './verified-emails';
 
 // Creates the Firestore users/{uid} profile doc as soon as a Firebase Auth
 // account exists, server-side - independent of whether the client's tab
@@ -40,10 +41,11 @@ export const createUserProfileOnSignUp = functionsV1.auth
 
     // Fills in only the fields the doc lacks, rather than create() or a
     // blind merge: stays idempotent if this ever runs more than once for the
-    // same uid (a retry, or the client's own fallback path already created
-    // it first), and a late run can't reset what was written since - in
-    // particular the email that verification writes, which this trigger's
-    // snapshot (taken at sign-up, unverified) would otherwise blank.
+    // same uid (a duplicate delivery, or the client's own fallback path
+    // already created it first), and a late run can't reset what was written
+    // since - in particular the email that verification writes, which this
+    // trigger's snapshot (taken at sign-up, unverified) would otherwise
+    // blank.
     try {
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
@@ -58,5 +60,20 @@ export const createUserProfileOnSignUp = functionsV1.auth
     } catch (error) {
       console.error(`Error creating user profile for ${user.uid}:`, error);
       throw error;
+    }
+
+    // A verified address is one the account has proven, so invites under it
+    // can link through the index. Best-effort: this trigger is never retried
+    // (no failurePolicy), so the Groups page's linkInvitedMembers call is the
+    // backstop that writes the entry again if this misses.
+    if (user.emailVerified && user.email) {
+      try {
+        await upsertVerifiedEmail(db, user.email, user.uid, 'login');
+      } catch (error) {
+        console.error(
+          `Error indexing the verified address for ${user.uid}:`,
+          error
+        );
+      }
     }
   });

@@ -16,6 +16,7 @@ import {
   onePerGroupLinks,
   profileEmail,
 } from './common';
+import { ownerOf } from './verified-emails';
 
 // getFirestore()/getAuth() are called lazily inside each handler/report
 // builder rather than at module scope - this module is imported (and so
@@ -529,31 +530,30 @@ export async function buildOrphanedMembersReport(
   const candidates = unlinkedSnap.docs
     .map((doc) => {
       const data = doc.data();
-      const email = data['email'] as string | undefined;
-      if (!email) return null; // intentional non-app placeholder, see member.service.ts
+      const email: unknown = data['email'];
+      // A blank email is an intentional non-app placeholder, see
+      // member.service.ts.
+      if (typeof email !== 'string' || normalizeEmail(email) === '') return null;
       return {
         path: doc.ref.path,
         groupId: doc.ref.parent.parent!.id,
         displayName: (data['displayName'] as string) ?? '(unnamed)',
         email,
-        emailLower: normalizeEmail(email),
       };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
+  // The verified-address index has one owner per address, so each row
+  // matches exactly one user or none.
   const matches = await Promise.all(
-    candidates.map(async (c) => {
-      const usersSnap = await db
-        .collection('users')
-        .where('emailLower', '==', c.emailLower)
-        .get();
-      return { ...c, matchedUserIds: usersSnap.docs.map((d) => d.id) };
-    })
+    candidates.map(async (c) => ({
+      ...c,
+      matchedUserId: await ownerOf(db, c.email),
+    }))
   );
 
-  const linkable = matches.filter((m) => m.matchedUserIds.length === 1);
-  const needsReview = matches.filter((m) => m.matchedUserIds.length > 1);
-  const unmatchedCount = matches.filter((m) => m.matchedUserIds.length === 0).length;
+  const linkable = matches.filter((m) => m.matchedUserId !== null);
+  const unmatchedCount = matches.length - linkable.length;
 
   return {
     reportId: 'orphaned-members',
@@ -564,8 +564,7 @@ export async function buildOrphanedMembersReport(
         title: 'Orphaned Members',
         stats: [
           { label: 'Unlinked Member Records', value: candidates.length },
-          { label: 'Linkable (exact email match)', value: linkable.length },
-          { label: 'Needs Manual Review', value: needsReview.length },
+          { label: 'Linkable (address has an owner)', value: linkable.length },
           { label: 'No Matching User', value: unmatchedCount },
         ],
       },
@@ -583,26 +582,10 @@ export async function buildOrphanedMembersReport(
           groupId: m.groupId,
           displayName: m.displayName,
           email: m.email,
-          matchedUserId: m.matchedUserIds[0]!,
+          matchedUserId: m.matchedUserId,
           path: m.path,
         })),
         emptyMessage: 'No linkable orphaned members found.',
-      },
-      {
-        title: 'Needs manual review (email matches more than one user)',
-        columns: [
-          { key: 'groupId', label: 'Group ID' },
-          { key: 'displayName', label: 'Member' },
-          { key: 'email', label: 'Email' },
-          { key: 'matchCount', label: 'Matching Users', align: 'right' },
-        ],
-        rows: needsReview.map((m) => ({
-          groupId: m.groupId,
-          displayName: m.displayName,
-          email: m.email,
-          matchCount: m.matchedUserIds.length,
-        })),
-        emptyMessage: 'None.',
       },
     ],
   };
@@ -610,12 +593,12 @@ export async function buildOrphanedMembersReport(
 
 /**
  * Links the given member docs to a user, re-deriving the match server-side
- * from each member's current email rather than trusting a client-supplied
- * user id - the client only ever supplies which member paths to act on.
- * Skips any doc that's no longer unlinked, has no email, or no longer
- * resolves to exactly one user (defends against a race since the report
- * was generated), and keeps each user on at most one row per group
- * (onePerGroupLinks).
+ * from each member's current email (the owner of that address in the
+ * verified-address index) rather than trusting a client-supplied user id -
+ * the client only ever supplies which member paths to act on. Skips any doc
+ * that's no longer unlinked, has no email, or whose address no longer has an
+ * owner (defends against a race since the report was generated), and keeps
+ * each user on at most one row per group (onePerGroupLinks).
  */
 export async function repairOrphanedMembersInternal(
   db: Firestore,
@@ -632,14 +615,11 @@ export async function repairOrphanedMembersInternal(
         if (!doc.exists) return null;
         const data = doc.data()!;
         if (data['userRef'] !== null) return null;
-        const email = data['email'] as string | undefined;
-        if (!email) return null;
-        const usersSnap = await db
-          .collection('users')
-          .where('emailLower', '==', normalizeEmail(email))
-          .get();
-        if (usersSnap.size !== 1) return null;
-        return { ref: doc.ref, userRef: usersSnap.docs[0]!.ref };
+        const email: unknown = data['email'];
+        if (typeof email !== 'string' || normalizeEmail(email) === '') return null;
+        const owner = await ownerOf(db, email);
+        if (owner === null) return null;
+        return { ref: doc.ref, userRef: db.collection('users').doc(owner) };
       })
     )
   ).filter((l): l is NonNullable<typeof l> => l !== null);

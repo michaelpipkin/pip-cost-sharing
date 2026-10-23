@@ -11,6 +11,7 @@ import { Split } from '@models/split';
 import { HelpDialogComponent } from '../../help/help-dialog/help-dialog.component';
 import { FirebaseError } from 'firebase/app';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { GuidedTourService } from '@services/guided-tour.service';
 import { HistoryService } from '@services/history.service';
 import { LocaleService } from '@services/locale.service';
@@ -668,6 +669,8 @@ describe('SummaryComponent', () => {
     it('opens the payment dialog with the payee name and their payment methods', async () => {
       mockUserService.getPaymentMethods.mockResolvedValueOnce({
         venmoId: '@alice',
+        paypalId: '',
+        cashAppId: '',
         zelleId: 'alice@pay.com',
       });
 
@@ -680,6 +683,8 @@ describe('SummaryComponent', () => {
         data: {
           payToMemberName: 'Alice',
           venmoId: '@alice',
+          paypalId: '',
+          cashAppId: '',
           zelleId: 'alice@pay.com',
         },
       });
@@ -798,7 +803,9 @@ describe('SummaryComponent', () => {
         component.payExpenses(alice().ref!, bob().ref!)
       ).resolves.toBeUndefined();
 
-      expect(lastSnackbar()).toMatch(/could not|went wrong|payment method/i);
+      expect(lastSnackbar()).toBe(
+        'Could not load payment methods. Please try again.'
+      );
       expect(mockAnalyticsService.logError).toHaveBeenCalledWith(
         'Summary Component',
         'load_payment_methods',
@@ -807,6 +814,53 @@ describe('SummaryComponent', () => {
       );
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
       expect(mockDialog.open).not.toHaveBeenCalled();
+    });
+
+    it('shows the server’s message, without logging, when the daily lookup limit is reached', async () => {
+      mockUserService.getPaymentMethods.mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "You've looked up too many payment details today. Try again tomorrow. [429]"
+          ),
+          { code: 'functions/resource-exhausted' }
+        )
+      );
+      mockDialog.open.mockClear();
+      mockAnalyticsService.logError.mockClear();
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+
+      expect(lastSnackbar()).toBe(
+        "You've looked up too many payment details today. Try again tomorrow."
+      );
+      expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    it('opens the App Check dialog instead when the lookup is refused as unauthenticated', async () => {
+      mockUserService.getPaymentMethods.mockRejectedValueOnce(
+        new FirebaseError('functions/unauthenticated', 'unauthenticated')
+      );
+      mockDialog.open.mockClear();
+      mockSnackBar.openFromComponent.mockClear();
+      const handle = vi.spyOn(
+        TestBed.inject(AppCheckErrorHandlerService),
+        'handle'
+      );
+
+      await component.payExpenses(alice().ref!, bob().ref!);
+
+      expect(handle).toHaveBeenCalledWith(
+        expect.any(FirebaseError),
+        'Could not load payment methods. Please try again.'
+      );
+      expect(mockDialog.open).toHaveBeenCalledOnce();
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        { disableClose: false, maxWidth: '80vw' }
+      );
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
     });
   });
 
