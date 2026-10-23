@@ -1,6 +1,13 @@
-import { inject, Injectable } from '@angular/core';
+import {
+  effect,
+  inject,
+  Injectable,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Expense } from '@models/expense';
 import { History } from '@models/history';
+import { Member } from '@models/member';
 import { Split } from '@models/split';
 import { AnalyticsService } from '@services/analytics.service';
 import { HistoryStore } from '@store/history.store';
@@ -8,6 +15,7 @@ import { MemberStore } from '@store/member.store';
 import { parseDate } from '@utils/date-utils';
 import {
   collection,
+  DocumentData,
   DocumentReference,
   getDoc,
   getDocs,
@@ -15,6 +23,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  QuerySnapshot,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -30,9 +39,25 @@ export class HistoryService implements IHistoryService {
   protected readonly analytics = inject(AnalyticsService);
 
   #unsubscribe?: () => void;
+  // A history snapshot that arrived before the group's members had loaded.
+  // Firestore doesn't send it again until the history changes (an empty
+  // history, the quickest result, nearly always arrives first), so it is
+  // held here and published once the members have loaded.
+  readonly #pendingSnap = signal<QuerySnapshot<DocumentData> | null>(null);
+
+  constructor() {
+    effect(() => {
+      const snap = this.#pendingSnap();
+      if (!snap || !this.memberStore.loaded()) return;
+      untracked(() => {
+        this.#pendingSnap.set(null);
+        this.#publishHistory(snap);
+      });
+    });
+  }
 
   getHistoryForGroup(groupId: string): void {
-    this.#unsubscribe?.();
+    this.stopListening();
     const historyQuery = query(
       collection(this.fs, `groups/${groupId}/history`),
       orderBy('date', 'desc')
@@ -40,37 +65,11 @@ export class HistoryService implements IHistoryService {
     this.#unsubscribe = onSnapshot(
       historyQuery,
       (historyQuerySnap) => {
-        try {
-          // Skip processing if stores are not loaded yet
-          if (!this.memberStore.loaded()) {
-            return;
-          }
-
-          const history = [
-            ...historyQuerySnap.docs.map((doc) => {
-              const data = doc.data();
-              return new History({
-                id: doc.id,
-                ...data,
-                date: parseDate(data.date),
-                paidByMember: this.memberStore.getMemberByRef(
-                  data.paidByMemberRef
-                ),
-                paidToMember: this.memberStore.getMemberByRef(
-                  data.paidToMemberRef
-                ),
-                ref: doc.ref as DocumentReference<History>,
-              });
-            }),
-          ];
-          this.historyStore.setHistory(history);
-        } catch (error) {
-          this.analytics.logError(
-            'History Service',
-            'getHistoryForGroup',
-            'Failed to process history snapshot',
-            error instanceof Error ? error.message : 'Unknown error'
-          );
+        if (this.memberStore.loaded()) {
+          this.#pendingSnap.set(null);
+          this.#publishHistory(historyQuerySnap);
+        } else {
+          this.#pendingSnap.set(historyQuerySnap);
         }
       },
       (error) => {
@@ -84,9 +83,38 @@ export class HistoryService implements IHistoryService {
     );
   }
 
+  #publishHistory(historyQuerySnap: QuerySnapshot<DocumentData>): void {
+    try {
+      const history = historyQuerySnap.docs.map((doc) => {
+        const data = doc.data() as DocumentData & {
+          date: string;
+          paidByMemberRef?: DocumentReference<Member>;
+          paidToMemberRef?: DocumentReference<Member>;
+        };
+        return new History({
+          id: doc.id,
+          ...data,
+          date: parseDate(data.date),
+          paidByMember: this.memberStore.getMemberByRef(data.paidByMemberRef),
+          paidToMember: this.memberStore.getMemberByRef(data.paidToMemberRef),
+          ref: doc.ref as DocumentReference<History>,
+        });
+      });
+      this.historyStore.setHistory(history);
+    } catch (error) {
+      this.analytics.logError(
+        'History Service',
+        'getHistoryForGroup',
+        'Failed to process history snapshot',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  }
+
   stopListening(): void {
     this.#unsubscribe?.();
     this.#unsubscribe = undefined;
+    this.#pendingSnap.set(null);
   }
 
   async unpayHistory(history: History): Promise<void> {
