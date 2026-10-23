@@ -52,11 +52,15 @@
   <li>one wording for the duplicate-address message ("Another member of this group already uses that address.");</li>
   <li>small edge fixes in the rate-limit cleanup and refund.</li>
 </ul></td><td><code>740a7ae3</code> … <code>e2db39f4</code></td></tr>
+<tr><td>Owner follow-ups (after the morning review)</td><td><ul>
+  <li><code>isLikelyAppCheckError</code> no longer treats a bare Firestore <code>permission-denied</code> as App Check (Firestore isn't enforced), so a rules denial shows the caller's own message.</li>
+  <li>Invite linking and the admin's orphan repair keep each user on at most one row per group (<code>onePerGroupLinks</code> in <code>functions/src/common.ts</code>). This also fixed B10's repeated member path in repair, so ten <code>it.fails</code> pins remain.</li>
+</ul></td><td><code>91de5475</code>, <code>3387f2e6</code></td></tr>
 <tr><td>T4: design only</td><td>A design for the Phase 3 lockdown of <code>users</code> reads together with the verified-address index: <code>docs/superpowers/specs/2026-10-23-users-read-lockdown-design.html</code>. It contains no code and ends with 6 questions for you.</td><td><code>1d68606c</code></td></tr>
 </table></div>
 
 <h2>Closing gate</h2>
-<p id="gate">Every step passed on <code>e2db39f4</code>, with no re-runs:</p>
+<p id="gate">Every step passed on <code>e2db39f4</code>, with no re-runs (the two follow-up commits were tested separately; see the follow-ups doc):</p>
 <ul>
   <li><strong>Unit:</strong> <code>pnpm test --coverage</code> ran 2820 tests in 161 files, with 6 expected fails (the <code>it.fails</code> pins). Coverage: 83.99% statements, 81.95% branches, 79.05% functions, 86.72% lines.</li>
   <li><strong>Functions:</strong> <code>pnpm --dir functions test</code> ran 561 tests in 31 files, with 5 expected fails.</li>
@@ -68,6 +72,7 @@
 </ul>
 
 <h2>Questions for you (most important first)</h2>
+<p class="note">Answered by the owner on 2026-10-23: 1 keep the limits (revisit if usage grows); 2 narrow it (done, <code>91de5475</code>); 3 yes, skip groups already linked (done, <code>3387f2e6</code>); 4 and 5 accept for now; 6 the wording is fine. 7 is still open.</p>
 <ol>
   <li><strong>Are the limits right?</strong> 100 group-mail recipients per account per day, and one confirmation email per address per hour. Each is a single constant. <span class="note">My recommendation: keep both for now, and look at real usage after a few weeks.</span></li>
   <li><strong>The App Check error classification is out of date.</strong> <code>isLikelyAppCheckError</code> treats a bare Firestore <code>permission-denied</code> as an App Check failure, but you turned off Firestore App Check enforcement on 8/19. A rules denial therefore opens the App Check help dialog, and with this branch edit-member does too. <span class="note">My recommendation: narrow it to <code>functions/unauthenticated</code> and <code>storage/unauthenticated</code> while Firestore stays unenforced. It's a small follow-up.</span></li>
