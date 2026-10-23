@@ -699,7 +699,9 @@ them, backfilling had to happen *before* merging anything, not after.
 `--apply`, then dry run again to confirm idempotence ("nothing to do"), all
 against production. Clears the way for the CI deploy.
 
-## Phase 3 — `users` collection (write half done 2026-10-21; read half deferred)
+## Phase 3 — `users` collection (write half done 2026-10-21; read half done 2026-10-23)
+
+**Done on branch `users-read-lockdown`** (2026-10-23, not yet deployed; see "Read half done" below). The paragraphs between here and that section describe the state before it and the approach as first agreed.
 
 `users/{uid}` is read cross-user for payment handles and `emailOptOut`
 (`user.service.ts`: `getUserDetails`, `getPaymentMethods` and the payment
@@ -937,6 +939,43 @@ address), `functions/src/member-email.spec.ts`, the recipient tests in
 migration: a read-only production audit
 (`scripts/db/queries/member-email-mismatch.ts`) found 295 linked members, 0
 with a group email different from the linked login email.
+
+### Read half done (2026-10-23, branch `users-read-lockdown`)
+
+Not yet deployed (it ships with the branch's release; the checklist is in
+`docs/superpowers/plans/2026-10-19-infra-followups.html`, "Next release
+(branch users-read-lockdown)"). Instead of one gatekeeper that only returns
+payment fields, the read half was done with a private index plus server-side
+linking, so the app no longer needs to read or write any other user's doc:
+
+- **`verifiedEmails/{id}` index** (`e6839f68`, `05faa183`): server-only, one
+  owner per address (the most recent proof wins), written at verified sign-up,
+  by `linkInvitedMembers`, by `confirmMemberEmailChange`, and cleared on
+  account deletion. The id is the lowercased address with `%` then `/`
+  escaped. It takes addresses only from Auth-verified sources, never from
+  `users.email`.
+- **Linking on the server** (`7bb38418`): the `syncMemberEmailLower` trigger
+  links a new or re-addressed unlinked member row to the index owner (one row
+  per account per group); `linkInvitedMembers` links pending invites under
+  every proven address; the admin orphan report/repair and the
+  `link-orphaned-members` script use the index.
+- **Default-group clears in triggers** (`6cfdfcf1`, `212d76d2`):
+  `syncGroupMemberUids` clears the default of removed members, and the new
+  `clearDefaultsOnGroupDeactivate` clears it on deactivate or archive. This
+  replaces the B13 cross-user write exception.
+- **Payment handles** (`f981ff49`): the new `getMemberPaymentMethods` callable
+  checks the caller's membership and returns the payee's handles; 100 lookups
+  per uid per rolling 24 h (`paymentLookupLimits/{uid}`, server-only).
+- **App** (`98098dff`): no longer reads or writes other users' docs.
+- **Rules** (`29daeaf8`): a `users` get is allowed only to the owner and the
+  admin; `users` list queries are denied; the B13 exception is gone; a client
+  may link only its own member row; `verifiedEmails` and `paymentLookupLimits`
+  deny all client access. B12's format guard and B14's email-ownership guard
+  stay.
+- **Backfill** (`1dc0cdfe`): `pnpm query backfill-verified-emails [-- --apply]`
+  seeds the index from existing verified accounts (create-only).
+- **Tests** (`957fe461`, `93340f76`): e2e journeys for server-side linking and
+  payment handles; `e2e/infra/users-read-rules.spec.ts` covers the rules.
 
 ## Sequencing note
 
