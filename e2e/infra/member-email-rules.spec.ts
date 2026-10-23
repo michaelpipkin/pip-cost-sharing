@@ -509,7 +509,7 @@ test.describe(
         'memberEmailRecipientCooldown/{addressHash}',
         'groupMailLimits/{uid}',
       ].filter((path) => {
-        const escaped = path.replace(/[{}/]/g, '\\$&');
+        const escaped = path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
         return !new RegExp(
           `match /${escaped} \\{\\s*allow read, write: if false;\\s*\\}`
         ).test(rules);
