@@ -6,12 +6,7 @@ import {
   Signal,
   signal,
 } from '@angular/core';
-import {
-  disabled,
-  form,
-  FormField,
-  required,
-} from '@angular/forms/signals';
+import { disabled, form, FormField, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -34,6 +29,7 @@ import { DefaultButtonDirective } from '@directives/default-button.directive';
 import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import { GroupService } from '@services/group.service';
 import {
   MemberService,
@@ -93,6 +89,7 @@ export class EditMemberComponent {
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly analytics = inject(AnalyticsService);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
   protected readonly data: any = inject(MAT_DIALOG_DATA);
 
   readonly member: Member = this.data.member;
@@ -232,9 +229,9 @@ export class EditMemberComponent {
     } else {
       message = 'Something went wrong - could not edit member';
     }
-    this.snackbar.openFromComponent(CustomSnackbarComponent, {
-      data: { message },
-    });
+    // An App Check refusal (requestMemberEmailChange is a callable, and
+    // callables enforce it) gets the help dialog; anything else, `message`.
+    this.appCheckErrorHandler.handle(error, message);
   }
 
   /**

@@ -7,10 +7,7 @@ import {
   signal,
   Signal,
 } from '@angular/core';
-import {
-  form,
-  FormField,
-} from '@angular/forms/signals';
+import { form, FormField } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -26,6 +23,7 @@ import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snac
 import { LoadingService } from '@components/loading/loading.service';
 import { ProfileForm } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import {
   memberEmailUpdateMessage,
   MemberService,
@@ -74,6 +72,7 @@ export class AccountProfileComponent {
   protected readonly memberService = inject(MemberService);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   isGoogleUser: Signal<boolean> = this.userStore.isGoogleUser;
   isEmailConfirmed: Signal<boolean> = this.userStore.isEmailConfirmed;
@@ -215,20 +214,29 @@ export class AccountProfileComponent {
         data: { message: memberEmailUpdateMessage(result) },
       });
     } catch (error) {
-      // MemberService logs the failures worth logging.
-      let message = 'Something went wrong - could not update member emails';
-      if (isUnverifiedLoginRefusal(error)) {
-        message = VERIFY_LOGIN_EMAIL;
-      } else if (isInvalidLoginEmailRefusal(error)) {
-        message = LOGIN_EMAIL_INVALID_MESSAGE;
-      } else if (isAuthLookupUnavailable(error)) {
-        message = AUTH_LOOKUP_UNAVAILABLE;
+      // MemberService logs the failures worth logging. Anything else may be
+      // the callable's App Check refusal, which gets the help dialog.
+      const message = this.#syncRefusalMessage(error);
+      if (message) {
+        this.snackbar.openFromComponent(CustomSnackbarComponent, {
+          data: { message },
+        });
+      } else {
+        this.appCheckErrorHandler.handle(
+          error,
+          'Something went wrong - could not update member emails'
+        );
       }
-      this.snackbar.openFromComponent(CustomSnackbarComponent, {
-        data: { message },
-      });
     } finally {
       this.loading.loadingOff();
     }
+  }
+
+  /** The message for a refusal the server explains, or null for any other failure. */
+  #syncRefusalMessage(error: unknown): string | null {
+    if (isUnverifiedLoginRefusal(error)) return VERIFY_LOGIN_EMAIL;
+    if (isInvalidLoginEmailRefusal(error)) return LOGIN_EMAIL_INVALID_MESSAGE;
+    if (isAuthLookupUnavailable(error)) return AUTH_LOOKUP_UNAVAILABLE;
+    return null;
   }
 }

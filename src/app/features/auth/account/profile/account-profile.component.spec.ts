@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { MemberService } from '@services/member.service';
@@ -13,6 +15,7 @@ import {
   createMockUserStore,
   mockUser,
 } from '@testing/test-helpers';
+import { FirebaseError } from 'firebase/app';
 import * as authModule from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -482,6 +485,23 @@ describe('AccountProfileComponent', () => {
         'Something went wrong - could not update member emails'
       );
       expect(mockAnalyticsService.logError).not.toHaveBeenCalled();
+      expect(mockLoadingService.loadingOff).toHaveBeenCalled();
+    });
+
+    // updateMemberEmails is a callable, and callables enforce App Check.
+    it('opens the App Check help dialog when the callable is refused for App Check', async () => {
+      const open = vi
+        .spyOn(TestBed.inject(MatDialog), 'open')
+        .mockReturnValue({} as MatDialogRef<unknown>);
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        new FirebaseError('functions/unauthenticated', 'App Check failed')
+      );
+      await component.syncMemberEmails();
+      expect(open).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        expect.anything()
+      );
+      expect(mockSnackbar.openFromComponent).not.toHaveBeenCalled();
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
     });
   });

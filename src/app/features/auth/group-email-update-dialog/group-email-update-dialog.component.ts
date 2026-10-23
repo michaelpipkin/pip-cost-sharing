@@ -14,6 +14,7 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CustomSnackbarComponent } from '@components/custom-snackbar/custom-snackbar.component';
 import { LoadingService } from '@components/loading/loading.service';
+import { AppCheckErrorHandlerService } from '@services/app-check-error-handler.service';
 import {
   memberEmailUpdateMessage,
   MemberService,
@@ -54,11 +55,13 @@ export interface GroupEmailUpdateDialogData {
 })
 export class GroupEmailUpdateDialogComponent {
   protected readonly data = inject<GroupEmailUpdateDialogData>(MAT_DIALOG_DATA);
-  protected readonly dialogRef = inject<MatDialogRef<GroupEmailUpdateDialogComponent>>(MatDialogRef);
+  protected readonly dialogRef =
+    inject<MatDialogRef<GroupEmailUpdateDialogComponent>>(MatDialogRef);
   protected readonly memberService = inject(MemberService);
   protected readonly userStore = inject(UserStore);
   protected readonly loading = inject(LoadingService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly appCheckErrorHandler = inject(AppCheckErrorHandlerService);
 
   /** Memberships on an address the user set for that group. */
   protected readonly other =
@@ -127,9 +130,13 @@ export class GroupEmailUpdateDialogComponent {
         finished = false;
         this.#notify(AUTH_LOOKUP_UNAVAILABLE);
       } else {
-        // MemberService logs unexpected failures.
+        // MemberService logs unexpected failures. An App Check refusal (the
+        // callable enforces it) gets the help dialog over this one.
         finished = false;
-        this.#notify('Something went wrong - could not update member emails');
+        this.appCheckErrorHandler.handle(
+          error,
+          'Something went wrong - could not update member emails'
+        );
       }
     } finally {
       this.loading.loadingOff();

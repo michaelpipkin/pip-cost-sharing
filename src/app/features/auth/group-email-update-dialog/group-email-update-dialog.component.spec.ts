@@ -1,10 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   MAT_DIALOG_DATA,
+  MatDialog,
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { MemberService } from '@services/member.service';
 import { UserStore } from '@store/user.store';
@@ -15,6 +17,7 @@ import {
   mockDocRef,
   mockUser,
 } from '@testing/test-helpers';
+import { FirebaseError } from 'firebase/app';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   GroupEmailUpdateDialogComponent,
@@ -375,6 +378,28 @@ describe('GroupEmailUpdateDialogComponent', () => {
 
       expect(snackbarMessage()).toBe('Updated email on 2 member records');
       expect(mockDialogRef.close).toHaveBeenCalledTimes(1);
+    });
+
+    // updateMemberEmails is a callable, and callables enforce App Check. The
+    // help dialog opens over this one, which stays open so the same choice
+    // can be retried once the device check passes.
+    it('opens the App Check help dialog, and stays open, when the callable is refused for App Check', async () => {
+      const openDialog = vi
+        .spyOn(TestBed.inject(MatDialog), 'open')
+        .mockReturnValue({} as MatDialogRef<unknown>);
+      mockMemberService.updateAllMemberEmails.mockRejectedValue(
+        new FirebaseError('functions/unauthenticated', 'App Check failed')
+      );
+
+      await fixture.componentInstance.updateAll();
+
+      expect(openDialog).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        expect.anything()
+      );
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockLoading.loadingOff).toHaveBeenCalled();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
     });
   });
 

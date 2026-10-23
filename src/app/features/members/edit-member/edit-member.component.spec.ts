@@ -6,6 +6,7 @@ import {
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
+import { AppCheckErrorDialogComponent } from '@components/app-check-error-dialog/app-check-error-dialog.component';
 import { LoadingService } from '@components/loading/loading.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
@@ -26,6 +27,7 @@ import {
   mockMember,
   mockUser,
 } from '@testing/test-helpers';
+import { FirebaseError } from 'firebase/app';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditMemberComponent } from './edit-member.component';
 import { expectEnterEndsOnSave } from '@testing/default-button';
@@ -216,7 +218,9 @@ describe('EditMemberComponent', () => {
 
       await component.onSubmit();
 
-      expect(mockMemberService.updateMemberWithUserMatching).toHaveBeenCalledWith(
+      expect(
+        mockMemberService.updateMemberWithUserMatching
+      ).toHaveBeenCalledWith(
         testMember.ref,
         {
           displayName: 'Alicia',
@@ -320,9 +324,7 @@ describe('EditMemberComponent', () => {
     it.each(['a@b', 'alice@example.com,bob@example.com'])(
       'should disable Save and show the email error when email is %s',
       async (email) => {
-        const emailInput = query(
-          'edit-member-email-input'
-        ) as HTMLInputElement;
+        const emailInput = query('edit-member-email-input') as HTMLInputElement;
         emailInput.value = email;
         emailInput.dispatchEvent(new Event('input'));
         emailInput.dispatchEvent(new Event('blur'));
@@ -342,7 +344,9 @@ describe('EditMemberComponent', () => {
 
       await component.onSubmit();
 
-      expect(mockMemberService.updateMemberWithUserMatching).toHaveBeenCalledWith(
+      expect(
+        mockMemberService.updateMemberWithUserMatching
+      ).toHaveBeenCalledWith(
         unlinkedMember.ref,
         {
           displayName: 'Uma',
@@ -362,7 +366,7 @@ describe('EditMemberComponent', () => {
 
     // T3: another member of the group already has the address. An outcome
     // for the admin, not an app error: shown, not logged, dialog left open.
-    it("should show the duplicate-address refusal without logging it", async () => {
+    it('should show the duplicate-address refusal without logging it', async () => {
       mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
         new Error('Another member of this group already uses that address.')
       );
@@ -420,8 +424,7 @@ describe('EditMemberComponent', () => {
 
       await component.onSubmit();
 
-      const saved =
-        mockMemberService.updateMember.mock.invocationCallOrder[0]!;
+      const saved = mockMemberService.updateMember.mock.invocationCallOrder[0]!;
       const requested =
         mockMemberService.requestMemberEmailChange.mock.invocationCallOrder[0]!;
       expect(saved).toBeLessThan(requested);
@@ -649,6 +652,23 @@ describe('EditMemberComponent', () => {
       // M7: an expected refusal is not an error to log.
       expect(mockAnalytics.logError).not.toHaveBeenCalled();
     });
+
+    // requestMemberEmailChange is a callable, and callables enforce App Check.
+    it('should open the App Check help dialog when the callable is refused for App Check', async () => {
+      mockMemberService.requestMemberEmailChange.mockRejectedValue(
+        new FirebaseError('functions/unauthenticated', 'App Check failed')
+      );
+      await typeInto('edit-member-email-input', 'me.new@example.com');
+
+      await component.onSubmit();
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        AppCheckErrorDialogComponent,
+        expect.anything()
+      );
+      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
   });
 
   describe('when the member left the group voluntarily (leftGroup)', () => {
@@ -667,9 +687,7 @@ describe('EditMemberComponent', () => {
     });
 
     it('should disable the Active toggle', () => {
-      expect((component as any).editMemberForm.active().disabled()).toBe(
-        true
-      );
+      expect((component as any).editMemberForm.active().disabled()).toBe(true);
     });
 
     it('should explain why the toggle is locked', () => {
@@ -725,7 +743,9 @@ describe('EditMemberComponent', () => {
 
     it('should remove the group from the store when leaving deletes the member doc (no history)', async () => {
       mockMemberService.leaveGroup.mockResolvedValue({ deleted: true });
-      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
+        true
+      );
       let confirmCallback!: (confirm: boolean) => Promise<void>;
       vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
         afterClosed: () => ({
@@ -745,7 +765,9 @@ describe('EditMemberComponent', () => {
 
     it("should stop the left group's data listeners, not just unselect it", async () => {
       mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
-      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
+        true
+      );
       let confirmCallback!: (confirm: boolean) => Promise<void>;
       vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
         afterClosed: () => ({
@@ -764,7 +786,9 @@ describe('EditMemberComponent', () => {
 
     it('should re-tag the group as left in the store when leaving keeps the member doc (has history)', async () => {
       mockMemberService.leaveGroup.mockResolvedValue({ deleted: false });
-      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(true);
+      vi.spyOn((component as any)['router'], 'navigate').mockResolvedValue(
+        true
+      );
       let confirmCallback!: (confirm: boolean) => Promise<void>;
       vi.spyOn((component as any)['dialog'], 'open').mockReturnValue({
         afterClosed: () => ({
@@ -778,11 +802,14 @@ describe('EditMemberComponent', () => {
       component.leaveGroup();
       await confirmCallback(true);
 
-      expect(mockGroupStore.patchGroupMembership).toHaveBeenCalledWith(groupId, {
-        userActiveInGroup: false,
-        userLeftGroup: true,
-        userIsAdmin: false,
-      });
+      expect(mockGroupStore.patchGroupMembership).toHaveBeenCalledWith(
+        groupId,
+        {
+          userActiveInGroup: false,
+          userLeftGroup: true,
+          userIsAdmin: false,
+        }
+      );
       expect(mockGroupStore.removeGroup).not.toHaveBeenCalled();
     });
   });
