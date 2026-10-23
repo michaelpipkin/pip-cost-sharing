@@ -59,6 +59,14 @@ const EXPECTED_EMAIL_CHANGE_CODES = new Set([
 ]);
 
 /**
+ * updateMemberWithUserMatching's refusal of an address another member of the
+ * group already has (an admin's edit of an unlinked member). An outcome the
+ * edit dialog shows, not an error to log.
+ */
+export const OTHER_MEMBER_HAS_EMAIL =
+  'Another member of this group already uses that address.';
+
+/**
  * The snackbar text for an updateAllMemberEmails result (Account > Profile's
  * Sync and the group email update dialog).
  */
@@ -311,17 +319,21 @@ export class MemberService implements IMemberService {
     currentUserRef: DocumentReference<User> | null,
     currentEmail: string
   ): Promise<void> {
+    const emailChanging =
+      !!changes.email &&
+      this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail);
+    // The callables' duplicate check (functions/src/member-email.ts
+    // DUPLICATE_MEMBER_EMAIL), for an admin's edit of an unlinked member.
+    if (emailChanging) {
+      await this.#assertNoOtherMemberHas(memberRef, changes.email!);
+    }
     // Only search for user if member is not already linked and email is changing
-    if (
-      !currentUserRef &&
-      changes.email &&
-      this.#normalizeEmail(changes.email) !== this.#normalizeEmail(currentEmail)
-    ) {
+    if (!currentUserRef && emailChanging) {
       // Safe only because profile emails are verified-only (see
       // addMemberToGroup).
       const userQuery = query(
         collection(this.fs, 'users'),
-        where('emailLower', '==', this.#normalizeEmail(changes.email))
+        where('emailLower', '==', this.#normalizeEmail(changes.email!))
       );
       const userSnapshot = await getDocs(userQuery);
       if (userSnapshot.size === 1) {
@@ -334,12 +346,32 @@ export class MemberService implements IMemberService {
           'Member Service',
           'updateMemberWithUserMatching',
           'Ambiguous email match - multiple user accounts share this email, skipped auto-link',
-          this.#normalizeEmail(changes.email)
+          this.#normalizeEmail(changes.email!)
         );
       }
     }
 
     await updateDoc(memberRef, changes);
+  }
+
+  /**
+   * Refuses (OTHER_MEMBER_HAS_EMAIL) an address another member of the same
+   * group already has, compared case-insensitively through emailLower.
+   */
+  async #assertNoOtherMemberHas(
+    memberRef: DocumentReference<Member>,
+    email: string
+  ): Promise<void> {
+    const clash = await getDocs(
+      query(
+        memberRef.parent,
+        where('emailLower', '==', this.#normalizeEmail(email)),
+        limit(2)
+      )
+    );
+    if (clash.docs.some((d) => d.id !== memberRef.id)) {
+      throw new Error(OTHER_MEMBER_HAS_EMAIL);
+    }
   }
 
   async removeMemberFromGroup(

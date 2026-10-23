@@ -359,6 +359,28 @@ describe('EditMemberComponent', () => {
         operation: 'saved',
       });
     });
+
+    // T3: another member of the group already has the address. An outcome
+    // for the admin, not an app error: shown, not logged, dialog left open.
+    it("should show the duplicate-address refusal without logging it", async () => {
+      mockMemberService.updateMemberWithUserMatching.mockRejectedValue(
+        new Error('Another member of this group already uses that address.')
+      );
+      await typeInto('edit-member-email-input', 'taken@example.com');
+
+      await component.onSubmit();
+
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Another member of this group already uses that address.',
+          },
+        }
+      );
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+      expect(mockAnalytics.logError).not.toHaveBeenCalled();
+    });
   });
 
   describe('when editing own linked member record: the email change', () => {

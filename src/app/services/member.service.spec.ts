@@ -376,13 +376,94 @@ describe('MemberService', () => {
   });
 
   describe('updateMemberWithUserMatching', () => {
-    const mockMemberRef = { id: 'member-1' } as any;
+    const mockMemberRef = { id: 'member-1', parent: { id: 'members' } } as any;
+
+    // T3: an admin's edit of an unlinked member's email used to skip the
+    // duplicate check the callables make (DUPLICATE_MEMBER_EMAIL), so two
+    // rows of one group could end up on one address.
+    describe('the duplicate-address check', () => {
+      const DUPLICATE = 'Another member of this group already uses that address.';
+
+      it('refuses an address another member of the group has, writing nothing', async () => {
+        const getDocs = vi
+          .spyOn(firestoreModule, 'getDocs')
+          .mockResolvedValueOnce(
+            makeSnap([makeDocSnap('other-member', {})]) as any
+          );
+
+        await expect(
+          service.updateMemberWithUserMatching(
+            mockMemberRef,
+            { email: 'Taken@Test.com' },
+            null,
+            'old@test.com'
+          )
+        ).rejects.toThrow(DUPLICATE);
+
+        // Case-insensitive: the group's members are queried by emailLower.
+        expect(firestoreModule.query).toHaveBeenCalledWith(
+          mockMemberRef.parent,
+          expect.anything(),
+          expect.anything()
+        );
+        expect(firestoreModule.where).toHaveBeenCalledWith(
+          'emailLower',
+          '==',
+          'taken@test.com'
+        );
+        // Refused before any user lookup or write.
+        expect(getDocs).toHaveBeenCalledOnce();
+        expect(firestoreModule.updateDoc).not.toHaveBeenCalled();
+        expect(mockAnalytics.logError).not.toHaveBeenCalled();
+      });
+
+      it('ignores the member’s own doc in the result', async () => {
+        vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
+          makeSnap([makeDocSnap('member-1', {})]) as any
+        );
+
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'mine@test.com' },
+          null,
+          'old@test.com'
+        );
+
+        expect(firestoreModule.updateDoc).toHaveBeenCalledWith(mockMemberRef, {
+          email: 'mine@test.com',
+        });
+      });
+
+      it('is skipped when the email is cleared or unchanged', async () => {
+        const getDocs = vi.spyOn(firestoreModule, 'getDocs');
+
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: '' },
+          null,
+          'old@test.com'
+        );
+        await service.updateMemberWithUserMatching(
+          mockMemberRef,
+          { email: 'OLD@test.com', displayName: 'Renamed' },
+          null,
+          'old@test.com'
+        );
+
+        expect(getDocs).not.toHaveBeenCalled();
+        expect(firestoreModule.updateDoc).toHaveBeenCalledTimes(2);
+      });
+    });
 
     it('should search for a user and link userRef when member is unlinked and email is changing', async () => {
       const mockUserRef = { id: 'user-abc' };
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([makeDocSnap('user-abc', {}, mockUserRef)]) as any
-      );
+      vi.spyOn(firestoreModule, 'getDocs')
+        // No other member has the address...
+        .mockResolvedValueOnce(makeSnap([]) as any)
+        // ...and one user does.
+        .mockResolvedValueOnce(
+          makeSnap([makeDocSnap('user-abc', {}, mockUserRef)]) as any
+        );
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
       const changes: any = { email: 'new@test.com' };
@@ -401,12 +482,14 @@ describe('MemberService', () => {
     });
 
     it('should not set userRef and should log when multiple accounts share the email', async () => {
-      vi.spyOn(firestoreModule, 'getDocs').mockResolvedValueOnce(
-        makeSnap([
-          makeDocSnap('user-1', {}, { id: 'user-1' }),
-          makeDocSnap('user-2', {}, { id: 'user-2' }),
-        ]) as any
-      );
+      vi.spyOn(firestoreModule, 'getDocs')
+        .mockResolvedValueOnce(makeSnap([]) as any)
+        .mockResolvedValueOnce(
+          makeSnap([
+            makeDocSnap('user-1', {}, { id: 'user-1' }),
+            makeDocSnap('user-2', {}, { id: 'user-2' }),
+          ]) as any
+        );
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
       const changes: any = { email: 'dup@test.com' };
@@ -426,7 +509,7 @@ describe('MemberService', () => {
       );
     });
 
-    it('should not search when member already has a userRef', async () => {
+    it('should not search for a user when member already has a userRef', async () => {
       const existingRef = { id: 'existing-user' } as any;
       vi.spyOn(firestoreModule, 'updateDoc').mockResolvedValueOnce(undefined);
 
@@ -438,7 +521,13 @@ describe('MemberService', () => {
         'old@test.com'
       );
 
-      expect(firestoreModule.getDocs).not.toHaveBeenCalled();
+      // Only the duplicate check queries; users is never searched.
+      expect(firestoreModule.getDocs).toHaveBeenCalledOnce();
+      expect(firestoreModule.collection).not.toHaveBeenCalledWith(
+        mockFs,
+        'users'
+      );
+      expect(changes.userRef).toBeUndefined();
     });
 
     it('should not search when email is not changing', async () => {

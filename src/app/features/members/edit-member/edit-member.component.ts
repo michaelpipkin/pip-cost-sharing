@@ -35,7 +35,10 @@ import { EditMemberForm, Member } from '@models/member';
 import { User } from '@models/user';
 import { AnalyticsService } from '@services/analytics.service';
 import { GroupService } from '@services/group.service';
-import { MemberService } from '@services/member.service';
+import {
+  MemberService,
+  OTHER_MEMBER_HAS_EMAIL,
+} from '@services/member.service';
 import { GroupStore } from '@store/group.store';
 import { MemberStore } from '@store/member.store';
 import { UserStore } from '@store/user.store';
@@ -211,6 +214,12 @@ export class EditMemberComponent {
     } else if (isAuthLookupUnavailable(error)) {
       // An Auth outage on the server (which logs it); saving again can work.
       message = AUTH_LOOKUP_UNAVAILABLE;
+    } else if (
+      error instanceof Error &&
+      error.message === OTHER_MEMBER_HAS_EMAIL
+    ) {
+      // The client-side duplicate check (unlinked rows): an outcome.
+      message = OTHER_MEMBER_HAS_EMAIL;
     } else if (error instanceof Error) {
       message = serverMessage;
       if (!code || !EXPECTED_CALLABLE_CODES.has(code)) {

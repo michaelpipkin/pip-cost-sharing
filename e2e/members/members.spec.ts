@@ -111,6 +111,42 @@ test.describe('Members', { tag: ['@members'] }, () => {
     );
   });
 
+  // T3: an admin's edit of an unlinked member's email gets the same
+  // duplicate check as the server's (case-insensitive), so two rows of one
+  // group can't end up on one address.
+  test("should refuse another member's address for an unlinked member", async ({
+    page,
+  }) => {
+    const members = new MembersPage(page);
+    const { duplicate } = placeholders;
+    const memberDoc = getSeedAdmin().db.doc(
+      `groups/${groups.main.key}/members/${duplicate.key}`
+    );
+
+    await signInAs(page, users.admin);
+    await members.goto();
+    await expect(
+      members.row(duplicate.key).getByTestId('member-name-cell')
+    ).toHaveText(duplicate.displayName);
+
+    await members.clickMemberRow(duplicate.key);
+    // Ari's own address, in other casing.
+    await members.fillEditMemberForm(undefined, users.admin.email.toUpperCase());
+    await members.editMemberSaveButton.click();
+    await expect(
+      members.snackbarWith(
+        'Another member of this group already uses that address.'
+      )
+    ).toBeVisible();
+    await members.waitForLoadingComplete();
+    await expect(members.editMemberDialog).toBeVisible();
+    await members.cancelEditMember();
+
+    const stored = await memberDoc.get();
+    expect(stored.get('email')).toBe('');
+    expect(stored.get('userRef') ?? null).toBeNull();
+  });
+
   test('should leave a group', async ({ page }) => {
     const members = new MembersPage(page);
     const groupsPage = new GroupsPage(page);
