@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users Read Lockdown Plan</title>
+<style>
+  :root { --fg:#1d1f23; --muted:#5b6170; --bg:#fff; --line:#dde1e8; --accent:#2f5fb3; --note:#f4f6fa; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ec; --muted:#a0a6b3; --bg:#16181c; --line:#2c3038; --accent:#7fa6ee; --note:#1f2228; } }
+  body { font: 15.5px/1.6 system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin-bottom: .2rem; }
+  h2 { margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  h3 { margin-top: 1.8rem; }
+  code { font-size: .9em; background: var(--note); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--note); padding: 10px 14px; overflow-x: auto; font-size: .85em; line-height: 1.45; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .meta { color: var(--muted); margin-top: 0; }
+  .box { background: var(--note); border-left: 3px solid var(--accent); padding: 8px 14px; margin: 1rem 0; }
+  li { margin: .25rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .88em; }
+  th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--note); }
+  .tablewrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Users Read Lockdown Implementation Plan</h1>
+<p class="meta">pip-cost-sharing · 2026-10-23 · Phase 3 (read half) + the verified-address index · branch <code>users-read-lockdown</code> off <code>dev</code></p>
+
+<div class="box"><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task by task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</div>
+
+<p><strong>Goal:</strong> A client can read only its own <code>users</code> doc; payment handles come from a membership-checked callable; invited members link on the server through a private index of every address a user has proven; no client writes another user's doc.</p>
+<p><strong>Architecture:</strong> A server-only <code>verifiedEmails/{id}</code> index (one owner per address, most recent proof wins) is written by the sign-up trigger, <code>linkInvitedMembers</code>, <code>confirmMemberEmailChange</code> and a one-off backfill. The existing member-write trigger links new or re-addressed unlinked rows through it. Payment handles move behind <code>getMemberPaymentMethods</code>; default-group clears move into triggers; the rules then deny every cross-user read and write.</p>
+<p><strong>Tech stack:</strong> Angular 22 (zoneless, signals, no RxJS), Firebase Functions v2 (Admin SDK), Firestore rules, Vitest (app and functions), Playwright e2e and node:test (scripts) on the isolated test emulators.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-10-23-users-read-lockdown-design.html</code> (approved 2026-10-23; owner answers in §11). Read it with this plan: section references below (§n) point into it.</p>
+
+<h2>Global Constraints</h2>
+<ul>
+  <li><strong>One release</strong> (owner): functions, rules and hosting in one PR. No old-client or stale-tab analysis anywhere in code comments, docs or tests.</li>
+  <li><strong>Never rename or remove an exported function.</strong> CI's non-interactive functions deploy stops at a deletion prompt. Add new exports only; <code>syncMemberEmailLower</code> keeps its name while gaining linking.</li>
+  <li><strong>The index takes addresses only from Auth-verified sources</strong> (a verified token or Auth record, or a confirmed group-email token), never from <code>users.email</code>.</li>
+  <li><strong>Index doc id:</strong> the lowercased address (<code>normalizeEmail</code>), then <code>%</code> → <code>%25</code>, then <code>/</code> → <code>%2F</code> (that order).</li>
+  <li><strong>Index doc shape:</strong> <code>{ uid: string, email: string (lowercased), verifiedAt: Timestamp, source: 'login' | 'group-confirm' | 'backfill' }</code>. An upsert overwrites (takeover); only the backfill is create-only.</li>
+  <li><strong>Payment lookup limit:</strong> 100 per uid per rolling 24 h window, collection <code>paymentLookupLimits/{uid}</code>, refusal <code>resource-exhausted</code> with <code>"You've looked up too many payment details today. Try again tomorrow."</code></li>
+  <li><strong>One row per account per group:</strong> no linking path may give one uid two member rows in one group.</li>
+  <li>CLAUDE.md conventions: signals, <code>@if</code>/<code>@for</code>, no RxJS, <code>protected readonly</code> injects, Document References over ids, pnpm.</li>
+  <li><strong>Tests:</strong> write each test first and see it fail. Functions and e2e only on the isolated test emulators (<code>demo-pipsplit-test</code>); check the test ports are free first. Rebuild functions (<code>pnpm --dir functions run build</code>) before e2e. Specs never delete emulator data, never mail the shared users.</li>
+  <li><strong>Commits:</strong> stage by explicit path. Code commits without <code>[no-deploy]</code>; test- or doc-only commits with it. Every commit ends with <code>Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;</code>. No push, merge or deploy; no production access.</li>
+</ul>
+
+<h2>Review Focus</h2>
+<p>Inputs the design implies but doesn't spell out, most likely first. Each has a test in the owning task, marked <em>(RF n)</em>.</p>
+<ol>
+  <li><strong>Addresses with <code>/</code>, <code>%</code>, <code>+</code> or capitals</strong> must round-trip through the id and still link: <code>Ann/B+c%d@Example.com</code> links a row stored as <code>ann/b+c%d@example.com</code>. (T1, T3)</li>
+  <li><strong>Two rows for the same person added at the same moment</strong> under two of their addresses: both triggers run concurrently and exactly one row links. (T3)</li>
+  <li><strong>An email changed twice before the trigger runs:</strong> the trigger for the first change must not link the row to the first address's owner. (T3)</li>
+  <li><strong>A payee whose account was deleted</strong> (row anonymized to <code>userRef: null</code>, or <code>userRef</code> pointing at a missing doc): the Pay dialog opens with no handles and no error. (T5)</li>
+  <li><strong>Unarchiving or renaming an inactive group</strong> must not clear anyone's default again, and the membership-array update that <code>syncGroupMemberUids</code> writes must not trigger a clear. (T4)</li>
+</ol>
+
+<h2>File map</h2>
+<div class="tablewrap"><table>
+<tr><th>File</th><th>Responsibility</th><th>Task</th></tr>
+<tr><td><code>functions/src/email-identity.ts</code></td><td>+ <code>verifiedEmailId</code> (dependency-free, so <code>scripts/db</code> can import it)</td><td>T1</td></tr>
+<tr><td><code>functions/src/verified-emails.ts</code> (new)</td><td>Index reads and writes</td><td>T1</td></tr>
+<tr><td><code>functions/src/member-linking.ts</code> (new)</td><td>Trigger linking and the pending-invite linker</td><td>T2, T3</td></tr>
+<tr><td><code>functions/src/index.ts</code></td><td><code>linkInvitedMembersInternal</code>, <code>deleteUserAccount</code>, <code>syncMemberEmailLower</code>, <code>syncGroupMemberUidsInternal</code>, new <code>clearDefaultsOnGroupDeactivate</code>, nightly cleanup, re-exports</td><td>T2-T5</td></tr>
+<tr><td><code>functions/src/user-onboarding.ts</code></td><td>Sign-up trigger writes the index</td><td>T2</td></tr>
+<tr><td><code>functions/src/member-email.ts</code></td><td><code>confirmMemberEmailChange</code> writes the index; allowance moves out</td><td>T2, T5</td></tr>
+<tr><td><code>functions/src/admin-reports.ts</code></td><td>Orphaned-members report and repair through the index</td><td>T3</td></tr>
+<tr><td><code>functions/src/call-allowance.ts</code> (new)</td><td>Per-uid windowed allowance (consume, refund, expire)</td><td>T5</td></tr>
+<tr><td><code>functions/src/payment-methods.ts</code> (new)</td><td><code>getMemberPaymentMethods</code></td><td>T5</td></tr>
+<tr><td><code>functions/src/common.ts</code></td><td>+ shared <code>isDocId</code> (replaces the two private copies)</td><td>T5</td></tr>
+<tr><td><code>src/app/services/user.service.ts</code>, <code>member.service.ts</code>, <code>group.service.ts</code> (+ interfaces), <code>edit-member</code>, <code>summary</code></td><td>Client changes</td><td>T6</td></tr>
+<tr><td><code>scripts/db/verified-email-backfill.ts</code>, <code>.test.mjs</code>, <code>queries/backfill-verified-emails.ts</code> (new); <code>queries/link-orphaned-members.ts</code></td><td>Backfill; the link script on the index</td><td>T7, T3</td></tr>
+<tr><td><code>firestore.rules</code>; <code>e2e/infra/users-read-rules.spec.ts</code> (new), <code>user-rules.spec.ts</code>, <code>member-email-rules.spec.ts</code>, <code>member-rules.spec.ts</code></td><td>The lockdown and its rules tests</td><td>T8</td></tr>
+<tr><td><code>e2e/members/</code>, <code>e2e/summary/</code>, <code>e2e/seed/datasets/</code>, <code>scripts/test-area/areas.mjs</code></td><td>Journeys and area mapping</td><td>T9</td></tr>
+<tr><td>Docs: hardening doc, follow-ups doc, release checklist</td><td>Status and release steps</td><td>T10</td></tr>
+</table></div>
+
+<p><strong>Areas:</strong> every new functions spec goes into <code>scripts/test-area/areas.mjs</code> in the task that creates it (members, groups, account and auth for linking and the index; summary for payment methods; admin for reports); <code>pnpm test:area --check</code> must pass at the end of every task.</p>
+
+<!-- ===================================================================== -->
+<h2>Task 1: The verified-address index module</h2>
+<p><strong>Files:</strong> modify <code>functions/src/email-identity.ts</code>; create <code>functions/src/verified-emails.ts</code>, <code>functions/src/verified-emails.spec.ts</code>; modify <code>scripts/test-area/areas.mjs</code>.</p>
+<p><strong>Interfaces (produces):</strong></p>
+<pre><code>// email-identity.ts (re-exported from common.ts like normalizeEmail)
+export function verifiedEmailId(address: string): string;
+
+// verified-emails.ts
+export const VERIFIED_EMAILS = 'verifiedEmails';
+export type VerifiedEmailSource = 'login' | 'group-confirm' | 'backfill';
+export function upsertVerifiedEmail(db: Firestore, address: string, uid: string,
+  source: VerifiedEmailSource, txn?: Transaction): Promise&lt;void&gt;;   // txn: write inside it (no await needed)
+export function ownerOf(db: Firestore, address: string): Promise&lt;string | null&gt;;
+export function addressesOf(db: Firestore, uid: string): Promise&lt;string[]&gt;;   // lowercased emails
+export function removeAllFor(db: Firestore, uid: string): Promise&lt;number&gt;;</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing tests</strong> in <code>verified-emails.spec.ts</code> (random addresses per test):
+    <ul>
+      <li><code>verifiedEmailId</code>: <code>'Ann@Example.com'</code> → <code>'ann@example.com'</code>; <code>'a/b%c@x.com'</code> → <code>'a%2Fb%25c@x.com'</code> <em>(RF 1)</em>; <code>'%2F@x.com'</code> → <code>'%252f@x.com'</code> (lowercased first, % escaped before /).</li>
+      <li><code>upsert then ownerOf</code> returns the uid for any casing of the address, and the doc holds <code>{uid, email: lowercased, source, verifiedAt instanceof Timestamp}</code>.</li>
+      <li>Takeover: upsert for uid A then uid B → <code>ownerOf</code> is B.</li>
+      <li><code>addressesOf(uid)</code> returns exactly that uid's addresses (two of its own, none of another uid's).</li>
+      <li><code>removeAllFor(uid)</code> returns 2 and leaves another uid's entry in place.</li>
+      <li>Upsert inside a transaction commits with the transaction.</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 2: Run</strong> <code>pnpm --dir functions test src/verified-emails.spec.ts</code>. Expected: FAIL (module not found).</li>
+  <li>- [ ] <strong>Step 3: Implement</strong> the signatures above. <code>verifiedAt</code> is <code>Timestamp.now()</code>. <code>addressesOf</code> is <code>where('uid', '==', uid)</code>.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> the spec again. Expected: PASS. Add the spec to the members, groups, account and auth areas; <code>pnpm test:area --check</code> passes.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Add the verified-address index module".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 2: Index writers and the multi-address invite linker</h2>
+<p><strong>Files:</strong> create <code>functions/src/member-linking.ts</code>; modify <code>functions/src/user-onboarding.ts</code>, <code>functions/src/index.ts</code> (<code>linkInvitedMembersInternal</code>, <code>deleteUserAccount</code>), <code>functions/src/member-email.ts</code> (<code>confirmMemberEmailChange</code>); tests in <code>user-onboarding.spec.ts</code>, <code>link-invited-members.spec.ts</code>, <code>member-email.spec.ts</code>, <code>delete-user-account.spec.ts</code>.</p>
+<p><strong>Interfaces:</strong> consumes T1. Produces:</p>
+<pre><code>// member-linking.ts
+/** Links every unlinked member row whose email is one of uid's indexed addresses.
+ *  Re-checks each row's email, keeps one row per group (onePerGroupLinks), returns the count. */
+export function linkPendingMembersFor(db: Firestore, uid: string): Promise&lt;number&gt;;
+
+// index.ts: signature unchanged
+export async function linkInvitedMembersInternal(uid: string, email: string): Promise&lt;{ membersLinked: number }&gt;;
+//   = upsertVerifiedEmail(db, email, uid, 'login') then linkPendingMembersFor(db, uid)</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing tests:</strong>
+    <ul>
+      <li><code>link-invited-members.spec.ts</code>:
+        <ul>
+          <li>"records the caller's login address in the index": after the call, <code>ownerOf(db, email)</code> is the uid.</li>
+          <li>"links a row invited under a secondary indexed address": seed <code>upsertVerifiedEmail(db, secondary, uid, 'group-confirm')</code> and an unlinked row with <code>secondary</code>; call with the login address; <code>membersLinked</code> is 1 and the row's <code>userRef.id</code> is the uid.</li>
+          <li>"links across more than 30 addresses" (31 indexed addresses, a row on the 31st): links it (the <code>in</code>-query chunking).</li>
+          <li>The existing one-row-per-group, stale-<code>emailLower</code> and hijack tests stay green unchanged.</li>
+        </ul></li>
+      <li><code>user-onboarding.spec.ts</code>: a verified sign-up (<code>emailVerified: true</code>) writes the index entry with <code>source: 'login'</code>; an unverified one writes none.</li>
+      <li><code>member-email.spec.ts</code>: a successful <code>confirmMemberEmailChange</code> leaves <code>ownerOf(confirmed address)</code> = caller with <code>source: 'group-confirm'</code>, and links a pending unlinked row in another group invited under that address.</li>
+      <li><code>delete-user-account.spec.ts</code>: after deletion, <code>addressesOf(uid)</code> is empty.</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 2: Run</strong> the four specs. Expected: the new tests FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement:</strong>
+    <ul>
+      <li><code>linkPendingMembersFor</code>: <code>addressesOf</code>, then for each chunk of 30, <code>collectionGroup('members').where('emailLower', 'in', chunk).where('userRef', '==', null)</code>; keep rows whose <code>normalizeEmail(email)</code> is in the set; <code>onePerGroupLinks</code>; one batch per 500.</li>
+      <li><code>createUserProfileOnSignUp</code>: after the profile transaction, when <code>user.emailVerified &amp;&amp; user.email</code>, <code>upsertVerifiedEmail(..., 'login')</code>; log and swallow a failure (the Groups-page call heals it).</li>
+      <li><code>confirmMemberEmailChange</code>: inside its transaction, <code>upsertVerifiedEmail(db, email, uid, 'group-confirm', txn)</code>; after the commit, <code>linkPendingMembersFor(db, uid)</code> in a try/catch that logs.</li>
+      <li><code>deleteUserAccount</code>: <code>removeAllFor(db, uid)</code> before the users doc is deleted.</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm --dir functions test</code>. Expected: all PASS (4 expected fails).</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Write the verified-address index and link invites by every proven address".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 3: Server-side linking in the member trigger; admin repair on the index</h2>
+<p><strong>Files:</strong> modify <code>functions/src/member-linking.ts</code>, <code>functions/src/index.ts</code> (<code>syncMemberEmailLower</code>), <code>functions/src/admin-reports.ts</code>, <code>scripts/db/queries/link-orphaned-members.ts</code>; tests in <code>email-lower-sync.spec.ts</code>, <code>admin-reports.spec.ts</code>, <code>admin-reports-builders.spec.ts</code>.</p>
+<p><strong>Interfaces:</strong> consumes T1, T2. Produces:</p>
+<pre><code>// member-linking.ts
+export type MemberLinkResult = 'linked' | 'not-applicable' | 'no-owner' | 'already-in-group' | 'stale';
+/** Links an unlinked row to the owner of its email, when the write created the row or changed its email. */
+export function linkMemberByVerifiedEmail(db: Firestore, memberRef: DocumentReference,
+  before: DocumentData | undefined, after: DocumentData): Promise&lt;MemberLinkResult&gt;;</code></pre>
+<p>Rules for <code>linkMemberByVerifiedEmail</code> (§6.3):</p>
+<ul>
+  <li><code>not-applicable</code> unless: <code>after.userRef</code> is null, <code>after.email</code> is non-empty, and either <code>before</code> is undefined (create) or <code>normalizeEmail(before.email) !== normalizeEmail(after.email)</code>. So an unlink (X → null, same email) and account-deletion anonymizing never link.</li>
+  <li><code>no-owner</code> when <code>ownerOf(after.email)</code> is null.</li>
+  <li>Otherwise, in a transaction: re-read the row; <code>stale</code> if it is gone, now linked, or its <code>email</code> no longer normalizes to the same address <em>(RF 3)</em>; query the row's own <code>members</code> collection <code>where('userRef', '==', users/{owner}).limit(1)</code> inside the transaction, <code>already-in-group</code> (log it) if a row exists <em>(RF 2)</em>; else update <code>{ userRef: users/{owner}, emailLower: normalized }</code>.</li>
+  <li><code>syncMemberEmailLower</code> calls it first with <code>event.data.before?.data()</code>; when it returns <code>linked</code>, skip <code>syncEmailLower</code> (the link wrote <code>emailLower</code>); otherwise run <code>syncEmailLower</code> as today.</li>
+</ul>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing tests</strong> in <code>email-lower-sync.spec.ts</code>, driving <code>syncMemberEmailLower.run(event)</code> as the spec already does:
+    <ul>
+      <li>"links a new row to the owner of its address" (owner indexed): row's <code>userRef.id</code> = owner, <code>emailLower</code> set.</li>
+      <li>"links when an unlinked row's email changes to an owned address".</li>
+      <li>"links an address with / % + and capitals" — index <code>'Ann/B+c%d@Example.com'</code>, row email <code>'ann/b+c%d@example.com'</code> <em>(RF 1)</em>.</li>
+      <li>"does not link on an unlink" (before linked, after <code>userRef: null</code>, same email): stays null.</li>
+      <li>"does not link without an index entry".</li>
+      <li>"does not link a second row for an account already in the group" — the owner already has a row in that group.</li>
+      <li>"links only one of two rows created at once for the same account" — two rows, two of the owner's addresses, run both events with <code>Promise.all</code>; exactly one row linked <em>(RF 2)</em>.</li>
+      <li>"does not link when the email changed again before the trigger ran" — event says email → A, the stored row now has B: stays unlinked <em>(RF 3)</em>.</li>
+    </ul>
+    And in the admin specs: the orphaned-members report counts a row as linkable when its address has an index owner and unmatched otherwise; <code>repairOrphanedMembersInternal</code> links through the index (seed an index entry, not a <code>users.emailLower</code>), and still keeps one row per group.</li>
+  <li>- [ ] <strong>Step 2: Run</strong> the three specs. Expected: the new tests FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement</strong> <code>linkMemberByVerifiedEmail</code> and the trigger change. In <code>admin-reports.ts</code>, replace each <code>users where emailLower ==</code> lookup with <code>ownerOf</code>; remove the report's "Needs manual review" table and stat (the index has one owner per address). Rewrite <code>link-orphaned-members.ts</code>'s join to read <code>verifiedEmails/{verifiedEmailId(email)}</code> and drop its case-insensitive informational section; keep dry-run by default and <code>--apply</code>.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm --dir functions test</code> and <code>pnpm test:scripts</code>. Expected: PASS.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Link invited members on the server through the verified-address index".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 4: Default-group clears in triggers</h2>
+<p><strong>Files:</strong> modify <code>functions/src/index.ts</code>; tests in <code>sync-group-member-uids.spec.ts</code>, create <code>clear-defaults-on-deactivate.spec.ts</code>.</p>
+<p><strong>Interfaces (produces):</strong></p>
+<pre><code>export function isGroupDeactivation(before: DocumentData, after: DocumentData): boolean;
+export const clearDefaultsOnGroupDeactivate = onDocumentUpdated('groups/{groupId}', ...);  // new export</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing tests:</strong>
+    <ul>
+      <li><code>sync-group-member-uids.spec.ts</code>: "clears the default of a uid whose row was deleted" (group's <code>memberUids</code> has U, U's default is this group, delete U's row, run <code>syncGroupMemberUidsInternal</code>) → U's <code>defaultGroupRef</code> is null; "leaves a removed uid's default for another group alone"; "leaves remaining members' defaults alone".</li>
+      <li><code>clear-defaults-on-deactivate.spec.ts</code>: <code>isGroupDeactivation</code> is true for <code>active</code> true→false and <code>archived</code> false/missing→true; false for false→false, a rename of an inactive group, unarchiving (true→false), and a <code>memberUids</code>-only change <em>(RF 5)</em>. Running the trigger on a deactivation clears two users' defaults and leaves a third user's default (another group) alone.</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 2: Run</strong> both specs. Expected: FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement.</strong> In <code>syncGroupMemberUidsInternal</code>, before the update, compute <code>removed = current.memberUids − memberUids</code>; for each, in a transaction, set <code>defaultGroupRef: null</code> only if it equals this group's ref. The new trigger calls the existing <code>clearDefaultGroupRefs(groupRef)</code> when <code>isGroupDeactivation</code>.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm --dir functions test</code>. Expected: PASS. Add the new spec to the groups and members areas.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Clear default groups in triggers instead of from other users' clients".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 5: <code>getMemberPaymentMethods</code> and the shared allowance</h2>
+<p><strong>Files:</strong> create <code>functions/src/call-allowance.ts</code>, <code>functions/src/payment-methods.ts</code>, <code>functions/src/payment-methods.spec.ts</code>, <code>functions/src/call-allowance.spec.ts</code>; modify <code>functions/src/member-email.ts</code>, <code>functions/src/group-emails.ts</code>, <code>functions/src/common.ts</code>, <code>functions/src/index.ts</code>.</p>
+<p><strong>Interfaces (produces):</strong></p>
+<pre><code>// common.ts (move the identical private copies from group-emails.ts and member-email.ts here)
+export function isDocId(value: unknown): value is string;
+
+// call-allowance.ts
+export interface AllowanceOptions { collection: string; uid: string; limit: number; windowMs: number; nowMs: number; exhaustedMessage: string; }
+export function consumeAllowance(db: Firestore, o: AllowanceOptions): Promise&lt;void&gt;;   // resource-exhausted when used up
+export function refundAllowance(db: Firestore, o: Omit&lt;AllowanceOptions, 'limit' | 'exhaustedMessage'&gt;): Promise&lt;void&gt;;
+export function deleteExpiredAllowanceWindows(db: Firestore, collection: string, windowMs: number, nowMs: number): Promise&lt;number&gt;;
+
+// payment-methods.ts (re-exported from index.ts)
+export const PAYMENT_LOOKUP_LIMITS = 'paymentLookupLimits';
+export const PAYMENT_LOOKUP_DAILY_LIMIT = 100;
+export const PAYMENT_LOOKUP_LIMIT_REACHED = "You've looked up too many payment details today. Try again tomorrow.";
+export interface MemberPaymentMethods { venmoId: string; paypalId: string; cashAppId: string; zelleId: string; }
+export const getMemberPaymentMethods: CallableFunction&lt;{ groupId?: unknown; memberId?: unknown }, MemberPaymentMethods&gt;;
+
+// member-email.ts: export the existing requireVerifiedCaller (payment-methods uses it)</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing tests</strong> (<code>payment-methods.spec.ts</code>, calling <code>getMemberPaymentMethods.run(...)</code>):
+    <ul>
+      <li>Refusals, each also asserting the limit doc was not written: signed out (<code>unauthenticated</code>); bad <code>groupId</code> or <code>memberId</code> (<code>invalid-argument</code>); unverified caller (<code>permission-denied</code>, <code>VERIFY_LOGIN_EMAIL</code>); caller not in <code>activeMemberUids</code>, or a left member (<code>permission-denied</code>, <code>NOT_ACTIVE_MEMBER</code>); a member id from another group or missing (<code>not-found</code>).</li>
+      <li>A linked payee returns its four handles, and <code>Object.keys(result).sort()</code> equals <code>['cashAppId','paypalId','venmoId','zelleId']</code> (no email, <code>emailOptOut</code> or uid).</li>
+      <li>An inactive payee row still returns handles.</li>
+      <li>An unlinked payee, and a row whose <code>userRef</code> points at a missing doc, return all four as <code>''</code> <em>(RF 4)</em>.</li>
+      <li>The 101st call in a window is refused with <code>PAYMENT_LOOKUP_LIMIT_REACHED</code>; a call after the window (inject <code>nowMs</code> the way the member-email limit tests do) succeeds.</li>
+    </ul>
+    <code>call-allowance.spec.ts</code>: consume up to the limit, refuse past it, a new window resets, refund gives one back, expired windows are deleted and live ones kept. The existing <code>member-email.spec.ts</code> limit tests stay green unchanged.</li>
+  <li>- [ ] <strong>Step 2: Run</strong> both specs. Expected: FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement.</strong> Move <code>consumeRequestAllowance</code>/<code>refundRequestAllowance</code>'s transaction logic into <code>call-allowance.ts</code>, and switch <code>member-email.ts</code> and its nightly cleanup to it with its existing values. The callable checks in the §5.1 order, consumes the allowance last, then reads <code>users/{userRef.id}</code>. The nightly <code>deleteOldPaidExpenses</code> also calls <code>deleteExpiredAllowanceWindows(db, PAYMENT_LOOKUP_LIMITS, DAY_MS, now)</code>.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm --dir functions test</code>. Expected: PASS. Add both specs to the summary area (and call-allowance to members).</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Serve payment handles through a membership-checked callable".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 6: Client changes</h2>
+<p><strong>Files:</strong> <code>src/app/services/user.service.ts</code> + <code>user.service.interface.ts</code>; <code>member.service.ts</code> + <code>member.service.interface.ts</code>; <code>group.service.ts</code>; <code>features/members/edit-member/edit-member.component.ts</code>; <code>features/summary/summary/summary.component.ts</code>; <code>src/app/models/payment-methods.ts</code> (new); their specs.</p>
+<p><strong>Interfaces:</strong> consumes <code>getMemberPaymentMethods</code> (T5). Produces:</p>
+<pre><code>// models/payment-methods.ts
+export interface PaymentMethods { venmoId: string; paypalId: string; cashAppId: string; zelleId: string; }
+// user.service
+getPaymentMethods(memberRef: DocumentReference&lt;Member&gt;): Promise&lt;PaymentMethods&gt;;
+// member.service: updateMemberWithUserMatching is deleted (service and interface); edit-member calls updateMember.</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write or adjust the failing unit tests:</strong>
+    <ul>
+      <li><code>user.service.spec</code>: <code>getPaymentMethods</code> calls the <code>getMemberPaymentMethods</code> callable with <code>{ groupId: memberRef.parent.parent.id, memberId: memberRef.id }</code>, returns its data, and never calls <code>getDoc</code>.</li>
+      <li><code>member.service.spec</code>: <code>addMemberToGroup</code> with an email still refuses a duplicate, writes the member with no <code>userRef</code> set by the client, and never queries <code>users</code>; <code>updateMember</code> refuses another row's address (case-insensitive); <code>removeMemberFromGroup</code> deletes the row and makes no <code>getDoc</code>/<code>updateDoc</code> on a users ref.</li>
+      <li><code>group.service.spec</code>: <code>updateGroup({active:false})</code> updates the group only (no <code>users</code> query, no batch of user updates) and still clears the current group locally; <code>resolveDefaultGroupRef</code> heals a default whose group is inactive (<code>active: false</code>) while the membership is active.</li>
+      <li><code>summary.component.spec</code>: a <code>functions/resource-exhausted</code> from <code>getPaymentMethods</code> shows the server's message; another failure shows "Could not load payment methods. Please try again."; a <code>functions/unauthenticated</code> opens the App Check dialog (through <code>AppCheckErrorHandlerService.handle</code>).</li>
+      <li><code>edit-member.component.spec</code>: an admin's save of an unlinked row calls <code>updateMember</code>.</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 2: Run</strong> <code>pnpm test</code>. Expected: the new assertions FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement</strong> the changes in §3 rows 1-5 of the spec. The payment dialog's <code>paymentData</code> type reuses <code>PaymentMethods</code> (<code>PaymentMethods &amp; { payToMemberName: string }</code>). Remove now-unused imports and the private <code>#assertNoOtherMemberHas</code> if nothing uses it.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm test</code>, <code>ng build</code>. Expected: PASS, clean build.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Stop reading and writing other users' docs from the app".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 7: Backfill script</h2>
+<p><strong>Files:</strong> create <code>scripts/db/verified-email-backfill.ts</code>, <code>scripts/db/verified-email-backfill.test.mjs</code>, <code>scripts/db/queries/backfill-verified-emails.ts</code>; update <code>scripts/db/README.html</code>.</p>
+<p><strong>Interfaces (produces), following <code>profile-email-audit.ts</code>:</strong></p>
+<pre><code>export interface BackfillPlan { create: {id: string; email: string; uid: string}[]; skip: number; conflicts: {email: string; uid: string; ownerUid: string}[]; }
+export function planVerifiedEmailBackfill(
+  authUsers: {uid: string; email?: string; emailVerified: boolean}[],
+  existing: Map&lt;string, string&gt;,          // index id → uid
+  nonUserEmails: Set&lt;string&gt;): BackfillPlan;
+export function applyVerifiedEmailBackfill(db: Firestore, plan: BackfillPlan): Promise&lt;number&gt;;   // create-only (create(), not set)</code></pre>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the failing node:test cases:</strong> unverified, email-less and <code>NON_USER_AUTH_EMAILS</code> accounts are skipped; an address with no entry is planned to create (id from <code>verifiedEmailId</code>); same uid counts as skip; a different uid is a conflict and is never in <code>create</code>; mixed casing maps to one id.</li>
+  <li>- [ ] <strong>Step 2: Run</strong> <code>pnpm test:scripts</code>. Expected: FAIL.</li>
+  <li>- [ ] <strong>Step 3: Implement</strong> the module and the query script (§7.3): dry run by default; <code>--apply</code> refuses when Auth returned zero users; prints the plan counts, each conflict, and the unlinked members whose address now has an owner (report only). The env guard already refuses emulator hosts.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> <code>pnpm test:scripts</code>. Expected: PASS.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Add the verified-address backfill script".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 8: The rules lockdown</h2>
+<p><strong>Files:</strong> <code>firestore.rules</code>; create <code>e2e/infra/users-read-rules.spec.ts</code>; modify <code>e2e/infra/user-rules.spec.ts</code>, <code>member-email-rules.spec.ts</code>, <code>member-rules.spec.ts</code>, <code>scripts/test-area/areas.mjs</code>.</p>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the rules tests</strong> (§8 "Rules"):
+    <ul>
+      <li><code>users-read-rules.spec.ts</code>: allowed: own get (also before the doc exists), the admin uid's get. Denied: another user's get; <code>users</code> queries by <code>emailLower</code> and by <code>defaultGroupRef</code>; every read and write on <code>verifiedEmails</code> and <code>paymentLookupLimits</code>, including the owner of the entry.</li>
+      <li><code>user-rules.spec.ts</code>: the two "a group admin ... clears/can clear another user's default" tests now expect a denial; drop the four batch-shape denial tests made redundant by the deleted exception.</li>
+      <li><code>member-email-rules.spec.ts</code>/<code>member-rules.spec.ts</code>: denied: an admin creating a row with another user's <code>userRef</code>; an admin's null → X link. Allowed: the creator's own row (including a stored profile email that lags the token); an admin's X → null unlink; an admin's email change on an unlinked row. Add <code>verifiedEmails/{id}</code> and <code>paymentLookupLimits/{uid}</code> to "the rules declare every server-only collection explicitly".</li>
+    </ul></li>
+  <li>- [ ] <strong>Step 2: Run them against the current rules</strong>: <code>pnpm e2e e2e/infra/users-read-rules.spec.ts e2e/infra/user-rules.spec.ts e2e/infra/member-email-rules.spec.ts e2e/infra/member-rules.spec.ts</code>. Expected: the new denials FAIL (they are allowed today). Record the failing names in the task report.</li>
+  <li>- [ ] <strong>Step 3: Change the rules</strong> exactly as §4: <code>allow get</code> own or admin, <code>allow list: if false</code>, delete <code>isAdminClearingDefaultGroup</code>, the two deny blocks, the narrowed <code>memberLinkCreateValid</code>/<code>memberLinkUpdateValid</code>. Update the rules comments that describe the removed paths.</li>
+  <li>- [ ] <strong>Step 4: Run</strong> the same command. Expected: PASS. Then <code>pnpm test:area members groups account auth summary admin</code> (full). Expected: PASS.</li>
+  <li>- [ ] <strong>Step 5: Commit</strong> "Lock users reads to the owner and the admin".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 9: E2E journeys</h2>
+<p><strong>Files:</strong> a new spec-owned dataset under <code>e2e/seed/datasets/</code> (registered in <code>index.ts</code>); <code>e2e/members/</code> (new <code>member-linking.spec.ts</code>), <code>e2e/summary/</code> (Pay dialog test); <code>scripts/test-area/areas.mjs</code>.</p>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the journeys</strong> (tag each describe; poll trigger results through the Admin SDK with generous timeouts; unique names; never touch shared users):
+    <ul>
+      <li>Members (<code>@members</code>): adding by a registered user's login address links the row; adding by that user's secondary address (seed the index entry through the Admin SDK in the dataset or spec) links it; editing an unlinked row's email to an owned address links it; adding the same person under a second address leaves that row unlinked.</li>
+      <li>Summary (<code>@summary</code>): the Pay dialog shows a linked payee's seeded handles, and none for an unlinked payee.</li>
+      <li>The existing "should remove a registered member and clear their default group" and "should toggle group active status" already poll; keep them green unchanged.</li>
+    </ul>
+    The account/auth journeys in §8 are covered by the existing invites "should link an invited member when they register" test plus the T2 functions tests; don't add a verification-mail flow to e2e.</li>
+  <li>- [ ] <strong>Step 2: Run</strong> <code>pnpm e2e e2e/members/member-linking.spec.ts</code> and the summary spec. Expected: PASS (they exercise T3, T5 and T6 already in place). If a journey fails, fix the code, not the timeout.</li>
+  <li>- [ ] <strong>Step 3: Run</strong> <code>pnpm test:area --check</code> and <code>pnpm e2e e2e/infra/seed.spec.ts</code>. Expected: PASS.</li>
+  <li>- [ ] <strong>Step 4: Commit</strong> "[no-deploy] Add e2e journeys for server-side linking and payment handles".</li>
+</ul>
+
+<!-- ===================================================================== -->
+<h2>Task 10: Docs and the release checklist</h2>
+<p><strong>Files:</strong> <code>.claude/firestore-rules-hardening.md</code> (Phase 3 done), <code>docs/superpowers/plans/2026-10-19-infra-followups.html</code> (Owner item "link by any verified address" done; add a "Next release (branch users-read-lockdown): checklist"), the memory file <code>project_firestore_rules_hardening.md</code>.</p>
+<ul>
+  <li>- [ ] <strong>Step 1: Write the release checklist</strong>, in order:
+    <ol>
+      <li>Before merging: <code>pnpm query backfill-verified-emails</code> (production, read-only); expect about one create per verified account and 0 conflicts.</li>
+      <li>Merge one PR to <code>release</code> with a merge commit; keep <code>[no-deploy]</code> out of its title and body.</li>
+      <li>Right after CI: <code>pnpm query backfill-verified-emails -- --apply</code>, then the dry run again (expect 0 to create).</li>
+      <li><code>firebase functions:list --project pip-cost-sharing</code> lists <code>getMemberPaymentMethods</code> and <code>clearDefaultsOnGroupDeactivate</code>.</li>
+      <li>Smoke test: Summary → Pay shows the payee's handles; adding a member by a registered address shows them as registered within a few seconds.</li>
+    </ol></li>
+  <li>- [ ] <strong>Step 2: Commit</strong> "[no-deploy] Record Phase 3 and its release checklist".</li>
+</ul>
+
+<h2>Closing gate (controller)</h2>
+<p><code>pnpm test --coverage</code>, <code>pnpm --dir functions test</code> (after a rebuild), <code>pnpm test:scripts</code>, <code>pnpm test:area --check</code>, <code>ng build</code>, <code>pnpm test:area</code> for every area in full, and two full <code>pnpm e2e</code> runs. Nobody switches branches or pulls in this checkout while a run is going.</p>
+
+</body>
+</html>

@@ -27,7 +27,7 @@
 <body>
 
 <h1>Users Read Lockdown — Design</h1>
-<p class="meta">pip-cost-sharing · 2026-10-23 · Status: draft for owner approval · Phase 3 (read half) of <code>.claude/firestore-rules-hardening.md</code>, merged with "link members by any verified address" (<code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>, Owner section)</p>
+<p class="meta">pip-cost-sharing · 2026-10-23 · Status: approved by the owner on 2026-10-23 (answers in §11); ships in one release · Phase 3 (read half) of <code>.claude/firestore-rules-hardening.md</code>, merged with "link members by any verified address" (<code>docs/superpowers/plans/2026-10-19-infra-followups.html</code>, Owner section)</p>
 
 <p>Tags: <span class="call">[my call]</span> marks a choice made while drafting that the owner has not confirmed. The callable gatekeeper and the <code>verifiedEmails/{address}</code> index (server-only, one owner per address, most recent confirmation wins) are the owner's agreed designs and are not reopened here. Section 11 lists the questions.</p>
 
@@ -42,7 +42,7 @@
   <li>Payment handles reach a payer only through a callable that checks the caller is an active member of the payee's group. It returns the four handles and nothing else.</li>
   <li>Auto-linking runs on the server through <code>verifiedEmails/{address}</code>. An invited member links to the account that has proven the address: its login email or a confirmed group email.</li>
   <li>No client writes another user's doc. The cross-user <code>defaultGroupRef</code> clears move to triggers, and the B13 exception rule is removed.</li>
-  <li>An app tab that was open before the change keeps working until the rules flip, and a reload fixes it after the flip.</li>
+  <li>Ships in one release (functions, rules and hosting together). Old open tabs are not a design concern at this app's size (owner, 2026-10-23); a reload fixes them.</li>
 </ol>
 <h3>Non-goals</h3>
 <ul>
@@ -169,8 +169,15 @@ match /users/{userId} {
 <h2>7. Migration and rollout</h2>
 <p><strong>Prerequisite:</strong> the Plan 4 release (B13, B14, B19) is deployed, and its pre-release checklist (profile cleanup <code>--apply</code>, member-email audit) is done.</p>
 
-<h3>7.1 Deploy order: two releases (Q1)</h3>
-<p>Each CI run deploys functions, then rules and indexes, then hosting. In a single release the rules would flip before the new client is served. Splitting the work into two releases also lets release B be reverted on its own.</p>
+<h3>7.1 Deploy order: one release (owner decision, Q1)</h3>
+<p>Each CI run deploys functions, then rules and indexes, then hosting, so the rules flip a few minutes before the new client is served. The owner accepts that window. The original two-release order is kept below, struck through, for the record.</p>
+<ol>
+  <li><strong>Before merging:</strong> dry-run the backfill against production (read-only).</li>
+  <li><strong>The release</strong> (one merged PR): everything in §3-§6 plus the §4 rules.</li>
+  <li><strong>Right after CI finishes:</strong> run the backfill with <code>--apply</code>, then a dry run again (expect 0 to create). An invite added before the backfill still links on the invitee's next Groups load.</li>
+  <li><strong>Then:</strong> check <code>firebase functions:list</code> for the new functions, smoke-test the Pay dialog and adding a member by a registered address, and watch the function logs for <code>getMemberPaymentMethods</code> errors and linking skips.</li>
+</ol>
+<p><del>Two releases:</del></p>
 <ol>
   <li><strong>Before merging A:</strong> dry-run the backfill against production (read-only).</li>
   <li><strong>Release A</strong> (functions + client + the two deny blocks): the index module and its writers, trigger linking, default-clear triggers, <code>getMemberPaymentMethods</code>, the client changes in §3. The A client works under the old rules and the new ones.</li>
@@ -179,7 +186,7 @@ match /users/{userId} {
   <li><strong>Release B</strong> (rules only, plus rules specs and doc updates): §4. Afterwards, check <code>app_errors</code> for "Missing or insufficient permissions" from the paths in §7.2. Rollback = revert the PR. The A client runs fine on the old rules.</li>
 </ol>
 
-<h3>7.2 What an old open tab does</h3>
+<h3>7.2 What an old open tab does (reference only; accepted by the owner)</h3>
 <p><strong>After release A</strong> (rules unchanged), an old tab works fully, including its client-side linking. The stale-chunk prompt (<code>navigation-loading.service.ts</code>: "App Update Available", then a reload) appears only when the tab navigates to a lazy route whose chunk it hasn't loaded yet. A's hosting deploy removes the old hashed chunks. A tab that already loaded Summary and Members gets no prompt. The Android app (a WebView on the live site) behaves like a long-lived tab.</p>
 <p><strong>After release B</strong>, a tab still running the pre-A client fails these actions. B ships no hosting, so B itself never triggers the prompt.</p>
 <div class="tablewrap">
@@ -261,7 +268,7 @@ match /users/{userId} {
 
 <h2>9. Risks</h2>
 <ul>
-  <li><strong>Old tabs and the Android WebView</strong> fail five actions after the flip (§7.2). Mitigation: two releases with a 7-day gap; the errors are visible and a reload fixes them.</li>
+  <li><strong>Old tabs and the Android WebView</strong> fail five actions after the flip (§7.2) until they reload. Accepted by the owner: the app has about 20 users a day and no active groups but the owner's.</li>
   <li><strong>The consent gap enables handle harvesting.</strong> An admin who knows someone's address can add them, which auto-links them, and then read their handles. The same is true today, and today anyone can read every user's handles. Mitigation: the per-uid limit bounds bulk harvesting. A consent step is Q2.</li>
   <li><strong>Trigger loops and races.</strong> A link write re-fires <code>syncMemberEmailLower</code> and <code>syncGroupMemberUids</code>. The re-runs are no-ops because <code>email</code> is unchanged and the arrays are recomputed. The link re-checks the doc's current <code>email</code> before writing.</li>
   <li><strong>A function rename looks like a deletion</strong> and blocks the non-interactive CI deploy. Keep the existing export names and only add new ones.</li>
@@ -293,9 +300,10 @@ match /users/{userId} {
 <tr><td>T10 Docs: the hardening doc's Phase 3 status, the follow-ups list, memory</td><td>B</td><td>XS</td></tr>
 </table>
 </div>
-<p>Roughly 3 builder-days in two PRs: A is T1-T8, B is T9-T10.</p>
+<p>Roughly 3 builder-days in one PR (owner decision). The implementation plan is <code>docs/superpowers/plans/2026-10-23-users-read-lockdown.html</code>.</p>
 
-<h2>11. Questions for the owner</h2>
+<h2>11. Questions for the owner (answered 2026-10-23)</h2>
+<div class="box"><strong>Owner answers:</strong> 1 one release, not two; 2 yes, show handles straight away (a handle only lets someone send money, never pull it); 3 the trigger; 4 triggers, and delete the B13 exception; 5 keep old login addresses; 6 keep the admin read.</div>
 <ol>
   <li><strong>Two releases, with the rules flip 7 days after the code?</strong> Recommended: yes. A single release flips the rules before hosting serves the new client, and it breaks every pre-A tab and the Android WebView for five actions. Splitting also lets the rules be reverted on their own.</li>
   <li><strong>Should payment handles of an auto-linked member be visible straight away?</strong> An admin can add anyone whose address they know and then read that person's handles. Recommended: yes for now, with the 100/day per-caller limit. That is far tighter than today, where every handle is readable. A consent step (handles shown only after the member has opened the group) would be a follow-up with its own flag.</li>
