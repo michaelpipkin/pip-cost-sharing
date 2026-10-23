@@ -186,10 +186,9 @@ export class UserService implements IUserService {
   // transient network condition (Firestore's docs describe 'unavailable'
   // specifically as "most likely...corrected by retrying with a backoff")
   // - a dropped signal or a WiFi/cellular handoff lasting a few seconds,
-  // nothing to do with App Check. 'permission-denied' (an App Check
-  // rejection) is deliberately excluded - the SDK's own ~24h throttle
-  // means an immediate retry cannot possibly help, so retrying it would
-  // only delay showing the message the user actually needs to see.
+  // nothing to do with App Check. 'permission-denied' is deliberately
+  // excluded - a rules denial doesn't change on an immediate retry, so
+  // retrying it would only delay showing the message the user needs to see.
   private isTransientFirestoreError(error: unknown): boolean {
     return (
       error instanceof FirebaseError &&
@@ -204,11 +203,9 @@ export class UserService implements IUserService {
   // When initializeAuth() throws, GroupService.getUserGroups() never runs,
   // so nothing would otherwise clear the loading overlay or explain why
   // the app looks stuck - the user is left staring at a spinner with no
-  // way out. A `permission-denied` here (reading/writing their own user
-  // doc, which security rules always allow the owner) almost always means
-  // App Check rejected this device's requests rather than a real rules
-  // violation - the account itself is fine, Firebase Auth succeeded, only
-  // this specific client can't currently reach Firestore.
+  // way out. A callable refused by App Check gets the App Check help
+  // dialog; anything else (Firestore isn't App Check enforced) gets the
+  // retry message.
   private handleInitializeAuthFailure(error: unknown): void {
     this.loading.loadingOff();
     this.appCheckErrorHandler.handle(

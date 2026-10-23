@@ -1030,7 +1030,7 @@ describe('UserService', () => {
       providerData: [{ providerId: 'password' }],
     };
 
-    it('clears the loading overlay and explains an App Check rejection specifically', async () => {
+    it('clears the loading overlay with the retry message, not the App Check dialog, for a Firestore permission-denied (Firestore is not App Check enforced)', async () => {
       vi.spyOn(firestoreModule, 'getDoc').mockRejectedValueOnce(
         new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
       );
@@ -1040,11 +1040,18 @@ describe('UserService', () => {
 
       expect(mockLoadingService.loadingOff).toHaveBeenCalled();
       expect(mockGroupService.getUserGroups).not.toHaveBeenCalled();
-      expect(mockDialog.open).toHaveBeenCalledWith(
+      expect(mockDialog.open).not.toHaveBeenCalledWith(
         AppCheckErrorDialogComponent,
-        { disableClose: false, maxWidth: '80vw' }
+        expect.anything()
       );
-      expect(mockSnackBar.openFromComponent).not.toHaveBeenCalled();
+      expect(mockSnackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          data: {
+            message: 'Something went wrong loading your account. Please try again.',
+          },
+        }
+      );
     });
 
     it('clears the loading overlay with a generic message for other failures', async () => {

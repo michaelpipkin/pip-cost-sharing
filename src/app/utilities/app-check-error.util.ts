@@ -1,21 +1,19 @@
 import { FirebaseError } from 'firebase/app';
 
-// Firestore rejects an App Check-enforced request with a bare
-// 'permission-denied'; a Functions callable rejects with
-// 'functions/unauthenticated' (the Firebase JS SDK prefixes callable error
-// codes with the product name, same convention as 'auth/...' or
-// 'storage/...'). Both codes are traced, in this app's error log, to real
-// App Check throttle/token-race incidents - see
-// .claude/app-check-enforcement-followup.md - with no other confirmed cause
-// for either one. 'functions/unauthenticated' is not perfectly exclusive to
-// App Check (a genuinely stale ID token could in theory produce the same
-// code), but the Firebase client SDK refreshes ID tokens well before real
-// expiry, and every occurrence actually observed in this app has been App
-// Check - so treating it as "likely App Check" is the right default, and
-// the guidance shown for it (retry, try another device/network/browser,
-// contact support) remains valid advice even on the rare miss.
+// Only the products that enforce App Check: a Functions callable rejects
+// with 'functions/unauthenticated' (the Firebase JS SDK prefixes callable
+// error codes with the product name, same convention as 'auth/...' or
+// 'storage/...'), traced in this app's error log to real App Check
+// throttle/token-race incidents (see .claude/app-check-enforcement-followup.md).
+// It is not perfectly exclusive to App Check (a genuinely stale ID token
+// could in theory produce it), but the client SDK refreshes ID tokens well
+// before expiry, and the guidance shown for it (retry, try another
+// device/network/browser, contact support) is still valid on the rare miss.
+// Firestore's bare 'permission-denied' is NOT included: Firestore App Check
+// enforcement was turned off on 2026-08-19, so that code is a rules denial
+// and gets the caller's own message. Add it back if Firestore is enforced
+// again.
 const APP_CHECK_LIKELY_CODES = new Set([
-  'permission-denied',
   'functions/unauthenticated',
   // Storage words this "User is not authenticated" even for a signed-in
   // user; a missing/invalid App Check token produces it (seen on a build
